@@ -61,13 +61,18 @@ Binaryen codegen options
 Trap mode
 ---------
 
-WebAssembly can trap - throw an exception - on things like division by zero, rounding a very large float to an int, and so forth. In asm.js such things were silently ignored, as in JavaScript they do not throw, so this is a difference between JavaScript and WebAssembly that you may notice.
+WebAssembly can trap - throw an exception - on things like division by zero, rounding a very large float to an int, and so forth. In asm.js such things were silently ignored, as in JavaScript they do not throw, so this is a difference between JavaScript and WebAssembly that you may notice, with the browser reporting an error like ``float unrepresentable in integer range``, ``integer result unrepresentable``, or ``integer overflow``.
 
-By default emscripten will emit code that is optimized for speed, which means it emits compact code that may trap on the things mentioned before. To get the same behavior as JavaScript, i.e., not trap on them, you can build with ``-s "BINARYEN_TRAP_MODE='js'"``.
+By default emscripten will emit code that is optimized for size and speed, which means it emits code that may trap on the things mentioned before. That mode is called ``allow``. The other modes are ``clamp``, which will avoid traps by clamping values to a reasonable range, and ``js``, which ensures the exact same behavior as JavaScript does (which also does clamping, but makes sure to clamp exactly like JavaScript does, and also do other things JavaScript would).
 
-The other trap modes are ``'allow'`` (the default, which is to allow traps, by following WebAssembly semantics in the simplest and therefore most efficient way) and ``'clamp'`` (which will not trap, but will also not necessarily do the exact same as JavaScript does, instead it will clamp the values to something 'reasonable').
+In general, using ``clamp`` is safest, as whether such a trap occurs depends on how the LLVM optimizer optimizes code. In other words, there is no guarantee that this will not be an issue, and updating LLVM can make a problem appear or vanish (the wasm spec process has recognized this problem and intends to standardize `new operations that avoid it <https://github.com/WebAssembly/design/issues/1143>`_). Also, there is not a big downside to using ``clamp``: it is only slightly larger and slower than the default ``allow``, in most cases. To do so, build with
 
-In general, you should use the default (allow traps) unless your codebase makes doing so difficult (e.g., you have many places that may cast a large float to an int). In that case, try ``'clamp'``. This is usually almost as fast as the default, and much more efficient than ``'js'`` (which works harder to get 100% compatibility with JavaScript, which is useful mostly for debugging).
+ ::
+
+	-s "BINARYEN_TRAP_MODE='clamp'"
+
+
+However, if the default (to allow traps) works in your codebase, then it may be worth keeping it that way, for the (small) benefits. Note that ``js``, which preserves the exact same behavior as JavaScript does, adds a large amount of overhead, so unless you really need that, use ``clamp`` (``js`` is often useful for debugging, though).
 
 Compiler output
 ===============

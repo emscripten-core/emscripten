@@ -1012,7 +1012,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.LEGACY_VM_SUPPORT:
         # legacy vms don't have wasm
-        shared.Settings.WASM = 0
+        assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
 
       if shared.Settings.SPLIT_MEMORY:
         if shared.Settings.WASM:
@@ -1679,7 +1679,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4 and not shared.Settings.EXPERIMENTAL_USE_LLD:
+        if options.debug_level >= 4:
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
@@ -1879,6 +1879,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
+          if DEBUG: save_intermediate('dfe', 'js')
 
       if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.WASM:
         optimizer.flush()
@@ -2503,8 +2504,8 @@ def modularize():
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+
   # Included code may refer to Module (e.g. from file packager), so alias it
-  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
@@ -2512,17 +2513,26 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof exports === 'object' && typeof module === 'object')
-  module.exports = %(EXPORT_NAME)s;
-else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,
   'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
 })
+
+  # Export using a UMD style export, or ES6 exports if selected
+  if shared.Settings.EXPORT_ES6:
+    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+  else:
+    f.write('''if (typeof exports === 'object' && typeof module === 'object')
+    module.exports = %(EXPORT_NAME)s;
+  else if (typeof define === 'function' && define['amd'])
+    define([], function() { return %(EXPORT_NAME)s; });
+  else if (typeof exports === 'object')
+    exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+  ''' % {
+    'EXPORT_NAME': shared.Settings.EXPORT_NAME
+  })
+
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
@@ -2903,4 +2913,11 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  sys.exit(run())
+  try:
+    sys.exit(run())
+  except KeyboardInterrupt:
+    logging.warning("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logging.error(str(e))
+    sys.exit(1)

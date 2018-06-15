@@ -20,5 +20,7 @@ no args returning double
     add_outer returned: 19.875000
   can use <::> separator in user code
     user_separator returned: 15
+  can have commas in user code: 1,2,3
+    user_comma returned: 2
     return_str returned: hello from js
 END

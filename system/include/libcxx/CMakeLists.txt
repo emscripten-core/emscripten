@@ -20,7 +20,7 @@ endif()
 
 if (LIBCXX_INSTALL_HEADERS)
   install(DIRECTORY .
-    DESTINATION include/c++/v1
+    DESTINATION ${LIBCXX_INSTALL_PREFIX}include/c++/v1
     COMPONENT cxx-headers
     FILES_MATCHING
     ${LIBCXX_HEADER_PATTERN}
@@ -44,7 +44,7 @@ if (LIBCXX_INSTALL_HEADERS)
     set(generated_config_deps generate_config_header)
     # Install the generated header as __config.
     install(FILES ${LIBCXX_BINARY_DIR}/__generated_config
-      DESTINATION include/c++/v1
+      DESTINATION ${LIBCXX_INSTALL_PREFIX}include/c++/v1
       PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
       RENAME __config
       COMPONENT cxx-headers)
@@ -58,9 +58,12 @@ if (LIBCXX_INSTALL_HEADERS)
                       COMMAND "${CMAKE_COMMAND}"
                               -DCMAKE_INSTALL_COMPONENT=cxx-headers
                               -P "${CMAKE_BINARY_DIR}/cmake_install.cmake")
+    # Stripping is a no-op for headers
+    add_custom_target(install-cxx-headers-stripped DEPENDS install-cxx-headers)
 
     add_custom_target(libcxx-headers)
     add_custom_target(install-libcxx-headers DEPENDS install-cxx-headers)
+    add_custom_target(install-libcxx-headers-stripped DEPENDS install-cxx-headers-stripped)
   endif()
 
 endif()

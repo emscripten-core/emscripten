@@ -1,17 +1,17 @@
 #!/usr/bin/python
-
-'''
-Runs csmith, a C fuzzer, and looks for bugs.
+"""Runs csmith, a C fuzzer, and looks for bugs.
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
-'''
+"""
 
 import os, sys, difflib, shutil, random
 from distutils.spawn import find_executable
 from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
 
-sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
-import shared
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
+
+from tools import shared
 
 # can add flags like --no-threads --ion-offthread-compile=off
 engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
@@ -20,11 +20,11 @@ print 'testing js engine', engine
 
 TEST_BINARYEN = 1
 
-CSMITH = os.environ.get('CSMITH') or find_executable('csmith')
+CSMITH = os.environ.get('CSMITH', find_executable('csmith'))
 assert CSMITH, 'Could not find CSmith on your PATH. Please set the environment variable CSMITH.'
-CSMITH_PATH = os.environ.get('CSMITH_PATH')
-assert CSMITH_PATH, 'Please set the environment variable CSMITH_PATH.'
-CSMITH_CFLAGS = ['-I', os.path.join(CSMITH_PATH, 'runtime')]
+CSMITH_PATH = os.environ.get('CSMITH_PATH', '/usr/include/csmith')
+assert os.path.exists(CSMITH_PATH), 'Please set the environment variable CSMITH_PATH.'
+CSMITH_CFLAGS = ['-I', CSMITH_PATH]
 
 filename = os.path.join(os.getcwd(), 'temp_fuzzcode' + str(os.getpid()) + '_')
 
@@ -71,7 +71,7 @@ while 1:
   shared.try_delete(filename)
   try:
     shared.check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
-  except Exception, e:
+  except CalledProcessError as e:
     print 'Failed to compile natively using clang'
     notes['invalid'] += 1
     continue
@@ -170,8 +170,8 @@ while 1:
   def execute_js(engine):
     print '(run in %s)' % engine
     try:
-      js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
-    except:
+      js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+    except CalledProcessError as e:
       print 'failed to run in primary'
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
@@ -191,4 +191,3 @@ while 1:
   if not execute_js(engine):
     fail()
     continue
-

@@ -1628,7 +1628,7 @@ var LibraryOpenAL = {
       || (navigator.mediaDevices 
       &&  navigator.mediaDevices.getUserMedia);
 
-    if (!has_getUserMedia) {
+    if (!has_getUserMedia) {
 #if OPENAL_DEBUG
       console.error('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif

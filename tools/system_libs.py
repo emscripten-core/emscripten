@@ -55,6 +55,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
   al_symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
+  libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
@@ -116,7 +117,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
     blacklist = set(
       ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
-      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c'] + # individual files
+      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'] + # individual files
       ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c', 'rintf.c'] # individual math files
     )
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -132,8 +133,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    # Add in extra non-musl things
-    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
     # Without -fno-builtin, LLVM can optimize away or convert calls to library
     # functions to something else based on assumptions that they behave exactly
     # like the standard library. This can cause unexpected bugs when we use our
@@ -216,6 +215,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'debug.cpp',
       'exception.cpp',
       'future.cpp',
+      'functional.cpp',
       'hash.cpp',
       'ios.cpp',
       'iostream.cpp',
@@ -235,7 +235,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'typeinfo.cpp',
       'utility.cpp',
       'valarray.cpp',
-      'variant.cpp'
+      'variant.cpp',
+      'vector.cpp'
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
     return build_libcxx(
@@ -298,6 +299,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     run_commands(commands)
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
+
+  # libc_extras
+  def create_libc_extras(libname): # libname is ignored, this is just one .o file
+    o = in_temp('libc_extras.o')
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'extras.c'), '-o', o])
+    return o
 
   # decides which malloc to use, and returns the source for malloc and the full library name
   def malloc_decision():
@@ -454,6 +461,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         more = True
         for dep in deps:
           need.undefs.add(dep)
+          if shared.Settings.VERBOSE:
+            logging.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
@@ -512,6 +521,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         break
     else:
       raise Exception('did not find libc?')
+
+  # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
+  system_libs += [('libc-extras',   'bc', create_libc_extras, libc_extras_symbols, ['libc_extras'], False)]
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):

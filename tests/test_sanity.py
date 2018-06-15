@@ -738,6 +738,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'struct_info'], ['building and verifying struct_info', 'success'], True, ['generated_struct_info.json']),
       ([PYTHON, EMBUILDER, 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libc-mt'], ['building and verifying libc-mt', 'success'], True, ['libc-mt.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'libc-extras'], ['building and verifying libc-extras', 'success'], True, ['libc-extras.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['dlmalloc_threadsafe.bc']),

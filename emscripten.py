@@ -14,19 +14,13 @@ if __name__ == '__main__':
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
+import pprint
 from collections import OrderedDict
 
 from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr
-
-__rootpath__ = os.path.abspath(os.path.dirname(__file__))
-def path_from_root(*pathelems):
-  """Returns the absolute path for which the given path elements are
-  relative to the emscripten root.
-  """
-  return os.path.join(__rootpath__, *pathelems)
+from tools.shared import WINDOWS, asstr, path_from_root
 
 def get_configuration():
   if hasattr(get_configuration, 'configuration'):
@@ -1741,9 +1735,9 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   #   * We may also run some Binaryen passes here.
 
   if shared.Settings.EXPERIMENTAL_USE_LLD:
-    wasm, metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
+    metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
   else:
-    wasm, metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+    metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1839,16 +1833,15 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     s2wasm_args = create_s2wasm_args(temp_s, wasm)
     if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
       s2wasm_args += ['-g']
-      if settings['DEBUG_LEVEL'] >= 4:
-        s2wasm_args += ['--source-map=' + wasm + '.map']
-        if not settings['SOURCE_MAP_BASE']:
-          logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-        else:
-          s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+    if settings['DEBUG_LEVEL'] >= 4:
+      s2wasm_args += ['--source-map=' + wasm + '.map']
+      if not settings['SOURCE_MAP_BASE']:
+        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      else:
+        s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
     if DEBUG:
       logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
       t = time.time()
-      #s2wasm_args += ['--debug']
     shared.check_call(s2wasm_args, stdout=open(metadata_file, 'w'))
 
   metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
@@ -1856,7 +1849,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   if DEBUG:
     logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
     t = time.time()
-  return wasm, metadata
+  return metadata
 
 
 def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
@@ -1869,8 +1862,7 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
       if src[-2:] == '.o' or src[-5:] == '.wasm':
         tmp = dst + '.wast'
-        shared.check_call([wasm_dis, src, '-o', tmp])
-        shutil.copyfile(tmp, os.path.join(shared.CANONICAL_TEMP_DIR, tmp))
+        shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   with temp_files.get_file('.wb.o') as temp_o:
     backend_args = create_backend_args_wasm(infile, temp_o, settings)
@@ -1890,18 +1882,29 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
 
     libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    cmd = [shared.LLD, '-flavor', 'wasm',
+    cmd = [shared.WASM_LD,
       '-z', 'stack-size=%s' % settings['TOTAL_STACK'],
       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
       '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
       temp_o, libc_rt_lib, compiler_rt_lib,
       '-o', base_wasm,
-      '--entry=main',
+      '--no-entry',
       '--allow-undefined',
       '--import-memory',
       '--export', '__wasm_call_ctors']
-    for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    # emscripten-wasm-finalize currently depends on the presence of debug
+    # symbols for renaming of the __invoke symbols
+    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
+    # no longer need to rename these symbols.
+    #if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
+    #  cmd.append('--strip-debug')
+
+    if settings['EXPORT_ALL']:
+      cmd += ['--no-gc-sections', '--export-all']
+    else:
+      for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
+        cmd += ['--export', export[1:]] # Strip the leading underscore
     shared.check_call(cmd)
 
     if DEBUG:
@@ -1909,15 +1912,36 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
       t = time.time()
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    shared.check_call([wasm_emscripten_finalize, base_wasm, '-o', wasm,
-                       '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-                       ('--emscripten-reserved-function-pointers=%d' %
-                        shared.Settings.RESERVED_FUNCTION_POINTERS)],
-                      stdout=open(metadata_file, 'w'))
+    write_source_map = settings['DEBUG_LEVEL'] >= 4
+    if write_source_map:
+      base_source_map = base_wasm + '.map'
+      sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'), 
+                       base_wasm,
+                       '--dwarfdump=' + shared.LLVM_DWARFDUMP,
+                       '-o',  base_source_map]
+      if not settings['SOURCE_MAP_BASE']:
+        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      else:
+        sourcemap_cmd += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+      shared.check_call(sourcemap_cmd)
+      debug_copy(base_source_map, 'base_wasm.map')
+
+    cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
+           '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+           ('--emscripten-reserved-function-pointers=%d' %
+            shared.Settings.RESERVED_FUNCTION_POINTERS)]
+    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+      cmd.append('-g')
+    if write_source_map:
+      cmd.append('--input-source-map=' + base_source_map)
+      cmd.append('--output-source-map=' + wasm + '.map')
+    shared.check_call(cmd, stdout=open(metadata_file, 'w'))
+    if write_source_map:
+      debug_copy(wasm + '.map', 'post_finalize.map')
 
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
-  return wasm, metadata
+  return metadata
 
 
 def read_metadata_wast(wast, DEBUG):
@@ -1929,9 +1953,9 @@ def read_metadata_wast(wast, DEBUG):
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
-  if DEBUG: logging.debug("METAraw %s", metadata_raw)
+  if DEBUG: logging.debug("Metadata raw: " + metadata_raw)
   metadata = load_metadata(metadata_raw)
-  if DEBUG: logging.debug(repr(metadata))
+  if DEBUG: logging.debug("Metadata parsed: " + pprint.pformat(metadata))
   return metadata
 
 
@@ -1941,7 +1965,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata, se
   all_exported_functions = set(shared.expand_response(settings['EXPORTED_FUNCTIONS'])) # both asm.js and otherwise
   for additional_export in settings['DEFAULT_LIBRARY_FUNCS_TO_INCLUDE']: # additional functions to export from asm, if they are implemented
     all_exported_functions.add('_' + additional_export)
-  all_implemented = metadata['implementedFunctions'] + list(forwarded_json['Functions']['implementedFunctions'].keys()) # XXX perf?
+  all_implemented = get_all_implemented(forwarded_json, metadata)
 
   export_bindings = settings['EXPORT_BINDINGS']
   export_all = settings['EXPORT_ALL']
@@ -2013,10 +2037,13 @@ def create_em_js(forwarded_json, metadata):
   em_js_funcs = []
   separator = '<::>'
   for name, raw in metadata.get('emJsFuncs', {}).items():
-    parts = raw.split(separator)
-    assert len(parts) >= 2
-    args, body = parts[0], separator.join(parts[1:])
-    args = args[1:-1].split(',')
+    assert separator in raw
+    args, body = raw.split(separator, 1)
+    args = args[1:-1]
+    if args == 'void':
+      args = []
+    else:
+      args = args.split(',')
     arg_names = [arg.split()[-1] for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
@@ -2115,11 +2142,11 @@ var establishStackSpace = Module['establishStackSpace'];
   module.append(jscall_funcs)
   return module
 
-def create_backend_args_wasm(infile, temp_s, settings):
+def create_backend_args_wasm(infile, outfile, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
                   '-asm-verbose=false',
-                  '-o', temp_s]
+                  '-o', outfile]
   if settings['EXPERIMENTAL_USE_LLD']:
     args += ['-filetype=obj']
   else:
@@ -2183,11 +2210,19 @@ def load_metadata(metadata_raw):
     'invokeFuncs': [],
   }
 
-  for k, v in metadata_json.items():
-    metadata[k] = v
+  for key, value in metadata_json.items():
+    # json.loads returns `unicode` for strings but other code in this file
+    # generally works with utf8 encoded `str` objects, and they don't alwasy
+    # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing
+    # non-ascii and either x or y are unicode objects.
+    # TODO(sbc): Remove this encoding if we switch to unicode elsewhere
+    # (specifically the glue returned from compile_settings)
+    if type(value) == list:
+      value = [asstr(v) for v in value]
+    metadata[key] = value
 
   # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = list(map(asmjs_mangle, metadata['initializers']))
+  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
