@@ -400,6 +400,7 @@ function exportRuntime() {
     'stackSave',
     'stackRestore',
     'stackAlloc',
+    'establishStackSpace',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
