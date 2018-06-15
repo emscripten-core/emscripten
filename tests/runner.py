@@ -1000,10 +1000,11 @@ class BrowserCore(RunnerCore):
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
-    # when self.also_asmjs, we run tests in asm.js mode too, and not just the default wasm.
-    # otherwise, for now we run pthreads tests just in asm.js, no wasm, since wasm doesn't work yet.
-    if not self.also_asmjs and 'WASM=0' not in args and 'USE_PTHREADS' in str(args):
-      args += ['-s', 'WASM=0']
+    if not 'WASM=0' in args:
+      # Filter out separate-asm, which is implied by wasm
+      args = [a for a in args if a != '--separate-asm']
+      # wasm doesn't support USE_PTHREADS=2
+      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     original_args = args[:]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
