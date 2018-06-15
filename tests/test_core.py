@@ -90,6 +90,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_windows(self):
     return WINDOWS
 
+  # whether the test mode supports duplicate function elimination in js
+  def supports_js_dfe(self):
+    if self.is_wasm(): return False # wasm does this when optimizing anyhow
+    supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
+    for opt_level in supported_opt_levels:
+      if opt_level in self.emcc_args:
+        return True
+    return False
+
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
     if '-O2' in self.emcc_args or '-Os' in self.emcc_args:
@@ -5851,19 +5860,13 @@ def process(filename):
 
     test()
 
-    if not self.is_wasm(): # wasm does this all the time
-      # Run with duplicate function elimination turned on
-      dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
-
-      for opt_level in dfe_supported_opt_levels:
-        if opt_level in self.emcc_args:
-          print("Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1", file=sys.stderr)
-          num_original_funcs = self.count_funcs('src.cpp.o.js')
-          Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
-          test()
-          # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
-          break
+    if self.supports_js_dfe():
+      print("Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1", file=sys.stderr)
+      num_original_funcs = self.count_funcs('src.cpp.o.js')
+      Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+      test()
+      # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
+      assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
 
   @sync
   def test_openjpeg(self):
@@ -7659,6 +7662,13 @@ extern "C" {
             raise
         js = open('src.cpp.o.js').read()
         assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
+
+  def test_dfe(self):
+    if not self.supports_js_dfe(): return self.skip('dfe-only')
+    Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.emcc_args += ['-g2'] # test for issue #6331
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
