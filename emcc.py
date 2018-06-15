@@ -2915,6 +2915,9 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 if __name__ == '__main__':
   try:
     sys.exit(run())
+  except KeyboardInterrupt:
+    logging.warning("KeyboardInterrupt")
+    sys.exit(1)
   except shared.FatalError as e:
     logging.error(str(e))
     sys.exit(1)
