@@ -5,8 +5,11 @@ Tool to manage building of various useful things, such as libc, libc++, native o
 '''
 
 from __future__ import print_function
-import os, sys
-import tools.shared as shared
+import logging
+import os
+import sys
+
+from tools import shared
 
 if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
   print('''
@@ -98,6 +101,7 @@ SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'em
 USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
+logger = logging.getLogger(__file__)
 
 def build(src, result_libs, args=[]):
   # if a library is a .a, also build the .bc, as we need it when forcing a
@@ -143,9 +147,12 @@ def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 
-operation = sys.argv[1]
+def main():
+  operation = sys.argv[1]
+  if operation != 'build':
+    logger.error('unfamiliar operation: ' + operation)
+    return 1
 
-if operation == 'build':
   auto_tasks = False
   tasks = sys.argv[2:]
   if 'SYSTEM' in tasks:
@@ -168,7 +175,7 @@ if operation == 'build':
         tasks += ['native_optimizer']
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
-    shared.logging.info('building and verifying ' + what)
+    logger.info('building and verifying ' + what)
     if what == 'compiler-rt':
       build('''
         int main() {
@@ -229,7 +236,7 @@ if operation == 'build':
       if shared.Settings.WASM_BACKEND:
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
-        shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
+        logger.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'html5':
       build('''
         #include <stdlib.h>
@@ -274,11 +281,19 @@ if operation == 'build':
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     else:
-      shared.logging.error('unfamiliar build target: ' + what)
+      logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
 
-    shared.logging.info('...success')
+    logger.info('...success')
+  return 0
 
-else:
-  shared.logging.error('unfamiliar operation: ' + operation)
-  sys.exit(1)
+
+if __name__ == '__main__':
+  try:
+    sys.exit(main())
+  except KeyboardInterrupt:
+    logger.warning("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logger.error(str(e))
+    sys.exit(1)

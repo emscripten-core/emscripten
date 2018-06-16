@@ -8,7 +8,7 @@ The **Emterpreter** is an option that compiles asm.js output from Emscripten int
 
 Why does this option exist? To provide an alternative in situations where normal direct execution by the JavaScript engine has issues. The two main motivations are
 
- * JavaScript must be parsed and compiled before it is executed, which can take a long time in large codebases, whereas a binary bytecode is just data, so you can get to the point of *something* executing earlier. Executing in an interpreter might be slower, but it can can start earlier. Or in other words, it can already be running (albeit slowly) before the code would normally be running at all.
+ * JavaScript must be parsed and compiled before it is executed, which can take a long time in large codebases, whereas a binary bytecode is just data, so you can get to the point of *something* executing earlier. Executing in an interpreter might be slower, but it can start earlier. Or in other words, it can already be running (albeit slowly) before the code would normally be running at all.
  * JavaScript has high-level control flow (no gotos) and must be written as short-running events, not long-running synchronous code. However, sometimes you have code that is written in the latter form that you can't easily refactor. The Emterpreter can handle that, because running the code in an interpreter allows us to manually control the flow of execution, as well as pause and resume the entire call stack, letting us turn synchronous code into asynchronous code.
 
 For more background on the Emterpreter, see
@@ -98,7 +98,7 @@ By building with ``-s ASSERTIONS=1``, you can get runtime errors on not having m
 
 First, make sure all synchronous execution works correctly when interpreting **everything**, by building with ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``. Might be slow, but it should work!
 
-Then, run only ``main()`` in the interpreter, by adding ``-s EMTERPRETIFY_WHITELIST='["_main"]'``, and building with assertions, ``-s ASSERTIONS=1,`` as well as preserving (not minifying) function names, ``--profiling-funcs``. Any synchronous execution not happening in main itself is in non-interpreted code, and therefore bad; in a a build with assertions, this will trigger a runtime error you can view in the web console in your browser, and thanks to the profiling option, the error will have clearly readable function names, for example, you could see this on Doom::
+Then, run only ``main()`` in the interpreter, by adding ``-s EMTERPRETIFY_WHITELIST='["_main"]'``, and building with assertions, ``-s ASSERTIONS=1,`` as well as preserving (not minifying) function names, ``--profiling-funcs``. Any synchronous execution not happening in main itself is in non-interpreted code, and therefore bad; in a build with assertions, this will trigger a runtime error you can view in the web console in your browser, and thanks to the profiling option, the error will have clearly readable function names, for example, you could see this on Doom::
 
     This error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? This is what the stack looked like when we tried to save it:
 

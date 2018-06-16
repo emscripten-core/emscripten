@@ -3199,15 +3199,20 @@ int main() {
 
   def test_LEGACY_VM_SUPPORT(self):
     # when modern features are lacking, we can polyfill them or at least warn
+    with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
     def test(expected, opts=[]):
-      self.clear()
-      with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
+      print(opts)
+      result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
+      if result.returncode == 0:
+        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
+      else:
+        self.assertContained(expected, result.stderr)
+    # when legacy is needed, we show an error indicating so
     test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
-    assert os.path.exists('a.out.wasm'), 'emit wasm by default'
-    test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1'])
-    assert not os.path.exists('a.out.wasm'), 'LEGACY_VM_SUPPORT disables wasm'
+    # wasm is on by default, and does not mix with legacy, so we show an error
+    test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
+    # legacy + disabling wasm works
+    test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1', '-s', 'WASM=0'])
 
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
@@ -6147,12 +6152,13 @@ hello3 ()
 ''')
     open('hello4.c', 'w').write(r'''
 #include <stdio.h>
+#include <math.h>
 
-void
-hello4 ()
+double
+hello4 (double x)
 {
   printf ("Hello4\n");
-  return;
+  return fmod(x, 2.0);
 }
 
 ''')
@@ -6172,6 +6178,7 @@ main()
 {
   void *h;
   void (*f) ();
+  double (*f2) (double);
 
   h = dlopen ("libhello1.wasm", RTLD_NOW);
   f = dlsym (h, "hello1");
@@ -6186,9 +6193,13 @@ main()
   f();
   dlclose (h);
   h = dlopen ("/usr/local/lib/libhello4.wasm", RTLD_NOW);
-  f = dlsym (h, "hello4");
-  f();
+  f2 = dlsym (h, "hello4");
+  double result = f2(5.5);
   dlclose (h);
+
+  if (result == 1.5) {
+    printf("Ok\n");
+  }
   return 0;
 }
 
@@ -6209,6 +6220,7 @@ main()
     self.assertContained('Hello2', out)
     self.assertContained('Hello3', out)
     self.assertContained('Hello4', out)
+    self.assertContained('Ok', out)
 
   def test_dlopen_rtld_global(self):
     # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
@@ -8366,7 +8378,7 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
-        
+
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
 
@@ -8389,3 +8401,20 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
 
+  def test_wasm_sourcemap(self):
+    # The no_main.c will be read (from relative location) due to speficied "-s"
+    shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
+    wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+                    '--sources', '--prefix', '=wasm-src:///',
+                    '--dwarfdump-output',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
+                    '-o', 'a.out.wasm.map',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm')]
+    subprocess.check_call(wasm_map_cmd)
+    output = open('a.out.wasm.map').read()
+    # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
+    self.assertIn('wasm-src:///no_main.c', output)
+    # has "sourcesContent" entry with source code (included with `-s` option)
+    self.assertIn('int foo()', output)
+    # has some entries
+    self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')

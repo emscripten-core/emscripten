@@ -505,9 +505,17 @@ EMSCRIPTEN_FUNCS();
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
-      # First brace is from Closure Compiler comment, thus we need a second one
-      pre_2_second_brace = pre_2.find('{', pre_2.find('{')+1)
-      pre = coutput[:start] + '(/** @suppress {uselessCode} */ function(global,env,buffer) {\n' + pre_2[pre_2_second_brace+1:]
+      # If the closure comment to suppress useless code is present, we need to look one
+      # brace past it, as the first is in there. Otherwise, the first brace is the
+      # start of the function body (what we want).
+      USELESS_CODE_COMMENT = '/** @suppress {uselessCode} */ '
+      USELESS_CODE_COMMENT_BODY = 'uselessCode'
+      brace = pre_2.find('{') + 1
+      has_useless_code_comment = False
+      if pre_2[brace:brace + len(USELESS_CODE_COMMENT_BODY)] == USELESS_CODE_COMMENT_BODY:
+        brace = pre_2.find('{', brace) + 1
+        has_useless_code_comment = True
+      pre = coutput[:start] + '(' + (USELESS_CODE_COMMENT if has_useless_code_comment else '') + 'function(global,env,buffer) {\n' + pre_2[brace:]
       post = post_1 + end_asm + coutput[end+1:]
 
   with ToolchainProfiler.profile_block('write_pre'):

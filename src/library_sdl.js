@@ -1252,7 +1252,9 @@ var LibrarySDL = {
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
-        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
+        // NOTE: Timestamp is currently not properly set for the GearVR controller
+        //       on Samsung Internet: it is always zero.
+        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = SDL.getJoystickButtonState(state.buttons[i]);

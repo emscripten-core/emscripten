@@ -623,15 +623,16 @@ space for 20 functions to be added::
    character within a signature string represents a type. The first character
    represents the return type of a function, and remaining characters are for
    parameter types.
-   - 'v': void type
-   - 'i': 32-bit integer type
-   - 'j': 64-bit integer type (currently does not exist in JavaScript)
-   - 'f': 32-bit float type
-   - 'd': 64-bit float type
+
+   - ``'v'``: void type
+   - ``'i'``: 32-bit integer type
+   - ``'j'``: 64-bit integer type (currently does not exist in JavaScript)
+   - ``'f'``: 32-bit float type
+   - ``'d'``: 64-bit float type
+
    For example, if you add a function that takes an integer and does not return
-   anything, you can do
-   ``addFunction(your_function, 'vi');``
-   See tests/interop/test_add_function_post.js for an example.
+   anything, you can do ``addFunction(your_function, 'vi');``. See
+   `tests/interop/test_add_function_post.js <https://github.com/kripken/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_. for an example.
 
 
 .. _interacting-with-code-access-memory:
