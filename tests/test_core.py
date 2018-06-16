@@ -7505,6 +7505,12 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  def test_asyncify_unused(self):
+    # test a program not using asyncify, but the pref is set
+    Settings.ASYNCIFY = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):

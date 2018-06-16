@@ -647,7 +647,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['emterpret']
       if settings['EMTERPRETIFY_ASYNC']:
         funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
-    if settings['ASYNCIFY']:
+    if settings['ASYNCIFY'] and need_asyncify(funcs):
       funcs += ['setAsync']
 
   return sorted(set(funcs))
