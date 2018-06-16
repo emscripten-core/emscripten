@@ -37,6 +37,8 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+logger = logging.getLogger(__file__)
+
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.
 # Setting '0' as the browser disables running a browser (but we still see tests compile)
@@ -998,11 +1000,15 @@ class BrowserCore(RunnerCore):
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
-    # when self.also_asmjs, we run tests in asm.js mode too, and not just the default wasm.
-    # otherwise, for now we run pthreads tests just in asm.js, no wasm, since wasm doesn't work yet.
-    if not self.also_asmjs and 'WASM=0' not in args and 'USE_PTHREADS' in str(args):
-      args += ['-s', 'WASM=0']
     original_args = args[:]
+    if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
+      # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
+      args = args + ['-s', 'WASM=0']
+    if not 'WASM=0' in args:
+      # Filter out separate-asm, which is implied by wasm
+      args = [a for a in args if a != '--separate-asm']
+      # wasm doesn't support USE_PTHREADS=2
+      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
     if not reference:
@@ -1107,7 +1113,7 @@ def print_js_engine_message():
   if use_all_engines:
     print('(using ALL js engines)')
   else:
-    logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
+    logger.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 def sanity_checks():
   global JS_ENGINES
@@ -1346,9 +1352,12 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exitcode = min(numFailures, 255)
-  sys.exit(exitcode)
+  return min(numFailures, 255)
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+  try:
+    sys.exit(main(sys.argv))
+  except KeyboardInterrupt:
+    logger.warning('KeyboardInterrupt')
+    sys.exit(1)
