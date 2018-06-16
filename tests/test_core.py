@@ -7289,7 +7289,7 @@ ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
 
-      print('check ccall callback')
+      print('check ccall promise')
       Settings.EXPORTED_FUNCTIONS = ['_stringf', '_floatf']
       src = r'''
 #include <stdio.h>

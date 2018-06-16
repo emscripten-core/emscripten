@@ -144,14 +144,15 @@ var toC = {
   'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
 };
 
-function returnToType(returnType, ret) {
-  if (returnType === 'string') return Pointer_stringify(ret);
-  if (returnType === 'boolean') return Boolean(ret);
-  return ret;
-}
 
 // C calling interface.
 function ccall(ident, returnType, argTypes, args, opts) {
+  function convertReturnValue(ret) {
+    if (returnType === 'string') return Pointer_stringify(ret);
+    if (returnType === 'boolean') return Boolean(ret);
+    return ret;
+  }
+
   var func = getCFunc(ident);
   var cArgs = [];
   var stack = 0;
@@ -178,14 +179,13 @@ function ccall(ident, returnType, argTypes, args, opts) {
     return new Promise(function(resolve) {
       EmterpreterAsync.restartFunc = func;
       EmterpreterAsync.asyncFinalizers.push(function(ret) {
-        EmterpreterAsync.restartFunc = null;
         if (stack !== 0) stackRestore(stack);
-        resolve(returnToType(returnType, ret));
+        resolve(convertReturnValue(ret));
       });
     });
   }
 #endif
-  ret = returnToType(returnType, ret);
+  ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
   if (opts && opts.async) return Promise.resolve(ret)

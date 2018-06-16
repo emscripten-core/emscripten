@@ -238,7 +238,10 @@ mergeInto(LibraryManager.library, {
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
-    restartFunc: null, // This is needed for obtaining the return value with the correct type
+    restartFunc: null, // During an async call started with ccall, this contains the function generated
+                       // by the compiler that calls emterpret and returns the return value. If we call
+                       // emterpret directly, we don't get the return value back (and we can't just read
+                       // it from the stack because we don't know the correct type).
     asyncFinalizers: [], // functions to run when all asynchronicity is done
 
     ensureInit: function() {
@@ -320,6 +323,7 @@ mergeInto(LibraryManager.library, {
             Browser.resumeAsyncCallbacks();
           }
           if (EmterpreterAsync.state === 0) {
+            EmterpreterAsync.restartFunc = null;
             var asyncFinalizers = EmterpreterAsync.asyncFinalizers;
             EmterpreterAsync.asyncFinalizers = [];
             asyncFinalizers.forEach(function(func) {
