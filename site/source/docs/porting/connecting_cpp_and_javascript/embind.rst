@@ -320,7 +320,7 @@ smart pointer type:
 
     EMSCRIPTEN_BINDINGS(better_smart_pointers) {
         class_<C>("C")
-            .smart_ptr_constructor(&std::make_shared<C>)
+            .smart_ptr_constructor("C", &std::make_shared<C>)
             ;
     }
 
@@ -335,7 +335,7 @@ An alternative is to use :cpp:func:`~class_::smart_ptr` in the
     EMSCRIPTEN_BINDINGS(smart_pointers) {
         class_<C>("C")
             .constructor<>()
-            .smart_ptr<std::shared_ptr<C>>()
+            .smart_ptr<std::shared_ptr<C>>("C")
             ;
     }
 
