@@ -8362,10 +8362,10 @@ end
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
 
-  def test_python_preprocess(self):
+  def test_html_preprocess(self):
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
     output_file = path_from_root('tests', 'module', 'test_stdin.html')
-    shell_file = path_from_root('tests', 'module', 'test_python_preprocess.html')
+    shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()

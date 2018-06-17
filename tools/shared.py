@@ -2730,57 +2730,21 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-#  return f
+  temp_dir = configuration.get_temp_files().get_dir()
 
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  if_else_pattern = re.compile('^\s*#\s*(if|else|endif)\s*(!)?([a-zA-Z_]\w*)?\s*(==|!=|<|>)?\s*([\'\"])?([^\'\"]*)?[\'\"]?', re.UNICODE)
-  while(1):
-    m = include_pattern.search(f)
-    if not m:
-      break
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+  settings_file = os.path.join(temp_dir, 'settings.js')
+  open(settings_file, 'w').write(settings_str)
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+  # Run the JS preprocessor
+  (path, file) = os.path.split(filename)
+  args=[settings_file, file]
+  stdout = os.path.join(temp_dir, 'stdout')
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
 
-  ppfile = ""
-  showStack = [True]
-  for line in f.split('\n'):
-    #print('Showstack', showStack)
-    m = if_else_pattern.match(line)
-    (tok, unot, attr, op, quot, value) = m.groups('') if m else ('','','','','','')
-    #print('Tok: %s, Unary Not: %s, Setting: %s, Op: %s, Quote: %s, Value: %s' % (tok, unot, attr, op, quot, value))
-    if tok == 'if':
-      try:
-        setting = getattr(Settings, attr)
-        #print('Setting Value: %s' % setting)
-        if op:
-          if not quot:
-            setting = int(setting)
-            value = int(value)
-          if op == '==':
-            showStack.append(True if setting == value else False)
-          elif op == '!=':
-            showStack.append(True if setting != value else False)
-          elif op == '<':
-            showStack.append(True if setting < value else False)
-          elif op == '>':
-            showStack.append(True if setting > value else False)
-        else:
-          if unot == '!':
-            showStack.append(False if setting else True)
-          else:
-            showStack.append(True if setting else False)
-      except AttributeError:
-        #print('Exception!')
-        showStack.append(False)
-    elif tok == 'else':
-      showStack[-1] = not showStack[-1]
-    elif tok == 'endif':
-      showStack.pop()
-    elif showStack[-1]:
-      ppfile += line + '\n'
-  return ppfile
+  out = open(stdout, 'r').read()
+  return out
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
