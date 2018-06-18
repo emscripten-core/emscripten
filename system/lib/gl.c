@@ -580,6 +580,14 @@ GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
  	                                GLenum internalformat, GLsizei width,
  	                                GLsizei height,	GLsizei depth );
 
+GLAPI void GLAPIENTRY emscripten_glTexStorage2D( GLenum target, GLsizei levels,
+                                                 GLenum internalformat, GLsizei width,
+                                                 GLsizei height );
+
+GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
+                                                 GLenum internalformat, GLsizei width,
+                                                 GLsizei height, GLsizei depth );
+
 /* 1.1 functions */
 
 GLAPI void GLAPIENTRY emscripten_glGenTextures( GLsizei n, GLuint *textures );
@@ -1610,7 +1618,6 @@ void* emscripten_GetProcAddress(const char *name_) {
   if (!strcmp(name, "glGetVertexAttribfv")) return emscripten_glGetVertexAttribfv;
   if (!strcmp(name, "glGetVertexAttribiv")) return emscripten_glGetVertexAttribiv;
   if (!strcmp(name, "glGetVertexAttribPointerv")) return emscripten_glGetVertexAttribPointerv;
-  if (!strcmp(name, "glVertexAttribIPointer")) return emscripten_glVertexAttribIPointer;
   if (!strcmp(name, "glGetActiveUniform")) return emscripten_glGetActiveUniform;
   if (!strcmp(name, "glUniform1f")) return emscripten_glUniform1f;
   if (!strcmp(name, "glUniform2f")) return emscripten_glUniform2f;
@@ -1743,8 +1750,73 @@ void* emscripten_GetProcAddress(const char *name_) {
   if (!strcmp(name, "glCopyTexImage2D")) return emscripten_glCopyTexImage2D;
   if (!strcmp(name, "glCopyTexSubImage2D")) return emscripten_glCopyTexSubImage2D;
   if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffers;
-  
-
+  // UBO
+  if (!strcmp(name, "glGetUniformIndices")) return emscripten_glGetUniformIndices;
+  if (!strcmp(name, "glGetActiveUniformsiv")) return emscripten_glGetActiveUniformsiv;
+  if (!strcmp(name, "glGetActiveUniformName")) return emscripten_glGetActiveUniformName;
+  if (!strcmp(name, "glGetUniformBlockIndex")) return emscripten_glGetUniformBlockIndex;
+  if (!strcmp(name, "glGetActiveUniformBlockiv")) return emscripten_glGetActiveUniformBlockiv;
+  if (!strcmp(name, "glGetActiveUniformBlockName")) return emscripten_glGetActiveUniformBlockName;
+  if (!strcmp(name, "glUniformBlockBinding")) return emscripten_glUniformBlockBinding;
+  // GLES 3.0 functions
+  if (!strcmp(name, "glColorMaski")) return emscripten_glColorMaski;
+  if (!strcmp(name, "glGetBooleani_v")) return emscripten_glGetBooleani_v;
+  if (!strcmp(name, "glGetIntegeri_v")) return emscripten_glGetIntegeri_v;
+  if (!strcmp(name, "glEnablei")) return emscripten_glEnablei;
+  if (!strcmp(name, "glDisablei")) return emscripten_glDisablei;
+  if (!strcmp(name, "glIsEnabledi")) return emscripten_glIsEnabledi;
+  if (!strcmp(name, "glBeginTransformFeedback")) return emscripten_glBeginTransformFeedback;
+  if (!strcmp(name, "glEndTransformFeedback")) return emscripten_glEndTransformFeedback;
+  if (!strcmp(name, "glBindBufferRange")) return emscripten_glBindBufferRange;
+  if (!strcmp(name, "glBindBufferBase")) return emscripten_glBindBufferBase;
+  if (!strcmp(name, "glTransformFeedbackVaryings")) return emscripten_glTransformFeedbackVaryings;
+  if (!strcmp(name, "glGetTransformFeedbackVarying")) return emscripten_glGetTransformFeedbackVarying;
+  if (!strcmp(name, "glClampColor")) return emscripten_glClampColor;
+  if (!strcmp(name, "glBeginConditionalRender")) return emscripten_glBeginConditionalRender;
+  if (!strcmp(name, "glEndConditionalRender")) return emscripten_glEndConditionalRender;
+  if (!strcmp(name, "glVertexAttribIPointer")) return emscripten_glVertexAttribIPointer;
+  if (!strcmp(name, "glGetVertexAttribIiv")) return emscripten_glGetVertexAttribIiv;
+  if (!strcmp(name, "glGetVertexAttribIuiv")) return emscripten_glGetVertexAttribIuiv;
+  if (!strcmp(name, "glVertexAttribI1i")) return emscripten_glVertexAttribI1i;
+  if (!strcmp(name, "glVertexAttribI2i")) return emscripten_glVertexAttribI2i;
+  if (!strcmp(name, "glVertexAttribI3i")) return emscripten_glVertexAttribI3i;
+  if (!strcmp(name, "glVertexAttribI4i")) return emscripten_glVertexAttribI4i;
+  if (!strcmp(name, "glVertexAttribI1ui")) return emscripten_glVertexAttribI1ui;
+  if (!strcmp(name, "glVertexAttribI2ui")) return emscripten_glVertexAttribI2ui;
+  if (!strcmp(name, "glVertexAttribI3ui")) return emscripten_glVertexAttribI3ui;
+  if (!strcmp(name, "glVertexAttribI4ui")) return emscripten_glVertexAttribI4ui;
+  if (!strcmp(name, "glVertexAttribI1iv")) return emscripten_glVertexAttribI1iv;
+  if (!strcmp(name, "glVertexAttribI2iv")) return emscripten_glVertexAttribI2iv;
+  if (!strcmp(name, "glVertexAttribI3iv")) return emscripten_glVertexAttribI3iv;
+  if (!strcmp(name, "glVertexAttribI4iv")) return emscripten_glVertexAttribI4iv;
+  if (!strcmp(name, "glVertexAttribI1uiv")) return emscripten_glVertexAttribI1uiv;
+  if (!strcmp(name, "glVertexAttribI2uiv")) return emscripten_glVertexAttribI2uiv;
+  if (!strcmp(name, "glVertexAttribI3uiv")) return emscripten_glVertexAttribI3uiv;
+  if (!strcmp(name, "glVertexAttribI4uiv")) return emscripten_glVertexAttribI4uiv;
+  if (!strcmp(name, "glVertexAttribI4bv")) return emscripten_glVertexAttribI4bv;
+  if (!strcmp(name, "glVertexAttribI4sv")) return emscripten_glVertexAttribI4sv;
+  if (!strcmp(name, "glVertexAttribI4ubv")) return emscripten_glVertexAttribI4ubv;
+  if (!strcmp(name, "glVertexAttribI4usv")) return emscripten_glVertexAttribI4usv;
+  if (!strcmp(name, "glGetUniformuiv")) return emscripten_glGetUniformuiv;
+  if (!strcmp(name, "glBindFragDataLocation")) return emscripten_glBindFragDataLocation;
+  if (!strcmp(name, "glGetFragDataLocation")) return emscripten_glGetFragDataLocation;
+  if (!strcmp(name, "glUniform1ui")) return emscripten_glUniform1ui;
+  if (!strcmp(name, "glUniform2ui")) return emscripten_glUniform2ui;
+  if (!strcmp(name, "glUniform3ui")) return emscripten_glUniform3ui;
+  if (!strcmp(name, "glUniform4ui")) return emscripten_glUniform4ui;
+  if (!strcmp(name, "glUniform1ui")) return emscripten_glUniform1ui;
+  if (!strcmp(name, "glUniform2ui")) return emscripten_glUniform2ui;
+  if (!strcmp(name, "glUniform3ui")) return emscripten_glUniform3ui;
+  if (!strcmp(name, "glUniform4ui")) return emscripten_glUniform4ui;
+  if (!strcmp(name, "glTexParameterIiv")) return emscripten_glTexParameterIiv;
+  if (!strcmp(name, "glTexParameterIuiv")) return emscripten_glTexParameterIuiv;
+  if (!strcmp(name, "glGetTexParameterIiv")) return emscripten_glGetTexParameterIiv;
+  if (!strcmp(name, "glGetTexParameterIuiv")) return emscripten_glGetTexParameterIuiv;
+  if (!strcmp(name, "glClearBufferiv")) return emscripten_glClearBufferiv;
+  if (!strcmp(name, "glClearBufferuiv")) return emscripten_glClearBufferuiv;
+  if (!strcmp(name, "glClearBufferfv")) return emscripten_glClearBufferfv;
+  if (!strcmp(name, "glClearBufferfi")) return emscripten_glClearBufferfi;
   return 0;
 }
+
 
