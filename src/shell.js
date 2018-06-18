@@ -59,31 +59,11 @@ var ENVIRONMENT_IS_WEB = false;
 var ENVIRONMENT_IS_WORKER = false;
 var ENVIRONMENT_IS_NODE = false;
 var ENVIRONMENT_IS_SHELL = false;
-#endif // ENVIRONMENT
-
-#if NEED_ENVIRONMENT_SETS
 ENVIRONMENT_IS_WEB = typeof window === 'object';
 ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
 ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
-#endif
-
-#if ENVIRONMENT
-#if ASSERTIONS
-#if ENVIRONMENT == 'web'
-if (!ENVIRONMENT_IS_WEB) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-#if ENVIRONMENT == 'worker'
-if (!ENVIRONMENT_IS_WORKER) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-#if ENVIRONMENT == 'node'
-if (!ENVIRONMENT_IS_NODE) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-#if ENVIRONMENT == 'shell'
-if (!ENVIRONMENT_IS_SHELL) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-#endif
-#endif
+#endif // ENVIRONMENT
 
 #if ASSERTIONS
 if (Module['ENVIRONMENT']) {
@@ -105,6 +85,13 @@ var currentScriptUrl = (typeof document !== 'undefined' && document.currentScrip
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
+
+#if ENVIRONMENT
+#if ASSERTIONS
+  if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#endif
+#endif
+
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
   var nodeFS;
@@ -171,6 +158,13 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_SHELL) {
+
+#if ENVIRONMENT
+#if ASSERTIONS
+  if ((typeof process === 'object' && typeof require === 'function') || typeof window === 'object' || typeof importScripts === 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#endif
+#endif
+
   if (typeof read != 'undefined') {
     Module['read'] = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
@@ -214,6 +208,13 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+
+#if ENVIRONMENT
+#if ASSERTIONS
+  if (!(typeof window === 'object' || typeof importScripts === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+#endif
+#endif
+
   Module['read'] = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
@@ -282,9 +283,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 {
 #if ASSERTIONS
-  throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#else // ASSERTIONS
-  throw new Error('not compiled for this environment');
+  throw new Error('environment detection error');
 #endif // ASSERTIONS
 }
 
