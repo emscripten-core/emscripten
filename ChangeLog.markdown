@@ -9,6 +9,10 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Deprecate Module.ENVIRONMENT: Now that we have a compile-time option to set the environment, also having a runtime one on Module is complexity that we are better off without. When Module.ENVIRONMENT is used with ASSERTIONS it will show an error to direct users to the new option (-s ENVIRONMENT=web , or node, etc., at compile time).
+
+v1.38.6: 06/13/2018
+-------------------
 
 v1.38.5: 06/04/2018
 -------------------
