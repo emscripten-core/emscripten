@@ -227,7 +227,8 @@ var LibraryBrowser = {
 
 #if WASM && MAIN_MODULE
       var wasmPlugin = {};
-      wasmPlugin['asyncWasmLoadPromise'] = new Promise((resolve, reject) => resolve());
+      wasmPlugin['asyncWasmLoadPromise'] = new Promise(
+        function(resolve, reject) { return resolve(); });
       wasmPlugin['canHandle'] = function(name) {
         return !Module.noWasmDecoding && (name.endsWith('.so') || name.endsWith('.wasm'));
       };
