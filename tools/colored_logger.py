@@ -11,6 +11,34 @@ def add_coloring_to_emit_windows(fn):
     return ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
   out_handle = property(_out_handle)
 
+  def _get_color(self):
+    import ctypes
+    SHORT = ctypes.c_short
+    WORD = ctypes.c_ushort
+    class COORD(ctypes.Structure):
+      _fields_ = [
+        ("X", SHORT),
+        ("Y", SHORT)]
+    class SMALL_RECT(ctypes.Structure):
+      _fields_ = [
+        ("Left", SHORT),
+        ("Top", SHORT),
+        ("Right", SHORT),
+        ("Bottom", SHORT)]
+    class CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
+      _fields_ = [
+        ("dwSize", COORD),
+        ("dwCursorPosition", COORD),
+        ("wAttributes", WORD),
+        ("srWindow", SMALL_RECT),
+        ("dwMaximumWindowSize", COORD)]
+    # Constants from the Windows API
+    self.STD_OUTPUT_HANDLE = -11
+    hdl = ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
+    csbi = CONSOLE_SCREEN_BUFFER_INFO()
+    ctypes.windll.kernel32.GetConsoleScreenBufferInfo(hdl, ctypes.byref(csbi))
+    return csbi.wAttributes
+
   def _set_color(self, code):
     import ctypes
     # Constants from the Windows API
@@ -18,6 +46,7 @@ def add_coloring_to_emit_windows(fn):
     hdl = ctypes.windll.kernel32.GetStdHandle(self.STD_OUTPUT_HANDLE)
     ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, code)
 
+  setattr(logging.StreamHandler, '_get_color', _get_color)
   setattr(logging.StreamHandler, '_set_color', _set_color)
 
   def new(*args):
@@ -64,9 +93,10 @@ def add_coloring_to_emit_windows(fn):
         color = FOREGROUND_MAGENTA
     else:
         color =  FOREGROUND_WHITE
+    old_color = args[0]._get_color()
     args[0]._set_color(color)
     ret = fn(*args)
-    args[0]._set_color( FOREGROUND_WHITE )
+    args[0]._set_color(old_color)
     #print "after"
     return ret
   return new

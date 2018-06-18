@@ -332,7 +332,7 @@ def run():
     return 1
 
   # read response files very early on
-  substitute_response_files(sys.argv)
+  sys.argv = substitute_response_files(sys.argv)
 
   if len(sys.argv) == 1 or '--help' in sys.argv:
     # Documentation for emcc and its options must be updated in:
@@ -416,7 +416,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
     # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-    # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+    # Neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
     # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
     # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
     # 0 - use native compilation for configure checks
@@ -584,7 +584,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   temp_root = shared.TEMP_DIR
   if not os.path.exists(temp_root):
-    os.makedirs(temp_root)
+    try:
+      os.makedirs(temp_root)
+    except Exception as e:
+      if os.path.exists(temp_root):
+        pass # If running multiple emcc instances simultaneously, they may race to create the temp directory if it did not initially exist. In that case, we can proceed.
+      else:
+        raise
+
   temp_dir = tempfile.mkdtemp(dir=temp_root)
 
   def in_temp(name):
@@ -996,6 +1003,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'allocate',
           'getMemory',
         ]
+      if shared.Settings.USE_PTHREADS:
+        # These runtime methods are called from pthread-main.js
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
       if shared.Settings.MODULARIZE_INSTANCE:
         shared.Settings.MODULARIZE = 1
@@ -1005,7 +1015,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.LEGACY_VM_SUPPORT:
         # legacy vms don't have wasm
-        shared.Settings.WASM = 0
+        assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
 
       if shared.Settings.SPLIT_MEMORY:
         if shared.Settings.WASM:
@@ -1471,7 +1481,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.debug('optimizing %s', input_file)
               #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              shared.Building.llvm_opt(temp_file, options.llvm_opts, new_temp_file)
+              # after optimizing, lower intrinsics to libc calls so that our linking code
+              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
+              # we end up calling out to JS for Math.cos).
+              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
+              shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
@@ -1668,7 +1682,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4 and not shared.Settings.EXPERIMENTAL_USE_LLD:
+        if options.debug_level >= 4:
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
@@ -1868,6 +1882,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
+          if DEBUG: save_intermediate('dfe', 'js')
 
       if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.WASM:
         optimizer.flush()
@@ -2492,8 +2507,8 @@ def modularize():
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+
   # Included code may refer to Module (e.g. from file packager), so alias it
-  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
@@ -2501,17 +2516,26 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof exports === 'object' && typeof module === 'object')
-  module.exports = %(EXPORT_NAME)s;
-else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,
   'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
 })
+
+  # Export using a UMD style export, or ES6 exports if selected
+  if shared.Settings.EXPORT_ES6:
+    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+  else:
+    f.write('''if (typeof exports === 'object' && typeof module === 'object')
+    module.exports = %(EXPORT_NAME)s;
+  else if (typeof define === 'function' && define['amd'])
+    define([], function() { return %(EXPORT_NAME)s; });
+  else if (typeof exports === 'object')
+    exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+  ''' % {
+    'EXPORT_NAME': shared.Settings.EXPORT_NAME
+  })
+
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
@@ -2893,4 +2917,11 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  sys.exit(run())
+  try:
+    sys.exit(run())
+  except KeyboardInterrupt:
+    logging.warning("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logging.error(str(e))
+    sys.exit(1)

@@ -99,6 +99,8 @@ GLAPI GLenum GLAPIENTRY emscripten_glGetError( void );
 
 GLAPI const GLubyte * GLAPIENTRY emscripten_glGetString( GLenum name );
 
+GLAPI const GLubyte * GLAPIENTRY emscripten_glGetStringi( GLenum name, GLuint index);
+
 GLAPI void GLAPIENTRY emscripten_glFinish( void );
 
 GLAPI void GLAPIENTRY emscripten_glFlush( void );
@@ -570,6 +572,13 @@ GLAPI void GLAPIENTRY emscripten_glGetTexImage( GLenum target, GLint level,
                                      GLenum format, GLenum type,
                                      GLvoid *pixels );
 
+GLAPI void GLAPIENTRY emscripten_glTexStorage2D( GLenum target, GLsizei levels,
+ 	                                GLenum internalformat, GLsizei width,
+ 	                                GLsizei height );
+
+GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
+ 	                                GLenum internalformat, GLsizei width,
+ 	                                GLsizei height,	GLsizei depth );
 
 /* 1.1 functions */
 
@@ -1561,6 +1570,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   // main list
   if (!strcmp(name, "glPixelStorei")) return emscripten_glPixelStorei;
   else if (!strcmp(name, "glGetString")) return emscripten_glGetString;
+  else if (!strcmp(name, "glGetStringi")) return emscripten_glGetStringi;
   else if (!strcmp(name, "glGetIntegerv")) return emscripten_glGetIntegerv;
   else if (!strcmp(name, "glGetFloatv")) return emscripten_glGetFloatv;
   else if (!strcmp(name, "glGetBooleanv")) return emscripten_glGetBooleanv;
@@ -1569,7 +1579,11 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glCompressedTexImage2D")) return emscripten_glCompressedTexImage2D;
   else if (!strcmp(name, "glCompressedTexSubImage2D")) return emscripten_glCompressedTexSubImage2D;
   else if (!strcmp(name, "glTexImage2D")) return emscripten_glTexImage2D;
+  else if (!strcmp(name, "glTexImage3D")) return emscripten_glTexImage3D;
+  else if (!strcmp(name, "glTexStorage2D")) return emscripten_glTexStorage2D;
+  else if (!strcmp(name, "glTexStorage3D")) return emscripten_glTexStorage3D;
   else if (!strcmp(name, "glTexSubImage2D")) return emscripten_glTexSubImage2D;
+  else if (!strcmp(name, "glTexSubImage3D")) return emscripten_glTexSubImage3D;
   else if (!strcmp(name, "glReadPixels")) return emscripten_glReadPixels;
   else if (!strcmp(name, "glBindTexture")) return emscripten_glBindTexture;
   else if (!strcmp(name, "glGetTexParameterfv")) return emscripten_glGetTexParameterfv;
@@ -1671,6 +1685,7 @@ void* emscripten_GetProcAddress(const char *name_) {
   else if (!strcmp(name, "glFrustum")) return emscripten_glFrustum;
   else if (!strcmp(name, "glRotatef")) return emscripten_glRotatef;
   else if (!strcmp(name, "glVertexAttribPointer")) return emscripten_glVertexAttribPointer;
+  else if (!strcmp(name, "glVertexAttribIPointer")) return emscripten_glVertexAttribIPointer;
   else if (!strcmp(name, "glEnableVertexAttribArray")) return emscripten_glEnableVertexAttribArray;
   else if (!strcmp(name, "glDisableVertexAttribArray")) return emscripten_glDisableVertexAttribArray;
   else if (!strcmp(name, "glDrawArrays")) return emscripten_glDrawArrays;
