@@ -120,7 +120,7 @@ function loadDynamicLibrary(lib) {
 
 #if WASM
 // Loads a side module from binary data
-function loadWebAssemblyModule(binary, load_async) {
+function loadWebAssemblyModule(binary, loadAsync) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
   assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
   // we should see the dylink section right after the magic number and wasm version
@@ -255,7 +255,7 @@ function loadWebAssemblyModule(binary, load_async) {
     return exports;
   }
 
-  if (load_async) {
+  if (loadAsync) {
     return WebAssembly.instantiate(binary, info).then(function(result) {
       return postInstantiation(result.instance);
     });
