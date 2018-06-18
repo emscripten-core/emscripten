@@ -40,6 +40,10 @@ var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
 var WASM_BACKEND_WITH_RESERVED_FUNCTION_POINTERS =
   WASM_BACKEND && RESERVED_FUNCTION_POINTERS;
 
+// We need to check what the environment is if no environment is forced, but
+// also we need it when assertions are on, for verification.
+var NEED_ENVIRONMENT_SETS = !ENVIRONMENT || ASSERTIONS;
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;

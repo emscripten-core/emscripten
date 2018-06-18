@@ -7335,7 +7335,7 @@ int main() {
     # with the wrong env we have very odd failures
     check_execute([PYTHON, EMCC, 'main.cpp', '-s', 'SINGLE_FILE=1'])
     src = open('a.out.js').read()
-    envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
+    envs = ['web', 'worker', 'node', 'shell']
     for env in envs:
       for engine in JS_ENGINES:
         if engine == V8_ENGINE: continue # ban v8, weird failures
@@ -7349,20 +7349,8 @@ int main() {
         print('    ' + curr)
         open('test.js', 'w').write(curr + src)
         fail = False
-        try:
-          seen = run_js('test.js', engine=engine, stderr=PIPE)
-        except:
-          fail = True
-        if fail:
-          print('-- acceptable fail')
-          assert actual != env, 'ok to fail if in the wrong environment'
-        else:
-          for other in envs:
-            if env == other:
-              assert ('environment is %s? true' % other) in seen, seen
-            else:
-              assert ('environment is %s? false' % other) in seen, seen
-          print('-- verified proper env is shown')
+        seen = run_js('test.js', engine=engine, stderr=PIPE, full_output=True, assert_returncode=None)
+        self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -s ENVIRONMENT=web or -s ENVIRONMENT=node', seen)
 
   def test_warn_no_filesystem(self):
     WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
