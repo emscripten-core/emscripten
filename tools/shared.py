@@ -2751,20 +2751,18 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  temp_dir = configuration.get_temp_files().get_dir()
-
   # Create a settings file with the current settings to pass to the JS preprocessor
+  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
+  #       we only want the actual settings, hence the [1::2] slice operation.
   settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
-  settings_file = os.path.join(temp_dir, 'settings.js')
+  settings_file = os.path.join(configuration.get_temp_files().get_dir(), 'settings.js')
   open(settings_file, 'w').write(settings_str)
 
   # Run the JS preprocessor
   (path, file) = os.path.split(filename)
-  args=[settings_file, file]
-  stdout = os.path.join(temp_dir, 'stdout')
-  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  args = [settings_file, file]
+  out = run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, cwd=path)
 
-  out = open(stdout, 'r').read()
   return out
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
