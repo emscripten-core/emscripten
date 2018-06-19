@@ -225,7 +225,7 @@ var LibraryBrowser = {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
-#if WASM && MAIN_MODULE
+#if (WASM != 0) && (MAIN_MODULE != 0)
       var wasmPlugin = {};
       wasmPlugin['asyncWasmLoadPromise'] = new Promise(
         function(resolve, reject) { return resolve(); });

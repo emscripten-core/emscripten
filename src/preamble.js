@@ -1839,7 +1839,7 @@ function removeRunDependency(id) {
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
-#if WASM && MAIN_MODULE
+#if (WASM != 0) && (MAIN_MODULE != 0)
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
