@@ -1182,12 +1182,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           misc_temp_files.note(asm_target)
 
-      if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
-        exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.WASM:
         if shared.Settings.TOTAL_MEMORY % 65536 != 0:
           exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
       else:
+        if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
+          exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
         if shared.Settings.TOTAL_MEMORY % (16*1024*1024) != 0:
           exit_with_error('For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.TOTAL_MEMORY < shared.Settings.TOTAL_STACK:

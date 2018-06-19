@@ -7801,22 +7801,33 @@ int main() {
           else:
             assert parts[6] == str(expect_max)
 
-  def test_binaryen_invalid_mem(self):
-      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
+  def test_invalid_mem(self):
+    # A large amount is fine, multiple of 16MB or not
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
+    # But not in asm.js
+    ret = run_process([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
 
-      ret = subprocess.check_call([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
+    # A tiny amount is fine in wasm
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'TOTAL_STACK=1024'])
+    # And the program works!
+    self.assertContained('hello, world!', run_js('a.out.js'))
 
-      ret = run_process([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
+    # But not in asm.js
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'WASM=0'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be at least 16MB' in ret, ret
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'WASM_MEM_MAX must be a multiple of 64KB' not in ret, ret
+    # Must be a multiple of 64KB
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'WASM_MEM_MAX must be a multiple of 64KB' in ret, ret
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'WASM_MEM_MAX must be a multiple of 64KB' not in ret, ret
+
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'WASM_MEM_MAX must be a multiple of 64KB' in ret, ret
 
   def test_binaryen_ctors(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
