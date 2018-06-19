@@ -7649,6 +7649,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
   def test_environment(self):
+    Settings.ASSERTIONS = 1
     for engine in JS_ENGINES:
       for work in (1, 0):
         # set us to test in just this engine
