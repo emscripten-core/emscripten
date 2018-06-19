@@ -6847,6 +6847,11 @@ someweirdtext
     '''
     self.do_run(src, '418')
 
+  def test_embind_float_constants(self):
+    self.emcc_args += ['--bind']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_float_constants.cpp'),
+                          path_from_root('tests', 'embind', 'test_float_constants.out'))
+
   @sync
   @no_wasm_backend()
   def test_webidl(self):
