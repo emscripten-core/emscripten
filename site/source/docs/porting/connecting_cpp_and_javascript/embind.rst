@@ -816,7 +816,7 @@ For convenience, *embind* provides factory functions to register
         register_map<int,int>("MapIntInt");
     }
 
-A full example shows below:
+A full example is shown below:
 
 .. code:: cpp
 
@@ -856,7 +856,7 @@ A full example shows below:
         register_vector<int>("vector<int>");
         register_map<int, string>("map<int, string>");
 
-We can use the following JavaScript code to interact with the C++ code shows above.
+The following JavaScript can be used to interact with the above C++.
 
 .. code:: js
 
