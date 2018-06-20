@@ -208,6 +208,7 @@
         "file": "libc/time.h", 
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
+            "TIME_UTC",
             "CLOCK_REALTIME",
             "CLOCK_MONOTONIC"
         ],
