@@ -2780,8 +2780,7 @@ LibraryManager.library = {
   timespec_get__deps: ['clock_gettime', '$ERRNO_CODES', '__setErrNo'],
   timespec_get: function(ts, base) {
     //int timespec_get(struct timespec *ts, int base);
-    if (base !== {{{ cDefine('TIME_UTC') }}})
-    {
+    if (base !== {{{ cDefine('TIME_UTC') }}}) {
       // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
       ___setErrNo(ERRNO_CODES.EINVAL);
       return 0;
