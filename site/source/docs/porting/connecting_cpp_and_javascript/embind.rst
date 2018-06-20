@@ -816,6 +816,83 @@ For convenience, *embind* provides factory functions to register
         register_map<int,int>("MapIntInt");
     }
 
+A full example shows below:
+
+.. code:: cpp
+
+    #include <emscripten/bind.h>
+    #include <string>
+    #include <vector>
+
+    using namespace std;
+    using namespace emscripten;
+
+    class xClass {
+    public:
+        xClass (int x, string y): x(x), y(y) {}
+
+        vector<int> returnVectorData () {
+            vector<int> v(10, x);
+            return v;
+        }
+
+        map<int, string> returnMapData () {
+            map<int, string> m;
+            m.insert(pair<int, string>(x, y));
+            return m;
+        }
+
+    private:
+        int x;
+        string y;
+    };
+
+    EMSCRIPTEN_BINDINGS(module) {
+        class_<xClass>("xClass")
+            .constructor<int, string>()
+            .function("returnVectorData", &xClass::returnVectorData)
+            .function("returnMapData", &xClass::returnMapData);
+        // register the using of container types
+        register_vector<int>("vector<int>");
+        register_map<int, string>("map<int, string>");
+
+We can use the following JavaScript code to interact with the C++ code shows above.
+
+.. code:: js
+
+    var xClass = new Module['xClass'](10, "Value");
+    var retVector = xClass.returnVectorData();
+
+    // vector size
+    var vectorSize = retVector.size();
+
+    // reset vector value
+    retVector.set(vectorSize - 1, 11);
+
+    // push value into vector
+    retVector.push_back(12);
+
+    // retrieve value from vector
+    for (var i = 0; i < retVector.size(); i++) {
+        console.log("Vector Value: ", retVector.get(i));
+    }
+
+    // expand vector size
+    retVector.resize(20, 1);
+
+    var retMap = xClass.returnMapData();
+
+    // map size
+    var mapSize = retMap.size();
+
+    // retrieve value from map
+    console.log("Map Value: ", retMap.get(10));
+
+    // reset the value at the given index position
+    retMap.set(10, "OtherValue");
+
+    xClass.delete()
+
 
 Performance
 ===========
