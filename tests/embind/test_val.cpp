@@ -62,6 +62,32 @@ int main()
   ensure_js_not("a instanceof Boolean");
   ensure_js_not("a instanceof Number");
   
+  test("template<typename T> val array(const std::vector<T> vec)");
+  vector<val> vec1;
+  vec1.push_back(val(11));
+  vec1.push_back(val("a"));
+  vec1.push_back(val::array());
+  val::global().set("a", val::array(vec1));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Boolean");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 11");
+  ensure_js_not("a[0] == 12");
+  ensure_js("a[1] == 'a'");
+  ensure_js("a[2] instanceof Array");
+  vector<int> vec2;
+  vec2.push_back(0);
+  vec2.push_back(1);
+  vec2.push_back(3);
+  val::global().set("a", val::array(vec2));
+  ensure_js("a instanceof Array");
+  ensure_js_not("a instanceof Number");
+  ensure_js("a[0] == 0");
+  ensure_js_not("a[0] == 1");
+  ensure_js("a[1] == 1");
+  ensure_js("a[2] == 3");
+  ensure_js_not("a[2] == 2");
+  
   test("val object()");
   val::global().set("a", val::object());
   ensure_js("a instanceof Object");
