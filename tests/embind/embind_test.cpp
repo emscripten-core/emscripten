@@ -159,7 +159,6 @@ std::string get_invalid_utf8_multibyte_start() {
 }
 
 std::string get_incomplete_utf8_sequence(int expectedSequenceLength) {
-    //return {"\xf0\x28\x8c\xbc"};
     if (expectedSequenceLength == 2)
         return {"\xc3"};
     else if (expectedSequenceLength == 3)
