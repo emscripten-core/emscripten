@@ -824,44 +824,34 @@ A full example is shown below:
     #include <string>
     #include <vector>
 
-    using namespace std;
     using namespace emscripten;
 
-    class xClass {
-    public:
-        xClass (int x, string y): x(x), y(y) {}
+    std::vector<int> returnVectorData () {
+      std::vector<int> v(10, 1);
+      return v;
+    }
 
-        vector<int> returnVectorData () {
-            vector<int> v(10, x);
-            return v;
-        }
-
-        map<int, string> returnMapData () {
-            map<int, string> m;
-            m.insert(pair<int, string>(x, y));
-            return m;
-        }
-
-    private:
-        int x;
-        string y;
-    };
+    std::map<int, std::string> returnMapData () {
+      std::map<int, std::string> m;
+      m.insert(std::pair<int, std::string>(10, "This is a string."));
+      return m;
+    }
 
     EMSCRIPTEN_BINDINGS(module) {
-        class_<xClass>("xClass")
-            .constructor<int, string>()
-            .function("returnVectorData", &xClass::returnVectorData)
-            .function("returnMapData", &xClass::returnMapData);
-        // register the using of container types
-        register_vector<int>("vector<int>");
-        register_map<int, string>("map<int, string>");
+      function("returnVectorData", &returnVectorData);
+      function("returnMapData", &returnMapData);
+
+      // register bindings for std::vector<int> and std::map<int, std::string>.
+      register_vector<int>("vector<int>");
+      register_map<int, std::string>("map<int, string>");
+    }
+
 
 The following JavaScript can be used to interact with the above C++.
 
 .. code:: js
 
-    var xClass = new Module['xClass'](10, "Value");
-    var retVector = xClass.returnVectorData();
+    var retVector = Module['returnVectorData']();
 
     // vector size
     var vectorSize = retVector.size();
@@ -872,7 +862,7 @@ The following JavaScript can be used to interact with the above C++.
     // push value into vector
     retVector.push_back(12);
 
-    // retrieve value from vector
+    // retrieve value from the vector
     for (var i = 0; i < retVector.size(); i++) {
         console.log("Vector Value: ", retVector.get(i));
     }
@@ -880,7 +870,7 @@ The following JavaScript can be used to interact with the above C++.
     // expand vector size
     retVector.resize(20, 1);
 
-    var retMap = xClass.returnMapData();
+    var retMap = Module['returnMapData']();
 
     // map size
     var mapSize = retMap.size();
@@ -890,8 +880,6 @@ The following JavaScript can be used to interact with the above C++.
 
     // reset the value at the given index position
     retMap.set(10, "OtherValue");
-
-    xClass.delete()
 
 
 Performance
