@@ -62,10 +62,16 @@ function preprocess(text, filenameHint) {
                 error('unsupported preprocessor op ' + op);
               }
             } else {
+              // Check if a value is truthy.
+              var short = ident[0] === '!' ? ident.substr(1) : ident;
+              var truthy = short in this;
+              if (truthy) {
+                truthy = !!this[short];
+              }
               if (ident[0] === '!') {
-                showStack.push(!(this[ident.substr(1)] > 0));
+                showStack.push(!truthy);
               } else {
-                showStack.push(ident in this && this[ident] > 0);
+                showStack.push(truthy);
               }
             }
           } else if (line[2] == 'n') { // include
