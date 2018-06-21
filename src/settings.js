@@ -392,7 +392,8 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
                                  // by having "Runtime" in this list.
 ];
 
-var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
+var EXTRA_EXPORTED_RUNTIME_METHODS = ['UTF8ToString','lengthBytesUTF8','stringToUTF8'];
+                                         // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
                                          // lets you remove methods that would be exported by default; setting values in
                                          // this list lets you add to the default list without modifying it.
 
@@ -907,8 +908,8 @@ var BUNDLED_CD_DEBUG_FILE = ""; // Path to the CyberDWARF debug file passed to t
 
 var TEXTDECODER = 1; // Is enabled, use the JavaScript TextDecoder API for string marshalling.
                      // Enabled by default, set this to 0 to disable.
-var EMBIND_STD_STRING_IS_UTF8 = 0; // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding,
-                                   // by default, UTF-8 interpretation is disabled to support binary data transfer
+var EMBIND_STD_STRING_IS_UTF8 = 1; // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
+                                   // Disable this to support binary data transfer.
 
 var OFFSCREENCANVAS_SUPPORT = 0; // If set to 1, enables support for transferring canvases to pthreads and creating WebGL contexts in them,
                                  // as well as explicit swap control for GL contexts. This needs browser support for the OffscreenCanvas
