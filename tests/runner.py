@@ -1094,7 +1094,7 @@ def main(args):
   args = skip_requested_tests(args, modules)
   args = args_for_random_tests(args, modules)
   suites, unmatched_tests = load_test_suites(args, modules)
-  run_tests(suites, unmatched_tests)
+  return run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
@@ -1324,11 +1324,11 @@ def suite_for_module(module, tests):
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []
-  numFailures = 0
+  num_failures = 0
 
   if len(unmatched_test_names) > 0:
     print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
-    numFailures += len(unmatched_test_names)
+    num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
   print('Test suites:')
@@ -1341,7 +1341,7 @@ def run_tests(suites, unmatched_test_names):
     msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
         res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
     )
-    numFailures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -1352,7 +1352,7 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  return min(numFailures, 255)
+  return min(num_failures, 255)
 
 
 if __name__ == '__main__':
