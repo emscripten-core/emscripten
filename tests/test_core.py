@@ -882,7 +882,7 @@ base align: 0, 0, 0, 0'''])
       }
     '''
     for num in [1, 5, 20, 1000]:
-      print(num)
+      print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
   def test_setjmp_many_2(self):
@@ -6183,6 +6183,8 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
+    if self.get_setting('WASM_OBJECT_FILES'):
+      self.skipTest('autodebugging only works with bitcode objects')
     if Building.LLVM_OPTS:
       self.skipTest('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
@@ -7879,6 +7881,14 @@ binaryen2 = make_run('binaryen2', emcc_args=['-O2'])
 binaryen3 = make_run('binaryen3', emcc_args=['-O3'])
 binaryens = make_run('binaryens', emcc_args=['-Os'])
 binaryenz = make_run('binaryenz', emcc_args=['-Oz'])
+
+wasmobj0 = make_run('wasmobj0', emcc_args=['-O0', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj1 = make_run('wasmobj1', emcc_args=['-O1', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj2 = make_run('wasmobj2', emcc_args=['-O2', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj3 = make_run('wasmobj3', emcc_args=['-O3', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobjs = make_run('wasmobjs', emcc_args=['-Os', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobjz = make_run('wasmobjz', emcc_args=['-Oz', '-s', 'WASM_OBJECT_FILES=1'])
+
 
 # Secondary test modes - run directly when there is a specific need
 

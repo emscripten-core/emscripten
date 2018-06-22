@@ -741,6 +741,9 @@ var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in devel
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
 
+var WASM_OBJECT_FILES = 0; // Whether to compile object files as wasm as opposed to the default
+                           // of using LLVM IR.
+
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,

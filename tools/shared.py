@@ -1343,6 +1343,9 @@ def verify_settings():
     if Settings.EMTERPRETIFY:
       exit_with_error('emcc: EMTERPRETIFY is not is not supported by the LLVM wasm backend')
 
+    if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
+      exit_with_error('WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
+
 
 Settings = SettingsManager()
 verify_settings()
@@ -1891,9 +1894,8 @@ class Building(object):
 
   @staticmethod
   def llvm_backend_args():
-    args = ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
     # disable slow and relatively unimportant optimization passes
-    args += ['-combiner-global-alias-analysis=false']
+    args = ['-combiner-global-alias-analysis=false']
 
     # asm.js-style exception handling
     if Settings.DISABLE_EXCEPTION_CATCHING != 1:
@@ -2599,6 +2601,11 @@ class Building(object):
       return b[20] == ord('B') and b[21] == ord('C')
 
     return False
+
+  @staticmethod
+  def is_wasm(filename):
+    magic = bytearray(open(filename, 'rb').read(4))
+    return magic == '\0asm'
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
