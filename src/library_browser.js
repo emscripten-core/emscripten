@@ -225,7 +225,8 @@ var LibraryBrowser = {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
-#if (WASM != 0) && (MAIN_MODULE != 0)
+#if WASM
+#if MAIN_MODULE
       var wasmPlugin = {};
       wasmPlugin['asyncWasmLoadPromise'] = new Promise(
         function(resolve, reject) { return resolve(); });
@@ -250,7 +251,8 @@ var LibraryBrowser = {
             });
       };
       Module['preloadPlugins'].push(wasmPlugin);
-#endif
+#endif // MAIN_MODULE
+#endif // WASM
 
       // Canvas event setup
 
@@ -264,7 +266,7 @@ var LibraryBrowser = {
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
-        
+
         canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                     canvas['mozRequestPointerLock'] ||
                                     canvas['webkitRequestPointerLock'] ||
@@ -517,7 +519,7 @@ var LibraryBrowser = {
         'mp3': 'audio/mpeg'
       }[name.substr(name.lastIndexOf('.')+1)];
     },
-    
+
     getUserMedia: function(func) {
       if(!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
@@ -551,13 +553,13 @@ var LibraryBrowser = {
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
-        case 'DOMMouseScroll': 
+        case 'DOMMouseScroll':
           delta = event.detail;
           break;
-        case 'mousewheel': 
+        case 'mousewheel':
           delta = event.wheelDelta;
           break;
-        case 'wheel': 
+        case 'wheel':
           delta = event['deltaY'];
           break;
         default:
@@ -585,7 +587,7 @@ var LibraryBrowser = {
           Browser.mouseMovementX = Browser.getMovementX(event);
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
-        
+
         // check if SDL is available
         if (typeof SDL != "undefined") {
           Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
@@ -595,7 +597,7 @@ var LibraryBrowser = {
           // FIXME: ideally this should be clamped against the canvas size and zero
           Browser.mouseX += Browser.mouseMovementX;
           Browser.mouseY += Browser.mouseMovementY;
-        }        
+        }
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
@@ -627,7 +629,7 @@ var LibraryBrowser = {
           adjustedY = adjustedY * (ch / rect.height);
 
           var coords = { x: adjustedX, y: adjustedY };
-          
+
           if (event.type === 'touchstart') {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
@@ -636,7 +638,7 @@ var LibraryBrowser = {
             if (!last) last = coords;
             Browser.lastTouches[touch.identifier] = last;
             Browser.touches[touch.identifier] = coords;
-          } 
+          }
           return;
         }
 
@@ -1154,10 +1156,10 @@ var LibraryBrowser = {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
-        
+
         // catches pause/resume main loop from blocker execution
         if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
-        
+
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
@@ -1327,7 +1329,7 @@ var LibraryBrowser = {
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
-  
+
   emscripten_get_canvas_size__proxy: 'sync',
   emscripten_get_canvas_size__sig: 'viii',
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
@@ -1515,4 +1517,3 @@ function slowLog(label, text) {
 }
 
 */
-
