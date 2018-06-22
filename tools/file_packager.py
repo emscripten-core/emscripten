@@ -840,23 +840,28 @@ ret += '''%s
   Module['removeRunDependency']('%(metadata_file)s');
  }
 
- var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
-                            Module['locateFile']('%(metadata_file)s') :
-                            ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
- var xhr = new XMLHttpRequest();
- xhr.onreadystatechange = function() {
-  if (xhr.readyState === 4 && xhr.status === 200) {
-    loadPackage(JSON.parse(xhr.responseText));
-  }
- }
- xhr.open('GET', REMOTE_METADATA_NAME, true);
- xhr.overrideMimeType('application/json');
- xhr.send(null);
-
- if (!Module['preRun']) Module['preRun'] = [];
- Module["preRun"].push(function() {
+ function runMetaWithFS() {
   Module['addRunDependency']('%(metadata_file)s');
- });
+  var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
+                             Module['locateFile']('%(metadata_file)s') :
+                             ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function() {
+   if (xhr.readyState === 4 && xhr.status === 200) {
+     loadPackage(JSON.parse(xhr.responseText));
+   }
+  }
+  xhr.open('GET', REMOTE_METADATA_NAME, true);
+  xhr.overrideMimeType('application/json');
+  xhr.send(null);
+ }
+
+ if (Module['calledRun']) {
+  runMetaWithFS();
+ } else {
+  if (!Module['preRun']) Module['preRun'] = [];
+  Module["preRun"].push(runMetaWithFS);
+ }
 ''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')} if separate_metadata else '''
  }
  loadPackage(%s);

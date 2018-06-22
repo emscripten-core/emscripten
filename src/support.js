@@ -11,14 +11,21 @@ stackSave = stackRestore = stackAlloc = setTempRet0 = getTempRet0 = function() {
 #endif
 
 function staticAlloc(size) {
+#if ASSERTIONS
   assert(!staticSealed);
+#endif
   var ret = STATICTOP;
   STATICTOP = (STATICTOP + size + 15) & -16;
+#if ASSERTIONS
+  assert(STATICTOP < TOTAL_MEMORY, 'not enough memory for static allocation - increase TOTAL_MEMORY');
+#endif
   return ret;
 }
 
 function dynamicAlloc(size) {
+#if ASSERTIONS
   assert(DYNAMICTOP_PTR);
+#endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
   HEAP32[DYNAMICTOP_PTR>>2] = end;

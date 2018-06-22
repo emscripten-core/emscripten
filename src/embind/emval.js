@@ -265,18 +265,32 @@ var LibraryEmVal = {
     return returnType['toWireType'](destructors, handle);
   },
 
-  _emval_equals__deps: ['_emval_register', '$requireHandle'],
-  _emval_equals: function(first, second ){
+  _emval_equals__deps: ['$requireHandle'],
+  _emval_equals: function(first, second ) {
     first = requireHandle(first);
     second = requireHandle(second);
-    return first==second;
+    return first == second;
   },
 
-  _emval_strictly_equals__deps: ['_emval_register', '$requireHandle'],
-  _emval_strictly_equals: function(first, second ){
+  _emval_strictly_equals__deps: ['$requireHandle'],
+  _emval_strictly_equals: function(first, second ) {
     first = requireHandle(first);
     second = requireHandle(second);
-    return first===second;
+    return first === second;
+  },
+
+  _emval_greater_than__deps: ['$requireHandle'],
+  _emval_greater_than: function(first, second ) {
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first > second;
+  },
+
+  _emval_less_than__deps: ['$requireHandle'],
+  _emval_less_than: function(first, second ) {
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first < second;
   },
 
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
@@ -411,6 +425,20 @@ var LibraryEmVal = {
   _emval_typeof: function(handle) {
     handle = requireHandle(handle);
     return __emval_register(typeof handle);
+  },
+
+  _emval_instanceof__deps: ['$requireHandle'],
+  _emval_instanceof: function(object, constructor) {
+    object = requireHandle(object);
+    constructor = requireHandle(constructor);
+    return object instanceof constructor;
+  },
+  
+  _emval_in__deps: ['$requireHandle'],
+  _emval_in: function(item, object) {
+    item = requireHandle(item);
+    object = requireHandle(object);
+    return item in object;
   },
 };
 
