@@ -188,6 +188,10 @@ class EmccOptions(object):
     self.output_eol = os.linesep
 
 
+def use_source_map(options):
+  return options.debug_level >= 4
+
+
 class JSOptimizer(object):
   def __init__(self, target, options, js_transform_tempfiles, in_temp):
     self.queue = []
@@ -227,8 +231,8 @@ class JSOptimizer(object):
           if len(curr) == 0:
             curr.append(p)
           else:
-            native = shared.js_optimizer.use_native(p, source_map=self.debug_level >= 4)
-            last_native = shared.js_optimizer.use_native(curr[-1], source_map=self.debug_level >= 4)
+            native = shared.js_optimizer.use_native(p, source_map=use_source_map(self))
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
             if native == last_native:
               curr.append(p)
             else:
@@ -270,7 +274,7 @@ class JSOptimizer(object):
     if self.cleanup_shell and 'last' in passes:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
-    final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
+    final = shared.Building.js_optimizer(final, passes, use_source_map(self),
                                          self.extra_info, just_split=just_split,
                                          just_concat=just_concat,
                                          output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
@@ -299,7 +303,7 @@ class JSOptimizer(object):
 
 
 def embed_memfile(options):
-  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
+  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not use_source_map(options)))
 
 
 #
@@ -416,7 +420,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
     # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-    # Beither approach is perfect, you can try both, but may need to edit configure scripts in some cases
+    # Neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
     # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
     # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
     # 0 - use native compilation for configure checks
@@ -697,7 +701,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = options.opt_level >= 2
 
       # TODO: support source maps with js_transform
-      if options.js_transform and options.debug_level >= 4:
+      if options.js_transform and use_source_map(options):
         logging.warning('disabling source maps because a js transform is being done')
         options.debug_level = 3
 
@@ -1003,6 +1007,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'allocate',
           'getMemory',
         ]
+      if shared.Settings.USE_PTHREADS:
+        # These runtime methods are called from pthread-main.js
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
       if shared.Settings.MODULARIZE_INSTANCE:
         shared.Settings.MODULARIZE = 1
@@ -1012,7 +1019,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.LEGACY_VM_SUPPORT:
         # legacy vms don't have wasm
-        shared.Settings.WASM = 0
+        assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
 
       if shared.Settings.SPLIT_MEMORY:
         if shared.Settings.WASM:
@@ -1097,6 +1104,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.js_opts = True
         options.force_js_opts = True
         assert options.use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+        assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
 
       if shared.Settings.DEAD_FUNCTIONS:
         if not options.js_opts:
@@ -1179,12 +1187,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           misc_temp_files.note(asm_target)
 
-      if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
-        exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.WASM:
         if shared.Settings.TOTAL_MEMORY % 65536 != 0:
           exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
       else:
+        if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
+          exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
         if shared.Settings.TOTAL_MEMORY % (16*1024*1024) != 0:
           exit_with_error('For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.TOTAL_MEMORY < shared.Settings.TOTAL_STACK:
@@ -1396,9 +1404,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
-      if options.debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
+      if use_source_map(options) or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
         # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
-        if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
+        if use_source_map(options) or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
           newargs.append('-g') # preserve LLVM debug info
           options.debug_level = 4
           shared.Settings.DEBUG_LEVEL = 4
@@ -1478,7 +1486,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               logging.debug('optimizing %s', input_file)
               #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              shared.Building.llvm_opt(temp_file, options.llvm_opts, new_temp_file)
+              # after optimizing, lower intrinsics to libc calls so that our linking code
+              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
+              # we end up calling out to JS for Math.cos).
+              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
+              shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
@@ -1591,7 +1603,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Optimize, if asked to
       if not LEAVE_INPUTS_RAW:
         # remove LLVM debug if we are not asked for it
-        link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug']
+        link_opts = [] if use_source_map(options) or shared.Settings.CYBERDWARF else ['-strip-debug']
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
         else:
@@ -1675,7 +1687,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4 and not shared.Settings.EXPERIMENTAL_USE_LLD:
+        if use_source_map(options):
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
@@ -1875,8 +1887,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
+          if DEBUG: save_intermediate('dfe', 'js')
 
-      if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.WASM:
+      if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
@@ -1917,7 +1930,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
         execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      if options.debug_level >= 4 and not shared.Settings.WASM:
+      if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
@@ -2407,7 +2420,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
       if debug_info:
         cmd += ['-g']
-        if options.debug_level >= 4:
+        if use_source_map(options):
           cmd += ['--source-map=' + wasm_binary_target + '.map']
           if options.source_map_base:
             cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
@@ -2499,8 +2512,8 @@ def modularize():
   src = open(final).read()
   final = final + '.modular.js'
   f = open(final, 'w')
+
   # Included code may refer to Module (e.g. from file packager), so alias it
-  # Export the function as Node module, otherwise it is lost when loaded in Node.js or similar environments
   f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
@@ -2508,17 +2521,26 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
-if (typeof exports === 'object' && typeof module === 'object')
-  module.exports = %(EXPORT_NAME)s;
-else if (typeof define === 'function' && define['amd'])
-  define([], function() { return %(EXPORT_NAME)s; });
-else if (typeof exports === 'object')
-  exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
 ''' % {
   'EXPORT_NAME': shared.Settings.EXPORT_NAME,
   'src': src,
   'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
 })
+
+  # Export using a UMD style export, or ES6 exports if selected
+  if shared.Settings.EXPORT_ES6:
+    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+  else:
+    f.write('''if (typeof exports === 'object' && typeof module === 'object')
+    module.exports = %(EXPORT_NAME)s;
+  else if (typeof define === 'function' && define['amd'])
+    define([], function() { return %(EXPORT_NAME)s; });
+  else if (typeof exports === 'object')
+    exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+  ''' % {
+    'EXPORT_NAME': shared.Settings.EXPORT_NAME
+  })
+
   f.close()
   if DEBUG: save_intermediate('modularized', 'js')
 
@@ -2899,4 +2921,11 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 
 if __name__ == '__main__':
-  sys.exit(run())
+  try:
+    sys.exit(run())
+  except KeyboardInterrupt:
+    logging.warning("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logging.error(str(e))
+    sys.exit(1)

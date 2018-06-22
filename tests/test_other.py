@@ -62,7 +62,7 @@ class other(RunnerCore):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
       output = run_process([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE)
-      self.assertContained('''clang version %s.0 ''' % expected_llvm_version(), output.stderr.replace('\r', ''), output.stderr.replace('\r', ''))
+      self.assertContained('''clang version %s''' % expected_llvm_version(), output.stderr.replace('\r', ''), output.stderr.replace('\r', ''))
       self.assertContained('''GNU''', output.stdout)
       self.assertNotContained('this is dangerous', output.stdout)
       self.assertNotContained('this is dangerous', output.stderr)
@@ -1227,6 +1227,18 @@ int f() {
     Building.emcc(main_name, ['libA.so']*2, output_filename='a.out.js')
 
     self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+  def test_dot_a_all_contents_invalid(self):
+    # check that we warn if an object file in a .a is not valid bitcode.
+    # do not silently ignore native object files, which may have been
+    # built by mistake
+    open('side.cpp', 'w').write(r'''int side() { return 5; }''')
+    open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
+    run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
+    run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
+    err = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE).stderr
+    self.assertContained('warning: unresolved symbol: _Z4sidev', err) # was native, could not link it
+    self.assertContained('is not LLVM bitcode, cannot link', err)
 
   def test_export_all(self):
     lib = r'''
@@ -2942,6 +2954,8 @@ myreade(){
     assert simds >= expected_simds, 'expecting to see at least %d SIMD* uses, but seeing %d' % (expected_simds, simds)
 
   def test_autovectorize_linpack(self):
+    # autovectorization of this stopped in LLVM 6.0. TODO: investigate when SIMD arrives in wasm
+    return
     Popen([PYTHON, EMCC, path_from_root('tests', 'linpack.c'), '-O2', '-s', 'SIMD=1', '-DSP', '-s', 'PRECISE_F32=1', '--profiling', '-s', 'WASM=0']).communicate()
     self.check_simd(30, 'Unrolled Single  Precision')
 
@@ -3189,15 +3203,20 @@ int main() {
 
   def test_LEGACY_VM_SUPPORT(self):
     # when modern features are lacking, we can polyfill them or at least warn
+    with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
     def test(expected, opts=[]):
-      self.clear()
-      with open('pre.js', 'w') as f: f.write('Math.imul = undefined;')
-      subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
+      print(opts)
+      result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
+      if result.returncode == 0:
+        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None))
+      else:
+        self.assertContained(expected, result.stderr)
+    # when legacy is needed, we show an error indicating so
     test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
-    assert os.path.exists('a.out.wasm'), 'emit wasm by default'
-    test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1'])
-    assert not os.path.exists('a.out.wasm'), 'LEGACY_VM_SUPPORT disables wasm'
+    # wasm is on by default, and does not mix with legacy, so we show an error
+    test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
+    # legacy + disabling wasm works
+    test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1', '-s', 'WASM=0'])
 
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
@@ -4248,12 +4267,12 @@ tiny: %d
 
   def test_dashE(self):
     open('src.cpp', 'w').write(r'''#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
 ''')
     def test(args=[]):
       print(args)
       out = run_process([PYTHON, EMCC, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
-      self.assertContained(r'''__attribute__((used)) %d %d %d __attribute__((used))''' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
+      self.assertContained('%d %d %d __attribute__((used))' % (EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY), out)
     test()
     test(['--bind'])
 
@@ -5661,8 +5680,7 @@ int main(void) {
 
         if args:
           assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-
-          assert err.count('emcc: LLVM opts: ' + llvm_opts + ' ' + VECTORIZE) == 2, err # exactly once per invocation of optimizer
+          assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
         else:
           assert err.count(VECTORIZE) == 0, err # no optimizations
 
@@ -6138,12 +6156,13 @@ hello3 ()
 ''')
     open('hello4.c', 'w').write(r'''
 #include <stdio.h>
+#include <math.h>
 
-void
-hello4 ()
+double
+hello4 (double x)
 {
   printf ("Hello4\n");
-  return;
+  return fmod(x, 2.0);
 }
 
 ''')
@@ -6163,6 +6182,7 @@ main()
 {
   void *h;
   void (*f) ();
+  double (*f2) (double);
 
   h = dlopen ("libhello1.wasm", RTLD_NOW);
   f = dlsym (h, "hello1");
@@ -6177,9 +6197,13 @@ main()
   f();
   dlclose (h);
   h = dlopen ("/usr/local/lib/libhello4.wasm", RTLD_NOW);
-  f = dlsym (h, "hello4");
-  f();
+  f2 = dlsym (h, "hello4");
+  double result = f2(5.5);
   dlclose (h);
+
+  if (result == 1.5) {
+    printf("Ok\n");
+  }
   return 0;
 }
 
@@ -6200,6 +6224,7 @@ main()
     self.assertContained('Hello2', out)
     self.assertContained('Hello3', out)
     self.assertContained('Hello4', out)
+    self.assertContained('Ok', out)
 
   def test_dlopen_rtld_global(self):
     # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
@@ -6580,7 +6605,7 @@ Resolved: "/" => "/"
       print(cmd)
       check_execute(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
-      sizes[lto] = os.stat('a.out.js').st_size
+      sizes[lto] = os.stat('a.out.wasm').st_size
     print(sizes)
 
     # LTO sizes should be distinct
@@ -7314,7 +7339,7 @@ int main() {
     # with the wrong env we have very odd failures
     check_execute([PYTHON, EMCC, 'main.cpp', '-s', 'SINGLE_FILE=1'])
     src = open('a.out.js').read()
-    envs = ['WEB', 'WORKER', 'NODE', 'SHELL']
+    envs = ['web', 'worker', 'node', 'shell']
     for env in envs:
       for engine in JS_ENGINES:
         if engine == V8_ENGINE: continue # ban v8, weird failures
@@ -7328,20 +7353,8 @@ int main() {
         print('    ' + curr)
         open('test.js', 'w').write(curr + src)
         fail = False
-        try:
-          seen = run_js('test.js', engine=engine, stderr=PIPE)
-        except:
-          fail = True
-        if fail:
-          print('-- acceptable fail')
-          assert actual != env, 'ok to fail if in the wrong environment'
-        else:
-          for other in envs:
-            if env == other:
-              assert ('environment is %s? true' % other) in seen, seen
-            else:
-              assert ('environment is %s? false' % other) in seen, seen
-          print('-- verified proper env is shown')
+        seen = run_js('test.js', engine=engine, stderr=PIPE, full_output=True, assert_returncode=None)
+        self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -s ENVIRONMENT=web or -s ENVIRONMENT=node', seen)
 
   def test_warn_no_filesystem(self):
     WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
@@ -7621,34 +7634,33 @@ int main() {
             (['-Os'], False, True),
             (['-Oz'], False, True), # ctor evaller turned off since only-wasm
           ]:
-          for option in ['BINARYEN', 'WASM']: # the two should be identical
-            try_delete('a.out.js')
-            try_delete('a.out.wast')
-            cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', option + '=1', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
-            print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
-            err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-            assert expect_js_opts == ('applying js optimization passes:' in err), err
-            assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-            wast = open('a.out.wast').read()
-            # i64s
-            i64s = wast.count('(i64.')
-            print('    seen i64s:', i64s)
-            assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
-            selects = wast.count('(select')
-            print('    seen selects:', selects)
-            if '-Os' in args or '-Oz' in args:
-              assert selects > 50, 'when optimizing for size we should create selects'
-            else:
-              assert selects < 10, 'when not optimizing for size we should not create selects'
-            # asm2wasm opt line
-            asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
-            asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
-            if '-O0' in args or '-O' not in str(args):
-              assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
-            else:
-              opts_str = args[0]
-              assert opts_str.startswith('-O')
-              assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
+          try_delete('a.out.js')
+          try_delete('a.out.wast')
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+          print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
+          err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+          assert expect_js_opts == ('applying js optimization passes:' in err), err
+          assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
+          wast = open('a.out.wast').read()
+          # i64s
+          i64s = wast.count('(i64.')
+          print('    seen i64s:', i64s)
+          assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
+          selects = wast.count('(select')
+          print('    seen selects:', selects)
+          if '-Os' in args or '-Oz' in args:
+            assert selects > 50, 'when optimizing for size we should create selects'
+          else:
+            assert selects < 10, 'when not optimizing for size we should not create selects'
+          # asm2wasm opt line
+          asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
+          asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
+          if '-O0' in args or '-O' not in str(args):
+            assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
+          else:
+            opts_str = args[0]
+            assert opts_str.startswith('-O')
+            assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
       finally:
         del os.environ['EMCC_DEBUG']
 
@@ -7781,22 +7793,33 @@ int main() {
           else:
             assert parts[6] == str(expect_max)
 
-  def test_binaryen_invalid_mem(self):
-      ret = subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
+  def test_invalid_mem(self):
+    # A large amount is fine, multiple of 16MB or not
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
+    # But not in asm.js
+    ret = run_process([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
 
-      ret = subprocess.check_call([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
+    # A tiny amount is fine in wasm
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'TOTAL_STACK=1024'])
+    # And the program works!
+    self.assertContained('hello, world!', run_js('a.out.js'))
 
-      ret = run_process([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
+    # But not in asm.js
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'WASM=0'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be at least 16MB' in ret, ret
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'WASM_MEM_MAX must be a multiple of 64KB' not in ret, ret
+    # Must be a multiple of 64KB
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'TOTAL_MEMORY must be a multiple of 64KB' in ret, ret
 
-      ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'], stderr=subprocess.PIPE, check=False).stderr
-      assert 'WASM_MEM_MAX must be a multiple of 64KB' in ret, ret
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'WASM_MEM_MAX must be a multiple of 64KB' not in ret, ret
+
+    ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'], stderr=subprocess.PIPE, check=False).stderr
+    assert 'WASM_MEM_MAX must be a multiple of 64KB' in ret, ret
 
   def test_binaryen_ctors(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
@@ -7964,8 +7987,8 @@ int main() {
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
         exports = wast.count('(export ')
-        assert imports == expected_wasm_imports, imports
-        assert exports == expected_wasm_exports, exports
+        assert imports == expected_wasm_imports, [imports, expected_wasm_imports]
+        assert exports == expected_wasm_exports, [exports, expected_wasm_exports]
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7980,7 +8003,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1541, ['invoke_i'],               ['waka'],                 496958, 168, 2560),
+              1534, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
     ])
 
     print('test on a minimal pure computational thing')
@@ -8168,12 +8191,11 @@ int main() {
     # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
     assert process.returncode is 0, '-llsomenonexistingfile is not yet an error in non-strict mode'
 
-  # Tests that if user accidetally attempts to link natively compiled libraries together with Emscripten, that there should be a helpful error message that informs about what happened.
+  # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
-    Popen([CLANG, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    Popen([LLVM_AR, 'r', 'hello_world.a', 'hello_world.o'], env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    err = run_process([PYTHON, EMCC, 'hello_world.a', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
-    assert 'exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?' in err, err
+    run_process([CLANG, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', 'hello_world.o'])
+    err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
+    self.assertContained('hello_world.o is not valid LLVM bitcode', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
@@ -8359,7 +8381,7 @@ end
       except OSError:
         # Ignore missing python aliases.
         pass
-        
+
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
 
@@ -8382,3 +8404,20 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
 
+  def test_wasm_sourcemap(self):
+    # The no_main.c will be read (from relative location) due to speficied "-s"
+    shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
+    wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+                    '--sources', '--prefix', '=wasm-src:///',
+                    '--dwarfdump-output',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
+                    '-o', 'a.out.wasm.map',
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm')]
+    subprocess.check_call(wasm_map_cmd)
+    output = open('a.out.wasm.map').read()
+    # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
+    self.assertIn('wasm-src:///no_main.c', output)
+    # has "sourcesContent" entry with source code (included with `-s` option)
+    self.assertIn('int foo()', output)
+    # has some entries
+    self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')

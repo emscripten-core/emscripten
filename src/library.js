@@ -612,16 +612,8 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  environ__deps: ['$ENV'],
-#if USE_PTHREADS
-  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  environ: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  __environ__deps: ['environ'],
-  __environ: 'environ',
-  __buildEnvironment__deps: ['__environ'],
-  __buildEnvironment: function(env) {
+  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
     var TOTAL_ENV_SIZE = 1024;
@@ -639,21 +631,21 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
-      poolPtr = staticAlloc(TOTAL_ENV_SIZE);
-      envPtr = staticAlloc(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      poolPtr = getMemory(TOTAL_ENV_SIZE);
+      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
     var strings = [];
     var totalSize = 0;
-    for (var key in env) {
-      if (typeof env[key] === 'string') {
-        var line = key + '=' + env[key];
+    for (var key in ENV) {
+      if (typeof ENV[key] === 'string') {
+        var line = key + '=' + ENV[key];
         strings.push(line);
         totalSize += line.length;
       }
@@ -672,12 +664,6 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  $ENV__deps: ['__buildEnvironment'],
-#if USE_PTHREADS
-  $ENV__postset: 'if (!ENVIRONMENT_IS_PTHREAD) ___buildEnvironment(ENV);',
-#else
-  $ENV__postset: '___buildEnvironment(ENV);',
-#endif
   $ENV: {},
   getenv__deps: ['$ENV'],
   getenv__proxy: 'sync',
@@ -700,7 +686,7 @@ LibraryManager.library = {
     // int clearenv (void);
     // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
     ENV = {};
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -721,7 +707,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name) && !overwrite) return 0;
     ENV[name] = val;
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -741,7 +727,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name)) {
       delete ENV[name];
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -768,7 +754,7 @@ LibraryManager.library = {
     var value = string.slice(splitPoint + 1);
     if (!(name in ENV) || ENV[name] !== value) {
       ENV[name] = value;
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -1071,9 +1057,9 @@ LibraryManager.library = {
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32: function(x) { // Currently doesn't take isZeroUndef()
+  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
     x = x | 0;
-    return x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32;
+    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],
@@ -1549,10 +1535,6 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_minnum_f32: 'Math_min',
-  llvm_minnum_f64: 'Math_min',
-  llvm_maxnum_f32: 'Math_max',
-  llvm_maxnum_f64: 'Math_max',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
@@ -1645,6 +1627,50 @@ LibraryManager.library = {
   llvm_nearbyint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
+  // min/max num do not quite match the behavior of JS and wasm min/max:
+  // llvm and libc return the non-NaN if one is NaN, while JS and wasm
+  // return the NaN :(
+  // see also https://github.com/WebAssembly/design/issues/214
+  llvm_minnum_f32__asm: true,
+  llvm_minnum_f32__sig: 'ff',
+  llvm_minnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_minnum_f64__asm: true,
+  llvm_minnum_f64__sig: 'dd',
+  llvm_minnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_maxnum_f32__asm: true,
+  llvm_maxnum_f32__sig: 'ff',
+  llvm_maxnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
+  },
+
+  llvm_maxnum_f64__asm: true,
+  llvm_maxnum_f64__sig: 'dd',
+  llvm_maxnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
   },
 
   _reallyNegative: function(x) {
@@ -2104,14 +2130,6 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-#if USE_PTHREADS
-  daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
-  timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  daylight: '{{{ makeStaticAlloc(1) }}}',
-  timezone: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  tzset__deps: ['daylight', 'timezone'],
   tzset__proxy: 'sync',
   tzset__sig: 'v',
   tzset: function() {
@@ -2124,11 +2142,11 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by getTimezoneOffset().
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -2757,6 +2775,18 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
     // TODO: Implement.
     return 0;
+  },
+
+  timespec_get__deps: ['clock_gettime', '$ERRNO_CODES', '__setErrNo'],
+  timespec_get: function(ts, base) {
+    //int timespec_get(struct timespec *ts, int base);
+    if (base !== {{{ cDefine('TIME_UTC') }}}) {
+      // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return 0;
+    }
+    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
+    return ret < 0 ? 0 : base;
   },
 
   // ==========================================================================
@@ -4749,13 +4779,12 @@ LibraryManager.library = {
 };
 
 function autoAddDeps(object, name) {
-  name = [name];
   for (var item in object) {
     if (item.substr(-6) != '__deps') {
       if (!object[item + '__deps']) {
-        object[item + '__deps'] = name;
+        object[item + '__deps'] = [name];
       } else {
-        object[item + '__deps'].push(name[0]); // add to existing list
+        object[item + '__deps'].push(name); // add to existing list
       }
     }
   }

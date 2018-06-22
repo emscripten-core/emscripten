@@ -1,12 +1,12 @@
 #include <emscripten.h>
 #include <stdio.h>
 
-EM_JS(void, noarg, (), { Module['print']("no args works"); });
-EM_JS(int, noarg_int, (), {
+EM_JS(void, noarg, (void), { Module['print']("no args works"); });
+EM_JS(int, noarg_int, (void), {
   Module['print']("no args returning int");
   return 12;
 });
-EM_JS(double, noarg_double, (), {
+EM_JS(double, noarg_double, (void), {
   Module['print']("no args returning double");
   return 12.25;
 });
@@ -36,12 +36,20 @@ EM_JS(double, add_outer, (double x, double y, double z), {
   Module['print']("  " + x + " + " + z);
   return x + z;
 });
-EM_JS(int, user_separator, (), {
+EM_JS(int, user_separator, (void), {
   Module['print']("  can use <::> separator in user code");
   return 15;
 });
+EM_JS(int, user_comma, (void), {
+  var x, y;
+  x = {};
+  y = 3;
+  x[y] = [1, 2, 3];
+  Module['print']("  can have commas in user code: " + x[y]);
+  return x[y][1];
+});
 
-EM_JS(const char*, return_str, (), {
+EM_JS(const char*, return_str, (void), {
   var jsString = 'hello from js';
   var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
@@ -64,6 +72,7 @@ int main() {
   printf("    skip_args returned: %f\n", skip_args(5, 7));
   printf("    add_outer returned: %f\n", add_outer(5.5, 7.0, 14.375));
   printf("    user_separator returned: %d\n", user_separator());
+  printf("    user_comma returned: %d\n", user_comma());
 
   printf("    return_str returned: %s\n", return_str());
 
