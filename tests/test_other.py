@@ -8004,7 +8004,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1533, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
+              1534, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
     ])
 
     print('test on a minimal pure computational thing')
