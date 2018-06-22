@@ -6581,7 +6581,7 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
-  @no_wasm_backend('s2wasm does not generate symbol maps')
+  @no_wasm_backend('lld does not generate symbol maps')
   def test_demangle_stacks_symbol_map(self):
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
@@ -6844,6 +6844,10 @@ someweirdtext
     self.emcc_args += ['--bind', '--std=c++11']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
 
+  def test_embind_val(self):
+    self.emcc_args += ['--bind', '--std=c++11']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
+
   def test_embind_f_no_rtti(self):
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     src = r'''
@@ -7051,17 +7055,8 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend() or Settings.EXPERIMENTAL_USE_LLD:
-        assert len(data['sources']) == 1, data['sources']
-        self.assertPathsIdentical(src_filename, data['sources'][0])
-      else:
-        # s2wasm currently adds every file linked as part of compiler-rt
-        # to the 'sources' field.
-        # TODO(sbc): Remove this once s2wasm goes away
-        assert len(data['sources']) > 1, data['sources']
-        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
-        normalized_filename = src_filename.replace('\\', '/')
-        assert normalized_filename in normalized_srcs, "Source file not found"
+      assert len(data['sources']) == 1, data['sources']
+      self.assertPathsIdentical(src_filename, data['sources'][0])
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
