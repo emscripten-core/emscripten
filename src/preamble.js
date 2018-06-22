@@ -1482,6 +1482,7 @@ function getTotalMemory() {
   return TOTAL_MEMORY;
 }
 
+#if ASSERTIONS
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
 #if USE_PTHREADS
@@ -1495,7 +1496,8 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 HEAP16[1] = 0x6373;
 if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-#endif
+#endif // SAFE_SPLIT_MEMORY == 0
+#endif // ASSERTIONS
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
