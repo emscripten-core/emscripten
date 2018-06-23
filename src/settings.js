@@ -737,18 +737,8 @@ var WASM = 1; // Whether to use compile code to WebAssembly. Set this to 0 to co
               // of the port, which can useful for local dev work on binaryen itself).
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
-                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
-                      // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
-var EXPERIMENTAL_USE_LLD = 1; // Whether to use lld as a linker for the
-                              // WebAssembly backend, instead of s2wasm.
-                              // This is currently the default and the plan
-                              // is to remove this option completely in the
-                              // near future.
-                              // You should not set this yourself, instead set
-                              // EMCC_EXPERIMENTAL_USE_LLD=0 in the environment
-                              // in order to use s2wasm instead.
 
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
