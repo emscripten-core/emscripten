@@ -1040,7 +1040,7 @@ var LibraryGL = {
     }
     switch(pname) {
       case 0x80A9 /*GL_SAMPLES*/:
-        var n = bufSize < samples.length ? bufSize : samples.length;
+        var n = Math.min(bufSize, samples.length);
         for (var i = 0; i < n; i++) {
           var v = samples[i];
           {{{ makeSetValue('params', 'i*4', 'v', 'i32') }}};
