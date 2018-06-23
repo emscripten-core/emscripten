@@ -42,7 +42,7 @@ var decodeBase64 = typeof atob === 'function' ? atob : function (input) {
 // Converts a string of base64 into a byte array.
 // Throws error on invalid input.
 function intArrayFromBase64(s) {
-  if (typeof ENVIRONMENT_IS_NODE === 'boolean' && ENVIRONMENT_IS_NODE) {
+  if (typeof ENVIRONMENT === 'string' && ENVIRONMENT == 'node') {
     var buf;
     try {
       buf = Buffer.from(s, 'base64');

@@ -94,7 +94,7 @@ mergeInto(LibraryManager.library, {
       get_char: function(tty) {
         if (!tty.input.length) {
           var result = null;
-          if (ENVIRONMENT_IS_NODE) {
+          if (ENVIRONMENT == 'node') {
             // we will read data by chunks of BUFSIZE
             var BUFSIZE = 256;
             var buf = new Buffer(BUFSIZE);

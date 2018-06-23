@@ -1294,7 +1294,7 @@ mergeInto(LibraryManager.library, {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else if (ENVIRONMENT_IS_NODE) {
+      } else if (ENVIRONMENT == 'node') {
 #if ENVIRONMENT_MAY_BE_NODE
         // for nodejs
         random_device = function() { return require('crypto')['randomBytes'](1)[0]; };
@@ -1724,7 +1724,7 @@ mergeInto(LibraryManager.library, {
         this.lengthKnown = true;
       }
       if (typeof XMLHttpRequest !== 'undefined') {
-        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
+        if (!ENVIRONMENT == 'worker') throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
         Object.defineProperties(lazyArray, {
           length: {

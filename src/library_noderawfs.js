@@ -1,6 +1,6 @@
 mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
-  $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
+  $NODERAWFS__postset: 'if (ENVIRONMENT == "node") {' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
     'var VFS = Object.assign({}, FS);' +
     'for (var _key in NODERAWFS) FS[_key] = _wrapNodeError(NODERAWFS[_key]);' +

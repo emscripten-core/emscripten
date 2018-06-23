@@ -50,19 +50,13 @@ Module['postRun'] = [];
 // *** Environment setup code ***
 
 #if ENVIRONMENT
-var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
-var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
-var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
-var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
+var ENVIRONMENT = '{{{ ENVIRONMENT }}}';
 #else // ENVIRONMENT
-var ENVIRONMENT_IS_WEB = false;
-var ENVIRONMENT_IS_WORKER = false;
-var ENVIRONMENT_IS_NODE = false;
-var ENVIRONMENT_IS_SHELL = false;
-ENVIRONMENT_IS_WEB = typeof window === 'object';
-ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
-ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+var ENVIRONMENT;
+if (typeof window === 'object') ENVIRONMENT = 'web';
+else if (typeof importScripts === 'function') ENVIRONMENT = 'worker';
+else if (typeof process === 'object' && typeof require === 'function') ENVIRONMENT = 'node';
+else ENVIRONMENT = 'shell';
 #endif // ENVIRONMENT
 
 #if ASSERTIONS
@@ -71,10 +65,10 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
-// Three configurations we can be running in:
-// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
-// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
-// 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
+// Three pthreads-related configurations we can be running in:
+// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT != 'worker == false and ENVIRONMENT_IS_PTHREAD == false)
+// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT == 'worker', ENVIRONMENT_IS_PTHREAD == false)
+// 3) We could be an application pthread running in a worker. (ENVIRONMENT = 'worker' and ENVIRONMENT_IS_PTHREAD == true)
 #if USE_PTHREADS
 var ENVIRONMENT_IS_PTHREAD;
 if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
@@ -84,7 +78,7 @@ var currentScriptUrl = (typeof document !== 'undefined' && document.currentScrip
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-if (ENVIRONMENT_IS_NODE) {
+if (ENVIRONMENT == 'node') {
 
 #if ENVIRONMENT
 #if ASSERTIONS
@@ -157,7 +151,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
-if (ENVIRONMENT_IS_SHELL) {
+if (ENVIRONMENT == 'shell') {
 
 #if ENVIRONMENT
 #if ASSERTIONS
@@ -207,7 +201,7 @@ if (ENVIRONMENT_IS_SHELL) {
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
-if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+if (ENVIRONMENT == 'web' || ENVIRONMENT == 'worker') {
 
 #if ENVIRONMENT
 #if ASSERTIONS
@@ -234,7 +228,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
   };
 
-  if (ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT == 'worker') {
     Module['readBinary'] = function readBinary(url) {
 #if SUPPORT_BASE64_EMBEDDING
       try {

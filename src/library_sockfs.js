@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
             subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
 
             // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
-            var opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
+            var opts = ENVIRONMENT == 'node' ? {'protocol': subProtocols.toString()} : subProtocols;
 
             // some webservers (azure) does not support subprotocol header
             if (runtimeConfig && null === Module['websocket']['subprotocol']) {
@@ -205,11 +205,11 @@ mergeInto(LibraryManager.library, {
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
-            if (ENVIRONMENT_IS_NODE) {
+            if (ENVIRONMENT == 'node') {
 #if ENVIRONMENT_MAY_BE_NODE
               WebSocketConstructor = require('ws');
 #endif ENVIRONMENT_MAY_BE_NODE
-            } else if (ENVIRONMENT_IS_WEB) {
+            } else if (ENVIRONMENT == 'web') {
 #if ENVIRONMENT_MAY_BE_WEB
               WebSocketConstructor = window['WebSocket'];
 #endif // ENVIRONMENT_MAY_BE_WEB
@@ -322,7 +322,7 @@ mergeInto(LibraryManager.library, {
           Module['websocket'].emit('message', sock.stream.fd);
         };
 
-        if (ENVIRONMENT_IS_NODE) {
+        if (ENVIRONMENT == 'node') {
           peer.socket.on('open', handleOpen);
           peer.socket.on('message', function(data, flags) {
             if (!flags.binary) {
@@ -483,7 +483,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EINPROGRESS);
       },
       listen: function(sock, backlog) {
-        if (!ENVIRONMENT_IS_NODE) {
+        if (ENVIRONMENT != 'node') {
           throw new FS.ErrnoError(ERRNO_CODES.EOPNOTSUPP);
         }
 #if ENVIRONMENT_MAY_BE_NODE

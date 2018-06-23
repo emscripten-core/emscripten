@@ -1072,7 +1072,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 #if IN_TEST_HARNESS
 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
-if (ENVIRONMENT_IS_WEB) {
+if (ENVIRONMENT == 'web') {
   window.addEventListener('error', function(e) {
     if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
     console.error('Page threw an exception ' + e);
@@ -1555,7 +1555,7 @@ function ensureInitRuntime() {
   runtimeInitialized = true;
 #if USE_PTHREADS
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/ENVIRONMENT != 'worker', /*isMainRuntimeThread=*/1);
 #endif
   callRuntimeCallbacks(__ATINIT__);
 }
@@ -2105,7 +2105,7 @@ function integrateWasmJS() {
   function getBinaryPromise() {
     // if we don't have the binary yet, and have the Fetch api, use that
     // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-    if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+    if (!Module['wasmBinary'] && (ENVIRONMENT == 'web' || ENVIRONMENT == 'worker') && typeof fetch === 'function') {
       return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
         if (!response['ok']) {
           throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";

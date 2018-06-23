@@ -573,14 +573,14 @@ function JSify(data, functionsOnly) {
     print('// EMSCRIPTEN_END_FUNCS\n');
 
     if (HEADLESS) {
-      print('if (!ENVIRONMENT_IS_WEB) {');
+      print('if (!ENVIRONMENT == "web") {');
       print(read('headlessCanvas.js'));
       print('\n');
       print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
       print('}');
     }
     if (PROXY_TO_WORKER) {
-      print('if (ENVIRONMENT_IS_WORKER) {\n');
+      print('if (ENVIRONMENT == "worker") {\n');
       print(read('webGLWorker.js'));
       print(processMacros(preprocess(read('proxyWorker.js'), 'proxyWorker.js')));
       print('}');

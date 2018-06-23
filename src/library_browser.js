@@ -1070,7 +1070,7 @@ var LibraryBrowser = {
         addEventListener("message", Browser_setImmediate_messageHandler, true);
         setImmediate = function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
-          if (ENVIRONMENT_IS_WORKER) {
+          if (ENVIRONMENT == 'worker') {
             if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
             Module['setImmediates'].push(func);
             postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js

@@ -29,7 +29,7 @@ mergeInto(LibraryManager.library, {
     // void uuid_generate(uuid_t out);
     var uuid = null;
 
-    if (ENVIRONMENT_IS_NODE) {
+    if (ENVIRONMENT == 'node') {
 #if ENVIRONMENT_MAY_BE_NODE
       // If Node.js try to use crypto.randomBytes
       try {
@@ -37,7 +37,7 @@ mergeInto(LibraryManager.library, {
         uuid = rb(16);
       } catch(e) {}
 #endif // ENVIRONMENT_MAY_BE_NODE
-    } else if (ENVIRONMENT_IS_WEB &&
+    } else if (ENVIRONMENT == 'web' &&
                typeof(window.crypto) !== 'undefined' &&
                typeof(window.crypto.getRandomValues) !== 'undefined') {
       // If crypto.getRandomValues is available try to use it.

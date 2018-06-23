@@ -46,7 +46,7 @@ if (memoryInitializer) {
       memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
     }
   }
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+  if (ENVIRONMENT == 'node' || ENVIRONMENT == 'shell') {
     var data = Module['readBinary'](memoryInitializer);
     HEAPU8.set(data, GLOBAL_BASE);
   } else {
@@ -400,7 +400,7 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  if (ENVIRONMENT_IS_NODE) {
+  if (ENVIRONMENT == 'node') {
     process['exit'](status);
   }
   Module['quit'](status, new ExitStatus(status));

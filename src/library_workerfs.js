@@ -5,7 +5,7 @@ mergeInto(LibraryManager.library, {
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
     reader: null,
     mount: function (mount) {
-      assert(ENVIRONMENT_IS_WORKER);
+      assert(ENVIRONMENT == 'worker');
       if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
       var createdParents = {};

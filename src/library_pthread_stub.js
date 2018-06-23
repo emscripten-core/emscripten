@@ -20,7 +20,7 @@ var LibraryPThreadStub = {
   },
 
   emscripten_is_main_browser_thread: function() {
-    return !ENVIRONMENT_IS_WORKER;
+    return ENVIRONMENT != 'worker';
   },
 
   emscripten_main_thread_process_queued_calls: function() {
@@ -217,7 +217,7 @@ var LibraryPThreadStub = {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
     var msec = useconds / 1000;
-    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
+    if ((ENVIRONMENT == 'web' || ENVIRONMENT == 'worker') && self['performance'] && self['performance']['now']) {
       var start = self['performance']['now']();
       while (self['performance']['now']() - start < msec) {
         // Do nothing.

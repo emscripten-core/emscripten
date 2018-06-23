@@ -1713,7 +1713,7 @@ var LibrarySDL = {
 
 #if EMTERPRETIFY_ASYNC == 0
   SDL_Delay: function(delay) {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting.');
+    if (!ENVIRONMENT == 'worker') abort('SDL_Delay called on the main thread! Potential infinite loop, quitting.');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
