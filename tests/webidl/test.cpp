@@ -4,9 +4,6 @@ Parent::Parent(int val) : value(val), immutableAttr(8) { printf("Parent:%d\n", v
 Parent::Parent(Parent *p, Parent *q) : value(p->value + q->value), immutableAttr(8) { printf("Parent:%d\n", value); }
 void Parent::mulVal(int mul) { value *= mul; }
 
-typedef EnumClass::EnumWithinClass EnumClass_EnumWithinClass;
-typedef EnumNamespace::EnumInNamespace EnumNamespace_EnumInNamespace;
-
 #include "glue.cpp"
 
 #ifdef BROWSER

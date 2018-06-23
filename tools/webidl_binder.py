@@ -525,6 +525,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       return_postfix += ', &temp)'
 
     c_return_type = type_to_c(return_type)
+
+    for name, enum in enums.items():
+        if c_return_type == name:
+            c_return_type = 'int'
+
     mid_c += [r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
@@ -723,7 +728,7 @@ for name, enum in enums.items():
     mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
-''' % (name, function_id, value)]
+''' % ('int', function_id, value)]
     symbols = value.split('::')
     if len(symbols) == 1:
       identifier = symbols[0]
