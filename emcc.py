@@ -2563,7 +2563,8 @@ def generate_html(target, options, js_target, target_basename,
   script = ScriptSource()
 
   logging.debug('generating HTML')
-  shell = read_and_preprocess(options.shell_path)
+  # TODO: use read_and_preprocess(options.shell_path) here, once test errors are fixed
+  shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
