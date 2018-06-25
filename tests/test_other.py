@@ -8421,3 +8421,35 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIn('int foo()', output)
     # has some entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
+
+  def test_html_preprocess(self):
+    test_file = path_from_root('tests', 'module', 'test_stdin.c')
+    output_file = path_from_root('tests', 'module', 'test_stdin.html')
+    shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:(else) NO_EXIT_RUNTIME
+T6:!NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:NO_EXIT_RUNTIME == 1
+T2:(else) NO_EXIT_RUNTIME == 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:(else) NO_EXIT_RUNTIME >= 2
+T4:NO_EXIT_RUNTIME > 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)

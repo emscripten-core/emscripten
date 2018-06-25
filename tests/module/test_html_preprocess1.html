@@ -1,0 +1,30 @@
+#if NO_EXIT_RUNTIME == 1
+T1:NO_EXIT_RUNTIME == 1
+#else
+T1:(else) NO_EXIT_RUNTIME != 1
+#endif 
+#if NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+#else
+T2:(else) NO_EXIT_RUNTIME == 1
+#endif
+#if NO_EXIT_RUNTIME < 2
+T3:NO_EXIT_RUNTIME < 2
+#else
+T3:(else) NO_EXIT_RUNTIME >= 2
+#endif
+#if NO_EXIT_RUNTIME > 1
+T4:NO_EXIT_RUNTIME > 1
+#else
+T4:(else) NO_EXIT_RUNTIME <= 1
+#endif
+#if NO_EXIT_RUNTIME
+T5:NO_EXIT_RUNTIME
+#else
+T5:(else) NO_EXIT_RUNTIME
+#endif
+#if !NO_EXIT_RUNTIME
+T6:!NO_EXIT_RUNTIME
+#else
+T6:(else) !NO_EXIT_RUNTIME
+#endif
