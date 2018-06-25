@@ -1870,9 +1870,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
 
-  metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
-
-  return metadata
+  return create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
 
 def read_metadata_wast(wast, DEBUG):
