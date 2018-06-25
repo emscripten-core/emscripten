@@ -175,6 +175,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
   if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
 #if ASSERTIONS
     assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
 #endif
     return new Promise(function(resolve) {
       EmterpreterAsync.restartFunc = func;

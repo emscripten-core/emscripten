@@ -7320,6 +7320,7 @@ extern "C" {
   }
   double floatf() {
     emscripten_sleep(20);
+    emscripten_sleep(20);
     return 6.4;
   }
 }
