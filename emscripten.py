@@ -2093,11 +2093,6 @@ def create_backend_args_wasm(infile, outfile, settings):
   args += ['-enable-emscripten-sjlj']
   return args
 
-def wasm_rt_fail(archive_file):
-  def wrapped():
-    raise Exception('Expected {} to already be built'.format(archive_file))
-  return wrapped
-
 
 def load_metadata(metadata_raw):
   try:
