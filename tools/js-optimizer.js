@@ -7384,8 +7384,8 @@ function emterpretify(ast) {
           // A bad state is when saving or restoring the stack. Note that it is ok to run code
           // during a sleep, for coroutines or yield funcs, etc. - we don't check those.
           return ['binary', '|',
-            ['binary', '==', ['name', 'asyncState'], ['num', 1]],
-            ['binary', '==', ['name', 'asyncState'], ['num', 2]],
+            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 1]],
+            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 2]],
           ];
         }
         var stack = [];
