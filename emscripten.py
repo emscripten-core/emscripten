@@ -1905,14 +1905,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
   return metadata
 
 
-def read_metadata_wast(wast, DEBUG):
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, DEBUG)
-
-
 def create_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG: logging.debug("Metadata raw: " + metadata_raw)
   metadata = load_metadata(metadata_raw)
