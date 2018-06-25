@@ -30,7 +30,7 @@ Calling compiled C functions from JavaScript
 
 	The function executes a compiled C function from JavaScript and returns the result. C++ name mangling means that "normal" C++ functions cannot be called; the function must either be defined in a **.c** file or be a C++ function defined with ``extern "C"``.
 
-	``returnType`` and ``argTypes`` let you specify the types of parameters and the return value. The possible types are ``"number"``, ``"string"``, ``"array"``, or ``"boolean"``, which correspond to the appropriate JavaScript types. Use ``"number"`` for any numeric type or C pointer, ``string`` for C ``char*`` that represent strings, ``"boolean"`` for a boolean type, ``"array"`` for JavaScript arrays and typed arrays; for typed arrays, it must be a Uint8Array or Int8Array.
+	``returnType`` and ``argTypes`` let you specify the types of parameters and the return value. The possible types are ``"number"``, ``"string"``, ``"array"``, or ``"boolean"``, which correspond to the appropriate JavaScript types. Use ``"number"`` for any numeric type or C pointer, ``string`` for C ``char*`` that represent strings, ``"boolean"`` for a boolean type, ``"array"`` for JavaScript arrays and typed arrays, containing 8-bit integer data - that is, the data is written into a C array of 8-bit integers; and in particular if you provide a typed array here, it must be a Uint8Array or Int8Array. If you want to receive an array of another type of data, you can manually allocate memory and write to it, then provide a pointer here (as a ``"number"``, as pointers are just numbers).
 
 	.. code-block:: javascript
 

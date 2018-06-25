@@ -1180,7 +1180,7 @@ if (Module['buffer']) {
     assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 #endif // ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
-#if WASM_MEM_MAX
+#if WASM_MEM_MAX != -1
 #if ASSERTIONS
     assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
@@ -1491,6 +1491,7 @@ function getTotalMemory() {
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
+#if STACK_OVERFLOW_CHECK
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
@@ -1499,10 +1500,13 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 } else {
   if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
-#endif
+#endif // USE_PTHREADS
+#endif // STACK_OVERFLOW_CHECK
+#if ASSERTIONS
 HEAP16[1] = 0x6373;
 if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-#endif
+#endif // ASSERTIONS
+#endif // SAFE_SPLIT_MEMORY == 0
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {

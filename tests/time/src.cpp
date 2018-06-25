@@ -153,5 +153,25 @@ int main() {
   clock_t diff = time(NULL) - start_t;
   printf("clock(end): %d\n", diff >= 2 && diff < 30);
 
+  // Verify timespec_get() will only accept a base of TIME_UTC
+  //timespec ts; *already defined*
+  printf("timespec_get test 0: %d\n", timespec_get(&ts, TIME_UTC) == TIME_UTC);
+  printf("timespec_get test 1: %d\n", timespec_get(&ts, (TIME_UTC + 1)) == 0);
+
+  // Verify the resultant timespec values set by timespec_get() are valid
+  //timespec ts; *already defined*
+  timespec_get(&ts, TIME_UTC);
+  printf("timespec_get test 2: %d\n", ts.tv_sec >= 0);
+  printf("timespec_get test 3: %d\n", ts.tv_sec != 0); // 0 is valid but not practical as the current time
+  printf("timespec_get test 4: %d\n", ts.tv_nsec >= 0);
+  printf("timespec_get test 5: %d\n", ts.tv_nsec <= 999999999);
+
+  // Verify timespec_get() gets similar time value as clock_gettime
+  timespec ts_timespec_get;
+  timespec_get(&ts_timespec_get, TIME_UTC);
+  timespec ts_clock_gettime;
+  clock_gettime(CLOCK_REALTIME, &ts_clock_gettime);
+  printf("timespec_get test 6: %d\n", abs(ts_timespec_get.tv_sec - ts_clock_gettime.tv_sec) <= 2);
+
   return 0;
 }

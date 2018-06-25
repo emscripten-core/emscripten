@@ -647,7 +647,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['emterpret']
       if settings['EMTERPRETIFY_ASYNC']:
         funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
-    if settings['ASYNCIFY']:
+    if settings['ASYNCIFY'] and need_asyncify(funcs):
       funcs += ['setAsync']
 
   return sorted(set(funcs))
@@ -1144,7 +1144,9 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   asm_setup = ''
   if settings['ASSERTIONS'] >= 2:
     for sig in function_table_data:
-      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+      # if the table is empty, debug_tables will not contain it
+      body = debug_tables.get(sig, [])
+      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(body) + ';'
   if settings['ASSERTIONS']:
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
@@ -1730,14 +1732,12 @@ HEAP_TYPE_INFOS = [
 def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
                           temp_files, DEBUG):
   # Overview:
-  #   * Run LLVM backend to emit .s
-  #   * Run Binaryen's s2wasm to generate WebAssembly.
+  #   * Run LLVM backend to emit a wasm object file (.o)
+  #   * Run lld to turn this into a wasm binary (.wasm)
+  #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #   * We may also run some Binaryen passes here.
 
-  if shared.Settings.EXPERIMENTAL_USE_LLD:
-    metadata = build_wasm_lld(temp_files, infile, outfile, settings, DEBUG)
-  else:
-    metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1816,43 +1816,6 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
 
 
 def build_wasm(temp_files, infile, outfile, settings, DEBUG):
-  with temp_files.get_file('.wb.s') as temp_s:
-    backend_args = create_backend_args_wasm(infile, temp_s, settings)
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-      shutil.copyfile(temp_s, os.path.join(shared.CANONICAL_TEMP_DIR, 'emcc-llvm-backend-output.s'))
-
-    basename = shared.unsuffixed(outfile.name)
-    wasm = basename + '.wasm'
-    metadata_file = basename + '.metadata'
-    s2wasm_args = create_s2wasm_args(temp_s, wasm)
-    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
-      s2wasm_args += ['-g']
-    if settings['DEBUG_LEVEL'] >= 4:
-      s2wasm_args += ['--source-map=' + wasm + '.map']
-      if not settings['SOURCE_MAP_BASE']:
-        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-      else:
-        s2wasm_args += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
-    if DEBUG:
-      logging.debug('emscript: binaryen s2wasm: ' + ' '.join(s2wasm_args))
-      t = time.time()
-    shared.check_call(s2wasm_args, stdout=open(metadata_file, 'w'))
-
-  metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
-
-  if DEBUG:
-    logging.debug('  emscript: binaryen s2wasm took %s seconds' % (time.time() - t))
-    t = time.time()
-  return metadata
-
-
-def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
   wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
   wasm_as = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-as')
   wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
@@ -1942,14 +1905,6 @@ def build_wasm_lld(temp_files, infile, outfile, settings, DEBUG):
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
   return metadata
-
-
-def read_metadata_wast(wast, DEBUG):
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, DEBUG)
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
@@ -2145,12 +2100,8 @@ var establishStackSpace = Module['establishStackSpace'];
 def create_backend_args_wasm(infile, outfile, settings):
   backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
-                  '-asm-verbose=false',
+                  '-asm-verbose=false', '-filetype=obj',
                   '-o', outfile]
-  if settings['EXPERIMENTAL_USE_LLD']:
-    args += ['-filetype=obj']
-  else:
-    args += ['-filetype=asm']
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   # disable slow and relatively unimportant optimization passes
   args += ['-combiner-global-alias-analysis=false']
@@ -2171,31 +2122,12 @@ def wasm_rt_fail(archive_file):
     raise Exception('Expected {} to already be built'.format(archive_file))
   return wrapped
 
-def create_s2wasm_args(temp_s, wasm):
-  compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-  libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
-
-  s2wasm_path = os.path.join(shared.BINARYEN_ROOT, 'bin', 's2wasm')
-
-  args = [s2wasm_path, temp_s, '-o', wasm, '--emscripten-glue', '--emit-binary']
-  args += ['--global-base=%d' % shared.Settings.GLOBAL_BASE]
-  args += ['--initial-memory=%d' % shared.Settings.TOTAL_MEMORY]
-  args += ['--allow-memory-growth'] if shared.Settings.ALLOW_MEMORY_GROWTH else []
-  args += ['--emscripten-reserved-function-pointers=%d' %
-           shared.Settings.RESERVED_FUNCTION_POINTERS]
-  args += ['-l', libc_rt_lib]
-  args += ['-l', compiler_rt_lib]
-
-  if shared.Settings.BINARYEN_TRAP_MODE:
-    args += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
-  return args
-
 
 def load_metadata(metadata_raw):
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception as e:
-    logging.error('emscript: failure to parse metadata output from s2wasm. raw output is: \n' + metadata_raw)
+    logging.error('emscript: failure to parse metadata output from wasm-emscripten-finalize. raw output is: \n' + metadata_raw)
     raise e
 
   metadata = {

@@ -898,13 +898,11 @@ ASM_JS_TARGET = 'asmjs-unknown-emscripten'
 WASM_TARGET = 'wasm32-unknown-unknown-wasm'
 
 def check_vanilla():
-  global LLVM_TARGET, WASM_TARGET
+  global LLVM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD') == '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-elf'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -941,8 +939,6 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD') == '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-elf'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1160,8 +1156,6 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
-        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD') == '0':
-          self.attrs['EXPERIMENTAL_USE_LLD'] = 0
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -2601,9 +2595,11 @@ class JS(object):
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
+  var sp = stackSave();
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
+    stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
@@ -2751,16 +2747,26 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-  pos = 0
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  while(1):
-    m = include_pattern.search(f, pos)
-    if not m:
-      return f
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
+  temp_dir = configuration.get_temp_files().get_dir()
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
+  #       we only want the actual settings, hence the [1::2] slice operation.
+  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+  settings_file = os.path.join(temp_dir, 'settings.js')
+  open(settings_file, 'w').write(settings_str)
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+  # Run the JS preprocessor
+  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
+  # and shell.html is bigger than that!
+  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+  (path, file) = os.path.split(filename)
+  stdout = os.path.join(temp_dir, 'stdout')
+  args = [settings_file, file]
+
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  out = open(stdout, 'r').read()
+
+  return out
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web

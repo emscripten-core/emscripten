@@ -854,6 +854,9 @@ base align: 0, 0, 0, 0'''])
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
+  def test_longjmp_unwind(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_unwind')
+
   def test_siglongjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
 
@@ -6581,7 +6584,7 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
-  @no_wasm_backend('s2wasm does not generate symbol maps')
+  @no_wasm_backend('lld does not generate symbol maps')
   def test_demangle_stacks_symbol_map(self):
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
@@ -6830,9 +6833,23 @@ someweirdtext
     Building.COMPILER_TEST_OPTS += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
+  def test_embind_float_constants(self):
+    self.emcc_args += ['--bind']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_float_constants.cpp'),
+                          path_from_root('tests', 'embind', 'test_float_constants.out'))
+
+  def test_embind_negative_constants(self):
+    self.emcc_args += ['--bind']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_negative_constants.cpp'),
+                          path_from_root('tests', 'embind', 'test_negative_constants.out'))
+
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind', '--std=c++11']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+
+  def test_embind_val(self):
+    self.emcc_args += ['--bind', '--std=c++11']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
 
   def test_embind_f_no_rtti(self):
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
@@ -7041,17 +7058,8 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend() or Settings.EXPERIMENTAL_USE_LLD:
-        assert len(data['sources']) == 1, data['sources']
-        self.assertPathsIdentical(src_filename, data['sources'][0])
-      else:
-        # s2wasm currently adds every file linked as part of compiler-rt
-        # to the 'sources' field.
-        # TODO(sbc): Remove this once s2wasm goes away
-        assert len(data['sources']) > 1, data['sources']
-        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
-        normalized_filename = src_filename.replace('\\', '/')
-        assert normalized_filename in normalized_srcs, "Source file not found"
+      assert len(data['sources']) == 1, data['sources']
+      self.assertPathsIdentical(src_filename, data['sources'][0])
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
@@ -7532,6 +7540,12 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  def test_asyncify_unused(self):
+    # test a program not using asyncify, but the pref is set
+    Settings.ASYNCIFY = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
@@ -7670,6 +7684,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
   def test_environment(self):
+    Settings.ASSERTIONS = 1
     for engine in JS_ENGINES:
       for work in (1, 0):
         # set us to test in just this engine

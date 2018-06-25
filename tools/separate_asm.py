@@ -25,6 +25,8 @@ else:
   # seek a pattern like (e.ENVIRONMENT), which is in the shell.js if-cascade for the ENVIRONMENT override
   import re
   m = re.search('\((\w+)\.ENVIRONMENT\)', everything)
+  if not m:
+    m = re.search('(\w+)\.arguments\s*=\s*\[\];', everything)
   assert m, 'cannot figure out the closured name of Module statically'
   closured_name = m.group(1)
   everything = everything.replace(module, closured_name + '["asm"]')

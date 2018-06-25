@@ -1340,6 +1340,14 @@ keydown(100);keyup(100); // trigger the end
     open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js'], timeout=60)'''
 
+  def test_separate_metadata_later(self):
+    # see issue #6654 - we need to handle separate-metadata both when we run before
+    # the main program, and when we are run later
+
+    open('data.dat', 'w').write(' ')
+    run_process([PYTHON, FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
+    self.btest(os.path.join('browser', 'separate_metadata_later.cpp'), '1', args=['-s', 'FORCE_FILESYSTEM=1'])
+
   def test_idbstore(self):
     secret = str(time.time())
     for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5]:
@@ -3534,13 +3542,15 @@ window.close = function() {
     for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print(opts)
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-s', 'WASM=0'] + opts).communicate()
+      run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-s', 'WASM=0'] + opts)
       self.run_browser('test.html', None, '/report_result?0')
 
+      print('run one');
       open('one.html', 'w').write('<script src="test.js"></script>')
       self.run_browser('one.html', None, '/report_result?0')
 
-      Popen([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js']).communicate()
+      print('run two');
+      run_process([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js'])
       open('two.html', 'w').write('''
         <script>
           var Module = {};
@@ -3550,11 +3560,14 @@ window.close = function() {
       ''')
       self.run_browser('two.html', None, '/report_result?0')
 
+      print('run hello world');
       self.clear()
       assert not os.path.exists('tests.asm.js')
       self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
+
+      print('see a fail');
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
   def test_emterpretify_file(self):
