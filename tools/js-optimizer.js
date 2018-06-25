@@ -7380,6 +7380,14 @@ function emterpretify(ast) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
         // add asserts right after each call
+        function makeCheckBadState() {
+          // A bad state is when saving or restoring the stack. Note that it is ok to run code
+          // during a sleep, for coroutines or yield funcs, etc. - we don't check those.
+          return ['binary', '|',
+            ['binary', '==', ['name', 'asyncState'], ['num', 1]],
+            ['binary', '==', ['name', 'asyncState'], ['num', 2]],
+          ];
+        }
         var stack = [];
         traverse(func, function(node, type) {
           stack.push(node);
@@ -7403,7 +7411,7 @@ function emterpretify(ast) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
                 ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
-                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
+                ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
               ]);
               return;
             }
@@ -7411,7 +7419,7 @@ function emterpretify(ast) {
           // no important parent
           trample(node, ['seq',
             copy(node),
-            ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
           ]);
         });
         // add an assert in the prelude of the function
@@ -7421,7 +7429,7 @@ function emterpretify(ast) {
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
             stats.splice(i, 0, ['stat',
-              ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+              ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
             ]);
             break;
           }
