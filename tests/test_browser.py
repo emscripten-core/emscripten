@@ -1570,8 +1570,8 @@ keydown(100);keyup(100); // trigger the end
           FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      out =    function(s) { self.postMessage({channel: "stdout", line: s}); };
-      Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
+      Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
