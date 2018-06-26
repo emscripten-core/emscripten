@@ -1057,7 +1057,7 @@ mergeInto(LibraryManager.library, {
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-          Module['printErr']('read file: ' + path);
+          err('read file: ' + path);
         }
       }
       try {
@@ -1374,7 +1374,7 @@ mergeInto(LibraryManager.library, {
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
       FS.ErrnoError = function ErrnoError(errno, node) {
-        //Module.printErr(stackTrace()); // useful for debugging
+        //err(stackTrace()); // useful for debugging
         this.node = node;
         this.setErrno = function(errno) {
           this.errno = errno;

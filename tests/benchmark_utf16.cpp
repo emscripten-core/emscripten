@@ -10,7 +10,7 @@ double test(const unsigned short *str) {
     var t0 = _emscripten_get_now();
     var str = Module.UTF16ToString($0);
     var t1 = _emscripten_get_now();
-    Module.print('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
+    out('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
     return (t1-t0);
   }, str);
   return res;

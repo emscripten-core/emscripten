@@ -16,18 +16,18 @@ FS.symlink('../def', '/abc/relativeLink');
 FS.ignorePermissions = false;
 
 function explore(path) {
-  Module.print(path);
+  out(path);
   var ret = FS.analyzePath(path);
-  Module.print('  isRoot: ' + ret.isRoot);
-  Module.print('  exists: ' + ret.exists);
-  Module.print('  error: ' + ret.error);
-  Module.print('  path: ' + ret.path);
-  Module.print('  name: ' + ret.name);
-  Module.print('  object.contents: ' + (ret.object && JSON.stringify(Object.keys(ret.object.contents || {}))));
-  Module.print('  parentExists: ' + ret.parentExists);
-  Module.print('  parentPath: ' + ret.parentPath);
-  Module.print('  parentObject.contents: ' + (ret.parentObject && JSON.stringify(Object.keys(ret.parentObject.contents))));
-  Module.print('');
+  out('  isRoot: ' + ret.isRoot);
+  out('  exists: ' + ret.exists);
+  out('  error: ' + ret.error);
+  out('  path: ' + ret.path);
+  out('  name: ' + ret.name);
+  out('  object.contents: ' + (ret.object && JSON.stringify(Object.keys(ret.object.contents || {}))));
+  out('  parentExists: ' + ret.parentExists);
+  out('  parentPath: ' + ret.parentPath);
+  out('  parentObject.contents: ' + (ret.parentObject && JSON.stringify(Object.keys(ret.parentObject.contents))));
+  out('');
 }
 
 FS.currentPath = '/abc';

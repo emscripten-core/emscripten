@@ -9,7 +9,7 @@ void save_me_aimee() { printf("mann\n"); }
 
 int main() {
   // EMSCRIPTEN_COMMENT("hello from the source");
-  emscripten_run_script("Module.print('hello world' + '!')");
+  emscripten_run_script("out('hello world' + '!')");
   printf("*%d*\n", emscripten_run_script_int("5*20"));
   printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
   emscripten_run_script("Module['_save_me_aimee']()");

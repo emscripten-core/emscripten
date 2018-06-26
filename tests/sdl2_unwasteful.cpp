@@ -21,16 +21,16 @@ static void main_loop(void)
         EM_ASM({
             Module.the_ctx = Module.SDL2.ctx;
             Module.the_image = Module.SDL2.image;
-            Module.print('start with ' + [Module.the_ctx, Module.the_image]);
+            out('start with ' + [Module.the_ctx, Module.the_image]);
             assert(!!Module.the_ctx && (typeof Module.the_ctx === 'object'), 'typeof ctx');
             assert(!!Module.the_image && (typeof Module.the_image === 'object'), 'typeof image');
-            Module.print('set values');
+            out('set values');
         });
     } else if (runs > 1) {
         EM_ASM({
             assert(Module.the_ctx === Module.SDL2.ctx, 'ctx');
             assert(Module.the_image === Module.SDL2.image, 'image');
-            Module.print('check ok ' + $0);
+            out('check ok ' + $0);
         }, runs);
     }
 

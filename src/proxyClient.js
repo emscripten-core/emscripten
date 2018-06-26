@@ -141,11 +141,11 @@ worker.onmessage = function worker_onmessage(event) {
   var data = event.data;
   switch (data.target) {
     case 'stdout': {
-      Module.print(data.content);
+      out(data.content);
       break;
     }
     case 'stderr': {
-      Module.printErr(data.content);
+      err(data.content);
       break;
     }
     case 'window': {

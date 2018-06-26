@@ -176,7 +176,7 @@ this.onmessage = function(e) {
         _emscripten_current_thread_process_queued_calls();
       }
     } else {
-      Module['printErr']('pthread-main.js received unknown command ' + e.data.cmd);
+      err('pthread-main.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
   } catch(e) {

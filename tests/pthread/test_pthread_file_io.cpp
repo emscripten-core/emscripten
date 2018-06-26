@@ -7,7 +7,7 @@
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(Module['print']('thread1_start!'));
+  EM_ASM(out('thread1_start!'));
 
   FILE *handle = fopen("file1.txt", "r");
   assert(handle);

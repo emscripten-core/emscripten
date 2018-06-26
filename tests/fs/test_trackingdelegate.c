@@ -6,22 +6,22 @@ int main() {
 
   EM_ASM(
     FS.trackingDelegate['willMovePath'] = function(oldpath, newpath) {
-      Module.print('About to move "' + oldpath + '" to "' + newpath + '"');
+      out('About to move "' + oldpath + '" to "' + newpath + '"');
     };
     FS.trackingDelegate['onMovePath'] = function(oldpath, newpath) {
-      Module.print('Moved "' + oldpath + '" to "' + newpath + '"');
+      out('Moved "' + oldpath + '" to "' + newpath + '"');
     };
     FS.trackingDelegate['willDeletePath'] = function(path) {
-      Module.print('About to delete "' + path + '"');
+      out('About to delete "' + path + '"');
     };
     FS.trackingDelegate['onDeletePath'] = function(path) {
-      Module.print('Deleted "' + path + '"');
+      out('Deleted "' + path + '"');
     };
     FS.trackingDelegate['onOpenFile'] = function(path, flags) { 
-      Module.print('Opened "' + path + '" with flags ' + flags);
+      out('Opened "' + path + '" with flags ' + flags);
     };
     FS.trackingDelegate['onWriteToFile'] = function(path) {
-      Module.print('Wrote to file "' + path + '"');
+      out('Wrote to file "' + path + '"');
     };
   );
 

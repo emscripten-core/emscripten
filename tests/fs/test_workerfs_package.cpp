@@ -50,7 +50,7 @@ int main() {
 
       meta = JSON.parse(meta);
 
-      Module.print('loading into filesystem');
+      out('loading into filesystem');
       FS.mkdir('/files');
       FS.mount(WORKERFS, {
         packages: [{ metadata: meta, blob: blob }]
@@ -63,7 +63,7 @@ int main() {
     meta_xhr.open("GET", "files.js.metadata", true);
     meta_xhr.responseType = "text";
     meta_xhr.onload = function() {
-      Module.print('got metadata');
+      out('got metadata');
       meta = meta_xhr.response;
       maybeReady();
     };
@@ -73,7 +73,7 @@ int main() {
     data_xhr.open("GET", "files.data", true);
     data_xhr.responseType = "blob";
     data_xhr.onload = function() {
-      Module.print('got data');
+      out('got data');
       blob = data_xhr.response;
       maybeReady();
     };

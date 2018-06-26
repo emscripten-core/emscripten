@@ -50,17 +50,17 @@ int main() {
   fclose(f);
   printf("Looping...\n");
   EM_ASM({
-    Module['print']('js');
+    out('js');
     var counter = 0;
     function looper() {
-      Module['print']('js looping');
+      out('js looping');
       Module['_looper']();
       counter++;
       if (counter < 5) {
-        Module['print']('js queueing');
+        out('js queueing');
         setTimeout(looper, 1);
       } else {
-        Module['print']('js finishing');
+        out('js finishing');
         setTimeout(Module['_finish'], 1);
       }
     }

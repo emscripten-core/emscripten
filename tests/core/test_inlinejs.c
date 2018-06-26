@@ -12,13 +12,13 @@ double get() {
 }
 
 int main() {
-  asm("Module.print('Inline JS is very cool')");
+  asm("out('Inline JS is very cool')");
   printf("%.2f\n", get());
 
   // Test that passing multiple input and output variables works.
   int src1 = 1, src2 = 2, src3 = 3;
   int dst1 = 0, dst2 = 0, dst3 = 0;
-  // TODO asm("Module.print(%3); Module.print(%4); Module.print(%5); %0 = %3; %1
+  // TODO asm("out(%3); out(%4); out(%5); %0 = %3; %1
   // = %4; %2 = %5;" : "=r"(dst1),"=r"(dst2),"=r"(dst3):
   // "r"(src1),"r"(src2),"r"(src3));
   // TODO printf("%d\n%d\n%d\n", dst1, dst2, dst3);

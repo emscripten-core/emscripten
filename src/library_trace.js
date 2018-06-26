@@ -107,7 +107,7 @@ var LibraryTracing = {
         EmscriptenTrace.worker.postMessage({ 'cmd': 'post',
                                              'entry': entry });
       } else if (EmscriptenTrace.postEnabled && EmscriptenTrace.testingEnabled) {
-        Module.print('Tracing ' + entry);
+        out('Tracing ' + entry);
       }
     },
 

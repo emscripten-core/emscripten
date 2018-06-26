@@ -129,7 +129,7 @@ window.close = function window_close() {
 };
 
 window.alert = function(text) {
-  Module.printErr('alert forever: ' + text);
+  err('alert forever: ' + text);
   while (1){};
 };
 
