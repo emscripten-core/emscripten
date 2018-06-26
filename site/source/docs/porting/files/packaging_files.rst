@@ -10,6 +10,15 @@ There are two alternatives for how files are packaged: *preloading* and *embeddi
 	
 *Emcc* uses the *file packager* to package the files and generate the :ref:`File System API <Filesystem-API>` calls that create and load the file system at run time. While *Emcc* is the recommended tool for packaging, there are cases where it can make sense to run the *file packager* manually.
 
+With ``--use-preload-plugins``, files can be automatically decoded
+using the browser's codecs, based on their extension (this can also be
+done manually by calling :c:func:`emscripten_run_preload_plugins` on
+each file).  The files remain stored in their original form in the
+file system, but their decoded form can be used by ``IMG_Load`` (SDL1
+and SDL2 port, which rely on
+:c:func:`emscripten_get_preloaded_image_data`) or ``Mix_LoadWAV``
+(SDL1 only).
+
 
 Packaging using emcc
 ====================

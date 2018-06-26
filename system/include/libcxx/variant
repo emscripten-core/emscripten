@@ -53,16 +53,16 @@ namespace std {
 
     // 20.7.2.4, modifiers
     template <class T, class... Args>
-    void emplace(Args&&...);
+    T& emplace(Args&&...);
 
     template <class T, class U, class... Args>
-    void emplace(initializer_list<U>, Args&&...);
+    T& emplace(initializer_list<U>, Args&&...);
 
     template <size_t I, class... Args>
-    void emplace(Args&&...);
+    variant_alternative_t<I, variant>& emplace(Args&&...);
 
     template <size_t I, class U, class...  Args>
-    void emplace(initializer_list<U>, Args&&...);
+    variant_alternative_t<I, variant>& emplace(initializer_list<U>, Args&&...);
 
     // 20.7.2.5, value status
     constexpr bool valueless_by_exception() const noexcept;
@@ -76,7 +76,7 @@ namespace std {
   template <class T> struct variant_size; // undefined
 
   template <class T>
-  constexpr size_t variant_size_v = variant_size<T>::value;
+  inline constexpr size_t variant_size_v = variant_size<T>::value;
 
   template <class T> struct variant_size<const T>;
   template <class T> struct variant_size<volatile T>;
@@ -97,7 +97,7 @@ namespace std {
   template <size_t I, class... Types>
   struct variant_alternative<I, variant<Types...>>;
 
-  constexpr size_t variant_npos = -1;
+  inline constexpr size_t variant_npos = -1;
 
   // 20.7.4, value access
   template <class T, class... Types>
@@ -207,10 +207,14 @@ namespace std {
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <limits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
 
 namespace std { // explicitly not using versioning namespace
 
@@ -242,7 +246,7 @@ template <class _Tp>
 struct _LIBCPP_TEMPLATE_VIS variant_size;
 
 template <class _Tp>
-constexpr size_t variant_size_v = variant_size<_Tp>::value;
+_LIBCPP_INLINE_VAR constexpr size_t variant_size_v = variant_size<_Tp>::value;
 
 template <class _Tp>
 struct _LIBCPP_TEMPLATE_VIS variant_size<const _Tp> : variant_size<_Tp> {};
@@ -278,12 +282,33 @@ struct _LIBCPP_TEMPLATE_VIS variant_alternative<_Ip, const volatile _Tp>
 
 template <size_t _Ip, class... _Types>
 struct _LIBCPP_TEMPLATE_VIS variant_alternative<_Ip, variant<_Types...>> {
-  static_assert(_Ip < sizeof...(_Types));
+  static_assert(_Ip < sizeof...(_Types), "Index out of bounds in std::variant_alternative<>");
   using type = __type_pack_element<_Ip, _Types...>;
 };
 
-constexpr size_t variant_npos = static_cast<size_t>(-1);
-constexpr unsigned int __variant_npos = static_cast<unsigned int>(-1);
+_LIBCPP_INLINE_VAR constexpr size_t variant_npos = static_cast<size_t>(-1);
+
+constexpr int __choose_index_type(unsigned int __num_elem) {
+  if (__num_elem < std::numeric_limits<unsigned char>::max())
+    return 0;
+  if (__num_elem < std::numeric_limits<unsigned short>::max())
+    return 1;
+  return 2;
+}
+
+template <size_t _NumAlts>
+using __variant_index_t =
+#ifndef _LIBCPP_ABI_VARIANT_INDEX_TYPE_OPTIMIZATION
+  unsigned int;
+#else
+  std::tuple_element_t<
+      __choose_index_type(_NumAlts),
+      std::tuple<unsigned char, unsigned short, unsigned int>
+  >;
+#endif
+
+template <class _IndexType>
+constexpr _IndexType __variant_npos = static_cast<_IndexType>(-1);
 
 namespace __find_detail {
 
@@ -358,7 +383,6 @@ struct __traits {
 
   static constexpr _Trait __copy_assignable_trait = __common_trait(
       {__copy_constructible_trait,
-       __move_constructible_trait,
        __trait<_Types, is_trivially_copy_assignable, is_copy_assignable>...});
 
   static constexpr _Trait __move_assignable_trait = __common_trait(
@@ -425,30 +449,21 @@ struct __base {
     constexpr auto __fmatrix =
         __make_fmatrix<_Visitor&&,
                        decltype(_VSTD::forward<_Vs>(__vs).__as_base())...>();
-    const size_t __indices[] = {__vs.index()...};
-    return __at(__fmatrix, __indices)(_VSTD::forward<_Visitor>(__visitor),
-                                      _VSTD::forward<_Vs>(__vs).__as_base()...);
+    return __at(__fmatrix, __vs.index()...)(
+        _VSTD::forward<_Visitor>(__visitor),
+        _VSTD::forward<_Vs>(__vs).__as_base()...);
   }
 
 private:
   template <class _Tp>
   inline _LIBCPP_INLINE_VISIBILITY
-  static constexpr const _Tp& __at_impl(const _Tp& __elem, const size_t*) {
-    return __elem;
-  }
+  static constexpr const _Tp& __at(const _Tp& __elem) { return __elem; }
 
-  template <class _Tp, size_t _Np>
-  inline _LIBCPP_INLINE_VISIBILITY
-  static constexpr auto&& __at_impl(const array<_Tp, _Np>& __elems,
-                                    const size_t* __index) {
-    return __at_impl(__elems[*__index], __index + 1);
-  }
-
-  template <class _Tp, size_t _Np, size_t _Ip>
+  template <class _Tp, size_t _Np, typename... _Indices>
   inline _LIBCPP_INLINE_VISIBILITY
   static constexpr auto&& __at(const array<_Tp, _Np>& __elems,
-                               const size_t (&__indices)[_Ip]) {
-    return __at_impl(__elems, begin(__indices));
+                               size_t __index, _Indices... __indices) {
+    return __at(__elems[__index], __indices...);
   }
 
   template <class _Fp, class... _Fs>
@@ -466,17 +481,21 @@ private:
     return __result{{_VSTD::forward<_Fs>(__fs)...}};
   }
 
-  template <class _Fp, class... _Vs, size_t... _Is>
-  inline _LIBCPP_INLINE_VISIBILITY
-  static constexpr auto __make_dispatch(index_sequence<_Is...>) {
-    struct __dispatcher {
-      static constexpr decltype(auto) __dispatch(_Fp __f, _Vs... __vs) {
+  template <std::size_t... _Is>
+  struct __dispatcher {
+    template <class _Fp, class... _Vs>
+    inline _LIBCPP_INLINE_VISIBILITY
+    static constexpr decltype(auto) __dispatch(_Fp __f, _Vs... __vs) {
         return __invoke_constexpr(
             static_cast<_Fp>(__f),
             __access::__base::__get_alt<_Is>(static_cast<_Vs>(__vs))...);
-      }
-    };
-    return _VSTD::addressof(__dispatcher::__dispatch);
+    }
+  };
+
+  template <class _Fp, class... _Vs, size_t... _Is>
+  inline _LIBCPP_INLINE_VISIBILITY
+  static constexpr auto __make_dispatch(index_sequence<_Is...>) {
+    return __dispatcher<_Is...>::template __dispatch<_Fp, _Vs...>;
   }
 
   template <size_t _Ip, class _Fp, class... _Vs>
@@ -563,7 +582,7 @@ struct __variant {
 private:
   template <class _Visitor, class... _Values>
   static constexpr void __std_visit_exhaustive_visitor_check() {
-    static_assert(is_callable_v<_Visitor(_Values...)>,
+    static_assert(is_invocable_v<_Visitor, _Values...>,
                   "`std::visit` requires the visitor to be exhaustive.");
   }
 
@@ -653,9 +672,11 @@ _LIBCPP_VARIANT_UNION(_Trait::_Unavailable, ~__union() = delete;);
 template <_Trait _DestructibleTrait, class... _Types>
 class _LIBCPP_TEMPLATE_VIS __base {
 public:
+  using __index_t = __variant_index_t<sizeof...(_Types)>;
+
   inline _LIBCPP_INLINE_VISIBILITY
   explicit constexpr __base(__valueless_t tag) noexcept
-      : __data(tag), __index(__variant_npos) {}
+      : __data(tag), __index(__variant_npos<__index_t>) {}
 
   template <size_t _Ip, class... _Args>
   inline _LIBCPP_INLINE_VISIBILITY
@@ -671,7 +692,7 @@ public:
 
   inline _LIBCPP_INLINE_VISIBILITY
   constexpr size_t index() const noexcept {
-    return __index == __variant_npos ? variant_npos : __index;
+    return __index == __variant_npos<__index_t> ? variant_npos : __index;
   }
 
 protected:
@@ -691,7 +712,7 @@ protected:
   static constexpr size_t __size() { return sizeof...(_Types); }
 
   __union<_DestructibleTrait, 0, _Types...> __data;
-  unsigned int __index;
+  __index_t __index;
 
   friend struct __access::__base;
   friend struct __visitation::__base;
@@ -702,10 +723,11 @@ class _LIBCPP_TEMPLATE_VIS __destructor;
 
 #define _LIBCPP_VARIANT_DESTRUCTOR(destructible_trait, destructor, destroy)    \
   template <class... _Types>                                                   \
-  class _LIBCPP_TEMPLATE_VIS __destructor<__traits<_Types...>,                \
+  class _LIBCPP_TEMPLATE_VIS __destructor<__traits<_Types...>,                 \
                                            destructible_trait>                 \
       : public __base<destructible_trait, _Types...> {                         \
     using __base_type = __base<destructible_trait, _Types...>;                 \
+    using __index_t = typename __base_type::__index_t;                         \
                                                                                \
   public:                                                                      \
     using __base_type::__base_type;                                            \
@@ -725,7 +747,7 @@ class _LIBCPP_TEMPLATE_VIS __destructor;
 _LIBCPP_VARIANT_DESTRUCTOR(
     _Trait::_TriviallyAvailable,
     ~__destructor() = default;,
-    void __destroy() noexcept { this->__index = __variant_npos; });
+    void __destroy() noexcept { this->__index = __variant_npos<__index_t>; });
 
 _LIBCPP_VARIANT_DESTRUCTOR(
     _Trait::_Available,
@@ -739,7 +761,7 @@ _LIBCPP_VARIANT_DESTRUCTOR(
             },
             *this);
       }
-      this->__index = __variant_npos;
+      this->__index = __variant_npos<__index_t>;
     });
 
 _LIBCPP_VARIANT_DESTRUCTOR(
@@ -760,9 +782,10 @@ public:
 protected:
   template <size_t _Ip, class _Tp, class... _Args>
   inline _LIBCPP_INLINE_VISIBILITY
-  static void __construct_alt(__alt<_Ip, _Tp>& __a, _Args&&... __args) {
-    ::new (_VSTD::addressof(__a))
+  static _Tp& __construct_alt(__alt<_Ip, _Tp>& __a, _Args&&... __args) {
+    ::new ((void*)_VSTD::addressof(__a))
         __alt<_Ip, _Tp>(in_place, _VSTD::forward<_Args>(__args)...);
+    return __a.__value;
   }
 
   template <class _Rhs>
@@ -872,33 +895,33 @@ public:
 
   template <size_t _Ip, class... _Args>
   inline _LIBCPP_INLINE_VISIBILITY
-  void __emplace(_Args&&... __args) {
+  auto& __emplace(_Args&&... __args) {
     this->__destroy();
-    this->__construct_alt(__access::__base::__get_alt<_Ip>(*this),
+    auto& __res = this->__construct_alt(__access::__base::__get_alt<_Ip>(*this),
                           _VSTD::forward<_Args>(__args)...);
     this->__index = _Ip;
+    return __res;
   }
 
 protected:
-  template <bool _CopyAssign, size_t _Ip, class _Tp, class _Arg>
+  template <size_t _Ip, class _Tp, class _Arg>
   inline _LIBCPP_INLINE_VISIBILITY
-  void __assign_alt(__alt<_Ip, _Tp>& __a,
-                    _Arg&& __arg,
-                    bool_constant<_CopyAssign> __tag) {
+  void __assign_alt(__alt<_Ip, _Tp>& __a, _Arg&& __arg) {
     if (this->index() == _Ip) {
       __a.__value = _VSTD::forward<_Arg>(__arg);
     } else {
       struct {
         void operator()(true_type) const {
-          __this->__emplace<_Ip>(_Tp(_VSTD::forward<_Arg>(__arg)));
+          __this->__emplace<_Ip>(_VSTD::forward<_Arg>(__arg));
         }
         void operator()(false_type) const {
-          __this->__emplace<_Ip>(_VSTD::forward<_Arg>(__arg));
+          __this->__emplace<_Ip>(_Tp(_VSTD::forward<_Arg>(__arg)));
         }
         __assignment* __this;
         _Arg&& __arg;
       } __impl{this, _VSTD::forward<_Arg>(__arg)};
-      __impl(__tag);
+      __impl(bool_constant<is_nothrow_constructible_v<_Tp, _Arg> ||
+                           !is_nothrow_move_constructible_v<_Tp>>{});
     }
   }
 
@@ -915,8 +938,7 @@ protected:
           [this](auto& __this_alt, auto&& __that_alt) {
             this->__assign_alt(
                 __this_alt,
-                _VSTD::forward<decltype(__that_alt)>(__that_alt).__value,
-                is_lvalue_reference<_That>{});
+                _VSTD::forward<decltype(__that_alt)>(__that_alt).__value);
           },
           *this, _VSTD::forward<_That>(__that));
     }
@@ -1016,8 +1038,7 @@ public:
   inline _LIBCPP_INLINE_VISIBILITY
   void __assign(_Arg&& __arg) {
     this->__assign_alt(__access::__base::__get_alt<_Ip>(*this),
-                       _VSTD::forward<_Arg>(__arg),
-                       false_type{});
+                       _VSTD::forward<_Arg>(__arg));
   }
 
   inline _LIBCPP_INLINE_VISIBILITY
@@ -1091,7 +1112,6 @@ class _LIBCPP_TEMPLATE_VIS variant
           __all<is_move_constructible_v<_Types>...>::value>,
       private __sfinae_assign_base<
           __all<(is_copy_constructible_v<_Types> &&
-                 is_move_constructible_v<_Types> &&
                  is_copy_assignable_v<_Types>)...>::value,
           __all<(is_move_constructible_v<_Types> &&
                  is_move_assignable_v<_Types>)...>::value> {
@@ -1124,6 +1144,8 @@ public:
   template <
       class _Arg,
       enable_if_t<!is_same_v<decay_t<_Arg>, variant>, int> = 0,
+      enable_if_t<!__is_inplace_type<decay_t<_Arg>>::value, int> = 0,
+      enable_if_t<!__is_inplace_index<decay_t<_Arg>>::value, int> = 0,
       class _Tp = __variant_detail::__best_match_t<_Arg, _Types...>,
       size_t _Ip =
           __find_detail::__find_unambiguous_index_sfinae<_Tp, _Types...>::value,
@@ -1134,7 +1156,7 @@ public:
       : __impl(in_place_index<_Ip>, _VSTD::forward<_Arg>(__arg)) {}
 
   template <size_t _Ip, class... _Args,
-            enable_if_t<(_Ip < sizeof...(_Types)), int> = 0,
+            class = enable_if_t<(_Ip < sizeof...(_Types)), int>,
             class _Tp = variant_alternative_t<_Ip, variant<_Types...>>,
             enable_if_t<is_constructible_v<_Tp, _Args...>, int> = 0>
   inline _LIBCPP_INLINE_VISIBILITY
@@ -1214,8 +1236,8 @@ public:
       class _Tp = variant_alternative_t<_Ip, variant<_Types...>>,
       enable_if_t<is_constructible_v<_Tp, _Args...>, int> = 0>
   inline _LIBCPP_INLINE_VISIBILITY
-  void emplace(_Args&&... __args) {
-    __impl.template __emplace<_Ip>(_VSTD::forward<_Args>(__args)...);
+  _Tp& emplace(_Args&&... __args) {
+    return __impl.template __emplace<_Ip>(_VSTD::forward<_Args>(__args)...);
   }
 
   template <
@@ -1227,8 +1249,8 @@ public:
       enable_if_t<is_constructible_v<_Tp, initializer_list<_Up>&, _Args...>,
                   int> = 0>
   inline _LIBCPP_INLINE_VISIBILITY
-  void emplace(initializer_list<_Up> __il, _Args&&... __args) {
-    __impl.template __emplace<_Ip>(__il, _VSTD::forward<_Args>(__args)...);
+  _Tp& emplace(initializer_list<_Up> __il, _Args&&... __args) {
+    return __impl.template __emplace<_Ip>(__il, _VSTD::forward<_Args>(__args)...);
   }
 
   template <
@@ -1238,8 +1260,8 @@ public:
           __find_detail::__find_unambiguous_index_sfinae<_Tp, _Types...>::value,
       enable_if_t<is_constructible_v<_Tp, _Args...>, int> = 0>
   inline _LIBCPP_INLINE_VISIBILITY
-  void emplace(_Args&&... __args) {
-    __impl.template __emplace<_Ip>(_VSTD::forward<_Args>(__args)...);
+  _Tp& emplace(_Args&&... __args) {
+    return __impl.template __emplace<_Ip>(_VSTD::forward<_Args>(__args)...);
   }
 
   template <
@@ -1251,8 +1273,8 @@ public:
       enable_if_t<is_constructible_v<_Tp, initializer_list<_Up>&, _Args...>,
                   int> = 0>
   inline _LIBCPP_INLINE_VISIBILITY
-  void emplace(initializer_list<_Up> __il, _Args&&... __args) {
-    __impl.template __emplace<_Ip>(__il, _VSTD::forward<_Args>(__args)...);
+  _Tp& emplace(initializer_list<_Up> __il, _Args&&... __args) {
+    return __impl.template __emplace<_Ip>(__il, _VSTD::forward<_Args>(__args)...);
   }
 
   inline _LIBCPP_INLINE_VISIBILITY
@@ -1529,7 +1551,8 @@ auto swap(variant<_Types...>& __lhs,
 }
 
 template <class... _Types>
-struct _LIBCPP_TEMPLATE_VIS hash<variant<_Types...>> {
+struct _LIBCPP_TEMPLATE_VIS hash<
+    __enable_hash_helper<variant<_Types...>, remove_const_t<_Types>...>> {
   using argument_type = variant<_Types...>;
   using result_type = size_t;
 
@@ -1542,7 +1565,8 @@ struct _LIBCPP_TEMPLATE_VIS hash<variant<_Types...>> {
                : __variant::__visit_alt(
                      [](const auto& __alt) {
                        using __alt_type = decay_t<decltype(__alt)>;
-                       using __value_type = typename __alt_type::__value_type;
+                       using __value_type = remove_const_t<
+                         typename __alt_type::__value_type>;
                        return hash<__value_type>{}(__alt.__value);
                      },
                      __v);
@@ -1556,7 +1580,7 @@ struct _LIBCPP_TEMPLATE_VIS hash<monostate> {
   using result_type = size_t;
 
   inline _LIBCPP_INLINE_VISIBILITY
-  result_type operator()(const argument_type&) const {
+  result_type operator()(const argument_type&) const _NOEXCEPT {
     return 66740831; // return a fundamentally attractive random value.
   }
 };
@@ -1564,5 +1588,7 @@ struct _LIBCPP_TEMPLATE_VIS hash<monostate> {
 #endif  // _LIBCPP_STD_VER > 14
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP_VARIANT

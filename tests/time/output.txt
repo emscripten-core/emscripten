@@ -41,3 +41,10 @@ winter month again: 11
 ctime matched: 1
 clock(start): 1
 clock(end): 1
+timespec_get test 0: 1
+timespec_get test 1: 1
+timespec_get test 2: 1
+timespec_get test 3: 1
+timespec_get test 4: 1
+timespec_get test 5: 1
+timespec_get test 6: 1

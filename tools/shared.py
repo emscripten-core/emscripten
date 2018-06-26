@@ -11,6 +11,15 @@ import logging, platform, multiprocessing
 # Temp file utilities
 from .tempfiles import try_delete
 
+
+class FatalError(Exception):
+  """Error representing an unrecoverable error such as the failure of
+  a subprocess.
+
+  These are usually handled at the entry point of each script."""
+  pass
+
+
 # On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
 # Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
 # See http://bugs.python.org/issue3905
@@ -147,16 +156,14 @@ def check_execute(cmd, *args, **kw):
     subprocess.check_output(cmd, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
-    raise
+    raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
 
 def check_call(cmd, *args, **kw):
   try:
     subprocess.check_call(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed" % " ".join(cmd))
-    raise
+    raise FatalError("'%s' failed" % " ".join(cmd))
 
 
 # Emscripten configuration is done through the --em-config command line option or
@@ -714,7 +721,8 @@ LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
-LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
+LLVM_DWARFDUMP=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+WASM_LD=os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
@@ -887,16 +895,14 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown-elf'
+WASM_TARGET = 'wasm32-unknown-unknown-wasm'
 
 def check_vanilla():
-  global LLVM_TARGET, WASM_TARGET
+  global LLVM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -933,8 +939,6 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
@@ -1152,8 +1156,6 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
-        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-          self.attrs['EXPERIMENTAL_USE_LLD'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1289,7 +1291,7 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
-  def is_valid(self):
+  def is_valid_for_nm(self):
     return self.returncode == 0
 
 # Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
@@ -1614,12 +1616,12 @@ class Building(object):
       env[k] = v
     if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
+        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_out'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
                                                                 stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
       except subprocess.CalledProcessError as e:
         pass # Ignore exit code != 0
     def open_make_out(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+      return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
 
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
@@ -1743,8 +1745,15 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
-      if not new_symbols.is_valid():
-        logging.warning('object %s is not valid, cannot link' % (f))
+      # Check if the object was valid according to llvm-nm. It also accepts
+      # native object files.
+      if not new_symbols.is_valid_for_nm():
+        logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        return False
+      # Check the object is valid for us, and not a native object file.
+      # TODO: for lld, also check if a wasm object file?
+      if not Building.is_bitcode(f):
+        logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2586,9 +2595,11 @@ class JS(object):
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
+  var sp = stackSave();
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
+    stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
@@ -2736,16 +2747,26 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-  pos = 0
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  while(1):
-    m = include_pattern.search(f, pos)
-    if not m:
-      return f
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
+  temp_dir = configuration.get_temp_files().get_dir()
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
+  #       we only want the actual settings, hence the [1::2] slice operation.
+  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+  settings_file = os.path.join(temp_dir, 'settings.js')
+  open(settings_file, 'w').write(settings_str)
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+  # Run the JS preprocessor
+  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
+  # and shell.html is bigger than that!
+  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+  (path, file) = os.path.split(filename)
+  stdout = os.path.join(temp_dir, 'stdout')
+  args = [settings_file, file]
+
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  out = open(stdout, 'r').read()
+
+  return out
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web

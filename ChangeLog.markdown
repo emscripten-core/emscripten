@@ -9,6 +9,18 @@ Not all changes are documented here. In particular, new features, user-oriented 
 
 Current Trunk
 -------------
+ - Correctness fix for stack handling in invoke_*()s. This may add noticeable overhead to programs using C++ exceptions and (less likely) setjmp/longjmp - please report any issues. See #6666 #6702
+ - Deprecate Module.ENVIRONMENT: Now that we have a compile-time option to set the environment, also having a runtime one on Module is complexity that we are better off without. When Module.ENVIRONMENT is used with ASSERTIONS it will show an error to direct users to the new option (-s ENVIRONMENT=web , or node, etc., at compile time).
+
+v1.38.6: 06/13/2018
+-------------------
+
+v1.38.5: 06/04/2018
+-------------------
+ - Update libc++ to 6.0, bringing c++17 support (std::byte etc.)
+
+v1.38.4: 05/29/2018
+-------------------
  - Fix asm.js validation regression from 1.38.2.
 
 v1.38.3: 05/25/2018

@@ -14,7 +14,8 @@ var LibrarySDL = {
 #if NO_FILESYSTEM == 0
     '$FS',
 #endif
-    '$PATH', '$Browser', 'SDL_GetTicks'
+    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+
   ],
   $SDL: {
     defaults: {
@@ -471,7 +472,6 @@ var LibrarySDL = {
         SDL.screen = null;
       }
     },
-    blitSurface__deps: ["SDL_LockSurface"],
     blitSurface: function(src, srcrect, dst, dstrect, scale) {
       var srcData = SDL.surfaces[src];
       var dstData = SDL.surfaces[dst];
@@ -1252,7 +1252,9 @@ var LibrarySDL = {
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
-        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
+        // NOTE: Timestamp is currently not properly set for the GearVR controller
+        //       on Samsung Internet: it is always zero.
+        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = SDL.getJoystickButtonState(state.buttons[i]);

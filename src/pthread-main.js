@@ -126,7 +126,7 @@ this.onmessage = function(e) {
       STACK_MAX = STACK_BASE + e.data.stackSize;
       assert(STACK_BASE != 0);
       assert(STACK_MAX > STACK_BASE);
-      establishStackSpace(e.data.stackBase, e.data.stackBase + e.data.stackSize);
+      Module['establishStackSpace'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
       var result = 0;
 //#if STACK_OVERFLOW_CHECK
       if (typeof writeStackCookie === 'function') writeStackCookie();
@@ -143,7 +143,7 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        result = Module['asm'].dynCall_ii(e.data.start_routine, e.data.arg);
+        result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
 
 //#if STACK_OVERFLOW_CHECK
         if (typeof checkStackCookie === 'function') checkStackCookie();

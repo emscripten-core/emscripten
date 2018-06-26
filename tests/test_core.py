@@ -90,6 +90,15 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
   def is_windows(self):
     return WINDOWS
 
+  # whether the test mode supports duplicate function elimination in js
+  def supports_js_dfe(self):
+    if self.is_wasm(): return False # wasm does this when optimizing anyhow
+    supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
+    for opt_level in supported_opt_levels:
+      if opt_level in self.emcc_args:
+        return True
+    return False
+
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
     if '-O2' in self.emcc_args or '-Os' in self.emcc_args:
@@ -844,6 +853,9 @@ base align: 0, 0, 0, 0'''])
       print(disable_throw)
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
+
+  def test_longjmp_unwind(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_unwind')
 
   def test_siglongjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
@@ -1711,19 +1723,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
-    src = r'''
-      #include <stdio.h>
-      #include <emscripten.h>
-
-      int main(int argc, char **argv) {
-        int sum = EM_ASM_INT({
-           return $0 + $2;
-        }, 0, 1, 2);
-        printf("0+2=%d\n", sum);
-        return 0;
-      }
-    '''
-    self.do_run(src, '''0+2=2''')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
   # Verify that EM_ASM macros support getting called with multiple arities.
   # Maybe tests will later be joined into larger compilation units?
@@ -1757,7 +1757,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.cpp.o.js').read()
 
-    if '-O2' in self.emcc_args:
+    if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
       code_start = None
@@ -1797,7 +1797,7 @@ int main(int argc, char **argv) {
       self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
       win = open('src.cpp.o.js').read()
 
-      if '-O2' in self.emcc_args:
+      if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
         code_start = 'var TOTAL_MEMORY'
         fail = fail[fail.find(code_start):]
@@ -5163,7 +5163,7 @@ int main(int argc, char** argv) {
   puts(buffer);
 }
 '''
-    self.emcc_args += ['--js-library', 'lib.js']
+    self.emcc_args += ['--js-library', 'lib.js',  '-std=c++11']
     self.do_run(src, 'dddddddddd')
     Settings.INCLUDE_FULL_LIBRARY = 1
     self.do_run(src, 'dddddddddd')
@@ -5863,19 +5863,13 @@ def process(filename):
 
     test()
 
-    if not self.is_wasm(): # wasm does this all the time
-      # Run with duplicate function elimination turned on
-      dfe_supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
-
-      for opt_level in dfe_supported_opt_levels:
-        if opt_level in self.emcc_args:
-          print("Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1", file=sys.stderr)
-          num_original_funcs = self.count_funcs('src.cpp.o.js')
-          Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
-          test()
-          # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
-          assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
-          break
+    if self.supports_js_dfe():
+      print("Testing poppler with ELIMINATE_DUPLICATE_FUNCTIONS set to 1", file=sys.stderr)
+      num_original_funcs = self.count_funcs('src.cpp.o.js')
+      Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+      test()
+      # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
+      assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
 
   @sync
   def test_openjpeg(self):
@@ -6440,6 +6434,22 @@ def process(filename):
     shutil.move(self.in_dir('src.cpp.o.js'), self.in_dir('pgoed2.js'))
     assert open('pgoed.js').read() == open('pgoed2.js').read()
 
+  def test_response_file(self):
+    with open('rsp_file', 'w') as f:
+      f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
+    subprocess.check_call([PYTHON, EMCC, "@rsp_file"])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
+  def test_linker_response_file(self):
+    objfile = os.path.join(self.get_dir(), 'response_file.o')
+    subprocess.check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile])
+    # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
+    # by emscripten
+    with open('rsp_file', 'w') as f:
+      f.write(objfile + ' -foobar')
+    subprocess.check_call([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')])
+    self.do_run('' , 'hello, world', basename='response_file', no_build=True)
+
   def test_exported_response(self):
     src = r'''
       #include <stdio.h>
@@ -6574,7 +6584,7 @@ def process(filename):
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
-  @no_wasm_backend('s2wasm does not generate symbol maps')
+  @no_wasm_backend('lld does not generate symbol maps')
   def test_demangle_stacks_symbol_map(self):
     Settings.DEMANGLE_SUPPORT = 1
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
@@ -6823,9 +6833,23 @@ someweirdtext
     Building.COMPILER_TEST_OPTS += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
+  def test_embind_float_constants(self):
+    self.emcc_args += ['--bind']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_float_constants.cpp'),
+                          path_from_root('tests', 'embind', 'test_float_constants.out'))
+
+  def test_embind_negative_constants(self):
+    self.emcc_args += ['--bind']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_negative_constants.cpp'),
+                          path_from_root('tests', 'embind', 'test_negative_constants.out'))
+
   def test_embind_unsigned(self):
     self.emcc_args += ['--bind', '--std=c++11']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
+
+  def test_embind_val(self):
+    self.emcc_args += ['--bind', '--std=c++11']
+    self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
 
   def test_embind_f_no_rtti(self):
     self.emcc_args += ['--bind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
@@ -7034,18 +7058,8 @@ Module.printErr = Module['printErr'] = function(){};
         # the file attribute is optional, but if it is present it needs to refer
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
-      if not self.is_wasm_backend():
-        assert len(data['sources']) == 1, data['sources']
-        self.assertPathsIdentical(src_filename, data['sources'][0])
-      else:
-        # Wasm backend currently adds every file linked as part of compiler-rt
-        # to the 'sources' field.
-        # TODO(jgravelle): when LLD is the wasm-backend default, make sure it
-        # emits only the files we have lines for.
-        assert len(data['sources']) > 1, data['sources']
-        normalized_srcs = [src.replace('\\', '/') for src in data['sources']]
-        normalized_filename = src_filename.replace('\\', '/')
-        assert normalized_filename in normalized_srcs, "Source file not found"
+      assert len(data['sources']) == 1, data['sources']
+      self.assertPathsIdentical(src_filename, data['sources'][0])
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
@@ -7499,6 +7513,12 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  def test_asyncify_unused(self):
+    # test a program not using asyncify, but the pref is set
+    Settings.ASYNCIFY = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
   def test_coroutine_emterpretify_async(self):
@@ -7569,17 +7589,17 @@ extern "C" {
     self.do_run(open(os.path.join(self.get_dir(), 'main.cpp'), 'r').read(), 'able to run memprof')
 
   def test_fs_dict(self):
-      Settings.FORCE_FILESYSTEM = 1
-      open(self.in_dir('pre.js'), 'w').write('''
-        Module = {};
-        Module['preRun'] = function() {
-            Module.print(typeof FS.filesystems['MEMFS']);
-            Module.print(typeof FS.filesystems['IDBFS']);
-            Module.print(typeof FS.filesystems['NODEFS']);
-        };
-      ''')
-      self.emcc_args += ['--pre-js', 'pre.js']
-      self.do_run('', 'object\nobject\nobject')
+    Settings.FORCE_FILESYSTEM = 1
+    open(self.in_dir('pre.js'), 'w').write('''
+      Module = {};
+      Module['preRun'] = function() {
+          Module.print(typeof FS.filesystems['MEMFS']);
+          Module.print(typeof FS.filesystems['IDBFS']);
+          Module.print(typeof FS.filesystems['NODEFS']);
+      };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @sync
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
@@ -7637,6 +7657,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
   def test_environment(self):
+    Settings.ASSERTIONS = 1
     for engine in JS_ENGINES:
       for work in (1, 0):
         # set us to test in just this engine
@@ -7656,6 +7677,13 @@ extern "C" {
             raise
         js = open('src.cpp.o.js').read()
         assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
+
+  def test_dfe(self):
+    if not self.supports_js_dfe(): return self.skip('dfe-only')
+    Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.emcc_args += ['-g2'] # test for issue #6331
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
 # Generate tests for everything
 def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,

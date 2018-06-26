@@ -14,7 +14,7 @@
 using namespace emscripten;
 
 extern "C" {
-    const char* __attribute__((used)) __getTypeName(const std::type_info* ti) {
+    const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
         if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
             int stat;

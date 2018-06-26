@@ -1,0 +1,5 @@
+NEGATIVE_FLOAT_NUM = -3.1416
+NEGATIVE_INT_NUM = -10
+negative_float_num = -3.1415998935699463
+negative_double_num = -2.7182818
+negative_int_num = -10
