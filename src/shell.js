@@ -296,21 +296,6 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
 var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
 
-// Export Module.print|printErr here, if requested.
-{{{ 'print' in EXPORTED_RUNTIME_METHODS_SET ? "Module['print'] = out;" : '' }}}
-{{{ 'printErr' in EXPORTED_RUNTIME_METHODS_SET ? "Module['printErr'] = err;" : '' }}}
-#if ASSERTIONS
-function badPrintUsage() {
-  throw new Error('Calling Module.print|printErr is deprecated - just call out() or err() (but you can still define them on Module beforehand and they will be used');
-};
-// These may be set if the user provided them, or if the user asked them to be exported.
-// Otherwise, it is an error to call them.
-if (!Module['print']) Module['print'] = badPrintUsage;
-if (!Module['printErr']) Module['printErr'] = badPrintUsage;
-if (!Module.print) Module.print = badPrintUsage;
-if (!Module.printErr) Module.printErr = badPrintUsage;
-#endif
-
 // *** Environment setup code ***
 
 // Merge back in the overrides

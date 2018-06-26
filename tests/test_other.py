@@ -7396,6 +7396,29 @@ int main() {
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
 
+  def test_warn_module_print_err(self):
+    ERROR = 'was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)'
+
+    def test(contents, expected, args=[]):
+      open('src.cpp', 'w').write(r'''
+  #include <emscripten.h>
+  int main() {
+    EM_ASM({ %s });
+    return 0;
+  }
+  ''' % contents)
+      run_process([PYTHON, EMCC, 'src.cpp'] + args)
+      self.assertContained(expected, run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
+
+    # error shown (when assertions are on)
+    test("Module.print('x')", ERROR)
+    test("Module['print']('x')", ERROR)
+    test("Module.printErr('x')", ERROR)
+    test("Module['printErr']('x')", ERROR)
+
+    # when exported, all good
+    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print", "printErr"]'])
+
   def test_arc4random(self):
     open('src.c', 'w').write(r'''
 #include <stdlib.h>
