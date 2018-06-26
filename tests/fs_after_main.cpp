@@ -37,9 +37,9 @@ int main() {
   EM_ASM({
     (function() {
       // exiting main should not cause any weirdness with printing
-      var realPrint = Module['print'];
+      var realPrint = out;
       Module['extraSecretBuffer'] = '';
-      Module['print'] = function(x) {
+      out = function(x) {
         Module['extraSecretBuffer'] += x;
         realPrint(x);
       };
