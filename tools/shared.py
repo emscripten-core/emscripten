@@ -1741,7 +1741,7 @@ class Building(object):
     # symbols for renaming of the __invoke symbols
     # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
     # no longer need to rename these symbols.
-    #if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
+    #if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #  cmd.append('--strip-debug')
 
     if Settings.EXPORT_ALL:
