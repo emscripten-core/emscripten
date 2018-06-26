@@ -307,6 +307,8 @@ function badPrintUsage() {
 // Otherwise, it is an error to call them.
 if (!Module['print']) Module['print'] = badPrintUsage;
 if (!Module['printErr']) Module['printErr'] = badPrintUsage;
+if (!Module.print) Module.print = badPrintUsage;
+if (!Module.printErr) Module.printErr = badPrintUsage;
 #endif
 
 // *** Environment setup code ***

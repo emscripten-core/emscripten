@@ -3,64 +3,64 @@
 
 var sme = new TheModule.Parent(42);
 sme.mulVal(2);
-Theout('*')
-Theout(sme.getVal());
+out('*')
+out(sme.getVal());
 sme.parentFunc(90);
-Theout(typeof sme.getAsConst());
-Theout(typeof sme.voidStar(sme));
-Theout(sme.get_immutableAttr());
-Theout(typeof sme.getBoolean());
-Theout(sme.getBoolean());
+out(typeof sme.getAsConst());
+out(typeof sme.voidStar(sme));
+out(sme.get_immutableAttr());
+out(typeof sme.getBoolean());
+out(sme.getBoolean());
 
-Theout('c1');
+out('c1');
 
 var c1 = new TheModule.Child1();
-Theout(c1.getVal());
+out(c1.getVal());
 c1.mulVal(2);
-Theout(c1.getVal());
-Theout(c1.getValSqr());
-Theout(c1.getValSqr(3));
-Theout(c1.getValTimes()); // default argument should be 1
-Theout(c1.getValTimes(2));
-Theout(sme.getBoolean());
+out(c1.getVal());
+out(c1.getValSqr());
+out(c1.getValSqr(3));
+out(c1.getValTimes()); // default argument should be 1
+out(c1.getValTimes(2));
+out(sme.getBoolean());
 c1.parentFunc(90);
 
-Theout('c1 v2');
+out('c1 v2');
 
 c1 = new TheModule.Child1(8); // now with a parameter, we should handle the overloading automatically and properly and use constructor #2
-Theout(c1.getVal());
+out(c1.getVal());
 c1.mulVal(2);
-Theout(c1.getVal());
-Theout(c1.getValSqr());
-Theout(c1.getValSqr(3));
-Theout(sme.getBoolean());
+out(c1.getVal());
+out(c1.getValSqr());
+out(c1.getValSqr(3));
+out(sme.getBoolean());
 
-Theout('c2')
+out('c2')
 
 var c2 = new TheModule.Child2();
-Theout(c2.getVal());
+out(c2.getVal());
 c2.mulVal(2);
-Theout(c2.getVal());
-Theout(c2.getValCube());
+out(c2.getVal());
+out(c2.getValCube());
 var succeeded;
 try {
   succeeded = 0;
-  Theout(c2.doSomethingSecret()); // should fail since private
+  out(c2.doSomethingSecret()); // should fail since private
   succeeded = 1;
 } catch(e) {}
-Theout(succeeded);
+out(succeeded);
 try {
   succeeded = 0;
-  Theout(c2.getValSqr()); // function from the other class
+  out(c2.getValSqr()); // function from the other class
   succeeded = 1;
 } catch(e) {}
-Theout(succeeded);
+out(succeeded);
 try {
   succeeded = 0;
   c2.getValCube(); // sanity
   succeeded = 1;
 } catch(e) {}
-Theout(succeeded);
+out(succeeded);
 
 TheModule.Child2.prototype.printStatic(); // static calls go through the prototype
 
@@ -73,13 +73,13 @@ c2.virtualFunc2();
 var c3 = new TheModule.Child2JS;
 
 c3.virtualFunc = function() {
-  Theout('*js virtualf replacement*');
+  out('*js virtualf replacement*');
 };
 c3.virtualFunc2 = function() {
-  Theout('*js virtualf2 replacement*');
+  out('*js virtualf2 replacement*');
 };
 c3.virtualFunc3 = function(x) {
-  Theout('*js virtualf3 replacement ' + x + '*');
+  out('*js virtualf3 replacement ' + x + '*');
 };
 
 c3.virtualFunc();
@@ -89,7 +89,7 @@ c3.virtualFunc3(123); // this one is not replaced!
 try {
   c3.virtualFunc4(123);
 } catch(e) {
-  Theout('caught: ' + e);
+  out('caught: ' + e);
 }
 
 // Test virtual method dispatch from c++
@@ -98,93 +98,93 @@ TheModule.Child2.prototype.runVirtualFunc3(c3, 43);
 c2.virtualFunc(); // original should remain the same
 TheModule.Child2.prototype.runVirtualFunc(c2);
 c2.virtualFunc2();
-Theout('*ok*');
+out('*ok*');
 
 // Part 2
 
 var suser = new TheModule.StringUser("hello", 43);
 suser.Print(41, "world");
 suser.PrintFloat(12.3456);
-Theout(suser.returnAString());
+out(suser.returnAString());
 
 var bv = new TheModule.RefUser(10);
 var bv2 = new TheModule.RefUser(11);
-Theout(bv2.getValue(bv));
+out(bv2.getValue(bv));
 
-Theout(typeof bv2.getMe());
-Theout(bv2.getMe().getValue(bv));
-Theout(bv2.getMe().getValue(bv2));
+out(typeof bv2.getMe());
+out(bv2.getMe().getValue(bv));
+out(bv2.getMe().getValue(bv2));
 
-Theout(typeof bv2.getCopy());
-Theout(bv2.getCopy().getValue(bv));
-Theout(bv2.getCopy().getValue(bv2));
+out(typeof bv2.getCopy());
+out(bv2.getCopy().getValue(bv));
+out(bv2.getCopy().getValue(bv2));
 
 bv2.getAnother().PrintFloat(21.12);
 
-Theout(new TheModule.Inner().get());
-Theout('getAsArray: ' + new TheModule.Inner().getAsArray(12));
+out(new TheModule.Inner().get());
+out('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 
-Theout(TheModule.enum_value1);
-Theout(TheModule.enum_value2);
+out(TheModule.enum_value1);
+out(TheModule.enum_value2);
 
 // Enums from classes are accessed via the class.
 enumClassInstance = new TheModule.EnumClass();
-Theout([enumClassInstance.GetEnum(), TheModule.EnumClass.e_val].join(','));
+out([enumClassInstance.GetEnum(), TheModule.EnumClass.e_val].join(','));
 
 // Enums from namespaces are accessed via the top-level module, as with classes defined
 // in namespaces, see `Inner` above.
-Theout(TheModule.e_namespace_val);
+out(TheModule.e_namespace_val);
 
 typeTester = new TheModule.TypeTestClass();
 
-Theout('return char ' + typeTester.ReturnCharMethod());
+out('return char ' + typeTester.ReturnCharMethod());
 typeTester.AcceptCharMethod((2<<6)-1);
 // Prints -1 because the c++ code accepts unsigned char.
 typeTester.AcceptCharMethod((2<<7)-1);
 
 // Prints -1 because all integers are signed in javascript.
-Theout('return unsigned char ' + typeTester.ReturnUnsignedCharMethod());
+out('return unsigned char ' + typeTester.ReturnUnsignedCharMethod());
 typeTester.AcceptUnsignedCharMethod((2<<7)-1);
 
 // Prints -1 because all integers are signed in javascript.
-Theout('return unsigned short ' + typeTester.ReturnUnsignedShortMethod());
+out('return unsigned short ' + typeTester.ReturnUnsignedShortMethod());
 typeTester.AcceptUnsignedShortMethod((2<<15)-1);
 
 // Prints -1 because all integers are signed in javascript.
-Theout('return unsigned long ' + typeTester.ReturnUnsignedLongMethod());
+out('return unsigned long ' + typeTester.ReturnUnsignedLongMethod());
 typeTester.AcceptUnsignedLongMethod((2<<31)-1);
 var voidPointerUser = new TheModule.VoidPointerUser();
 
 voidPointerUser.SetVoidPointer(3);
-Theout('void * ' + voidPointerUser.GetVoidPointer());
+out('void * ' + voidPointerUser.GetVoidPointer());
 
 // Array tests
 
 var arrayClass = new TheModule.ArrayClass();
-Theout('int_array[0] == ' + arrayClass.get_int_array(0));
-Theout('int_array[7] == ' + arrayClass.get_int_array(7));
+out('int_array[0] == ' + arrayClass.get_int_array(0));
+out('int_array[7] == ' + arrayClass.get_int_array(7));
 arrayClass.set_int_array(0, 42);
 arrayClass.set_int_array(7, 43);
-Theout('int_array[0] == ' + arrayClass.get_int_array(0));
-Theout('int_array[7] == ' + arrayClass.get_int_array(7));
+out('int_array[0] == ' + arrayClass.get_int_array(0));
+out('int_array[7] == ' + arrayClass.get_int_array(7));
 
 try {
   arrayClass.set_int_array(-1, struct);
 } catch (e) {
-  Theout('idx -1: ' + e);
+  out('idx -1: ' + e);
 }
 
 try {
   arrayClass.set_int_array(8, struct);
 } catch (e) {
-  Theout('idx 8: ' + e);
+  out('idx 8: ' + e);
 }
 
-Theout('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
-Theout('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
-Theout('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
-Theout('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+out('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+out('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+out('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+out('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
 
 // Verify that bounds checking is *not* enabled when not asked for.
 // This actually causes an illegal memory access, but as it's only a read, and the return
@@ -196,15 +196,15 @@ arrayClass.set_struct_array(0, struct);
 struct = new TheModule.StructInArray(14, 18);
 arrayClass.set_struct_array(7, struct);
 
-Theout('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
-Theout('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
-Theout('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
-Theout('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
+out('struct_array[0].attr1 == ' + arrayClass.get_struct_array(0).get_attr1());
+out('struct_array[0].attr2 == ' + arrayClass.get_struct_array(0).get_attr2());
+out('struct_array[7].attr1 == ' + arrayClass.get_struct_array(7).get_attr1());
+out('struct_array[7].attr2 == ' + arrayClass.get_struct_array(7).get_attr2());
 
 struct = new TheModule.StructInArray(100, 101);
 arrayClass.set_struct_ptr_array(0, struct);
-Theout('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
-Theout('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
+out('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
+out('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
 // receiving arrays
 
@@ -265,11 +265,11 @@ if (isMemoryGrowthAllowed) {
   }
 
   if (intArray.length !== numCopiedEntries) {
-    Theout('ERROR: An array was not copied to HEAP32 after memory reallocation');
+    out('ERROR: An array was not copied to HEAP32 after memory reallocation');
   }
 }
 
 //
 
-Theout('\ndone.')
+out('\ndone.')
 
