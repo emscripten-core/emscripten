@@ -440,6 +440,14 @@ var LibraryEmVal = {
     object = requireHandle(object);
     return item in object;
   },
+
+  _emval_delete__deps: ['$requireHandle'],
+  _emval_delete: function(object, property) {
+    object = requireHandle(object);
+    property = requireHandle(property);
+    return delete object[property];
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);

@@ -1019,6 +1019,48 @@ var LibraryGL = {
     emscriptenWebGLGet(name_, p, 'Boolean');
   },
 
+#if USE_WEBGL2
+  glGetInternalformativ__sig: 'viiiii',
+  glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
+    if (bufSize < 0) {
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetInternalformativ: bufSize=' + bufSize + ' < 0');
+#endif
+      return;
+    }
+    var samples = GLctx['getInternalformatParameter'](target, internalformat, 0x80A9 /*GL_SAMPLES*/);
+    if (!samples) {
+      // probably target != GL_RENDERBUFFER or bad internalformat
+      GL.recordError(0x0500 /* GL_INVALID_ENUM */);
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_ENUM in glGetInternalformativ');
+#endif
+      return;
+    }
+    switch(pname) {
+      case 0x80A9 /*GL_SAMPLES*/:
+        var n = Math.min(bufSize, samples.length);
+        for (var i = 0; i < n; i++) {
+          var v = samples[i];
+          {{{ makeSetValue('params', 'i*4', 'v', 'i32') }}};
+        }
+        break;
+      case 0x9380 /*GL_NUM_SAMPLE_COUNTS*/:
+        if (bufSize > 1) {
+          var v = samples.length;
+          {{{ makeSetValue('params', '0', 'v', 'i32') }}};
+        }
+        break;
+      default:
+        GL.recordError(0x0500 /* GL_INVALID_ENUM */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM due to unknown pname in glGetInternalformativ: ' + pname);
+#endif
+    }
+  },
+#endif
+
   glGenTextures__sig: 'vii',
   glGenTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
