@@ -1426,6 +1426,15 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
+    case 'dot': {
+      // In theory any property access in JS can have side effects, but not in
+      // objects we assume are static.
+      if (node[1][0] === 'name') {
+        var name = node[1][1];
+        if (name === 'Math') return false;
+      }
+      return true;
+    }
     default: return true;
   }
 }

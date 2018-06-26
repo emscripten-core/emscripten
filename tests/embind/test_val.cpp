@@ -475,6 +475,31 @@ int main()
   ensure(val("c").in(val::global("a")));
   ensure_not(val("d").in(val::global("a")));
   
+  test("template<typename T> bool delete_(const T& property)");
+  EM_ASM(
+    a = {};
+    a.b = undefined;
+    a[0] = null;
+    a[1] = 2;
+    a.c = 'c';
+  );
+  ensure_js("'b' in a");
+  ensure_js("0 in a");
+  ensure_js("1 in a");
+  ensure_js("'c' in a");
+  ensure(val::global("a").delete_("b") == true);
+  ensure_js_not("'b' in a");
+  ensure_js("0 in a");
+  ensure_js("1 in a");
+  ensure_js("'c' in a");
+  ensure(val::global("a").delete_(0) == true);
+  ensure(val::global("a").delete_(val(1)) == true);
+  ensure(val::global("a").delete_(val("c")) == true);
+  ensure_js_not("'b' in a");
+  ensure_js_not("0 in a");
+  ensure_js_not("1 in a");
+  ensure_js_not("'c' in a");
+  
   // this test should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(val v)");
   EM_ASM(

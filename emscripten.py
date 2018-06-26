@@ -1144,7 +1144,9 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   asm_setup = ''
   if settings['ASSERTIONS'] >= 2:
     for sig in function_table_data:
-      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+      # if the table is empty, debug_tables will not contain it
+      body = debug_tables.get(sig, [])
+      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(body) + ';'
   if settings['ASSERTIONS']:
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
@@ -1903,14 +1905,6 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
     metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
   return metadata
-
-
-def read_metadata_wast(wast, DEBUG):
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, DEBUG)
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
