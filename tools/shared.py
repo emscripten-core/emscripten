@@ -1718,6 +1718,46 @@ class Building(object):
       Building.parallel_llvm_nm(object_names)
 
   @staticmethod
+  def link_lld(files, target, force_archive_contents=False):
+    def wasm_rt_fail(archive_file):
+      def wrapped():
+        raise FatalError('Expected {} to already be built'.format(archive_file))
+      return wrapped
+
+    libc_rt_lib = Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
+    compiler_rt_lib = Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
+    cmd = [WASM_LD,
+      '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
+      '--global-base=%s' % Settings.GLOBAL_BASE,
+      '--initial-memory=%s' % Settings.TOTAL_MEMORY,
+      '-o', target,
+      '--no-entry',
+      '--allow-undefined',
+      '--import-memory',
+      '--export', '__wasm_call_ctors'
+      ] + files + [libc_rt_lib, compiler_rt_lib]
+
+    # emscripten-wasm-finalize currently depends on the presence of debug
+    # symbols for renaming of the __invoke symbols
+    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
+    # no longer need to rename these symbols.
+    #if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
+    #  cmd.append('--strip-debug')
+
+    if Settings.EXPORT_ALL:
+      cmd += ['--no-gc-sections', '--export-all']
+    else:
+      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    logging.debug('emcc: lld-linking: %s to %s', files, target)
+    t = time.time()
+    check_call(cmd)
+    if DEBUG:
+      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+      t = time.time()
+
+  @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
     if not temp_files:
       temp_files = configuration.get_temp_files()
