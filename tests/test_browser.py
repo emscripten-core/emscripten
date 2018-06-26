@@ -1570,7 +1570,7 @@ keydown(100);keyup(100); // trigger the end
           FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
+      out =    function(s) { self.postMessage({channel: "stdout", line: s}); };
       Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     prejs_file.close()
@@ -3162,8 +3162,8 @@ window.close = function() {
         strcpy(ret, temp);
         temp[1] = 'x';
         EM_ASM({
-          Module.realPrint = Module.print;
-          Module.print = function(x) {
+          Module.realPrint = out;
+          out = function(x) {
             if (!Module.printed) Module.printed = x;
             Module.realPrint(x);
           };
@@ -3648,7 +3648,7 @@ window.close = function() {
         };
       }
       // show stderr for the viewer's fun
-      Module.printErr = function(x) {
+      err = function(x) {
         out('<<< ' + x + ' >>>');
         console.log(x);
       };

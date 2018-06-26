@@ -9,8 +9,8 @@
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
 #if BENCHMARK
-Module.realPrint = Module.print;
-Module.print = Module.printErr = function(){};
+Module.realPrint = out;
+out = outErr = function(){};
 #endif
 
 #if SAFE_HEAP

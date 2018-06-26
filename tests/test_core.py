@@ -6887,7 +6887,7 @@ someweirdtext
       # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
       open('export.js', 'w').write('''
 // test purposes: remove printErr output, whose order is unpredictable when compared to print
-Module.printErr = Module['printErr'] = function(){};
+err = err = function(){};
 ''')
       self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
       if allow_memory_growth:

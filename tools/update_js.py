@@ -18,9 +18,25 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
   fixed = fixed.replace('Module["print"](', 'out(')
   fixed = fixed.replace('Module[\'print\'](', 'out(')
   fixed = fixed.replace('Module.print(', 'out(')
+
   fixed = fixed.replace('Module["printErr"](', 'err(')
   fixed = fixed.replace('Module[\'printErr\'](', 'err(')
   fixed = fixed.replace('Module.printErr(', 'err(')
+
+  fixed = fixed.replace(' = Module["print"]', ' = out')
+  fixed = fixed.replace(' = Module[\'print\']', ' = out')
+  fixed = fixed.replace('Module["print"] = ', 'out = ')
+  fixed = fixed.replace('Module[\'print\'] = ', 'out = ')
+  fixed = fixed.replace(' = Module.print', ' = out')
+  fixed = fixed.replace('Module.print = ', 'out = ')
+
+  fixed = fixed.replace(' = Module["printErr"]', ' = err')
+  fixed = fixed.replace(' = Module[\'printErr\']', ' = err')
+  fixed = fixed.replace('Module["printErr"] = ', 'err = ')
+  fixed = fixed.replace('Module[\'printErr\'] = ', 'err = ')
+  fixed = fixed.replace(' = Module.printErr', ' = err')
+  fixed = fixed.replace('Module.printErr = ', 'err = ')
+
   if fixed != orig:
     open(x, 'w').write(fixed)
 

@@ -3,8 +3,8 @@
   var Module = {};
   var args = [];
   Module.arguments = [];
-  Module.print = parentModule.print;
-  Module.printErr = parentModule.printErr;
+  out = parentModule.print;
+  err = parentModule.printErr;
 
   Module.cleanups = [];
 

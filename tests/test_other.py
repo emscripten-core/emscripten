@@ -6857,9 +6857,9 @@ int main() {
       return x >> SPLIT_MEMORY_BITS;
     }
     assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
-    var p = Module.print;
-    var e = Module.printErr;
-    Module.printErr = Module.print = function(){};
+    var p = out;
+    var e = outErr;
+    err = out = function(){};
     var fail = false;
     if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
@@ -6890,8 +6890,8 @@ int main() {
         }
       }
     }
-    Module.print = p;
-    Module.printErr = e;
+    out = p;
+    err = e;
     if (fail) out('FAIL. ' + fail);
     else out('success.');
   ));

@@ -56,8 +56,8 @@ function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
 }
-Module['print'] = threadPrint;
-Module['printErr'] = threadPrintErr;
+out = threadPrint;
+err = threadPrintErr;
 this.alert = threadAlert;
 
 // #if WASM
