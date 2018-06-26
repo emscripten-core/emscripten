@@ -3020,6 +3020,15 @@ window.close = function() {
       print(opts)
       self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
 
+  def test_emterpreter_async_bad_2(self):
+    for opts in [0, 1, 2, 3]:
+      for assertions in [0, 1]:
+        # without assertions, we end up continuing to run more non-emterpreted code in this testcase, returning 1
+        # with assertions, we hit the emterpreter-async assertion on that, and report a  clear error
+        expected = '2' if assertions else '1'
+        print(opts, assertions, expected)
+        self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions])
+
   def test_emterpreter_async_mainloop(self):
     for opts in [0, 1, 2, 3]:
       print(opts)

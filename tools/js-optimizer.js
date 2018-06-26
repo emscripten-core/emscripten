@@ -6093,8 +6093,8 @@ function emterpretify(ast) {
   }
 
   // functions which are ok to run while async, even if not emterpreted
-  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset', '_memcpy', '_memmove', '_strlen', '_strncpy', '_strcpy', '_strcat', 'SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK');
-  function okToCallWhileAsync(name) {
+  var OK_TO_CALL_WHILE_ASYNC = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK');
+  function okToCallWhileAsyncSaveOrRestore(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;
     if (name in OK_TO_CALL_WHILE_ASYNC) return true;
@@ -7376,10 +7376,18 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !okToCallWhileAsync(func[1])) {
+      if (ASYNC && ASSERTIONS && !okToCallWhileAsyncSaveOrRestore(func[1])) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
         // add asserts right after each call
+        function makeCheckBadState() {
+          // A bad state is when saving or restoring the stack. Note that it is ok to run code
+          // during a sleep, for coroutines or yield funcs, etc. - we don't check those.
+          return ['binary', '|',
+            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 1]],
+            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 2]],
+          ];
+        }
         var stack = [];
         traverse(func, function(node, type) {
           stack.push(node);
@@ -7403,7 +7411,7 @@ function emterpretify(ast) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
                 ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
-                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
+                ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
               ]);
               return;
             }
@@ -7411,7 +7419,7 @@ function emterpretify(ast) {
           // no important parent
           trample(node, ['seq',
             copy(node),
-            ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
           ]);
         });
         // add an assert in the prelude of the function
@@ -7421,7 +7429,7 @@ function emterpretify(ast) {
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
             stats.splice(i, 0, ['stat',
-              ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+              ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
             ]);
             break;
           }
