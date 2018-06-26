@@ -89,6 +89,7 @@ namespace emscripten {
             EM_VAL _emval_typeof(EM_VAL value);
             bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
             bool _emval_in(EM_VAL item, EM_VAL object);
+            bool _emval_delete(EM_VAL object, EM_VAL property);
         }
 
         template<const char* address>
@@ -274,7 +275,6 @@ namespace emscripten {
     class val {
     public:
         // missing operators:
-        // * delete
         // * ! ~ - + ++ --
         // * * / %
         // * + -
@@ -497,6 +497,11 @@ namespace emscripten {
 
         bool in(const val& v) const {
             return internal::_emval_in(handle, v.handle);
+        }
+
+        template<typename T>
+        bool delete_(const T& property) const {
+            return internal::_emval_delete(handle, val(property).handle);
         }
 
     private:

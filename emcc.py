@@ -31,7 +31,7 @@ if __name__ == '__main__':
 import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
 from subprocess import PIPE
 from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess
 from tools.response_file import substitute_response_files
 import tools.line_endings
 
@@ -188,6 +188,10 @@ class EmccOptions(object):
     self.output_eol = os.linesep
 
 
+def use_source_map(options):
+  return options.debug_level >= 4
+
+
 class JSOptimizer(object):
   def __init__(self, target, options, js_transform_tempfiles, in_temp):
     self.queue = []
@@ -227,8 +231,8 @@ class JSOptimizer(object):
           if len(curr) == 0:
             curr.append(p)
           else:
-            native = shared.js_optimizer.use_native(p, source_map=self.debug_level >= 4)
-            last_native = shared.js_optimizer.use_native(curr[-1], source_map=self.debug_level >= 4)
+            native = shared.js_optimizer.use_native(p, source_map=use_source_map(self))
+            last_native = shared.js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
             if native == last_native:
               curr.append(p)
             else:
@@ -270,7 +274,7 @@ class JSOptimizer(object):
     if self.cleanup_shell and 'last' in passes:
       passes += ['cleanup']
     logging.debug('applying js optimization passes: %s', ' '.join(passes))
-    final = shared.Building.js_optimizer(final, passes, self.debug_level >= 4,
+    final = shared.Building.js_optimizer(final, passes, use_source_map(self),
                                          self.extra_info, just_split=just_split,
                                          just_concat=just_concat,
                                          output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
@@ -299,7 +303,7 @@ class JSOptimizer(object):
 
 
 def embed_memfile(options):
-  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and options.debug_level < 4))
+  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not use_source_map(options)))
 
 
 #
@@ -697,7 +701,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = options.opt_level >= 2
 
       # TODO: support source maps with js_transform
-      if options.js_transform and options.debug_level >= 4:
+      if options.js_transform and use_source_map(options):
         logging.warning('disabling source maps because a js transform is being done')
         options.debug_level = 3
 
@@ -1100,6 +1104,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.js_opts = True
         options.force_js_opts = True
         assert options.use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+        assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
 
       if shared.Settings.DEAD_FUNCTIONS:
         if not options.js_opts:
@@ -1399,9 +1404,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
-      if options.debug_level >= 4 or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
+      if use_source_map(options) or ((final_suffix not in JS_CONTAINING_SUFFIXES or (has_source_inputs and final_suffix in JS_CONTAINING_SUFFIXES)) and options.requested_debug == '-g'):
         # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
-        if options.debug_level == 4 or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
+        if use_source_map(options) or not (final_suffix in JS_CONTAINING_SUFFIXES and options.js_opts):
           newargs.append('-g') # preserve LLVM debug info
           options.debug_level = 4
           shared.Settings.DEBUG_LEVEL = 4
@@ -1598,7 +1603,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Optimize, if asked to
       if not LEAVE_INPUTS_RAW:
         # remove LLVM debug if we are not asked for it
-        link_opts = [] if options.debug_level >= 4 or shared.Settings.CYBERDWARF else ['-strip-debug']
+        link_opts = [] if use_source_map(options) or shared.Settings.CYBERDWARF else ['-strip-debug']
         if not shared.Settings.ASSERTIONS:
           link_opts += ['-disable-verify']
         else:
@@ -1682,7 +1687,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
-        if options.debug_level >= 4:
+        if use_source_map(options):
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
       if shared.Settings.CYBERDWARF:
@@ -1884,7 +1889,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Building.eliminate_duplicate_funcs(final)
           if DEBUG: save_intermediate('dfe', 'js')
 
-      if shared.Settings.EVAL_CTORS and options.memory_init_file and options.debug_level < 4 and not shared.Settings.WASM:
+      if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
         if DEBUG: save_intermediate('eval-ctors', 'js')
@@ -1925,7 +1930,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.CYBERDWARF:
         execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
 
-      if options.debug_level >= 4 and not shared.Settings.WASM:
+      if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
 
       # track files that will need native eols
@@ -2415,7 +2420,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
       if debug_info:
         cmd += ['-g']
-        if options.debug_level >= 4:
+        if use_source_map(options):
           cmd += ['--source-map=' + wasm_binary_target + '.map']
           if options.source_map_base:
             cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
@@ -2558,6 +2563,7 @@ def generate_html(target, options, js_target, target_basename,
   script = ScriptSource()
 
   logging.debug('generating HTML')
+  # TODO: use read_and_preprocess(options.shell_path) here, once test errors are fixed
   shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)

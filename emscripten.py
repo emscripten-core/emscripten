@@ -1144,7 +1144,9 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
   asm_setup = ''
   if settings['ASSERTIONS'] >= 2:
     for sig in function_table_data:
-      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(debug_tables[sig]) + ';'
+      # if the table is empty, debug_tables will not contain it
+      body = debug_tables.get(sig, [])
+      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(body) + ';'
   if settings['ASSERTIONS']:
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs, settings) + 'abort(x) }\n'
@@ -1825,6 +1827,11 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
         tmp = dst + '.wast'
         shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
+  basename = shared.unsuffixed(outfile.name)
+  wasm = basename + '.wasm'
+  metadata_file = basename + '.metadata'
+  base_wasm = basename + '.lld.wasm'
+
   with temp_files.get_file('.wb.o') as temp_o:
     backend_args = create_backend_args_wasm(infile, temp_o, settings)
     if DEBUG:
@@ -1835,82 +1842,37 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
       logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
       t = time.time()
     debug_copy(temp_o, 'emcc-llvm-backend-output.o')
-
-    basename = shared.unsuffixed(outfile.name)
-    wasm = basename + '.wasm'
-    metadata_file = basename + '.metadata'
-    base_wasm = basename + '.lld.wasm'
-
-    libc_rt_lib = shared.Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
-    compiler_rt_lib = shared.Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    cmd = [shared.WASM_LD,
-      '-z', 'stack-size=%s' % settings['TOTAL_STACK'],
-      '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-      '--initial-memory=%s' % shared.Settings.TOTAL_MEMORY,
-      temp_o, libc_rt_lib, compiler_rt_lib,
-      '-o', base_wasm,
-      '--no-entry',
-      '--allow-undefined',
-      '--import-memory',
-      '--export', '__wasm_call_ctors']
-
-    # emscripten-wasm-finalize currently depends on the presence of debug
-    # symbols for renaming of the __invoke symbols
-    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
-    # no longer need to rename these symbols.
-    #if settings['DEBUG_LEVEL'] < 2 and not settings['PROFILING_FUNCS']:
-    #  cmd.append('--strip-debug')
-
-    if settings['EXPORT_ALL']:
-      cmd += ['--no-gc-sections', '--export-all']
-    else:
-      for export in shared.expand_response(settings['EXPORTED_FUNCTIONS']):
-        cmd += ['--export', export[1:]] # Strip the leading underscore
-    shared.check_call(cmd)
-
-    if DEBUG:
-      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
-      t = time.time()
+    shared.Building.link_lld([temp_o], base_wasm)
     debug_copy(base_wasm, 'base_wasm.wasm')
 
-    write_source_map = settings['DEBUG_LEVEL'] >= 4
-    if write_source_map:
-      base_source_map = base_wasm + '.map'
-      sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'), 
-                       base_wasm,
-                       '--dwarfdump=' + shared.LLVM_DWARFDUMP,
-                       '-o',  base_source_map]
-      if not settings['SOURCE_MAP_BASE']:
-        logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-      else:
-        sourcemap_cmd += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
-      shared.check_call(sourcemap_cmd)
-      debug_copy(base_source_map, 'base_wasm.map')
+  write_source_map = settings['DEBUG_LEVEL'] >= 4
+  if write_source_map:
+    base_source_map = base_wasm + '.map'
+    sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'), 
+                     base_wasm,
+                     '--dwarfdump=' + shared.LLVM_DWARFDUMP,
+                     '-o',  base_source_map]
+    if not settings['SOURCE_MAP_BASE']:
+      logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
+    else:
+      sourcemap_cmd += ['--source-map-url=' + settings['SOURCE_MAP_BASE'] + os.path.basename(settings['WASM_BINARY_FILE']) + '.map']
+    shared.check_call(sourcemap_cmd)
+    debug_copy(base_source_map, 'base_wasm.map')
 
-    cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
-           '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-           ('--emscripten-reserved-function-pointers=%d' %
-            shared.Settings.RESERVED_FUNCTION_POINTERS)]
-    if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
-      cmd.append('-g')
-    if write_source_map:
-      cmd.append('--input-source-map=' + base_source_map)
-      cmd.append('--output-source-map=' + wasm + '.map')
-    shared.check_call(cmd, stdout=open(metadata_file, 'w'))
-    if write_source_map:
-      debug_copy(wasm + '.map', 'post_finalize.map')
+  cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
+         '--global-base=%s' % shared.Settings.GLOBAL_BASE,
+         ('--emscripten-reserved-function-pointers=%d' %
+          shared.Settings.RESERVED_FUNCTION_POINTERS)]
+  if settings['DEBUG_LEVEL'] >= 2 or settings['PROFILING_FUNCS']:
+    cmd.append('-g')
+  if write_source_map:
+    cmd.append('--input-source-map=' + base_source_map)
+    cmd.append('--output-source-map=' + wasm + '.map')
+  shared.check_call(cmd, stdout=open(metadata_file, 'w'))
+  if write_source_map:
+    debug_copy(wasm + '.map', 'post_finalize.map')
 
-    metadata = create_metadata_wasm(open(metadata_file).read(), DEBUG)
-
-  return metadata
-
-
-def read_metadata_wast(wast, DEBUG):
-  output = open(wast).read()
-  parts = output.split('\n;; METADATA:')
-  assert len(parts) == 2
-  metadata_raw = parts[1]
-  return create_metadata_wasm(metadata_raw, DEBUG)
+  return create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
@@ -2122,11 +2084,6 @@ def create_backend_args_wasm(infile, outfile, settings):
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
   return args
-
-def wasm_rt_fail(archive_file):
-  def wrapped():
-    raise Exception('Expected {} to already be built'.format(archive_file))
-  return wrapped
 
 
 def load_metadata(metadata_raw):

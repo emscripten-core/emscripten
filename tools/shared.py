@@ -1718,6 +1718,46 @@ class Building(object):
       Building.parallel_llvm_nm(object_names)
 
   @staticmethod
+  def link_lld(files, target, force_archive_contents=False):
+    def wasm_rt_fail(archive_file):
+      def wrapped():
+        raise FatalError('Expected {} to already be built'.format(archive_file))
+      return wrapped
+
+    libc_rt_lib = Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
+    compiler_rt_lib = Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
+    cmd = [WASM_LD,
+      '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
+      '--global-base=%s' % Settings.GLOBAL_BASE,
+      '--initial-memory=%s' % Settings.TOTAL_MEMORY,
+      '-o', target,
+      '--no-entry',
+      '--allow-undefined',
+      '--import-memory',
+      '--export', '__wasm_call_ctors'
+      ] + files + [libc_rt_lib, compiler_rt_lib]
+
+    # emscripten-wasm-finalize currently depends on the presence of debug
+    # symbols for renaming of the __invoke symbols
+    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
+    # no longer need to rename these symbols.
+    #if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
+    #  cmd.append('--strip-debug')
+
+    if Settings.EXPORT_ALL:
+      cmd += ['--no-gc-sections', '--export-all']
+    else:
+      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    logging.debug('emcc: lld-linking: %s to %s', files, target)
+    t = time.time()
+    check_call(cmd)
+    if DEBUG:
+      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+      t = time.time()
+
+  @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
     if not temp_files:
       temp_files = configuration.get_temp_files()
@@ -2595,9 +2635,11 @@ class JS(object):
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
+  var sp = stackSave();
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
+    stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
@@ -2745,16 +2787,26 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-  pos = 0
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  while(1):
-    m = include_pattern.search(f, pos)
-    if not m:
-      return f
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
+  temp_dir = configuration.get_temp_files().get_dir()
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
+  #       we only want the actual settings, hence the [1::2] slice operation.
+  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+  settings_file = os.path.join(temp_dir, 'settings.js')
+  open(settings_file, 'w').write(settings_str)
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+  # Run the JS preprocessor
+  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
+  # and shell.html is bigger than that!
+  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+  (path, file) = os.path.split(filename)
+  stdout = os.path.join(temp_dir, 'stdout')
+  args = [settings_file, file]
+
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  out = open(stdout, 'r').read()
+
+  return out
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web

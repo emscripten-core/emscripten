@@ -199,6 +199,24 @@ bool in(const val& v)
 pass
 pass
 test:
+template<typename T> bool delete_(const T& property)
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
 template<typename T> std::vector<T> vecFromJSArray(val v)
 pass
 pass

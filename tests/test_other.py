@@ -822,6 +822,10 @@ Build with ASSERTIONS=2 for more info.
 This pointer might make sense in another type signature:''', '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)'''), "i: asm['_my_func']") # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
 
+  def test_emulate_function_pointer_casts_assertions_2(self):
+    # check empty tables work with assertions 2 in this mode (#6554)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'ASSERTIONS=2'])
+
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
 
@@ -8422,3 +8426,37 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIn('int foo()', output)
     # has some entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
+
+  def test_html_preprocess(self):
+    return self.skip('enable when html preprocessing is reenabled')
+
+    test_file = path_from_root('tests', 'module', 'test_stdin.c')
+    output_file = path_from_root('tests', 'module', 'test_stdin.html')
+    shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:(else) NO_EXIT_RUNTIME
+T6:!NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:NO_EXIT_RUNTIME == 1
+T2:(else) NO_EXIT_RUNTIME == 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:(else) NO_EXIT_RUNTIME >= 2
+T4:NO_EXIT_RUNTIME > 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)
