@@ -821,7 +821,7 @@ var SyscallsLibrary = {
         var buffer = ___syscall146.buffers[stream];
         assert(buffer);
         if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-          (stream === 1 ? Module['print'] : Module['printErr'])(UTF8ArrayToString(buffer, 0));
+          (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
           buffer.length = 0;
         } else {
           buffer.push(curr);
