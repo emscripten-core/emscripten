@@ -10,7 +10,7 @@
 
 #if BENCHMARK
 Module.realPrint = out;
-out = outErr = function(){};
+out = err = function(){};
 #endif
 
 #if SAFE_HEAP

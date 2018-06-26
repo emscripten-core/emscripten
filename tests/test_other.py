@@ -6858,7 +6858,7 @@ int main() {
     }
     assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
     var p = out;
-    var e = outErr;
+    var e = err;
     err = out = function(){};
     var fail = false;
     if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
