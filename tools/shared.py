@@ -2787,7 +2787,7 @@ def clang_preprocess(filename):
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
 def read_and_preprocess(filename):
-  temp_dir = configuration.get_temp_files().get_dir()
+  temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
   # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
   #       we only want the actual settings, hence the [1::2] slice operation.
@@ -2800,6 +2800,7 @@ def read_and_preprocess(filename):
   # and shell.html is bigger than that!
   # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
   (path, file) = os.path.split(filename)
+  if not path: path = None
   stdout = os.path.join(temp_dir, 'stdout')
   args = [settings_file, file]
 
