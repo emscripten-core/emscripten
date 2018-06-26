@@ -301,6 +301,9 @@ def type_to_c(t, non_pointing=False):
       ret = 'void*'
     elif t in interfaces:
       ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+    elif t in enums:
+      # enums are just integers in C
+      ret = 'int'
     else:
       ret = t
     return ret
@@ -525,10 +528,6 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       return_postfix += ', &temp)'
 
     c_return_type = type_to_c(return_type)
-
-    for name, enum in enums.items():
-        if c_return_type == name:
-            c_return_type = 'int'
 
     mid_c += [r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
