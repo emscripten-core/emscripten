@@ -402,7 +402,6 @@ function exit(status, implicit) {
 
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = exit;
 
 var abortDecorators = [];
 

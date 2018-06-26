@@ -242,7 +242,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    Module['exit'](status);
+    exit(status);
   },
 
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],

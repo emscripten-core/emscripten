@@ -1272,7 +1272,7 @@ var LibraryBrowser = {
 #endif
 #endif
     Module['noExitRuntime'] = false;
-    Module['exit'](status);
+    exit(status);
   },
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',

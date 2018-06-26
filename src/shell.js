@@ -204,7 +204,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status, toThrow) {
+    Module['quit'] = function(status) {
       quit(status);
     }
   }

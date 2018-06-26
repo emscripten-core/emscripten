@@ -214,7 +214,7 @@ var SyscallsLibrary = {
 
   __syscall1: function(which, varargs) { // exit
     var status = SYSCALLS.get();
-    Module['exit'](status);
+    exit(status);
     return 0;
   },
   __syscall3: function(which, varargs) { // read
