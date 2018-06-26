@@ -1,8 +1,6 @@
 #!/usr/bin/env python2
 # -*- Mode: python -*-
-
-'''
-emcc - compiler helper script
+"""emcc - compiler helper script
 =============================
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
@@ -21,19 +19,29 @@ emcc can be influenced by a few environment variables:
                    your system headers will be used.
 
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
-'''
+"""
 
 from __future__ import print_function
+
+import stat
+import os
+import sys
+import shutil
+import tempfile
+import subprocess
+import shlex
+import time
+import re
+import logging
+from subprocess import PIPE
+
+from tools import shared, jsrun, system_libs, client_mods
+from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
+from tools.response_file import substitute_response_files
+import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
-
-import os, sys, shutil, tempfile, subprocess, shlex, time, re, logging
-from subprocess import PIPE
-from tools import shared, jsrun, system_libs
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess
-from tools.response_file import substitute_response_files
-import tools.line_endings
 
 try:
   from urllib.parse import quote
@@ -82,18 +90,23 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 if DEBUG == "0":
   DEBUG = None
 
-LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW') # Do not compile .ll files into .bc, just compile them with emscripten directly
-                                                           # Not recommended, this is mainly for the test runner, or if you have some other
-                                                           # specific need.
-                                                           # One major limitation with this mode is that libc and libc++ cannot be
-                                                           # added in. Also, LLVM optimizations will not be done, nor dead code elimination
+# Do not compile .ll files into .bc, just compile them with emscripten directly
+# Not recommended, this is mainly for the test runner, or if you have some other
+# specific need.
+# One major limitation with this mode is that libc and libc++ cannot be
+# added in. Also, LLVM optimizations will not be done, nor dead code elimination
+LEAVE_INPUTS_RAW = os.environ.get('EMCC_LEAVE_INPUTS_RAW')
+
 # If emcc is running with LEAVE_INPUTS_RAW and then launches an emcc to build something like the struct info, then we don't want
 # LEAVE_INPUTS_RAW to be active in that emcc subprocess.
 if LEAVE_INPUTS_RAW:
   del os.environ['EMCC_LEAVE_INPUTS_RAW']
-AUTODEBUG = os.environ.get('EMCC_AUTODEBUG') # If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
-                                             # Note that this will disable inclusion of libraries. This is useful because including
-                                             # dlmalloc makes it hard to compare native and js builds
+
+# If set to 1, we will run the autodebugger (the automatic debugging tool, see tools/autodebugger).
+# Note that this will disable inclusion of libraries. This is useful because including
+# dlmalloc makes it hard to compare native and js builds
+AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
+
 EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we treat as if they were passed to us on the commandline
 
 # Target options
@@ -104,8 +117,10 @@ def exit_with_error(message):
   logging.error(message)
   sys.exit(1)
 
+
 class Intermediate(object):
   counter = 0
+
 
 # this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
@@ -114,6 +129,8 @@ class Intermediate(object):
 # TODO: refactor all this, a singleton that abstracts over the final output
 #       and saving of intermediates
 def save_intermediate(name=None, suffix='js'):
+  if not DEBUG:
+    return
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
   if isinstance(final, list):
     logging.debug('(not saving intermediate %s because deferring linking)' % name)
@@ -121,10 +138,14 @@ def save_intermediate(name=None, suffix='js'):
   shutil.copyfile(final, name)
   Intermediate.counter += 1
 
+
 def save_intermediate_with_wasm(name, wasm_binary):
+  if not DEBUG:
+    return
   save_intermediate(name) # save the js
   name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
   shutil.copyfile(wasm_binary, name)
+
 
 class TimeLogger(object):
   last = time.time()
@@ -132,6 +153,7 @@ class TimeLogger(object):
   @staticmethod
   def update():
     TimeLogger.last = time.time()
+
 
 def log_time(name):
   """Log out times for emcc stages"""
@@ -279,7 +301,7 @@ class JSOptimizer(object):
                                          just_concat=just_concat,
                                          output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
     self.js_transform_tempfiles.append(final)
-    if DEBUG: save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
+    save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
   def do_minify(self):
     """minifies the code.
@@ -313,13 +335,13 @@ def run():
   global final
   target = None
 
-  if DEBUG: logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
-  if EMCC_CFLAGS: sys.argv.extend(shlex.split(EMCC_CFLAGS))
+  if DEBUG:
+    logging.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
+  if EMCC_CFLAGS:
+    sys.argv.extend(shlex.split(EMCC_CFLAGS))
 
-  if DEBUG and LEAVE_INPUTS_RAW: logging.warning('leaving inputs raw')
-
-  stdout = PIPE if not DEBUG else None # suppress output of child processes
-  stderr = PIPE if not DEBUG else None # unless we are in DEBUG mode
+  if DEBUG and LEAVE_INPUTS_RAW:
+    logging.warning('leaving inputs raw')
 
   EMCC_CXX = '--emscripten-cxx' in sys.argv
   sys.argv = [x for x in sys.argv if x != '--emscripten-cxx']
@@ -406,7 +428,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   def is_minus_s_for_emcc(newargs, i):
     assert newargs[i] == '-s'
-    if i+1 < len(newargs) and '=' in newargs[i+1] and not newargs[i+1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
+    if i + 1 < len(newargs) and '=' in newargs[i + 1] and not newargs[i + 1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
       return True
     else:
       logging.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
@@ -438,19 +460,25 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if arg.endswith(SOURCE_ENDINGS):
         try:
           src = open(arg).read()
-          if debug_configure: open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
+          if debug_configure:
+            open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
         except:
           pass
       elif arg.endswith('.s'):
-        if debug_configure: open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
-        if use_js == 1: use_js = 0
+        if debug_configure:
+          open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
+        if use_js == 1:
+          use_js = 0
       elif arg == '-E' or arg == '-M' or arg == '-MM':
-        if use_js == 1: use_js = 0
+        if use_js == 1:
+          use_js = 0
 
     if src:
       if 'fopen' in src and '"w"' in src:
-        if use_js == 1: use_js = 0 # we cannot write to files from js!
-        if debug_configure: open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
+        if use_js == 1:
+          use_js = 0 # we cannot write to files from js!
+        if debug_configure:
+          open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
     compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     if not ('CXXCompiler' in ' '.join(sys.argv) or EMCC_CXX):
@@ -472,8 +500,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           yield el
         idx += 1
 
-    if compiler == shared.EMCC: compiler = [shared.PYTHON, shared.EMCC]
-    else: compiler = [compiler]
+    if compiler == shared.EMCC:
+      compiler = [shared.PYTHON, shared.EMCC]
+    else:
+      compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
@@ -490,17 +520,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cmd += ['-s', 'WASM=0']
 
     logging.debug('just configuring: ' + ' '.join(cmd))
-    if debug_configure: open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
+    if debug_configure:
+      open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
 
     if not use_js:
       return subprocess.call(cmd)
     else:
       only_object = '-c' in cmd
-      for i in reversed(range(len(cmd)-1)): # Last -o directive should take precedence, if multiple are specified
+      for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
         if cmd[i] == '-o':
           if not only_object:
-            cmd[i+1] += '.js'
-          target = cmd[i+1]
+            cmd[i + 1] += '.js'
+          target = cmd[i + 1]
           break
       if not target:
         target = 'a.out.js'
@@ -508,9 +539,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ret = subprocess.call(cmd)
       os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
       if not os.path.exists(target):
-        return ret # note that emcc -c will cause target to have the wrong value here;
-                   # but then, we don't care about bitcode outputs anyhow, below, so
-                   # skipping returning early is fine
+        # note that emcc -c will cause target to have the wrong value here;
+        # but then, we don't care about bitcode outputs anyhow, below, so
+        # skipping returning early is fine
+        return ret
       if target.endswith('.js'):
         shutil.copyfile(target, unsuffixed(target))
         target = unsuffixed(target)
@@ -520,7 +552,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if os.path.sep not in full_node:
           full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
         open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-        import stat
         try:
           os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
         except:
@@ -541,11 +572,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS: sys.argv += shlex.split(EMMAKEN_CFLAGS)
+  if EMMAKEN_CFLAGS:
+    sys.argv += shlex.split(EMMAKEN_CFLAGS)
 
   # ---------------- Utilities ---------------
 
   seen_names = {}
+
   def uniquename(name):
     if name not in seen_names:
       seen_names[name] = str(len(seen_names))
@@ -563,10 +596,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if any(arg.startswith('-o=') for arg in sys.argv):
     raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-  for i in reversed(range(len(sys.argv)-1)): # Last -o directive should take precedence, if multiple are specified
+  for i in reversed(range(len(sys.argv) - 1)): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
-      target = sys.argv[i+1]
-      sys.argv = sys.argv[:i] + sys.argv[i+2:]
+      target = sys.argv[i + 1]
+      sys.argv = sys.argv[:i] + sys.argv[i + 2:]
       break
 
   specified_target = target
@@ -632,8 +665,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for i in range(len(newargs)):
         if newargs[i] in ['-l', '-L', '-I']:
           # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
-          newargs[i] += newargs[i+1]
-          newargs[i+1] = ''
+          newargs[i] += newargs[i + 1]
+          newargs[i + 1] = ''
 
       def detect_fixed_language_mode(args):
         check_next = False
@@ -705,14 +738,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.warning('disabling source maps because a js transform is being done')
         options.debug_level = 3
 
-      if DEBUG: start_time = time.time() # done after parsing arguments, which might affect debug state
+      if DEBUG:
+        start_time = time.time() # done after parsing arguments, which might affect debug state
 
       for i in range(len(newargs)):
         if newargs[i] == '-s':
           if is_minus_s_for_emcc(newargs, i):
-            key = newargs[i+1]
+            key = newargs[i + 1]
             settings_changes.append(key)
-            newargs[i] = newargs[i+1] = ''
+            newargs[i] = newargs[i + 1] = ''
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
@@ -724,10 +758,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # TODO: change most (all?) other BINARYEN* names to WASM*
       }
       settings_key_changes = set()
+
       def setting_sub(s):
         key, rest = s.split('=', 1)
         settings_key_changes.add(key)
         return '='.join([settings_aliases.get(key, key), rest])
+
       settings_changes = list(map(setting_sub, settings_changes))
 
       # Find input files
@@ -755,8 +791,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         arg = newargs[i]
 
         if i > 0:
-          prev = newargs[i-1]
-          if prev in ['-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x', '-Xpreprocessor', '-include', '-imacros', '-idirafter', '-iprefix', '-iwithprefix', '-iwithprefixbefore', '-isysroot', '-imultilib', '-A', '-isystem', '-iquote', '-install_name', '-compatibility_version', '-current_version', '-I', '-L', '-include-pch']: continue # ignore this gcc-style argument
+          prev = newargs[i - 1]
+          if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+                      '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+                      '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+                      '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+                      '-install_name', '-compatibility_version',
+                      '-current_version', '-I', '-L', '-include-pch'):
+            continue # ignore this gcc-style argument
 
         if os.path.islink(arg) and os.path.realpath(arg).endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS):
           arg = os.path.realpath(arg)
@@ -780,7 +822,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               # if it's not, and it's a library, just add it to libs to find later
               l = unsuffixed_basename(arg)
               for prefix in LIB_PREFIXES:
-                if not prefix: continue
+                if not prefix:
+                  continue
                 if l.startswith(prefix):
                   l = l[len(prefix):]
                   break
@@ -824,7 +867,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       original_input_files = input_files[:]
 
-      newargs = [arg for arg in newargs if arg is not '']
+      newargs = [a for a in newargs if a is not '']
 
       # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
       has_dash_c = '-c' in newargs
@@ -879,11 +922,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if filename_type_suffix(target) not in JS_CONTAINING_SUFFIXES or options.ignore_dynamic_linking:
         def check(input_file):
           if filename_type_ending(input_file) in DYNAMICLIB_ENDINGS:
-            if not options.ignore_dynamic_linking: logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
+            if not options.ignore_dynamic_linking:
+              logging.warning('ignoring dynamic library %s because not compiling to JS or HTML, remember to link it when compiling to JS or HTML at the end', os.path.basename(input_file))
             return False
           else:
             return True
-        input_files = [(i, input_file) for (i, input_file) in input_files if check(input_file)]
+        input_files = [f for f in input_files if check(f[1])]
 
       if len(input_files) == 0:
         exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
@@ -1026,7 +1070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.error('WASM is not compatible with SPLIT_MEMORY')
           sys.exit(1)
         assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
-        assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY-1) == 0, 'SPLIT_MEMORY must be a power of 2'
+        assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY - 1) == 0, 'SPLIT_MEMORY must be a power of 2'
         if shared.Settings.ASM_JS == 1:
           shared.WarningManager.warn('ALMOST_ASM', "not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those.")
           shared.Settings.ASM_JS = 2
@@ -1096,7 +1140,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.EMTERPRETIFY:
         shared.Settings.FINALIZE_ASM_JS = 0
-        #shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
+        # shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
         shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
         shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
         if not options.js_opts:
@@ -1191,9 +1235,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.TOTAL_MEMORY % 65536 != 0:
           exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
       else:
-        if shared.Settings.TOTAL_MEMORY < 16*1024*1024:
+        if shared.Settings.TOTAL_MEMORY < 16 * 1024 * 1024:
           exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
-        if shared.Settings.TOTAL_MEMORY % (16*1024*1024) != 0:
+        if shared.Settings.TOTAL_MEMORY % (16 * 1024 * 1024) != 0:
           exit_with_error('For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
       if shared.Settings.TOTAL_MEMORY < shared.Settings.TOTAL_STACK:
         exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
@@ -1400,7 +1444,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               return specified_target
             return unsuffixed(input_file) + final_ending
           else:
-            if has_dash_c: return unsuffixed(input_file) + options.default_object_extension
+            if has_dash_c:
+              return unsuffixed(input_file) + options.default_object_extension
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
@@ -1484,7 +1529,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if file_ending.endswith(SOURCE_ENDINGS):
               temp_file = temp_files[pos][1]
               logging.debug('optimizing %s', input_file)
-              #if DEBUG: shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
+              # if DEBUG:
+              #   shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
               # after optimizing, lower intrinsics to libc calls so that our linking code
               # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
@@ -1504,8 +1550,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             safe_move(tempf[1], unsuffixed_basename(inputf[1]) + final_ending)
         else:
           if len(input_files) == 1:
-            _, input_file = input_files[0]
-            _, temp_file = temp_files[0]
+            input_file = input_files[0][1]
+            temp_file = temp_files[0][1]
             bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_ending
             if temp_file != input_file:
               safe_move(temp_file, bitcode_target)
@@ -1529,9 +1575,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             shared.Building.link(linker_inputs, specified_target)
         logging.debug('stopping at bitcode')
         if final_suffix.lower() in ['so', 'dylib', 'dll']:
-          logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten'
-            + ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,'
-            + ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
+          logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten' +
+                          ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,' +
+                          ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
         return 0
 
     # exit block 'process inputs'
@@ -1559,6 +1605,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
       DEFAULT_FINAL = in_temp(target_basename + '.bc')
+
       def get_final():
         global final
         if isinstance(final, list):
@@ -1598,7 +1645,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('post-link'):
       if DEBUG:
         logging.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())
-        if not LEAVE_INPUTS_RAW: save_intermediate('basebc', 'bc')
+        if not LEAVE_INPUTS_RAW:
+          save_intermediate('basebc', 'bc')
 
       # Optimize, if asked to
       if not LEAVE_INPUTS_RAW:
@@ -1615,16 +1663,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.llvm_lto is not None and options.llvm_lto >= 2 and optimizing(options.llvm_opts):
           logging.debug('running LLVM opts as pre-LTO')
           final = shared.Building.llvm_opt(final, options.llvm_opts, DEFAULT_FINAL)
-          if DEBUG: save_intermediate('opt', 'bc')
+          save_intermediate('opt', 'bc')
 
         # If we can LTO, do it before dce, since it opens up dce opportunities
         if shared.Building.can_build_standalone() and options.llvm_lto and options.llvm_lto != 2:
-          if not shared.Building.can_inline(): link_opts.append('-disable-inlining')
+          if not shared.Building.can_inline():
+            link_opts.append('-disable-inlining')
           # add a manual internalize with the proper things we need to be kept alive during lto
           link_opts += shared.Building.get_safe_internalize() + ['-std-link-opts']
           # execute it now, so it is done entirely before we get to the stage of legalization etc.
           final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-          if DEBUG: save_intermediate('lto', 'bc')
+          save_intermediate('lto', 'bc')
           link_opts = []
         else:
           # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
@@ -1639,25 +1688,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # let llvm opt directly emit ll, to skip writing and reading all the bitcode
           link_opts += ['-S']
           final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
-          if DEBUG: save_intermediate('linktime', 'll')
+          save_intermediate('linktime', 'll')
         else:
           if len(link_opts) > 0:
             final = shared.Building.llvm_opt(final, link_opts, DEFAULT_FINAL)
-            if DEBUG: save_intermediate('linktime', 'bc')
+            save_intermediate('linktime', 'bc')
           if options.save_bc:
             shutil.copyfile(final, options.save_bc)
 
       # Prepare .ll for Emscripten
       if LEAVE_INPUTS_RAW:
         assert len(input_files) == 1
-      if DEBUG and options.save_bc: save_intermediate('ll', 'll')
+      if options.save_bc:
+        save_intermediate('ll', 'll')
 
       if AUTODEBUG:
         logging.debug('autodebug')
         next = get_final() + '.ad.ll'
         execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
         final = next
-        if DEBUG: save_intermediate('autodebug', 'll')
+        save_intermediate('autodebug', 'll')
 
       assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
 
@@ -1679,7 +1729,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
       final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
-      if DEBUG: save_intermediate('original')
+      save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
         # we also received wast and wasm at this stage
@@ -1751,7 +1801,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         outfile.write(options.post_js)
         outfile.close()
         options.pre_js = src = options.post_js = None
-        if DEBUG: save_intermediate('pre-post')
+        save_intermediate('pre-post')
 
       # Apply a source code transformation, if requested
       if options.js_transform:
@@ -1760,7 +1810,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
         subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
-        if DEBUG: save_intermediate('transformed')
+        save_intermediate('transformed')
 
       js_transform_tempfiles = [final]
 
@@ -1773,14 +1823,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
         memfile = target + '.mem'
         shared.try_delete(memfile)
+
         def repl(m):
           # handle chunking of the memory initializer
           s = m.group(1)
-          if len(s) == 0: return '' # don't emit 0-size ones
+          if len(s) == 0:
+            return '' # don't emit 0-size ones
           membytes = [int(x or '0') for x in s.split(',')]
           while membytes and membytes[-1] == 0:
             membytes.pop()
-          if not membytes: return ''
+          if not membytes:
+            return ''
           if shared.Settings.MEM_INIT_METHOD == 2:
             # memory initializer in a string literal
             return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
@@ -1792,17 +1845,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
           else:
             return ''
+
         src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
         open(final + '.mem.js', 'w').write(src)
         final += '.mem.js'
         src = None
         js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-        if DEBUG:
-          if os.path.exists(memfile):
-            save_intermediate('meminit')
-            logging.debug('wrote memory initialization to %s', memfile)
-          else:
-            logging.debug('did not see memory initialization')
+        if os.path.exists(memfile):
+          save_intermediate('meminit')
+          logging.debug('wrote memory initialization to %s', memfile)
+        else:
+          logging.debug('did not see memory initialization')
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
@@ -1867,7 +1920,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.WASM:
             optimizer.queue += ['simplifyIfs']
 
-          if shared.Settings.PRECISE_F32: optimizer.queue += ['optimizeFrounds']
+          if shared.Settings.PRECISE_F32:
+            optimizer.queue += ['optimizeFrounds']
 
       if options.js_opts:
         if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
@@ -1887,12 +1941,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
-          if DEBUG: save_intermediate('dfe', 'js')
+          save_intermediate('dfe', 'js')
 
       if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
-        if DEBUG: save_intermediate('eval-ctors', 'js')
+        save_intermediate('eval-ctors', 'js')
 
       if options.js_opts:
         # some compilation modes require us to minify later or not at all
@@ -1902,7 +1956,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.opt_level >= 2:
           optimizer.queue += ['asmLastOpts']
 
-        if shared.Settings.FINALIZE_ASM_JS: optimizer.queue += ['last']
+        if shared.Settings.FINALIZE_ASM_JS:
+          optimizer.queue += ['last']
 
         optimizer.flush()
 
@@ -1913,7 +1968,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
         final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
-        if DEBUG: save_intermediate('closure')
+        save_intermediate('closure')
 
     log_time('js opts')
 
@@ -1921,14 +1976,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.EMTERPRETIFY:
         emterpretify(js_target, optimizer, options)
 
-      # Remove some trivial whitespace # TODO: do not run when compress has already been done on all parts of the code
-      #src = open(final).read()
-      #src = re.sub(r'\n+[ \n]*\n+', '\n', src)
-      #open(final, 'w').write(src)
+      # Remove some trivial whitespace
+      # TODO: do not run when compress has already been done on all parts of the code
+      # src = open(final).read()
+      # src = re.sub(r'\n+[ \n]*\n+', '\n', src)
+      # open(final, 'w').write(src)
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target+'.symbols'])
+        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target + '.symbols'])
 
       if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
@@ -1972,7 +2028,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('final emitting')
     # exit block 'final emitting'
 
-    if DEBUG: logging.debug('total time: %.2f seconds', (time.time() - start_time))
+    if DEBUG:
+      logging.debug('total time: %.2f seconds', (time.time() - start_time))
 
   finally:
     try:
@@ -1981,6 +2038,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       pass
 
   return 0
+
 
 def parse_args(newargs):
   options = EmccOptions()
@@ -2007,47 +2065,47 @@ def parse_args(newargs):
       options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
-      options.js_opts = int(newargs[i+1])
+      options.js_opts = int(newargs[i + 1])
       if options.js_opts:
         options.force_js_opts = True
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--llvm-opts'):
       check_bad_eq(newargs[i])
-      options.llvm_opts = parse_value(newargs[i+1])
+      options.llvm_opts = parse_value(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--llvm-lto'):
       check_bad_eq(newargs[i])
-      options.llvm_lto = int(newargs[i+1])
+      options.llvm_lto = int(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--closure'):
       check_bad_eq(newargs[i])
-      options.use_closure_compiler = int(newargs[i+1])
+      options.use_closure_compiler = int(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--js-transform'):
       check_bad_eq(newargs[i])
-      options.js_transform = newargs[i+1]
+      options.js_transform = newargs[i + 1]
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--pre-js'):
       check_bad_eq(newargs[i])
-      options.pre_js += open(newargs[i+1]).read() + '\n'
+      options.pre_js += open(newargs[i + 1]).read() + '\n'
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--post-js'):
       check_bad_eq(newargs[i])
-      options.post_js += open(newargs[i+1]).read() + '\n'
+      options.post_js += open(newargs[i + 1]).read() + '\n'
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
-      assert newargs[i+1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
+      assert newargs[i + 1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
       options.debug_level = max(1, options.debug_level)
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('-g'):
       requested_level = newargs[i][2:] or '3'
       options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
@@ -2084,19 +2142,19 @@ def parse_args(newargs):
       options.default_cxx_std = ''
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
-      options.embed_files.append(newargs[i+1])
+      options.embed_files.append(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--preload-file'):
       check_bad_eq(newargs[i])
-      options.preload_files.append(newargs[i+1])
+      options.preload_files.append(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--exclude-file'):
       check_bad_eq(newargs[i])
-      options.exclude_files.append(newargs[i+1])
+      options.exclude_files.append(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--use-preload-cache'):
       options.use_preload_cache = True
       newargs[i] = ''
@@ -2115,19 +2173,19 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
-      options.shell_path = newargs[i+1]
+      options.shell_path = newargs[i + 1]
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--source-map-base'):
       check_bad_eq(newargs[i])
-      options.source_map_base = newargs[i+1]
+      options.source_map_base = newargs[i + 1]
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i].startswith('--js-library'):
       check_bad_eq(newargs[i])
-      options.js_libraries.append(newargs[i+1])
+      options.js_libraries.append(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '--remove-duplicates':
       logging.warning('--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
       newargs[i] = ''
@@ -2136,10 +2194,10 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
-      os.environ['EM_CACHE'] = newargs[i+1]
+      os.environ['EM_CACHE'] = newargs[i + 1]
       shared.reconfigure_cache()
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '--clear-cache':
       logging.info('clearing cache as requested by --clear-cache')
       shared.Cache.erase()
@@ -2156,21 +2214,21 @@ def parse_args(newargs):
       should_exit = True
     elif newargs[i] == '--save-bc':
       check_bad_eq(newargs[i])
-      options.save_bc = newargs[i+1]
+      options.save_bc = newargs[i + 1]
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '--memory-init-file':
       check_bad_eq(newargs[i])
-      options.memory_init_file = int(newargs[i+1])
+      options.memory_init_file = int(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '--proxy-to-worker':
       options.proxy_to_worker = True
       newargs[i] = ''
     elif newargs[i] == '--valid-abspath':
-      options.valid_abspaths.append(newargs[i+1])
+      options.valid_abspaths.append(newargs[i + 1])
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '--separate-asm':
       options.separate_asm = True
       newargs[i] = ''
@@ -2182,10 +2240,10 @@ def parse_args(newargs):
         # that are e.g. x86 specific and nonportable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         shared.WarningManager.warn(
-          'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
-          '" encountered. If this is to a local system header/library, it may '
-          'cause problems (local system files make sense for compiling natively '
-          'on your system, but not necessarily to JavaScript).')
+            'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
+            '" encountered. If this is to a local system header/library, it may '
+            'cause problems (local system files make sense for compiling natively '
+            'on your system, but not necessarily to JavaScript).')
     elif newargs[i] == '--emrun':
       options.emrun = True
       newargs[i] = ''
@@ -2198,10 +2256,10 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
-      options.default_object_extension = newargs[i+1]
+      options.default_object_extension = newargs[i + 1]
       if not options.default_object_extension.startswith('.'):
         options.default_object_extension = '.' + options.default_object_extension
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
     elif newargs[i] == '-msse':
       newargs.append('-D__SSE__=1')
       newargs[i] = ''
@@ -2230,14 +2288,14 @@ def parse_args(newargs):
     elif newargs[i].startswith("-fsanitize=cfi"):
       options.cfi = True
     elif newargs[i] == "--output_eol":
-      if newargs[i+1].lower() == 'windows':
+      if newargs[i + 1].lower() == 'windows':
         options.output_eol = '\r\n'
-      elif newargs[i+1].lower() == 'linux':
+      elif newargs[i + 1].lower() == 'linux':
         options.output_eol = '\n'
       else:
-        exit_with_error('Invalid value "' + newargs[i+1] + '" to --output_eol!')
+        exit_with_error('Invalid value "' + newargs[i + 1] + '" to --output_eol!')
       newargs[i] = ''
-      newargs[i+1] = ''
+      newargs[i + 1] = ''
 
   if should_exit:
     sys.exit(0)
@@ -2261,8 +2319,7 @@ def emterpretify(js_target, optimizer, options):
             json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
             json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
             json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
-            str(shared.Settings.SWAPPABLE_ASM_MODULE),
-           ]
+            str(shared.Settings.SWAPPABLE_ASM_MODULE)]
     if shared.Settings.EMTERPRETIFY_ASYNC:
       args += ['ASYNC=1']
     if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -2311,10 +2368,10 @@ def emterpretify(js_target, optimizer, options):
 def emit_js_source_maps(target, js_transform_tempfiles):
   logging.debug('generating source maps')
   jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-    shared.NODE_JS, js_transform_tempfiles +
-      ['--sourceRoot', os.getcwd(),
-        '--mapFileBaseName', target,
-        '--offset', str(0)])
+               shared.NODE_JS, js_transform_tempfiles +
+               ['--sourceRoot', os.getcwd(),
+                '--mapFileBaseName', target,
+                '--offset', str(0)])
 
 
 def separate_asm_js(final, asm_target):
@@ -2475,8 +2532,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     if optimizer.cleanup_shell or options.use_closure_compiler:
-      if DEBUG:
-        save_intermediate_with_wasm('preclean', wasm_binary_target)
+      save_intermediate_with_wasm('preclean', wasm_binary_target)
       final = shared.Building.minify_wasm_js(js_file=final,
                                              wasm_file=wasm_binary_target,
                                              expensive_optimizations=options.opt_level >= 3 or options.shrink_level > 0,
@@ -2484,19 +2540,18 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                              use_closure_compiler=options.use_closure_compiler,
                                              debug_info=debug_info,
                                              emit_symbol_map=emit_symbol_map)
-      if DEBUG:
-        save_intermediate_with_wasm('postclean', wasm_binary_target)
+      save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     f = open(final, 'r')
     js = f.read()
     f.close()
     f = open(final, 'w')
-    for target, replacement_string, should_embed in [
-      (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
-      (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
-      (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE, not shared.Building.is_wasm_only())
-    ]:
+    for target, replacement_string, should_embed in (
+        (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
+        (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
+        (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE, not shared.Building.is_wasm_only())
+      ):
       if should_embed and os.path.isfile(target):
         js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
       else:
@@ -2522,10 +2577,10 @@ def modularize():
   return %(EXPORT_NAME)s;
 }%(instantiate)s;
 ''' % {
-  'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-  'src': src,
-  'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
-})
+    'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+    'src': src,
+    'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
+  })
 
   # Export using a UMD style export, or ES6 exports if selected
   if shared.Settings.EXPORT_ES6:
@@ -2538,11 +2593,11 @@ def modularize():
   else if (typeof exports === 'object')
     exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
   ''' % {
-    'EXPORT_NAME': shared.Settings.EXPORT_NAME
-  })
+      'EXPORT_NAME': shared.Settings.EXPORT_NAME
+    })
 
   f.close()
-  if DEBUG: save_intermediate('modularized', 'js')
+  save_intermediate('modularized', 'js')
 
 
 def module_export_name_substitution():
@@ -2554,7 +2609,7 @@ def module_export_name_substitution():
   replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
   f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
   f.close()
-  if DEBUG: save_intermediate('module_export_name_substitution', 'js')
+  save_intermediate('module_export_name_substitution', 'js')
 
 
 def generate_html(target, options, js_target, target_basename,
@@ -2563,7 +2618,8 @@ def generate_html(target, options, js_target, target_basename,
   script = ScriptSource()
 
   logging.debug('generating HTML')
-  shell = read_and_preprocess(options.shell_path)
+  # TODO: use read_and_preprocess(options.shell_path) here, once test errors are fixed
+  shell = open(options.shell_path).read()
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 
@@ -2594,10 +2650,9 @@ def generate_html(target, options, js_target, target_basename,
     # Normal code generation path
     script.src = base_js_target
 
-    from tools import client_mods
     asm_mods = client_mods.get_mods(shared.Settings,
-                                    minified = 'minifyNames' in optimizer.queue_history,
-                                    separate_asm = options.separate_asm)
+                                    minified='minifyNames' in optimizer.queue_history,
+                                    separate_asm=options.separate_asm)
 
   if not shared.Settings.SINGLE_FILE:
     if shared.Settings.EMTERPRETIFY_FILE:
@@ -2789,8 +2844,10 @@ def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_file
             input_files.append((i, path))
             found = True
             break
-        if found: break
-      if found: break
+        if found:
+          break
+      if found:
+        break
     if not found:
       libraries += shared.Building.path_to_system_js_libraries(lib)
 
@@ -2844,7 +2901,6 @@ def is_valid_abspath(options, path_name):
   return False
 
 
-
 def parse_value(text):
   # Note that using response files can introduce whitespace, if the file
   # has a newline at the end. For that reason, we rstrip() in relevant
@@ -2853,7 +2909,7 @@ def parse_value(text):
     first = text[0]
     if first == "'" or first == '"':
       text = text.rstrip()
-      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0],text)
+      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0], text)
       return text[1:-1]
     else:
       return text
@@ -2899,7 +2955,7 @@ def parse_value(text):
   else:
     try:
       return int(text)
-    except ValueError as e:
+    except ValueError:
       return parse_string_value(text)
 
 

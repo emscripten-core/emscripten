@@ -1,3 +1,4 @@
+emcc.py
 tools/response_file.py
 tools/wasm-sourcemap.py
 tools/clean_webconsole.py
