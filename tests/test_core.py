@@ -2105,7 +2105,7 @@ The current type of b is: 9
       Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
       # This will fail! See explanation near the warning we check for, in the compiler source code
-      output = Popen([PYTHON, EMCC, all_name], stderr=PIPE).communicate()
+      run_process([PYTHON, EMCC, all_name], check=False, stderr=PIPE)
 
       # Check for warning in the generated code
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
@@ -3327,7 +3327,7 @@ ok
       if isinstance(side, list):
         # side is just a library
         try_delete('liblib.cpp.o.' + side_suffix)
-        Popen([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)]).communicate()
+        run_process([PYTHON, EMCC] + side + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
       else:
         base = 'liblib.cpp' if not force_c else 'liblib.c'
         try_delete(base + '.o.' + side_suffix)
@@ -3354,7 +3354,7 @@ Module = {
       if isinstance(main, list):
         # main is just a library
         try_delete('src.cpp.o.js')
-        Popen([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')]).communicate()
+        run_process([PYTHON, EMCC] + main + self.emcc_args + Settings.serialize() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')])
         self.do_run(None, expected, no_build=True)
       else:
         self.do_run(main, expected, force_c=force_c)
@@ -3960,7 +3960,7 @@ Module = {
       int sideg = 49;
       int bsidef() { return 536; }
     ''')
-    Popen([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.js']).communicate()
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.js'])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3992,14 +3992,14 @@ Module = {
     open('third.cpp', 'w').write(r'''
       int sidef() { return 36; }
     ''')
-    Popen([PYTHON, EMCC, 'third.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.o', '-c']).communicate()
+    run_process([PYTHON, EMCC, 'third.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.o', '-c'])
 
     open('fourth.cpp', 'w').write(r'''
       int sideg() { return 17; }
     ''')
-    Popen([PYTHON, EMCC, 'fourth.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'fourth.o', '-c']).communicate()
+    run_process([PYTHON, EMCC, 'fourth.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'fourth.o', '-c'])
 
-    Popen([PYTHON, EMAR, 'rc', 'libfourth.a', 'fourth.o']).communicate()
+    run_process([PYTHON, EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -5256,8 +5256,7 @@ int main(void) {
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
       try_delete(os.path.join(self.get_dir(), 'src.cpp.o.js'))
-      output = Popen([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB',
-                      '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect).communicate()
+      run_process([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB', '-o', os.path.join(self.get_dir(), 'src.cpp.o.js')], stdout=PIPE, stderr=self.stderr_redirect)
 
       self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
       self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
@@ -5414,7 +5413,7 @@ return malloc(size);
   # Tests the full SSE1 API.
   @SIMD
   def test_sse1_full(self):
-    Popen([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    run_process([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5435,7 +5434,7 @@ return malloc(size);
 
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
-    Popen([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    run_process([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse2_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5451,7 +5450,7 @@ return malloc(size);
   def test_sse3_full(self):
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
-    Popen([CLANG, path_from_root('tests', 'test_sse3_full.cpp'), '-o', 'test_sse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    run_process([CLANG, path_from_root('tests', 'test_sse3_full.cpp'), '-o', 'test_sse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5464,7 +5463,7 @@ return malloc(size);
   def test_ssse3_full(self):
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
-    Popen([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    run_process([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_ssse3_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -5477,7 +5476,7 @@ return malloc(size);
   def test_sse4_1_full(self):
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
-    Popen([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE).communicate()
+    run_process([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse4_1_full', stdout=PIPE).stdout
 
     Settings.PRECISE_F32 = 1 # SIMD currently requires Math.fround
@@ -6879,9 +6878,9 @@ someweirdtext
       # Force IDL checks mode
       os.environ['IDL_CHECKS'] = mode
 
-      output = Popen([PYTHON, path_from_root('tools', 'webidl_binder.py'),
-                              path_from_root('tests', 'webidl', 'test.idl'),
-                              'glue']).communicate()[0]
+      run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
+                   path_from_root('tests', 'webidl', 'test.idl'),
+                   'glue'])
       assert os.path.exists('glue.cpp')
       assert os.path.exists('glue.js')
 
@@ -7580,7 +7579,7 @@ extern "C" {
         }
       }
       ''')
-    Popen([PYTHON, EMCC, 'src.cpp']).communicate()
+    run_process([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('ok.', run_js('a.out.js', args=['C']))
 
   def test_memprof_requirements(self):

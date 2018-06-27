@@ -1,7 +1,7 @@
 from __future__ import print_function
 from .toolchain_profiler import ToolchainProfiler
 import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subprocess, hashlib, pickle, re, errno
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import PIPE, STDOUT
 from tempfile import mkstemp
 from distutils.spawn import find_executable
 from . import jsrun, cache, tempfiles, colored_logger
@@ -20,8 +20,12 @@ class FatalError(Exception):
   pass
 
 
-# On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
-# Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
+# On Windows python suffers from a particularly nasty bug if python is spawning
+# new processes while python itself is spawned from some other non-console
+# process.
+# Use a custom replacement for Popen on Windows to avoid the "WindowsError:
+# [Error 6] The handle is invalid" errors when emcc is driven through cmake or
+# mingw32-make.
 # See http://bugs.python.org/issue3905
 class WindowsPopen(object):
   def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
@@ -139,28 +143,16 @@ def run_base(cmd, check=False, input=None, *args, **kw):
 def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
   return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
-def execute(cmd, *args, **kw):
-  try:
-    cmd[0] = Building.remove_quotes(cmd[0])
-    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
-  except:
-    if not isinstance(cmd, str):
-      cmd = ' '.join(cmd)
-    logging.error('Invoking Process failed: <<< ' + cmd + ' >>>')
-    raise
-
 def check_execute(cmd, *args, **kw):
-  # TODO: use in more places. execute doesn't actually check that return values
-  # are nonzero
   try:
-    subprocess.check_output(cmd, *args, **kw)
+    run_process(cmd, stdout=PIPE, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
 
 def check_call(cmd, *args, **kw):
   try:
-    subprocess.check_call(cmd, *args, **kw)
+    run_process(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
     raise FatalError("'%s' failed" % " ".join(cmd))
@@ -299,6 +291,8 @@ except:
 if EM_POPEN_WORKAROUND and os.name == 'nt':
   logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
   Popen = WindowsPopen
+else:
+  Popen = subprocess.Popen
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
 # 0: disabled.
@@ -438,7 +432,7 @@ def check_node_version():
 
 def check_closure_compiler():
   try:
-    subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
+    run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except:
     logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
@@ -547,7 +541,7 @@ def check_sanity(force=False):
 
     if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
       try:
-        subprocess.check_call([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
+        run_process([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
       except:
         logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
         sys.exit(1)
@@ -1260,12 +1254,12 @@ def extract_archive_contents(f):
       dirname = os.path.dirname(content)
       if dirname:
         safe_ensure_dirs(dirname)
-    proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
-    stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
-    contents = list(map(os.path.abspath, contents))
+    proc = run_process([LLVM_AR, 'xo', f], stdout=PIPE, stderr=STDOUT)
+    # if absolute paths, files will appear there. otherwise, in this directory
+    contents = [os.path.abspath(c) for c in contents]
     nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-    if len(nonexisting_contents) != 0:
-      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+    if len(nonexisting_contents):
+      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
 
     return {
       'returncode': proc.returncode,
@@ -1538,16 +1532,20 @@ class Building(object):
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
-      if EM_BUILD_VERBOSE_LEVEL >= 3: print('configure: ' + str(args), file=sys.stderr)
-      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env)
-      process.communicate()
+      if EM_BUILD_VERBOSE_LEVEL >= 3:
+        print('configure: ' + str(args), file=sys.stderr)
+      if EM_BUILD_VERBOSE_LEVEL >= 2:
+        stdout = None
+      if EM_BUILD_VERBOSE_LEVEL >= 1:
+        stderr = None
+      res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
     except Exception as e:
-      logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
+      logging.error('Error running configure: "%s"' % ' '.join(args))
       raise
     if 'EMMAKEN_JUST_CONFIGURE' in env: del env['EMMAKEN_JUST_CONFIGURE']
-    if process.returncode is not 0:
-      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args) + ' at ' + os.getcwd())
-      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
+    if res.returncode is not 0:
+      logging.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
+      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
@@ -1570,14 +1568,18 @@ class Building(object):
 
     try:
       # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE_LEVEL >= 3: print('make: ' + str(args), file=sys.stderr)
-      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env, shell=WINDOWS)
-      process.communicate()
+      if EM_BUILD_VERBOSE_LEVEL >= 3:
+        print('make: ' + str(args), file=sys.stderr)
+      if EM_BUILD_VERBOSE_LEVEL >= 2:
+        stdout = None
+      if EM_BUILD_VERBOSE_LEVEL >= 1:
+        stderr = None
+      res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
     except Exception as e:
-      logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
+      logging.error('Error running make: "%s"' % ' '.join(args))
       raise
-    if process.returncode is not 0:
-      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
+    if res.returncode is not 0:
+      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
 
   @staticmethod
@@ -2048,13 +2050,12 @@ class Building(object):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
-    assert os.path.exists(output_filename), 'emcc could not create output file: ' + output_filename
+    run_process([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    run_process([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env)
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
@@ -2157,7 +2158,7 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
@@ -2165,7 +2166,7 @@ class Building(object):
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
+    check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):

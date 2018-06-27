@@ -28,7 +28,6 @@ import os
 import sys
 import shutil
 import tempfile
-import subprocess
 import shlex
 import time
 import re
@@ -36,7 +35,7 @@ import logging
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods
-from tools.shared import execute, suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
+from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
 from tools.response_file import substitute_response_files
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
@@ -384,7 +383,7 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
     here = os.getcwd()
     os.chdir(shared.path_from_root())
     try:
-      revision = execute(['git', 'show'], stdout=PIPE, stderr=PIPE)[0].split('\n')[0]
+      revision = run_process(['git', 'show'], stdout=PIPE, stderr=PIPE).stdout.split('\n')[0]
     except:
       pass
     finally:
@@ -399,7 +398,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION)
-    code = subprocess.call([shared.CLANG, '-v'])
+    code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -418,7 +417,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in sys.argv if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      err = run_process([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=subprocess.PIPE, env=debug_env).stderr
+      err = run_process([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=PIPE, env=debug_env).stderr
       lines = [x for x in err.split('\n') if shared.CLANG_CC in x and input_file in x]
       line = re.search('running: (.*)', lines[0]).group(1)
       parts = shlex.split(line.replace('\\', '\\\\'))
@@ -524,7 +523,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
 
     if not use_js:
-      return subprocess.call(cmd)
+      return run_process(cmd, check=False).returncode
     else:
       only_object = '-c' in cmd
       for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
@@ -536,7 +535,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not target:
         target = 'a.out.js'
       os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
-      ret = subprocess.call(cmd)
+      ret = run_process(cmd, check=False).returncode
       os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
       if not os.path.exists(target):
         # note that emcc -c will cause target to have the wrong value here;
@@ -1432,8 +1431,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
         logging.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
-        execute([call] + args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
-        return 0
+        return run_process([call] + args, check=False).returncode
 
       def get_bitcode_file(input_file):
         if final_suffix not in JS_CONTAINING_SUFFIXES:
@@ -1481,7 +1479,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           cmd += ['-o', specified_target]
         # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
         logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
-        return subprocess.call(cmd)
+        return run_process(cmd, check=False).returncode
 
       def compile_source_file(i, input_file):
         logging.debug('compiling source file: ' + input_file)
@@ -1489,9 +1487,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         temp_files.append((i, output_file))
         args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
         logging.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
-        execute(args) # let compiler frontend print directly, so colors are saved (PIPE kills that)
-        if not os.path.exists(output_file):
+        if run_process(args, check=False).returncode != 0:
           exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
+        assert(os.path.exists(output_file))
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
@@ -1707,7 +1705,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if AUTODEBUG:
         logging.debug('autodebug')
         next = get_final() + '.ad.ll'
-        execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
+        run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])
         final = next
         save_intermediate('autodebug', 'll')
 
@@ -1783,7 +1781,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           file_args.append('--lz4')
         if options.use_preload_plugins:
           file_args.append('--use-preload-plugins')
-        file_code = execute([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE)[0]
+        file_code = run_process([shared.PYTHON, shared.FILE_PACKAGER, unsuffixed(target) + '.data'] + file_args, stdout=PIPE).stdout
         options.pre_js = file_code + options.pre_js
 
       # Apply pre and postjs files
@@ -1811,7 +1809,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final += '.tr.js'
         posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
-        subprocess.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
+        shared.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         save_intermediate('transformed')
 
       js_transform_tempfiles = [final]
@@ -1986,7 +1984,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-        execute([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target + '.symbols'])
+        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target + '.symbols'])
 
       if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
@@ -2336,7 +2334,7 @@ def emterpretify(js_target, optimizer, options):
       args += ['MEMORY_SAFE=1']
     if shared.Settings.EMTERPRETIFY_FILE:
       args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-    execute(args)
+    run_process(args)
     final = final + '.em.js'
   finally:
     shared.try_delete(js_target)
@@ -2379,7 +2377,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
 def separate_asm_js(final, asm_target):
   """Separate out the asm.js code, if asked. Or, if necessary for another option"""
   logging.debug('separating asm')
-  subprocess.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
+  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
 
   # extra only-my-code logic
   if shared.Settings.ONLY_MY_CODE:
@@ -2473,7 +2471,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       wrote_wasm_text = True
     logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
-    subprocess.check_call(cmd)
+    shared.check_call(cmd)
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
@@ -2484,7 +2482,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
           if options.source_map_base:
             cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
-      subprocess.check_call(cmd)
+      shared.check_call(cmd)
     if import_mem_init:
       # remove the mem init file in later processing; it does not need to be prefetched in the html, etc.
       if DEBUG:
@@ -2500,11 +2498,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if debug_info:
       cmd += ['-g'] # preserve the debug info
     logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
-    subprocess.check_call(cmd)
+    shared.check_call(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
     cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
     logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
-    subprocess.check_call(cmd)
+    shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
     script_env = os.environ.copy()
@@ -2515,7 +2513,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       script_env['PYTHONPATH'] = root_dir
     for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
       logging.debug('running binaryen script: ' + script)
-      subprocess.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
+      shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
       save_intermediate('pre-eval-ctors', 'js')

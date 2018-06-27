@@ -717,10 +717,10 @@ f.close()
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
   def test_incorrect_c_detection(self):
+    with open('test.c', 'w') as f:
+      f.write('foo\n')
     for compiler in [EMCC, EMXX]:
-      process = Popen([PYTHON, compiler, "--bind", "--embed-file", path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.cpp')], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is 0, 'Emscripten should not use the embed file for CC/CXX detection'
+      run_process([PYTHON, compiler, '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
@@ -3846,8 +3846,7 @@ int main(int argc, char **argv) {
         self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_no_dynamic_execution(self):
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']
-    stderr = run_process(cmd, stderr=PIPE).stderr
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
     self.assertContained('hello, world!', run_js('a.out.js'))
     src = open('a.out.js').read()
     assert 'eval(' not in src
@@ -3856,9 +3855,10 @@ int main(int argc, char **argv) {
     try_delete('a.out.js')
 
     # Test that --preload-file doesn't add an use of eval().
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt']
-    stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    with open('temp.txt', 'w') as f:
+      f.write("foo\n");
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt'])
     src = open('a.out.js').read()
     assert 'eval(' not in src
     assert 'eval.' not in src
@@ -3866,16 +3866,16 @@ int main(int argc, char **argv) {
     try_delete('a.out.js')
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1'],
+        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1'],
+        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
 
@@ -3888,12 +3888,12 @@ int main(int argc, char **argv) {
       ''')
 
     # Test that emscripten_run_script() aborts when -s NO_DYNAMIC_EXECUTION=1
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']).communicate()
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
     self.assertContained('NO_DYNAMIC_EXECUTION=1 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2']).communicate()
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     self.assertContained('hello from script', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
