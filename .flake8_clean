@@ -8,3 +8,4 @@ tools/emmakenxx.py
 tools/exec_llvm.py
 tools/find_bigvars.py
 tools/merge_pair.py
+tools/system_libs.py
