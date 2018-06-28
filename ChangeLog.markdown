@@ -11,6 +11,7 @@ Current Trunk
 -------------
  - Correctness fix for stack handling in invoke_*()s. This may add noticeable overhead to programs using C++ exceptions and (less likely) setjmp/longjmp - please report any issues. See #6666 #6702
  - Deprecate Module.ENVIRONMENT: Now that we have a compile-time option to set the environment, also having a runtime one on Module is complexity that we are better off without. When Module.ENVIRONMENT is used with ASSERTIONS it will show an error to direct users to the new option (-s ENVIRONMENT=web , or node, etc., at compile time).
+ - Breaking change: Do not export print/printErr by default. Similar to other similar changes (like getValue/setValue). We now use out() and err() functions in JS to print to stdout/stderr respectively. See #6756.
 
 v1.38.6: 06/13/2018
 -------------------

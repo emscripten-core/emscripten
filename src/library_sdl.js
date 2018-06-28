@@ -779,7 +779,7 @@ var LibrarySDL = {
           break;
       }
       if (SDL.events.length >= 10000) {
-        Module.printErr('SDL event queue full, dropping events');
+        err('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
       }
       // If we have a handler installed, this will push the events to the app
@@ -887,7 +887,7 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          //Module.print('Received key event: ' + event.keyCode);
+          //out('Received key event: ' + event.keyCode);
           var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
@@ -1078,7 +1078,7 @@ var LibrarySDL = {
             info.audio.volume = info.volume; // For <audio> element
             if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
           } catch(e) {
-            Module.printErr('setGetVolume failed to set audio volume: ' + e);
+            err('setGetVolume failed to set audio volume: ' + e);
           }
         }
       }
@@ -1130,7 +1130,7 @@ var LibrarySDL = {
         audio.webAudioNode['start'](0, audio.currentPosition);
         audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
       } catch(e) {
-        Module.printErr('playWebAudio failed: ' + e);
+        err('playWebAudio failed: ' + e);
       }
     },
 
@@ -1148,7 +1148,7 @@ var LibrarySDL = {
           audio.webAudioNode.stop(0); // 0 is a default parameter, but WebKit is confused by it #3861
           audio.webAudioNode = undefined;
         } catch(e) {
-          Module.printErr('pauseWebAudio failed: ' + e);
+          err('pauseWebAudio failed: ' + e);
         }
       }
       audio.paused = true;
@@ -1507,17 +1507,17 @@ var LibrarySDL = {
   },
 
   SDL_VideoQuit: function() {
-    Module.print('SDL_VideoQuit called (and ignored)');
+    out('SDL_VideoQuit called (and ignored)');
   },
 
   SDL_QuitSubSystem: function(flags) {
-    Module.print('SDL_QuitSubSystem called (and ignored)');
+    out('SDL_QuitSubSystem called (and ignored)');
   },
 
   SDL_Quit__deps: ['SDL_AudioQuit'],
   SDL_Quit: function() {
     _SDL_AudioQuit();
-    Module.print('SDL_Quit called (and ignored)');
+    out('SDL_Quit called (and ignored)');
   },
 
   // Copy data from the canvas backing to a C++-accessible storage
@@ -2275,7 +2275,7 @@ var LibrarySDL = {
         filename = PATH.resolve(filename);
         var raw = Module["preloadedImages"][filename];
         if (!raw) {
-          if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
+          if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
           var lengthBytes = lengthBytesUTF8(filename)+1;
           var name = Module['_malloc'](lengthBytes);
@@ -2345,7 +2345,7 @@ var LibrarySDL = {
             data[destPtr++] = 255;
           }
         } else {
-          Module.printErr('cannot handle bpp ' + raw.bpp);
+          err('cannot handle bpp ' + raw.bpp);
           return 0;
         }
         surfData.ctx.putImageData(imageData, 0, 0);
@@ -2379,7 +2379,7 @@ var LibrarySDL = {
   },
 
   IMG_Quit: function() {
-    Module.print('IMG_Quit called (and ignored)');
+    out('IMG_Quit called (and ignored)');
   },
 
   // SDL_Audio
@@ -2769,14 +2769,14 @@ var LibrarySDL = {
       filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
-        if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
+        if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
         if (!Module.noAudioDecoding) warnOnce('Cannot find preloaded audio ' + filename);
 
         // see if we can read the file-contents from the in-memory FS
         try {
           bytes = FS.readFile(filename);
         } catch (e) {
-          Module.printErr('Couldn\'t find file for: ' + filename);
+          err('Couldn\'t find file for: ' + filename);
           return 0;
         }
       }
@@ -2911,7 +2911,7 @@ var LibrarySDL = {
         }
       }
       if (channel == -1) {
-        Module.printErr('All ' + SDL.numChannels + ' channels in use!');
+        err('All ' + SDL.numChannels + ' channels in use!');
         return -1;
       }
     }
@@ -3006,7 +3006,7 @@ var LibrarySDL = {
   Mix_PlayMusic: function(id, loops) {
     // Pause old music if it exists.
     if (SDL.music.audio) {
-      if (!SDL.music.audio.paused) Module.printErr('Music is already playing. ' + SDL.music.source);
+      if (!SDL.music.audio.paused) err('Music is already playing. ' + SDL.music.source);
       SDL.music.audio.pause();
     }
     var info = SDL.audios[id];
@@ -3102,7 +3102,7 @@ var LibrarySDL = {
     if (info && info.audio) {
       info.audio.pause();
     } else {
-      //Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
+      //err('Mix_Pause: no sound found for channel: ' + channel);
     }
   },
 
@@ -3260,7 +3260,7 @@ var LibrarySDL = {
   TTF_FontLineSkip: 'TTF_FontHeight', // XXX
 
   TTF_Quit: function() {
-    Module.print('TTF_Quit called (and ignored)');
+    out('TTF_Quit called (and ignored)');
   },
 
   // SDL gfx

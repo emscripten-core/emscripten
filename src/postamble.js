@@ -236,7 +236,7 @@ Module['callMain'] = function callMain(args) {
       if (e && typeof e === 'object' && e.stack) {
         toLog = [e, e.stack];
       }
-      Module.printErr('exception thrown: ' + toLog);
+      err('exception thrown: ' + toLog);
       Module['quit'](1, e);
     }
   } finally {
@@ -253,7 +253,7 @@ function run(args) {
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
-    Module.printErr('run() called, but dependencies remain, so not running');
+    err('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -321,10 +321,10 @@ function checkUnflushedContent() {
   // How we flush the streams depends on whether we are in NO_FILESYSTEM
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
-  var print = Module['print'];
-  var printErr = Module['printErr'];
+  var print = out;
+  var printErr = err;
   var has = false;
-  Module['print'] = Module['printErr'] = function(x) {
+  out = err = function(x) {
     has = true;
   }
   try { // it doesn't matter if it fails
@@ -351,8 +351,8 @@ function checkUnflushedContent() {
     }
 #endif
   } catch(e) {}
-  Module['print'] = print;
-  Module['printErr'] = printErr;
+  out = print;
+  err = printErr;
   if (has) {
     warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
   }
@@ -380,9 +380,9 @@ function exit(status, implicit) {
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if NO_EXIT_RUNTIME
-      Module.printErr('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+      err('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
 #else
-      Module.printErr('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+      err('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif // NO_EXIT_RUNTIME
     }
 #endif // ASSERTIONS
@@ -400,12 +400,8 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  if (ENVIRONMENT_IS_NODE) {
-    process['exit'](status);
-  }
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = exit;
 
 var abortDecorators = [];
 
@@ -418,8 +414,8 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   if (what !== undefined) {
-    Module.print(what);
-    Module.printErr(what);
+    out(what);
+    err(what);
     what = JSON.stringify(what)
   } else {
     what = '';

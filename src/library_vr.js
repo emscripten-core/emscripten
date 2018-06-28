@@ -200,7 +200,7 @@ var LibraryWebVR = {
           if (e instanceof ExitStatus) {
             return;
           } else {
-            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown in render loop of VR display ' + displayHandle.toString() + ': ' + [e, e.stack]);
+            if (e && typeof e === 'object' && e.stack) err('exception thrown in render loop of VR display ' + displayHandle.toString() + ': ' + [e, e.stack]);
             throw e;
           }
         }

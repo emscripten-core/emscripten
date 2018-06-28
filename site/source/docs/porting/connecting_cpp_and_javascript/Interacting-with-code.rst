@@ -254,7 +254,7 @@ following JavaScript:
 
 .. note:: The function ``alert`` is present in browsers, but not in *node*
    or other JavaScript shells. A more generic alternative is to call
-   :js:func:`Module.print`.
+   `console.log`.
 
 
 A faster way to call JavaScript from C is to write "inline JavaScript",
@@ -307,7 +307,7 @@ You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
 .. code-block:: cpp
 
       EM_ASM_({
-        Module.print('I received: ' + $0);
+        console.log('I received: ' + $0);
       }, 100);
 
 This will show ``I received: 100``. 
@@ -318,7 +318,7 @@ and then ``101``.
 .. code-block:: cpp
 
       int x = EM_ASM_INT({
-        Module.print('I received: ' + $0);
+        console.log('I received: ' + $0);
         return $0 + 1;
       }, 100);
       printf("%d\n", x);

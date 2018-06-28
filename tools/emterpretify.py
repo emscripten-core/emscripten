@@ -468,7 +468,7 @@ def push_stacktop(zero):
   return (' sp = EMTSTACKTOP;' if not ASYNC else ' sp = EMTSTACKTOP + 8 | 0;') if not zero else ''
 
 def pop_stacktop(zero):
-  return '//Module.print("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
+  return '//out("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
 
 def handle_async_pre_call():
   return 'HEAP32[sp - 4 >> 2] = pc;' if ASYNC else ''
@@ -643,7 +643,7 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //Module.print([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
+  //out([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
 '''
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -677,7 +677,7 @@ def make_emterpreter(zero=False):
 
   return process(r'''
 function emterpret%s(pc) {
- //Module.print('emterpret: ' + pc + ',' + EMTSTACKTOP);
+ //out('emterpret: ' + pc + ',' + EMTSTACKTOP);
  pc = pc | 0;
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
 %s
