@@ -726,10 +726,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.js_opts is None:
         options.js_opts = options.opt_level >= 2
+
       if options.llvm_opts is None:
         options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
-      if type(options.llvm_opts) == int:
+      elif type(options.llvm_opts) == int:
         options.llvm_opts = ['-O%d' % options.llvm_opts]
+
       if options.memory_init_file is None:
         options.memory_init_file = options.opt_level >= 2
 
