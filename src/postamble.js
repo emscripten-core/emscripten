@@ -400,12 +400,8 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  if (ENVIRONMENT_IS_NODE) {
-    process['exit'](status);
-  }
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = exit;
 
 var abortDecorators = [];
 
