@@ -280,6 +280,22 @@ class RunnerCore(unittest.TestCase):
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
+    def fix_target(ll_filename):
+      if LLVM_TARGET == ASM_JS_TARGET:
+         return
+      with open(ll_filename) as f:
+        contents = f.read()
+      if LLVM_TARGET in contents:
+        return
+      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
+      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
+      assert(ASM_JS_TARGET in contents)
+      assert(asmjs_layout in contents)
+      contents = contents.replace(asmjs_layout, wasm_layout)
+      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
+      with open(ll_filename, 'w') as f:
+        f.write(contents)
+
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
@@ -287,6 +303,7 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_dis(filename)
       else:
         shutil.copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
 
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -305,6 +322,7 @@ class RunnerCore(unittest.TestCase):
     else:
       if ll_file.endswith('.ll'):
         safe_copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
         Building.llvm_as(filename)
       else:
         safe_copy(ll_file, filename + '.o')

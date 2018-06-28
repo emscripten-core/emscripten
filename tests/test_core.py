@@ -6112,12 +6112,14 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
-    if Building.LLVM_OPTS: return self.skip('LLVM opts mess us up')
+    if Building.LLVM_OPTS:
+      return self.skip('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    src = test_path + '.c'
+    output = test_path + '.out'
     self.do_run_from_file(src, output, build_ll_hook=lambda x: False) # add an ll hook, to force ll generation
 
     filename = os.path.join(self.get_dir(), 'src.cpp')
