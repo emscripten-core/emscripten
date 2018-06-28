@@ -726,10 +726,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.js_opts is None:
         options.js_opts = options.opt_level >= 2
+
       if options.llvm_opts is None:
         options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
-      if type(options.llvm_opts) == int:
+      elif type(options.llvm_opts) == int:
         options.llvm_opts = ['-O%d' % options.llvm_opts]
+
       if options.memory_init_file is None:
         options.memory_init_file = options.opt_level >= 2
 
@@ -1519,7 +1521,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     log_time('bitcodeize inputs')
 
     with ToolchainProfiler.profile_block('process inputs'):
-      if not LEAVE_INPUTS_RAW and not shared.Settings.WASM_BACKEND:
+      if not LEAVE_INPUTS_RAW:
         assert len(temp_files) == len(input_files)
 
         # Optimize source files
@@ -1532,10 +1534,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               # if DEBUG:
               #   shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
-              # after optimizing, lower intrinsics to libc calls so that our linking code
-              # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
-              # we end up calling out to JS for Math.cos).
-              opts = options.llvm_opts + ['-lower-non-em-intrinsics']
+              opts = options.llvm_opts
+              if not shared.Settings.WASM_BACKEND:
+                # after optimizing, lower intrinsics to libc calls so that our linking code
+                # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
+                # we end up calling out to JS for Math.cos).
+                opts.append('-lower-non-em-intrinsics')
               shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
