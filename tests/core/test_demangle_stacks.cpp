@@ -11,7 +11,7 @@ class Class {
     volatile int w = 1;
     if (w) {
       EM_ASM({
-        Module['print'](stackTrace());
+        out(stackTrace());
       });
       abort();
     }

@@ -45,7 +45,7 @@ void* emscripten_GetAlcProcAddress(ALCchar *name) {
   else if (!strcmp(name, "alcResetDeviceSOFT")) { return emscripten_alcResetDeviceSOFT; }
 
   EM_ASM_({
-    Module.printErr("bad name in alcGetProcAddress: " + Pointer_stringify($0));
+    err("bad name in alcGetProcAddress: " + Pointer_stringify($0));
   }, name);
   return 0;
 }
@@ -132,7 +132,7 @@ void* emscripten_GetAlProcAddress(ALchar *name) {
   // Extensions
 
   EM_ASM_({
-    Module.printErr("bad name in alGetProcAddress: " + Pointer_stringify($0));
+    err("bad name in alGetProcAddress: " + Pointer_stringify($0));
   }, name);
   return 0;
 }

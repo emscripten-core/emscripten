@@ -7,20 +7,20 @@ using namespace emscripten;
 class MyFoo {
 public:
   MyFoo() {
-    EM_ASM({Module.print("constructing my foo");});
+    EM_ASM({out("constructing my foo");});
   }
   virtual void doit() {
-    EM_ASM({Module.print("doing it");});
+    EM_ASM({out("doing it");});
   }
 };
 
 class MyBar : public MyFoo {
 public:
   MyBar() {
-    EM_ASM({Module.print("constructing my bar");});
+    EM_ASM({out("constructing my bar");});
   }
   void doit() override {
-    EM_ASM({Module.print("doing something else");});
+    EM_ASM({out("doing something else");});
   }
 };
 
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
       var bar = new Module.MyBar();
       bar.doit();
     } catch(e) {
-      Module.print(e);
+      out(e);
     }
   );
   return 0;

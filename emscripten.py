@@ -953,11 +953,11 @@ def create_mftCall_funcs(function_table_data, settings):
 
 def get_function_pointer_error(sig, function_table_sigs, settings):
   if settings['ASSERTIONS'] <= 1:
-    extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+    extra = ' err("Build with ASSERTIONS=2 for more info.");'
     pointer = ' '
   else:
     pointer = ' \'" + x + "\' '
-    extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+    extra = ' err("This pointer might make sense in another type signature: '
     # sort signatures, attempting to show most likely related ones first
     sigs = list(function_table_sigs)
     sigs.sort(key=signature_sort_key(sig))
@@ -965,7 +965,7 @@ def get_function_pointer_error(sig, function_table_sigs, settings):
       if other != sig:
         extra += other + ': " + debug_table_' + other + '[x] + "  '
     extra += '"); '
-  return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+  return 'err("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
          'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
          'Or calling a function with an incorrect type, which will fail? ' + \
          '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
@@ -1215,7 +1215,7 @@ function ftCall_%s(%s) {
           table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
       prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
+  if (x < 0 || x >= %s.length) { err("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
       asm_setup += '''
 function ftCall_%s(%s) {%s
   return %s(%s);

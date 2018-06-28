@@ -2528,7 +2528,7 @@ def process(filename):
       class Foo {
       public:
         Foo() {
-          EM_ASM( Module.print("Constructing lib object.") );
+          EM_ASM( out("Constructing lib object.") );
         }
       };
       Foo global;
@@ -2543,13 +2543,13 @@ def process(filename):
       class Bar {
       public:
         Bar() {
-          EM_ASM( Module.print("Constructing main object.") );
+          EM_ASM( out("Constructing main object.") );
         }
       };
       Bar global;
       int main() {
         dlopen("liblib.so", RTLD_NOW);
-        EM_ASM( Module.print("All done.") );
+        EM_ASM( out("All done.") );
         return 0;
       }
       '''
@@ -2828,7 +2828,7 @@ def process(filename):
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
-          Module.print('verify middle of memory is non-zero: ' + value);
+          out('verify middle of memory is non-zero: ' + value);
           assert(value === 1);
         });
         free(mem);
@@ -3460,7 +3460,7 @@ Module = {
           alignFunctionTables();
           Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
           var newSize = alignFunctionTables();
-          //Module.print('new size of function tables: ' + newSize);
+          //out('new size of function tables: ' + newSize);
           // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
           loadDynamicLibrary('liblib.so');
@@ -3512,9 +3512,9 @@ Module = {
       #include "header.h"
       int main(int argc, char **argv) {
         volatile charfunc f = emscripten_run_script;
-        f("Module.print('one')");
+        f("out('one')");
         f = get();
-        f("Module.print('two')");
+        f("out('two')");
         return 0;
       }
     ''', '''
@@ -4378,7 +4378,7 @@ def process(filename):
     Module = {
       data: [10, 20, 40, 30],
       stdin: function() { return Module.data.pop() || null },
-      stdout: function(x) { Module.print('got: ' + x) }
+      stdout: function(x) { out('got: ' + x) }
     };
   \'\'\' + open(filename, 'r').read()
   open(filename, 'w').write(src)
@@ -5107,7 +5107,7 @@ PORT: 3979
     open(os.path.join(self.get_dir(), 'mylib1.js'), 'w').write('''
       mergeInto(LibraryManager.library, {
         printey: function() {
-          Module.print('hello from lib!');
+          out('hello from lib!');
         }
       });
     ''')
@@ -5833,7 +5833,7 @@ def process(filename):
     \'\'\'
       FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
       Module.callMain(Module.arguments);
-      Module.print("Data: " + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']).map(function(x) { return unSign(x, 8) })));
+      out("Data: " + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']).map(function(x) { return unSign(x, 8) })));
     \'\'\'
   )
   src.close()
@@ -5886,7 +5886,7 @@ def process(filename):
     ))
   ).replace(
     '// {{POST_RUN_ADDITIONS}}',
-    "Module.print('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));"
+    "out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));"
   )
   open(filename, 'w').write(src)
 '''
@@ -6152,35 +6152,35 @@ def process(filename):
     post = '''
 def process(filename):
   src = open(filename, 'r').read() + \'\'\'
-      Module.print('*');
+      out('*');
       var ret;
-      ret = Module['ccall']('get_int', 'number'); Module.print([typeof ret, ret].join(','));
-      ret = ccall('get_float', 'number'); Module.print([typeof ret, ret.toFixed(2)].join(','));
-      ret = ccall('get_bool', 'boolean'); Module.print([typeof ret, ret].join(','));
-      ret = ccall('get_string', 'string'); Module.print([typeof ret, ret].join(','));
-      ret = ccall('print_int', null, ['number'], [12]); Module.print(typeof ret);
-      ret = ccall('print_float', null, ['number'], [14.56]); Module.print(typeof ret);
-      ret = ccall('print_bool', null, ['boolean'], [true]); Module.print(typeof ret);
-      ret = ccall('print_string', null, ['string'], ["cheez"]); Module.print(typeof ret);
-      ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); Module.print(typeof ret); // JS array
-      ret = ccall('print_string', null, ['array'], [new Uint8Array([97, 114, 114, 45, 97, 121, 0])]); Module.print(typeof ret); // typed array
-      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); Module.print([typeof ret, ret].join(','));
+      ret = Module['ccall']('get_int', 'number'); out([typeof ret, ret].join(','));
+      ret = ccall('get_float', 'number'); out([typeof ret, ret.toFixed(2)].join(','));
+      ret = ccall('get_bool', 'boolean'); out([typeof ret, ret].join(','));
+      ret = ccall('get_string', 'string'); out([typeof ret, ret].join(','));
+      ret = ccall('print_int', null, ['number'], [12]); out(typeof ret);
+      ret = ccall('print_float', null, ['number'], [14.56]); out(typeof ret);
+      ret = ccall('print_bool', null, ['boolean'], [true]); out(typeof ret);
+      ret = ccall('print_string', null, ['string'], ["cheez"]); out(typeof ret);
+      ret = ccall('print_string', null, ['array'], [[97, 114, 114, 45, 97, 121, 0]]); out(typeof ret); // JS array
+      ret = ccall('print_string', null, ['array'], [new Uint8Array([97, 114, 114, 45, 97, 121, 0])]); out(typeof ret); // typed array
+      ret = ccall('multi', 'number', ['number', 'number', 'number', 'string'], [2, 1.4, 3, 'more']); out([typeof ret, ret].join(','));
       var p = ccall('malloc', 'pointer', ['number'], [4]);
       setValue(p, 650, 'i32');
-      ret = ccall('pointer', 'pointer', ['pointer'], [p]); Module.print([typeof ret, getValue(ret, 'i32')].join(','));
-      Module.print('*');
+      ret = ccall('pointer', 'pointer', ['pointer'], [p]); out([typeof ret, getValue(ret, 'i32')].join(','));
+      out('*');
       // part 2: cwrap
       var noThirdParam = Module['cwrap']('get_int', 'number');
-      Module.print(noThirdParam());
+      out(noThirdParam());
       var multi = Module['cwrap']('multi', 'number', ['number', 'number', 'number', 'string']);
-      Module.print(multi(2, 1.4, 3, 'atr'));
-      Module.print(multi(8, 5.4, 4, 'bret'));
-      Module.print('*');
+      out(multi(2, 1.4, 3, 'atr'));
+      out(multi(8, 5.4, 4, 'bret'));
+      out('*');
       // part 3: avoid stack explosion and check it's restored correctly
       for (var i = 0; i < TOTAL_STACK/60; i++) {
         ccall('multi', 'number', ['number', 'number', 'number', 'string'], [0, 0, 0, '123456789012345678901234567890123456789012345678901234567890']);
       }
-      Module.print('stack is ok.');
+      out('stack is ok.');
       ccall('call_ccall_again', null);
   \'\'\'
   open(filename, 'w').write(src)
@@ -6747,7 +6747,7 @@ someweirdtext
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       function printLerp() {
-          Module.print('lerp ' + Module.lerp(100, 200, 66) + '.');
+          out('lerp ' + Module.lerp(100, 200, 66) + '.');
       }
     ''')
     src = r'''
@@ -6775,7 +6775,7 @@ someweirdtext
         try {
           Module.compute(new Uint8Array([1,2,3]));
         } catch(e) {
-          Module.print(e);
+          out(e);
         }
       }
     ''')
@@ -6801,7 +6801,7 @@ someweirdtext
     Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
     open('post.js', 'w').write('''
       function printFirstElement() {
-        Module.print(Module.getBufferView()[0]);
+        out(Module.getBufferView()[0]);
       }
     ''')
     src = r'''
@@ -6887,7 +6887,7 @@ someweirdtext
       # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
       open('export.js', 'w').write('''
 // test purposes: remove printErr output, whose order is unpredictable when compared to print
-Module.printErr = Module['printErr'] = function(){};
+err = err = function(){};
 ''')
       self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
       if allow_memory_growth:
@@ -7210,7 +7210,7 @@ Success!
     '''
     open('post.js', 'w').write('''
       addOnExit(function () {
-        Module.print('I see exit status: ' + EXITSTATUS);
+        out('I see exit status: ' + EXITSTATUS);
       });
       Module['callMain']();
     ''')
@@ -7293,7 +7293,7 @@ try {
   ccall('main', 'number', ['number', 'string'], [2, 'waka']);
   var never = true;
 } catch(e) {
-  Module.print(e);
+  out(e);
   assert(!never);
 }
 ''')
@@ -7578,9 +7578,9 @@ extern "C" {
               typeof STACKTOP === 'number' &&
               typeof DYNAMIC_BASE === 'number' &&
               typeof DYNAMICTOP_PTR === 'number') {
-             Module.print('able to run memprof');
+             out('able to run memprof');
            } else {
-             Module.print('missing the required variables to run memprof');
+             out('missing the required variables to run memprof');
            }
         }
       });
@@ -7593,9 +7593,9 @@ extern "C" {
     open(self.in_dir('pre.js'), 'w').write('''
       Module = {};
       Module['preRun'] = function() {
-          Module.print(typeof FS.filesystems['MEMFS']);
-          Module.print(typeof FS.filesystems['IDBFS']);
-          Module.print(typeof FS.filesystems['NODEFS']);
+          out(typeof FS.filesystems['MEMFS']);
+          out(typeof FS.filesystems['IDBFS']);
+          out(typeof FS.filesystems['NODEFS']);
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']

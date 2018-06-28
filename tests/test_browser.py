@@ -773,7 +773,7 @@ window.close = function() {
           open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
             function keydown(c) {
              %s
-              //Module.print('push keydown');
+              //out('push keydown');
               var event = document.createEvent("KeyboardEvent");
               event.initKeyEvent("keydown", true, true, window,
                                  0, 0, 0, 0,
@@ -784,7 +784,7 @@ window.close = function() {
 
             function keyup(c) {
              %s
-              //Module.print('push keyup');
+              //out('push keyup');
               var event = document.createEvent("KeyboardEvent");
               event.initKeyEvent("keyup", true, true, window,
                                  0, 0, 0, 0,
@@ -1570,8 +1570,8 @@ keydown(100);keyup(100); // trigger the end
           FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
-      Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
+      Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
@@ -2094,7 +2094,7 @@ void *getBindBuffer() {
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.preRun = function() {
         addRunDependency();
-        Module.print('preRun called, added a dependency...');
+        out('preRun called, added a dependency...');
         setTimeout(function() {
           Module.okk = 10;
           removeRunDependency()
@@ -2172,7 +2172,7 @@ void *getBindBuffer() {
       var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
       function doCwrapCall(n) {
         var str = wrapped(n);
-        Module.print('got ' + str);
+        out('got ' + str);
         assert(str === 'silly-string');
       }
       function doDirectCall(n) {
@@ -2185,7 +2185,7 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        Module.print('expected fail 1');
+        out('expected fail 1');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2196,7 +2196,7 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        Module.print('expected fail 2');
+        out('expected fail 2');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2207,7 +2207,7 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        Module.print('expected fail 3');
+        out('expected fail 3');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -3171,8 +3171,8 @@ window.close = function() {
         strcpy(ret, temp);
         temp[1] = 'x';
         EM_ASM({
-          Module.realPrint = Module.print;
-          Module.print = function(x) {
+          Module.realPrint = out;
+          out = function(x) {
             if (!Module.printed) Module.printed = x;
             Module.realPrint(x);
           };
@@ -3657,8 +3657,8 @@ window.close = function() {
         };
       }
       // show stderr for the viewer's fun
-      Module.printErr = function(x) {
-        Module.print('<<< ' + x + ' >>>');
+      err = function(x) {
+        out('<<< ' + x + ' >>>');
         console.log(x);
       };
     </script>

@@ -1,43 +1,43 @@
 #include <emscripten.h>
 #include <stdio.h>
 
-EM_JS(void, noarg, (void), { Module['print']("no args works"); });
+EM_JS(void, noarg, (void), { out("no args works"); });
 EM_JS(int, noarg_int, (void), {
-  Module['print']("no args returning int");
+  out("no args returning int");
   return 12;
 });
 EM_JS(double, noarg_double, (void), {
-  Module['print']("no args returning double");
+  out("no args returning double");
   return 12.25;
 });
-EM_JS(void, intarg, (int x), { Module['print']("  takes ints: " + x);});
-EM_JS(void, doublearg, (double d), { Module['print']("  takes doubles: " + d);});
+EM_JS(void, intarg, (int x), { out("  takes ints: " + x);});
+EM_JS(void, doublearg, (double d), { out("  takes doubles: " + d);});
 EM_JS(double, stringarg, (char* str), {
-  Module['print']("  takes strings: " + Pointer_stringify(str));
+  out("  takes strings: " + Pointer_stringify(str));
   return 7.75;
 });
 EM_JS(int, multi_intarg, (int x, int y), {
-  Module['print']("  takes multiple ints: " + x + ", " + y);
+  out("  takes multiple ints: " + x + ", " + y);
   return 6;
 });
 EM_JS(double, multi_mixedarg, (int x, const char* str, double d), {
-  Module['print']("  mixed arg types: " + x + ", " + Pointer_stringify(str) + ", " + d);
+  out("  mixed arg types: " + x + ", " + Pointer_stringify(str) + ", " + d);
   return 8.125;
 });
 EM_JS(int, unused_args, (int unused), {
-  Module['print']("  ignores unused args");
+  out("  ignores unused args");
   return 5.5;
 });
 EM_JS(double, skip_args, (int x, int y), {
-  Module['print']("  skips unused args: " + y);
+  out("  skips unused args: " + y);
   return 6;
 });
 EM_JS(double, add_outer, (double x, double y, double z), {
-  Module['print']("  " + x + " + " + z);
+  out("  " + x + " + " + z);
   return x + z;
 });
 EM_JS(int, user_separator, (void), {
-  Module['print']("  can use <::> separator in user code");
+  out("  can use <::> separator in user code");
   return 15;
 });
 EM_JS(int, user_comma, (void), {
@@ -45,7 +45,7 @@ EM_JS(int, user_comma, (void), {
   x = {};
   y = 3;
   x[y] = [1, 2, 3];
-  Module['print']("  can have commas in user code: " + x[y]);
+  out("  can have commas in user code: " + x[y]);
   return x[y][1];
 });
 

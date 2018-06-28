@@ -610,7 +610,7 @@ var LibraryGLFW = {
     },
 
     requestFullScreen: function() {
-      Module.printErr('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
+      err('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
       GLFW.requestFullScreen = function() {
         return GLFW.requestFullscreen();
       }
@@ -627,7 +627,7 @@ var LibraryGLFW = {
     },
 
     cancelFullScreen: function() {
-      Module.printErr('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
+      err('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
       GLFW.cancelFullScreen = function() {
         return GLFW.exitFullscreen();
       }
