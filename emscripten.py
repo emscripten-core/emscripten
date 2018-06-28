@@ -2080,6 +2080,13 @@ def create_backend_args_wasm(infile, outfile, settings):
 
   # asm.js-style setjmp/longjmp handling
   args += ['-enable-emscripten-sjlj']
+
+  # internally LLVM backends generally just care about -O0 vs -O2, and
+  # llc defaults to -O2, so if we don't pass this that's what we'd get.
+  # might as well pass it, though: it avoids optimizing in -O0, and in
+  # the future backends might differentiate -O1 and -O3.
+  args += ['-O' + str(settings['OPT_LEVEL'])]
+
   return args
 
 
