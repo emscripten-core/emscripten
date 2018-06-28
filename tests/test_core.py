@@ -1714,7 +1714,6 @@ int main(int argc, char **argv) {
 
   @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_async_em_asm(self):
-    return self.skip('TODO: Enable me when we have tagged new compiler build')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
