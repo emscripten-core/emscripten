@@ -7340,8 +7340,8 @@ extern "C" {
       open('post.js', 'w').write(r'''
 ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
   .then(function(val) {
-    Module.print(val);
-    ccall('floatf', 'number', null, null, { async: true }).then(Module.print);
+    console.log(val);
+    ccall('floatf', 'number', null, null, { async: true }).then(console.log);
   });
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
