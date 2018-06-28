@@ -854,6 +854,7 @@ base align: 0, 0, 0, 0'''])
       Settings.DISABLE_EXCEPTION_CATCHING = disable_throw
       self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_throw')
 
+  @no_wasm_backend('backend stack grows down, asmjs stack grows up')
   def test_longjmp_unwind(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_unwind')
 
