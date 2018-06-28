@@ -414,11 +414,10 @@ def write_cyberdwarf_data(outfile, metadata, settings):
 
 def create_backend_args(infile, temp_js, settings):
   """Create args for asm.js backend from settings dict"""
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [
-    backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js,
+    shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
     '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
-    '-O' + str(settings['OPT_LEVEL']),
+    '-O%s' % settings['OPT_LEVEL'],
   ]
   if settings['PRECISE_F32']:
     args += ['-emscripten-precise-f32']
@@ -2066,10 +2065,8 @@ var establishStackSpace = Module['establishStackSpace'];
   return module
 
 def create_backend_args_wasm(infile, outfile, settings):
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
-                  '-asm-verbose=false', '-filetype=obj',
-                  '-o', outfile]
+  args = [shared.LLVM_COMPILER, infile, '-mtriple=' + shared.WASM_TARGET,
+          '-filetype=obj', '-o', outfile, '-O%s' % settings['OPT_LEVEL']]
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   # disable slow and relatively unimportant optimization passes
   args += ['-combiner-global-alias-analysis=false']
