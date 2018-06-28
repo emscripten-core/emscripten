@@ -1224,6 +1224,8 @@ def create_basic_funcs(function_table_sigs):
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.STACK_OVERFLOW_CHECK:
     basic_funcs += ['abortStackOverflow']
+  if shared.Settings.EMTERPRETIFY:
+    basic_funcs += ['abortStackOverflowEmterpreter']
   if shared.Settings.SAFE_HEAP:
     if asm_safe_heap():
       basic_funcs += ['segfault', 'alignfault', 'ftfault']

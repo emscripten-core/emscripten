@@ -480,7 +480,8 @@ def handle_async_post_call():
 CASES[ROPCODES['INTCALL']] = '''
     lz = HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 1 | 0] | 0; // FUNC inst, see definition above; we read params here
     ly = 0;
-    assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
+    if (((EMTSTACKTOP + 8|0) > (EMT_STACK_MAX|0))|0) // for return value
+      abortStackOverflowEmterpreter();
     %s
      %s
       while ((ly|0) < (lz|0)) {
@@ -702,7 +703,7 @@ function emterpret%s(pc) {
   push_stacktop(zero),
   ROPCODES['FUNC'],
   (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
+ if (((EMTSTACKTOP|0) > (EMT_STACK_MAX|0))|0) abortStackOverflowEmterpreter();\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
   ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
