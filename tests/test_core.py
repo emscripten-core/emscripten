@@ -7275,11 +7275,11 @@ int main() {
   emscripten_%s(100);
   printf("%%d\n", i);
 }
-''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
+''' % ('sleep_with_yield' if emterpretify else 'sleep')
 
     self.do_run(src, 'HelloWorld!99');
 
-    if self.is_emterpreter():
+    if emterpretify:
       print('check bad ccall use')
       src = r'''
 #include <stdio.h>
