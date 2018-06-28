@@ -1115,7 +1115,10 @@ def expand_response(data):
 # Given a string with arithmetic and/or KB/MB size suffixes, such as "1024*1024" or "32MB", computes how many bytes that is and returns it as an integer.
 def expand_byte_size_suffixes(value):
   value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
-  return eval(value)
+  try:
+    return eval(value)
+  except:
+    raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 
