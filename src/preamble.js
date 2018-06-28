@@ -144,8 +144,15 @@ var toC = {
   'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
 };
 
+
 // C calling interface.
-function ccall (ident, returnType, argTypes, args, opts) {
+function ccall(ident, returnType, argTypes, args, opts) {
+  function convertReturnValue(ret) {
+    if (returnType === 'string') return Pointer_stringify(ret);
+    if (returnType === 'boolean') return Boolean(ret);
+    return ret;
+  }
+
   var func = getCFunc(ident);
   var cArgs = [];
   var stack = 0;
@@ -164,42 +171,42 @@ function ccall (ident, returnType, argTypes, args, opts) {
     }
   }
   var ret = func.apply(null, cArgs);
+#if EMTERPRETIFY_ASYNC
+  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
 #if ASSERTIONS
-#if EMTERPRETIFY_ASYNC
-  if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
-    assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
-  }
-  if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
 #endif
-#endif
-  if (returnType === 'string') ret = Pointer_stringify(ret);
-  else if (returnType === 'boolean') ret = Boolean(ret);
-  if (stack !== 0) {
-#if EMTERPRETIFY_ASYNC
-    if (opts && opts.async) {
-      EmterpreterAsync.asyncFinalizers.push(function() {
-        stackRestore(stack);
+    return new Promise(function(resolve) {
+      EmterpreterAsync.restartFunc = func;
+      EmterpreterAsync.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
       });
-      return;
-    }
-#endif
-    stackRestore(stack);
+    });
   }
+#endif
+  ret = convertReturnValue(ret);
+  if (stack !== 0) stackRestore(stack);
+#if EMTERPRETIFY_ASYNC
+  if (opts && opts.async) return Promise.resolve(ret)
+#endif
   return ret;
 }
 
-function cwrap (ident, returnType, argTypes) {
+function cwrap(ident, returnType, argTypes, opts) {
+#if !ASSERTIONS
   argTypes = argTypes || [];
-  var cfunc = getCFunc(ident);
   // When the function takes numbers and returns a number, we can just return
   // the original function
   var numericArgs = argTypes.every(function(type){ return type === 'number'});
   var numericRet = returnType !== 'string';
-  if (numericRet && numericArgs) {
-    return cfunc;
+  if (numericRet && numericArgs && !opts) {
+    return getCFunc(ident);
   }
+#endif
   return function() {
-    return ccall(ident, returnType, argTypes, arguments);
+    return ccall(ident, returnType, argTypes, arguments, opts);
   }
 }
 

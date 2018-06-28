@@ -9,7 +9,7 @@ mergeInto(LibraryManager.library, {
  *
  * ---------------------  <-- saved sp for the current function
  * <last normal stack frame>
- * --------------------- 
+ * ---------------------
  * pointer to the previous frame <-- __async_cur_frame
  * saved sp
  * callback function   <-- ctx, returned by alloc/reallloc, used by the program
@@ -74,7 +74,7 @@ mergeInto(LibraryManager.library, {
     ___async_cur_frame = new_frame;
     return (___async_cur_frame + 8)|0;
   },
-  
+
   emscripten_realloc_async_context__deps: ['__async_cur_frame'],
   emscripten_realloc_async_context__sig: 'ii',
   emscripten_realloc_async_context__asm: true,
@@ -132,7 +132,7 @@ mergeInto(LibraryManager.library, {
     if ((stack_size|0) <= 0) stack_size = 4096;
 
     coroutine = _malloc(stack_size + 32 | 0) | 0;
-    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
+    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 24, 'f', 'i32') }}};
@@ -238,6 +238,10 @@ mergeInto(LibraryManager.library, {
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
+    restartFunc: null, // During an async call started with ccall, this contains the function generated
+                       // by the compiler that calls emterpret and returns the return value. If we call
+                       // emterpret directly, we don't get the return value back (and we can't just read
+                       // it from the stack because we don't know the correct type).
     asyncFinalizers: [], // functions to run when all asynchronicity is done
 
     ensureInit: function() {
@@ -263,7 +267,9 @@ mergeInto(LibraryManager.library, {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
         var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['emtStackSave']()>>2));
+#if ASSERTIONS
         var stacktop = Module['stackSave']();
+#endif
 
         var resumedCallbacksForYield = false;
         function resumeCallbacksForYield() {
@@ -309,16 +315,20 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          var ret;
+          if (EmterpreterAsync.restartFunc) ret = EmterpreterAsync.restartFunc();
+          else Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
           }
           if (EmterpreterAsync.state === 0) {
-            EmterpreterAsync.asyncFinalizers.forEach(function(func) {
-              func();
+            EmterpreterAsync.restartFunc = null;
+            var asyncFinalizers = EmterpreterAsync.asyncFinalizers;
+            EmterpreterAsync.asyncFinalizers = [];
+            asyncFinalizers.forEach(function(func) {
+              func(ret);
             });
-            EmterpreterAsync.asyncFinalizers.length = 0;
           }
         });
 

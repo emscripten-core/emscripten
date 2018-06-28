@@ -7300,7 +7300,7 @@ try {
 }
 ''')
       self.emcc_args += ['--post-js', 'post.js']
-      self.do_run(src, 'cannot start async op with normal JS');
+      self.do_run(src, 'The call to main is running asynchronously.');
 
       print('check reasonable ccall use')
       src = r'''
@@ -7316,6 +7316,33 @@ int main() {
 ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 ''')
       self.do_run(src, 'HelloWorld');
+
+      print('check ccall promise')
+      Settings.EXPORTED_FUNCTIONS = ['_stringf', '_floatf']
+      src = r'''
+#include <stdio.h>
+#include <emscripten.h>
+extern "C" {
+  char* stringf(char* param) {
+    emscripten_sleep(20);
+    printf(param);
+    return "second";
+  }
+  double floatf() {
+    emscripten_sleep(20);
+    emscripten_sleep(20);
+    return 6.4;
+  }
+}
+'''
+      open('post.js', 'w').write(r'''
+ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
+  .then(function(val) {
+    Module.print(val);
+    ccall('floatf', 'number', null, null, { async: true }).then(Module.print);
+  });
+''')
+      self.do_run(src, 'first\nsecond\n6.4');
 
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
