@@ -81,7 +81,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def collect_results(self):
     buffered_results = []
-    while len(self.processes) > 0:
+    while len(self.processes):
       res = get_from_queue(self.result_queue)
       if res is not None:
         buffered_results.append(res)

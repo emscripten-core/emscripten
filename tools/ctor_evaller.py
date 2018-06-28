@@ -45,7 +45,7 @@ def find_ctors_data(js, num):
   ctors_text = js[ctors_start:ctors_end]
   all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
   all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
-  assert len(all_ctors) > 0
+  assert len(all_ctors)
   ctors = all_ctors[:num]
   return ctors_start, ctors_end, all_ctors, ctors
 
@@ -69,7 +69,7 @@ def eval_ctors_js(js, mem_init, num):
   shared.logging.debug('trying to eval ctors: ' + ', '.join(ctors))
   # Find the asm module, and receive the mem init.
   asm = get_asm(js)
-  assert len(asm) > 0
+  assert len(asm)
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
   # Substitute sbrk with a failing stub: the dynamic heap memory area shouldn't get increased during static ctor initialization.
   asm = asm.replace('function _sbrk(', 'function _sbrk(increment) { throw "no sbrk when evalling ctors!"; } function KILLED_sbrk(', 1)
@@ -275,7 +275,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     new_ctors = ''
   else:
     elements = []
-    if len(atexits) > 0:
+    if len(atexits):
       elements.append('{ func: function() { %s } }' % '; '.join(['_atexit(' + str(x[0]) + ',' + str(x[1]) + ')' for x in atexits]))
     for ctor in all_ctors[num:]:
       elements.append('{ func: function() { %s() } }' % ctor)

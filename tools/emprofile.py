@@ -36,13 +36,13 @@ def create_profiling_graph():
   log_files = [f for f in list_files_in_directory(profiler_logs_path) if 'toolchain_profiler.pid_' in f]
 
   all_results = []
-  if len(log_files) > 0:
+  if len(log_files):
     print('Processing ' + str(len(log_files)) + ' profile log files in "' + profiler_logs_path + '"...')
   for f in log_files:
     try:
       json_data = open(f, 'r').read()
       lines = json_data.split('\n')
-      lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip()) > 0]
+      lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip())]
       lines = [(x + ',') if not x.endswith(',') else x for x in lines]
       lines[-1] = lines[-1][:-1]
       json_data = '[' + '\n'.join(lines) + ']'

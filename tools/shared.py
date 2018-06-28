@@ -86,9 +86,9 @@ class WindowsPopen(object):
     self.returncode = self.process.returncode
 
     # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
-    if self.stdout is None and self.stdout_ == PIPE and len(output[0].strip()) > 0:
+    if self.stdout is None and self.stdout_ == PIPE and len(output[0].strip()):
       print(output[0], file=sys.stdout)
-    if self.stderr is None and self.stderr_ == PIPE and len(output[1].strip()) > 0:
+    if self.stderr is None and self.stderr_ == PIPE and len(output[1].strip()):
       print(output[1], file=sys.stderr)
 
     # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
@@ -1341,7 +1341,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x) > 0]
+    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x)]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -2100,7 +2100,7 @@ class Building(object):
       inputs = [inputs]
     else:
       assert out, 'must provide out if llvm_opt on a list of inputs'
-    assert len(opts) > 0, 'should not call opt with nothing to do'
+    assert len(opts), 'should not call opt with nothing to do'
     opts = opts[:]
     # TODO: disable inlining when needed
     # if not Building.can_inline():
@@ -2169,7 +2169,7 @@ class Building(object):
         continue
       if ':' in line:
         continue # e.g.  filename.o:  , saying which file it's from
-      parts = [seg for seg in line.split(' ') if len(seg) > 0]
+      parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
         parts.pop(0)
@@ -2384,7 +2384,7 @@ class Building(object):
       advised = set()
       if can_reach:
         # find all functions that can reach the initial list
-        while len(to_check) > 0:
+        while len(to_check):
           curr = to_check.pop()
           if curr in reachable_from:
             for reacher in reachable_from[curr]:
@@ -2397,7 +2397,7 @@ class Building(object):
         # all tables are assumed reachable, as they can be called from dyncall from outside
         for name, funcs in asm.tables.items():
           to_check.append(name)
-        while len(to_check) > 0:
+        while len(to_check):
           curr = to_check.pop()
           if not JS.is_function_table(curr):
             advised.add(curr)
@@ -2600,7 +2600,7 @@ class Building(object):
     }
     library_files = []
     if library_name in js_system_libraries:
-      if len(js_system_libraries[library_name]) > 0:
+      if len(js_system_libraries[library_name]):
         library_files += [js_system_libraries[library_name]]
 
         # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.

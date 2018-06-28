@@ -544,7 +544,7 @@ def main():
     if sys.argv[i] in options: sys.argv[i] = ''
     if sys.argv[i] in options_with_value: sys.argv[i+1] = ''
 
-  sys.argv = [x for x in sys.argv if len(x) > 0]
+  sys.argv = [x for x in sys.argv if len(x)]
 
   # Double-check that the device is found via adb:
   if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:

@@ -240,7 +240,7 @@ class JSOptimizer(object):
     if self.extra_info is not None and len(self.extra_info) == 0:
       self.extra_info = None
 
-    if len(self.queue) > 0 and not(not shared.Settings.ASM_JS and len(self.queue) == 1 and self.queue[0] == 'last'):
+    if len(self.queue) and not(not shared.Settings.ASM_JS and len(self.queue) == 1 and self.queue[0] == 'last'):
       passes = self.queue[:]
 
       if DEBUG != '2' or len(passes) < 2:
@@ -260,7 +260,7 @@ class JSOptimizer(object):
               curr.append('emitJSON')
               chunks.append(curr)
               curr = ['receiveJSON', p]
-        if len(curr) > 0:
+        if len(curr):
           chunks.append(curr)
         if len(chunks) == 1:
           self.run_passes(chunks[0], title, just_split=False, just_concat=False)
@@ -880,7 +880,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final_suffix = 'eout' # not bitcode, not js; but just result from preprocessing stage of the input file
       if '-M' in newargs or '-MM' in newargs:
         final_suffix = 'mout' # not bitcode, not js; but just dependency rule of the input file
-      final_ending = ('.' + final_suffix) if len(final_suffix) > 0 else ''
+      final_ending = ('.' + final_suffix) if len(final_suffix) else ''
 
       # target is now finalized, can finalize other _target s
       js_target = unsuffixed(target) + '.js'
@@ -1160,7 +1160,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.proxy_to_worker:
         shared.Settings.PROXY_TO_WORKER = 1
 
-      if options.use_preload_plugins or len(options.preload_files) > 0 or len(options.embed_files) > 0:
+      if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
         assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
@@ -1766,7 +1766,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
-      if len(options.preload_files) + len(options.embed_files) > 0:
+      if len(options.preload_files) or len(options.embed_files):
 
         # copying into the heap is risky when split - the chunks might be too small for the file package!
         if shared.Settings.SPLIT_MEMORY and not options.no_heap_copy:
@@ -1781,13 +1781,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         logging.debug('setting up files')
         file_args = ['--from-emcc', '--export-name=' + shared.Settings.EXPORT_NAME]
-        if len(options.preload_files) > 0:
+        if len(options.preload_files):
           file_args.append('--preload')
           file_args += options.preload_files
-        if len(options.embed_files) > 0:
+        if len(options.embed_files):
           file_args.append('--embed')
           file_args += options.embed_files
-        if len(options.exclude_files) > 0:
+        if len(options.exclude_files):
           file_args.append('--exclude')
           file_args += options.exclude_files
         if options.use_preload_cache:
@@ -2937,7 +2937,7 @@ def parse_value(text):
     index = 0
     while True:
       current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
-      assert len(current) > 0, "string array should not contain an empty value"
+      assert len(current), "string array should not contain an empty value"
       first = current[0]
       if not(first == "'" or first == '"'):
         result.append(current.rstrip())
