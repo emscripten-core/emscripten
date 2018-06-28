@@ -627,7 +627,7 @@ var LibraryEmbind = {
             var str;
             if(stdStringIsUTF8) {
                 try {
-                    str = Module['UTF8ToString'](value + 4, length, true);
+                    str = UTF8ToString(value + 4, length, true);
                 }
                 catch(decodeError) {
                     throwBindingError(decodeError);
@@ -657,7 +657,7 @@ var LibraryEmbind = {
                 throwBindingError('Cannot pass non-string to std::string');
             }
             if (stdStringIsUTF8 && valueIsOfTypeString) {
-                getLength = function() {return Module['lengthBytesUTF8'](value);};
+                getLength = function() {return lengthBytesUTF8(value);};
             } else {
                 getLength = function() {return value.length;};
             }
@@ -669,7 +669,7 @@ var LibraryEmbind = {
 
             if (stdStringIsUTF8 && valueIsOfTypeString) {
                 try {
-                    Module['stringToUTF8'](value, ptr + 4, length + 1, true);
+                    stringToUTF8(value, ptr + 4, length + 1, true);
                 }
                 catch(decodeError) {
                     throwBindingError(decodeError);
