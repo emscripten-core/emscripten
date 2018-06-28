@@ -1,5 +1,7 @@
-
-// === Auto-generated postamble setup entry stuff ===
+// === Postamble/preparation code ===
+//
+// The code in this file is similar to postamble.js, differing in that it
+// is emitted after Module['asm'] is set up.
 
 Module['asm'] = asm;
 

@@ -345,7 +345,7 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
         class Finals(object):
           buf = []
         def process(line):
-          if len(line) > 0 and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):
+          if len(line) > 0 and (line.startswith('Module[') or line.endswith('["X"]=1;')):
             Finals.buf.append(line)
             return False
           return True
