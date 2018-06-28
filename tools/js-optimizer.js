@@ -2069,7 +2069,7 @@ function detectSign(node) {
           if (node[2][0] === 'num' || node[3][0] === 'num') return ASM_FLEXIBLE;
           return ASM_NONSIGNED;
         }
-        case '/': return ASM_NONSIGNED; // without a coercion, this is double
+        case '/': case '%': return ASM_NONSIGNED; // without a coercion, this is double
         case '==': case '!=': case '<': case '<=': case '>': case '>=': return ASM_SIGNED;
         default: throw 'yikes ' + node[1];
       }
