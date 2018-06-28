@@ -237,9 +237,9 @@ var LibraryBrowser = {
         // loadWebAssemblyModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
-        this.asyncWasmLoadPromise = this.asyncWasmLoadPromise.then(
+        this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
           function() {
-            return Module.loadWebAssemblyModule(byteArray, true)
+            return loadWebAssemblyModule(byteArray, true);
           }).then(
             function(module) {
               Module.preloadedWasm[name] = module;
