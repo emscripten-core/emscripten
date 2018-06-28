@@ -1827,22 +1827,25 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
         shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   basename = shared.unsuffixed(outfile.name)
-  wasm = basename + '.wasm'
   metadata_file = basename + '.metadata'
-  base_wasm = basename + '.lld.wasm'
+  wasm = basename + '.wasm'
 
-  with temp_files.get_file('.wb.o') as temp_o:
-    backend_args = create_backend_args_wasm(infile, temp_o, settings)
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-    debug_copy(temp_o, 'emcc-llvm-backend-output.o')
-    shared.Building.link_lld([temp_o], base_wasm)
-    debug_copy(base_wasm, 'base_wasm.wasm')
+  if settings['EXPERIMENTAL_USE_LLD']:
+    base_wasm = infile
+  else:
+    base_wasm = basename + '.lld.wasm'
+    with temp_files.get_file('.wb.o') as temp_o:
+      backend_args = create_backend_args_wasm(infile, temp_o, settings)
+      if DEBUG:
+        logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
+        t = time.time()
+      shared.check_call(backend_args)
+      if DEBUG:
+        logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
+        t = time.time()
+      debug_copy(temp_o, 'emcc-llvm-backend-output.o')
+      shared.Building.link_lld([temp_o], base_wasm, [])
+      debug_copy(base_wasm, 'base_wasm.wasm')
 
   write_source_map = settings['DEBUG_LEVEL'] >= 4
   if write_source_map:
@@ -2064,6 +2067,7 @@ var establishStackSpace = Module['establishStackSpace'];
   module.append(jscall_funcs)
   return module
 
+
 def create_backend_args_wasm(infile, outfile, settings):
   # TODO(sbc): Don't allow -O0 due to bug in wasm-emscripten-finalize:
   # https://github.com/WebAssembly/binaryen/issues/1612
@@ -2072,20 +2076,7 @@ def create_backend_args_wasm(infile, outfile, settings):
     optlevel = 1
   args = [shared.LLVM_COMPILER, infile, '-mtriple=' + shared.WASM_TARGET,
           '-filetype=obj', '-o', outfile, '-O%s' % optlevel]
-  args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-  # disable slow and relatively unimportant optimization passes
-  args += ['-combiner-global-alias-analysis=false']
-
-  # asm.js-style exception handling
-  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-    args += ['-enable-emscripten-cxx-exceptions']
-  if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-    whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
-
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
-  return args
+  return args + shared.Building.llvm_backend_args()
 
 
 def load_metadata(metadata_raw):

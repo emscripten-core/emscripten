@@ -1153,6 +1153,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
+      if 'EMCC_EXPERIMENTAL_USE_LLD' in os.environ:
+        self.attrs['EXPERIMENTAL_USE_LLD'] = os.environ['EMCC_EXPERIMENTAL_USE_LLD']
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1349,6 +1351,7 @@ class Building(object):
           # EMCC_WASM_BACKEND check also requires locked access to the cache,
           # which the multiprocess children would not get.
           'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
+          'EMCC_EXPERIMENTAL_USE_LLD=%s' % Settings.EXPERIMENTAL_USE_LLD,
           # Multiprocessing pool children can't spawn their own linear number of
           # children, that could cause a quadratic amount of spawned processes.
           'EMCC_CORES=1'
@@ -1723,7 +1726,24 @@ class Building(object):
       Building.parallel_llvm_nm(object_names)
 
   @staticmethod
-  def link_lld(files, target, force_archive_contents=False):
+  def llvm_backend_args():
+    args = ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+    # disable slow and relatively unimportant optimization passes
+    args += ['-combiner-global-alias-analysis=false']
+
+    # asm.js-style exception handling
+    if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      args += ['-enable-emscripten-cxx-exceptions']
+    if Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
+      args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
+    return args
+
+  @staticmethod
+  def link_lld(files, target, opts):
     def wasm_rt_fail(archive_file):
       def wrapped():
         raise FatalError('Expected {} to already be built'.format(archive_file))
@@ -1741,6 +1761,9 @@ class Building(object):
       '--import-memory',
       '--export', '__wasm_call_ctors'
       ] + files + [libc_rt_lib, compiler_rt_lib]
+    for a in Building.llvm_backend_args():
+      cmd += ['-mllvm', a]
+    #cmd.append('--lto-O3')
 
     # emscripten-wasm-finalize currently depends on the presence of debug
     # symbols for renaming of the __invoke symbols
@@ -1761,6 +1784,8 @@ class Building(object):
     if DEBUG:
       logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
       t = time.time()
+
+    return target
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
@@ -1913,14 +1938,14 @@ class Building(object):
         response_fh.write("\"" + arg + "\"\n")
       response_fh.close()
 
-    if not just_calculate:
-      logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
-      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-      return target
-    else:
+    if just_calculate:
       # just calculating; return the link arguments which is the final list of files to link
       return link_args
+
+    logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
+    output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    return target
 
   # LLVM optimizations
   # @param opt A list of LLVM optimization parameters
@@ -1944,8 +1969,9 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
+    cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
     try:
-      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+      run_process(cmd, stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
       logging.error('Failed to run llvm optimizations: ' + e.output)
