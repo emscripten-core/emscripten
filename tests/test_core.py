@@ -7248,9 +7248,17 @@ Success!
   def test_vswprintf_utf8(self):
     self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
 
-  def test_async(self):
+  def test_async(self, emterpretify=False):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    if not emterpretify:
+      if self.is_emterpreter():
+        return self.skip("don't test both emterpretify and asyncify at once")
+      Settings.ASYNCIFY = 1
+    else:
+      Settings.EMTERPRETIFY = 1
+      Settings.EMTERPRETIFY_ASYNC = 1
 
     src = r'''
 #include <stdio.h>
@@ -7268,11 +7276,6 @@ int main() {
   printf("%%d\n", i);
 }
 ''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
-
-    if not self.is_emterpreter():
-      Settings.ASYNCIFY = 1
-    else:
-      Settings.EMTERPRETIFY_ASYNC = 1
 
     self.do_run(src, 'HelloWorld!99');
 
@@ -7342,6 +7345,9 @@ ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
   });
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
+
+  def test_async_emterpretify(self, emterpretify=False):
+    self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
