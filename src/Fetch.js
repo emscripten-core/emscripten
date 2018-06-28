@@ -117,10 +117,10 @@ var Fetch = {
       else if (Module['pthreadMainPrefixURL']) fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
-        Module['print']('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
       Fetch.worker.onerror = function(e) {
-        Module['printErr']('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
     }
 #else

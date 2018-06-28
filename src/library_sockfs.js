@@ -27,12 +27,12 @@ mergeInto(LibraryManager.library, {
 
       // If debug is enabled register simple default logging callbacks for each Event.
 #if SOCKET_DEBUG
-      Module['websocket']['on']('error', function(error) {Module.printErr('Socket error ' + error);});
-      Module['websocket']['on']('open', function(fd) {Module.print('Socket open fd = ' + fd);});
-      Module['websocket']['on']('listen', function(fd) {Module.print('Socket listen fd = ' + fd);});
-      Module['websocket']['on']('connection', function(fd) {Module.print('Socket connection fd = ' + fd);});
-      Module['websocket']['on']('message', function(fd) {Module.print('Socket message fd = ' + fd);});
-      Module['websocket']['on']('close', function(fd) {Module.print('Socket close fd = ' + fd);});
+      Module['websocket']['on']('error', function(error) {err('Socket error ' + error);});
+      Module['websocket']['on']('open', function(fd) {out('Socket open fd = ' + fd);});
+      Module['websocket']['on']('listen', function(fd) {out('Socket listen fd = ' + fd);});
+      Module['websocket']['on']('connection', function(fd) {out('Socket connection fd = ' + fd);});
+      Module['websocket']['on']('message', function(fd) {out('Socket message fd = ' + fd);});
+      Module['websocket']['on']('close', function(fd) {out('Socket close fd = ' + fd);});
 #endif
 
       return FS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
@@ -201,7 +201,7 @@ mergeInto(LibraryManager.library, {
             }
 
 #if SOCKET_DEBUG
-            Module.print('connect: ' + url + ', ' + subProtocols.toString());
+            out('connect: ' + url + ', ' + subProtocols.toString());
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
@@ -224,7 +224,7 @@ mergeInto(LibraryManager.library, {
         }
 
 #if SOCKET_DEBUG
-        Module.print('websocket adding peer: ' + addr + ':' + port);
+        out('websocket adding peer: ' + addr + ':' + port);
 #endif
 
         var peer = {
@@ -242,7 +242,7 @@ mergeInto(LibraryManager.library, {
         // remote end.
         if (sock.type === {{{ cDefine('SOCK_DGRAM') }}} && typeof sock.sport !== 'undefined') {
 #if SOCKET_DEBUG
-          Module.print('websocket queuing port message (port ' + sock.sport + ')');
+          out('websocket queuing port message (port ' + sock.sport + ')');
 #endif
           peer.dgram_send_queue.push(new Uint8Array([
               255, 255, 255, 255,
@@ -267,7 +267,7 @@ mergeInto(LibraryManager.library, {
 
         var handleOpen = function () {
 #if SOCKET_DEBUG
-          Module.print('websocket handle open');
+          out('websocket handle open');
 #endif
 
           Module['websocket'].emit('open', sock.stream.fd);
@@ -276,7 +276,7 @@ mergeInto(LibraryManager.library, {
             var queued = peer.dgram_send_queue.shift();
             while (queued) {
 #if SOCKET_DEBUG
-              Module.print('websocket sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
+              out('websocket sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
 #endif
               peer.socket.send(queued);
               queued = peer.dgram_send_queue.shift();
@@ -300,7 +300,7 @@ mergeInto(LibraryManager.library, {
           data = new Uint8Array(data);  // make a typed array view on the array buffer
 
 #if SOCKET_DEBUG
-          Module.print('websocket handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
+          out('websocket handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
 #endif
 
           // if this is the port message, override the peer's port with it
@@ -627,7 +627,7 @@ mergeInto(LibraryManager.library, {
               dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
             }
 #if SOCKET_DEBUG
-            Module.print('websocket queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+            out('websocket queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
 #endif
             dest.dgram_send_queue.push(data);
             return length;
@@ -636,7 +636,7 @@ mergeInto(LibraryManager.library, {
 
         try {
 #if SOCKET_DEBUG
-          Module.print('websocket send (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+          out('websocket send (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
 #endif
           // send the actual data
           dest.socket.send(data);
@@ -687,14 +687,14 @@ mergeInto(LibraryManager.library, {
         };
 
 #if SOCKET_DEBUG
-        Module.print('websocket read (' + bytesRead + ' bytes): ' + [Array.prototype.slice.call(res.buffer)]);
+        out('websocket read (' + bytesRead + ' bytes): ' + [Array.prototype.slice.call(res.buffer)]);
 #endif
 
         // push back any unread data for TCP connections
         if (sock.type === {{{ cDefine('SOCK_STREAM') }}} && bytesRead < queuedLength) {
           var bytesRemaining = queuedLength - bytesRead;
 #if SOCKET_DEBUG
-          Module.print('websocket read: put back ' + bytesRemaining + ' bytes');
+          out('websocket read: put back ' + bytesRemaining + ' bytes');
 #endif
           queued.data = new Uint8Array(queuedBuffer, queuedOffset + bytesRead, bytesRemaining);
           sock.recv_queue.unshift(queued);
@@ -731,7 +731,7 @@ mergeInto(LibraryManager.library, {
         if (e instanceof ExitStatus) {
           return;
         } else {
-          if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+          if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
           throw e;
         }
       }

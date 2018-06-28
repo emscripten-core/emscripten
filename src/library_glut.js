@@ -304,7 +304,7 @@ var LibraryGLUT = {
     },
 
     requestFullScreen: function() {
-      Module.printErr('GLUT.requestFullScreen() is deprecated. Please call GLUT.requestFullscreen instead.');
+      err('GLUT.requestFullScreen() is deprecated. Please call GLUT.requestFullscreen instead.');
       GLUT.requestFullScreen = function() {
         return GLUT.requestFullscreen();
       }
@@ -321,7 +321,7 @@ var LibraryGLUT = {
     },
 
     cancelFullScreen: function() {
-      Module.printErr('GLUT.cancelFullScreen() is deprecated. Please call GLUT.exitFullscreen instead.');
+      err('GLUT.cancelFullScreen() is deprecated. Please call GLUT.exitFullscreen instead.');
       GLUT.cancelFullScreen = function() {
         return GLUT.exitFullscreen();
       }

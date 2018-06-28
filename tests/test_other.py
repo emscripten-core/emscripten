@@ -1689,7 +1689,7 @@ int f() {
       if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
-      Module.print(MESSAGE);
+      out(MESSAGE);
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0']).communicate()
@@ -1865,8 +1865,8 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
-        postRun: function() { Module.print('post-run') }
+        preRun: function() { out('pre-run') },
+        postRun: function() { out('post-run') }
       };
     ''')
 
@@ -1899,9 +1899,9 @@ int f() {
     # Use postInit
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
-        postRun: function() { Module.print('post-run') },
-        preInit: function() { Module.print('pre-init') }
+        preRun: function() { out('pre-run') },
+        postRun: function() { out('post-run') },
+        preInit: function() { out('pre-init') }
       };
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
@@ -1917,11 +1917,11 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
+        preRun: function() { out('pre-run') },
       };
     ''')
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-      Module.postRun = function() { Module.print('post-run') };
+      Module.postRun = function() { out('post-run') };
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
@@ -1936,11 +1936,11 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: [function() { Module.print('pre-run') }],
+        preRun: [function() { out('pre-run') }],
       };
     ''')
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-      Module.preRun.push(function() { Module.print('prepre') });
+      Module.preRun.push(function() { out('prepre') });
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
     self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
@@ -2053,6 +2053,8 @@ int f() {
        ['emitDCEGraph', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
+      (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
+       ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
     ]:
       print(input, passes)
 
@@ -2465,29 +2467,29 @@ done.
       #include <stdio.h>
       #include <emscripten.h>
       void two(char c) {
-        EM_ASM(Module.print(stackTrace()));
+        EM_ASM(out(stackTrace()));
       }
       void one(int x) {
         two(x % 17);
       }
       int main() {
-        EM_ASM(Module.print(demangle('__Znwj'))); // check for no aborts
-        EM_ASM(Module.print(demangle('_main')));
-        EM_ASM(Module.print(demangle('__Z2f2v')));
-        EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
-        EM_ASM(Module.print(demangle('__ZL12abcdabcdabcdi')));
-        EM_ASM(Module.print(demangle('__Z4testcsifdPvPiPc')));
-        EM_ASM(Module.print(demangle('__ZN4test5moarrEcslfdPvPiPc')));
-        EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
-        EM_ASM(Module.print(demangle('__Z3FooIiEvv')));
-        EM_ASM(Module.print(demangle('__Z3FooIidEvi')));
-        EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
-        EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
-        EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
-        EM_ASM(Module.print(demangle('__Z5multiwahtjmxyz')));
-        EM_ASM(Module.print(demangle('__Z1aA32_iPA5_c')));
-        EM_ASM(Module.print(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
-        EM_ASM(Module.print(demangle('__ZN5wakaw2Cm10RasterBaseINS_6watwat9PolocatorEE8merbine1INS4_2OREEEvPKjj'))); // we get this wrong, but at least emit a '?'
+        EM_ASM(out(demangle('__Znwj'))); // check for no aborts
+        EM_ASM(out(demangle('_main')));
+        EM_ASM(out(demangle('__Z2f2v')));
+        EM_ASM(out(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(out(demangle('__ZL12abcdabcdabcdi')));
+        EM_ASM(out(demangle('__Z4testcsifdPvPiPc')));
+        EM_ASM(out(demangle('__ZN4test5moarrEcslfdPvPiPc')));
+        EM_ASM(out(demangle('__ZN4Waka1f12a234123412345pointEv')));
+        EM_ASM(out(demangle('__Z3FooIiEvv')));
+        EM_ASM(out(demangle('__Z3FooIidEvi')));
+        EM_ASM(out(demangle('__ZN3Foo3BarILi5EEEvv')));
+        EM_ASM(out(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
+        EM_ASM(out(demangle('__Z9parsewordRPKciRi')));
+        EM_ASM(out(demangle('__Z5multiwahtjmxyz')));
+        EM_ASM(out(demangle('__Z1aA32_iPA5_c')));
+        EM_ASM(out(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
+        EM_ASM(out(demangle('__ZN5wakaw2Cm10RasterBaseINS_6watwat9PolocatorEE8merbine1INS4_2OREEEvPKjj'))); // we get this wrong, but at least emit a '?'
         one(17);
         return 0;
       }
@@ -3032,7 +3034,7 @@ extern "C" int jslibfunc(int x);
 int main() {
   printf("c calling: %d\n", jslibfunc(6));
   EM_ASM({
-    Module.print('js calling: ' + Module['_jslibfunc'](5) + '.');
+    out('js calling: ' + Module['_jslibfunc'](5) + '.');
   });
 }
 ''')
@@ -3267,10 +3269,10 @@ int main() {
         int main() {
           EM_ASM({
             try {
-              Module.print('first');
+              out('first');
               abort();
             } catch (e) {
-              Module.print('second');
+              out('second');
               abort();
               throw e;
             }
@@ -4848,16 +4850,16 @@ namespace
   EMSCRIPTEN_KEEPALIVE
   void callback()
   {
-    EM_ASM({ Module.print('callback pre()') });
+    EM_ASM({ out('callback pre()') });
     ::emscripten_force_exit(42);
-    EM_ASM({ Module.print('callback post()') });
+    EM_ASM({ out('callback post()') });
     }
 }
 
 int
 main()
 {
-  EM_ASM({ setTimeout(function() { Module.print("calling callback()"); _callback() }, 100) });
+  EM_ASM({ setTimeout(function() { out("calling callback()"); _callback() }, 100) });
   ::emscripten_exit_with_live_runtime();
   return 123;
 }
@@ -5734,7 +5736,7 @@ Descriptor desc;
       print('----', filename, full)
       Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js', '-s', 'WASM=0']).communicate()
       src = open('left.js').read()
-      open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
+      open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { out("replaced"); '))
 
       self.assertContained('hello, world!', run_js('left.js'))
       self.assertContained('hello, world!', run_js('right.js'))
@@ -5818,7 +5820,7 @@ print(os.environ.get('NM'))
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    Module['onExit'] = function(status) { Module.print('exiting now, status ' + status) };
+    Module['onExit'] = function(status) { out('exiting now, status ' + status) };
   });
   return 14;
 }
@@ -5986,9 +5988,9 @@ int main(int argc, char** argv) {
         volatile fp f = 0;
         EM_ASM({
           if (typeof FUNCTION_TABLE_v !== 'undefined') {
-            Module.print('function table: ' + FUNCTION_TABLE_v);
+            out('function table: ' + FUNCTION_TABLE_v);
           } else {
-            Module.print('no visible function tables');
+            out('no visible function tables');
           }
         });
         if (f) f();
@@ -6009,8 +6011,8 @@ int main(int argc, char** argv) {
     src = r'''
       #include <emscripten.h>
       typedef void (*fp)();
-      void one() { EM_ASM( Module.print('one') ); }
-      void two() { EM_ASM( Module.print('two') ); }
+      void one() { EM_ASM( out('one') ); }
+      void two() { EM_ASM( out('two') ); }
       void test() {
         volatile fp f = one;
         f();
@@ -6024,7 +6026,7 @@ int main(int argc, char** argv) {
           var one = $0;
           var two = $1;
           if (typeof FUNCTION_TABLE_v === 'undefined') {
-            Module.print('no');
+            out('no');
             return;
           }
           var temp = FUNCTION_TABLE_v[one];
@@ -6688,19 +6690,19 @@ int main() {
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 0);
     assert(getIndex(t) === 1, 'allocated into second chunk');
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('more allocating, got in ' + getIndex(t));
+      out('more allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'into third chunk');
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('more allocating, got in ' + getIndex(t));
+      out('more allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 2);
     assert(getIndex(t) === 3, 'into third chunk');
     // write values
@@ -6717,7 +6719,7 @@ int main() {
     for (var i = 0; i < allocs[2].length; i++) {
       assert(HEAPU8[allocs[2][i]] === ((i*i) & 255));
     }
-    Module.print('success.');
+    out('success.');
   }, &x);
 }
 ''')
@@ -6762,7 +6764,7 @@ int main() {
   }
   printf("allocations in second chunk: %d\n", counter);
   assert(counter > 20);
-  EM_ASM( Module.print('success.') );
+  EM_ASM( out('success.') );
 }
 ''')
     for opts in [0, 1, 2]:
@@ -6800,7 +6802,7 @@ int main() {
   assert(sbrk(-10) == (void*)two);
   int bad = sbrk(split_memory * 2);
   assert(bad == -1);
-  EM_ASM( Module.print('success.') );
+  EM_ASM( out('success.') );
 }
 ''')
     for opts in [0, 1, 2]:
@@ -6862,9 +6864,9 @@ int main() {
       return x >> SPLIT_MEMORY_BITS;
     }
     assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
-    var p = Module.print;
-    var e = Module.printErr;
-    Module.printErr = Module.print = function(){};
+    var p = out;
+    var e = err;
+    err = out = function(){};
     var fail = false;
     if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
@@ -6895,10 +6897,10 @@ int main() {
         }
       }
     }
-    Module.print = p;
-    Module.printErr = e;
-    if (fail) Module.print('FAIL. ' + fail);
-    else Module.print('success.');
+    out = p;
+    err = e;
+    if (fail) out('FAIL. ' + fail);
+    else out('success.');
   ));
 }
 ''')
@@ -6923,13 +6925,13 @@ int main() {
     }
     do {
       var t = Module._malloc(1024*1024);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 0);
     assert(getIndex(t) === 1, 'allocated into first chunk');
     assert(buffers[1]); // has been allocated now
     do {
       var t = Module._malloc(1024*1024);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'allocated into second chunk');
     assert(buffers[2]); // has been allocated now
@@ -6944,7 +6946,7 @@ int main() {
       Module._free(more[i]);
     }
     assert(!buffers[2]); // has been freed again
-    Module.print('success.');
+    out('success.');
   });
 }
 ''')
@@ -6985,7 +6987,7 @@ int main() {
     assert(getIndex(t) === 3, 'should skip chunk 2, since it is used by us, but seeing ' + getIndex(t));
     assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98);
     assert(existing[33] === 201);
-    Module.print('success.');
+    out('success.');
   });
 }
 ''')
@@ -7208,7 +7210,7 @@ int main() {
 
 int main() {
   EM_ASM({
-    Module.print('inputs: ' + $0 + ', ' + $1 + '.');
+    out('inputs: ' + $0 + ', ' + $1 + '.');
   }, int64_t(0x12345678ABCDEF1FLL));
 }
 ''')
@@ -7333,10 +7335,10 @@ int main() {
       #include <emscripten.h>
       int main() {
         EM_ASM({
-          Module.print('environment is WEB? ' + ENVIRONMENT_IS_WEB);
-          Module.print('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
-          Module.print('environment is NODE? ' + ENVIRONMENT_IS_NODE);
-          Module.print('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
+          out('environment is WEB? ' + ENVIRONMENT_IS_WEB);
+          out('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
+          out('environment is NODE? ' + ENVIRONMENT_IS_NODE);
+          out('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
         });
       }
 ''')
@@ -7400,6 +7402,29 @@ int main() {
     self.assertNotContained(WARNING, open('a.out.js').read())
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
+
+  def test_warn_module_print_err(self):
+    ERROR = 'was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)'
+
+    def test(contents, expected, args=[]):
+      open('src.cpp', 'w').write(r'''
+  #include <emscripten.h>
+  int main() {
+    EM_ASM({ %s });
+    return 0;
+  }
+  ''' % contents)
+      run_process([PYTHON, EMCC, 'src.cpp'] + args)
+      self.assertContained(expected, run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
+
+    # error shown (when assertions are on)
+    test("Module.print('x')", ERROR)
+    test("Module['print']('x')", ERROR)
+    test("Module.printErr('x')", ERROR)
+    test("Module['printErr']('x')", ERROR)
+
+    # when exported, all good
+    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print", "printErr"]'])
 
   def test_arc4random(self):
     open('src.c', 'w').write(r'''

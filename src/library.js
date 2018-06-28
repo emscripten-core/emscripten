@@ -242,7 +242,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    Module['exit'](status);
+    exit(status);
   },
 
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -1114,19 +1114,19 @@ LibraryManager.library = {
         var info = EXCEPTIONS.infos[ptr];
         if (info.adjusted === adjusted) {
 #if EXCEPTION_DEBUG
-          Module.printErr('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+          err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
 #endif
           return ptr;
         }
       }
 #if EXCEPTION_DEBUG
-      Module.printErr('no de-adjustment for unknown exception ptr ' + adjusted);
+      err('no de-adjustment for unknown exception ptr ' + adjusted);
 #endif
       return adjusted;
     },
     addRef: function(ptr) {
 #if EXCEPTION_DEBUG
-      Module.printErr('addref ' + ptr);
+      err('addref ' + ptr);
 #endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
@@ -1134,7 +1134,7 @@ LibraryManager.library = {
     },
     decRef: function(ptr) {
 #if EXCEPTION_DEBUG
-      Module.printErr('decref ' + ptr);
+      err('decref ' + ptr);
 #endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
@@ -1155,7 +1155,7 @@ LibraryManager.library = {
         delete EXCEPTIONS.infos[ptr];
         ___cxa_free_exception(ptr);
 #if EXCEPTION_DEBUG
-        Module.printErr('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+        err('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
       }
     },
@@ -1177,7 +1177,7 @@ LibraryManager.library = {
       return _free(ptr);
     } catch(e) { // XXX FIXME
 #if ASSERTIONS
-      Module.printErr('exception during cxa_free_exception: ' + e);
+      err('exception during cxa_free_exception: ' + e);
 #endif
     }
   },
@@ -1195,7 +1195,7 @@ LibraryManager.library = {
   __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
+    err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
     EXCEPTIONS.infos[ptr] = {
       ptr: ptr,
@@ -1227,7 +1227,7 @@ LibraryManager.library = {
       EXCEPTIONS.infos[ptr].rethrown = true;
     }
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+    err('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     EXCEPTIONS.last = ptr;
     {{{ makeThrow('ptr') }}}
@@ -1258,7 +1258,7 @@ LibraryManager.library = {
     if (info) info.rethrown = false;
     EXCEPTIONS.caught.push(ptr);
 #if EXCEPTION_DEBUG
-		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
+		err('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
 #endif
     EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
     return ptr;
@@ -1274,7 +1274,7 @@ LibraryManager.library = {
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
-    Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+    err('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     if (ptr) {
       EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
@@ -1283,7 +1283,7 @@ LibraryManager.library = {
   },
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.printErr('cxa_get_exception_ptr ' + ptr);
+    err('cxa_get_exception_ptr ' + ptr);
 #endif
     // TODO: use info.adjusted?
     return ptr;
@@ -1297,7 +1297,7 @@ LibraryManager.library = {
   },
 
   __cxa_call_unexpected: function(exception) {
-    Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
+    err('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
   },
@@ -1354,7 +1354,7 @@ LibraryManager.library = {
     // can_catch receives a **, add indirection
     if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
 #if EXCEPTION_DEBUG
-    Module.print("can_catch on " + [thrown]);
+    out("can_catch on " + [thrown]);
 #endif
     {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
     thrown = ___cxa_find_matching_catch.buffer;
@@ -1367,7 +1367,7 @@ LibraryManager.library = {
         thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
         info.adjusted = thrown;
 #if EXCEPTION_DEBUG
-        Module.print("  can_catch found " + [thrown, typeArray[i]]);
+        out("  can_catch found " + [thrown, typeArray[i]]);
 #endif
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
       }
@@ -1382,7 +1382,7 @@ LibraryManager.library = {
   __resumeException__deps: ['$EXCEPTIONS', function() { Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
+    out("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
     if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
     {{{ makeThrow('ptr') }}}
@@ -1758,7 +1758,7 @@ LibraryManager.library = {
         // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
         var lib_data = FS.readFile(filename, { encoding: 'binary' });
         if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
-        //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
+        //err('libfile ' + filename + ' size: ' + lib_data.length);
         lib_module = loadWebAssemblyModule(lib_data);
 #else
         // the shared library is a JS file, which we eval
@@ -1770,7 +1770,7 @@ LibraryManager.library = {
 #endif
       } catch (e) {
 #if ASSERTIONS
-        Module.printErr('Error in loading dynamic library: ' + e);
+        err('Error in loading dynamic library: ' + e);
 #endif
         DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
         return 0;
@@ -2596,7 +2596,7 @@ LibraryManager.library = {
     }
 
     var matches = new RegExp('^'+pattern, "i").exec(Pointer_stringify(buf))
-    // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
+    // out(Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
       function fixup(value, min, max) {
@@ -3250,7 +3250,7 @@ LibraryManager.library = {
   __setErrNo: function(value) {
     if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
 #if ASSERTIONS
-    else Module.printErr('failed to set errno from JS');
+    else err('failed to set errno from JS');
 #endif
     return value;
   },
@@ -4244,9 +4244,9 @@ LibraryManager.library = {
         console.log(str);
       }
     } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
-      Module.printErr(str);
+      err(str);
     } else {
-      Module.print(str);
+      out(str);
     }
   },
 
@@ -4395,33 +4395,33 @@ LibraryManager.library = {
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: function(ex) {
-    Module.printErr('Warning: _Unwind_RaiseException is not correctly implemented');
+    err('Warning: _Unwind_RaiseException is not correctly implemented');
     return ___cxa_throw(ex, 0, 0);
   },
 
   _Unwind_DeleteException: function(ex) {
-    Module.printErr('TODO: Unwind_DeleteException');
+    err('TODO: Unwind_DeleteException');
   },
 
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
-    Module.print('AD:' + [line, valuel, valueh]);
+    out('AD:' + [line, valuel, valueh]);
   },
   emscripten_autodebug_i32: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_i16: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_i8: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_float: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_double: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp

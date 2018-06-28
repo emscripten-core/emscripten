@@ -1467,8 +1467,8 @@ function makeEval(code) {
   var ret = '';
   if (NO_DYNAMIC_EXECUTION == 2) {
     // Warn on evals, but proceed.
-    ret += "Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
-    ret += "Module.printErr(stackTrace());\n";
+    ret += "err('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret += "err(stackTrace());\n";
   }
   ret += code;
   return ret;

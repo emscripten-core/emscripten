@@ -11,7 +11,7 @@ int main() {
   char asciiString2[128] = {};
   EM_ASM({
     var str = Module.AsciiToString($0);
-    Module.print(str);
+    out(str);
     Module.stringToAscii(str, $1);
   }, asciiString, asciiString2);
   assert(!strcmp(asciiString, asciiString2));
@@ -19,7 +19,7 @@ int main() {
   char asciiString3[128] = {};
   EM_ASM({
     var str = Module.UTF8ToString($0);
-    Module.print(str);
+    out(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
     if (numBytesWritten != 12) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, asciiString, asciiString3, 128);
@@ -29,7 +29,7 @@ int main() {
   char utf8String2[128] = {};
   EM_ASM({
     var str = Module.UTF8ToString($0);
-    Module.print(str);
+    out(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
     if (numBytesWritten != 69) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 128);
@@ -42,7 +42,7 @@ int main() {
   // Test that text gets properly cut off if output buffer is too small.
   EM_ASM({
     var str = Module.UTF8ToString($0);
-    Module.print(str);
+    out(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
     if (numBytesWritten != 9) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 10);
@@ -51,7 +51,7 @@ int main() {
   // Zero-length string.
   EM_ASM({
     var str = Module.UTF8ToString($0);
-    Module.print(str);
+    out(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
     if (numBytesWritten != 0) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 1);
@@ -61,7 +61,7 @@ int main() {
   utf8String2[0] = 'X';
   EM_ASM({
     var str = Module.UTF8ToString($0);
-    Module.print(str);
+    out(str);
     var numBytesWritten = Module.stringToUTF8(str, $1, $2);
     if (numBytesWritten != 0) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 0);

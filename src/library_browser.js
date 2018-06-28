@@ -3,7 +3,7 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Module.printErr("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { err("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
@@ -68,7 +68,7 @@ var LibraryBrowser = {
           if (e instanceof ExitStatus) {
             return;
           } else {
-            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+            if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
             throw e;
           }
         }
@@ -383,7 +383,7 @@ var LibraryBrowser = {
     },
 
     requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
-        Module.printErr('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
+        err('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
         Browser.requestFullScreen = function(lockPointer, resizeCanvas, vrDevice) {
           return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
         }
@@ -1163,7 +1163,7 @@ var LibraryBrowser = {
 #endif
 
       if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
-        Module.printErr('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
@@ -1272,7 +1272,7 @@ var LibraryBrowser = {
 #endif
 #endif
     Module['noExitRuntime'] = false;
-    Module['exit'](status);
+    exit(status);
   },
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',
@@ -1482,7 +1482,7 @@ function slowLog(label, text) {
   if (!slowLog.labels[label]) slowLog.labels[label] = 0;
   var now = Date.now();
   if (now - slowLog.labels[label] > 1000) {
-    Module.print(label + ': ' + text);
+    out(label + ': ' + text);
     slowLog.labels[label] = now;
   }
 }
