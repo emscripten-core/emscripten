@@ -2800,7 +2800,8 @@ def read_and_preprocess(filename):
   # and shell.html is bigger than that!
   # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
   (path, file) = os.path.split(filename)
-  if not path: path = None
+  if not path:
+    path = None
   stdout = os.path.join(temp_dir, 'stdout')
   args = [settings_file, file]
 
