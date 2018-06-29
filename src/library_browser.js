@@ -242,7 +242,7 @@ var LibraryBrowser = {
             return loadWebAssemblyModule(byteArray, true);
           }).then(
             function(module) {
-              Module.preloadedWasm[name] = module;
+              Module['preloadedWasm'][name] = module;
               onload();
             },
             function(err) {
