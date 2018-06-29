@@ -1604,7 +1604,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
-      if shared.Settings.EXPERIMENTAL_USE_LLD:
+      if shared.Settings.WASM_BACKEND:
         DEFAULT_FINAL = in_temp(target_basename + '.wasm')
       else:
         DEFAULT_FINAL = in_temp(target_basename + '.bc')
@@ -1620,7 +1620,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       is_bc = suffix(temp_files[0][1]) in BITCODE_ENDINGS
       is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
       is_ar = shared.Building.is_ar(temp_files[0][1])
-      if len(linker_inputs) > 1 or shared.Settings.EXPERIMENTAL_USE_LLD or (not LEAVE_INPUTS_RAW and not (is_bc or is_dylib) and is_ar):
+      if len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND or (not LEAVE_INPUTS_RAW and not (is_bc or is_dylib) and is_ar):
         logging.debug('linking: ' + str(linker_inputs))
         # force archive contents to all be included, if just archives, or if linking shared modules
         force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
@@ -1629,7 +1629,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
         # TODO: we could check if this is a fastcomp build, and still speed things up here
         just_calculate = DEBUG != '2' and not shared.Settings.WASM_BACKEND
-        if shared.Settings.EXPERIMENTAL_USE_LLD:
+        if shared.Settings.WASM_BACKEND:
           # If LTO is enabled then use the -O opt level as the LTO level
           if options.llvm_lto:
             lto_level = options.opt_level
@@ -1655,7 +1655,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'link'
     log_time('link')
 
-    if not shared.Settings.EXPERIMENTAL_USE_LLD:
+    if not shared.Settings.WASM_BACKEND:
       with ToolchainProfiler.profile_block('post-link'):
         if DEBUG:
           logging.debug('saving intermediate processing steps to %s', shared.get_emscripten_temp_dir())

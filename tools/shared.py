@@ -1153,8 +1153,6 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
-      if 'EMCC_EXPERIMENTAL_USE_LLD' in os.environ:
-        self.attrs['EXPERIMENTAL_USE_LLD'] = os.environ['EMCC_EXPERIMENTAL_USE_LLD']
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1351,7 +1349,6 @@ class Building(object):
           # EMCC_WASM_BACKEND check also requires locked access to the cache,
           # which the multiprocess children would not get.
           'EMCC_WASM_BACKEND=%s' % Settings.WASM_BACKEND,
-          'EMCC_EXPERIMENTAL_USE_LLD=%s' % Settings.EXPERIMENTAL_USE_LLD,
           # Multiprocessing pool children can't spawn their own linear number of
           # children, that could cause a quadratic amount of spawned processes.
           'EMCC_CORES=1'
