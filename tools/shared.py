@@ -1743,7 +1743,7 @@ class Building(object):
     return args
 
   @staticmethod
-  def link_lld(files, target, opts):
+  def link_lld(files, target, opts=[], lto_level=0):
     def wasm_rt_fail(archive_file):
       def wrapped():
         raise FatalError('Expected {} to already be built'.format(archive_file))
@@ -1759,12 +1759,11 @@ class Building(object):
       '--no-entry',
       '--allow-undefined',
       '--import-memory',
-      '--export', '__wasm_call_ctors'
+      '--export', '__wasm_call_ctors',
+      '--lto-O%d' % lto_level,
       ] + files + [libc_rt_lib, compiler_rt_lib]
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
-    #cmd.append('--lto-O3')
-
     # emscripten-wasm-finalize currently depends on the presence of debug
     # symbols for renaming of the __invoke symbols
     # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we

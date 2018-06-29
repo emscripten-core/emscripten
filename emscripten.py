@@ -1844,7 +1844,7 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
         logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
         t = time.time()
       debug_copy(temp_o, 'emcc-llvm-backend-output.o')
-      shared.Building.link_lld([temp_o], base_wasm, [])
+      shared.Building.link_lld([temp_o], base_wasm)
       debug_copy(base_wasm, 'base_wasm.wasm')
 
   write_source_map = settings['DEBUG_LEVEL'] >= 4

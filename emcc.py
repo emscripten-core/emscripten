@@ -1630,7 +1630,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # TODO: we could check if this is a fastcomp build, and still speed things up here
         just_calculate = DEBUG != '2' and not shared.Settings.WASM_BACKEND
         if shared.Settings.EXPERIMENTAL_USE_LLD:
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, options.llvm_opts)
+          # If LTO is enabled then use the -O opt level as the LTO level
+          if options.llvm_lto:
+            lto_level = options.opt_level
+          else:
+            lto_level = 0
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, options.llvm_opts, lto_level)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
       else:
