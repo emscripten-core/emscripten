@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
 import posixpath
 from tools import shared
-from tools.shared import execute, suffix, unsuffixed
+from tools.shared import suffix, unsuffixed
 from tools.jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
