@@ -70,6 +70,7 @@ function JSify(data, functionsOnly) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
+    if (CUSTOM_CORE_JS) print(read(CUSTOM_CORE_JS));
     var pre;
     if (BUILD_AS_SHARED_LIB || SIDE_MODULE) {
       pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
@@ -589,12 +590,12 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
 
-    var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
-    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
-    print(postParts[0]);
-
-    print(postParts[1]);
-
+    if (!CUSTOM_CORE_JS) {
+      var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
+      var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
+      print(postParts[0]);
+      print(postParts[1]);
+    }
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
     // Print out some useful metadata
