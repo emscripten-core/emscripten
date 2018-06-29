@@ -2245,6 +2245,44 @@ void *getBindBuffer() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
+  def test_preload_module(self):
+    expected = 'hello from main\nhello from library'
+    open('library.c', 'w').write(r'''
+      #include <stdio.h>
+      void library_func() {
+      #ifdef USE_PRINTF
+        printf("hello from library: %p\n", (int)&library_func);
+      #else
+        puts("hello from library");
+      #endif
+      }
+    ''')
+    check_execute([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1'])
+    main = r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        EM_ASM(
+          console.log(Object.keys(Module['preloadedWasm']));
+          if (Module['preloadedWasm']['/library.wasm'] === undefined) {
+            throw Error("Side module not preloaded");
+          }
+        );
+        puts("hello from main");
+        void *lib_handle = dlopen("/library.wasm", 0);
+        if (!lib_handle) {
+          puts("cannot load side module");
+          return 1;
+        }
+        typedef void (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        if (!x) puts("cannot find side function");
+        else x();
+      }
+    '''
+    self.btest(main, args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins'], expected=expected)
+
   def test_mmap_file(self):
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
     for extra_args in [[], ['--no-heap-copy']]:
