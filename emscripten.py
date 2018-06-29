@@ -110,7 +110,7 @@ def compile_js(infile, settings, temp_files, DEBUG):
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()
     with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
+      jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
     if DEBUG:
       logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
@@ -414,11 +414,10 @@ def write_cyberdwarf_data(outfile, metadata, settings):
 
 def create_backend_args(infile, temp_js, settings):
   """Create args for asm.js backend from settings dict"""
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [
-    backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js,
+    shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
     '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
-    '-O' + str(settings['OPT_LEVEL']),
+    '-O%s' % settings['OPT_LEVEL'],
   ]
   if settings['PRECISE_F32']:
     args += ['-emscripten-precise-f32']
@@ -953,11 +952,11 @@ def create_mftCall_funcs(function_table_data, settings):
 
 def get_function_pointer_error(sig, function_table_sigs, settings):
   if settings['ASSERTIONS'] <= 1:
-    extra = ' Module["printErr"]("Build with ASSERTIONS=2 for more info.");'
+    extra = ' err("Build with ASSERTIONS=2 for more info.");'
     pointer = ' '
   else:
     pointer = ' \'" + x + "\' '
-    extra = ' Module["printErr"]("This pointer might make sense in another type signature: '
+    extra = ' err("This pointer might make sense in another type signature: '
     # sort signatures, attempting to show most likely related ones first
     sigs = list(function_table_sigs)
     sigs.sort(key=signature_sort_key(sig))
@@ -965,7 +964,7 @@ def get_function_pointer_error(sig, function_table_sigs, settings):
       if other != sig:
         extra += other + ': " + debug_table_' + other + '[x] + "  '
     extra += '"); '
-  return 'Module["printErr"]("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
+  return 'err("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
          'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
          'Or calling a function with an incorrect type, which will fail? ' + \
          '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
@@ -1215,7 +1214,7 @@ function ftCall_%s(%s) {
           table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
       prelude = '''
-  if (x < 0 || x >= %s.length) { Module.printErr("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
+  if (x < 0 || x >= %s.length) { err("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs, settings))
       asm_setup += '''
 function ftCall_%s(%s) {%s
   return %s(%s);
@@ -2066,10 +2065,13 @@ var establishStackSpace = Module['establishStackSpace'];
   return module
 
 def create_backend_args_wasm(infile, outfile, settings):
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
-                  '-asm-verbose=false', '-filetype=obj',
-                  '-o', outfile]
+  # TODO(sbc): Don't allow -O0 due to bug in wasm-emscripten-finalize:
+  # https://github.com/WebAssembly/binaryen/issues/1612
+  optlevel = settings['OPT_LEVEL']
+  if optlevel == 0:
+    optlevel = 1
+  args = [shared.LLVM_COMPILER, infile, '-mtriple=' + shared.WASM_TARGET,
+          '-filetype=obj', '-o', outfile, '-O%s' % optlevel]
   args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
   # disable slow and relatively unimportant optimization passes
   args += ['-combiner-global-alias-analysis=false']

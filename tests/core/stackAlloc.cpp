@@ -25,6 +25,6 @@ int main() {
     notInRange(y, z, z + direction*size);
     notInRange(z, x, x + direction*size);
     notInRange(z, y, y + direction*size);
-    Module['print']('ok.');
+    out('ok.');
   });
 }

@@ -148,10 +148,14 @@ if (ENVIRONMENT_IS_NODE) {
   // deprecated, and in the future it will exit with error status.
   process['on']('unhandledRejection', function(reason, p) {
 #if ASSERTIONS
-    Module['printErr']('node.js exiting due to unhandled promise rejection');
+    err('node.js exiting due to unhandled promise rejection');
 #endif
     process['exit'](1);
   });
+
+  Module['quit'] = function(status) {
+    process['exit'](status);
+  };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 } else
@@ -200,7 +204,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status, toThrow) {
+    Module['quit'] = function(status) {
       quit(status);
     }
   }
@@ -287,17 +291,16 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif // ASSERTIONS
 }
 
+// Set up the out() and err() hooks, which are how we can print to stdout or
+// stderr, respectively.
+// If the user provided Module.print or printErr, use that. Otherwise,
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-Module['print'] = typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null);
-Module['printErr'] = typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || Module['print']);
+var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
+var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
 
 // *** Environment setup code ***
-
-// Closure helpers
-Module.print = Module['print'];
-Module.printErr = Module['printErr'];
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
