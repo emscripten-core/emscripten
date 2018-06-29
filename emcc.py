@@ -1714,7 +1714,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if AUTODEBUG:
           logging.debug('autodebug')
           next = get_final() + '.ad.ll'
-          execute([shared.PYTHON, shared.AUTODEBUGGER, final, next])
+          run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])
           final = next
           save_intermediate('autodebug', 'll')
 
