@@ -151,6 +151,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ]
 
     if shared.Settings.WASM_BACKEND:
+      # With the wasm backend these are included in wasm_libc_rt instead
       blacklist += [
           'fmin.c', 'fminf.c', 'fminl.c', 'fmax.c', 'fmaxf.c', 'fmaxl.c',
           'fmod.c', 'fmodf.c', 'fmodl.c', 'log2.c', 'log2f.c', 'log10.c',
