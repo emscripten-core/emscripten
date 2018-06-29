@@ -119,14 +119,49 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # libc
   def create_libc(libname):
     logging.debug(' building libc for cache')
-    libc_files = [
-    ]
+    libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
-    blacklist = set(
-      ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
-      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'] + # individual files
-      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c', 'rintf.c'] # individual math files
-    )
+
+    # musl modules
+    blacklist = [
+        'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
+        'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env',
+        'ldso', 'conf'
+    ]
+
+    # individual files
+    blacklist += [
+        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+        'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c',
+        'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+        'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
+        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'
+    ]
+
+    # individual math files
+    blacklist += [
+        'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
+        'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
+        'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
+        'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
+        'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
+        'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
+        'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
+        'rintf.c'
+    ]
+
+    if shared.Settings.WASM_BACKEND:
+      # With the wasm backend these are included in wasm_libc_rt instead
+      blacklist += [
+          'fmin.c', 'fminf.c', 'fminl.c', 'fmax.c', 'fmaxf.c', 'fmaxl.c',
+          'fmod.c', 'fmodf.c', 'fmodl.c', 'log2.c', 'log2f.c', 'log10.c',
+          'log10f.c', 'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c', 'scalbn.c',
+          '__fpclassifyl.c'
+      ]
+
+      blacklist += ['memcpy.c', 'memset.c', 'memmove.c']
+
+    blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       for f in filenames:
@@ -141,6 +176,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+
     # Without -fno-builtin, LLVM can optimize away or convert calls to library
     # functions to something else based on assumptions that they behave exactly
     # like the standard library. This can cause unexpected bugs when we use our
@@ -428,7 +464,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'fmod.c', 'fmodf.c', 'fmodl.c',
         'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
         'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c',
+        'scalbn.c', '__fpclassifyl.c'
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
