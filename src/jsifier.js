@@ -527,7 +527,7 @@ function JSify(data, functionsOnly) {
 
     legalizedI64s = legalizedI64sDefault;
 
-    if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+    if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE && !CUSTOM_CORE_JS) {
       if (USE_PTHREADS) {
         print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
         print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');

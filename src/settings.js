@@ -492,7 +492,7 @@ var CUSTOM_CORE_JS = ''; // Setting this will include the contents of that .js f
                          //  startup(env) - called after the JS library is set up, with
                          //                 the wasm imports as a parameter. This
                          //                 function should handle creating and running
-                         //                 the wasm.
+                         //                 the wasm. XXX or define Module['asm']
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 

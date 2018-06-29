@@ -1176,6 +1176,41 @@ var Math_max = Math.max;
 var Math_clz32 = Math.clz32;
 var Math_trunc = Math.trunc;
 
+var abortDecorators = [];
+
+function abort(what) {
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
+  if (what !== undefined) {
+    out(what);
+    err(what);
+    what = JSON.stringify(what)
+  } else {
+    what = '';
+  }
+
+  ABORT = true;
+  EXITSTATUS = 1;
+
+#if ASSERTIONS == 0
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+#else
+  var extra = '';
+  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+  if (abortDecorators) {
+    abortDecorators.forEach(function(decorator) {
+      output = decorator(output, what);
+    });
+  }
+  throw output;
+#endif // ASSERTIONS
+}
+
 #include "URIUtils.js"
 
 #if CUSTOM_CORE_JS

@@ -1251,7 +1251,7 @@ def create_basic_funcs(function_table_sigs, settings):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata, settings):
-  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr']
   if not (settings['WASM'] and settings['SIDE_MODULE']):
     basic_vars += ['STACKTOP', 'STACK_MAX']
   if settings['RELOCATABLE']:
@@ -1982,7 +1982,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
   if settings['SAFE_HEAP']:
     basic_funcs += ['segfault', 'alignfault']
 
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
+  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR']
 
   if not settings['RELOCATABLE']:
     global_vars = metadata['externs']
