@@ -72,12 +72,12 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
-    fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
-    fetch->__attributes.attributes = fetch_attr->attributes;
-    fetch->__attributes.withCredentials = fetch_attr->withCredentials;
-    fetch->__attributes.requestData = fetch_attr->requestData;
-    fetch->__attributes.requestDataSize = fetch_attr->requestDataSize;
-    strcpy( fetch->__attributes.requestMethod, fetch_attr->requestMethod );
+	fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
+	fetch->__attributes.attributes = fetch_attr->attributes;
+	fetch->__attributes.withCredentials = fetch_attr->withCredentials;
+	fetch->__attributes.requestData = fetch_attr->requestData;
+	fetch->__attributes.requestDataSize = fetch_attr->requestDataSize;
+	strcpy( fetch->__attributes.requestMethod, fetch_attr->requestMethod );
 #define STRDUP_OR_ABORT(s, str_to_dup)		\
 	if (str_to_dup)							\
 	{										\
@@ -88,11 +88,11 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 			return 0;						\
 		}									\
 	}
-    STRDUP_OR_ABORT(fetch->url, url);
-    STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->destinationPath);
-    STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
-    STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
-    STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
+	STRDUP_OR_ABORT(fetch->url, url);
+	STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->destinationPath);
+	STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
+	STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
+	STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
 	if (fetch->__attributes.requestHeaders)
 	{
 		size_t headersCount = 0;
