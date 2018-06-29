@@ -88,13 +88,6 @@ function ftfault() {
 }
 #endif
 
-//========================================
-// Runtime essentials
-//========================================
-
-var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
-var EXITSTATUS = 0;
-
 /** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
@@ -843,13 +836,6 @@ function stackTrace() {
   return demangleAll(js);
 }
 
-// Memory management
-
-var PAGE_SIZE = 16384;
-var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
-var MIN_TOTAL_MEMORY = 16777216;
-
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
     x += multiple - (x % multiple);
@@ -857,7 +843,7 @@ function alignUp(x, multiple) {
   return x;
 }
 
-var HEAP,
+var
 /** @type {ArrayBuffer} */
   buffer,
 /** @type {Int8Array} */
@@ -895,24 +881,6 @@ function updateGlobalBufferViews() {
 var STATIC_BASE, STATICTOP, staticSealed; // static area
 var STACK_BASE, STACKTOP, STACK_MAX; // stack area
 var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
-#endif
-  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
-  staticSealed = false;
-#if USE_PTHREADS
-}
-#endif
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
-#if SEPARATE_ASM != 0
-  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
-#endif
-}
-#endif
 
 #if STACK_OVERFLOW_CHECK
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
@@ -1055,6 +1023,7 @@ function enlargeMemory() {
 #endif // USE_PTHREADS
 }
 
+#if WASM == 0
 #if ALLOW_MEMORY_GROWTH
 var byteLength;
 try {
@@ -1063,11 +1032,8 @@ try {
 } catch(e) { // can fail on older node/v8
   byteLength = function(buffer) { return buffer.byteLength; };
 }
-#endif
-
-var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
-var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+#endif // ALLOW_MEMORY_GROWTH
+#endif // WASM == 0
 
 // Initialize the runtime's memory
 #if ASSERTIONS
@@ -1094,8 +1060,160 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
   xhr.send();
   setTimeout(function() { window.close() }, 2000);
 }
+#endif // USE_PTHREADS == 1
+#endif // IN_TEST_HARNESS
+
+function getTotalMemory() {
+  return TOTAL_MEMORY;
+}
+
+// Deprecated: This function should not be called because it is unsafe and does not provide
+// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
+// function stringToUTF8Array() instead, which takes in a maximum length that can be used
+// to be secure from out of bounds writes.
+/** @deprecated */
+function writeStringToMemory(string, buffer, dontAddNull) {
+  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+
+  var /** @type {number} */ lastChar, /** @type {number} */ end;
+  if (dontAddNull) {
+    // stringToUTF8Array always appends null. If we don't want to do that, remember the
+    // character that existed at the location where the null will be placed, and restore
+    // that after the write (below).
+    end = buffer + lengthBytesUTF8(string);
+    lastChar = HEAP8[end];
+  }
+  stringToUTF8(string, buffer, Infinity);
+  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
+}
+
+function writeArrayToMemory(array, buffer) {
+#if ASSERTIONS
+  assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+#endif
+  HEAP8.set(array, buffer);
+}
+
+function writeAsciiToMemory(str, buffer, dontAddNull) {
+  for (var i = 0; i < str.length; ++i) {
+#if ASSERTIONS
+    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
+#endif
+    {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
+  }
+  // Null-terminate the pointer to the HEAP.
+  if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
+}
+
+{{{ unSign }}}
+{{{ reSign }}}
+
+#if LEGACY_VM_SUPPORT
+// check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
+if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
+  var ah  = a >>> 16;
+  var al = a & 0xffff;
+  var bh  = b >>> 16;
+  var bl = b & 0xffff;
+  return (al*bl + ((ah*bl + al*bh) << 16))|0;
+};
+Math.imul = Math['imul'];
+
+#if PRECISE_F32
+#if PRECISE_F32 == 1
+if (!Math['fround']) {
+  var froundBuffer = new Float32Array(1);
+  Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+}
+#else // 2
+if (!Math['fround']) Math['fround'] = function(x) { return x };
+#endif
+Math.fround = Math['fround'];
+#else
+#if SIMD
+if (!Math['fround']) Math['fround'] = function(x) { return x };
 #endif
 #endif
+
+if (!Math['clz32']) Math['clz32'] = function(x) {
+  x = x >>> 0;
+  for (var i = 0; i < 32; i++) {
+    if (x & (1 << (31 - i))) return i;
+  }
+  return 32;
+};
+Math.clz32 = Math['clz32']
+
+if (!Math['trunc']) Math['trunc'] = function(x) {
+  return x < 0 ? Math.ceil(x) : Math.floor(x);
+};
+Math.trunc = Math['trunc'];
+#else // LEGACY_VM_SUPPORT
+#if ASSERTIONS
+assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+#endif
+#endif // LEGACY_VM_SUPPORT
+
+var Math_abs = Math.abs;
+var Math_cos = Math.cos;
+var Math_sin = Math.sin;
+var Math_tan = Math.tan;
+var Math_acos = Math.acos;
+var Math_asin = Math.asin;
+var Math_atan = Math.atan;
+var Math_atan2 = Math.atan2;
+var Math_exp = Math.exp;
+var Math_log = Math.log;
+var Math_sqrt = Math.sqrt;
+var Math_ceil = Math.ceil;
+var Math_floor = Math.floor;
+var Math_pow = Math.pow;
+var Math_imul = Math.imul;
+var Math_fround = Math.fround;
+var Math_round = Math.round;
+var Math_min = Math.min;
+var Math_max = Math.max;
+var Math_clz32 = Math.clz32;
+var Math_trunc = Math.trunc;
+
+#include "URIUtils.js"
+
+#if CUSTOM_CORE_JS
+setup();
+#else // CUSTOM_CORE_JS
+
+
+var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
+var EXITSTATUS = 0;
+
+// Memory management
+
+var PAGE_SIZE = 16384;
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+var MIN_TOTAL_MEMORY = 16777216;
+
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+#endif
+  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
+  staticSealed = false;
+#if USE_PTHREADS
+}
+#endif
+
+#if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+  staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
+#if SEPARATE_ASM != 0
+  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
+#endif
+}
+#endif
+
+var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
+var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 #if USE_PTHREADS
 #if !WASM
@@ -1485,10 +1603,6 @@ function setF64(ptr, value) {
 
 #endif // USE_PTHREADS
 
-function getTotalMemory() {
-  return TOTAL_MEMORY;
-}
-
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
 #if STACK_OVERFLOW_CHECK
@@ -1628,115 +1742,6 @@ function addOnExit(cb) {
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-
-// Deprecated: This function should not be called because it is unsafe and does not provide
-// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
-// function stringToUTF8Array() instead, which takes in a maximum length that can be used
-// to be secure from out of bounds writes.
-/** @deprecated */
-function writeStringToMemory(string, buffer, dontAddNull) {
-  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
-
-  var /** @type {number} */ lastChar, /** @type {number} */ end;
-  if (dontAddNull) {
-    // stringToUTF8Array always appends null. If we don't want to do that, remember the
-    // character that existed at the location where the null will be placed, and restore
-    // that after the write (below).
-    end = buffer + lengthBytesUTF8(string);
-    lastChar = HEAP8[end];
-  }
-  stringToUTF8(string, buffer, Infinity);
-  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
-}
-
-function writeArrayToMemory(array, buffer) {
-#if ASSERTIONS
-  assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
-#endif
-  HEAP8.set(array, buffer);
-}
-
-function writeAsciiToMemory(str, buffer, dontAddNull) {
-  for (var i = 0; i < str.length; ++i) {
-#if ASSERTIONS
-    assert(str.charCodeAt(i) === str.charCodeAt(i)&0xff);
-#endif
-    {{{ makeSetValue('buffer++', 0, 'str.charCodeAt(i)', 'i8') }}};
-  }
-  // Null-terminate the pointer to the HEAP.
-  if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
-}
-
-{{{ unSign }}}
-{{{ reSign }}}
-
-#if LEGACY_VM_SUPPORT
-// check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
-if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
-  var ah  = a >>> 16;
-  var al = a & 0xffff;
-  var bh  = b >>> 16;
-  var bl = b & 0xffff;
-  return (al*bl + ((ah*bl + al*bh) << 16))|0;
-};
-Math.imul = Math['imul'];
-
-#if PRECISE_F32
-#if PRECISE_F32 == 1
-if (!Math['fround']) {
-  var froundBuffer = new Float32Array(1);
-  Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
-}
-#else // 2
-if (!Math['fround']) Math['fround'] = function(x) { return x };
-#endif
-Math.fround = Math['fround'];
-#else
-#if SIMD
-if (!Math['fround']) Math['fround'] = function(x) { return x };
-#endif
-#endif
-
-if (!Math['clz32']) Math['clz32'] = function(x) {
-  x = x >>> 0;
-  for (var i = 0; i < 32; i++) {
-    if (x & (1 << (31 - i))) return i;
-  }
-  return 32;
-};
-Math.clz32 = Math['clz32']
-
-if (!Math['trunc']) Math['trunc'] = function(x) {
-  return x < 0 ? Math.ceil(x) : Math.floor(x);
-};
-Math.trunc = Math['trunc'];
-#else // LEGACY_VM_SUPPORT
-#if ASSERTIONS
-assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
-#endif
-#endif // LEGACY_VM_SUPPORT
-
-var Math_abs = Math.abs;
-var Math_cos = Math.cos;
-var Math_sin = Math.sin;
-var Math_tan = Math.tan;
-var Math_acos = Math.acos;
-var Math_asin = Math.asin;
-var Math_atan = Math.atan;
-var Math_atan2 = Math.atan2;
-var Math_exp = Math.exp;
-var Math_log = Math.log;
-var Math_sqrt = Math.sqrt;
-var Math_ceil = Math.ceil;
-var Math_floor = Math.floor;
-var Math_pow = Math.pow;
-var Math_imul = Math.imul;
-var Math_fround = Math.fround;
-var Math_round = Math.round;
-var Math_min = Math.min;
-var Math_max = Math.max;
-var Math_clz32 = Math.clz32;
-var Math_trunc = Math.trunc;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
@@ -1984,8 +1989,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #if CYBERDWARF
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 #endif
-
-#include "URIUtils.js"
 
 #if WASM
 function integrateWasmJS() {
@@ -2485,6 +2488,7 @@ function integrateWasmJS() {
 }
 
 integrateWasmJS();
-#endif
+#endif // WASM
 
-// === Body ===
+#endif // CUSTOM_CORE_JS
+

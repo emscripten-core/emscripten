@@ -483,6 +483,17 @@ var INCLUDE_FULL_LIBRARY = 0; // Include all JS library functions instead of the
                               // need to use those in the main file too to pull in malloc
                               // for use by the module.
 
+var CUSTOM_CORE_JS = ''; // Setting this will include the contents of that .js file instead
+                         // of shell.js, and will prevent emitting the setup/startup code
+                         // in preamble.js and postamble.js. The custom core JS should
+                         // instead set up the environment itself, and implement the
+                         // functionality you want, which should include
+                         //  setup() - called early, to set up memory etc.
+                         //  startup(env) - called after the JS library is set up, with
+                         //                 the wasm imports as a parameter. This
+                         //                 function should handle creating and running
+                         //                 the wasm.
+
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
 var RELOCATABLE = 0; // If set to 1, we emit relocatable code from the LLVM backend; both
