@@ -1938,14 +1938,14 @@ class Building(object):
         response_fh.write("\"" + arg + "\"\n")
       response_fh.close()
 
-    if just_calculate:
+    if not just_calculate:
+      logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
+      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
+      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      return target
+    else:
       # just calculating; return the link arguments which is the final list of files to link
       return link_args
-
-    logging.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-    output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
-    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
-    return target
 
   # LLVM optimizations
   # @param opt A list of LLVM optimization parameters
@@ -1969,9 +1969,8 @@ class Building(object):
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
-    cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
     try:
-      run_process(cmd, stdout=PIPE)
+      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
       logging.error('Failed to run llvm optimizations: ' + e.output)
