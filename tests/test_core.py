@@ -7292,16 +7292,18 @@ int main() {
 '''
       Settings.ASSERTIONS = 1
       Settings.INVOKE_RUN = 0
-      open('post.js', 'w').write('''
-try {
-  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
-  var never = true;
-} catch(e) {
-  out(e);
-  assert(!never);
-}
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  try {
+    ccall('main', 'number', ['number', 'string'], [2, 'waka']);
+    var never = true;
+  } catch(e) {
+    out(e);
+    assert(!never);
+  }
+};
 ''')
-      self.emcc_args += ['--post-js', 'post.js']
+      self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run(src, 'The call to main is running asynchronously.');
 
       print('check reasonable ccall use')
@@ -7314,8 +7316,10 @@ int main() {
   printf("World\n");
 }
 '''
-      open('post.js', 'w').write('''
-ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+};
 ''')
       self.do_run(src, 'HelloWorld');
 
@@ -7337,12 +7341,14 @@ extern "C" {
   }
 }
 '''
-      open('post.js', 'w').write(r'''
-ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
-  .then(function(val) {
-    console.log(val);
-    ccall('floatf', 'number', null, null, { async: true }).then(console.log);
-  });
+      open('pre.js', 'w').write(r'''
+Module['onRuntimeInitialized'] = function() {
+  ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
+    .then(function(val) {
+      console.log(val);
+      ccall('floatf', 'number', null, null, { async: true }).then(console.log);
+    });
+};
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
 
