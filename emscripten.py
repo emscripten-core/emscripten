@@ -1194,7 +1194,7 @@ Module['asm'] = function(global, env, buffer) {
       'Infinity': Infinity
     }
   };
-  start(info); // XXX need to tell it about global ctors
+  start(info); // XXX need to tell it about global ctors, and need those to be kept alive
 };
 ''' % (settings['TOTAL_MEMORY'], table_total_size, settings['GLOBAL_BASE'], settings['TOTAL_STACK'])
     if not settings['EMULATED_FUNCTION_POINTERS']:
