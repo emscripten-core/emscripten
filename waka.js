@@ -64,6 +64,7 @@ Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but v
       console.log('asm5');
       var instance = pair.instance;
       var exports = instance.exports;
+// need something for metadce here...
       console.log(exports);
       console.log(exports._main());
     });
