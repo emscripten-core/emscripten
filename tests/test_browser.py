@@ -2249,15 +2249,11 @@ void *getBindBuffer() {
     expected = 'hello from main\nhello from library'
     open('library.c', 'w').write(r'''
       #include <stdio.h>
-      void library_func() {
-      #ifdef USE_PRINTF
-        printf("hello from library: %p\n", (int)&library_func);
-      #else
-        puts("hello from library");
-      #endif
+      int library_func() {
+        return 42;
       }
     ''')
-    check_execute([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1'])
+    run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1'])
     main = r'''
       #include <dlfcn.h>
       #include <stdio.h>
@@ -2269,19 +2265,22 @@ void *getBindBuffer() {
             throw Error("Side module not preloaded");
           }
         );
-        puts("hello from main");
         void *lib_handle = dlopen("/library.wasm", 0);
         if (!lib_handle) {
-          puts("cannot load side module");
           return 1;
         }
-        typedef void (*voidfunc)();
+        typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        if (!x) puts("cannot find side function");
-        else x();
+        if (!x) return 1;
+        if (x() != 42) return 1;
+        REPORT_RESULT(0);
+        return 0;
       }
     '''
-    self.btest(main, args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins'], expected=expected)
+    self.btest(
+      main,
+      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins'],
+      expected='0')
 
   def test_mmap_file(self):
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
