@@ -1,13 +1,10 @@
 
 // Environment setup
 
-function out(x) {
+var out, err;
+out = err = function(x) {
   console.log(x);
-}
-
-function err(x) {
-  console.warn(x);
-}
+};
 
 // Set up memory and table
 
@@ -35,35 +32,44 @@ function setup(info) {
 
 function start(imports, ctors, jsCtors) {
   console.log('start1');
-  fetch('b.wasm', { credentials: 'same-origin' })
-    .then(function(response) {
-  console.log('start2');
-      return response.arrayBuffer();
-    })
-    .then(function(arrayBuffer) {
-  console.log('start3');
-      return new Uint8Array(arrayBuffer);
-    })
-    .then(function(binary) {
-  console.log('start4');
-      return WebAssembly.instantiate(binary, imports);
-    })
-    .then(function(pair) {
-  console.log('start5');
-      var instance = pair['instance'];
-      var exports = instance['exports'];
-      ctors.forEach(function(ctor) {
-  console.log('ctor ' + ctor);
-        exports[ctor]();
-      });
-      jsCtors.forEach(function(ctor) {
-  console.log('js ctor');
-        ctor();
-      });
-      var main = exports['_main'];
-  console.log('maintime');
-      main();
+  function postInstantiate(instance) {
+    console.log('start5');
+    var exports = instance['exports'];
+    ctors.forEach(function(ctor) {
+    console.log('ctor ' + ctor);
+      exports[ctor]();
     });
+    jsCtors.forEach(function(ctor) {
+    console.log('js ctor');
+      ctor();
+    });
+    var main = exports['_main'];
+    console.log('maintime');
+    main();
+  }
+  var where = 'mozjs';
+  if (where === 'web') {
+    fetch('b.wasm', { credentials: 'same-origin' })
+      .then(function(response) {
+        console.log('start2');
+        return response.arrayBuffer();
+      })
+      .then(function(arrayBuffer) {
+        console.log('start3');
+        return new Uint8Array(arrayBuffer);
+      })
+      .then(function(binary) {
+        console.log('start4');
+        return WebAssembly.instantiate(binary, imports);
+      })
+      .then(function(pair) {
+        postInstantiate(pair['instance']);
+      });
+  } else if (where === 'mozjs') {
+    var data = read('b.wasm', 'binary');
+    var instance = new WebAssembly.Instance(new WebAssembly.Module(data), imports);
+    postInstantiate(instance);
+  }
 }
 
 // XXX fix these
