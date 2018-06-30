@@ -522,6 +522,8 @@ def update_settings_glue(settings, metadata):
     settings['JSCALL_START_INDEX'] = start_index
     settings['JSCALL_SIG_ORDER'] = sig2order
 
+  shared.Building.global_ctors = metadata['initializers']
+
 
 def compile_settings(compiler_engine, settings, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579
@@ -1194,9 +1196,13 @@ Module['asm'] = function(global, env, buffer) {
       'Infinity': Infinity
     }
   };
-  start(info); // XXX need to tell it about global ctors, and need those to be kept alive
+  start(info, [%s], __ATMAIN__);
 };
-''' % (settings['TOTAL_MEMORY'], table_total_size, settings['GLOBAL_BASE'], settings['TOTAL_STACK'])
+''' % (settings['TOTAL_MEMORY'],
+       table_total_size,
+       settings['GLOBAL_BASE'],
+       settings['TOTAL_STACK'],
+       ', '.join(['"' + name + '"' for name in metadata['initializers']]))
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
   if settings['RELOCATABLE']:

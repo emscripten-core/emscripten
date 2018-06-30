@@ -2332,15 +2332,25 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-    # XXX
-    for export in Building.user_requested_exports:
-      if export not in exports:
-        graph.append({
-          'export': export,
-          'name': 'emcc$export$' + export,
-          'root': True,
-          'reaches': []
-        })
+    if Settings.CUSTOM_CORE_JS:
+      # In custom core JS we must handle things more manually, as we can't
+      # assume the JS contains the standard JS to receive wasm exports
+      # (the custom code might write it differently).
+      # Specifically, we need to have rooted exports for all user-requested
+      # exports, plus global ctors, as all those are absolutely mandatory
+      # to be kept alive through dce. (If users want more, they can add
+      # to EXPORTED_FUNCTIONS.)
+      needed = Building.user_requested_exports + Building.global_ctors
+      print(needed)
+      1/0
+      for export in needed:
+        if export not in exports:
+          graph.append({
+            'export': export,
+            'name': 'emcc$export$' + export,
+            'root': True,
+            'reaches': []
+          })
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
@@ -2371,6 +2381,9 @@ class Building(object):
 
   # the exports the user requested
   user_requested_exports = []
+
+  # the global constructor functions (to be called before main)
+  global_ctors = []
 
   _is_ar_cache = {}
   @staticmethod
