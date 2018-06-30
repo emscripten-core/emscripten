@@ -1215,6 +1215,8 @@ var WASM_PAGE_SIZE = 65536;
 
 #include "URIUtils.js"
 
+// === Body ===
+
 #if !CUSTOM_CORE_JS
 
 var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
