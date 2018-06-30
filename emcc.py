@@ -1617,10 +1617,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
       linker_inputs += extra_files_to_link
-      is_bc = suffix(temp_files[0][1]) in BITCODE_ENDINGS
-      is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
-      is_ar = shared.Building.is_ar(temp_files[0][1])
-      if len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND or (not LEAVE_INPUTS_RAW and not (is_bc or is_dylib) and is_ar):
+      perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
+      if not perform_link and not LEAVE_INPUTS_RAW:
+        is_bc = suffix(temp_files[0][1]) in BITCODE_ENDINGS
+        is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
+        is_ar = shared.Building.is_ar(temp_files[0][1])
+        perform_link = not (is_bc or is_dylib) and is_ar
+      if perform_link:
         logging.debug('linking: ' + str(linker_inputs))
         # force archive contents to all be included, if just archives, or if linking shared modules
         force_archive_contents = len([temp for i, temp in temp_files if not temp.endswith(STATICLIB_ENDINGS)]) == 0 or not shared.Building.can_build_standalone()
