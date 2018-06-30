@@ -1169,7 +1169,15 @@ var DYNAMICTOP_PTR = setupInfo.sbrkPtr;
 var DYNAMICTOP = setupInfo.sbrkStart;
 var STACKTOP = setupInfo.stackStart;
 var STACK_MAX = setupInfo.stackMax;
-
+var buffer = memory.buffer;
+var HEAP8 = new Int8Array(buffer);
+var HEAP16 = new Int16Array(buffer);
+var HEAP32 = new Int32Array(buffer);
+var HEAPU8 = new Uint8Array(buffer);
+var HEAPU16 = new Uint16Array(buffer);
+var HEAPU32 = new Uint32Array(buffer);
+var HEAPF32 = new Float32Array(buffer);
+var HEAPF64 = new Float64Array(buffer);
 ''' % (settings['TOTAL_MEMORY'], table_total_size)
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
