@@ -1167,19 +1167,20 @@ var setupInfo = setup({
   staticStart: %d,
   staticSize: STATIC_BUMP,
 });
-var DYNAMICTOP_PTR = setupInfo.sbrkPtr;
+var ABORT, EXITSTATUS; // XXX
+DYNAMICTOP_PTR = setupInfo.sbrkPtr;
 var DYNAMICTOP = setupInfo.sbrkStart;
-var STACKTOP = setupInfo.stackStart;
-var STACK_MAX = STACKTOP + %d;
-var buffer = memory.buffer;
-var HEAP8 = new Int8Array(buffer);
-var HEAP16 = new Int16Array(buffer);
-var HEAP32 = new Int32Array(buffer);
-var HEAPU8 = new Uint8Array(buffer);
-var HEAPU16 = new Uint16Array(buffer);
-var HEAPU32 = new Uint32Array(buffer);
-var HEAPF32 = new Float32Array(buffer);
-var HEAPF64 = new Float64Array(buffer);
+STACKTOP = setupInfo.stackStart;
+STACK_MAX = STACKTOP + %d;
+buffer = memory.buffer;
+HEAP8 = new Int8Array(buffer);
+HEAP16 = new Int16Array(buffer);
+HEAP32 = new Int32Array(buffer);
+HEAPU8 = new Uint8Array(buffer);
+HEAPU16 = new Uint16Array(buffer);
+HEAPU32 = new Uint32Array(buffer);
+HEAPF32 = new Float32Array(buffer);
+HEAPF64 = new Float64Array(buffer);
 ''' % (settings['TOTAL_MEMORY'], table_total_size, settings['GLOBAL_BASE'], settings['TOTAL_STACK'])
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size

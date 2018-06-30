@@ -37,10 +37,10 @@ function setup(info) {
 //  Module['main'] = asm['_main']
 Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but various parsing codes...
   console.log('asm1');
-  env.memory = memory;
-  env.table = table;
-  env.memoryBase = 0;
-  env.tableBase = 0;
+  env['memory'] = memory;
+  env['table'] = table;
+  env['memoryBase'] = 0;
+  env['tableBase'] = 0;
   var info = {
     'env': env,
     'global': { // XXX
@@ -64,8 +64,8 @@ Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but v
     })
     .then(function(pair) {
       console.log('asm5');
-      var instance = pair.instance;
-      var exports = instance.exports;
+      var instance = pair['instance'];
+      var exports = instance['exports'];
       console.log('exports', exports);
       var main = exports['_main'];
       main();
