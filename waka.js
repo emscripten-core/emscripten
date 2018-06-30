@@ -16,14 +16,16 @@ var memory, table;
 function setup(info) {
   memory = new WebAssembly.Memory({ initial: info.memorySize, maximum: info.memorySize });
   table = new WebAssembly.Table({ initial: info.tableSize, maximum: info.tableSize, element: 'anyfunc' });
-  var sbrkStart = 2048;
+  var staticEnd = info.staticStart + info.staticSize;
+  var stackStart = staticEnd;
+  var stackMax = stackStart + info.stackSize;
+  var sbrkStart = stackMax;
   var sbrkPtr = 16;
   (new Int32Array(memory.buffer))[sbrkPtr >> 2] = sbrkStart;
   return {
     memory: memory,
     table: table,
-    stackStart: 1024,
-    stackMax: 2048,
+    stackStart: stackStart,
     sbrkStart: sbrkStart,
     sbrkPtr: sbrkPtr,
   };
