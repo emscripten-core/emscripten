@@ -1211,12 +1211,11 @@ function abort(what) {
 #endif // ASSERTIONS
 }
 
+var WASM_PAGE_SIZE = 65536;
+
 #include "URIUtils.js"
 
-#if CUSTOM_CORE_JS
-setup();
-#else // CUSTOM_CORE_JS
-
+#if !CUSTOM_CORE_JS
 
 var ABORT = 0; // whether we are quitting the application. no code should run after this. set in exit() and abort()
 var EXITSTATUS = 0;
@@ -1224,7 +1223,6 @@ var EXITSTATUS = 0;
 // Memory management
 
 var PAGE_SIZE = 16384;
-var WASM_PAGE_SIZE = 65536;
 var ASMJS_PAGE_SIZE = 16777216;
 var MIN_TOTAL_MEMORY = 16777216;
 

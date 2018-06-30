@@ -1157,7 +1157,20 @@ def create_asm_setup(debug_tables, function_table_data, metadata, settings):
       return table_contents.count(',') + 1
 
     table_total_size = sum(map(table_size, list(function_table_data.values())))
-    asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    if not settings['CUSTOM_CORE_JS']:
+      asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    else:
+      asm_setup += '''
+var setupInfo = setup({
+  memorySize: %d / WASM_PAGE_SIZE,
+  tableSize: %d,
+});
+var DYNAMICTOP_PTR = setupInfo.sbrkPtr;
+var DYNAMICTOP = setupInfo.sbrkStart;
+var STACKTOP = setupInfo.stackStart;
+var STACK_MAX = setupInfo.stackMax;
+
+''' % (settings['TOTAL_MEMORY'], table_total_size)
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
   if settings['RELOCATABLE']:
@@ -1327,6 +1340,8 @@ def create_the_global(metadata, settings):
 
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, settings):
+  if settings['CUSTOM_CORE_JS']:
+    return ''
   receiving = ''
   if not settings['ASSERTIONS']:
     runtime_assertions = ''
@@ -2002,6 +2017,8 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata,
 
 
 def create_receiving_wasm(exported_implemented_functions, settings):
+  if settings['CUSTOM_CORE_JS']:
+    return ''
   receiving = ''
   if settings['ASSERTIONS']:
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
