@@ -2322,14 +2322,26 @@ class Building(object):
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     graph = json.loads(txt)
     # ensure that functions expected to be exported to the outside are roots
+    exports = set()
     for item in graph:
       if 'export' in item:
         export = item['export']
+        exports.add(item['name'])
         # wasm backend's exports are prefixed differently inside the wasm
         if Settings.WASM_BACKEND:
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # XXX
+    for export in Building.user_requested_exports:
+      if export not in exports:
+        graph.append({
+          'export': export,
+          'name': 'emcc$export$' + export,
+          'root': True,
+          'reaches': []
+        })
+    logging.error(json.dumps(graph))
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:

@@ -33,6 +33,8 @@ function setup(info) {
 
 // Compile and run
 
+//function processExports(asm) {
+//  Module['main'] = asm['_main']
 Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but various parsing codes...
   console.log('asm1');
   env.memory = memory;
@@ -64,9 +66,9 @@ Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but v
       console.log('asm5');
       var instance = pair.instance;
       var exports = instance.exports;
-// need something for metadce here...
-      console.log(exports);
-      console.log(exports._main());
+      console.log('exports', exports);
+      var main = exports['_main'];
+      main();
     });
 }
 
