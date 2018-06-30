@@ -1196,7 +1196,7 @@ Module['asm'] = function(global, env, buffer) {
       'Infinity': Infinity
     }
   };
-  start(info, [%s], __ATMAIN__);
+  start(info, [%s], __ATINIT__.concat(__ATMAIN__));
 };
 ''' % (settings['TOTAL_MEMORY'],
        table_total_size,

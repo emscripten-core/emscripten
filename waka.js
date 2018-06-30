@@ -41,7 +41,9 @@ function start(imports, ctors, jsCtors) {
     });
     jsCtors.forEach(function(ctor) {
     console.log('js ctor');
-      ctor();
+      if (typeof ctor === 'function') { // XXX FIXME
+        ctor();
+      }
     });
     var main = exports['_main'];
     console.log('maintime');
