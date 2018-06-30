@@ -313,6 +313,25 @@ for (key in moduleOverrides) {
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
 moduleOverrides = undefined;
 
+#else // !CUSTOM_CORE_JS
+// XXX FIXME all these
+var __ATINIT__ = [];
+var __ATMAIN__ = [];
+var __ATEXIT__ = [];
+var ENVIRONMENT_IS_NODE = 0;
+var ENVIRONMENT_IS_WORKER = 0;
+var TOTAL_MEMORY = 0;
+var __GLOBAL__I_000101 = 0;
+var __GLOBAL__sub_I_iostream_cpp = 0;
+var __ZSt18uncaught_exceptionv = 0;
+var _free = 0;
+var _malloc = 0;
+var addRunDependency = 0;
+var getUniqueRunDependency = 0;
+var removeRunDependency = 0;
+var stackRestore = 0;
+var stackSave = 0;
+// XXX FIXME all the above
 #endif //!CUSTOM_CORE_JS
 
 {{BODY}}

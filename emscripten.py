@@ -1169,9 +1169,8 @@ var setupInfo = setup({
   staticStart: %d,
   staticSize: STATIC_BUMP,
 });
-var ABORT, EXITSTATUS; // XXX
 DYNAMICTOP_PTR = setupInfo.sbrkPtr;
-var DYNAMICTOP = setupInfo.sbrkStart;
+DYNAMICTOP = setupInfo.sbrkStart;
 STACKTOP = setupInfo.stackStart;
 STACK_MAX = STACKTOP + %d;
 buffer = memory.buffer;
@@ -1183,6 +1182,11 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
+
+// XXX fix these
+var ABORT, EXITSTATUS;
+var DYNAMICTOP;
+// XXX fix all the above
 
 Module['asm'] = function(global, env, buffer) {
   env['memory'] = memory;

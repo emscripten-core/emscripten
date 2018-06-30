@@ -2341,8 +2341,6 @@ class Building(object):
       # to be kept alive through dce. (If users want more, they can add
       # to EXPORTED_FUNCTIONS.)
       needed = Building.user_requested_exports + Building.global_ctors
-      print(needed)
-      1/0
       for export in needed:
         if export not in exports:
           graph.append({
