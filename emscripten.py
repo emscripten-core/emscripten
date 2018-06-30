@@ -1181,6 +1181,21 @@ HEAPU16 = new Uint16Array(buffer);
 HEAPU32 = new Uint32Array(buffer);
 HEAPF32 = new Float32Array(buffer);
 HEAPF64 = new Float64Array(buffer);
+
+Module['asm'] = function(global, env, buffer) {
+  env['memory'] = memory;
+  env['table'] = table;
+  env['memoryBase'] = 0;
+  env['tableBase'] = 0;
+  var info = {
+    'env': env,
+    'global': { // XXX
+      'NaN': NaN,
+      'Infinity': Infinity
+    }
+  };
+  start(info);
+};
 ''' % (settings['TOTAL_MEMORY'], table_total_size, settings['GLOBAL_BASE'], settings['TOTAL_STACK'])
     if not settings['EMULATED_FUNCTION_POINTERS']:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size

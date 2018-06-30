@@ -33,40 +33,20 @@ function setup(info) {
 
 // Compile and run
 
-//function processExports(asm) {
-//  Module['main'] = asm['_main']
-Module['asm'] = function(global, env, buffer) { // XXX rename "startup()"? but various parsing codes...
-  console.log('asm1');
-  env['memory'] = memory;
-  env['table'] = table;
-  env['memoryBase'] = 0;
-  env['tableBase'] = 0;
-  var info = {
-    'env': env,
-    'global': { // XXX
-      'NaN': NaN,
-      'Infinity': Infinity
-    }
-  };
+function start(imports) {
   fetch('b.wasm', { credentials: 'same-origin' })
     .then(function(response) {
-      console.log('asm2');
       return response.arrayBuffer();
     })
     .then(function(arrayBuffer) {
-      console.log('asm3');
       return new Uint8Array(arrayBuffer);
     })
     .then(function(binary) {
-      console.log('asm4');
-      console.log(info);
-      return WebAssembly.instantiate(binary, info);
+      return WebAssembly.instantiate(binary, imports);
     })
     .then(function(pair) {
-      console.log('asm5');
       var instance = pair['instance'];
       var exports = instance['exports'];
-      console.log('exports', exports);
       var main = exports['_main'];
       main();
     });
