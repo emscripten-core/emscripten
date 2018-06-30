@@ -1,8 +1,13 @@
 from __future__ import print_function
-import os, shutil, stat, subprocess
+import os
+import platform
+import shutil
+import stat
+import subprocess
+import time
+
 from runner import RunnerCore, path_from_root
 from tools.shared import *
-import time
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
 commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
