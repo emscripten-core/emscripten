@@ -8017,9 +8017,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  25,   19),
-      (['-O1'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17),
-      (['-O2'], 19, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17),
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19),
+      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17),
+      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17),
       (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2), # in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2),
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2),
@@ -8028,7 +8028,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1534, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
+              1533, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
     ])
 
     print('test on a minimal pure computational thing')
@@ -8041,9 +8041,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      24, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 25, 18),
-      (['-O1'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15),
-      (['-O2'], 12, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15),
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18),
+      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15),
+      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15),
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),
       (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1),

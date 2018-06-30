@@ -2341,7 +2341,6 @@ class Building(object):
           'root': True,
           'reaches': []
         })
-    logging.error(json.dumps(graph))
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
