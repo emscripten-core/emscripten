@@ -1735,7 +1735,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #   * We may also run some Binaryen passes here.
 
-  metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  metadata = finalize_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1813,7 +1813,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   outfile.close()
 
 
-def build_wasm(temp_files, infile, outfile, settings, DEBUG):
+def finalize_wasm(temp_files, infile, outfile, settings, DEBUG):
   wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
   wasm_as = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-as')
   wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
@@ -1826,22 +1826,9 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
         shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   basename = shared.unsuffixed(outfile.name)
-  wasm = basename + '.wasm'
   metadata_file = basename + '.metadata'
-  base_wasm = basename + '.lld.wasm'
-
-  with temp_files.get_file('.wb.o') as temp_o:
-    backend_args = create_backend_args_wasm(infile, temp_o, settings)
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-    debug_copy(temp_o, 'emcc-llvm-backend-output.o')
-    shared.Building.link_lld([temp_o], base_wasm)
-    debug_copy(base_wasm, 'base_wasm.wasm')
+  wasm = basename + '.wasm'
+  base_wasm = infile
 
   write_source_map = settings['DEBUG_LEVEL'] >= 4
   if write_source_map:
@@ -2062,29 +2049,6 @@ var establishStackSpace = Module['establishStackSpace'];
   module.append(invoke_wrappers)
   module.append(jscall_funcs)
   return module
-
-def create_backend_args_wasm(infile, outfile, settings):
-  # TODO(sbc): Don't allow -O0 due to bug in wasm-emscripten-finalize:
-  # https://github.com/WebAssembly/binaryen/issues/1612
-  optlevel = settings['OPT_LEVEL']
-  if optlevel == 0:
-    optlevel = 1
-  args = [shared.LLVM_COMPILER, infile, '-mtriple=' + shared.WASM_TARGET,
-          '-filetype=obj', '-o', outfile, '-O%s' % optlevel]
-  args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-  # disable slow and relatively unimportant optimization passes
-  args += ['-combiner-global-alias-analysis=false']
-
-  # asm.js-style exception handling
-  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-    args += ['-enable-emscripten-cxx-exceptions']
-  if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-    whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
-
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
-  return args
 
 
 def load_metadata(metadata_raw):

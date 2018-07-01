@@ -1723,7 +1723,24 @@ class Building(object):
       Building.parallel_llvm_nm(object_names)
 
   @staticmethod
-  def link_lld(files, target, force_archive_contents=False):
+  def llvm_backend_args():
+    args = ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+    # disable slow and relatively unimportant optimization passes
+    args += ['-combiner-global-alias-analysis=false']
+
+    # asm.js-style exception handling
+    if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      args += ['-enable-emscripten-cxx-exceptions']
+    if Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
+      args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
+    return args
+
+  @staticmethod
+  def link_lld(files, target, opts=[], lto_level=0):
     def wasm_rt_fail(archive_file):
       def wrapped():
         raise FatalError('Expected {} to already be built'.format(archive_file))
@@ -1739,9 +1756,11 @@ class Building(object):
       '--no-entry',
       '--allow-undefined',
       '--import-memory',
-      '--export', '__wasm_call_ctors'
+      '--export', '__wasm_call_ctors',
+      '--lto-O%d' % lto_level,
       ] + files + [libc_rt_lib, compiler_rt_lib]
-
+    for a in Building.llvm_backend_args():
+      cmd += ['-mllvm', a]
     # emscripten-wasm-finalize currently depends on the presence of debug
     # symbols for renaming of the __invoke symbols
     # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
@@ -1761,6 +1780,8 @@ class Building(object):
     if DEBUG:
       logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
       t = time.time()
+
+    return target
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
