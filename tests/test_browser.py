@@ -19,10 +19,10 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
-from tools import system_libs
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, run_js
+from tools import system_libs, jsrun
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
-from tools.shared import try_delete, Building, run_process, run_js
+from tools.shared import try_delete, Building, run_process
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -2685,7 +2685,7 @@ Module['onRuntimeInitialized'] = function() {
       assert os.path.exists('second.js')
 
       if isinstance(SPIDERMONKEY_ENGINE, list) and len(SPIDERMONKEY_ENGINE[0]) != 0:
-        out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+        out = jsrun.run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
         self.validate_asmjs(out)
       else:
         print('Skipping asm validation check, spidermonkey is not configured')

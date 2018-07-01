@@ -1091,19 +1091,6 @@ except NameError:
   pass
 
 
-# Utilities
-def make_js_command(filename, engine=None, *args):
-  if engine is None:
-    engine = JS_ENGINES[0]
-  return jsrun.make_command(filename, engine, *args)
-
-
-def run_js(filename, engine=None, *args, **kw):
-  if engine is None:
-    engine = JS_ENGINES[0]
-  return jsrun.run_js(filename, engine, *args, **kw)
-
-
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
   return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
@@ -3050,19 +3037,20 @@ def read_and_preprocess(filename):
   #       we only want the actual settings, hence the [1::2] slice operation.
   settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
   settings_file = os.path.join(temp_dir, 'settings.js')
-  open(settings_file, 'w').write(settings_str)
+  with open(settings_file, 'w') as f:
+    f.write(settings_str)
 
   # Run the JS preprocessor
   # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
   # and shell.html is bigger than that!
   # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-  (path, file) = os.path.split(filename)
-  if not path:
-    path = None
+  dirname, filename = os.path.split(filename)
+  if not dirname:
+    dirname = None
   stdout = os.path.join(temp_dir, 'stdout')
-  args = [settings_file, file]
+  args = [settings_file, filename]
 
-  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  jsrun.run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=dirname)
   out = open(stdout, 'r').read()
 
   return out

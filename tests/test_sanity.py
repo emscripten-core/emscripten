@@ -12,9 +12,9 @@ import time
 import re
 import tempfile
 
-from runner import RunnerCore, path_from_root, env_modify, chdir
+from runner import RunnerCore, path_from_root, env_modify, chdir, run_js
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE, CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR, EMSCRIPTEN_VERSION
-from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs, expected_llvm_version, generate_sanity
+from tools.shared import run_process, try_delete, safe_ensure_dirs, expected_llvm_version, generate_sanity
 from tools.shared import Cache, Settings
 from tools import jsrun, shared
 

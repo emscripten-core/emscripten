@@ -187,6 +187,12 @@ non_core_test_modes = [
 test_index = 0
 
 
+def run_js(filename, engine=None, *args, **kw):
+  if engine is None:
+    engine = shared.JS_ENGINES[0]
+  return jsrun.run_js(filename, engine, *args, **kw)
+
+
 class RunnerCore(unittest.TestCase):
   emcc_args = None
 

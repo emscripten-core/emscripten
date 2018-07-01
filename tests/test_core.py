@@ -16,11 +16,11 @@ import time
 import unittest
 from textwrap import dedent
 
-from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
+from tools.shared import Building, STDOUT, PIPE, run_process, Settings, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, run_js
 
 # decorators for limiting which modes a test can run in
 
@@ -2653,7 +2653,7 @@ The current type of b is: 9
                 output_nicerizer=lambda x, err: x.replace('\n', '*'))
 
     if self.get_setting('ASM_JS') and SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-      out = run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+      out = jsrun.run_js('liblib.so', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
       if 'asm' in out:
         self.validate_asmjs(out)
 
@@ -3336,7 +3336,7 @@ ok
         if force_c:
           shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
       if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-        out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+        out = jsrun.run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
         if 'asm' in out:
           self.validate_asmjs(out)
       shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
@@ -3597,7 +3597,7 @@ Module = {
       print('check warnings')
       self.set_setting('ASSERTIONS', 2)
       test()
-      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
@@ -4071,7 +4071,7 @@ Module = {
 
     if self.get_setting('ASSERTIONS'):
       print('check warnings')
-      full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
+      full = run_js('src.cpp.o.js', full_output=True, stderr=STDOUT)
       self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third%s') that already exists" % dylib_suffix, full)
 
   @needs_dlfcn
@@ -6754,7 +6754,7 @@ def process(filename):
         full_aborter = full
     print('full:', full_aborter, 'short:', short_aborter)
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
-      output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
+      output = jsrun.run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
         # stack traces may also be ' name ' or 'name@' etc
