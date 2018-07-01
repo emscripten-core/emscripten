@@ -2064,9 +2064,6 @@ class Building(object):
 
   @staticmethod
   def emscripten(filename, append_ext=True, extra_args=[]):
-    # Allow usage of emscripten.py without warning
-    os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
-
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
     import emscripten

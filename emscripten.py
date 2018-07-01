@@ -1,15 +1,8 @@
-#!/usr/bin/env python2
-"""You should normally never use this! Use emcc instead.
-
-This is a small wrapper script around the core JS compiler. This calls that
+"""A small wrapper script around the core JS compiler. This calls that
 compiler with the settings given to it. It can also read data from C/C++
 header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
-
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
 
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
@@ -21,6 +14,10 @@ from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root
+from tools.toolchain_profiler import ToolchainProfiler
+
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
 
 def get_configuration():
   if hasattr(get_configuration, 'configuration'):
@@ -36,6 +33,7 @@ if STDERR_FILE:
   logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
+
 def quoter(settings):
   def quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
@@ -43,6 +41,7 @@ def quoter(settings):
     else:
       return prop
   return quote
+
 
 def access_quoter(settings):
   def access_quote(prop):
@@ -2234,22 +2233,11 @@ def _main(args):
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
-  parser.add_argument('--suppressUsageWarning',
-                    action='store_true',
-                    default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
-                    help=('Suppress usage warning'))
   parser.add_argument('infile', nargs='*')
 
   # Convert to the same format that argparse would have produced.
   keywords = parser.parse_args(args)
   positional = keywords.infile
-
-  if not keywords.suppressUsageWarning:
-    logging.warning('''
-==============================================================
-WARNING: You should normally never use this! Use emcc instead.
-==============================================================
-  ''')
 
   if len(positional) != 1:
     logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
@@ -2277,14 +2265,10 @@ WARNING: You should normally never use this! Use emcc instead.
     DEBUG = keywords.verbose
 
   cache = cache_module.Cache()
-  temp_files.run_and_clean(lambda: main(
+  return temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=keywords.compiler,
     cache=cache,
     temp_files=temp_files,
     DEBUG=DEBUG,
   ))
-  return 0
-
-if __name__ == '__main__':
-  sys.exit(_main(sys.argv[1:]))
