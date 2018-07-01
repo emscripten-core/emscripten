@@ -1888,17 +1888,22 @@ class Building(object):
 
     libc_rt_lib = Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
     compiler_rt_lib = Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
-    cmd = [WASM_LD,
-      '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
-      '--global-base=%s' % Settings.GLOBAL_BASE,
-      '--initial-memory=%s' % Settings.TOTAL_MEMORY,
-      '-o', target,
-      '--no-entry',
-      '--allow-undefined',
-      '--import-memory',
-      '--export', '__wasm_call_ctors',
-      '--lto-O%d' % lto_level,
-      ] + files + [libc_rt_lib, compiler_rt_lib]
+    cmd = [
+        WASM_LD,
+        '-z',
+        'stack-size=%s' % Settings.TOTAL_STACK,
+        '--global-base=%s' % Settings.GLOBAL_BASE,
+        '--initial-memory=%s' % Settings.TOTAL_MEMORY,
+        '-o',
+        target,
+        '--no-entry',
+        '--allow-undefined',
+        '--import-memory',
+        '--export',
+        '__wasm_call_ctors',
+        '--lto-O%d' % lto_level,
+    ] + files + [libc_rt_lib, compiler_rt_lib]
+
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
 
