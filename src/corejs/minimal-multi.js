@@ -31,6 +31,7 @@ function setup(info) {
 // Compile and run
 
 function start(imports, ctors, jsCtors) {
+  // todo main's argc/argv
   function postInstantiate(instance) {
     var exports = instance['exports'];
     ctors.forEach(function(ctor) {

@@ -1188,6 +1188,9 @@ var ABORT, EXITSTATUS;
 var DYNAMICTOP;
 // XXX fix all the above
 
+// XXX - should we disallow --post-js'es? checked late,
+//       so would error on things that emcc adds a post for.
+
 Module['asm'] = function(global, env, buffer) {
   env['memory'] = memory;
   env['table'] = table;

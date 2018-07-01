@@ -7803,6 +7803,6 @@ binaryen2_interpret = make_run('binaryen2_interpret', compiler=CLANG, emcc_args=
 asmi = make_run('asmi', compiler=CLANG, emcc_args=['-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
 asm2i = make_run('asm2i', compiler=CLANG, emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
 
-cjs = make_run('cjs', compiler=CLANG, emcc_args=['-s', 'CUSTOM_CORE_JS="/home/alon/Dev/emscripten/waka2.js"'])
+cjs = make_run('cjs', compiler=CLANG, emcc_args=['-s', 'CUSTOM_CORE_JS="%s"' % path_from_root('src', 'corejs', 'minimal-multi.js')])
 
 del T # T is just a shape for the specific subclasses, we don't test it itself
