@@ -20,7 +20,7 @@ from subprocess import check_call, Popen, PIPE, CalledProcessError
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
 
-from tools import shared
+from tools import shared, jsrun
 
 # can add flags like --no-threads --ion-offthread-compile=off
 engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
@@ -176,7 +176,7 @@ while 1:
   def execute_js(engine):
     print('(run in %s)' % engine)
     try:
-      js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+      js = jsrun.run_js(filename + '.js', engine=shutil.NODE_JS, check_timeout=True, assert_returncode=None)
     except CalledProcessError:
       print('failed to run in primary')
       return False
