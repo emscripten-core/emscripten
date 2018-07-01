@@ -1194,11 +1194,20 @@ Module['asm'] = function(global, env, buffer) {
   env['memoryBase'] = 0;
   env['tableBase'] = 0;
   var info = {
+    'asm2wasm': {
+      "f64-rem": function(x, y) {
+        return x % y;
+      },
+      "debugger": function() {
+        debugger;
+      }
+    },
     'env': env,
     'global': { // XXX
-      'NaN': NaN,
-      'Infinity': Infinity
-    }
+      'Infinity': Infinity,
+      'NaN': NaN
+    },
+    'global.Math': Math
   };
   start(info, [%s], __ATINIT__.concat(__ATMAIN__));
 };
