@@ -1196,7 +1196,7 @@ Module['asm'] = function(global, env, buffer) {
   var info = {
     'asm2wasm': {
       "f64-rem": function(x, y) {
-        return x % y;
+        return x %% y;
       },
       "debugger": function() {
         debugger;
