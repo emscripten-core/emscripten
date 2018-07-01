@@ -70,7 +70,7 @@ function JSify(data, functionsOnly) {
 
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
-    if (CUSTOM_CORE_JS) print(read(CUSTOM_CORE_JS));
+    if (CUSTOM_CORE_JS) print(processMacros(preprocess(read(CUSTOM_CORE_JS))));
     var pre;
     if (BUILD_AS_SHARED_LIB || SIDE_MODULE) {
       pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));

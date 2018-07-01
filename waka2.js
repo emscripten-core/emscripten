@@ -44,8 +44,10 @@ function start(imports, ctors, jsCtors) {
     var main = exports['_main'];
     main();
   }
+  var filename = '{{{ WASM_BINARY_FILE }}}';
   if (typeof fetch === 'function') {
-    fetch('ammo.wasm.wasm', { credentials: 'same-origin' })
+    // Web
+    fetch(filename, { credentials: 'same-origin' })
       .then(function(response) {
         return response.arrayBuffer();
       })
@@ -59,7 +61,16 @@ function start(imports, ctors, jsCtors) {
         postInstantiate(pair['instance']);
       });
   } else {
-    var data = read('ammo.wasm.wasm', 'binary');
+    var data;
+    if (typeof require === 'function') {
+      // node.js
+      data = require('fs')['readFileSync'](filename);
+    } else if (typeof read === 'function') {
+      // SpiderMonkey shell
+      data = read(filename, 'binary');
+    } else {
+      throw Error('where am i');
+    }
     var instance = new WebAssembly.Instance(new WebAssembly.Module(data), imports);
     postInstantiate(instance);
   }
