@@ -7143,12 +7143,12 @@ int main() {
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
       check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
-      full = 'var Module = {};\n' + open('a.out.asm.js').read()
-      open('asm.js', 'w').write(full)
-      funcs = open('a.out.asm.js').read().count('function ')
-      vars_ = open('a.out.asm.js').read().count('var ')
-      assert funcs == expected_funcs, funcs
-      assert vars_ == expected_vars, vars_
+      module = open('a.out.asm.js').read()
+      open('asm.js', 'w').write('var Module = {};\n' + module)
+      funcs = module.count('function ')
+      vars_ = module.count('var ')
+      self.assertEqual(funcs, expected_funcs)
+      self.assertEqual(vars_, expected_vars)
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
         self.validate_asmjs(out)
@@ -7156,7 +7156,7 @@ int main() {
         print('(skipping asm.js validation check)')
 
     test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 13)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 12)
 
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'

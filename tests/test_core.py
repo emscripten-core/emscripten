@@ -6704,7 +6704,7 @@ public:
   std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
   const char* data() const { return ptr; }
 private:
-  const char* ptr = nullptr;
+  const char* ptr = 0;
 };
 
 const std_string txtTestString("212121\0");
