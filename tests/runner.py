@@ -150,6 +150,7 @@ nondefault_test_modes = [
   'binaryenz',
   'asmi',
   'asm2i',
+  'cjs',
 ]
 test_index = 0
 
