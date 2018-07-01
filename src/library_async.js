@@ -241,8 +241,10 @@ mergeInto(LibraryManager.library, {
     restartFunc: null, // During an async call started with ccall, this contains the function generated
                        // by the compiler that calls emterpret and returns the return value. If we call
                        // emterpret directly, we don't get the return value back (and we can't just read
-                       // it from the stack because we don't know the correct type).
-    asyncFinalizers: [], // functions to run when all asynchronicity is done
+                       // it from the stack because we don't know the correct type). Note that only
+                       // a single one (and not a stack) is required because only one async ccall can be
+                       // in flight at once.
+    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
 
     ensureInit: function() {
       if (this.initted) return;
@@ -315,19 +317,28 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          var ret;
-          if (EmterpreterAsync.restartFunc) ret = EmterpreterAsync.restartFunc();
-          else Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          var asyncReturnValue;
+          if (!EmterpreterAsync.restartFunc) {
+            // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+            Module['emterpret'](stack[0]);
+          } else {
+            // the restartFunc knows how to emterpret the proper function, and also returns the return value
+            asyncReturnValue = EmterpreterAsync.restartFunc();
+          }
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
           }
           if (EmterpreterAsync.state === 0) {
+            // All async operations have concluded.
+            // In particular, if we were in an async ccall, we have
+            // consumed the restartFunc and can reset it to null.
             EmterpreterAsync.restartFunc = null;
+            // The async finalizers can run now, after all async operations.
             var asyncFinalizers = EmterpreterAsync.asyncFinalizers;
             EmterpreterAsync.asyncFinalizers = [];
             asyncFinalizers.forEach(function(func) {
-              func(ret);
+              func(asyncReturnValue);
             });
           }
         });

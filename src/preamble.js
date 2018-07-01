@@ -189,7 +189,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
-  if (opts && opts.async) return Promise.resolve(ret)
+  // If this is an async ccall, ensure we return a promise
+  if (opts && opts.async) return Promise.resolve(ret);
 #endif
   return ret;
 }

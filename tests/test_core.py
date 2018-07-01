@@ -1714,7 +1714,6 @@ int main(int argc, char **argv) {
 
   @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_async_em_asm(self):
-    return self.skip('TODO: Enable me when we have tagged new compiler build')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
@@ -7248,9 +7247,17 @@ Success!
   def test_vswprintf_utf8(self):
     self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
 
-  def test_async(self):
+  def test_async(self, emterpretify=False):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    if not emterpretify:
+      if self.is_emterpreter():
+        return self.skip("don't test both emterpretify and asyncify at once")
+      Settings.ASYNCIFY = 1
+    else:
+      Settings.EMTERPRETIFY = 1
+      Settings.EMTERPRETIFY_ASYNC = 1
 
     src = r'''
 #include <stdio.h>
@@ -7267,16 +7274,11 @@ int main() {
   emscripten_%s(100);
   printf("%%d\n", i);
 }
-''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
-
-    if not self.is_emterpreter():
-      Settings.ASYNCIFY = 1
-    else:
-      Settings.EMTERPRETIFY_ASYNC = 1
+''' % ('sleep_with_yield' if emterpretify else 'sleep')
 
     self.do_run(src, 'HelloWorld!99');
 
-    if self.is_emterpreter():
+    if emterpretify:
       print('check bad ccall use')
       src = r'''
 #include <stdio.h>
@@ -7289,16 +7291,18 @@ int main() {
 '''
       Settings.ASSERTIONS = 1
       Settings.INVOKE_RUN = 0
-      open('post.js', 'w').write('''
-try {
-  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
-  var never = true;
-} catch(e) {
-  out(e);
-  assert(!never);
-}
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  try {
+    ccall('main', 'number', ['number', 'string'], [2, 'waka']);
+    var never = true;
+  } catch(e) {
+    out(e);
+    assert(!never);
+  }
+};
 ''')
-      self.emcc_args += ['--post-js', 'post.js']
+      self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run(src, 'The call to main is running asynchronously.');
 
       print('check reasonable ccall use')
@@ -7311,8 +7315,10 @@ int main() {
   printf("World\n");
 }
 '''
-      open('post.js', 'w').write('''
-ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+};
 ''')
       self.do_run(src, 'HelloWorld');
 
@@ -7334,14 +7340,19 @@ extern "C" {
   }
 }
 '''
-      open('post.js', 'w').write(r'''
-ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
-  .then(function(val) {
-    Module.print(val);
-    ccall('floatf', 'number', null, null, { async: true }).then(Module.print);
-  });
+      open('pre.js', 'w').write(r'''
+Module['onRuntimeInitialized'] = function() {
+  ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
+    .then(function(val) {
+      console.log(val);
+      ccall('floatf', 'number', null, null, { async: true }).then(console.log);
+    });
+};
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
+
+  def test_async_emterpretify(self, emterpretify=False):
+    self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
