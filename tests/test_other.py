@@ -1,13 +1,24 @@
 # coding=utf-8
 
 from __future__ import print_function
-import multiprocessing, os, pipes, re, shutil, subprocess, sys
-import itertools
 import glob
-import tools.shared
+import itertools
+import multiprocessing
+import os
+import pipes
+import re
+import shutil
+import subprocess
+import sys
+
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
+import tools.shared
 import tools.line_endings
+import tools.js_optimizer
+import tools.tempfiles
+import tools.duplicate_function_eliminator
+
 
 class temp_directory(object):
   def __enter__(self):
@@ -2101,7 +2112,7 @@ int f() {
       else:
         print('(skip non-native)')
 
-      if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
+      if tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
@@ -2123,15 +2134,15 @@ int f() {
         if 'last' not in passes and \
            'null_if' not in input and 'null_else' not in input:  # null-* tests are js optimizer or native, not a mixture (they mix badly)
           print('  native (receiveJSON)')
-          output = run_process([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
           print('  native (parsing JS)')
-          output = run_process([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
         print('  native (emitting JS)')
-        output = run_process([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+        output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
   def test_m_mm(self):
@@ -7478,7 +7489,6 @@ int main() {
                                          'test-function-eliminator-replace-function-call-two-passes-output.js')
 
   def test_function_eliminator_replace_array_value(self):
-    import tools.duplicate_function_eliminator
     output_file = 'output.js'
 
     try:
@@ -7509,10 +7519,6 @@ int main() {
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).
-    import tools.tempfiles
-    import tools.duplicate_function_eliminator
-    import tools.js_optimizer
-
     output_file = 'output.js'
 
     try:

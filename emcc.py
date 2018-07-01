@@ -34,7 +34,7 @@ import re
 import logging
 from subprocess import PIPE
 
-from tools import shared, jsrun, system_libs, client_mods
+from tools import shared, jsrun, system_libs, client_mods, js_optimizer
 from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -252,8 +252,8 @@ class JSOptimizer(object):
           if len(curr) == 0:
             curr.append(p)
           else:
-            native = shared.js_optimizer.use_native(p, source_map=use_source_map(self))
-            last_native = shared.js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
+            native = js_optimizer.use_native(p, source_map=use_source_map(self))
+            last_native = js_optimizer.use_native(curr[-1], source_map=use_source_map(self))
             if native == last_native:
               curr.append(p)
             else:
