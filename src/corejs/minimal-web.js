@@ -30,7 +30,7 @@ function setup(info) {
 
 // Compile and run
 
-function start(imports, ctors, jsCtors) {
+function start(imports, onload) {
   fetch('b.wasm', { credentials: 'same-origin' })
     .then(function(response) {
       return response.arrayBuffer();
@@ -44,15 +44,7 @@ function start(imports, ctors, jsCtors) {
     .then(function(pair) {
       var instance = pair['instance'];
       var exports = instance['exports'];
-      ctors.forEach(function(ctor) {
-        exports[ctor]();
-      });
-      jsCtors.forEach(function(ctor) {
-        if (typeof ctor === 'function') { // XXX FIXME
-          ctor();
-        }
-      });
-      var main = exports['_main'];
+      onload(exports);
       main();
     });
 }

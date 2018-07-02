@@ -499,6 +499,8 @@ var CUSTOM_CORE_JS = ''; // Setting this will include the contents of that .js f
                          //    / receiving code is not emitted.
                          //  * EMSCRIPTEN_KEEPALIVE auto exported is not emitted, the user
                          //    must receive it from the wasm module.
+                         // TODO: add a JS ctor that the start() receives which receives
+                         //       the necessary exports for internal use. simplifies metadce also.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 

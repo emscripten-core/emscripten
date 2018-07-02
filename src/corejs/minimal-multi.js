@@ -30,18 +30,11 @@ function setup(info) {
 
 // Compile and run
 
-function start(imports, ctors, jsCtors) {
+function start(imports, onload) {
   // todo main's argc/argv
   function postInstantiate(instance, args) {
     var exports = instance['exports'];
-    ctors.forEach(function(ctor) {
-      exports[ctor]();
-    });
-    jsCtors.forEach(function(ctor) {
-      if (typeof ctor === 'function') { // XXX FIXME
-        ctor();
-      }
-    });
+    onload(exports);
     var main = exports['_main'];
     var argc = 1, argv;
     if (args && args.length) { // TODO

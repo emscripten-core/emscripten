@@ -1212,7 +1212,16 @@ Module['asm'] = function(global, env, buffer) {
     },
     'global.Math': Math
   };
-  start(info, [%s], __ATINIT__.concat(__ATMAIN__));
+  start(info, function(exports) {
+    [%s].forEach(function(ctor) {
+      exports[ctor]();
+    });
+    __ATINIT__.concat(__ATMAIN__).forEach(function(ctor) {
+      if (typeof ctor === 'function') { // XXX FIXME
+        ctor();
+      }
+    });
+  });
 };
 ''' % (settings['TOTAL_MEMORY'],
        table_total_size,
