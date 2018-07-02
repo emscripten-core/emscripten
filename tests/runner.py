@@ -175,9 +175,6 @@ class RunnerCore(unittest.TestCase):
 
   temp_files_before_run = []
 
-  def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
-    return self.skip('requested to be skipped')
-
   def is_emterpreter(self):
     return False
 
@@ -257,10 +254,6 @@ class RunnerCore(unittest.TestCase):
       #  for temp_file in os.listdir(TEMP_DIR):
       #    assert not temp_file.endswith('.ll'), temp_file
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
-
-  def skip(self, why):
-    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
-    return False
 
   def get_dir(self):
     return self.working_dir
@@ -708,7 +701,7 @@ class RunnerCore(unittest.TestCase):
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
-      return self.skip("wasm backend doesn't support ASYNCIFY yet")
+      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -722,7 +715,7 @@ class RunnerCore(unittest.TestCase):
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
     js_file = filename + '.o.js'
-    if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    if len(js_engines) == 0: self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
         js_engines = [SPIDERMONKEY_ENGINE]
@@ -880,7 +873,7 @@ class BrowserCore(RunnerCore):
             break
           time.sleep(0.1)
         if output.startswith('/report_result?skipped:'):
-          self.skip(unquote(output[len('/report_result?skipped:'):]).strip())
+          self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           self.assertIdentical(expectedResult, output)
       finally:
@@ -1231,7 +1224,7 @@ def skip_requested_tests(args, modules):
         for m in modules:
           try:
             suite = getattr(m, suite_name)
-            setattr(suite, test_name, lambda ignored:RunnerCore("skipme")())
+            setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
           except:
             pass
