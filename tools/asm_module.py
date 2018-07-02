@@ -241,9 +241,9 @@ class AsmModule():
         rep = replacements[key]
         return 'var %s = Module["%s"] = asm["%s"];\n' % (rep, rep, rep)
       return deff
-    my_module_defs = list(map(rep_def, self.module_defs))
+    my_module_defs = [rep_def(x) for x in self.module_defs]
     new_module_defs = set(my_module_defs).difference(main.module_defs)
-    if len(new_module_defs) > 0:
+    if len(new_module_defs):
       position = main.post_js.find('Runtime.') # Runtime is the start of the hardcoded ones
       main.post_js = main.post_js[:position] + ''.join(list(new_module_defs)) + '\n' + main.post_js[position:]
 

@@ -1,15 +1,8 @@
-#!/usr/bin/env python2
-"""You should normally never use this! Use emcc instead.
-
-This is a small wrapper script around the core JS compiler. This calls that
+"""A small wrapper script around the core JS compiler. This calls that
 compiler with the settings given to it. It can also read data from C/C++
 header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
-
-from tools.toolchain_profiler import ToolchainProfiler
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
 
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
@@ -21,6 +14,10 @@ from tools import shared
 from tools import jsrun, cache as cache_module, tempfiles
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root
+from tools.toolchain_profiler import ToolchainProfiler
+
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
 
 def get_configuration():
   if hasattr(get_configuration, 'configuration'):
@@ -36,6 +33,7 @@ if STDERR_FILE:
   logging.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
   STDERR_FILE = open(STDERR_FILE, 'w')
 
+
 def quoter(settings):
   def quote(prop):
     if settings['USE_CLOSURE_COMPILER'] == 2:
@@ -43,6 +41,7 @@ def quoter(settings):
     else:
       return prop
   return quote
+
 
 def access_quoter(settings):
   def access_quote(prop):
@@ -110,7 +109,7 @@ def compile_js(infile, settings, temp_files, DEBUG):
       logging.debug('emscript: llvm backend: ' + ' '.join(backend_args))
       t = time.time()
     with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      shared.jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
+      jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
     if DEBUG:
       logging.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
@@ -414,11 +413,10 @@ def write_cyberdwarf_data(outfile, metadata, settings):
 
 def create_backend_args(infile, temp_js, settings):
   """Create args for asm.js backend from settings dict"""
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
   args = [
-    backend_compiler, infile, '-march=js', '-filetype=asm', '-o', temp_js,
+    shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
     '-emscripten-stack-size=%d' % settings['TOTAL_STACK'],
-    '-O' + str(settings['OPT_LEVEL']),
+    '-O%s' % settings['OPT_LEVEL'],
   ]
   if settings['PRECISE_F32']:
     args += ['-emscripten-precise-f32']
@@ -1737,7 +1735,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #   * We may also run some Binaryen passes here.
 
-  metadata = build_wasm(temp_files, infile, outfile, settings, DEBUG)
+  metadata = finalize_wasm(temp_files, infile, outfile, settings, DEBUG)
 
   # optimize syscalls
 
@@ -1815,7 +1813,7 @@ def emscript_wasm_backend(infile, settings, outfile, libraries, compiler_engine,
   outfile.close()
 
 
-def build_wasm(temp_files, infile, outfile, settings, DEBUG):
+def finalize_wasm(temp_files, infile, outfile, settings, DEBUG):
   wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
   wasm_as = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-as')
   wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
@@ -1828,22 +1826,9 @@ def build_wasm(temp_files, infile, outfile, settings, DEBUG):
         shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   basename = shared.unsuffixed(outfile.name)
-  wasm = basename + '.wasm'
   metadata_file = basename + '.metadata'
-  base_wasm = basename + '.lld.wasm'
-
-  with temp_files.get_file('.wb.o') as temp_o:
-    backend_args = create_backend_args_wasm(infile, temp_o, settings)
-    if DEBUG:
-      logging.debug('emscript: llvm wasm backend: ' + ' '.join(backend_args))
-      t = time.time()
-    shared.check_call(backend_args)
-    if DEBUG:
-      logging.debug('  emscript: llvm wasm backend took %s seconds' % (time.time() - t))
-      t = time.time()
-    debug_copy(temp_o, 'emcc-llvm-backend-output.o')
-    shared.Building.link_lld([temp_o], base_wasm)
-    debug_copy(base_wasm, 'base_wasm.wasm')
+  wasm = basename + '.wasm'
+  base_wasm = infile
 
   write_source_map = settings['DEBUG_LEVEL'] >= 4
   if write_source_map:
@@ -2065,26 +2050,6 @@ var establishStackSpace = Module['establishStackSpace'];
   module.append(jscall_funcs)
   return module
 
-def create_backend_args_wasm(infile, outfile, settings):
-  backend_compiler = os.path.join(shared.LLVM_ROOT, 'llc')
-  args = [backend_compiler, infile, '-mtriple={}'.format(shared.WASM_TARGET),
-                  '-asm-verbose=false', '-filetype=obj',
-                  '-o', outfile]
-  args += ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
-  # disable slow and relatively unimportant optimization passes
-  args += ['-combiner-global-alias-analysis=false']
-
-  # asm.js-style exception handling
-  if settings['DISABLE_EXCEPTION_CATCHING'] != 1:
-    args += ['-enable-emscripten-cxx-exceptions']
-  if settings['DISABLE_EXCEPTION_CATCHING'] == 2:
-    whitelist = ','.join(settings['EXCEPTION_CATCHING_WHITELIST'] or ['__fake'])
-    args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
-
-  # asm.js-style setjmp/longjmp handling
-  args += ['-enable-emscripten-sjlj']
-  return args
-
 
 def load_metadata(metadata_raw):
   try:
@@ -2232,22 +2197,11 @@ def _main(args):
                     action='store_false',
                     dest='verbose',
                     help='Hides debug output')
-  parser.add_argument('--suppressUsageWarning',
-                    action='store_true',
-                    default=os.environ.get('EMSCRIPTEN_SUPPRESS_USAGE_WARNING'),
-                    help=('Suppress usage warning'))
   parser.add_argument('infile', nargs='*')
 
   # Convert to the same format that argparse would have produced.
   keywords = parser.parse_args(args)
   positional = keywords.infile
-
-  if not keywords.suppressUsageWarning:
-    logging.warning('''
-==============================================================
-WARNING: You should normally never use this! Use emcc instead.
-==============================================================
-  ''')
 
   if len(positional) != 1:
     logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
@@ -2275,14 +2229,10 @@ WARNING: You should normally never use this! Use emcc instead.
     DEBUG = keywords.verbose
 
   cache = cache_module.Cache()
-  temp_files.run_and_clean(lambda: main(
+  return temp_files.run_and_clean(lambda: main(
     keywords,
     compiler_engine=keywords.compiler,
     cache=cache,
     temp_files=temp_files,
     DEBUG=DEBUG,
   ))
-  return 0
-
-if __name__ == '__main__':
-  sys.exit(_main(sys.argv[1:]))

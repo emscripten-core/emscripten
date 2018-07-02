@@ -106,7 +106,7 @@ struct RotatingString {
       temp[bytes] = '\n';
       temp[bytes] = '\0';
       puts_limited(temp);
-      delete temp;
+      delete[] temp;
       pos += bytes;
       if ( pos > size )
          pos -= size;

@@ -23,7 +23,7 @@ def process_shell(js_engine, shell, equivalentfn_hash_info=None):
     proc = shared.run_process(js_engine +
         [DUPLICATE_FUNCTION_ELIMINATOR, temp_file, '--use-hash-info', '--no-minimize-whitespace'],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-  assert len(proc.stdout) > 0
+  assert len(proc.stdout)
   assert len(proc.stderr) == 0
 
   return proc.stdout
@@ -48,7 +48,7 @@ def run_on_chunk(command):
     proc = shared.run_process(command, stdout=subprocess.PIPE)
     output = proc.stdout
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
-    assert len(output) > 0 and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
+    assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.dfjo' + file_suffix).name
 
     f = open(filename, 'w')
@@ -223,11 +223,11 @@ def run_on_js(filename, gen_hash_info=False):
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
   chunks = shared.chunkify(funcs, chunk_size)
 
-  chunks = [chunk for chunk in chunks if len(chunk) > 0]
-  if DEBUG and len(chunks) > 0: print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+  chunks = [chunk for chunk in chunks if len(chunk)]
+  if DEBUG and len(chunks): print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
   funcs = None
 
-  if len(chunks) > 0:
+  if len(chunks):
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
       f = open(temp_file, 'w')
@@ -243,7 +243,7 @@ def run_on_js(filename, gen_hash_info=False):
     filenames = []
 
   old_filenames = filenames[:]
-  if len(filenames) > 0:
+  if len(filenames):
     commands = [js_engine + [DUPLICATE_FUNCTION_ELIMINATOR, filename, '--gen-hash-info' if gen_hash_info else '--use-hash-info', '--no-minimize-whitespace'] for filename in filenames]
 
     if DEBUG and commands is not None:
@@ -300,7 +300,7 @@ def run_on_js(filename, gen_hash_info=False):
   # No need to write suffix: if there was one, it is inside post which exists when suffix is there
   f.write('\n')
 
-  if gen_hash_info and len(json_files) > 0:
+  if gen_hash_info and len(json_files):
     write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename)
   f.close()
 

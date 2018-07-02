@@ -31,7 +31,12 @@ __attribute__((noinline)) void foo()
 {
   temp = alloca(MAJOR);
   printf("major allocation at: %d\n", (int)temp);
+#ifdef __asmjs__
+  // asmjs stack grows up, but wasm backend stack grows down, so the delta
+  // between get_stack() and temp isn't related to the size of the alloca for
+  // wasm backend
   assert(abs(get_stack() - (int)temp) >= MAJOR);
+#endif
   bar();
 }
 

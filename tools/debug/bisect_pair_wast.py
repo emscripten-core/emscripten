@@ -46,12 +46,12 @@ chunks = []
 curr = []
 for i in range(len(diff)):
   if diff[i].startswith('@'):
-    if len(curr) > 0:
+    if len(curr):
       chunks.append(curr)
     curr = [diff[i]]
   else:
     curr.append(diff[i])
-if len(curr) > 0:
+if len(curr):
   chunks.append(curr)
 
 # Bisect both sides of the span, until we have a single chunk

@@ -12,8 +12,8 @@ Why does this option exist? To provide an alternative in situations where normal
  * JavaScript has high-level control flow (no gotos) and must be written as short-running events, not long-running synchronous code. However, sometimes you have code that is written in the latter form that you can't easily refactor. The Emterpreter can handle that, because running the code in an interpreter allows us to manually control the flow of execution, as well as pause and resume the entire call stack, letting us turn synchronous code into asynchronous code.
 
 For more background on the Emterpreter, see
- * [Emterpreter startup time blogpost](https://blog.mozilla.org/research/2015/02/23/the-emterpreter-run-code-before-it-can-be-parsed/)
- * [Emterpreter synchronous execution blogpost](https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/)
+ * `Emterpreter startup time blogpost <https://blog.mozilla.org/research/2015/02/23/the-emterpreter-run-code-before-it-can-be-parsed/>`_
+ * `Emterpreter synchronous execution blogpost <https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/>`_
 
 General Usage
 =============
@@ -62,9 +62,9 @@ The emterpreter runs the code in an interpreter, which makes it feasible to manu
 
 is a simple way to do a main loop, which typically you would refactor your code for and use ``emscripten_set_main_loop``. Instead, in the emterpreter the call to ``emscripten_sleep`` will save the execution state, including call stack, do a ``setTimeout`` for the specified amount of milliseconds, and after that delay, reconstruct the execution state exactly as it was before. From the perspective of the source code, it looks like synchronous sleep, but under the hood it is converted to a form that can work in a web browser asynchronously.
 
-For a list of the APIs that can be used in this synchronous manner, see [the docs](http://kripken.github.io/emscripten-site/docs/api_reference/emscripten.h.html#emterpreter-async-functions).
+For a list of the APIs that can be used in this synchronous manner, see the `docs <http://kripken.github.io/emscripten-site/docs/api_reference/emscripten.h.html#emterpreter-async-functions>`_.
 
-When using sleep in this manner, you can likely use the emterpreter whitelist very efficiently: Only things that can lead to a call to sleep (or another synchronous method) need to be emterpreted. In the example above, ``do_frame`` and everything that could call it should be in the whitelist, so that everything else runs at full asm.js speed. More specifically, for the interpreter to be able to save and later restore the state of execution, the current call stack must only contain emterpreted functions, not normal asm.js functions, and not functions from outside that are not compiled code. To save the state of execution, the interpreter records its current location and all variables on the stack, both of which we cannot do for code that is not run in the interpreter. Note that this makes using ``ccall`` or ``cwrap`` to call code which does an asynchronous operation a little tricky. There is some support for this (see the [async option](https://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html#ccall) on ccall), but if assumes there isn't anything else on the JS stack you want paused and resumed, and also, it works like a promise in that it returns to your JS code, but continues to work later on (this should probably be turned into a proper JS Promise).
+When using sleep in this manner, you can likely use the emterpreter whitelist very efficiently: Only things that can lead to a call to sleep (or another synchronous method) need to be emterpreted. In the example above, ``do_frame`` and everything that could call it should be in the whitelist, so that everything else runs at full asm.js speed. More specifically, for the interpreter to be able to save and later restore the state of execution, the current call stack must only contain emterpreted functions, not normal asm.js functions, and not functions from outside that are not compiled code. To save the state of execution, the interpreter records its current location and all variables on the stack, both of which we cannot do for code that is not run in the interpreter. Note that this means that when you use ``ccall`` to call code which does an asynchronous operation, you cannot treat this call like it was synchronous in your JS code. Instead you get back a JS Promise of the return value (see the `async option <https://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html#ccall>`_ on ccall).
 
 Semantics
 ---------
@@ -144,7 +144,7 @@ ASYNCIFY is an earlier experiment on running synchronous code. It does a whole-p
 Further reading
 ~~~~~~~~~~~~~~~
 
- * [DOSBox usage](http://dreamlayers.blogspot.com/2015/02/fixing-hard-problem-in-em-dosbox-using.html)
+ * `DOSBox usage <http://dreamlayers.blogspot.com/2015/02/fixing-hard-problem-in-em-dosbox-using.html>`_
 
 Debugging
 =========
@@ -160,4 +160,3 @@ Bytecode Design
 The bytecode is a simple register-based bytecode invented for this purpose, just enough to support the asm.js code that Emscripten emits. It is designed more for speed of execution and quick startup (no preprocessing necessary at all), than size.
 
 It also has a bunch of "combo" opcodes for things like test+branch, etc. See ``tools/emterpretify.py`` for the list of opcodes.
-
