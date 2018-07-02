@@ -7351,7 +7351,9 @@ Module['onRuntimeInitialized'] = function() {
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
 
-  def test_async_emterpretify(self, emterpretify=False):
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
+  def test_async_emterpretify(self):
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
