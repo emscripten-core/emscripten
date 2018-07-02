@@ -493,6 +493,12 @@ var CUSTOM_CORE_JS = ''; // Setting this will include the contents of that .js f
                          //                 the wasm imports as a parameter. This
                          //                 function should handle creating and running
                          //                 the wasm. XXX or define Module['asm']
+                         // ISSUES:
+                         //  * test_llvm_intrinsics etc. - calling from a JS library into
+                         //    asm library function does not work, as the asm library export
+                         //    / receiving code is not emitted.
+                         //  * EMSCRIPTEN_KEEPALIVE auto exported is not emitted, the user
+                         //    must receive it from the wasm module.
 
 var SHELL_FILE = 0; // set this to a string to override the shell file used
 
