@@ -1319,14 +1319,9 @@ class SettingsManager(object):
 
 Settings = SettingsManager()
 
-if Settings.WASM_BACKEND:
-  try:
-    BINARYEN_ROOT
-  except:
-    logging.fatal('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                  ' when using the LLVM wasm backend')
-    sys.exit(1)
-  assert BINARYEN_ROOT, 'BINARYEN_ROOT path is empty'
+if Settings.WASM_BACKEND and not BINARYEN_ROOT:
+  logging.fatal('emcc: BINARYEN_ROOT must be set in the .emscripten config'
+                ' when using the LLVM wasm backend')
 
 
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
