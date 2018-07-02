@@ -32,7 +32,7 @@ function setup(info) {
 
 function start(imports, ctors, jsCtors) {
   // todo main's argc/argv
-  function postInstantiate(instance) {
+  function postInstantiate(instance, args) {
     var exports = instance['exports'];
     ctors.forEach(function(ctor) {
       exports[ctor]();
@@ -43,7 +43,22 @@ function start(imports, ctors, jsCtors) {
       }
     });
     var main = exports['_main'];
-    main();
+    var argc = 1, argv;
+    if (args && args.length) { // TODO
+      argc = args.length + 1;
+      argv = stackAlloc(argc * 4);
+      HEAP32[argv >> 2] = 0; // no program name XXX
+      for (var i = 0; i < args.length; i++) {
+        var arg = args[i];
+        var ptr = stackAlloc(arg.length + 1);
+        HEAP32[(argv >> 2) + 1 + i] = ptr;
+        for (var j = 0; j < arg.length; j++) {
+          HEAPU8[ptr + j] = arg.charCodeAt(j);
+        }
+        HEAPU8[ptr + arg.length] = 0;
+      }
+    }
+    main(argc, argv);
   }
   var filename = '{{{ WASM_BINARY_FILE }}}';
   if (typeof fetch === 'function') {
@@ -62,18 +77,20 @@ function start(imports, ctors, jsCtors) {
         postInstantiate(pair['instance']);
       });
   } else {
-    var data;
+    var data, args;
     if (typeof require === 'function') {
       // node.js
       data = require('fs')['readFileSync'](filename);
+      args = process['argv'].slice(2);
     } else if (typeof read === 'function') {
       // SpiderMonkey shell
       data = read(filename, 'binary');
+      args = scriptArgs;
     } else {
       throw Error('where am i');
     }
     var instance = new WebAssembly.Instance(new WebAssembly.Module(data), imports);
-    postInstantiate(instance);
+    postInstantiate(instance, args);
   }
 }
 
