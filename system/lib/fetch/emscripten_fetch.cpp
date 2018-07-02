@@ -93,10 +93,10 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
 	STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
 	STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
-	if (fetch->__attributes.requestHeaders)
+	if (fetch_attr->requestHeaders)
 	{
 		size_t headersCount = 0;
-		while (fetch->__attributes.requestHeaders[headersCount]) ++headersCount;
+		while (fetch_attr->requestHeaders[headersCount]) ++headersCount;
 		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
 		if (!headers)
 		{
