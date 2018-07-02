@@ -664,7 +664,7 @@ var LibraryEmbind = {
             
             // assumes 4-byte alignment
             var length = getLength();
-            var ptr = _malloc(4 + length);
+            var ptr = _malloc(4 + length + 1);
             HEAPU32[ptr >> 2] = length;
 
             if (stdStringIsUTF8 && valueIsOfTypeString) {
