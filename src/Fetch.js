@@ -348,9 +348,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     xhr.overrideMimeType(overriddenMimeTypeStr);
   }
   if (requestHeaders) {
-#if FETCH_DEBUG
-          console.log('Request headers are present');
-#endif
     for(;;) {
       var key = HEAPU32[requestHeaders >> 2];
       if (!key) break;
