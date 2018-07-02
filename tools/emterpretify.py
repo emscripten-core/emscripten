@@ -774,7 +774,7 @@ if __name__ == '__main__':
     shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
     shutil.copyfile(infile, orig)
 
-  if len(WHITELIST) > 0:
+  if len(WHITELIST):
     # we are using a whitelist: fill the blacklist with everything not whitelisted
     BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
 
@@ -980,7 +980,7 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(eb + %s | 0)' % (funcs[func]))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line) > 0])]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line)])]) + '\n'
   lines = None
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)

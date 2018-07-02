@@ -602,7 +602,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.remove(haz)
       if shared.Settings.VERBOSE:
         logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
-    if force_this or (len(need) > 0 and not only_forced):
+    if force_this or (len(need) and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
 
