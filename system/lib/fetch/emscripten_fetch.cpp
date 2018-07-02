@@ -77,7 +77,10 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.withCredentials = fetch_attr->withCredentials;
 	fetch->__attributes.requestData = fetch_attr->requestData;
 	fetch->__attributes.requestDataSize = fetch_attr->requestDataSize;
-	strcpy( fetch->__attributes.requestMethod, fetch_attr->requestMethod );
+	strcpy(fetch->__attributes.requestMethod, fetch_attr->requestMethod);
+	fetch->__attributes.onerror = fetch_attr->onerror;
+	fetch->__attributes.onsuccess = fetch_attr->onsuccess;
+	fetch->__attributes.onprogress = fetch_attr->onprogress;
 #define STRDUP_OR_ABORT(s, str_to_dup)		\
 	if (str_to_dup)							\
 	{										\
