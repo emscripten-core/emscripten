@@ -29,7 +29,7 @@ function setup(info) {
 // Compile and run
 
 function start(imports, onload) {
-  fetch('b.wasm', { credentials: 'same-origin' })
+  fetch('{{{ WASM_BINARY_FILE }}}', { credentials: 'same-origin' })
     .then(function(response) {
       return response.arrayBuffer();
     })
