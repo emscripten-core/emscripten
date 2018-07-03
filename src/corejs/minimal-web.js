@@ -9,8 +9,8 @@ out = err = function(x) {
 // Set up memory and table
 
 function setup(info) {
-  memory = new WebAssembly.Memory({ initial: info.memorySize, maximum: info.memorySize });
-  table = new WebAssembly.Table({ initial: info.tableSize, maximum: info.tableSize, element: 'anyfunc' });
+  var memory = new WebAssembly.Memory({ initial: info.memorySize, maximum: info.memorySize });
+  var table = new WebAssembly.Table({ initial: info.tableSize, maximum: info.tableSize, element: 'anyfunc' });
   var staticEnd = info.staticStart + info.staticSize;
   var stackStart = staticEnd;
   var stackMax = stackStart + info.stackSize;
