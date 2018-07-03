@@ -8,13 +8,15 @@ out = err = function(x) {
 
 // Set up memory and table
 
-var memory, table;
+// Some extra static memory for main() argv strings
+var extraStatic, extraStaticSize = 1024;
 
 function setup(info) {
   memory = new WebAssembly.Memory({ initial: info.memorySize, maximum: info.memorySize });
   table = new WebAssembly.Table({ initial: info.tableSize, maximum: info.tableSize, element: 'anyfunc' });
   var staticEnd = info.staticStart + info.staticSize;
-  var stackStart = staticEnd;
+  extraStatic = staticEnd;
+  var stackStart = extraStatic + extraStaticSize;
   var stackMax = stackStart + info.stackSize;
   var sbrkStart = stackMax;
   var sbrkPtr = 16;
@@ -35,23 +37,32 @@ function start(imports, onload) {
   function postInstantiate(instance, args) {
     var exports = instance['exports'];
     onload(exports);
-    var main = exports['_main'];
-    var argc = 1, argv;
-    if (args && args.length) { // TODO
-      argc = args.length + 1;
-      argv = stackAlloc(argc * 4);
-      HEAP32[argv >> 2] = 0; // no program name XXX
-      for (var i = 0; i < args.length; i++) {
-        var arg = args[i];
-        var ptr = stackAlloc(arg.length + 1);
-        HEAP32[(argv >> 2) + 1 + i] = ptr;
-        for (var j = 0; j < arg.length; j++) {
-          HEAPU8[ptr + j] = arg.charCodeAt(j);
-        }
-        HEAPU8[ptr + arg.length] = 0;
-      }
+    // allocate main() argc/argv
+    var extraStaticMax = extraStatic + extraStaticSize;
+    function extraAlloc(size) {
+      var ret = extraStatic;
+      extraStatic += size;
+      assert(extraStatic <= extraStaticMax);
+      return ret;
     }
-    main(argc, argv);
+    function writeCString(ptr, string) {
+      for (var j = 0; j < string.length; j++) {
+        HEAPU8[ptr + j] = string.charCodeAt(j);
+      }
+      HEAPU8[ptr + string.length] = 0;
+    }
+    function allocCString(string) {
+      var ptr = extraAlloc(string.length + 1);
+      writeCString(ptr, string);
+      return ptr;
+    }
+    var argc = args.length + 1;
+    var argv = extraAlloc(argc * 4);
+    HEAP32[argv >> 2] = allocCString('program');
+    for (var i = 0; i < args.length; i++) {
+      HEAP32[(argv >> 2) + 1 + i] = allocCString(args[i]);
+    }
+    exports['_main'](argc, argv);
   }
   var filename = '{{{ WASM_BINARY_FILE }}}';
   if (typeof fetch === 'function') {

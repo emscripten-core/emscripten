@@ -8,8 +8,6 @@ out = err = function(x) {
 
 // Set up memory and table
 
-var memory, table;
-
 function setup(info) {
   memory = new WebAssembly.Memory({ initial: info.memorySize, maximum: info.memorySize });
   table = new WebAssembly.Table({ initial: info.tableSize, maximum: info.tableSize, element: 'anyfunc' });
@@ -45,7 +43,7 @@ function start(imports, onload) {
       var instance = pair['instance'];
       var exports = instance['exports'];
       onload(exports);
-      main();
+      exports['_main']();
     });
 }
 
