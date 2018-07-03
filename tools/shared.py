@@ -1255,6 +1255,10 @@ class SettingsManager(object):
       return ret
 
     @classmethod
+    def to_dict(self):
+      return self.attrs.copy()
+
+    @classmethod
     def copy(self, values):
       self.attrs = values
 
@@ -1284,6 +1288,14 @@ class SettingsManager(object):
         logging.warning(''' - (see src/settings.js for valid values)''')
       self.attrs[attr] = value
 
+    @classmethod
+    def get(self, key):
+      return self.attrs.get(key)
+
+    @classmethod
+    def __getitem__(self, key):
+      return self.attrs[key]
+
   __instance = None
 
   @staticmethod
@@ -1297,6 +1309,12 @@ class SettingsManager(object):
 
   def __setattr__(self, attr, value):
     return setattr(self.instance(), attr, value)
+
+  def get(self, key):
+    return self.instance().get(key)
+
+  def __getitem__(self, key):
+    return self.instance()[key]
 
 
 Settings = SettingsManager()
@@ -2233,9 +2251,7 @@ class Building(object):
       sys.path += [path_from_root()]
     import emscripten
     # Run Emscripten
-    settings = Settings.serialize()
-    args = settings + extra_args
-    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + extra_args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
