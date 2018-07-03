@@ -14,6 +14,7 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, diffl
 import webbrowser, hashlib, threading, platform
 import multiprocessing, functools, stat, string, random, fnmatch
 import atexit
+import json
 import operator
 import parallel_runner
 
@@ -170,6 +171,7 @@ class RunnerCore(unittest.TestCase):
                            # Change this to None to get stderr reporting, for debugging purposes
 
   env = {}
+  settings_mods = {}
 
   EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS = int(os.getenv('EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS')) if os.getenv('EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS') != None else 0
 
@@ -179,7 +181,7 @@ class RunnerCore(unittest.TestCase):
     return False
 
   def is_wasm_backend(self):
-    return Settings.WASM_BACKEND
+    return self.get_setting('WASM_BACKEND')
 
   def uses_memory_init_file(self):
     if self.emcc_args is None:
@@ -188,7 +190,8 @@ class RunnerCore(unittest.TestCase):
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.WASM)
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      return opt_supports and not (self.get_setting('SIDE_MODULE') or self.get_setting('WASM'))
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -197,7 +200,7 @@ class RunnerCore(unittest.TestCase):
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
   def setUp(self):
-    Settings.reset()
+    self.settings_mods = {}
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -254,6 +257,24 @@ class RunnerCore(unittest.TestCase):
       #  for temp_file in os.listdir(TEMP_DIR):
       #    assert not temp_file.endswith('.ll'), temp_file
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
+
+  def skip(self, why):
+    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
+    return False
+
+  def get_setting(self, key):
+    if key in self.settings_mods:
+      return self.settings_mods[key]
+    return Settings[key]
+
+  def set_setting(self, key, value):
+    self.settings_mods[key] = value
+
+  def serialize_settings(self):
+    ret = []
+    for key, value in self.settings_mods.items():
+      ret += ['-s', '{}={}'.format(key, json.dumps(value))]
+    return ret
 
   def get_dir(self):
     return self.working_dir
@@ -343,7 +364,7 @@ class RunnerCore(unittest.TestCase):
       transform.write('\nprocess(sys.argv[1])\n')
       transform.close()
       transform_args = ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
-    Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+    Building.emcc(filename + '.o', self.serialize_settings() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
@@ -384,7 +405,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -412,7 +433,7 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
              self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              ['-I' + include for include in includes] + \
@@ -513,7 +534,7 @@ class RunnerCore(unittest.TestCase):
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS == 1:
+    if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
       err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
@@ -700,7 +721,7 @@ class RunnerCore(unittest.TestCase):
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
-    if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
+    if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
