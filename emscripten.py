@@ -1168,6 +1168,7 @@ var setupInfo = setup({
   tableSize: %d,
   staticStart: %d,
   staticSize: STATIC_BUMP,
+  stackSize: %d
 });
 DYNAMICTOP_PTR = setupInfo.sbrkPtr;
 DYNAMICTOP = setupInfo.sbrkStart;
@@ -1226,6 +1227,7 @@ Module['asm'] = function(global, env, buffer) {
 ''' % (settings['TOTAL_MEMORY'],
        table_total_size,
        settings['GLOBAL_BASE'],
+       settings['TOTAL_STACK'],
        settings['TOTAL_STACK'],
        ', '.join(['"' + name + '"' for name in metadata['initializers']]))
     if not settings['EMULATED_FUNCTION_POINTERS']:

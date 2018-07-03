@@ -1,4 +1,9 @@
 
+// Minimal core with
+//  * Web, Node.js, SpiderMonkey support for loading wasm
+//  * console.log for all output
+//  * Support for main()'s argc/argv
+
 // Environment setup
 
 var out, err;

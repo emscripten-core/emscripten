@@ -1,4 +1,6 @@
 
+// Minimal web-only core
+
 // Environment setup
 
 var out, err;
