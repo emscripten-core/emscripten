@@ -1173,7 +1173,7 @@ DYNAMICTOP_PTR = setupInfo.sbrkPtr;
 DYNAMICTOP = setupInfo.sbrkStart;
 STACKTOP = setupInfo.stackStart;
 STACK_MAX = STACKTOP + %d;
-buffer = memory.buffer;
+buffer = setupInfo.memory.buffer;
 HEAP8 = new Int8Array(buffer);
 HEAP16 = new Int16Array(buffer);
 HEAP32 = new Int32Array(buffer);
@@ -1192,8 +1192,8 @@ var DYNAMICTOP;
 //       so would error on things that emcc adds a post for.
 
 Module['asm'] = function(global, env, buffer) {
-  env['memory'] = memory;
-  env['table'] = table;
+  env['memory'] = setupInfo.memory;
+  env['table'] = setupInfo.table;
   env['memoryBase'] = 0;
   env['tableBase'] = 0;
   var info = {
