@@ -1304,7 +1304,6 @@ class SettingsManager(object):
     def __getitem__(self, key):
       return self.attrs[key]
 
-
   __instance = None
 
   @staticmethod
@@ -1324,6 +1323,7 @@ class SettingsManager(object):
 
   def __getitem__(self, key):
     return self.instance()[key]
+
 
 Settings = SettingsManager()
 
