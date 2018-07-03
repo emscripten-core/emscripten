@@ -104,6 +104,11 @@ temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger(__file__)
 
 def build(src, result_libs, args=[]):
+  # When building ports with the asm.js backend, force WASM to false so that
+  # we don't trigger the downloading of binaryen.
+  if not shared.Settings.WASM_BACKEND and 'WASM=1' not in args:
+    args += ['-s', 'WASM=0']
+
   # if a library is a .a, also build the .bc, as we need it when forcing a
   # a system library - in that case, we always want all the code linked in
   if result_libs:

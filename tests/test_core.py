@@ -2104,7 +2104,7 @@ The current type of b is: 9
       Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
       # This will fail! See explanation near the warning we check for, in the compiler source code
-      run_process([PYTHON, EMCC, all_name], check=False, stderr=PIPE)
+      run_process([PYTHON, EMCC, all_name] + self.emcc_args, check=False, stderr=PIPE)
 
       # Check for warning in the generated code
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
@@ -6437,17 +6437,17 @@ def process(filename):
   def test_response_file(self):
     with open('rsp_file', 'w') as f:
       f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
-    subprocess.check_call([PYTHON, EMCC, "@rsp_file"])
+    run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
   def test_linker_response_file(self):
     objfile = os.path.join(self.get_dir(), 'response_file.o')
-    subprocess.check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile])
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.emcc_args)
     # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
     # by emscripten
     with open('rsp_file', 'w') as f:
       f.write(objfile + ' -foobar')
-    subprocess.check_call([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')])
+    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
   def test_exported_response(self):
@@ -7592,7 +7592,7 @@ extern "C" {
         }
       }
       ''')
-    run_process([PYTHON, EMCC, 'src.cpp'])
+    run_process([PYTHON, EMCC, 'src.cpp'] + self.emcc_args)
     self.assertContained('ok.', run_js('a.out.js', args=['C']))
 
   def test_memprof_requirements(self):
