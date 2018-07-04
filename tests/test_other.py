@@ -695,6 +695,14 @@ f.close()
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
       assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
+  # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
+  def test_cmake_emscripten_version(self):
+    if os.name == 'nt': emcmake = path_from_root('emcmake.bat')
+    else: emcmake = path_from_root('emcmake')
+
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
+
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't try to produce an output file.
