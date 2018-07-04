@@ -39,11 +39,12 @@ When generating HTML, Emscripten creates a ``Module`` object with default method
 
 		Module['print'] = function(text) { alert('stdout: ' + text) };
 
+Note that once the Module object is received by the main JavaScript file, it will look for `Module['print']` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
 Affecting execution
 ===================
 
-The following ``Module`` attributes affect code execution. 
+The following ``Module`` attributes affect code execution. Set them to customize behavior.
 
 
 .. js:attribute:: Module.arguments
@@ -62,7 +63,7 @@ The following ``Module`` attributes affect code execution.
 
 .. js:attribute:: Module.logReadFiles
 
-	If set, :js:attr:`Module.printErr` will log when any file is read.
+	If set, stderr will log when any file is read.
 
 
 .. js:attribute:: Module.onAbort

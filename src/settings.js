@@ -723,6 +723,7 @@ var SAFE_SPLIT_MEMORY = 0; // Similar to SAFE_HEAP, but for SPLIT_MEMORY.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
+var STRUCT_INFO = ''; // struct_info that is either generated or cached
 
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
@@ -737,18 +738,8 @@ var WASM = 1; // Whether to use compile code to WebAssembly. Set this to 0 to co
               // of the port, which can useful for local dev work on binaryen itself).
 
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
-                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
-                      // translate the backend output.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
-var EXPERIMENTAL_USE_LLD = 1; // Whether to use lld as a linker for the
-                              // WebAssembly backend, instead of s2wasm.
-                              // This is currently the default and the plan
-                              // is to remove this option completely in the
-                              // near future.
-                              // You should not set this yourself, instead set
-                              // EMCC_EXPERIMENTAL_USE_LLD=0 in the environment
-                              // in order to use s2wasm instead.
 
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
@@ -851,6 +842,9 @@ var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
 var PTHREADS_DEBUG = 0; // If true, add in debug traces for diagnosing pthreads related issues.
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
+var IMPLEMENTED_FUNCTIONS = []; // received from the backend
+var JSCALL_START_INDEX = 0; // received from the backend
+var JSCALL_SIG_ORDER = {}; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++

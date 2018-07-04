@@ -61,6 +61,8 @@ namespace emscripten {
 
             bool _emval_equals(EM_VAL first, EM_VAL second);
             bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
+            bool _emval_greater_than(EM_VAL first, EM_VAL second);
+            bool _emval_less_than(EM_VAL first, EM_VAL second);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -85,6 +87,9 @@ namespace emscripten {
                 const char* methodName,
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
+            bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            bool _emval_in(EM_VAL item, EM_VAL object);
+            bool _emval_delete(EM_VAL object, EM_VAL property);
         }
 
         template<const char* address>
@@ -270,15 +275,10 @@ namespace emscripten {
     class val {
     public:
         // missing operators:
-        // * delete
-        // * in
-        // * instanceof
         // * ! ~ - + ++ --
         // * * / %
         // * + -
         // * << >> >>>
-        // * < <= > >=
-        // * == != === !==
         // * & ^ | && || ?:
         //
         // exposing void, comma, and conditional is unnecessary
@@ -286,6 +286,14 @@ namespace emscripten {
 
         static val array() {
             return val(internal::_emval_new_array());
+        }
+
+        template<typename T>
+        static val array(const std::vector<T> vec) {
+            val new_array = array();
+            for(auto it = vec.begin(); it != vec.end(); it++)
+                new_array.call<void>("push", *it);
+            return new_array;
         }
 
         static val object() {
@@ -379,12 +387,48 @@ namespace emscripten {
             return handle == internal::EM_VAL(internal::_EMVAL_FALSE);
         }
 
+        bool isNumber() const {
+            return typeOf().as<std::string>() == "number";
+        }
+
+        bool isString() const {
+            return typeOf().as<std::string>() == "string";
+        }
+
+        bool isArray() const {
+            return instanceof(global("Array"));
+        }
+
         bool equals(const val& v) const {
             return internal::_emval_equals(handle, v.handle);
         }
 
+        bool operator==(const val& v) const {
+            return internal::_emval_equals(handle, v.handle);
+        }
+
+        bool operator!=(const val& v) const {
+            return !(*this == v);
+        }
+
         bool strictlyEquals(const val& v) const {
             return internal::_emval_strictly_equals(handle, v.handle);
+        }
+
+        bool operator>(const val& v) const {
+            return internal::_emval_greater_than(handle, v.handle);
+        }
+
+        bool operator>= (const val& v) const {
+            return (*this > v) || (*this == v);
+        }
+
+        bool operator< (const val& v) const {
+            return internal::_emval_less_than(handle, v.handle);
+        }
+
+        bool operator<= (const val& v) const {
+            return (*this < v) || (*this == v);
         }
 
         template<typename... Args>
@@ -445,6 +489,19 @@ namespace emscripten {
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
         val typeOf() const {
             return val(_emval_typeof(handle));
+        }
+
+        bool instanceof(const val& v) const {
+            return internal::_emval_instanceof(handle, v.handle);
+        }
+
+        bool in(const val& v) const {
+            return internal::_emval_in(handle, v.handle);
+        }
+
+        template<typename T>
+        bool delete_(const T& property) const {
+            return internal::_emval_delete(handle, val(property).handle);
         }
 
     private:

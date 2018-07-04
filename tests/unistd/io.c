@@ -33,7 +33,7 @@ int main() {
       },
       write: function(stream, buffer, offset, length, pos) {
         for (var i = 0; i < length; i++) {
-          Module.print('TO DEVICE: ' + buffer[offset+i]);
+          out('TO DEVICE: ' + buffer[offset+i]);
         }
         return i;
       }

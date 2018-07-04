@@ -47,7 +47,7 @@ function warnOnce(text) {
   if (!warnOnce.shown) warnOnce.shown = {};
   if (!warnOnce.shown[text]) {
     warnOnce.shown[text] = 1;
-    Module.printErr(text);
+    err(text);
   }
 }
 
@@ -110,7 +110,7 @@ function loadDynamicLibrary(lib) {
       var curr = Module[sym], next = libModule[sym];
       // don't warn on functions - might be odr, linkonce_odr, etc.
       if (!(typeof curr === 'function' && typeof next === 'function')) {
-        Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        err("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
       }
     }
 #endif
@@ -122,7 +122,7 @@ function loadDynamicLibrary(lib) {
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
+  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
   // we should see the dylink section right after the magic number and wasm version
   assert(binary[8] === 0, 'need the dylink section to be first')
   var next = 9;
@@ -331,7 +331,7 @@ function addFunction(func, sig) {
 #endif // WASM_BACKEND
 #if ASSERTIONS
   if (typeof sig === 'undefined') {
-    Module.printErr('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but is required for the LLVM wasm backend, so it is recommended for full portability.');
+    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but is required for the LLVM wasm backend, so it is recommended for full portability.');
   }
 #endif // ASSERTIONS
 #if EMULATED_FUNCTION_POINTERS == 0

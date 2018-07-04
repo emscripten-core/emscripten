@@ -3,7 +3,7 @@ template <typename... Args>
 int call(Args... args) {
   return(EM_ASM_INT(
     {
-      Module.print(Array.prototype.join.call(arguments, ','));
+      out(Array.prototype.join.call(arguments, ','));
     },
     args...
   ));

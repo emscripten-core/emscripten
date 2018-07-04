@@ -773,7 +773,7 @@ window.close = function() {
           open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
             function keydown(c) {
              %s
-              //Module.print('push keydown');
+              //out('push keydown');
               var event = document.createEvent("KeyboardEvent");
               event.initKeyEvent("keydown", true, true, window,
                                  0, 0, 0, 0,
@@ -784,7 +784,7 @@ window.close = function() {
 
             function keyup(c) {
              %s
-              //Module.print('push keyup');
+              //out('push keyup');
               var event = document.createEvent("KeyboardEvent");
               event.initKeyEvent("keyup", true, true, window,
                                  0, 0, 0, 0,
@@ -1570,8 +1570,8 @@ keydown(100);keyup(100); // trigger the end
           FS.createLazyFile('/', "bigfile", "http://localhost:11111/bogus_file_path", true, false);
       };
       var doTrace = true;
-      Module["print"] =    function(s) { self.postMessage({channel: "stdout", line: s}); };
-      Module["stderr"] =   function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
+      Module["print"] = function(s) { self.postMessage({channel: "stdout", line: s}); };
+      Module["printErr"] = function(s) { self.postMessage({channel: "stderr", char: s, trace: ((doTrace && s === 10) ? new Error().stack : null)}); doTrace = false; };
     """)
     prejs_file.close()
     # vs. os.path.join(self.get_dir(), filename)
@@ -2094,7 +2094,7 @@ void *getBindBuffer() {
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       Module.preRun = function() {
         addRunDependency();
-        Module.print('preRun called, added a dependency...');
+        out('preRun called, added a dependency...');
         setTimeout(function() {
           Module.okk = 10;
           removeRunDependency()
@@ -2172,7 +2172,7 @@ void *getBindBuffer() {
       var wrapped = cwrap('note', 'string', ['number']); // returns a string to suppress cwrap optimization
       function doCwrapCall(n) {
         var str = wrapped(n);
-        Module.print('got ' + str);
+        out('got ' + str);
         assert(str === 'silly-string');
       }
       function doDirectCall(n) {
@@ -2185,7 +2185,7 @@ void *getBindBuffer() {
         doCcall(1);
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
-        Module.print('expected fail 1');
+        out('expected fail 1');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2196,7 +2196,7 @@ void *getBindBuffer() {
         doCwrapCall(2);
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
-        Module.print('expected fail 2');
+        out('expected fail 2');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -2207,7 +2207,7 @@ void *getBindBuffer() {
         doDirectCall(3);
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
-        Module.print('expected fail 3');
+        out('expected fail 3');
         assert(e.toString().indexOf('assert') >= 0); // assertion, not something else
         ABORT = false; // hackish
       }
@@ -3020,6 +3020,15 @@ window.close = function() {
       print(opts)
       self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
 
+  def test_emterpreter_async_bad_2(self):
+    for opts in [0, 1, 2, 3]:
+      for assertions in [0, 1]:
+        # without assertions, we end up continuing to run more non-emterpreted code in this testcase, returning 1
+        # with assertions, we hit the emterpreter-async assertion on that, and report a  clear error
+        expected = '2' if assertions else '1'
+        print(opts, assertions, expected)
+        self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions])
+
   def test_emterpreter_async_mainloop(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
@@ -3162,8 +3171,8 @@ window.close = function() {
         strcpy(ret, temp);
         temp[1] = 'x';
         EM_ASM({
-          Module.realPrint = Module.print;
-          Module.print = function(x) {
+          Module.realPrint = out;
+          out = function(x) {
             if (!Module.printed) Module.printed = x;
             Module.realPrint(x);
           };
@@ -3542,13 +3551,15 @@ window.close = function() {
     for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print(opts)
       open('src.cpp', 'w').write(self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-      Popen([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-s', 'WASM=0'] + opts).communicate()
+      run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.html', '-s', 'WASM=0'] + opts)
       self.run_browser('test.html', None, '/report_result?0')
 
+      print('run one');
       open('one.html', 'w').write('<script src="test.js"></script>')
       self.run_browser('one.html', None, '/report_result?0')
 
-      Popen([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js']).communicate()
+      print('run two');
+      run_process([PYTHON, path_from_root('tools', 'separate_asm.py'), 'test.js', 'asm.js', 'rest.js'])
       open('two.html', 'w').write('''
         <script>
           var Module = {};
@@ -3558,11 +3569,14 @@ window.close = function() {
       ''')
       self.run_browser('two.html', None, '/report_result?0')
 
+      print('run hello world');
       self.clear()
       assert not os.path.exists('tests.asm.js')
       self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
       assert os.path.exists('test.asm.js')
       os.unlink('test.asm.js')
+
+      print('see a fail');
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
   def test_emterpretify_file(self):
@@ -3643,8 +3657,8 @@ window.close = function() {
         };
       }
       // show stderr for the viewer's fun
-      Module.printErr = function(x) {
-        Module.print('<<< ' + x + ' >>>');
+      err = function(x) {
+        out('<<< ' + x + ' >>>');
         console.log(x);
       };
     </script>

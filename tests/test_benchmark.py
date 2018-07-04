@@ -286,7 +286,7 @@ class CheerpBenchmarker(Benchmarker):
       temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
       safe_ensure_dirs(temp_dir)
       os.chdir(temp_dir)
-      contents = [x for x in Popen([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+      contents = [x for x in Popen([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x)]
       warn_if_duplicate_entries(contents, f)
       if len(contents) == 0:
         logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)

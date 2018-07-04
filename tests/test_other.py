@@ -1,13 +1,24 @@
 # coding=utf-8
 
 from __future__ import print_function
-import multiprocessing, os, pipes, re, shutil, subprocess, sys
-import itertools
 import glob
-import tools.shared
+import itertools
+import multiprocessing
+import os
+import pipes
+import re
+import shutil
+import subprocess
+import sys
+
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
+import tools.shared
 import tools.line_endings
+import tools.js_optimizer
+import tools.tempfiles
+import tools.duplicate_function_eliminator
+
 
 class temp_directory(object):
   def __enter__(self):
@@ -585,7 +596,7 @@ f.close()
             env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print(str(cmd))
           ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE)
-          if ret.stderr != None and len(ret.stderr.strip()) > 0:
+          if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stderr != None and 'error' in ret.stderr.lower():
             logging.error('Failed command: ' + ' '.join(cmd))
@@ -600,7 +611,7 @@ f.close()
           if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
             cmd += ['VERBOSE=1']
           ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE)
-          if ret.stderr != None and len(ret.stderr.strip()) > 0:
+          if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stdout != None and 'error' in ret.stdout.lower() and not '0 error(s)' in ret.stdout.lower():
             logging.error('Failed command: ' + ' '.join(cmd))
@@ -717,10 +728,10 @@ f.close()
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
   def test_incorrect_c_detection(self):
+    with open('test.c', 'w') as f:
+      f.write('foo\n')
     for compiler in [EMCC, EMXX]:
-      process = Popen([PYTHON, compiler, "--bind", "--embed-file", path_from_root('tests', 'hello_world.c'), path_from_root('tests', 'hello_world.cpp')], stdout=PIPE, stderr=PIPE)
-      process.communicate()
-      assert process.returncode is 0, 'Emscripten should not use the embed file for CC/CXX detection'
+      run_process([PYTHON, compiler, '--bind', '--embed-file', 'test.c', path_from_root('tests', 'hello_world.cpp')])
 
   def test_odd_suffixes(self):
     for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC', 'i', 'ii']:
@@ -821,6 +832,10 @@ Build with ASSERTIONS=2 for more info.
     test(['-O1', '-s', 'ASSERTIONS=2'], ('''Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)
 This pointer might make sense in another type signature:''', '''Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)'''), "i: asm['_my_func']") # actually useful identity of the bad pointer, with comparisons to what it would be in other types/tables
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], '''my func\n''') # emulate so it works
+
+  def test_emulate_function_pointer_casts_assertions_2(self):
+    # check empty tables work with assertions 2 in this mode (#6554)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'ASSERTIONS=2'])
 
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
@@ -1685,7 +1700,7 @@ int f() {
       if (Object.keys(Module).length) throw 'This code should run before anything else!';
     ''')
     open(os.path.join(self.get_dir(), 'after.js'), 'w').write('''
-      Module.print(MESSAGE);
+      out(MESSAGE);
     ''')
 
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'before.js', '--post-js', 'after.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0']).communicate()
@@ -1861,8 +1876,8 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
-        postRun: function() { Module.print('post-run') }
+        preRun: function() { out('pre-run') },
+        postRun: function() { out('post-run') }
       };
     ''')
 
@@ -1895,9 +1910,9 @@ int f() {
     # Use postInit
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
-        postRun: function() { Module.print('post-run') },
-        preInit: function() { Module.print('pre-init') }
+        preRun: function() { out('pre-run') },
+        postRun: function() { out('post-run') },
+        preInit: function() { out('pre-init') }
       };
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js']).communicate()
@@ -1913,11 +1928,11 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: function() { Module.print('pre-run') },
+        preRun: function() { out('pre-run') },
       };
     ''')
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-      Module.postRun = function() { Module.print('post-run') };
+      Module.postRun = function() { out('post-run') };
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
@@ -1932,11 +1947,11 @@ int f() {
     ''')
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       var Module = {
-        preRun: [function() { Module.print('pre-run') }],
+        preRun: [function() { out('pre-run') }],
       };
     ''')
     open(os.path.join(self.get_dir(), 'pre2.js'), 'w').write('''
-      Module.preRun.push(function() { Module.print('prepre') });
+      Module.preRun.push(function() { out('prepre') });
     ''')
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '--pre-js', 'pre2.js']).communicate()
     self.assertContained('prepre\npre-run\nhello from main\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
@@ -2049,6 +2064,8 @@ int f() {
        ['emitDCEGraph', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
+      (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
+       ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
     ]:
       print(input, passes)
 
@@ -2095,7 +2112,7 @@ int f() {
       else:
         print('(skip non-native)')
 
-      if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
+      if tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
@@ -2117,15 +2134,15 @@ int f() {
         if 'last' not in passes and \
            'null_if' not in input and 'null_else' not in input:  # null-* tests are js optimizer or native, not a mixture (they mix badly)
           print('  native (receiveJSON)')
-          output = run_process([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
           print('  native (parsing JS)')
-          output = run_process([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
         print('  native (emitting JS)')
-        output = run_process([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+        output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
   def test_m_mm(self):
@@ -2343,11 +2360,11 @@ seeked= file.
     assert 'below the current directory' in output.stderr
     # relative path that ends up under us is cool
     output = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stdout=PIPE, stderr=PIPE)
-    assert len(output.stdout) > 0
+    assert len(output.stdout)
     assert 'below the current directory' not in output.stderr
     # direct path leads to the same code being generated - relative path does not make us do anything different
     output2 = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stdout=PIPE, stderr=PIPE)
-    assert len(output2.stdout) > 0
+    assert len(output2.stdout)
     assert 'below the current directory' not in output2.stderr
     def clean(txt):
       return [line for line in txt.split('\n') if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
@@ -2388,7 +2405,7 @@ seeked= file.
     full = os.path.join(unicode_name, 'data.txt')
     open(full, 'w').write('data')
     proc = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
-    assert len(proc.stdout) > 0, proc.stderr
+    assert len(proc.stdout), proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
@@ -2456,29 +2473,29 @@ done.
       #include <stdio.h>
       #include <emscripten.h>
       void two(char c) {
-        EM_ASM(Module.print(stackTrace()));
+        EM_ASM(out(stackTrace()));
       }
       void one(int x) {
         two(x % 17);
       }
       int main() {
-        EM_ASM(Module.print(demangle('__Znwj'))); // check for no aborts
-        EM_ASM(Module.print(demangle('_main')));
-        EM_ASM(Module.print(demangle('__Z2f2v')));
-        EM_ASM(Module.print(demangle('__Z12abcdabcdabcdi')));
-        EM_ASM(Module.print(demangle('__ZL12abcdabcdabcdi')));
-        EM_ASM(Module.print(demangle('__Z4testcsifdPvPiPc')));
-        EM_ASM(Module.print(demangle('__ZN4test5moarrEcslfdPvPiPc')));
-        EM_ASM(Module.print(demangle('__ZN4Waka1f12a234123412345pointEv')));
-        EM_ASM(Module.print(demangle('__Z3FooIiEvv')));
-        EM_ASM(Module.print(demangle('__Z3FooIidEvi')));
-        EM_ASM(Module.print(demangle('__ZN3Foo3BarILi5EEEvv')));
-        EM_ASM(Module.print(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
-        EM_ASM(Module.print(demangle('__Z9parsewordRPKciRi')));
-        EM_ASM(Module.print(demangle('__Z5multiwahtjmxyz')));
-        EM_ASM(Module.print(demangle('__Z1aA32_iPA5_c')));
-        EM_ASM(Module.print(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
-        EM_ASM(Module.print(demangle('__ZN5wakaw2Cm10RasterBaseINS_6watwat9PolocatorEE8merbine1INS4_2OREEEvPKjj'))); // we get this wrong, but at least emit a '?'
+        EM_ASM(out(demangle('__Znwj'))); // check for no aborts
+        EM_ASM(out(demangle('_main')));
+        EM_ASM(out(demangle('__Z2f2v')));
+        EM_ASM(out(demangle('__Z12abcdabcdabcdi')));
+        EM_ASM(out(demangle('__ZL12abcdabcdabcdi')));
+        EM_ASM(out(demangle('__Z4testcsifdPvPiPc')));
+        EM_ASM(out(demangle('__ZN4test5moarrEcslfdPvPiPc')));
+        EM_ASM(out(demangle('__ZN4Waka1f12a234123412345pointEv')));
+        EM_ASM(out(demangle('__Z3FooIiEvv')));
+        EM_ASM(out(demangle('__Z3FooIidEvi')));
+        EM_ASM(out(demangle('__ZN3Foo3BarILi5EEEvv')));
+        EM_ASM(out(demangle('__ZNK10__cxxabiv120__si_class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib')));
+        EM_ASM(out(demangle('__Z9parsewordRPKciRi')));
+        EM_ASM(out(demangle('__Z5multiwahtjmxyz')));
+        EM_ASM(out(demangle('__Z1aA32_iPA5_c')));
+        EM_ASM(out(demangle('__ZN21FWakaGLXFleeflsMarfooC2EjjjPKvbjj')));
+        EM_ASM(out(demangle('__ZN5wakaw2Cm10RasterBaseINS_6watwat9PolocatorEE8merbine1INS4_2OREEEvPKjj'))); // we get this wrong, but at least emit a '?'
         one(17);
         return 0;
       }
@@ -3023,7 +3040,7 @@ extern "C" int jslibfunc(int x);
 int main() {
   printf("c calling: %d\n", jslibfunc(6));
   EM_ASM({
-    Module.print('js calling: ' + Module['_jslibfunc'](5) + '.');
+    out('js calling: ' + Module['_jslibfunc'](5) + '.');
   });
 }
 ''')
@@ -3258,10 +3275,10 @@ int main() {
         int main() {
           EM_ASM({
             try {
-              Module.print('first');
+              out('first');
               abort();
             } catch (e) {
-              Module.print('second');
+              out('second');
               abort();
               throw e;
             }
@@ -3840,8 +3857,7 @@ int main(int argc, char **argv) {
         self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_no_dynamic_execution(self):
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']
-    stderr = run_process(cmd, stderr=PIPE).stderr
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
     self.assertContained('hello, world!', run_js('a.out.js'))
     src = open('a.out.js').read()
     assert 'eval(' not in src
@@ -3850,9 +3866,10 @@ int main(int argc, char **argv) {
     try_delete('a.out.js')
 
     # Test that --preload-file doesn't add an use of eval().
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt']
-    stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('hello, world!', run_js('a.out.js'))
+    with open('temp.txt', 'w') as f:
+      f.write("foo\n");
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt'])
     src = open('a.out.js').read()
     assert 'eval(' not in src
     assert 'eval.' not in src
@@ -3860,16 +3877,16 @@ int main(int argc, char **argv) {
     try_delete('a.out.js')
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1'],
+        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
 
     # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1']
-    proc = Popen(cmd, stderr=PIPE)
-    proc.communicate()
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
+        '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1'],
+        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
 
@@ -3882,12 +3899,12 @@ int main(int argc, char **argv) {
       ''')
 
     # Test that emscripten_run_script() aborts when -s NO_DYNAMIC_EXECUTION=1
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1']).communicate()
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
     self.assertContained('NO_DYNAMIC_EXECUTION=1 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
-    Popen([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2']).communicate()
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2'])
     self.assertContained('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     self.assertContained('hello from script', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
@@ -4839,16 +4856,16 @@ namespace
   EMSCRIPTEN_KEEPALIVE
   void callback()
   {
-    EM_ASM({ Module.print('callback pre()') });
+    EM_ASM({ out('callback pre()') });
     ::emscripten_force_exit(42);
-    EM_ASM({ Module.print('callback post()') });
+    EM_ASM({ out('callback post()') });
     }
 }
 
 int
 main()
 {
-  EM_ASM({ setTimeout(function() { Module.print("calling callback()"); _callback() }, 100) });
+  EM_ASM({ setTimeout(function() { out("calling callback()"); _callback() }, 100) });
   ::emscripten_exit_with_live_runtime();
   return 123;
 }
@@ -5725,7 +5742,7 @@ Descriptor desc;
       print('----', filename, full)
       Popen([PYTHON, EMCC, path_from_root('tests', filename), '-O1', '-profiling', '-o', 'left.js', '-s', 'WASM=0']).communicate()
       src = open('left.js').read()
-      open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { Module.print("replaced"); '))
+      open('right.js', 'w').write(src.replace('function _main() {', 'function _main() { out("replaced"); '))
 
       self.assertContained('hello, world!', run_js('left.js'))
       self.assertContained('hello, world!', run_js('right.js'))
@@ -5809,7 +5826,7 @@ print(os.environ.get('NM'))
 #include <emscripten.h>
 int main() {
   EM_ASM({
-    Module['onExit'] = function(status) { Module.print('exiting now, status ' + status) };
+    Module['onExit'] = function(status) { out('exiting now, status ' + status) };
   });
   return 14;
 }
@@ -5977,9 +5994,9 @@ int main(int argc, char** argv) {
         volatile fp f = 0;
         EM_ASM({
           if (typeof FUNCTION_TABLE_v !== 'undefined') {
-            Module.print('function table: ' + FUNCTION_TABLE_v);
+            out('function table: ' + FUNCTION_TABLE_v);
           } else {
-            Module.print('no visible function tables');
+            out('no visible function tables');
           }
         });
         if (f) f();
@@ -6000,8 +6017,8 @@ int main(int argc, char** argv) {
     src = r'''
       #include <emscripten.h>
       typedef void (*fp)();
-      void one() { EM_ASM( Module.print('one') ); }
-      void two() { EM_ASM( Module.print('two') ); }
+      void one() { EM_ASM( out('one') ); }
+      void two() { EM_ASM( out('two') ); }
       void test() {
         volatile fp f = one;
         f();
@@ -6015,7 +6032,7 @@ int main(int argc, char** argv) {
           var one = $0;
           var two = $1;
           if (typeof FUNCTION_TABLE_v === 'undefined') {
-            Module.print('no');
+            out('no');
             return;
           }
           var temp = FUNCTION_TABLE_v[one];
@@ -6679,19 +6696,19 @@ int main() {
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 0);
     assert(getIndex(t) === 1, 'allocated into second chunk');
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('more allocating, got in ' + getIndex(t));
+      out('more allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'into third chunk');
     do {
       var t = Module._malloc(1024*1024);
       allocs[getIndex(t)].push(t);
-      Module.print('more allocating, got in ' + getIndex(t));
+      out('more allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 2);
     assert(getIndex(t) === 3, 'into third chunk');
     // write values
@@ -6708,7 +6725,7 @@ int main() {
     for (var i = 0; i < allocs[2].length; i++) {
       assert(HEAPU8[allocs[2][i]] === ((i*i) & 255));
     }
-    Module.print('success.');
+    out('success.');
   }, &x);
 }
 ''')
@@ -6753,7 +6770,7 @@ int main() {
   }
   printf("allocations in second chunk: %d\n", counter);
   assert(counter > 20);
-  EM_ASM( Module.print('success.') );
+  EM_ASM( out('success.') );
 }
 ''')
     for opts in [0, 1, 2]:
@@ -6791,7 +6808,7 @@ int main() {
   assert(sbrk(-10) == (void*)two);
   int bad = sbrk(split_memory * 2);
   assert(bad == -1);
-  EM_ASM( Module.print('success.') );
+  EM_ASM( out('success.') );
 }
 ''')
     for opts in [0, 1, 2]:
@@ -6853,9 +6870,9 @@ int main() {
       return x >> SPLIT_MEMORY_BITS;
     }
     assert(TOTAL_MEMORY >= SPLIT_MEMORY*3);
-    var p = Module.print;
-    var e = Module.printErr;
-    Module.printErr = Module.print = function(){};
+    var p = out;
+    var e = err;
+    err = out = function(){};
     var fail = false;
     if (!buffers[1]) allocateSplitChunk(1); // we will slice into this
     if (!buffers[2]) allocateSplitChunk(2); // we will slice into this
@@ -6886,10 +6903,10 @@ int main() {
         }
       }
     }
-    Module.print = p;
-    Module.printErr = e;
-    if (fail) Module.print('FAIL. ' + fail);
-    else Module.print('success.');
+    out = p;
+    err = e;
+    if (fail) out('FAIL. ' + fail);
+    else out('success.');
   ));
 }
 ''')
@@ -6914,13 +6931,13 @@ int main() {
     }
     do {
       var t = Module._malloc(1024*1024);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 0);
     assert(getIndex(t) === 1, 'allocated into first chunk');
     assert(buffers[1]); // has been allocated now
     do {
       var t = Module._malloc(1024*1024);
-      Module.print('allocating, got in ' + getIndex(t));
+      out('allocating, got in ' + getIndex(t));
     } while (getIndex(t) === 1);
     assert(getIndex(t) === 2, 'allocated into second chunk');
     assert(buffers[2]); // has been allocated now
@@ -6935,7 +6952,7 @@ int main() {
       Module._free(more[i]);
     }
     assert(!buffers[2]); // has been freed again
-    Module.print('success.');
+    out('success.');
   });
 }
 ''')
@@ -6976,7 +6993,7 @@ int main() {
     assert(getIndex(t) === 3, 'should skip chunk 2, since it is used by us, but seeing ' + getIndex(t));
     assert(HEAPU8[p+0] === 12 && HEAPU8[p+50] === 98);
     assert(existing[33] === 201);
-    Module.print('success.');
+    out('success.');
   });
 }
 ''')
@@ -7137,12 +7154,12 @@ int main() {
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
       check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
-      full = 'var Module = {};\n' + open('a.out.asm.js').read()
-      open('asm.js', 'w').write(full)
-      funcs = open('a.out.asm.js').read().count('function ')
-      vars_ = open('a.out.asm.js').read().count('var ')
-      assert funcs == expected_funcs, funcs
-      assert vars_ == expected_vars, vars_
+      module = open('a.out.asm.js').read()
+      open('asm.js', 'w').write('var Module = {};\n' + module)
+      funcs = module.count('function ')
+      vars_ = module.count('var ')
+      self.assertEqual(funcs, expected_funcs)
+      self.assertEqual(vars_, expected_vars)
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
         self.validate_asmjs(out)
@@ -7150,7 +7167,7 @@ int main() {
         print('(skipping asm.js validation check)')
 
     test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 13)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 12)
 
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
@@ -7199,7 +7216,7 @@ int main() {
 
 int main() {
   EM_ASM({
-    Module.print('inputs: ' + $0 + ', ' + $1 + '.');
+    out('inputs: ' + $0 + ', ' + $1 + '.');
   }, int64_t(0x12345678ABCDEF1FLL));
 }
 ''')
@@ -7324,10 +7341,10 @@ int main() {
       #include <emscripten.h>
       int main() {
         EM_ASM({
-          Module.print('environment is WEB? ' + ENVIRONMENT_IS_WEB);
-          Module.print('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
-          Module.print('environment is NODE? ' + ENVIRONMENT_IS_NODE);
-          Module.print('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
+          out('environment is WEB? ' + ENVIRONMENT_IS_WEB);
+          out('environment is WORKER? ' + ENVIRONMENT_IS_WORKER);
+          out('environment is NODE? ' + ENVIRONMENT_IS_NODE);
+          out('environment is SHELL? ' + ENVIRONMENT_IS_SHELL);
         });
       }
 ''')
@@ -7392,6 +7409,29 @@ int main() {
     check_execute([PYTHON, EMCC, 'src.cpp', '-O2']) # optimized, so no assertions
     self.assertNotContained(WARNING, open('a.out.js').read())
 
+  def test_warn_module_print_err(self):
+    ERROR = 'was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)'
+
+    def test(contents, expected, args=[]):
+      open('src.cpp', 'w').write(r'''
+  #include <emscripten.h>
+  int main() {
+    EM_ASM({ %s });
+    return 0;
+  }
+  ''' % contents)
+      run_process([PYTHON, EMCC, 'src.cpp'] + args)
+      self.assertContained(expected, run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
+
+    # error shown (when assertions are on)
+    test("Module.print('x')", ERROR)
+    test("Module['print']('x')", ERROR)
+    test("Module.printErr('x')", ERROR)
+    test("Module['printErr']('x')", ERROR)
+
+    # when exported, all good
+    test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print", "printErr"]'])
+
   def test_arc4random(self):
     open('src.c', 'w').write(r'''
 #include <stdlib.h>
@@ -7449,7 +7489,6 @@ int main() {
                                          'test-function-eliminator-replace-function-call-two-passes-output.js')
 
   def test_function_eliminator_replace_array_value(self):
-    import tools.duplicate_function_eliminator
     output_file = 'output.js'
 
     try:
@@ -7480,10 +7519,6 @@ int main() {
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).
-    import tools.tempfiles
-    import tools.duplicate_function_eliminator
-    import tools.js_optimizer
-
     output_file = 'output.js'
 
     try:
@@ -7999,7 +8034,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1533, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
+              1534, ['invoke_i'],               ['waka'],                 496958, 163, 2560),
     ])
 
     print('test on a minimal pure computational thing')
@@ -8417,3 +8452,37 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertIn('int foo()', output)
     # has some entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
+
+  def test_html_preprocess(self):
+    return self.skip('enable when html preprocessing is reenabled')
+
+    test_file = path_from_root('tests', 'module', 'test_stdin.c')
+    output_file = path_from_root('tests', 'module', 'test_stdin.html')
+    shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:(else) NO_EXIT_RUNTIME
+T6:!NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:NO_EXIT_RUNTIME == 1
+T2:(else) NO_EXIT_RUNTIME == 1
+T3:NO_EXIT_RUNTIME < 2
+T4:(else) NO_EXIT_RUNTIME <= 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)
+
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
+    output = open(output_file).read()
+    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
+T2:NO_EXIT_RUNTIME != 1
+T3:(else) NO_EXIT_RUNTIME >= 2
+T4:NO_EXIT_RUNTIME > 1
+T5:NO_EXIT_RUNTIME
+T6:(else) !NO_EXIT_RUNTIME""", output)

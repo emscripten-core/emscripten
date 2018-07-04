@@ -246,7 +246,7 @@ class RunnerCore(unittest.TestCase):
         ignorable_files = ['/tmp/tmpaddon']
 
         left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
-        if len(left_over_files) > 0:
+        if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
@@ -280,6 +280,22 @@ class RunnerCore(unittest.TestCase):
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
+    def fix_target(ll_filename):
+      if LLVM_TARGET == ASM_JS_TARGET:
+         return
+      with open(ll_filename) as f:
+        contents = f.read()
+      if LLVM_TARGET in contents:
+        return
+      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
+      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
+      assert(ASM_JS_TARGET in contents)
+      assert(asmjs_layout in contents)
+      contents = contents.replace(asmjs_layout, wasm_layout)
+      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
+      with open(ll_filename, 'w') as f:
+        f.write(contents)
+
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
@@ -287,6 +303,7 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_dis(filename)
       else:
         shutil.copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
 
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -305,6 +322,7 @@ class RunnerCore(unittest.TestCase):
     else:
       if ll_file.endswith('.ll'):
         safe_copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
         Building.llvm_as(filename)
       else:
         safe_copy(ll_file, filename + '.o')
@@ -381,7 +399,7 @@ class RunnerCore(unittest.TestCase):
         assert os.path.exists(f + '.o')
 
       # Link all files
-      if len(additional_files) + len(libraries) > 0:
+      if len(additional_files) + len(libraries):
         shutil.move(filename + '.o', filename + '.o.alone')
         Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
                  filename + '.o')
@@ -1001,9 +1019,10 @@ class BrowserCore(RunnerCore):
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
-    if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
-      # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
-      args = args + ['-s', 'WASM=0']
+    if 'USE_PTHREADS=1' in args or 'USE_PTHREADS=2' in args:
+      if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
+        # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
+        args = args + ['-s', 'WASM=0']
     if not 'WASM=0' in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
@@ -1094,7 +1113,7 @@ def main(args):
   args = skip_requested_tests(args, modules)
   args = args_for_random_tests(args, modules)
   suites, unmatched_tests = load_test_suites(args, modules)
-  run_tests(suites, unmatched_tests)
+  return run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
@@ -1238,7 +1257,7 @@ def get_random_test_parameters(arg):
   num_tests = 1
   base_module = 'default'
   relevant_modes = test_modes
-  if len(arg) > 0:
+  if len(arg):
     num_str = arg
     if arg.startswith('other'):
       base_module = 'other'
@@ -1298,7 +1317,7 @@ def load_test_suites(args, modules):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module) > 0:
+    if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)
@@ -1324,11 +1343,11 @@ def suite_for_module(module, tests):
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []
-  numFailures = 0
+  num_failures = 0
 
-  if len(unmatched_test_names) > 0:
+  if len(unmatched_test_names):
     print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
-    numFailures += len(unmatched_test_names)
+    num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
   print('Test suites:')
@@ -1341,7 +1360,7 @@ def run_tests(suites, unmatched_test_names):
     msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
         res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
     )
-    numFailures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -1352,7 +1371,7 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  return min(numFailures, 255)
+  return min(num_failures, 255)
 
 
 if __name__ == '__main__':
