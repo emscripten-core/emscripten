@@ -3,9 +3,21 @@ function modulus(i1) {
  i1 = i1 | 0;
  return +(i1 | 0) % +2 == +1 | 0;
 }
-function not(i1) {
+function not1(i1) {
  i1 = i1 | 0;
- return (!i1 == 5) | 0;
+ return (!i1 < (i1 | 0)) | 0;
+}
+function not2(i1) {
+ i1 = i1 | 0;
+ return (!i1 < (i1 >>> 0)) | 0;
+}
+function not3(i1) {
+ i1 = i1 | 0;
+ return ((i1 | 0) < !i1) | 0;
+}
+function not4(i1) {
+ i1 = i1 | 0;
+ return ((i1 >>> 0) < !i1) | 0;
 }
 // EMSCRIPTEN_GENERATED_FUNCTIONS
-// EXTRA_INFO:{"emterpretedFuncs": ["modulus", "not"]}
+// EXTRA_INFO:{"emterpretedFuncs": ["modulus", "not1", "not2", "not3", "not4"]}
