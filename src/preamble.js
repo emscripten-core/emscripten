@@ -434,13 +434,11 @@ function stringToAscii(str, outPtr) {
 // returns a copy of that string as a Javascript String object.
 // sizeInBytes parameter (optional): specify size of bytes to be converted in the array. When sizeInBytes is used,
 //                                   null bytes inside or at the end of the buffer are not interpreted as terminators.
-//                                   Note that partial/incomplete UTF-8 sequences at the end are discarded if throwOnInvalid is set to false.
-// throwOnInvalid (optional):        If enabled, throw exceptions when invalid UTF-8 is encountered.
-
+//                                   Note that partial/incomplete UTF-8 sequences at the end are discarded.
 #if TEXTDECODER
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
 #endif
-function UTF8ArrayToString(u8Array, idx, sizeInBytes, throwOnInvalid) {
+function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
   var endIdx = idx;
 
   if (typeof sizeInBytes === 'undefined') {
@@ -467,25 +465,25 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes, throwOnInvalid) {
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
       u0 = u8Array[idx++];
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      if (idx >= endIdx) { if (throwOnInvalid) fnThrowMultibyteError(2); else break; }
+      if (idx >= endIdx) break;
       u1 = u8Array[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      if (idx >= endIdx) { if (throwOnInvalid) fnThrowMultibyteError(3); else break; }
+      if (idx >= endIdx) break;
       u2 = u8Array[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
-        if (idx >= endIdx) { if (throwOnInvalid) fnThrowMultibyteError(4); else break; }
+        if (idx >= endIdx) break;
         u3 = u8Array[idx++] & 63;
         if ((u0 & 0xF8) == 0xF0) {
           u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
         } else {
-          if (idx >= endIdx) { if (throwOnInvalid) fnThrowMultibyteError(5); else break; }
+          if (idx >= endIdx) break;
           u4 = u8Array[idx++] & 63;
           if ((u0 & 0xFC) == 0xF8) {
             u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
           } else {
-            if (idx >= endIdx) { if (throwOnInvalid) fnThrowMultibyteError(6); else break; }
+            if (idx >= endIdx) break;
             u5 = u8Array[idx++] & 63;
             u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
           }
@@ -493,11 +491,9 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes, throwOnInvalid) {
       }
       if (u0 < 0x10000) {
         str += String.fromCharCode(u0);
-      } else if (!throwOnInvalid || u0 < 0x10FFFF) {
+      } else {
         var ch = u0 - 0x10000;
         str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
-      } else {
-        throw 'UTF-8 decode: code point 0x' + u0.toString(16) + ' exceeds UTF-16 reach';
       }
     }
 #if TEXTDECODER
@@ -509,10 +505,9 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes, throwOnInvalid) {
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 // len parameter (optional): bytewise length in case string is not null terminated
-// throwOnInvalid (optional): If enabled, throw exceptions when invalid UTF-8 is encountered.
 
-function UTF8ToString(ptr, len, throwOnInvalid) {
-  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, len, throwOnInvalid);
+function UTF8ToString(ptr, len) {
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, len);
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
@@ -527,9 +522,8 @@ function UTF8ToString(ptr, len, throwOnInvalid) {
 //                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
-// throwOnInvalid (optional): If enabled, throw exceptions when invalid UTF-8 is encountered.
 
-function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, throwOnInvalid) {
+function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
   if (!(maxBytesToWrite > 0)) // Parameter maxBytesToWrite is not optional. Negative values, 0, null, undefined and false each don't write out any bytes.
     return 0;
 
@@ -546,38 +540,36 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, throwOnInva
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) {
-      if ((++i == str.length) && throwOnInvalid) throw 'UTF-8 encode: incomplete surrogate pair';
       var u1 = str.charCodeAt(i);
-      if (throwOnInvalid && (u1 < 0xDC00 || u1 > 0xDFFF)) throw 'UTF-8 encode: second char code 0x' + u1.toString(16) + ' at index ' + i + ' in surrogate pair out of range';
       u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
     }
     if (u <= 0x7F) {
-      if (outIdx >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(1); else break; }
+      if (outIdx >= endIdx) break;
       outU8Array[outIdx++] = u;
     } else if (u <= 0x7FF) {
-      if (outIdx + 1 >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(2); else break; }
+      if (outIdx + 1 >= endIdx) break;
       outU8Array[outIdx++] = 0xC0 | (u >> 6);
       outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0xFFFF) {
-      if (outIdx + 2 >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(3); else break; }
+      if (outIdx + 2 >= endIdx) break;
       outU8Array[outIdx++] = 0xE0 | (u >> 12);
       outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
       outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0x1FFFFF) {
-      if (outIdx + 3 >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(4); else break; }
+      if (outIdx + 3 >= endIdx) break;
       outU8Array[outIdx++] = 0xF0 | (u >> 18);
       outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
       outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
       outU8Array[outIdx++] = 0x80 | (u & 63);
     } else if (u <= 0x3FFFFFF) {
-      if (outIdx + 4 >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(5); else break; }
+      if (outIdx + 4 >= endIdx) break;
       outU8Array[outIdx++] = 0xF8 | (u >> 24);
       outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
       outU8Array[outIdx++] = 0x80 | ((u >> 12) & 63);
       outU8Array[outIdx++] = 0x80 | ((u >> 6) & 63);
       outU8Array[outIdx++] = 0x80 | (u & 63);
     } else {
-      if (outIdx + 5 >= endIdx) { if (throwOnInvalid) fnThrowOutOfRangeError(6); else break; }
+      if (outIdx + 5 >= endIdx) break;
       outU8Array[outIdx++] = 0xFC | (u >> 30);
       outU8Array[outIdx++] = 0x80 | ((u >> 24) & 63);
       outU8Array[outIdx++] = 0x80 | ((u >> 18) & 63);
@@ -595,13 +587,12 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite, throwOnInva
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
 // Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Returns the number of bytes written, EXCLUDING the null terminator.
-// throwOnInvalid (optional): If enabled, throw exceptions when invalid UTF-8 is encountered.
 
-function stringToUTF8(str, outPtr, maxBytesToWrite, throwOnInvalid) {
+function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite, throwOnInvalid);
+  return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.

@@ -154,25 +154,6 @@ std::wstring get_non_ascii_wstring() {
     return ws;
 }
 
-std::string get_invalid_utf8_multibyte_start() {
-    return {"\xc3\xb1\xf8"};
-}
-
-std::string get_incomplete_utf8_sequence(int expectedSequenceLength) {
-    if (expectedSequenceLength == 2)
-        return {"\xc3"};
-    else if (expectedSequenceLength == 3)
-        return {"\xe2\x82"};
-    else if (expectedSequenceLength == 4)
-        return {"\xf0\x90\x8c"};
-
-    return {"\xc0"};
-}
-
-std::string get_utf8_sequence_causing_js_utf16_overflow() {
-    return {"\xf4\x7f\x7f\x7f\x7f"};
-}
-
 std::wstring get_literal_wstring() {
     return L"get_literal_wstring";
 }
@@ -1734,9 +1715,6 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("get_non_ascii_string", &get_non_ascii_string);
     function("get_non_ascii_wstring", &get_non_ascii_wstring);
-    function("get_incomplete_utf8_sequence", &get_incomplete_utf8_sequence);
-    function("get_invalid_utf8_multibyte_start", &get_invalid_utf8_multibyte_start);
-    function("get_utf8_sequence_causing_js_utf16_overflow", &get_utf8_sequence_causing_js_utf16_overflow);
     function("get_literal_wstring", &get_literal_wstring);
     function("force_memory_growth", &force_memory_growth);
 

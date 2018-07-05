@@ -464,45 +464,6 @@ module({
             assert.equal(string, e);
         });
 
-        if(stdStringIsUTF8)
-        {
-            test("UTF-8 decode: incomplete sequences throws", function() {
-                var e = assert.throws(cm.BindingError, function() {
-                    var e = cm.get_incomplete_utf8_sequence(2);
-                });
-                var e = assert.throws(cm.BindingError, function() {
-                    var e = cm.get_incomplete_utf8_sequence(3);
-                });
-                var e = assert.throws(cm.BindingError, function() {
-                    var e = cm.get_incomplete_utf8_sequence(4);
-                });
-            });
-
-            test("UTF-8 decode: invalid multibyte start throws", function() {
-                var e = assert.throws(cm.BindingError, function() {
-                    var e = cm.get_invalid_utf8_multibyte_start();
-                });
-            });
-
-            test("UTF-8 decode: causing UTF-16 overflow in JS throws", function() {
-                var e = assert.throws(cm.BindingError, function() {
-                    var e = cm.get_utf8_sequence_causing_js_utf16_overflow();
-                });
-            });
-
-            test("UTF-8 encode: incomplete surrogate pair throws", function() {
-                var e = assert.throws(cm.BindingError, function() {
-                    cm.emval_test_take_and_return_std_string(String.fromCharCode(0xd800));
-                });
-            });
-
-            test("UTF-8 encode: surrogate pair second char code out of range throws", function() {
-                var e = assert.throws(cm.BindingError, function() {
-                    cm.emval_test_take_and_return_std_string(String.fromCharCode(0xd800) + String.fromCharCode(0xffff));
-                });
-            });
-        }
-
         test("non-ascii wstrings", function() {
             var expected = String.fromCharCode(10) +
                 String.fromCharCode(1234) +
