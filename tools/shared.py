@@ -510,24 +510,9 @@ def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
 
-# Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
-# exists.
-# The test runner always does this check (through |force|). emcc does this less frequently,
-# only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
-# we re-check sanity when the settings are changed)
-# We also re-check sanity and clear the cache when the version changes
-try:
-  EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
-  try:
-    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
-    EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
-  except Exception as e:
-    logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
-    EMSCRIPTEN_VERSION_MAJOR = EMSCRIPTEN_VERSION_MINOR = EMSCRIPTEN_VERSION_TINY = 0
-    raise e
-except Exception as e:
-  logging.error('cannot find emscripten version ' + str(e))
-  EMSCRIPTEN_VERSION = 'unknown'
+EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
+parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
 def generate_sanity():
@@ -535,6 +520,13 @@ def generate_sanity():
 
 
 def check_sanity(force=False):
+  """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
+  and LLVM) exists.
+
+  The test runner always does this check (through |force|). emcc does this less
+  frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
+  EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
+  re-check sanity and clear the cache when the version changes"""
   ToolchainProfiler.enter_block('sanity')
   try:
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
@@ -1263,6 +1255,10 @@ class SettingsManager(object):
       return ret
 
     @classmethod
+    def to_dict(self):
+      return self.attrs.copy()
+
+    @classmethod
     def copy(self, values):
       self.attrs = values
 
@@ -1292,6 +1288,14 @@ class SettingsManager(object):
         logging.warning(''' - (see src/settings.js for valid values)''')
       self.attrs[attr] = value
 
+    @classmethod
+    def get(self, key):
+      return self.attrs.get(key)
+
+    @classmethod
+    def __getitem__(self, key):
+      return self.attrs[key]
+
   __instance = None
 
   @staticmethod
@@ -1305,6 +1309,12 @@ class SettingsManager(object):
 
   def __setattr__(self, attr, value):
     return setattr(self.instance(), attr, value)
+
+  def get(self, key):
+    return self.instance().get(key)
+
+  def __getitem__(self, key):
+    return self.instance()[key]
 
 
 Settings = SettingsManager()
@@ -2241,9 +2251,7 @@ class Building(object):
       sys.path += [path_from_root()]
     import emscripten
     # Run Emscripten
-    settings = Settings.serialize()
-    args = settings + extra_args
-    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + extra_args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
