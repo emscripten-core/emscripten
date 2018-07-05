@@ -1,13 +1,24 @@
 # coding=utf-8
 
 from __future__ import print_function
-import multiprocessing, os, pipes, re, shutil, subprocess, sys
-import itertools
 import glob
-import tools.shared
+import itertools
+import multiprocessing
+import os
+import pipes
+import re
+import shutil
+import subprocess
+import sys
+
 from tools.shared import *
 from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library
+import tools.shared
 import tools.line_endings
+import tools.js_optimizer
+import tools.tempfiles
+import tools.duplicate_function_eliminator
+
 
 class temp_directory(object):
   def __enter__(self):
@@ -585,7 +596,7 @@ f.close()
             env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print(str(cmd))
           ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE)
-          if ret.stderr != None and len(ret.stderr.strip()) > 0:
+          if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stderr != None and 'error' in ret.stderr.lower():
             logging.error('Failed command: ' + ' '.join(cmd))
@@ -600,7 +611,7 @@ f.close()
           if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
             cmd += ['VERBOSE=1']
           ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE)
-          if ret.stderr != None and len(ret.stderr.strip()) > 0:
+          if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stdout != None and 'error' in ret.stdout.lower() and not '0 error(s)' in ret.stdout.lower():
             logging.error('Failed command: ' + ' '.join(cmd))
@@ -683,6 +694,14 @@ f.close()
       subprocess.check_call([Building.which('cmake'), '--build', '.'])
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
       assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+
+  # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
+  def test_cmake_emscripten_version(self):
+    if os.name == 'nt': emcmake = path_from_root('emcmake.bat')
+    else: emcmake = path_from_root('emcmake')
+
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -2101,7 +2120,7 @@ int f() {
       else:
         print('(skip non-native)')
 
-      if js_optimizer.use_native(passes) and js_optimizer.get_native_optimizer():
+      if tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           Popen(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w')).communicate()
@@ -2123,15 +2142,15 @@ int f() {
         if 'last' not in passes and \
            'null_if' not in input and 'null_else' not in input:  # null-* tests are js optimizer or native, not a mixture (they mix badly)
           print('  native (receiveJSON)')
-          output = run_process([js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input_temp + '.js'] + passes + ['receiveJSON', 'emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
           print('  native (parsing JS)')
-          output = run_process([js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
+          output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes + ['emitJSON'], stdin=PIPE, stdout=open(output_temp, 'w')).stdout
           check_json()
 
         print('  native (emitting JS)')
-        output = run_process([js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+        output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
   def test_m_mm(self):
@@ -2349,11 +2368,11 @@ seeked= file.
     assert 'below the current directory' in output.stderr
     # relative path that ends up under us is cool
     output = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stdout=PIPE, stderr=PIPE)
-    assert len(output.stdout) > 0
+    assert len(output.stdout)
     assert 'below the current directory' not in output.stderr
     # direct path leads to the same code being generated - relative path does not make us do anything different
     output2 = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stdout=PIPE, stderr=PIPE)
-    assert len(output2.stdout) > 0
+    assert len(output2.stdout)
     assert 'below the current directory' not in output2.stderr
     def clean(txt):
       return [line for line in txt.split('\n') if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
@@ -2394,7 +2413,7 @@ seeked= file.
     full = os.path.join(unicode_name, 'data.txt')
     open(full, 'w').write('data')
     proc = run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', full], stdout=PIPE, stderr=PIPE)
-    assert len(proc.stdout) > 0, proc.stderr
+    assert len(proc.stdout), proc.stderr
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
@@ -7143,12 +7162,12 @@ int main() {
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
       check_execute([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
-      full = 'var Module = {};\n' + open('a.out.asm.js').read()
-      open('asm.js', 'w').write(full)
-      funcs = open('a.out.asm.js').read().count('function ')
-      vars_ = open('a.out.asm.js').read().count('var ')
-      assert funcs == expected_funcs, funcs
-      assert vars_ == expected_vars, vars_
+      module = open('a.out.asm.js').read()
+      open('asm.js', 'w').write('var Module = {};\n' + module)
+      funcs = module.count('function ')
+      vars_ = module.count('var ')
+      self.assertEqual(funcs, expected_funcs)
+      self.assertEqual(vars_, expected_vars)
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
         self.validate_asmjs(out)
@@ -7156,7 +7175,7 @@ int main() {
         print('(skipping asm.js validation check)')
 
     test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 13)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 12)
 
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
@@ -7478,7 +7497,6 @@ int main() {
                                          'test-function-eliminator-replace-function-call-two-passes-output.js')
 
   def test_function_eliminator_replace_array_value(self):
-    import tools.duplicate_function_eliminator
     output_file = 'output.js'
 
     try:
@@ -7509,10 +7527,6 @@ int main() {
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).
-    import tools.tempfiles
-    import tools.duplicate_function_eliminator
-    import tools.js_optimizer
-
     output_file = 'output.js'
 
     try:

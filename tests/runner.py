@@ -246,7 +246,7 @@ class RunnerCore(unittest.TestCase):
         ignorable_files = ['/tmp/tmpaddon']
 
         left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
-        if len(left_over_files) > 0:
+        if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
@@ -399,7 +399,7 @@ class RunnerCore(unittest.TestCase):
         assert os.path.exists(f + '.o')
 
       # Link all files
-      if len(additional_files) + len(libraries) > 0:
+      if len(additional_files) + len(libraries):
         shutil.move(filename + '.o', filename + '.o.alone')
         Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
                  filename + '.o')
@@ -1257,7 +1257,7 @@ def get_random_test_parameters(arg):
   num_tests = 1
   base_module = 'default'
   relevant_modes = test_modes
-  if len(arg) > 0:
+  if len(arg):
     num_str = arg
     if arg.startswith('other'):
       base_module = 'other'
@@ -1317,7 +1317,7 @@ def load_test_suites(args, modules):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module) > 0:
+    if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)
@@ -1345,7 +1345,7 @@ def run_tests(suites, unmatched_test_names):
   resultMessages = []
   num_failures = 0
 
-  if len(unmatched_test_names) > 0:
+  if len(unmatched_test_names):
     print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
     num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))

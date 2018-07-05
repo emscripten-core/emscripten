@@ -1714,7 +1714,6 @@ int main(int argc, char **argv) {
 
   @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_async_em_asm(self):
-    return self.skip('TODO: Enable me when we have tagged new compiler build')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
@@ -6704,7 +6703,7 @@ public:
   std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
   const char* data() const { return ptr; }
 private:
-  const char* ptr = nullptr;
+  const char* ptr = 0;
 };
 
 const std_string txtTestString("212121\0");
@@ -7248,9 +7247,17 @@ Success!
   def test_vswprintf_utf8(self):
     self.do_run_from_file(path_from_root('tests', 'vswprintf_utf8.c'), path_from_root('tests', 'vswprintf_utf8.out'))
 
-  def test_async(self):
+  def test_async(self, emterpretify=False):
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
+
+    if not emterpretify:
+      if self.is_emterpreter():
+        return self.skip("don't test both emterpretify and asyncify at once")
+      Settings.ASYNCIFY = 1
+    else:
+      Settings.EMTERPRETIFY = 1
+      Settings.EMTERPRETIFY_ASYNC = 1
 
     src = r'''
 #include <stdio.h>
@@ -7267,16 +7274,11 @@ int main() {
   emscripten_%s(100);
   printf("%%d\n", i);
 }
-''' % ('sleep_with_yield' if self.is_emterpreter() else 'sleep')
-
-    if not self.is_emterpreter():
-      Settings.ASYNCIFY = 1
-    else:
-      Settings.EMTERPRETIFY_ASYNC = 1
+''' % ('sleep_with_yield' if emterpretify else 'sleep')
 
     self.do_run(src, 'HelloWorld!99');
 
-    if self.is_emterpreter():
+    if emterpretify:
       print('check bad ccall use')
       src = r'''
 #include <stdio.h>
@@ -7289,16 +7291,18 @@ int main() {
 '''
       Settings.ASSERTIONS = 1
       Settings.INVOKE_RUN = 0
-      open('post.js', 'w').write('''
-try {
-  ccall('main', 'number', ['number', 'string'], [2, 'waka']);
-  var never = true;
-} catch(e) {
-  out(e);
-  assert(!never);
-}
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  try {
+    ccall('main', 'number', ['number', 'string'], [2, 'waka']);
+    var never = true;
+  } catch(e) {
+    out(e);
+    assert(!never);
+  }
+};
 ''')
-      self.emcc_args += ['--post-js', 'post.js']
+      self.emcc_args += ['--pre-js', 'pre.js']
       self.do_run(src, 'The call to main is running asynchronously.');
 
       print('check reasonable ccall use')
@@ -7311,8 +7315,10 @@ int main() {
   printf("World\n");
 }
 '''
-      open('post.js', 'w').write('''
-ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+      open('pre.js', 'w').write('''
+Module['onRuntimeInitialized'] = function() {
+  ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
+};
 ''')
       self.do_run(src, 'HelloWorld');
 
@@ -7334,14 +7340,21 @@ extern "C" {
   }
 }
 '''
-      open('post.js', 'w').write(r'''
-ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
-  .then(function(val) {
-    Module.print(val);
-    ccall('floatf', 'number', null, null, { async: true }).then(Module.print);
-  });
+      open('pre.js', 'w').write(r'''
+Module['onRuntimeInitialized'] = function() {
+  ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
+    .then(function(val) {
+      console.log(val);
+      ccall('floatf', 'number', null, null, { async: true }).then(console.log);
+    });
+};
 ''')
       self.do_run(src, 'first\nsecond\n6.4');
+
+  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
+                   'unsupported with Wasm backend')
+  def test_async_emterpretify(self):
+    self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
     if not self.is_emterpreter(): return self.skip('emterpreter-only test')
@@ -7714,12 +7727,11 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
 # Generate tests for everything
-def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
-    typed_arrays=0, emcc_args=None, env=None):
+def make_run(name, emcc_args=None, env=None):
+  if env is None:
+    env = {}
 
-  if env is None: env = {}
-
-  TT = type(fullname, (T,), dict(run_name = fullname, env = env))
+  TT = type(name, (T,), dict(run_name=name, env=env))
 
   def tearDown(self):
     try:
@@ -7730,7 +7742,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
 
       # clear global changes to Building
       Building.COMPILER_TEST_OPTS = []
-      Building.COMPILER = CLANG
       Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
@@ -7748,7 +7759,6 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
       checked_sanity = True
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
-    Building.COMPILER = compiler
 
     assert emcc_args is not None
     self.emcc_args = emcc_args[:]
@@ -7773,34 +7783,34 @@ def make_run(fullname, name=-1, compiler=-1, embetter=0, quantum_size=0,
   return TT
 
 # Main asm.js test modes
-default = make_run('default', compiler=CLANG, emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
-asm1 = make_run('asm1', compiler=CLANG, emcc_args=['-O1', '-s', 'WASM=0'])
-asm2 = make_run('asm2', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0'])
-asm3 = make_run('asm3', compiler=CLANG, emcc_args=['-O3', '-s', 'WASM=0'])
-asm2g = make_run('asm2g', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0', '-g', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'])
+default = make_run('default', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
+asm1 = make_run('asm1', emcc_args=['-O1', '-s', 'WASM=0'])
+asm2 = make_run('asm2', emcc_args=['-O2', '-s', 'WASM=0'])
+asm3 = make_run('asm3', emcc_args=['-O3', '-s', 'WASM=0'])
+asm2g = make_run('asm2g', emcc_args=['-O2', '-s', 'WASM=0', '-g', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'])
 
 # Main wasm test modes
-binaryen0 = make_run('binaryen0', compiler=CLANG, emcc_args=['-O0'])
-binaryen1 = make_run('binaryen1', compiler=CLANG, emcc_args=['-O1'])
-binaryen2 = make_run('binaryen2', compiler=CLANG, emcc_args=['-O2'])
-binaryen3 = make_run('binaryen3', compiler=CLANG, emcc_args=['-O3'])
-binaryens = make_run('binaryens', compiler=CLANG, emcc_args=['-Os'])
-binaryenz = make_run('binaryenz', compiler=CLANG, emcc_args=['-Oz'])
+binaryen0 = make_run('binaryen0', emcc_args=['-O0'])
+binaryen1 = make_run('binaryen1', emcc_args=['-O1'])
+binaryen2 = make_run('binaryen2', emcc_args=['-O2'])
+binaryen3 = make_run('binaryen3', emcc_args=['-O3'])
+binaryens = make_run('binaryens', emcc_args=['-Os'])
+binaryenz = make_run('binaryenz', emcc_args=['-Oz'])
 
 # Secondary test modes - run directly when there is a specific need
 
 # asm.js
-asm2f = make_run('asm2f', compiler=CLANG, emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
-asm2nn = make_run('asm2nn', compiler=CLANG, emcc_args=['-O2', '-s', 'WASM=0'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
+asm2f = make_run('asm2f', emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
+asm2nn = make_run('asm2nn', emcc_args=['-O2', '-s', 'WASM=0'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run('binaryen2jo', compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen3jo = make_run('binaryen3jo', compiler=CLANG, emcc_args=['-O3', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen2s = make_run('binaryen2s', compiler=CLANG, emcc_args=['-O2', '-s', 'SAFE_HEAP=1'])
-binaryen2_interpret = make_run('binaryen2_interpret', compiler=CLANG, emcc_args=['-O2', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
+binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
+binaryen2s = make_run('binaryen2s', emcc_args=['-O2', '-s', 'SAFE_HEAP=1'])
+binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="interpret-binary"'])
 
 # emterpreter
-asmi = make_run('asmi', compiler=CLANG, emcc_args=['-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
-asm2i = make_run('asm2i', compiler=CLANG, emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
+asmi = make_run('asmi', emcc_args=['-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
+asm2i = make_run('asm2i', emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
 
 del T # T is just a shape for the specific subclasses, we don't test it itself

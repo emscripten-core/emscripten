@@ -867,7 +867,7 @@ ret += '''%s
  loadPackage(%s);
 ''' % json.dumps(metadata))
 
-if force or len(data_files) > 0:
+if force or len(data_files):
   if jsoutput == None:
     print(ret)
   else:

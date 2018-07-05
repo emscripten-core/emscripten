@@ -313,7 +313,7 @@ def kill_browser_process():
     browser_process = None
     processname_killed_atexit = ''
     return
-  if len(processname_killed_atexit) > 0:
+  if len(processname_killed_atexit):
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
@@ -374,26 +374,26 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     with http_mutex:
       now = tick()
       max_message_queue_time = 5
-      if len(self.http_message_queue) > 0 and now - last_message_time > max_message_queue_time:
+      if len(self.http_message_queue) and now - last_message_time > max_message_queue_time:
         self.print_next_message()
   
   # Skips to printing the next message in queue now, independent of whether there was missed messages in the sequence numbering.
   def print_next_message(self):
     with http_mutex:
-      if len(self.http_message_queue) > 0:
+      if len(self.http_message_queue):
         self.expected_http_seq_num = self.http_message_queue[0][0]
         self.print_messages_due()
 
   # Completely flushes all out-of-order messages in the queue.
   def print_all_messages(self):
     with http_mutex:
-      while len(self.http_message_queue) > 0:
+      while len(self.http_message_queue):
         self.print_next_message()
 
   # Prints any messages that are now due after we logged some other previous messages.
   def print_messages_due(self):
     with http_mutex:
-      while len(self.http_message_queue) > 0:
+      while len(self.http_message_queue):
         msg = self.http_message_queue[0]
         if msg[0] == self.expected_http_seq_num:
           msg[2](msg[1])
@@ -1002,7 +1002,7 @@ def win_get_default_browser():
       cmd = winreg.QueryValue(key, None)
       if cmd:
         parts = shlex.split(cmd)
-        if len(parts) > 0:
+        if len(parts):
           return [parts[0]]
   except WindowsError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
@@ -1382,7 +1382,7 @@ def run():
     logi('Type emrun --help for a detailed list of available options.')
     return
 
-  file_to_serve = args[0] if len(args) > 0 else '.'
+  file_to_serve = args[0] if len(args) else '.'
   file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
   
   if options.serve_root:
@@ -1394,7 +1394,7 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(cmdlineparams) > 0:
+    if len(cmdlineparams):
       url += '?' + '&'.join(cmdlineparams)
     hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
     url = 'http://' + hostname + ':' + str(options.port)+'/'+url

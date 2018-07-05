@@ -13,7 +13,7 @@ def run():
 
     try:
         with open(args[1]) as symbol_f:
-            symbol_list = {x[0]: x[2] for x in [z.strip().partition(":") for z in symbol_f.readlines() if len(z) > 0]}
+            symbol_list = {x[0]: x[2] for x in [z.strip().partition(":") for z in symbol_f.readlines() if len(z)]}
     except IOError:
         # If there's no symbol file, use an empty one
         symbol_list = {}

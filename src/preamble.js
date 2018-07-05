@@ -189,7 +189,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
-  if (opts && opts.async) return Promise.resolve(ret)
+  // If this is an async ccall, ensure we return a promise
+  if (opts && opts.async) return Promise.resolve(ret);
 #endif
   return ret;
 }
@@ -934,6 +935,12 @@ function checkStackCookie() {
 
 function abortStackOverflow(allocSize) {
   abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
+}
+#endif
+
+#if EMTERPRETIFY
+function abortStackOverflowEmterpreter() {
+  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
 }
 #endif
 
