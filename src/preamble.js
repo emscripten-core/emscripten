@@ -940,7 +940,7 @@ function abortStackOverflow(allocSize) {
 
 #if EMTERPRETIFY
 function abortStackOverflowEmterpreter() {
-  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX (current value " + EMT_STACK_MAX + ").");
+  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
 }
 #endif
 
