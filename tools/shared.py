@@ -2666,7 +2666,7 @@ class Building(object):
     paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
              os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
     for dirname in paths:
-      if os.path.exists(os.path.join(dirname, 'binaryen.js')):
+      if os.path.exists(os.path.join(dirname, 'wasm.js')):
         return dirname
     logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
     sys.exit(1)
