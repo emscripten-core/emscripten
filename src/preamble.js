@@ -938,6 +938,12 @@ function abortStackOverflow(allocSize) {
 }
 #endif
 
+#if EMTERPRETIFY
+function abortStackOverflowEmterpreter() {
+  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
+}
+#endif
+
 #if ABORTING_MALLOC
 function abortOnCannotGrowMemory() {
 #if WASM

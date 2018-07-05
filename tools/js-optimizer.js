@@ -7574,7 +7574,9 @@ function emterpretify(ast) {
         func[3].push(srcToStat('sp = EMTSTACKTOP;'));
         var stackBytes = finalLocals*8;
         func[3].push(srcToStat('EMTSTACKTOP = EMTSTACKTOP + ' + stackBytes + ' | 0;'));
-        func[3].push(srcToStat('assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);'));
+        if (ASSERTIONS) {
+          func[3].push(srcToStat('if (((EMTSTACKTOP|0) > (EMT_STACK_MAX|0))|0) abortStackOverflowEmterpreter();'));
+        }
         asmData.vars['x'] = ASM_INT;
         func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[sp + x >> 2] = HEAP32[x >> 2] | 0; x = x + 4 | 0; }'));
       }
