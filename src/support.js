@@ -122,7 +122,7 @@ function loadDynamicLibrary(lib) {
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
+  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
   // we should see the dylink section right after the magic number and wasm version
   assert(binary[8] === 0, 'need the dylink section to be first')
   var next = 9;
