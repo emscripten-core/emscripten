@@ -607,26 +607,28 @@ fi
           try_delete(PORTS_DIR)
         else:
           self.do([PYTHON, compiler, '--clear-ports'])
+
+        # Make sure we get the binaryen port first, so we don't see notifications
+        # about it later
         assert not os.path.exists(PORTS_DIR)
+        Building.get_binaryen()
+        assert os.path.exists(PORTS_DIR)
 
         # Building a file that doesn't need ports should not trigger anything
-        # (avoid wasm to avoid the binaryen port)
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp')])
         print('no', output)
         assert RETRIEVING_MESSAGE not in output, output
         assert BUILDING_MESSAGE not in output
-        assert not os.path.exists(PORTS_DIR)
 
         # Building a file that need a port does trigger stuff
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         print('yes', output)
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
-        assert os.path.exists(PORTS_DIR)
 
         def second_use():
           # Using it again avoids retrieve and build
-          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+          output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
           assert RETRIEVING_MESSAGE not in output, output
           assert BUILDING_MESSAGE not in output, output
 
@@ -644,7 +646,7 @@ fi
         z.write(os.path.join('old-sub', 'a.txt'))
         z.write(os.path.join('old-sub', 'b.txt'))
         z.close()
-        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
+        output = self.do([compiler, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
         assert os.path.exists(PORTS_DIR)
