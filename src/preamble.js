@@ -454,12 +454,7 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
   } else {
 #endif
     var u0, u1, u2, u3, u4, u5;
-
     var str = '';
-
-    var fnThrowMultibyteError = function (byteNum) {
-      throw 'UTF-8 decode: cannot get byte ' + byteNum + ' of multibyte sequence.';
-    };
 
     while (idx < endIdx) {
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
@@ -518,7 +513,7 @@ function UTF8ToString(ptr, len) {
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
 //   maxBytesToWrite: The maximum number of bytes this function can write to the array.
-//                    When null terminator is used (see skipNullTerminator): This count should include the null terminator,
+//                    This count should include the null terminator,
 //                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
@@ -529,10 +524,6 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
 
   var startIdx = outIdx;
   var endIdx = outIdx + maxBytesToWrite - 1; // -1 for string null terminator.
-
-  var fnThrowOutOfRangeError = function (byteNum) {
-    throw 'UTF-8 encode: end of output reached, cannot write next ' + byteNum + '-byte sequence.';
-  };
 
   for (var i = 0; i < str.length; ++i) {
     // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
