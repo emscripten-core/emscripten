@@ -531,7 +531,7 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) {
-      var u1 = str.charCodeAt(i);
+      var u1 = str.charCodeAt(++i);
       u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
     }
     if (u <= 0x7F) {
