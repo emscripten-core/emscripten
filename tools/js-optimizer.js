@@ -6097,7 +6097,7 @@ function emterpretify(ast) {
   // safe-heap methods may be called at any time
   // stack operations are called from invokes for proper stack unwinding
   var OK_TO_CALL_WHILE_ASYNC = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK', 'stackSave', 'stackRestore');
-  function okToCallWhileAsyncSaveOrRestore(name) {
+  function okToCallDuringAsyncRestore(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;
     if (name in OK_TO_CALL_WHILE_ASYNC) return true;
@@ -7379,17 +7379,14 @@ function emterpretify(ast) {
 
     if (ignore) {
       // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !okToCallWhileAsyncSaveOrRestore(func[1])) {
+      if (ASYNC && ASSERTIONS && !okToCallDuringAsyncRestore(func[1])) {
         // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
         // add asserts right after each call
         function makeCheckBadState() {
           // A bad state is when saving or restoring the stack. Note that it is ok to run code
           // during a sleep, for coroutines or yield funcs, etc. - we don't check those.
-          return ['binary', '|',
-            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 1]],
-            ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 2]],
-          ];
+          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 1]];
         }
         var stack = [];
         traverse(func, function(node, type) {
@@ -7414,7 +7411,7 @@ function emterpretify(ast) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
                 ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
-                ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
+                ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], callType), ['name', temp]]
               ]);
               return;
             }
@@ -7422,7 +7419,7 @@ function emterpretify(ast) {
           // no important parent
           trample(node, ['seq',
             copy(node),
-            ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], ASM_INT), ['num', 0]]
           ]);
         });
         // add an assert in the prelude of the function
@@ -7432,7 +7429,7 @@ function emterpretify(ast) {
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
             stats.splice(i, 0, ['stat',
-              ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+              ['conditional', makeCheckBadState(), makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], ASM_INT), ['num', 0]]
             ]);
             break;
           }
@@ -7596,7 +7593,6 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
