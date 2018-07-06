@@ -433,7 +433,7 @@ int main () {
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   def test_sockets_partial(self):
-    if WINDOWS: return self.skip('This test is Unix-specific.')
+    if WINDOWS: self.skipTest('This test is Unix-specific.')
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49181)
@@ -442,7 +442,7 @@ int main () {
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_down(self):
-    if WINDOWS: return self.skip('This test is Unix-specific.')
+    if WINDOWS: self.skipTest('This test is Unix-specific.')
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
       CompiledServerHarness(os.path.join('sockets', 'test_sockets_select_server_down_server.c'), [], 49191)
@@ -451,7 +451,7 @@ int main () {
         self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
 
   def test_sockets_select_server_closes_connection_rw(self):
-    if WINDOWS: return self.skip('This test is Unix-specific.')
+    if WINDOWS: self.skipTest('This test is Unix-specific.')
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 
     for harness in [
@@ -462,7 +462,7 @@ int main () {
         self.btest(os.path.join('sockets', 'test_sockets_select_server_closes_connection_client_rw.c'), expected='266', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port])
 
   def test_enet(self):
-    if WINDOWS: return self.skip('This test uses Unix-specific build architecture.')
+    if WINDOWS: self.skipTest('This test uses Unix-specific build architecture.')
     # this is also a good test of raw usage of emconfigure and emmake
     try_delete(self.in_dir('enet'))
     shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
@@ -505,7 +505,7 @@ int main () {
   #         clean_pids(pids);
 
   def test_webrtc(self): # XXX see src/settings.js, this is disabled pending investigation
-    return self.skip('WebRTC support is not up to date.')
+    self.skipTest('WebRTC support is not up to date.')
     host_src = 'webrtc_host.c'
     peer_src = 'webrtc_peer.c'
 
@@ -589,7 +589,7 @@ int main () {
     # This test checks that sockets work when the client code is run in Node.js
     # Run with ./runner.py sockets.test_nodejs_sockets_echo
     if NODE_JS not in JS_ENGINES:
-        return self.skip('node is not present')
+      self.skipTest('node is not present')
 
     sockets_include = '-I'+path_from_root('tests', 'sockets')
 

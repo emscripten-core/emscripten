@@ -2080,7 +2080,8 @@ function detectSign(node) {
         case '-': return ASM_FLEXIBLE;
         case '+': return ASM_NONSIGNED; // XXX double
         case '~': return ASM_SIGNED;
-        default: throw 'yikes';
+        case '!': return ASM_FLEXIBLE;
+        default: throw 'yikes ' + node[1];
       }
       break;
     }

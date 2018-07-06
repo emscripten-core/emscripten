@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 import glob, hashlib, os, re, shutil, subprocess, sys, json, random
+import unittest
 from textwrap import dedent
 import tools.shared
 from tools.shared import *
@@ -12,8 +13,8 @@ from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_z
 
 def SIMD(f):
   def decorated(self):
-    if self.is_emterpreter(): return self.skip('simd not supported in emterpreter yet')
-    if self.is_wasm(): return self.skip('wasm will not support SIMD in the MVP')
+    if self.is_emterpreter(): return self.skipTest('simd not supported in emterpreter yet')
+    if self.is_wasm(): return self.skipTest('wasm will not support SIMD in the MVP')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
   return decorated
@@ -24,7 +25,7 @@ def skip_if(func, condition, explanation=''):
   explanation_str = ' : %s' % explanation if explanation else ''
   def decorated(self):
     if self.__getattribute__(condition)():
-      return self.skip(condition + explanation_str)
+      return self.skipTest(condition + explanation_str)
     return func(self)
   return decorated
 
@@ -297,7 +298,7 @@ class T(RunnerCore): # Short name, to make it more fun to use manually on the co
       self.do_run('', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
-      return self.skip('LLVM marks the reads of s as fully aligned, making this test invalid')
+      self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
       src = r'''
         #include <stdio.h>
 
@@ -669,7 +670,8 @@ base align: 0, 0, 0, 0'''])
 
   @no_emterpreter
   def test_stack_restore(self):
-    if self.is_wasm(): return self.skip('generated code not available in wasm')
+    if self.is_wasm():
+      self.skipTest('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
     test_path = path_from_root('tests', 'core', 'test_stack_restore')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -1328,7 +1330,8 @@ int main() {
 
   def test_float_builtins(self):
     # tests wasm_libc_rt
-    if not self.is_wasm_backend(): return self.skip('no __builtin_fmin support in JSBackend')
+    if not self.is_wasm_backend():
+      self.skipTest('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
   def test_segfault(self):
@@ -1640,22 +1643,23 @@ def process(filename):
 
   # TODO: test only worked in non-fastcomp
   def test_inlinejs(self):
-      return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
+    self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
 
-      self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs')
 
-      if self.emcc_args == []: # opts will eliminate the comments
-        out = open('src.cpp.o.js').read()
-        for i in range(1, 5): assert ('comment%d' % i) in out
+    if self.emcc_args == []: # opts will eliminate the comments
+      out = open('src.cpp.o.js').read()
+      for i in range(1, 5): assert ('comment%d' % i) in out
 
   # TODO: test only worked in non-fastcomp
   def test_inlinejs2(self):
-      return self.skip('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
+      return self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
 
       self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs2')
 
   def test_inlinejs3(self):
-    if self.is_wasm(): return self.skip('wasm requires a proper asm module')
+    if self.is_wasm():
+      self.skipTest('wasm requires a proper asm module')
 
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -1700,7 +1704,7 @@ int main(int argc, char **argv) {
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
   @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm(self):
-    return self.skip('TODO: Enable me when we have tagged new compiler build')
+    self.skipTest('TODO: Enable me when we have tagged new compiler build')
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
     test_file = 'src.cpp'
     open(test_file, 'w').write(src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
@@ -1928,9 +1932,8 @@ Success!''')
   def test_varargs_multi(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_varargs_multi')
 
+  @unittest.skip('clang cannot compile this code with that target yet')
   def test_varargs_byval(self):
-    return self.skip('clang cannot compile this code with that target yet')
-
     src = r'''
       #include <stdio.h>
       #include <stdarg.h>
@@ -2104,7 +2107,7 @@ The current type of b is: 9
       Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
       # This will fail! See explanation near the warning we check for, in the compiler source code
-      run_process([PYTHON, EMCC, all_name], check=False, stderr=PIPE)
+      run_process([PYTHON, EMCC, all_name] + self.emcc_args, check=False, stderr=PIPE)
 
       # Check for warning in the generated code
       generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
@@ -2381,10 +2384,12 @@ The current type of b is: 9
       # Bloated memory; same layout as C/C++
       self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
+  @unittest.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
   def test_runtimelink(self):
-    return self.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
-    if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
-    if Settings.ASM_JS: return self.skip('asm does not support runtime linking')
+    if Building.LLVM_OPTS:
+      self.skipTest('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
+    if Settings.ASM_JS:
+      self.skipTest('asm does not support runtime linking')
 
     main, supp = self.setup_runtimelink_test()
 
@@ -2401,9 +2406,9 @@ The current type of b is: 9
 
   def can_dlfcn(self):
     if Settings.ALLOW_MEMORY_GROWTH == 1 and not self.is_wasm():
-      return self.skip('no dlfcn with memory growth (without wasm)')
+      self.skipTest('no dlfcn with memory growth (without wasm)')
     if self.is_wasm_backend():
-      return self.skip('no shared modules in wasm backend')
+      self.skipTest('no shared modules in wasm backend')
     return True
 
   def prep_dlfcn_lib(self):
@@ -2646,7 +2651,8 @@ def process(filename):
     if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
 
-    if Building.LLVM_OPTS: return self.skip('LLVM opts will optimize out parent_func')
+    if Building.LLVM_OPTS:
+      self.skipTest('LLVM opts will optimize out parent_func')
 
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -4692,7 +4698,7 @@ def process(filename):
 
   @no_wasm
   def test_fs_base(self):
-    if self.is_wasm(): return self.skip('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
+    if self.is_wasm(): self.skipTest('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
     Settings.INCLUDE_FULL_LIBRARY = 1
     try:
       addJS = '''
@@ -4861,9 +4867,9 @@ def process(filename):
 
   def test_unistd_truncate_noderawfs(self):
     if self.is_windows():
-      return self.skip("Windows throws EPERM rather than EACCES or EINVAL")
+      self.skipTest("Windows throws EPERM rather than EACCES or EINVAL")
     if not os.geteuid(): # 0 if root
-      return self.skip("Root access invalidates this test by being able to write on readonly files")
+      self.skipTest("Root access invalidates this test by being able to write on readonly files")
     self.emcc_args += ['-s', 'NODERAWFS=1']
     test_path = path_from_root('tests', 'unistd', 'truncate')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -4928,7 +4934,7 @@ def process(filename):
 
   def test_unistd_symlink_on_nodefs(self):
     if self.is_windows():
-      return self.skip('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
+      self.skipTest('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
       # Also, other detected discrepancies if you do end up running this test on NODEFS:
       # test expects /, but Windows gives \ as path slashes.
       # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
@@ -5044,7 +5050,7 @@ PORT: 3979
 
   @no_wasm_backend('No dynamic linking support in wasm backend path')
   def test_main_module_static_align(self):
-    if Settings.ALLOW_MEMORY_GROWTH: return self.skip('no shared modules with memory growth')
+    if Settings.ALLOW_MEMORY_GROWTH: self.skipTest('no shared modules with memory growth')
     Settings.MAIN_MODULE = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_main_module_static_align')
 
@@ -5215,7 +5221,7 @@ int main(void) {
 
   def test_raytrace(self):
       # TODO: Should we remove this test?
-      return self.skip('Relies on double value rounding, extremely sensitive')
+      self.skipTest('Relies on double value rounding, extremely sensitive')
 
       src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
       output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
@@ -5286,7 +5292,7 @@ return malloc(size);
     self.do_run(src, 'new 4!\n*1,0*')
 
   def test_dlmalloc_partial_2(self):
-    if 'SAFE_HEAP' in str(self.emcc_args): return self.skip('we do unsafe stuff here')
+    if 'SAFE_HEAP' in str(self.emcc_args): self.skipTest('we do unsafe stuff here')
     # present part of the symbols of dlmalloc, not all. malloc is harder to link than new which is weak.
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlmalloc_partial_2')
@@ -5426,10 +5432,10 @@ return malloc(size);
   # Tests the full SSE2 API.
   @SIMD
   def test_sse2_full(self):
-    if self.run_name == 'asm1': return self.skip("some i64 thing we can't legalize yet. possible hint: optimize with -O0 or -O2+, and not -O1");
+    if self.run_name == 'asm1': self.skipTest("some i64 thing we can't legalize yet. possible hint: optimize with -O0 or -O2+, and not -O1");
     import platform
     is_64bits = platform.architecture()[0] == '64bit'
-    if not is_64bits: return self.skip('This test requires 64-bit system, since it tests SSE2 intrinsics only available in 64-bit mode!')
+    if not is_64bits: self.skipTest('This test requires 64-bit system, since it tests SSE2 intrinsics only available in 64-bit mode!')
 
     args = []
     if '-O0' in self.emcc_args: args += ['-D_DEBUG=1']
@@ -5587,7 +5593,7 @@ return malloc(size);
 
   @SIMD
   def test_simd15(self):
-    if self.run_name == 'asm1': return self.skip('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
+    if self.run_name == 'asm1': self.skipTest('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd15')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5666,7 +5672,7 @@ return malloc(size);
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
   def test_freetype(self):
-    if self.is_windows(): return self.skip('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
+    if self.is_windows(): self.skipTest('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
@@ -5727,7 +5733,7 @@ def process(filename):
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
-    if self.is_split_memory(): return self.skip('SM bug 1205121')
+    if self.is_split_memory(): self.skipTest('SM bug 1205121')
 
     Settings.DISABLE_EXCEPTION_CATCHING = 1
     Settings.EXPORTED_FUNCTIONS += ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'];
@@ -5808,7 +5814,7 @@ def process(filename):
 
   @sync
   def test_poppler(self):
-    if self.is_windows(): return self.skip('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
+    if self.is_windows(): self.skipTest('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
 
     def test():
       Building.COMPILER_TEST_OPTS += [
@@ -5991,7 +5997,7 @@ def process(filename):
   # to process.
   @no_wasm_backend("uses bitcode compiled with asmjs, and we don't have unified triples")
   def test_cases(self):
-    if Building.LLVM_OPTS: return self.skip("Our code is not exactly 'normal' llvm assembly")
+    if Building.LLVM_OPTS: self.skipTest("Our code is not exactly 'normal' llvm assembly")
 
     Settings.NO_EXIT_RUNTIME = 0 # needs to flush stdio streams
 
@@ -6033,7 +6039,7 @@ def process(filename):
           Settings.NO_FILESYSTEM = 1 # no libc is linked in; with NO_FILESYSTEM we have a chance at printfing anyhow
 
         if '_noasm' in shortname and Settings.ASM_JS:
-          print(self.skip('case "%s" not relevant for asm.js' % shortname))
+          print('case "%s" not relevant for asm.js' % shortname)
           continue
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
@@ -6111,7 +6117,7 @@ def process(filename):
 
   def test_autodebug(self):
     if Building.LLVM_OPTS:
-      return self.skip('LLVM opts mess us up')
+      self.skipTest('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Run a test that should work, generating some code
@@ -6313,7 +6319,7 @@ def process(filename):
     test('abort(', args=['x'], no_build=True)
 
   def test_pgo(self):
-    if Settings.ASM_JS: return self.skip('PGO does not work in asm mode')
+    if Settings.ASM_JS: self.skipTest('PGO does not work in asm mode')
 
     def run_all(name, src):
       print(name)
@@ -6385,7 +6391,7 @@ def process(filename):
 
   # TODO: test only worked in non-fastcomp
   def test_asm_pgo(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
+    self.skipTest('non-fastcomp is deprecated and fails in 3.5')
 
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
@@ -6437,17 +6443,17 @@ def process(filename):
   def test_response_file(self):
     with open('rsp_file', 'w') as f:
       f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
-    subprocess.check_call([PYTHON, EMCC, "@rsp_file"])
+    run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
   def test_linker_response_file(self):
     objfile = os.path.join(self.get_dir(), 'response_file.o')
-    subprocess.check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile])
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.emcc_args)
     # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
     # by emscripten
     with open('rsp_file', 'w') as f:
       f.write(objfile + ' -foobar')
-    subprocess.check_call([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')])
+    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
   def test_exported_response(self):
@@ -6590,7 +6596,7 @@ def process(filename):
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
       self.emcc_args += ['--llvm-opts', '0']
     else:
-      return self.skip("without opts, we don't emit a symbol map")
+      self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
     self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.cpp')).read(), 'abort')
     # make sure the shortened name is the right one
@@ -6617,7 +6623,7 @@ def process(filename):
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
   def test_eval_ctors(self):
-    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): return self.skip('need js optimizations')
+    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): self.skipTest('need js optimizations')
 
     orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
@@ -6921,10 +6927,10 @@ err = err = function(){};
   ### Tests for tools
 
   def test_safe_heap(self):
-    if not Settings.SAFE_HEAP: return self.skip('We need SAFE_HEAP to test SAFE_HEAP')
+    if not Settings.SAFE_HEAP: self.skipTest('We need SAFE_HEAP to test SAFE_HEAP')
     # TODO: Should we remove this test?
-    return self.skip('It is ok to violate the load-store assumption with TA2')
-    if Building.LLVM_OPTS: return self.skip('LLVM can optimize away the intermediate |x|')
+    self.skipTest('It is ok to violate the load-store assumption with TA2')
+    if Building.LLVM_OPTS: self.skipTest('LLVM can optimize away the intermediate |x|')
 
     src = '''
       #include <stdio.h>
@@ -6989,7 +6995,7 @@ err = err = function(){};
 
   @no_emterpreter
   def test_source_map(self):
-    if not jsrun.check_engine(NODE_JS): return self.skip('sourcemapper requires Node to run')
+    if not jsrun.check_engine(NODE_JS): self.skipTest('sourcemapper requires Node to run')
     if '-g' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g')
 
     src = '''
@@ -7107,9 +7113,9 @@ err = err = function(){};
 
   @no_emterpreter
   def test_exception_source_map(self):
-    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
+    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     if '-g4' not in Building.COMPILER_TEST_OPTS: Building.COMPILER_TEST_OPTS.append('-g4')
-    if not jsrun.check_engine(NODE_JS): return self.skip('sourcemapper requires Node to run')
+    if not jsrun.check_engine(NODE_JS): self.skipTest('sourcemapper requires Node to run')
 
     src = '''
       #include <stdio.h>
@@ -7147,7 +7153,7 @@ err = err = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=(None, post))
 
   def test_emscripten_log(self):
-    if self.is_wasm(): return self.skip('wasmifying destroys debug info and stack tracability')
+    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if self.is_emterpreter():
@@ -7253,7 +7259,7 @@ Success!
 
     if not emterpretify:
       if self.is_emterpreter():
-        return self.skip("don't test both emterpretify and asyncify at once")
+        self.skipTest("don't test both emterpretify and asyncify at once")
       Settings.ASYNCIFY = 1
     else:
       Settings.EMTERPRETIFY = 1
@@ -7357,7 +7363,7 @@ Module['onRuntimeInitialized'] = function() {
     self.test_async(emterpretify=True)
 
   def test_async_returnvalue(self):
-    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+    if not self.is_emterpreter(): self.skipTest('emterpreter-only test')
 
     Settings.EMTERPRETIFY_ASYNC = 1
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
@@ -7399,7 +7405,7 @@ int main() {
     self.do_run(src, 'napped');
 
   def test_async_exit(self):
-    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+    if not self.is_emterpreter(): self.skipTest('emterpreter-only test')
 
     Settings.EMTERPRETIFY_ASYNC = 1
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
@@ -7433,7 +7439,7 @@ int main() {
 ''', 'f\nhello\nf\nhello\nf\nhello\nf\nhello\nf\nhello\nexit\n')
 
   def test_async_abort(self):
-    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+    if not self.is_emterpreter(): self.skipTest('emterpreter-only test')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -7474,7 +7480,7 @@ int main() {
     self.do_run(src, 'Hello')
 
   def test_async_invoke_safe_heap(self):
-    if not self.is_emterpreter(): return self.skip('emterpreter-only test')
+    if not self.is_emterpreter(): self.skipTest('emterpreter-only test')
 
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
@@ -7592,7 +7598,7 @@ extern "C" {
         }
       }
       ''')
-    run_process([PYTHON, EMCC, 'src.cpp'])
+    run_process([PYTHON, EMCC, 'src.cpp'] + self.emcc_args)
     self.assertContained('ok.', run_js('a.out.js', args=['C']))
 
   def test_memprof_requirements(self):
@@ -7657,7 +7663,7 @@ extern "C" {
 
   @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
   def test_binaryen_trap_mode(self):
-    if not self.is_wasm(): return self.skip('wasm test')
+    if not self.is_wasm(): self.skipTest('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')
     default = Settings.BINARYEN_TRAP_MODE
     print('default is', default)
@@ -7720,7 +7726,7 @@ extern "C" {
         assert ('require(' in js) == (Settings.ENVIRONMENT == 'node'), 'we should have require() calls only if node js specified'
 
   def test_dfe(self):
-    if not self.supports_js_dfe(): return self.skip('dfe-only')
+    if not self.supports_js_dfe(): self.skipTest('dfe-only')
     Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 1
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     self.emcc_args += ['-g2'] # test for issue #6331

@@ -1319,14 +1319,9 @@ class SettingsManager(object):
 
 Settings = SettingsManager()
 
-if Settings.WASM_BACKEND:
-  try:
-    BINARYEN_ROOT
-  except:
-    logging.fatal('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                  ' when using the LLVM wasm backend')
-    sys.exit(1)
-  assert BINARYEN_ROOT, 'BINARYEN_ROOT path is empty'
+if Settings.WASM_BACKEND and not BINARYEN_ROOT:
+  logging.fatal('emcc: BINARYEN_ROOT must be set in the .emscripten config'
+                ' when using the LLVM wasm backend')
 
 
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
@@ -2666,7 +2661,7 @@ class Building(object):
     paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
              os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
     for dirname in paths:
-      if os.path.exists(os.path.join(dirname, 'binaryen.js')):
+      if os.path.exists(os.path.join(dirname, 'wasm.js')):
         return dirname
     logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
     sys.exit(1)
