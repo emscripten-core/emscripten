@@ -59,7 +59,7 @@ def shell_with_script(shell_file, output_file, replacement):
 def requires_hardware(func):
   if os.environ.get("EM_LACKS_HARDWARE_ACCESS"):
     unittest.skip("This test requires hardware access including graphics and sound devices")
-  return lambda func: func
+  return func
 
 class browser(BrowserCore):
   @classmethod
