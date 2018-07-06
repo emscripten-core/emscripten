@@ -44,7 +44,7 @@ if (ENVIRONMENT_IS_NODE) {
   }
 
   function find(filename) {
-    var prefixes = [nodePath.join(__dirname, '..', 'src'), process.cwd()];
+    var prefixes = [process.cwd(), nodePath.join(__dirname, '..', 'src')];
     for (var i = 0; i < prefixes.length; ++i) {
       var combined = nodePath.join(prefixes[i], filename);
       if (nodeFS.existsSync(combined)) {

@@ -35,7 +35,7 @@ import logging
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
-from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes
+from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess
 from tools.response_file import substitute_response_files
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
@@ -2635,8 +2635,7 @@ def generate_html(target, options, js_target, target_basename,
   script = ScriptSource()
 
   logging.debug('generating HTML')
-  # TODO: use read_and_preprocess(options.shell_path) here, once test errors are fixed
-  shell = open(options.shell_path).read()
+  shell = read_and_preprocess(options.shell_path)
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
 

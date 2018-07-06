@@ -8462,8 +8462,6 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
 
   def test_html_preprocess(self):
-    self.skipTest('enable when html preprocessing is reenabled')
-
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
     output_file = path_from_root('tests', 'module', 'test_stdin.html')
     shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
