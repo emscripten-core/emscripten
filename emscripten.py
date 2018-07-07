@@ -687,7 +687,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
 
     if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
       # we cannot have an EM_ASM on the stack when saving/loading
-      pre_asm_const += "  assert(typeof EmterpreterAsync !== 'object' || EmterpreterAsync.state !== 2, 'cannot have an EM_ASM on the stack when emterpreter pauses/resumes - we would end up running the entire EM_ASMs JS again from the start');\n"
+      pre_asm_const += "  assert(typeof EmterpreterAsync !== 'object' || EmterpreterAsync.state !== 2, 'cannot have an EM_ASM on the stack when emterpreter pauses/resumes - the JS is not emterpreted, so we would end up running it again from the start');\n"
 
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
