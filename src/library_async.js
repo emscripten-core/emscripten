@@ -234,8 +234,8 @@ mergeInto(LibraryManager.library, {
     state: 0, // 0 - Nothing/normal.
               // 1 - Sleeping: This is set when we start to save the stack, and continues through the
               //     sleep, until we start to restore the stack.
-              //     If we re-enter emterpreted code while in this state - that is, before we
-              //     start to restore the stack, or in other words if we run emterpreted code while
+              //     If we re-enter any code while in this state - that is, before we
+              //     start to restore the stack, or in other words if we run code while
               //     sleeping - then we switch to state 3, "definitely sleeping". That lets us know
               //     we are no longer saving the stack. How this works is that while we save the stack
               //     we don't hit any function entries, so they are valid places to switch to state 3,
