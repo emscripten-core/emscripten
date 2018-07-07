@@ -5541,7 +5541,7 @@ function _main() {
 #include <stdio.h>
 #include <emscripten.h>
 
-EMSCRIPTEN_KEEPALIVE void emterpreted_yielder() {
+void emterpreted_yielder() {
   int counter = 0;
   while (1) {
     printf("emterpreted_yielder() sleeping...\n");
@@ -5565,8 +5565,8 @@ int main() {
       Module["_not_emterpreted"]();
     }, 0);
     console.log("calling emterpreted_yielder()");
-    Module["_emterpreted_yielder"]();
   });
+  emterpreted_yielder();
 }
     ''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]'])

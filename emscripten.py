@@ -680,12 +680,19 @@ def include_asm_consts(pre, forwarded_json, metadata):
     # In proxied function calls, positive integers 1, 2, 3, ... denote pointers to regular C compiled functions. Negative integers -1, -2, -3, ... denote indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2, ... over to the negative integers starting at -1.
     proxy_args = '-1 - ' + ','.join(all_args)
 
-    if proxy_function: proxy_to_main_thread = '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(call_type) + 'return ' + proxy_function + '(' + proxy_args + '); } \n'
-    else: proxy_to_main_thread = ''
+    pre_asm_const = ''
+
+    if proxy_function:
+      pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(call_type) + 'return ' + proxy_function + '(' + proxy_args + '); } \n'
+
+    if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
+      # we cannot have an EM_ASM on the stack when saving/loading
+      pre_asm_const += "  assert(typeof EmterpreterAsync !== 'object' || EmterpreterAsync.state !== 2, 'cannot have an EM_ASM on the stack when emterpreter pauses/resumes - we would end up running the entire EM_ASMs JS again from the start');\n"
+
     asm_const_funcs.append(r'''
 function _emscripten_asm_const_%s(%s) {
 %s  return ASM_CONSTS[code](%s);
-}''' % (call_type + asstr(sig), ', '.join(all_args), proxy_to_main_thread, ', '.join(args)))
+}''' % (call_type + asstr(sig), ', '.join(all_args), pre_asm_const, ', '.join(args)))
 
   asm_consts_text = '\nvar ASM_CONSTS = [' + ',\n '.join(asm_consts) + '];\n'
   asm_funcs_text = '\n'.join(asm_const_funcs) + '\n'
