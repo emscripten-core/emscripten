@@ -7377,8 +7377,8 @@ function emterpretify(ast) {
     // state 1, that means the stack was completely unwound and we are
     // during a sleep. mark the state as definitely asleep, which lets us
     // assert on seeing state 1 after each call in non-emterpreted code.
-    function makeAssertionsPreludeStateChange() {
-      assert(ASYNC && ASSERTIONS);
+    function makePreludeStateChange() {
+      assert(ASYNC);
       return ['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')];
     }
 
@@ -7387,16 +7387,17 @@ function emterpretify(ast) {
     var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
-      // we are not emterpreting this function
+      // we are not emterpreting this function. not much to do here, but we do need to
+      // set up some interactions with emterpreted code
+      function makeCheckBadState(state) {
+        // A bad state is when restoring the stack: we must only load the stack in that state,
+        // not do any actual work.
+        return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', state]];
+      }
+      function makeBadStateAbort(check, type, otherwise) {
+        return ['conditional', check, makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], type), otherwise];
+      }
       if (ASYNC && ASSERTIONS && !okToCallDuringAsyncRestore(func[1])) {
-        function makeCheckBadState(state) {
-          // A bad state is when restoring the stack: we must only load the stack in that state,
-          // not do any actual work.
-          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', state]];
-        }
-        function makeBadStateAbort(check, type, otherwise) {
-          return ['conditional', check, makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], type), otherwise];
-        }
         var stack = [];
         traverse(func, function(node, type) {
           stack.push(node);
@@ -7435,18 +7436,23 @@ function emterpretify(ast) {
             makeBadStateAbort(check, ASM_INT, ['num', 0])
           ]);
         });
-        // add an assert in the prelude of the function
+      }
+      // Add prelude code
+      if (ASYNC) {
         var stats = getStatements(func);
         for (var i = 0; i < stats.length; i++) {
           var node = stats[i];
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
             // in the prelude, we check that we are not restoring the stack
+            if (ASSERTIONS) {
+              stats.splice(i, 0, ['stat',
+                makeBadStateAbort(makeCheckBadState(2), ASM_INT, ['num', 0])
+              ]);
+            }
+            // update the state if necessary
             stats.splice(i, 0, ['stat',
-              makeBadStateAbort(makeCheckBadState(2), ASM_INT, ['num', 0])
-            ]);
-            stats.splice(i, 0, ['stat',
-              makeAssertionsPreludeStateChange()
+              makePreludeStateChange()
             ]);
             break;
           }
@@ -7609,9 +7615,7 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        if (ASSERTIONS) {
-          argStats.push(makeAssertionsPreludeStateChange());
-        }
+        argStats.push(makePreludeStateChange());
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
