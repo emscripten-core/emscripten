@@ -1,18 +1,49 @@
 from __future__ import print_function
-from .toolchain_profiler import ToolchainProfiler
-import shutil, time, os, sys, base64, json, tempfile, copy, shlex, atexit, subprocess, hashlib, pickle, re, errno
-from subprocess import Popen, PIPE, STDOUT
-from tempfile import mkstemp
+
 from distutils.spawn import find_executable
+from subprocess import PIPE, STDOUT
+import atexit
+import base64
+import json
+import logging
+import math
+import multiprocessing
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+from .toolchain_profiler import ToolchainProfiler
+from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
-import logging, platform, multiprocessing
 
-# Temp file utilities
-from .tempfiles import try_delete
+colored_logger.enable()
 
-# On Windows python suffers from a particularly nasty bug if python is spawning new processes while python itself is spawned from some other non-console process.
-# Use a custom replacement for Popen on Windows to avoid the "WindowsError: [Error 6] The handle is invalid" errors when emcc is driven through cmake or mingw32-make.
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+WINDOWS = sys.platform.startswith('win')
+MACOS = sys.platform == 'darwin'
+LINUX = sys.platform.startswith('linux')
+
+
+class FatalError(Exception):
+  """Error representing an unrecoverable error such as the failure of
+  a subprocess.
+
+  These are usually handled at the entry point of each script."""
+  pass
+
+
+# On Windows python suffers from a particularly nasty bug if python is spawning
+# new processes while python itself is spawned from some other non-console
+# process.
+# Use a custom replacement for Popen on Windows to avoid the "WindowsError:
+# [Error 6] The handle is invalid" errors when emcc is driven through cmake or
+# mingw32-make.
 # See http://bugs.python.org/issue3905
 class WindowsPopen(object):
   def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
@@ -29,11 +60,11 @@ class WindowsPopen(object):
 
     # If the caller wants one of these PIPEd, we must PIPE them all to avoid the 'handle is invalid' bug.
     if self.stdin_ == PIPE or self.stdout_ == PIPE or self.stderr_ == PIPE:
-      if self.stdin_ == None:
+      if self.stdin_ is None:
         self.stdin_ = PIPE
-      if self.stdout_ == None:
+      if self.stdout_ is None:
         self.stdout_ = PIPE
-      if self.stderr_ == None:
+      if self.stderr_ is None:
         self.stderr_ = PIPE
 
     # emscripten.py supports reading args from a response file instead of cmdline.
@@ -55,18 +86,18 @@ class WindowsPopen(object):
     self.returncode = self.process.returncode
 
     # If caller never wanted to PIPE stdout or stderr, route the output back to screen to avoid swallowing output.
-    if self.stdout == None and self.stdout_ == PIPE and len(output[0].strip()) > 0:
+    if self.stdout is None and self.stdout_ == PIPE and len(output[0].strip()):
       print(output[0], file=sys.stdout)
-    if self.stderr == None and self.stderr_ == PIPE and len(output[1].strip()) > 0:
+    if self.stderr is None and self.stderr_ == PIPE and len(output[1].strip()):
       print(output[1], file=sys.stderr)
 
     # Return a mock object to the caller. This works as long as all emscripten code immediately .communicate()s the result, and doesn't
     # leave the process object around for longer/more exotic uses.
-    if self.stdout == None and self.stderr == None:
+    if self.stdout is None and self.stderr is None:
       return (None, None)
-    if self.stdout == None:
+    if self.stdout is None:
       return (None, output[1])
-    if self.stderr == None:
+    if self.stderr is None:
       return (output[0], None)
     return (output[0], output[1])
 
@@ -76,22 +107,20 @@ class WindowsPopen(object):
   def kill(self):
     return self.process.kill()
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
-WINDOWS = sys.platform.startswith('win')
-MACOS = sys.platform == 'darwin'
-LINUX = sys.platform.startswith('linux')
 
 # This is a workaround for https://bugs.python.org/issue9400
 class Py2CalledProcessError(subprocess.CalledProcessError):
-    def __init__(self, returncode, cmd, output=None, stderr=None):
-      super(Exception, self).__init__(returncode, cmd, output, stderr)
-      self.returncode = returncode
-      self.cmd = cmd
-      self.output = output
-      self.stderr = stderr
+  def __init__(self, returncode, cmd, output=None, stderr=None):
+    super(Exception, self).__init__(returncode, cmd, output, stderr)
+    self.returncode = returncode
+    self.cmd = cmd
+    self.output = output
+    self.stderr = stderr
+
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
 class Py2CompletedProcess:
@@ -113,6 +142,7 @@ class Py2CompletedProcess:
     if self.returncode is not 0:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
+
 def run_base(cmd, check=False, input=None, *args, **kw):
   if hasattr(subprocess, "run"):
     return subprocess.run(cmd, check=check, input=input, *args, **kw)
@@ -127,36 +157,25 @@ def run_base(cmd, check=False, input=None, *args, **kw):
     result.check_returncode()
   return result
 
+
 def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
   return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
-def execute(cmd, *args, **kw):
-  try:
-    cmd[0] = Building.remove_quotes(cmd[0])
-    return Popen(cmd, universal_newlines=True, *args, **kw).communicate() # let compiler frontend print directly, so colors are saved (PIPE kills that)
-  except:
-    if not isinstance(cmd, str):
-      cmd = ' '.join(cmd)
-    logging.error('Invoking Process failed: <<< ' + cmd + ' >>>')
-    raise
 
 def check_execute(cmd, *args, **kw):
-  # TODO: use in more places. execute doesn't actually check that return values
-  # are nonzero
   try:
-    subprocess.check_output(cmd, *args, **kw)
+    run_process(cmd, stdout=PIPE, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
-    raise
+    raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+
 
 def check_call(cmd, *args, **kw):
   try:
-    subprocess.check_call(cmd, *args, **kw)
+    run_process(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
-  except subprocess.CalledProcessError as e:
-    logging.error("'%s' failed" % " ".join(cmd))
-    raise
+  except subprocess.CalledProcessError:
+    raise FatalError("'%s' failed" % " ".join(cmd))
 
 
 # Emscripten configuration is done through the --em-config command line option or
@@ -166,7 +185,7 @@ def check_call(cmd, *args, **kw):
 # file that contains the required definitions.
 
 try:
-  EM_CONFIG = sys.argv[sys.argv.index('--em-config')+1]
+  EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
   skip = False
   newargs = []
@@ -242,6 +261,22 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (EM_CONFIG, CONFIG_FILE, llvm_root, node, __rootpath__), file=sys.stderr)
     sys.exit(0)
 
+# The following globals can be overridden by the config file.
+NODE_JS = None
+BINARYEN_ROOT = None
+EM_POPEN_WORKAROUND = None
+SPIDERMONKEY_ENGINE = None
+V8_ENGINE = None
+LLVM_ROOT = None
+COMPILER_ENGINE = None
+LLVM_ADD_VERSION = None
+CLANG_ADD_VERSION = None
+CLOSURE_COMPILER = None
+JAVA = None
+PYTHON = None
+JS_ENGINE = None
+COMPILER_OPTS = []
+
 try:
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   exec(config_text)
@@ -249,66 +284,71 @@ except Exception as e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
 
-# Returns a suggestion where current .emscripten config file might be located (if EM_CONFIG env. var is used
-# without a file, this hints to "default" location at ~/.emscripten)
+
+# Returns a suggestion where current .emscripten config file might be located
+# (if EM_CONFIG env. var is used without a file, this hints to "default"
+# location at ~/.emscripten)
 def hint_config_file_location():
-  if CONFIG_FILE: return CONFIG_FILE
-  else: return '~/.emscripten'
+  if CONFIG_FILE:
+    return CONFIG_FILE
+  else:
+    return '~/.emscripten'
+
 
 def listify(x):
-  if type(x) is not list: return [x]
+  if type(x) is not list:
+    return [x]
   return x
 
+
 def fix_js_engine(old, new):
+  if old is None:
+    return
   global JS_ENGINES
   JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
   return new
 
-try:
-  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
-except:
-  pass
-try:
-  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-except:
-  pass
-try:
-  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-except:
-  pass
 
+SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
+NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 COMPILER_ENGINE = listify(COMPILER_ENGINE)
-JS_ENGINES = [listify(ENGINE) for ENGINE in JS_ENGINES]
+JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 
-try:
-  EM_POPEN_WORKAROUND
-except:
+if EM_POPEN_WORKAROUND is None:
   EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
 
-# Install our replacement Popen handler if we are running on Windows to avoid python spawn process function.
-# nb. This is by default disabled since it has the adverse effect of buffering up all logging messages, which makes
-# builds look unresponsive (messages are printed only after the whole build finishes). Whether this workaround is needed
-# seems to depend on how the host application that invokes emcc has set up its stdout and stderr.
+# Install our replacement Popen handler if we are running on Windows to avoid
+# python spawn process function.
+# nb. This is by default disabled since it has the adverse effect of buffering
+# up all logging messages, which makes builds look unresponsive (messages are
+# printed only after the whole build finishes). Whether this workaround is
+# needed seems to depend on how the host application that invokes emcc has set
+# up its stdout and stderr.
 if EM_POPEN_WORKAROUND and os.name == 'nt':
   logging.debug('Installing Popen workaround handler to avoid bug http://bugs.python.org/issue3905')
   Popen = WindowsPopen
+else:
+  Popen = subprocess.Popen
 
 # Verbosity level control for any intermediate subprocess spawns from the compiler. Useful for internal debugging.
 # 0: disabled.
 # 1: Log stderr of subprocess spawns.
 # 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
-EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE')) if os.getenv('EM_BUILD_VERBOSE') != None else 0
+EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE', '0'))
 
 # Expectations
 
 actual_clang_version = None
 
+
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
     return "7.0"
   else:
-    return "5.0"
+    return "6.0"
+
 
 def get_clang_version():
   global actual_clang_version
@@ -318,6 +358,7 @@ def get_clang_version():
     actual_clang_version = m and m.group(1)
   return actual_clang_version
 
+
 def check_clang_version():
   expected = expected_llvm_version()
   actual = get_clang_version()
@@ -326,11 +367,13 @@ def check_clang_version():
   logging.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
   return False
 
+
 def check_llvm_version():
   try:
     check_clang_version()
   except Exception as e:
     logging.critical('Could not verify LLVM version: %s' % str(e))
+
 
 # look for emscripten-version.txt files under or alongside the llvm source dir
 def get_fastcomp_src_dir():
@@ -349,6 +392,7 @@ def get_fastcomp_src_dir():
       d = os.path.dirname(d)
   return None
 
+
 def get_llc_targets():
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
@@ -357,11 +401,14 @@ def get_llc_targets():
   except Exception as e:
     return '(no targets could be identified: ' + str(e) + ')'
 
+
 def has_asm_js_target(targets):
   return 'js' in targets and 'JavaScript (asm.js, emscripten) backend' in targets
 
+
 def has_wasm_target(targets):
   return 'wasm32' in targets and 'WebAssembly 32-bit' in targets
+
 
 def check_fastcomp():
   try:
@@ -414,7 +461,9 @@ def check_fastcomp():
     logging.warning('could not check fastcomp: %s' % str(e))
     return True
 
+
 EXPECTED_NODE_VERSION = (4, 1, 1)
+
 
 def check_node_version():
   jsrun.check_engine(NODE_JS)
@@ -426,12 +475,13 @@ def check_node_version():
     logging.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
     return False
   except Exception as e:
-    logging.warning('cannot check node version: %s',  e)
+    logging.warning('cannot check node version: %s', e)
     return False
+
 
 def check_closure_compiler():
   try:
-    subprocess.call([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
+    run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except:
     logging.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
@@ -439,6 +489,7 @@ def check_closure_compiler():
     logging.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
     return False
   return True
+
 
 # Finds the system temp directory without resorting to using the one configured in .emscripten
 def find_temp_directory():
@@ -454,33 +505,28 @@ def find_temp_directory():
   else:
     return '/tmp'
 
+
 def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
-# Check that basic stuff we need (a JS engine to compile, Node.js, and Clang and LLVM)
-# exists.
-# The test runner always does this check (through |force|). emcc does this less frequently,
-# only when ${EM_CONFIG}_sanity does not exist or is older than EM_CONFIG (so,
-# we re-check sanity when the settings are changed)
-# We also re-check sanity and clear the cache when the version changes
 
-try:
-  EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
-  try:
-    parts = map(int, EMSCRIPTEN_VERSION.split('.'))
-    EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
-  except Exception as e:
-    logging.warning('emscripten version ' + EMSCRIPTEN_VERSION + ' lacks standard parts')
-    EMSCRIPTEN_VERSION_MAJOR = EMSCRIPTEN_VERSION_MINOR = EMSCRIPTEN_VERSION_TINY = 0
-    raise e
-except Exception as e:
-  logging.error('cannot find emscripten version ' + str(e))
-  EMSCRIPTEN_VERSION = 'unknown'
+EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
+parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
+
 
 def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
+
 def check_sanity(force=False):
+  """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
+  and LLVM) exists.
+
+  The test runner always does this check (through |force|). emcc does this less
+  frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
+  EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
+  re-check sanity and clear the cache when the version changes"""
   ToolchainProfiler.enter_block('sanity')
   try:
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
@@ -503,7 +549,8 @@ def check_sanity(force=False):
             if sanity_data != generate_sanity():
               reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
             else:
-              if not force: return # all is well
+              if not force:
+                return # all is well
         except Exception as e:
           reason = 'unknown: ' + str(e)
     if reason:
@@ -534,13 +581,13 @@ def check_sanity(force=False):
 
     with ToolchainProfiler.profile_block('sanity LLVM'):
       for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
-        if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'): # .exe extension required for Windows
+        if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
           logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
           sys.exit(1)
 
     if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
       try:
-        subprocess.check_call([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
+        run_process([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
       except:
         logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
         sys.exit(1)
@@ -566,17 +613,14 @@ def check_sanity(force=False):
   finally:
     ToolchainProfiler.exit_block('sanity')
 
+
 # Tools/paths
+if LLVM_ADD_VERSION is None:
+  LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
 
-try:
-	LLVM_ADD_VERSION
-except NameError:
-	LLVM_ADD_VERSION = os.getenv('LLVM_ADD_VERSION')
+if CLANG_ADD_VERSION is None:
+  CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
-try:
-	CLANG_ADD_VERSION
-except NameError:
-	CLANG_ADD_VERSION = os.getenv('CLANG_ADD_VERSION')
 
 # Some distributions ship with multiple llvm versions so they add
 # the version to the binaries, cope with that
@@ -586,6 +630,7 @@ def build_llvm_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
+
 # Some distributions ship with multiple clang versions so they add
 # the version to the binaries, cope with that
 def build_clang_tool_path(tool):
@@ -594,7 +639,9 @@ def build_clang_tool_path(tool):
   else:
     return os.path.join(LLVM_ROOT, tool)
 
-# Whenever building a native executable for macOS, we must provide the macOS SDK version we want to target.
+
+# Whenever building a native executable for macOS, we must provide the macOS SDK
+# version we want to target.
 def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
@@ -606,11 +653,15 @@ def macos_find_native_sdk_path():
     logging.warning('Could not find native macOS SDK path to target!')
     return None
 
+
 # These extra args need to be passed to Clang when targeting a native host system executable
-CACHED_CLANG_NATIVE_ARGS=None
+CACHED_CLANG_NATIVE_ARGS = None
+
+
 def get_clang_native_args():
   global CACHED_CLANG_NATIVE_ARGS
-  if CACHED_CLANG_NATIVE_ARGS is not None: return CACHED_CLANG_NATIVE_ARGS
+  if CACHED_CLANG_NATIVE_ARGS is not None:
+    return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
   if MACOS:
     sdk_path = macos_find_native_sdk_path()
@@ -621,33 +672,47 @@ def get_clang_native_args():
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
   return CACHED_CLANG_NATIVE_ARGS
 
+
 # This environment needs to be present when targeting a native host system executable
-CACHED_CLANG_NATIVE_ENV=None
+CACHED_CLANG_NATIVE_ENV = None
+
+
 def get_clang_native_env():
   global CACHED_CLANG_NATIVE_ENV
-  if CACHED_CLANG_NATIVE_ENV is not None: return CACHED_CLANG_NATIVE_ENV
+  if CACHED_CLANG_NATIVE_ENV is not None:
+    return CACHED_CLANG_NATIVE_ENV
   env = os.environ.copy()
 
   if WINDOWS:
-    # If already running in Visual Studio Command Prompt manually, no need to add anything here, so just return.
+    # If already running in Visual Studio Command Prompt manually, no need to
+    # add anything here, so just return.
     if 'VSINSTALLDIR' in env and 'INCLUDE' in env and 'LIB' in env:
       CACHED_CLANG_NATIVE_ENV = env
       return env
 
     # Guess where VS2015 is installed (VSINSTALLDIR env. var in VS2015 X64 Command Prompt)
-    if 'VSINSTALLDIR' in env: visual_studio_path = env['VSINSTALLDIR']
-    elif 'VS140COMNTOOLS' in env: visual_studio_path = os.path.normpath(os.path.join(env['VS140COMNTOOLS'], '../..'))
-    elif 'ProgramFiles(x86)' in env: visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Microsoft Visual Studio 14.0'))
-    elif 'ProgramFiles' in env: visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles'], 'Microsoft Visual Studio 14.0'))
-    else: visual_studio_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 14.0'
+    if 'VSINSTALLDIR' in env:
+      visual_studio_path = env['VSINSTALLDIR']
+    elif 'VS140COMNTOOLS' in env:
+      visual_studio_path = os.path.normpath(os.path.join(env['VS140COMNTOOLS'], '../..'))
+    elif 'ProgramFiles(x86)' in env:
+      visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles(x86)'], 'Microsoft Visual Studio 14.0'))
+    elif 'ProgramFiles' in env:
+      visual_studio_path = os.path.normpath(os.path.join(env['ProgramFiles'], 'Microsoft Visual Studio 14.0'))
+    else:
+      visual_studio_path = 'C:\\Program Files (x86)\\Microsoft Visual Studio 14.0'
     if not os.path.isdir(visual_studio_path):
       raise Exception('Visual Studio 2015 was not found in "' + visual_studio_path + '"! Run in Visual Studio X64 command prompt to avoid the need to autoguess this location (or set VSINSTALLDIR env var).')
 
     # Guess where Program Files (x86) is located
-    if 'ProgramFiles(x86)' in env: prog_files_x86 = env['ProgramFiles(x86)']
-    elif 'ProgramFiles' in env: prog_files_x86 = env['ProgramFiles']
-    elif os.path.isdir('C:\\Program Files (x86)'): prog_files_x86 = 'C:\\Program Files (x86)'
-    elif os.path.isdir('C:\\Program Files'): prog_files_x86 = 'C:\\Program Files'
+    if 'ProgramFiles(x86)' in env:
+      prog_files_x86 = env['ProgramFiles(x86)']
+    elif 'ProgramFiles' in env:
+      prog_files_x86 = env['ProgramFiles']
+    elif os.path.isdir('C:\\Program Files (x86)'):
+      prog_files_x86 = 'C:\\Program Files (x86)'
+    elif os.path.isdir('C:\\Program Files'):
+      prog_files_x86 = 'C:\\Program Files'
     else:
       raise Exception('Unable to detect Program files directory for native Visual Studio build!')
 
@@ -672,13 +737,15 @@ def get_clang_native_env():
     windows10sdk_kit_version_name = [x for x in os.listdir(windows10sdk_kits_include_dir) if os.path.isdir(os.path.join(windows10sdk_kits_include_dir, x))][0] # e.g. "10.0.10150.0" or "10.0.10240.0"
 
     def append_item(key, item):
-      if key not in env or len(env[key].strip()) == 0: env[key] = item
-      else: env[key] = env[key] + ';' + item
+      if key not in env or len(env[key].strip()) == 0:
+        env[key] = item
+      else:
+        env[key] = env[key] + ';' + item
 
     append_item('INCLUDE', os.path.join(env['VCINSTALLDIR'], 'INCLUDE'))
     append_item('INCLUDE', os.path.join(env['VCINSTALLDIR'], 'ATLMFC', 'INCLUDE'))
     append_item('INCLUDE', os.path.join(windows10_sdk_dir, 'include', windows10sdk_kit_version_name, 'ucrt'))
-#   append_item('INCLUDE', 'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\include\\um') # VS2015 X64 command prompt has this, but not needed for Emscripten
+    #   append_item('INCLUDE', 'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\include\\um') # VS2015 X64 command prompt has this, but not needed for Emscripten
     append_item('INCLUDE', os.path.join(env['VCINSTALLDIR'], 'ATLMFC', 'INCLUDE'))
     append_item('INCLUDE', os.path.join(windows8_sdk_dir, 'include', 'shared'))
     append_item('INCLUDE', os.path.join(windows8_sdk_dir, 'include', 'um'))
@@ -688,7 +755,7 @@ def get_clang_native_env():
     append_item('LIB', os.path.join(env['VCINSTALLDIR'], 'LIB', 'amd64'))
     append_item('LIB', os.path.join(env['VCINSTALLDIR'], 'ATLMFC', 'LIB', 'amd64'))
     append_item('LIB', os.path.join(windows10_sdk_dir, 'lib', windows10sdk_kit_version_name, 'ucrt', 'x64'))
-#   append_item('LIB', 'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\lib\\um\\x64') # VS2015 X64 command prompt has this, but not needed for Emscripten
+    #   append_item('LIB', 'C:\\Program Files (x86)\\Windows Kits\\NETFXSDK\\4.6.1\\lib\\um\\x64') # VS2015 X64 command prompt has this, but not needed for Emscripten
     append_item('LIB', os.path.join(windows8_sdk_dir, 'lib', 'winv6.3', 'um', 'x64'))
     logging.debug('VS2015 native build LIB: ' + env['LIB'])
 
@@ -700,21 +767,24 @@ def get_clang_native_env():
   CACHED_CLANG_NATIVE_ENV = env
   return env
 
+
 def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
-CLANG_CC=os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
-CLANG_CPP=os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
-CLANG=CLANG_CPP
-LLVM_LINK=build_llvm_tool_path(exe_suffix('llvm-link'))
-LLVM_AR=build_llvm_tool_path(exe_suffix('llvm-ar'))
-LLVM_OPT=os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
-LLVM_AS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
-LLVM_DIS=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
-LLVM_NM=os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
-LLVM_INTERPRETER=os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
-LLVM_COMPILER=os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
-LLD=os.path.expanduser(build_llvm_tool_path(exe_suffix('ld.lld')))
+
+CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
+CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG = CLANG_CPP
+LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
+LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
+LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
+LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
+LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
+LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
+LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
+LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
@@ -728,8 +798,8 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 
+# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -739,20 +809,25 @@ def safe_ensure_dirs(dirname):
     if not os.path.isdir(dirname):
       raise e
 
+
 # Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
 def get_emscripten_temp_dir():
   global configuration, EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
+
     def prepare_to_clean_temp(d):
       def clean_temp():
         try_delete(d)
+
       atexit.register(clean_temp)
     prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
   return EMSCRIPTEN_TEMP_DIR
 
+
 def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
+
 
 class WarningManager(object):
   warnings = {
@@ -804,6 +879,7 @@ class WarningManager(object):
       warning['printed'] = True
       logging.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
+
 class Configuration(object):
   def __init__(self, environ=os.environ):
     self.DEBUG = environ.get('EMCC_DEBUG')
@@ -818,7 +894,7 @@ class Configuration(object):
       self.TEMP_DIR = TEMP_DIR
     except NameError:
       self.TEMP_DIR = find_temp_directory()
-      if self.TEMP_DIR == None:
+      if self.TEMP_DIR is None:
         logging.critical('TEMP_DIR not defined in ' + hint_config_file_location() + ", and could not detect a suitable directory! Please configure .emscripten to contain a variable TEMP_DIR='/path/to/temp/dir'.")
       logging.debug('TEMP_DIR not defined in ' + hint_config_file_location() + ', using ' + self.TEMP_DIR)
 
@@ -839,6 +915,7 @@ class Configuration(object):
       tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
+
 def apply_configuration():
   global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
@@ -847,39 +924,32 @@ def apply_configuration():
   DEBUG_CACHE = configuration.DEBUG_CACHE
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
   TEMP_DIR = configuration.TEMP_DIR
-apply_configuration()
 
-logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s') # can add  %(asctime)s  to see timestamps
+
 def set_logging():
+  logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s') # can add  %(asctime)s  to see timestamps
   logger = logging.getLogger()
   logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
+
+
+apply_configuration()
 set_logging()
 
 # EM_CONFIG stuff
-
-try:
-  JS_ENGINES
-except:
-  try:
+if JS_ENGINES is None:
+  if JS_ENGINE is None:
+    raise 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
+  else:
     JS_ENGINES = [JS_ENGINE]
-  except Exception as e:
-    print('ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG)
-    raise
 
-try:
-  CLOSURE_COMPILER
-except:
+if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
-try:
-  PYTHON
-except:
+if PYTHON is None:
   logging.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
   PYTHON = sys.executable
 
-try:
-  JAVA
-except:
+if JAVA is None:
   logging.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
 
@@ -887,16 +957,15 @@ except:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown-elf'
+WASM_TARGET = 'wasm32-unknown-unknown-wasm'
+
 
 def check_vanilla():
-  global LLVM_TARGET, WASM_TARGET
+  global LLVM_TARGET
   # if the env var tells us what to do, do that
   if 'EMCC_WASM_BACKEND' in os.environ:
     if os.environ['EMCC_WASM_BACKEND'] != '0':
       logging.debug('EMCC_WASM_BACKEND tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('EMCC_WASM_BACKEND tells us to use asm.js backend')
@@ -906,14 +975,17 @@ def check_vanilla():
     # must use wasm (or at least try to). to know that, we have to run llc to
     # see which backends it has. we cache this result.
     temp_cache = cache.Cache(use_subdir=False)
+
     def check_vanilla():
       logging.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
+
     def get_vanilla_file():
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
       open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
       return saved_file
+
     is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt')
     if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
       logging.debug('config file changed since we checked vanilla; re-checking')
@@ -933,40 +1005,35 @@ def check_vanilla():
     temp_cache = None
     if is_vanilla:
       logging.debug('check tells us to use wasm backend')
-      if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-        WASM_TARGET = 'wasm32-unknown-unknown-wasm'
       LLVM_TARGET = WASM_TARGET
     else:
       logging.debug('check tells us to use asm.js backend')
       LLVM_TARGET = ASM_JS_TARGET
 
+
 check_vanilla()
+
 
 def get_llvm_target():
   assert LLVM_TARGET is not None
   return LLVM_TARGET
 
-# COMPILER_OPTS: options passed to clang when generating bitcode for us
-try:
-  COMPILER_OPTS # Can be set in EM_CONFIG, optionally
-except:
-  COMPILER_OPTS = []
 
 # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
 # data and other nice fixes.
-COMPILER_OPTS = COMPILER_OPTS + [#'-fno-threadsafe-statics', # disabled due to issue 1289
-                                 '-target', get_llvm_target(),
-                                 '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-                                 '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-                                 '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-                                 '-D_LIBCPP_ABI_VERSION=2']
+COMPILER_OPTS += [# '-fno-threadsafe-statics', # disabled due to issue 1289
+                  '-target', get_llvm_target(),
+                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
+                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
+                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
+                  '-D_LIBCPP_ABI_VERSION=2']
 
 if get_llvm_target() == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
-  COMPILER_OPTS = COMPILER_OPTS + ['-D__EMSCRIPTEN__',
-                                   '-Dunix',
-                                   '-D__unix',
-                                   '-D__unix__']
+  COMPILER_OPTS += ['-D__EMSCRIPTEN__',
+                    '-Dunix',
+                    '-D__unix',
+                    '-D__unix__']
 
 # Changes to default clang behavior
 
@@ -1034,21 +1101,24 @@ if not WINDOWS:
   except:
     pass
 
-# Utilities
 
+# Utilities
 def make_js_command(filename, engine=None, *args):
   if engine is None:
     engine = JS_ENGINES[0]
   return jsrun.make_command(filename, engine, *args)
+
 
 def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
   return jsrun.run_js(filename, engine, *args, **kw)
 
+
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
   return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
+
 
 def line_splitter(data):
   """Silly little tool to split JSON arrays over many lines."""
@@ -1066,9 +1136,12 @@ def line_splitter(data):
 
   return out
 
-def limit_size(string, MAX=800*20):
-  if len(string) < MAX: return string
-  return string[0:MAX/2] + '\n[..]\n' + string[-MAX/2:]
+
+def limit_size(string, MAX=800 * 20):
+  if len(string) < MAX:
+    return string
+  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+
 
 def read_pgo_data(filename):
   '''
@@ -1079,8 +1152,10 @@ def read_pgo_data(filename):
 
   for line in open(filename, 'r'):
     try:
-      if line.rstrip() == '': continue
-      if '%0 failures' in line: continue
+      if line.rstrip() == '':
+        continue
+      if '%0 failures' in line:
+        continue
       left, right = line.split(' : ')
       signature = left.split('|')[1]
       if 'Sign' in left:
@@ -1095,26 +1170,41 @@ def read_pgo_data(filename):
     'overflows_lines': overflows_lines
   }
 
-def unique_ordered(values): # return a list of unique values in an input list, without changing order (list(set(.)) would change order randomly)
+
+def unique_ordered(values):
+  """return a list of unique values in an input list, without changing order
+  (list(set(.)) would change order randomly).
+  """
   seen = set()
+
   def check(value):
-    if value in seen: return False
+    if value in seen:
+      return False
     seen.add(value)
     return True
+
   return list(filter(check, values))
+
 
 def expand_response(data):
   if type(data) == str and data[0] == '@':
     return json.loads(open(data[1:]).read())
   return data
 
-# Given a string with arithmetic and/or KB/MB size suffixes, such as "1024*1024" or "32MB", computes how many bytes that is and returns it as an integer.
+
 def expand_byte_size_suffixes(value):
+  """Given a string with arithmetic and/or KB/MB size suffixes, such as
+  "1024*1024" or "32MB", computes how many bytes that is and returns it as an
+  integer.
+  """
   value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
-  return eval(value)
+  try:
+    return eval(value)
+  except:
+    raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
+
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
-
 class SettingsManager(object):
   class __impl(object):
     attrs = {}
@@ -1124,7 +1214,7 @@ class SettingsManager(object):
 
     @classmethod
     def reset(self):
-      self.attrs = { 'QUANTUM_SIZE': 4 }
+      self.attrs = {'QUANTUM_SIZE': 4}
       self.load()
 
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
@@ -1147,13 +1237,11 @@ class SettingsManager(object):
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
-          declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i+1])
+          declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i + 1])
           exec(declare)
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
-        if os.environ.get('EMCC_EXPERIMENTAL_USE_LLD', '0') != '0':
-          self.attrs['EXPERIMENTAL_USE_LLD'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1161,10 +1249,14 @@ class SettingsManager(object):
     def serialize(self):
       ret = []
       for key, value in self.attrs.items():
-        if key == key.upper(): # this is a hack. all of our settings are ALL_CAPS, python internals are not
+        if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
       return ret
+
+    @classmethod
+    def to_dict(self):
+      return self.attrs.copy()
 
     @classmethod
     def copy(self, values):
@@ -1196,6 +1288,14 @@ class SettingsManager(object):
         logging.warning(''' - (see src/settings.js for valid values)''')
       self.attrs[attr] = value
 
+    @classmethod
+    def get(self, key):
+      return self.attrs.get(key)
+
+    @classmethod
+    def __getitem__(self, key):
+      return self.attrs[key]
+
   __instance = None
 
   @staticmethod
@@ -1210,7 +1310,19 @@ class SettingsManager(object):
   def __setattr__(self, attr, value):
     return setattr(self.instance(), attr, value)
 
+  def get(self, key):
+    return self.instance().get(key)
+
+  def __getitem__(self, key):
+    return self.instance()[key]
+
+
 Settings = SettingsManager()
+
+if Settings.WASM_BACKEND and not BINARYEN_ROOT:
+  logging.fatal('emcc: BINARYEN_ROOT must be set in the .emscripten config'
+                ' when using the LLVM wasm backend')
+
 
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
 # will trample each other when we extract them. to help warn of such situations, we warn if there
@@ -1221,9 +1333,10 @@ def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
-      if curr not in warned and curr in archive_contents[i+1:]:
+      if curr not in warned and curr in archive_contents[i + 1:]:
         logging.warning('   duplicate: %s' % curr)
         warned.add(curr)
+
 
 # N.B. This function creates a temporary directory specified by the 'dir' field in the returned dictionary. Caller
 # is responsible for cleaning up those files after done.
@@ -1233,7 +1346,7 @@ def extract_archive_contents(f):
     temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
     safe_ensure_dirs(temp_dir)
     os.chdir(temp_dir)
-    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x) > 0]
+    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x)]
     warn_if_duplicate_entries(contents, f)
     if len(contents) == 0:
       logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -1249,12 +1362,12 @@ def extract_archive_contents(f):
       dirname = os.path.dirname(content)
       if dirname:
         safe_ensure_dirs(dirname)
-    proc = Popen([LLVM_AR, 'xo', f], stdout=PIPE, stderr=PIPE)
-    stdout, stderr = proc.communicate() # if absolute paths, files will appear there. otherwise, in this directory
-    contents = list(map(os.path.abspath, contents))
+    proc = run_process([LLVM_AR, 'xo', f], stdout=PIPE, stderr=STDOUT)
+    # if absolute paths, files will appear there. otherwise, in this directory
+    contents = [os.path.abspath(c) for c in contents]
     nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-    if len(nonexisting_contents) != 0:
-      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(stdout) + str(stderr))
+    if len(nonexisting_contents):
+      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
 
     return {
       'returncode': proc.returncode,
@@ -1262,7 +1375,7 @@ def extract_archive_contents(f):
       'files': contents
     }
   except Exception as e:
-    print('extract archive contents('+str(f)+') failed with error: ' + str(e), file=sys.stderr)
+    print('extract archive contents( ' + str(f) + ') failed with error: ' + str(e), file=sys.stderr)
   finally:
     os.chdir(cwd)
 
@@ -1272,6 +1385,7 @@ def extract_archive_contents(f):
     'files': []
   }
 
+
 class ObjectFileInfo(object):
   def __init__(self, returncode, output, defs=set(), undefs=set(), commons=set()):
     self.returncode = returncode
@@ -1280,13 +1394,15 @@ class ObjectFileInfo(object):
     self.undefs = undefs
     self.commons = commons
 
-  def is_valid(self):
+  def is_valid_for_nm(self):
     return self.returncode == 0
 
-# Due to a python pickling issue, the following two functions must be at top level, or multiprocessing pool spawn won't find them.
 
+# Due to a python pickling issue, the following two functions must be at top
+# level, or multiprocessing pool spawn won't find them.
 def g_llvm_nm_uncached(filename):
   return Building.llvm_nm_uncached(filename)
+
 
 def g_multiprocessing_initializer(*args):
   for item in args:
@@ -1296,8 +1412,8 @@ def g_multiprocessing_initializer(*args):
     else:
       os.environ[key] = value
 
-# Building
 
+#  Building
 class Building(object):
   COMPILER = CLANG
   LLVM_OPTS = False
@@ -1356,7 +1472,8 @@ class Building(object):
             Building.multiprocessing_pool = None
           except OSError as e:
             # Mute the "WindowsError: [Error 5] Access is denied" errors, raise all others through
-            if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5): raise
+            if not (sys.platform.startswith('win') and isinstance(e, WindowsError) and e.winerror == 5):
+              raise
         atexit.register(close_multiprocessing_pool)
 
     return Building.multiprocessing_pool
@@ -1410,24 +1527,30 @@ class Building(object):
         if env.get(dangerous) and env.get(dangerous) == non_native.get(dangerous):
           del env[dangerous] # better to delete it than leave it, as the non-native one is definitely wrong
       return env
-    # add python when necessary (on non-windows, we now support python 2 and 3 so
-    # it should be ok either way)
-    env['CC'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['CXX'] = quote(EMXX) if not WINDOWS else 'python %s' % quote(EMXX)
-    env['AR'] = quote(EMAR) if not WINDOWS else 'python %s' % quote(EMAR)
-    env['LD'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
+    # point CC etc. to the em* tools.
+    # on windows, we must specify python explicitly. on other platforms, we prefer
+    # not to, as some configure scripts expect e.g. CC to be a literal executable
+    # (but "python emcc.py" is not a file that exists).
+    # note that we point to emcc etc. here, without a suffix, instead of to
+    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
+    # pick the right version as needed (which is not crucial right now as we support
+    # both 2 and 3, but eventually we may be 3-only).
+    env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
+    env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
+    env['LD'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['NM'] = quote(LLVM_NM)
-    env['LDSHARED'] = quote(EMCC) if not WINDOWS else 'python %s' % quote(EMCC)
-    env['RANLIB'] = quote(EMRANLIB) if not WINDOWS else 'python %s' % quote(EMRANLIB)
+    env['LDSHARED'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
+    env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
     env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
     env['HOST_CC'] = quote(CLANG_CC)
     env['HOST_CXX'] = quote(CLANG_CPP)
-    env['HOST_CFLAGS'] = "-W" #if set to nothing, CFLAGS is used, which we don't want
-    env['HOST_CXXFLAGS'] = "-W" #if set to nothing, CXXFLAGS is used, which we don't want
+    env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
+    env['HOST_CXXFLAGS'] = "-W" # if set to nothing, CXXFLAGS is used, which we don't want
     env['PKG_CONFIG_LIBDIR'] = path_from_root('system', 'local', 'lib', 'pkgconfig') + os.path.pathsep + path_from_root('system', 'lib', 'pkgconfig')
-    env['PKG_CONFIG_PATH'] = os.environ.get ('EM_PKG_CONFIG_PATH') or ''
+    env['PKG_CONFIG_PATH'] = os.environ.get('EM_PKG_CONFIG_PATH', '')
     env['EMSCRIPTEN'] = path_from_root()
     env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
     env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
@@ -1445,28 +1568,32 @@ class Building(object):
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
   @staticmethod
   def which(program):
-    import os
     def is_exe(fpath):
       return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
     if os.path.isabs(program):
-      if os.path.isfile(program): return program
+      if os.path.isfile(program):
+        return program
 
       if WINDOWS:
         for suffix in ['.exe', '.cmd', '.bat']:
-          if is_exe(program + suffix): return program + suffix
+          if is_exe(program + suffix):
+            return program + suffix
 
     fpath, fname = os.path.split(program)
     if fpath:
-      if is_exe(program): return program
+      if is_exe(program):
+        return program
     else:
       for path in os.environ["PATH"].split(os.pathsep):
         path = path.strip('"')
         exe_file = os.path.join(path, program)
-        if is_exe(exe_file): return exe_file
+        if is_exe(exe_file):
+          return exe_file
         if WINDOWS:
-          for suffix in ['.exe', '.cmd', '.bat']:
-            if is_exe(exe_file + suffix): return exe_file + suffix
+          for suffix in ('.exe', '.cmd', '.bat'):
+            if is_exe(exe_file + suffix):
+              return exe_file + suffix
 
     return None
 
@@ -1475,7 +1602,8 @@ class Building(object):
   @staticmethod
   def remove_sh_exe_from_path(env):
     env = env.copy()
-    if not WINDOWS: return env
+    if not WINDOWS:
+      return env
     path = env['PATH'].split(';')
     path = [p for p in path if not os.path.exists(os.path.join(p, 'sh.exe'))]
     env['PATH'] = ';'.join(path)
@@ -1496,7 +1624,7 @@ class Building(object):
 
     # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
-    if WINDOWS and not '-G' in args and Building.which('mingw32-make'):
+    if WINDOWS and '-G' not in args and Building.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
 
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
@@ -1521,16 +1649,21 @@ class Building(object):
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
-      if EM_BUILD_VERBOSE_LEVEL >= 3: print('configure: ' + str(args), file=sys.stderr)
-      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env)
-      process.communicate()
-    except Exception as e:
-      logging.error('Exception thrown when invoking Popen in configure with args: "%s"!' % ' '.join(args))
+      if EM_BUILD_VERBOSE_LEVEL >= 3:
+        print('configure: ' + str(args), file=sys.stderr)
+      if EM_BUILD_VERBOSE_LEVEL >= 2:
+        stdout = None
+      if EM_BUILD_VERBOSE_LEVEL >= 1:
+        stderr = None
+      res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
+    except Exception:
+      logging.error('Error running configure: "%s"' % ' '.join(args))
       raise
-    if 'EMMAKEN_JUST_CONFIGURE' in env: del env['EMMAKEN_JUST_CONFIGURE']
-    if process.returncode is not 0:
-      logging.error('Configure step failed with non-zero return code ' + str(process.returncode) + '! Command line: ' + str(args) + ' at ' + os.getcwd())
-      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
+    if 'EMMAKEN_JUST_CONFIGURE' in env:
+      del env['EMMAKEN_JUST_CONFIGURE']
+    if res.returncode is not 0:
+      logging.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
+      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None):
@@ -1539,7 +1672,7 @@ class Building(object):
     if not args:
       logging.error('Executable to run not specified.')
       sys.exit(1)
-    #args += ['VERBOSE=1']
+    # args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
     if WINDOWS:
@@ -1553,25 +1686,45 @@ class Building(object):
 
     try:
       # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE_LEVEL >= 3: print('make: ' + str(args), file=sys.stderr)
-      process = Popen(args, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else stdout, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else stderr, env=env, shell=WINDOWS)
-      process.communicate()
-    except Exception as e:
-      logging.error('Exception thrown when invoking Popen in make with args: "%s"!' % ' '.join(args))
+      if EM_BUILD_VERBOSE_LEVEL >= 3:
+        print('make: ' + str(args), file=sys.stderr)
+      if EM_BUILD_VERBOSE_LEVEL >= 2:
+        stdout = None
+      if EM_BUILD_VERBOSE_LEVEL >= 1:
+        stderr = None
+      res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
+    except Exception:
+      logging.error('Error running make: "%s"' % ' '.join(args))
       raise
-    if process.returncode is not 0:
-      raise subprocess.CalledProcessError(cmd=args, returncode=process.returncode)
-
+    if res.returncode != 0:
+      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
-  def build_library(name, build_dir, output_dir, generated_libs, configure=['sh', './configure'], configure_args=[], make=['make'], make_args='help', cache=None, cache_name=None, copy_project=False, env_init={}, source_dir=None, native=False):
-    ''' Build a library into a .bc file. We build the .bc file once and cache it for all our tests. (We cache in
-        memory since the test directory is destroyed and recreated for each test. Note that we cache separately
-        for different compilers).
-        This cache is just during the test runner. There is a different concept of caching as well, see |Cache|. '''
+  def build_library(name,
+                    build_dir,
+                    output_dir,
+                    generated_libs,
+                    configure=['sh', './configure'],
+                    configure_args=[],
+                    make=['make'],
+                    make_args='help',
+                    cache=None,
+                    cache_name=None,
+                    copy_project=False,
+                    env_init={},
+                    source_dir=None,
+                    native=False):
+    """Build a library into a .bc file. We build the .bc file once and cache it
+    for all our tests. (We cache in memory since the test directory is destroyed
+    and recreated for each test. Note that we cache separately for different
+    compilers).  This cache is just during the test runner. There is a different
+    concept of caching as well, see |Cache|.
+    """
 
-    if type(generated_libs) is not list: generated_libs = [generated_libs]
-    if source_dir is None: source_dir = path_from_root('tests', name.replace('_native', ''))
+    if type(generated_libs) is not list:
+      generated_libs = [generated_libs]
+    if source_dir is None:
+      source_dir = path_from_root('tests', name.replace('_native', ''))
     if make_args == 'help':
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
@@ -1589,22 +1742,32 @@ class Building(object):
       old_dir = None
     os.chdir(project_dir)
     generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    #for lib in generated_libs:
-    #  try:
-    #    os.unlink(lib) # make sure compilation completed successfully
-    #  except:
-    #    pass
+    # for lib in generated_libs:
+    #   try:
+    #     os.unlink(lib) # make sure compilation completed successfully
+    #   except:
+    #     pass
     env = Building.get_building_env(native, True)
     for k, v in env_init.items():
       env[k] = v
-    if configure: # Useful in debugging sometimes to comment this out (and the lines below up to and including the |link| call)
+    if configure:
+      # Useful in debugging sometimes to comment this out (and the lines below
+      # up to and including the |link| call)
+      if EM_BUILD_VERBOSE_LEVEL < 2:
+        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
+      else:
+        stdout = None
+      if EM_BUILD_VERBOSE_LEVEL < 1:
+        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
+      else:
+        stderr = None
       try:
-        Building.configure(configure + configure_args, env=env, stdout=open(os.path.join(project_dir, 'configure_'), 'w') if EM_BUILD_VERBOSE_LEVEL < 2 else None,
-                                                                stderr=open(os.path.join(project_dir, 'configure_err'), 'w') if EM_BUILD_VERBOSE_LEVEL < 1 else None)
+        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
       except subprocess.CalledProcessError as e:
         pass # Ignore exit code != 0
+
     def open_make_out(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_' + str(i)), mode)
+      return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
 
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
@@ -1612,12 +1775,14 @@ class Building(object):
     if EM_BUILD_VERBOSE_LEVEL >= 3:
       make_args += ['VERBOSE=1']
 
-    for i in range(2): # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
+    # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
+    for i in range(2):
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
+          stdout = make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None
           try:
-            Building.make(make + make_args, stdout=make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None,
-                                            stderr=make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None, env=env)
+            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
           except subprocess.CalledProcessError as e:
             pass # Ignore exit code != 0
       try:
@@ -1641,7 +1806,7 @@ class Building(object):
 
   @staticmethod
   def make_paths_absolute(f):
-    if f.startswith('-'): # skip flags
+    if f.startswith('-'):  # skip flags
       return f
     else:
       return os.path.abspath(f)
@@ -1672,18 +1837,20 @@ class Building(object):
       for f in files:
         absolute_path_f = Building.make_paths_absolute(f)
 
-        if not absolute_path_f in Building.ar_contents and Building.is_ar(absolute_path_f):
+        if absolute_path_f not in Building.ar_contents and Building.is_ar(absolute_path_f):
           archive_names.append(absolute_path_f)
-        elif not absolute_path_f in Building.uninternal_nm_cache and Building.is_bitcode(absolute_path_f):
+        elif absolute_path_f not in Building.uninternal_nm_cache and Building.is_bitcode(absolute_path_f):
           object_names.append(absolute_path_f)
 
       # Archives contain objects, so process all archives first in parallel to obtain the object files in them.
       pool = Building.get_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
+
       def clean_temporary_archive_contents_directory(directory):
         def clean_at_exit():
           try_delete(directory)
-        if directory: atexit.register(clean_at_exit)
+        if directory:
+          atexit.register(clean_at_exit)
 
       for n in range(len(archive_names)):
         if object_names_in_archives[n]['returncode'] != 0:
@@ -1693,12 +1860,79 @@ class Building(object):
 
       for o in object_names_in_archives:
         for f in o['files']:
-          if not f in Building.uninternal_nm_cache:
+          if f not in Building.uninternal_nm_cache:
             object_names.append(f)
 
       # Next, extract symbols from all object files (either standalone or inside archives we just extracted)
       # The results are not used here directly, but populated to llvm-nm cache structure.
       Building.parallel_llvm_nm(object_names)
+
+  @staticmethod
+  def llvm_backend_args():
+    args = ['-thread-model=single'] # no threads support in backend, tell llc to not emit atomics
+    # disable slow and relatively unimportant optimization passes
+    args += ['-combiner-global-alias-analysis=false']
+
+    # asm.js-style exception handling
+    if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      args += ['-enable-emscripten-cxx-exceptions']
+    if Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
+      args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+
+    # asm.js-style setjmp/longjmp handling
+    args += ['-enable-emscripten-sjlj']
+    return args
+
+  @staticmethod
+  def link_lld(files, target, opts=[], lto_level=0):
+    def wasm_rt_fail(archive_file):
+      def wrapped():
+        raise FatalError('Expected {} to already be built'.format(archive_file))
+      return wrapped
+
+    libc_rt_lib = Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
+    compiler_rt_lib = Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
+    cmd = [
+        WASM_LD,
+        '-z',
+        'stack-size=%s' % Settings.TOTAL_STACK,
+        '--global-base=%s' % Settings.GLOBAL_BASE,
+        '--initial-memory=%s' % Settings.TOTAL_MEMORY,
+        '-o',
+        target,
+        '--no-entry',
+        '--allow-undefined',
+        '--import-memory',
+        '--export',
+        '__wasm_call_ctors',
+        '--lto-O%d' % lto_level,
+    ] + files + [libc_rt_lib, compiler_rt_lib]
+
+    for a in Building.llvm_backend_args():
+      cmd += ['-mllvm', a]
+
+    # emscripten-wasm-finalize currently depends on the presence of debug
+    # symbols for renaming of the __invoke symbols
+    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
+    # no longer need to rename these symbols.
+    # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
+    #   cmd.append('--strip-debug')
+
+    if Settings.EXPORT_ALL:
+      cmd += ['--no-gc-sections', '--export-all']
+    else:
+      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    logging.debug('emcc: lld-linking: %s to %s', files, target)
+    t = time.time()
+    check_call(cmd)
+    if DEBUG:
+      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
+      t = time.time()
+
+    return target
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
@@ -1728,8 +1962,15 @@ class Building(object):
     # returns True.
     def consider_object(f, force_add=False):
       new_symbols = Building.llvm_nm(f)
-      if not new_symbols.is_valid():
-        logging.warning('object %s is not valid, cannot link' % (f))
+      # Check if the object was valid according to llvm-nm. It also accepts
+      # native object files.
+      if not new_symbols.is_valid_for_nm():
+        logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        return False
+      # Check the object is valid for us, and not a native object file.
+      # TODO: for lld, also check if a wasm object file?
+      if not Building.is_bitcode(f):
+        logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -1755,7 +1996,8 @@ class Building(object):
       while loop_again: # repeatedly traverse until we have everything we need
         loop_again = False
         for content in contents:
-          if content in added_contents: continue
+          if content in added_contents:
+            continue
           # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
           if consider_object(content, force_add=force_add_all):
             added_contents.add(content)
@@ -1771,13 +2013,13 @@ class Building(object):
     # Rescan a group of archives until we don't find any more objects to link.
     def scan_archive_group(group):
       loop_again = True
-      logging.debug('starting archive group loop');
+      logging.debug('starting archive group loop')
       while loop_again:
         loop_again = False
         for archive in group:
           if consider_archive(archive):
             loop_again = True
-      logging.debug('done with archive group loop');
+      logging.debug('done with archive group loop')
 
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
@@ -1838,7 +2080,8 @@ class Building(object):
         # "c:\path\to\file.txt" with single slashes no longer work. LLVM upstream dev 3.9.0 from January 2016 still treated
         # backslashes without escaping. To preserve compatibility with both versions of llvm-link, don't pass backslash
         # path delimiters at all to response files, but always use forward slashes.
-        if WINDOWS: arg = arg.replace('\\', '/')
+        if WINDOWS:
+          arg = arg.replace('\\', '/')
 
         # escaped double quotes allows 'space' characters in pathname the response file can use
         response_fh.write("\"" + arg + "\"\n")
@@ -1862,19 +2105,16 @@ class Building(object):
       inputs = [inputs]
     else:
       assert out, 'must provide out if llvm_opt on a list of inputs'
-    assert len(opts) > 0, 'should not call opt with nothing to do'
+    assert len(opts), 'should not call opt with nothing to do'
     opts = opts[:]
     # TODO: disable inlining when needed
     # if not Building.can_inline():
     #   opts.append('-disable-inlining')
-    #opts += ['-debug-pass=Arguments']
+    # opts += ['-debug-pass=Arguments']
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-      if not Settings.WASM_BACKEND:
-        # This option have been removed in llvm ToT
-        opts += ['-vectorize-slp-aggressive=false']
     else:
-      opts += ['-bb-vectorize-vector-bits=128']
+      opts += ['-force-vector-width=4']
 
     logging.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
@@ -1930,21 +2170,23 @@ class Building(object):
     undefs = []
     commons = []
     for line in output.split('\n'):
-      if len(line) == 0: continue
-      if ':' in line: continue # e.g.  filename.o:  , saying which file it's from
-      parts = [seg for seg in line.split(' ') if len(seg) > 0]
+      if len(line) == 0:
+        continue
+      if ':' in line:
+        continue # e.g.  filename.o:  , saying which file it's from
+      parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
         parts.pop(0)
-      if len(parts) == 2: # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+      if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
         if status == 'U':
           undefs.append(symbol)
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (    include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
-                                                                             #        so for now we assume all uppercase are normally defined external symbols
+             (include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
+          #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
@@ -1977,8 +2219,10 @@ class Building(object):
       logging.debug('llvm-nm failed on file ' + filename + ': return code ' + str(ret.returncode) + ', error: ' + ret.output)
 
     # Even if we fail, write the results to the NM cache so that we don't keep trying to llvm-nm the failing file again later.
-    if include_internal: Building.internal_nm_cache[filename] = ret
-    else: Building.uninternal_nm_cache[filename] = ret
+    if include_internal:
+      Building.internal_nm_cache[filename] = ret
+    else:
+      Building.uninternal_nm_cache[filename] = ret
 
     return ret
 
@@ -1987,28 +2231,22 @@ class Building(object):
     if output_filename is None:
       output_filename = filename + '.o'
     try_delete(output_filename)
-    Popen([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env).communicate()
-    assert os.path.exists(output_filename), 'emcc could not create output file: ' + output_filename
+    run_process([PYTHON, EMCC, filename] + args + ['-o', output_filename], stdout=stdout, stderr=stderr, env=env)
 
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    Popen([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env).communicate()
+    run_process([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env)
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
   def emscripten(filename, append_ext=True, extra_args=[]):
-    # Allow usage of emscripten.py without warning
-    os.environ['EMSCRIPTEN_SUPPRESS_USAGE_WARNING'] = '1'
-
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
     import emscripten
     # Run Emscripten
-    settings = Settings.serialize()
-    args = settings + extra_args
-    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + args
+    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + extra_args
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
@@ -2040,7 +2278,8 @@ class Building(object):
 
   @staticmethod
   def get_safe_internalize():
-    if not Building.can_build_standalone(): return [] # do not internalize anything
+    if not Building.can_build_standalone():
+      return [] # do not internalize anything
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
     internalize_public_api = '-internalize-public-api-'
@@ -2077,6 +2316,7 @@ class Building(object):
 
   @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False):
+    from . import js_optimizer
     ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat)
     if output_filename:
       safe_move(ret, output_filename)
@@ -2086,17 +2326,19 @@ class Building(object):
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
   def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None):
+    from . import js_optimizer
     original_filename = filename
     if extra_info is not None:
       temp_files = configuration.get_temp_files()
       temp = temp_files.get('.js').name
       shutil.copyfile(filename, temp)
-      with open(temp, 'a') as f: f.write('// EXTRA_INFO: ' + extra_info)
+      with open(temp, 'a') as f:
+        f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      subprocess.check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
@@ -2104,7 +2346,7 @@ class Building(object):
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-    subprocess.check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
+    check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):
@@ -2130,34 +2372,35 @@ class Building(object):
       # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
       for name, funcs in asm.tables.items():
         can_call[name] = set([x.strip() for x in funcs[1:-1].split(',')])
-      #print can_call
+      # print can_call
       # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
       #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
-      #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
+      # print 'can call', can_call, '\n!!!\n', asm.tables, '!'
       reachable_from = {}
       for func, targets in can_call.items():
         for target in targets:
           if target not in reachable_from:
             reachable_from[target] = set()
           reachable_from[target].add(func)
-      #print 'reachable from', reachable_from
+      # print 'reachable from', reachable_from
       to_check = initial_list[:]
       advised = set()
       if can_reach:
         # find all functions that can reach the initial list
-        while len(to_check) > 0:
+        while len(to_check):
           curr = to_check.pop()
           if curr in reachable_from:
             for reacher in reachable_from[curr]:
               if reacher not in advised:
-                if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher): advised.add(str(reacher))
+                if not JS.is_dyn_call(reacher) and not JS.is_function_table(reacher):
+                  advised.add(str(reacher))
                 to_check.append(reacher)
       else:
         # find all functions that are reachable from the initial list, including it
         # all tables are assumed reachable, as they can be called from dyncall from outside
         for name, funcs in asm.tables.items():
           to_check.append(name)
-        while len(to_check) > 0:
+        while len(to_check):
           curr = to_check.pop()
           if not JS.is_function_table(curr):
             advised.add(curr)
@@ -2166,7 +2409,7 @@ class Building(object):
               if target not in advised:
                 advised.add(str(target))
                 to_check.append(target)
-      return { 'reachable': list(advised), 'total_funcs': len(can_call) }
+      return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
   def closure_compiler(filename, pretty=True):
@@ -2183,7 +2426,7 @@ class Building(object):
       BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                      if name.endswith('.js')]
+                         if name.endswith('.js')]
 
       # Something like this (adjust memory as needed):
       #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
@@ -2193,7 +2436,7 @@ class Building(object):
               '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
               '--language_in', 'ECMASCRIPT5',
               '--externs', CLOSURE_EXTERNS,
-              #'--variable_map_output_file', filename + '.vars',
+              # '--variable_map_output_file', filename + '.vars',
               '--js', filename, '--js_output_file', filename + '.cc.js']
       for extern in NODE_EXTERNS:
         args.append('--externs')
@@ -2203,7 +2446,8 @@ class Building(object):
         args.append(extern)
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
-      if pretty: args += ['--formatting', 'PRETTY_PRINT']
+      if pretty:
+        args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
@@ -2273,7 +2517,8 @@ class Building(object):
             item['import'][1] = item['import'][1][1:]
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
-    with open(temp, 'w') as f: f.write(txt)
+    with open(temp, 'w') as f:
+      f.write(txt)
     # run wasm-metadce
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
     if debug_info:
@@ -2290,13 +2535,13 @@ class Building(object):
     passes = ['applyDCEGraphRemovals']
     if minify_whitespace:
       passes.append('minifyWhitespace')
-    extra_info = { 'unused': unused }
+    extra_info = {'unused': unused}
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested
   user_requested_exports = []
-
   _is_ar_cache = {}
+
   @staticmethod
   def is_ar(filename):
     try:
@@ -2317,7 +2562,8 @@ class Building(object):
   def is_bitcode(filename):
     # look for magic signature
     b = bytearray(open(filename, 'rb').read(4))
-    if len(b) < 4: return False
+    if len(b) < 4:
+      return False
     if b[0] == ord('B') and b[1] == ord('C'):
       return True
     # look for ar signature
@@ -2329,15 +2575,6 @@ class Building(object):
       return b[20] == ord('B') and b[21] == ord('C')
 
     return False
-
-  @staticmethod
-  def ensure_struct_info(info_path):
-    if os.path.exists(info_path): return
-    with ToolchainProfiler.profile_block('gen_struct_info'):
-      Cache.ensure()
-
-      from . import gen_struct_info
-      gen_struct_info.main(['-qo', info_path, path_from_root('src/struct_info.json')])
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
@@ -2366,11 +2603,12 @@ class Building(object):
     }
     library_files = []
     if library_name in js_system_libraries:
-      if len(js_system_libraries[library_name]) > 0:
+      if len(js_system_libraries[library_name]):
         library_files += [js_system_libraries[library_name]]
 
         # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
-        if library_name == 'EGL': library_files += ['library_glut.js']
+        if library_name == 'EGL':
+          library_files += ['library_glut.js']
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
@@ -2387,12 +2625,17 @@ class Building(object):
   # Given a list of Emscripten link settings, returns a list of paths to system JS libraries
   # that should get linked automatically in to the build when those link settings are present.
   def path_to_system_js_libraries_for_settings(link_settings):
-    system_js_libraries =[]
-    if 'EMTERPRETIFY_ASYNC=1' in link_settings: system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings: system_js_libraries += ['library_async.js']
-    if 'LZ4=1' in link_settings: system_js_libraries += ['library_lz4.js']
-    if 'USE_SDL=1' in link_settings: system_js_libraries += ['library_sdl.js']
-    if 'USE_SDL=2' in link_settings: system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
+    system_js_libraries = []
+    if 'EMTERPRETIFY_ASYNC=1' in link_settings:
+      system_js_libraries += ['library_async.js']
+    if 'ASYNCIFY=1' in link_settings:
+      system_js_libraries += ['library_async.js']
+    if 'LZ4=1' in link_settings:
+      system_js_libraries += ['library_lz4.js']
+    if 'USE_SDL=1' in link_settings:
+      system_js_libraries += ['library_sdl.js']
+    if 'USE_SDL=2' in link_settings:
+      system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
     return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod
@@ -2400,10 +2643,10 @@ class Building(object):
     # fetch the port, so we have binaryen set up. indicate we need binaryen
     # using the settings
     from . import system_libs
-    old = Settings.BINARYEN
-    Settings.BINARYEN = 1
+    old = Settings.WASM
+    Settings.WASM = 1
     system_libs.get_port('binaryen', Settings)
-    Settings.BINARYEN = old
+    Settings.WASM = old
 
   @staticmethod
   def get_binaryen_bin():
@@ -2418,24 +2661,28 @@ class Building(object):
     paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
              os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
     for dirname in paths:
-      if os.path.exists(os.path.join(dirname, 'binaryen.js')):
-         return dirname
+      if os.path.exists(os.path.join(dirname, 'wasm.js')):
+        return dirname
     logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
     sys.exit(1)
+
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache(debug=DEBUG_CACHE)
 chunkify = cache.chunkify
 
+
 def reconfigure_cache():
   global Cache
   Cache = cache.Cache(debug=DEBUG_CACHE)
+
 
 # Placeholder strings used for SINGLE_FILE
 class FilenameReplacementStrings:
   WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
   WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
+
 
 class JS(object):
   memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
@@ -2479,7 +2726,7 @@ class JS(object):
       return 'Math_fround(0)'
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(0)'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(SIMD_Float32x4(0,0,0,0))'
@@ -2500,7 +2747,8 @@ class JS(object):
   def make_coercion(value, sig, settings=None, ffi_arg=False, ffi_result=False, convert_from=None):
     settings = settings or Settings
     if sig == 'i':
-      if convert_from in JS.FLOAT_SIGS: value = '(~~' + value + ')'
+      if convert_from in JS.FLOAT_SIGS:
+        value = '(~~' + value + ')'
       return value + '|0'
     if sig in JS.FLOAT_SIGS and convert_from == 'i':
       value = '(' + value + '|0)'
@@ -2515,7 +2763,7 @@ class JS(object):
       return '+' + value
     elif sig == 'j':
       if settings:
-        assert settings['BINARYEN'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
+        assert settings['WASM'], 'j aka i64 only makes sense in wasm-only mode in binaryen'
       return 'i64(' + value + ')'
     elif sig == 'F':
       return 'SIMD_Float32x4_check(' + value + ')'
@@ -2583,9 +2831,11 @@ class JS(object):
     args = 'index' + (',' if args else '') + args
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
+  var sp = stackSave();
   try {
     %sModule["dynCall_%s"](%s);
   } catch(e) {
+    stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
@@ -2594,7 +2844,8 @@ class JS(object):
 
   @staticmethod
   def align(x, by):
-    while x % by != 0: x += 1
+    while x % by != 0:
+      x += 1
     return x
 
   @staticmethod
@@ -2618,8 +2869,11 @@ class JS(object):
     s = ''.join(map(chr, s))
     s = s.replace('\\', '\\\\').replace("'", "\\'")
     s = s.replace('\n', '\\n').replace('\r', '\\r')
+
     # Escape the ^Z (= 0x1a = substitute) ASCII character and all characters higher than 7-bit ASCII.
-    def escape(x): return '\\x{:02x}'.format(ord(x.group()))
+    def escape(x):
+      return '\\x{:02x}'.format(ord(x.group()))
+
     return re.sub('[\x1a\x80-\xff]', escape, s)
 
   @staticmethod
@@ -2629,6 +2883,7 @@ class JS(object):
   @staticmethod
   def is_function_table(name):
     return name.startswith('FUNCTION_TABLE_')
+
 
 class WebAssembly(object):
   @staticmethod
@@ -2648,7 +2903,6 @@ class WebAssembly(object):
 
   @staticmethod
   def make_shared_library(js_file, wasm_file):
-    import math
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
@@ -2669,8 +2923,8 @@ class WebAssembly(object):
     f.write(b'\0') # user section is code 0
     # need to find the size of this section
     name = b"\06dylink" # section name, including prefixed size
-    contents = WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) + \
-               WebAssembly.lebify(table_size) + WebAssembly.lebify(0)
+    contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
+                WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)
@@ -2679,6 +2933,7 @@ class WebAssembly(object):
     f.close()
     return wso
 
+
 # Python 2-3 compatibility helper function:
 # Converts a string to the native str type.
 def asstr(s):
@@ -2686,8 +2941,9 @@ def asstr(s):
     if isinstance(s, unicode):
       return s.encode('utf-8')
   elif isinstance(s, bytes):
-      return s.decode('utf-8')
+    return s.decode('utf-8')
   return s
+
 
 def asbytes(s):
   if str is bytes:
@@ -2696,9 +2952,11 @@ def asbytes(s):
     return s
   return s.encode('utf-8')
 
+
 def suffix(name):
   """Return the file extension *not* including the '.'."""
   return os.path.splitext(name)[1][1:]
+
 
 def unsuffixed(name):
   """Return the filename without the extention.
@@ -2707,42 +2965,64 @@ def unsuffixed(name):
   """
   return os.path.splitext(name)[0]
 
+
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
+
 
 def safe_move(src, dst):
   src = os.path.abspath(src)
   dst = os.path.abspath(dst)
   if os.path.isdir(dst):
     dst = os.path.join(dst, os.path.basename(src))
-  if src == dst: return
-  if dst == '/dev/null': return
+  if src == dst:
+    return
+  if dst == '/dev/null':
+    return
   shutil.move(src, dst)
+
 
 def safe_copy(src, dst):
   src = os.path.abspath(src)
   dst = os.path.abspath(dst)
   if os.path.isdir(dst):
     dst = os.path.join(dst, os.path.basename(src))
-  if src == dst: return
-  if dst == '/dev/null': return
+  if src == dst:
+    return
+  if dst == '/dev/null':
+    return
   shutil.copyfile(src, dst)
+
 
 def clang_preprocess(filename):
   # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
   return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
 
-def read_and_preprocess(filename):
-  f = open(filename, 'r').read()
-  pos = 0
-  include_pattern = re.compile('^#include\s*["<](.*)[">]\s?$', re.MULTILINE)
-  while(1):
-    m = include_pattern.search(f, pos)
-    if not m:
-      return f
-    included_file = open(os.path.join(os.path.dirname(filename), m.groups(0)[0]), 'r').read()
 
-    f = f[:m.start(0)] + included_file + f[m.end(0):]
+def read_and_preprocess(filename):
+  temp_dir = get_emscripten_temp_dir()
+  # Create a settings file with the current settings to pass to the JS preprocessor
+  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
+  #       we only want the actual settings, hence the [1::2] slice operation.
+  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
+  settings_file = os.path.join(temp_dir, 'settings.js')
+  open(settings_file, 'w').write(settings_str)
+
+  # Run the JS preprocessor
+  # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs
+  # and shell.html is bigger than that!
+  # See https://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
+  (path, file) = os.path.split(filename)
+  if not path:
+    path = None
+  stdout = os.path.join(temp_dir, 'stdout')
+  args = [settings_file, file]
+
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
+  out = open(stdout, 'r').read()
+
+  return out
+
 
 # Generates a suitable fetch-worker.js script from the given input source JS file (which is an asm.js build output),
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
@@ -2765,8 +3045,10 @@ def make_fetch_worker(source_file, output_file):
     end_loc = src.find('{', loc) + 1
     nesting_level = 1
     while nesting_level > 0:
-      if src[end_loc] == '{': nesting_level += 1
-      if src[end_loc] == '}': nesting_level -= 1
+      if src[end_loc] == '{':
+        nesting_level += 1
+      if src[end_loc] == '}':
+        nesting_level -= 1
       end_loc += 1
 
     func_code = src[loc:end_loc]
@@ -2774,6 +3056,3 @@ def make_fetch_worker(source_file, output_file):
 
   fetch_worker_src = function_prologue + '\n' + clang_preprocess(path_from_root('src', 'fetch-worker.js'))
   open(output_file, 'w').write(fetch_worker_src)
-
-
-from . import js_optimizer

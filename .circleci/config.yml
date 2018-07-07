@@ -5,10 +5,10 @@ defaults: &defaults
         LANG: C.UTF-8
         EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
         EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS: 1
-  working_directory: ~/
 
 test-defaults: &test-defaults
   <<: *defaults
+  working_directory: ~/
   steps:
     - checkout:
         path: emscripten/
@@ -25,6 +25,7 @@ version: 2
 jobs:
   build:
     <<: *defaults
+    working_directory: ~/
     steps:
       - checkout:
           path: emscripten/
@@ -55,7 +56,15 @@ jobs:
             - .emscripten_ports/
             - .emscripten
             - tmp-firefox-profile/
-
+  flake8:
+    <<: *defaults
+    steps:
+      - checkout
+      - run: |
+          apt-get update
+          apt-get install -y python-pip
+          pip install flake8==3.4.1
+          cat .flake8_clean | xargs flake8
   test-other:
     <<: *test-defaults
     environment:
@@ -71,6 +80,7 @@ jobs:
       - TEST_DEPENDENCY=firefox
       - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
       - EM_LACKS_HARDWARE_ACCESS=1
+      - EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=0
   test-ab:
     <<: *test-defaults
     environment:
@@ -138,6 +148,7 @@ workflows:
 
   build-test:
     jobs:
+      - flake8
       - build
       - test-other:
           requires:
@@ -190,4 +201,3 @@ workflows:
       - test-sanity:
           requires:
             - build
-

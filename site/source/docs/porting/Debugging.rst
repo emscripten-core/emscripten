@@ -22,7 +22,7 @@ This article describes the main tools and settings provided by Emscripten for de
 Debug information
 =================
 
-:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. Optimisation levels :ref:`-01 <emcc-O1>` and above remove LLVM debug information, and also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-02 <emcc-O2>` the code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
+:ref:`Emcc <emccdoc>` strips out most of the debug information from :ref:`optimized builds <Optimizing-Code>` by default. Optimisation levels :ref:`-O1 <emcc-O1>` and above remove LLVM debug information, and also disable runtime :ref:`ASSERTIONS <debugging-ASSERTIONS>` checks. From optimization level :ref:`-O2 <emcc-O2>` the code is minified by the :term:`Closure Compiler` and becomes virtually unreadable.
 
 The *emcc* :ref:`-g flag <emcc-g>` can be used to preserve debug information in the compiled output. By default, this option preserves white-space, function names and variable names. 
 
@@ -67,7 +67,7 @@ Emscripten has a number of compiler settings that can be useful for debugging. T
 
 .. code-block:: bash
 
-	./emcc -01 -s ASSERTIONS=1 tests/hello_world
+	./emcc -O1 -s ASSERTIONS=1 tests/hello_world
 
 The most important settings are:
 
@@ -76,7 +76,7 @@ The most important settings are:
 	
 		``ASSERTIONS=1`` is used to enable runtime checks for common memory allocation errors (e.g. writing more memory than was allocated). It also defines how Emscripten should handle errors in program flow. The value can be set to ``ASSERTIONS=2`` in order to run additional tests.
 		
-		``ASSERTIONS=1`` is enabled by default. Assertions are turned off for optimized code (:ref:`-01 <emcc-O1>` and above). 
+		``ASSERTIONS=1`` is enabled by default. Assertions are turned off for optimized code (:ref:`-O1 <emcc-O1>` and above). 
 		
 	- 
 		.. _debugging-SAFE-HEAP:
@@ -131,7 +131,7 @@ Disabling optimizations
 
 It can sometimes be useful to compile with either LLVM optimizations (:ref:`llvm-opts <emcc-llvm-opts>`) or JavaScript optimizations (:ref:`js-opts <emcc-js-opts>`) disabled. 
 
-For example, the following command enables :ref:`debugging-debug-information-g` and :ref:`-02 <emcc-O2>` optimization (for both LLVM and JavaScript), but then explicitly turns off the JavaScript optimizer.
+For example, the following command enables :ref:`debugging-debug-information-g` and :ref:`-O2 <emcc-O2>` optimization (for both LLVM and JavaScript), but then explicitly turns off the JavaScript optimizer.
 
 .. code-block:: bash
 

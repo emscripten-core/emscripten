@@ -3,7 +3,7 @@
 #include <assert.h>
 
 void print(const char *c) {
-  EM_ASM_({ Module.print($0) }, c);
+  EM_ASM_({ out($0) }, c);
 }
 
 void sleeper() {

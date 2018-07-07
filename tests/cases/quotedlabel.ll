@@ -1,5 +1,5 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target datalayout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
 target triple = "asmjs-unknown-emscripten"
 
 @.str = private constant [14 x i8] c"hello, world!\00", align 1 ; [#uses=1]

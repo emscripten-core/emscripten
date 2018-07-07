@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
             // so we fake them by creating a plain-vanilla UIEvent and then
             // filling in the fields that we look for with appropriate values.
             var rect = Module["canvas"].getBoundingClientRect();
-            Module['print']('rect corner: ' + rect.left + ',' + rect.top);
-            Module['print']('wanted: ' + wantedX + ',' + wantedY);
+            out('rect corner: ' + rect.left + ',' + rect.top);
+            out('wanted: ' + wantedX + ',' + wantedY);
             var x = wantedX + rect.left;
             var y = wantedY + rect.top;
             var touch = {

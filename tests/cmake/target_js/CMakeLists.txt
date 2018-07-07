@@ -16,6 +16,9 @@ else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimi
 	SET(linkFlags "-O2 -s NO_EXIT_RUNTIME=1")
 endif()
 
+# Ensure synchronous startup for this test, whose output expects it
+SET(linkFlags "${linkFlags} -s BINARYEN_ASYNC_COMPILATION=0")
+
 # Test that the CMake-provided macro check_function_exists() works.
 include(CheckFunctionExists)
 check_function_exists("strtod" HAVE_STRTOD)

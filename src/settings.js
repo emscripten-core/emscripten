@@ -123,6 +123,7 @@ var FORCE_ALIGNED_MEMORY = 0; // If enabled, assumes all reads and writes are fu
 var WARN_UNALIGNED = 0; // Warn at compile time about instructions that LLVM tells us are not fully aligned.
                         // This is useful to find places in your code where you might refactor to ensure proper
                         // alignment.
+                        // This is currently only supported in asm.js, not wasm.
 var PRECISE_I64_MATH = 1; // If enabled, i64 addition etc. is emulated - which is slow but precise. If disabled,
                           // we use the 'double trick' which is fast but incurs rounding at high values.
                           // If set to 2, we always include the i64 math code, which is necessary in the case
@@ -311,8 +312,22 @@ var STB_IMAGE = 0; // Enables building of stb-image, a tiny public-domain librar
                    // When enabled, stb-image will be used automatically from IMG_Load and IMG_Load_RW. You
                    // can also call the stbi_* functions directly yourself.
 
-var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This adds:
-                           //  * Polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround
+var LEGACY_VM_SUPPORT = 0; // Enable this to get support for non-modern browsers, node.js, etc. This gives you
+                           // the highest possible probability of the code working everywhere, even in rare old
+                           // browsers and shell environments. Specifically:
+                           //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
+                           //  * Disable WebAssembly.
+
+var ENVIRONMENT = ''; // By default, emscripten output will run on the web, in a web worker,
+                      // in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
+                      // specify that the output should only run in one particular environment, which
+                      // must be one of
+                      //    'web'    - the normal web environment.
+                      //    'worker' - a web worker environment.
+                      //    'node'   - Node.js.
+                      //    'shell'  - a JS shell like d8, js, or jsc.
+                      // There is also a 'pthread' environment, see shell.js, but it cannot be specified
+                      // manually yet TODO
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -613,6 +628,8 @@ var MODULARIZE_INSTANCE = 0; // Similar to MODULARIZE, but while that mode expor
                              // Note that the promise-like API MODULARIZE provides isn't
                              // available here (since you arean't creating the instance
                              // yourself).
+var EXPORT_ES6 = 0; // Export using an ES6 Module export rather than a UMD export.
+                    // MODULARIZE must be enabled for ES6 exports.
 
 var BENCHMARK = 0; // If 1, will just time how long main() takes to execute, and not
                    // print out anything at all whatsoever. This is useful for benchmarking.
@@ -706,6 +723,7 @@ var SAFE_SPLIT_MEMORY = 0; // Similar to SAFE_HEAP, but for SPLIT_MEMORY.
 
 var RUNNING_JS_OPTS = 0; // whether js opts will be run, after the main compiler
 var BOOTSTRAPPING_STRUCT_INFO = 0; // whether we are in the generate struct_info bootstrap phase
+var STRUCT_INFO = ''; // struct_info that is either generated or cached
 
 var EMSCRIPTEN_TRACING = 0; // Add some calls to emscripten tracing APIs
 
@@ -713,11 +731,16 @@ var USE_GLFW = 2; // Specify the GLFW version that is being linked against.
                   // Only relevant, if you are linking against the GLFW library.
                   // Valid options are 2 for GLFW2 and 3 for GLFW3.
 
-var BINARYEN = 0; // Whether to use [Binaryen](https://github.com/WebAssembly/binaryen) to
-                  // compile code to WebAssembly.
-                  // This will fetch the binaryen port and build it. (If, instead, you set
-                  // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
-                  // of the port, which can useful for local dev work on binaryen itself).
+var WASM = 1; // Whether to use compile code to WebAssembly. Set this to 0 to compile
+              // to asm.js.
+              // This will fetch the binaryen port and build it. (If, instead, you set
+              // BINARYEN_ROOT in your ~/.emscripten file, then we use that instead
+              // of the port, which can useful for local dev work on binaryen itself).
+
+var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
+                      // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
+                      // environment.
+
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.
 var BINARYEN_SCRIPTS = ""; // An optional comma-separated list of script hooks to run after binaryen,
@@ -754,21 +777,6 @@ var LEGALIZE_JS_FFI = 1; // Whether to legalize the JS FFI interfaces (imports/e
                          // For non-web/non-JS embeddings, setting this to 0 may be desirable.
                          // LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using
                          // non-wasm BINARYEN_METHOD settings.
-
-var WASM = 0; // Alias for BINARYEN, the two are identical. Both make us compile code to WebAssembly.
-
-var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
-                      // This requires that BINARYEN be set, as we use Binaryen's s2wasm to
-                      // translate the backend output.
-                      // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
-                      // environment.
-var EXPERIMENTAL_USE_LLD = 0; // Whether to use lld as a linker for the
-                              // WebAssembly backend, instead of s2wasm.
-                              // Currently an experiment, the plan is to make
-                              // this the default behavior long-term, and remove
-                              // the flag.
-                              // You should not set this yourself, instead set
-                              // EMCC_EXPERIMENTAL_USE_LLD=1 in the environment.
 
 // Ports
 
@@ -834,6 +842,9 @@ var PTHREADS_PROFILING = 0; // True when building with --threadprofiler
 var PTHREADS_DEBUG = 0; // If true, add in debug traces for diagnosing pthreads related issues.
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
+var IMPLEMENTED_FUNCTIONS = []; // received from the backend
+var JSCALL_START_INDEX = 0; // received from the backend
+var JSCALL_SIG_ORDER = {}; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++
@@ -921,3 +932,11 @@ var MEM_INIT_IN_WASM = 0; // for internal use only
 
 var SUPPORT_BASE64_EMBEDDING = 0; // If set to 1, src/base64Utils.js will be included in the bundle.
                                   // This is set internally when needed (SINGLE_FILE)
+
+// For internal use only, the possible environments the code may run in.
+var ENVIRONMENT_MAY_BE_WEB = 1;
+var ENVIRONMENT_MAY_BE_WORKER = 1;
+var ENVIRONMENT_MAY_BE_NODE = 1;
+var ENVIRONMENT_MAY_BE_SHELL = 1;
+var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
+

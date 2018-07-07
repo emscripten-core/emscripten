@@ -241,7 +241,7 @@ Options that are modified or new in *emcc* are listed below:
 	Runs the :term:`Closure Compiler`. Possible ``on`` values are:
 	 
 		- ``0``: No closure compiler (default in ``-O2`` and below).
-		- ``1``: Run closure compiler. This greatly reduces code size and may in some cases increase runtime speed (although the opposite can also occur). Note that it takes time to run, and may require some changes to the code. In **asm.js** mode, closure will only be used on the 'shell' code around the compiled code (the compiled code will be processed by the custom **asm.js** minifier).
+		- ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
 		- ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
 
 	.. note:: 
@@ -256,6 +256,8 @@ Options that are modified or new in *emcc* are listed below:
 		
 ``--pre-js <file>``
 	Specify a file whose contents are added before the emitted code and optimized together with it. Note that this might not literally be the very first thing in the JS output, for example if ``MODULARIZE`` is used (see ``src/settings.js``). If you want that, you can just prepend to the output from emscripten; the benefit of ``--pre-js`` is that it optimizes the code with the rest of the emscripten output, which allows better dead code elimination and minification, and it should only be used for that purpose. In particular, ``--pre-js`` code should not alter the main output from emscripten in ways that could confuse the optimizer, such as using ``--pre-js`` + ``--post-js`` to put all the output in an inner function scope (see ``MODULARIZE`` for that).
+
+	`--pre-js` (but not `--post-js`) is also useful for specifying things on the ``Module`` object, as it appears before the JS looks at ``Module`` (for example, you can define ``Module['print']`` there).
 
 .. _emcc-post-js:
 	

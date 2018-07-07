@@ -6,9 +6,9 @@ int main() {
   EM_ASM({
     Module.prints = [];
 
-    var real = Module['print'];
+    var real = out;
 
-    Module['print'] = function(x) {
+    out = function(x) {
       real(x);
       Module.prints.push(x);
     }

@@ -3,11 +3,11 @@
 #include <assert.h>
 
 void print1(const char *c, int x) {
-  EM_ASM({ Module.print([$0, $1]) }, c, x);
+  EM_ASM({ out([$0, $1]) }, c, x);
 }
 
 void print2(const char *c, int x, int y) {
-  EM_ASM({ Module.print([$0, $1, $2]) }, c, x, y);
+  EM_ASM({ out([$0, $1, $2]) }, c, x, y);
 }
 
 typedef void (*func_v)();

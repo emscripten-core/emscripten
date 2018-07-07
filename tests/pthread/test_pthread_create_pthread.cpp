@@ -8,7 +8,7 @@ volatile int result = 0;
 
 static void *thread2_start(void *arg)
 {
-  EM_ASM(Module['print']('thread2_start!'));
+  EM_ASM(out('thread2_start!'));
   ++result;
 
   pthread_exit(0);
@@ -16,7 +16,7 @@ static void *thread2_start(void *arg)
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(Module['print']('thread1_start!'));
+  EM_ASM(out('thread1_start!'));
   pthread_t thr;
   pthread_create(&thr, NULL, thread2_start, 0);
   pthread_join(thr, 0);

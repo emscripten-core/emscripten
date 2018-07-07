@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
 import posixpath
 from tools import shared
-from tools.shared import execute, suffix, unsuffixed
+from tools.shared import suffix, unsuffixed
 from tools.jsrun import run_js
 from subprocess import Popen, PIPE, STDOUT
 import fnmatch
@@ -426,7 +426,7 @@ if has_preloaded:
           if (that.audio) {
             Module['removeRunDependency']('fp ' + that.name); // workaround for chromium bug 124926 (still no audio with this, but at least we don't hang)
           } else {
-            Module.printErr('Preloading file ' + that.name + ' failed');
+            err('Preloading file ' + that.name + ' failed');
           }
         }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change
 '''
@@ -524,7 +524,7 @@ if has_preloaded:
       use_data = '''
         // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
         // (we may be allocating before malloc is ready, during startup).
-        if (Module['SPLIT_MEMORY']) Module.printErr('warning: you should run the file packager with --no-heap-copy when SPLIT_MEMORY is used, otherwise copying into the heap may fail due to the splitting');
+        if (Module['SPLIT_MEMORY']) err('warning: you should run the file packager with --no-heap-copy when SPLIT_MEMORY is used, otherwise copying into the heap may fail due to the splitting');
         var ptr = Module['getMemory'](byteArray.length);
         Module['HEAPU8'].set(byteArray, ptr);
         DataRequest.prototype.byteArray = Module['HEAPU8'].subarray(ptr, ptr+byteArray.length);
@@ -575,7 +575,7 @@ if has_preloaded:
     var REMOTE_PACKAGE_BASE = '%s';
     if (typeof Module['locateFilePackage'] === 'function' && !Module['locateFile']) {
       Module['locateFile'] = Module['locateFilePackage'];
-      Module.printErr('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
+      err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
     }
     var REMOTE_PACKAGE_NAME = typeof Module['locateFile'] === 'function' ?
                               Module['locateFile'](REMOTE_PACKAGE_BASE) :
@@ -840,29 +840,34 @@ ret += '''%s
   Module['removeRunDependency']('%(metadata_file)s');
  }
 
- var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
-                            Module['locateFile']('%(metadata_file)s') :
-                            ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
- var xhr = new XMLHttpRequest();
- xhr.onreadystatechange = function() {
-  if (xhr.readyState === 4 && xhr.status === 200) {
-    loadPackage(JSON.parse(xhr.responseText));
-  }
- }
- xhr.open('GET', REMOTE_METADATA_NAME, true);
- xhr.overrideMimeType('application/json');
- xhr.send(null);
-
- if (!Module['preRun']) Module['preRun'] = [];
- Module["preRun"].push(function() {
+ function runMetaWithFS() {
   Module['addRunDependency']('%(metadata_file)s');
- });
+  var REMOTE_METADATA_NAME = typeof Module['locateFile'] === 'function' ?
+                             Module['locateFile']('%(metadata_file)s') :
+                             ((Module['filePackagePrefixURL'] || '') + '%(metadata_file)s');
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function() {
+   if (xhr.readyState === 4 && xhr.status === 200) {
+     loadPackage(JSON.parse(xhr.responseText));
+   }
+  }
+  xhr.open('GET', REMOTE_METADATA_NAME, true);
+  xhr.overrideMimeType('application/json');
+  xhr.send(null);
+ }
+
+ if (Module['calledRun']) {
+  runMetaWithFS();
+ } else {
+  if (!Module['preRun']) Module['preRun'] = [];
+  Module["preRun"].push(runMetaWithFS);
+ }
 ''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')} if separate_metadata else '''
  }
  loadPackage(%s);
 ''' % json.dumps(metadata))
 
-if force or len(data_files) > 0:
+if force or len(data_files):
   if jsoutput == None:
     print(ret)
   else:

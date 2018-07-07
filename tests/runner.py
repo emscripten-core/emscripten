@@ -37,6 +37,8 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 
+logger = logging.getLogger(__file__)
+
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.
 # Setting '0' as the browser disables running a browser (but we still see tests compile)
@@ -140,13 +142,14 @@ test_modes = [
 ]
 nondefault_test_modes = [
   'asm2f',
-  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',
   'binaryen3',
   'binaryens',
   'binaryenz',
+  'asmi',
+  'asm2i',
 ]
 test_index = 0
 
@@ -172,9 +175,6 @@ class RunnerCore(unittest.TestCase):
 
   temp_files_before_run = []
 
-  def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
-    return self.skip('requested to be skipped')
-
   def is_emterpreter(self):
     return False
 
@@ -188,7 +188,7 @@ class RunnerCore(unittest.TestCase):
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
+      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.WASM)
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -243,7 +243,7 @@ class RunnerCore(unittest.TestCase):
         ignorable_files = ['/tmp/tmpaddon']
 
         left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
-        if len(left_over_files) > 0:
+        if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
@@ -254,10 +254,6 @@ class RunnerCore(unittest.TestCase):
       #  for temp_file in os.listdir(TEMP_DIR):
       #    assert not temp_file.endswith('.ll'), temp_file
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
-
-  def skip(self, why):
-    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
-    return False
 
   def get_dir(self):
     return self.working_dir
@@ -277,6 +273,22 @@ class RunnerCore(unittest.TestCase):
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
+    def fix_target(ll_filename):
+      if LLVM_TARGET == ASM_JS_TARGET:
+         return
+      with open(ll_filename) as f:
+        contents = f.read()
+      if LLVM_TARGET in contents:
+        return
+      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
+      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
+      assert(ASM_JS_TARGET in contents)
+      assert(asmjs_layout in contents)
+      contents = contents.replace(asmjs_layout, wasm_layout)
+      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
+      with open(ll_filename, 'w') as f:
+        f.write(contents)
+
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
@@ -284,6 +296,7 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_dis(filename)
       else:
         shutil.copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
 
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -302,6 +315,7 @@ class RunnerCore(unittest.TestCase):
     else:
       if ll_file.endswith('.ll'):
         safe_copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
         Building.llvm_as(filename)
       else:
         safe_copy(ll_file, filename + '.o')
@@ -378,7 +392,7 @@ class RunnerCore(unittest.TestCase):
         assert os.path.exists(f + '.o')
 
       # Link all files
-      if len(additional_files) + len(libraries) > 0:
+      if len(additional_files) + len(libraries):
         shutil.move(filename + '.o', filename + '.o.alone')
         Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
                  filename + '.o')
@@ -477,6 +491,13 @@ class RunnerCore(unittest.TestCase):
     line = [line for line in out.split('\n') if '[' + what + ']' in line][0].strip()
     ret = line.split(':')[1].strip()
     return int(ret)
+
+  def get_wasm_text(self, wasm_binary):
+    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+
+  def is_exported_in_wasm(self, name, wasm):
+    wat = self.get_wasm_text(wasm)
+    return ('(export "%s"' % name) in wat
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
@@ -680,7 +701,7 @@ class RunnerCore(unittest.TestCase):
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
     if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
-      return self.skip("wasm backend doesn't support ASYNCIFY yet")
+      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -693,7 +714,8 @@ class RunnerCore(unittest.TestCase):
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    js_file = filename + '.o.js'
+    if len(js_engines) == 0: self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
         js_engines = [SPIDERMONKEY_ENGINE]
@@ -701,7 +723,7 @@ class RunnerCore(unittest.TestCase):
         js_engines = js_engines[:1]
     for engine in js_engines:
       #print 'test in', engine
-      js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       try:
         if assert_identical:
@@ -717,8 +739,8 @@ class RunnerCore(unittest.TestCase):
 
     if self.save_JS:
       global test_index
-      self.hardcode_arguments(filename + '.o.js', args)
-      shutil.copyfile(filename + '.o.js', os.path.join(TEMP_DIR, str(test_index) + '.js'))
+      self.hardcode_arguments(js_file, args)
+      shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
@@ -798,7 +820,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
-    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
+    self.also_asmjs = os.environ.get('EMCC_BROWSER_ALSO_ASMJS', '0') == '1'
     self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
     self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser(): return
@@ -851,7 +873,7 @@ class BrowserCore(RunnerCore):
             break
           time.sleep(0.1)
         if output.startswith('/report_result?skipped:'):
-          self.skip(unquote(output[len('/report_result?skipped:'):]).strip())
+          self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           self.assertIdentical(expectedResult, output)
       finally:
@@ -983,13 +1005,22 @@ class BrowserCore(RunnerCore):
 ''' % (self.test_port, basename))
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=True): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
+    if 'USE_PTHREADS=1' in args or 'USE_PTHREADS=2' in args:
+      if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
+        # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
+        args = args + ['-s', 'WASM=0']
+    if not 'WASM=0' in args:
+      # Filter out separate-asm, which is implied by wasm
+      args = [a for a in args if a != '--separate-asm']
+      # wasm doesn't support USE_PTHREADS=2
+      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
     if not reference:
@@ -1011,14 +1042,9 @@ class BrowserCore(RunnerCore):
     if post_build: post_build()
     if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if also_wasm and self.also_wasm:
-      wasm_args = args + ['-s', 'WASM=1']
-      # Filter out separate-asm, which is implied by wasm
-      wasm_args = [a for a in wasm_args if a != '--separate-asm']
-      # wasm doesn't support USE_PTHREADS=2
-      wasm_args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in wasm_args]
+    if self.also_asmjs and not 'WASM=0' in args:
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 wasm_args, outfile, message, also_proxied=False, timeout=timeout, also_wasm=False)
+                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
     if also_proxied:
       print('proxied...')
       if reference:
@@ -1080,7 +1106,7 @@ def main(args):
   args = skip_requested_tests(args, modules)
   args = args_for_random_tests(args, modules)
   suites, unmatched_tests = load_test_suites(args, modules)
-  run_tests(suites, unmatched_tests)
+  return run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
   if len(args) == 2 and args[1] in ['--help', '-h']:
@@ -1099,7 +1125,7 @@ def print_js_engine_message():
   if use_all_engines:
     print('(using ALL js engines)')
   else:
-    logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
+    logger.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 def sanity_checks():
   global JS_ENGINES
@@ -1198,7 +1224,7 @@ def skip_requested_tests(args, modules):
         for m in modules:
           try:
             suite = getattr(m, suite_name)
-            setattr(suite, test_name, lambda ignored:RunnerCore("skipme")())
+            setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
           except:
             pass
@@ -1224,7 +1250,7 @@ def get_random_test_parameters(arg):
   num_tests = 1
   base_module = 'default'
   relevant_modes = test_modes
-  if len(arg) > 0:
+  if len(arg):
     num_str = arg
     if arg.startswith('other'):
       base_module = 'other'
@@ -1284,7 +1310,7 @@ def load_test_suites(args, modules):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module) > 0:
+    if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)
@@ -1310,11 +1336,11 @@ def suite_for_module(module, tests):
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []
-  numFailures = 0
+  num_failures = 0
 
-  if len(unmatched_test_names) > 0:
+  if len(unmatched_test_names):
     print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
-    numFailures += len(unmatched_test_names)
+    num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
 
   print('Test suites:')
@@ -1327,7 +1353,7 @@ def run_tests(suites, unmatched_test_names):
     msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
         res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
     )
-    numFailures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -1338,9 +1364,12 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exitcode = min(numFailures, 255)
-  sys.exit(exitcode)
+  return min(num_failures, 255)
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+  try:
+    sys.exit(main(sys.argv))
+  except KeyboardInterrupt:
+    logger.warning('KeyboardInterrupt')
+    sys.exit(1)

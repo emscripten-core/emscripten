@@ -22,6 +22,91 @@ Guide material for the following APIs can be found in :ref:`interacting-with-cod
 Defines
 -------
 
+.. c:macro:: EM_JS(return_type, function_name, arguments, code)
+
+	Convenient syntax for JavaScript library functions.
+
+	This allows you to declare JavaScript in your C code as a function, which can
+	be called like a normal C function. For example, the following C program would
+	display two alerts if it was compiled with Emscripten and run in the browser: ::
+		EM_JS(void, two_alerts, (), {
+		  alert('hai');
+		  alert('bai');
+		});
+
+		int main() {
+		  two_alerts();
+		  return 0;
+		}
+
+	Arguments can be passed as normal C arguments, and have the same name in the
+	JavaScript code. These arguments can either be of type ``int32_t`` or
+	``double``. ::
+		EM_JS(void, take_args, (int x, float y), {
+		  console.log('I received: ' + [x, y]);
+		});
+
+		int main() {
+		  take_args(100, 35.5);
+		  return 0;
+		}
+
+	Null-terminated C strings can also be passed into ``EM_JS`` functions, but to
+	operate on them, they need to be copied out from the heap to convert to
+	high-level JavaScript strings. ::
+		EM_JS(void, say_hello, (const char* str), {
+		  console.log('hello ' + UTF8ToString(str));
+		}
+
+	In the same manner, pointers to any type (including ``void *``) can be passed
+	inside ``EM_JS`` code, where they appear as integers like ``char *`` pointers
+	above did. Accessing the data can be managed by reading the heap directly. ::
+		EM_JS(void, read_data, (int* data), {
+		  console.log('Data: ' + HEAP32[data>>2] + ', ' + HEAP32[(data+4)>>2]);
+		});
+
+		int main() {
+		  int arr[2] = { 30, 45 };
+		  read_data(arr);
+		  return 0;
+		}
+
+	In addition, EM_JS functions can return a value back to C code. The output
+	value is passed back with a ``return`` statement: ::
+		EM_JS(int, add_forty_two, (int n), {
+		  return n + 42;
+		});
+
+		EM_JS(int, get_total_memory, (), {
+		  return TOTAL_MEMORY;
+		});
+
+		int main() {
+		  int x = add_forty_two(100);
+		  int y = get_total_memory();
+		  // ...
+		}
+
+	Strings can be returned back to C from JavaScript, but one needs to be careful
+	about memory management. ::
+		EM_JS(const char*, get_unicode_str, (), {
+		  var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
+		  // 'jsString.length' would return the length of the string as UTF-16
+		  // units, but Emscripten C strings operate as UTF-8.
+		  var lengthBytes = lengthBytesUTF8(jsString)+1;
+		  var stringOnWasmHeap = _malloc(lengthBytes);
+		  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+		  return stringOnWasmHeap;
+		});
+
+		int main() {
+		  const char* str = get_unicode_str();
+		  printf("UTF8 string says: %s\n", str);
+		  // Each call to _malloc() must be paired with free(), or heap memory will leak!
+		  free(str);
+		  return 0;
+		}
+
 .. c:macro:: EM_ASM(...)
 
 	Convenient syntax for inline assembly/JavaScript.

@@ -183,10 +183,10 @@ process(sys.argv[1])
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=1' in self.extra_args:
-      ret.append(self.filename[:-3] + '.wasm')
-    else:
+    if 'WASM=0' in self.extra_args:
       ret.append(self.filename + '.mem')
+    else:
+      ret.append(self.filename[:-3] + '.wasm')
     return ret
 
 CHEERP_BIN = '/opt/cheerp/bin/'
@@ -286,7 +286,7 @@ class CheerpBenchmarker(Benchmarker):
       temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
       safe_ensure_dirs(temp_dir)
       os.chdir(temp_dir)
-      contents = [x for x in Popen([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x) > 0]
+      contents = [x for x in Popen([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).communicate()[0].split('\n') if len(x)]
       warn_if_duplicate_entries(contents, f)
       if len(contents) == 0:
         logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
@@ -334,18 +334,17 @@ try:
   ]
   if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
     benchmarkers += [
-      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2']),
-      #EmscriptenBenchmarker('sm-simd',  SPIDERMONKEY_ENGINE, ['-s', 'SIMD=1']),
-      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1']),
-      EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1', '--llvm-lto', '1']),
-      #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['-s', 'WASM=1'], env={
+      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'WASM=0']),
+      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
+      #EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
+      #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], [env={
       #  'LLVM': '/home/alon/Dev/llvm/build/bin',
       #  'EMCC_WASM_BACKEND': '1',
       #}),
     ]
   if V8_ENGINE and Building.which(V8_ENGINE[0]):
     benchmarkers += [
-      EmscriptenBenchmarker('v8-wasm',  V8_ENGINE,           ['-s', 'WASM=1']),
+      EmscriptenBenchmarker('v8-wasm',  V8_ENGINE),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [

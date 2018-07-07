@@ -28,10 +28,10 @@ struct Class {
 
     EM_ASM({
       var initial = stackSave();
-      Module.print('seeing initial stack of ' + initial);
+      out('seeing initial stack of ' + initial);
       setTimeout(function() {
         var current = stackSave();
-        Module.print('seeing later stack of   ' + current);
+        out('seeing later stack of   ' + current);
         assert(current === initial);
       }, 0);
     });

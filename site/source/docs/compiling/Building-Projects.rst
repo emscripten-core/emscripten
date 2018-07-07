@@ -38,17 +38,19 @@ To build with Emscripten, you would instead use the following commands:
 
 
 		
-*emconfigure* is called with the normal *configure* as an argument (in *configure*-based build systems), and *emmake* with *make* as an argument. If your build system doesn't use configure, then you can omit the first step.
+*emconfigure* is called with the normal *configure* as an argument (in *configure*-based build systems), and *emmake* with *make* as an argument. If your build system uses **CMake**, replace ``./configure`` with ``cmake .`` etc. in the above example. If your build system doesn't use configure or CMake, then you can omit the first step and just run ``make`` (although then you may need to edit the ``Makefile`` manually).
 
-.. tip:: We recommend you call both *emconfigure* and *emmake* scripts in *configure*-based build systems. Whether you actually **need** to call both tools depends on the build system (some systems will store the environment variables in the configure step, and others will not).
+.. tip:: We recommend you call both *emconfigure* and *emmake* scripts in *configure*- and *CMake*-based build systems. Whether you actually **need** to call both tools depends on the build system (some systems will store the environment variables in the configure step, and others will not).
 
 *Make* generates linked LLVM bitcode. It does not automatically generate JavaScript during linking because all the files must be compiled using the :ref:`same optimizations and compiler options <building-projects-optimizations>` — and it makes sense to do this in the final conversion from bitcode to JavaScript. 
 
 .. note:: 
 
-	The file output from *make* might have a different suffix: **.a** for a static library archive, **.so** for a shared library, **.o** or **.bc** for object files (these file extensions are the same as *gcc* would use for the different types). Irrespective of the file extension, these files contain linked LLVM bitcode that *emcc* can compile into JavaScript in the final step.
+	The file output from *make* might have a different suffix: **.a** for a static library archive, **.so** for a shared library, **.o** or **.bc** for object files (these file extensions are the same as *gcc* would use for the different types). Irrespective of the file extension, these files contain linked LLVM bitcode that *emcc* can compile into JavaScript in the final step. If the suffix is something else - like no suffix at all, or something like **.so.1** - then you may need to rename the file before sending it to *emcc*.
 
-The last step is to compile the linked bitcode into JavaScript. We do this by calling *emcc* again, specifying the linked LLVM bitcode file as an input, and a JavaScript file as the output.
+.. note::
+
+	Some build systems may not properly emit bitcode using the above procedure, and you may see ``is not valid bitcode`` warnings. You can run ``file`` to check if a file contains bitcode (also you can manually check if the contents start with ``BC``). It is also worth running ``emmake make VERBOSE=1`` which will print out the commands it runs - you should see *emcc* being used, and not the native system compiler. If *emcc* is not used, you may need to modify the configure or cmake scripts.
 
 
 .. _building-projects-optimizations:
@@ -56,15 +58,15 @@ The last step is to compile the linked bitcode into JavaScript. We do this by ca
 Building projects with optimizations
 ====================================
 
-Emscripten performs :ref:`compiler optimization <Optimizing-Code>` at two levels: each source file is optimized by LLVM as it is compiled into an object file, and then JavaScript-specific optimizations are applied when converting object files into JavaScript.
+Emscripten performs :ref:`compiler optimization <Optimizing-Code>` at two levels: each source file is optimized by LLVM as it is compiled into an object file, and then JavaScript/WebAssembly-specific optimizations are applied when converting object files into the final JavaScript/WebAssembly.
 
-In order to properly optimize code, it is important to use the **same** :ref:`optimization flags <emcc-compiler-optimization-options>` and other :ref:`compiler options <emcc-s-option-value>` when compiling source to object code, and object code to JavaScript (or HTML).
+In order to properly optimize code, it is usually best to use the **same** :ref:`optimization flags <emcc-compiler-optimization-options>` and other :ref:`compiler options <emcc-s-option-value>` when compiling source to object code, and object code to JavaScript (or HTML).
 
 Consider the examples below:
 
 .. code-block:: bash
 
-	# Sub-optimal - JavaScript optimizations are omitted
+	# Sub-optimal - JavaScript/WebAssembly optimizations are omitted
 	./emcc -O2 a.cpp -o a.bc
 	./emcc -O2 b.cpp -o b.bc
 	./emcc a.bc b.bc -o project.js
@@ -74,18 +76,19 @@ Consider the examples below:
 	./emcc b.cpp -o b.bc
 	./emcc -O2 a.bc b.bc -o project.js
 
-	# Broken! Different JavaScript and LLVM optimisations used.
-	./emcc -O1 a.cpp -o a.bc
-	./emcc -O2 b.cpp -o b.bc
-	./emcc -O3 a.bc b.bc -o project.js
-	
-	# Correct. The SAME LLVM and JavaScript options are provided at both levels.
+	# Usually the right thing: The SAME LLVM and JavaScript options are provided at both levels.
 	./emcc -O2 a.cpp -o a.bc
 	./emcc -O2 b.cpp -o b.bc
 	./emcc -O2 a.bc b.bc -o project.js
 
+However, sometimes you may want slightly different optimizations on certain files:
 
-The same rule applies when :ref:`building Emscripten using a build system <building-projects-build-system>` — both LLVM and JavaScript must be optimized using the same settings. 
+.. code-block:: bash
+
+	# Optimize the first file for size, and the rest using `-O2`.
+	./emcc -Oz a.cpp -o a.bc
+	./emcc -O2 b.cpp -o b.bc
+	./emcc -O2 a.bc b.bc -o project.js
 
 .. note:: Unfortunately each build-system defines its own mechanisms for setting compiler and optimization methods. **You will need to work out the correct approach to set the LLVM optimization flags for your system**.
 
@@ -93,7 +96,7 @@ The same rule applies when :ref:`building Emscripten using a build system <build
 	- You can control whether LLVM optimizations are run using ``--llvm-opts N`` where N is an integer in the range 0-3. Sending ``-O2 --llvm-opts 0`` to *emcc* during all compilation stages will disable LLVM optimizations but utilize JavaScript optimizations. This can be useful when debugging a build failure.
 
 
-JavaScript optimizations are specified in the final step, when you compile the linked LLVM bitcode to JavaScript. For example, to compile with :ref:`-O1 <emcc-O1>`:
+JavaScript/WebAssembly optimizations are specified in the final step (sometimes called "link", as that step typically also links together a bunch of files that are all compiled together into one JavaScript/WebAssembly output). For example, to compile with :ref:`-O1 <emcc-O1>`:
 	
 .. code-block:: bash
 
@@ -174,7 +177,7 @@ Emscripten Ports is a collection of useful libraries, ported to Emscripten. They
 
 You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
 
-.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with -s SDL2_IMAGE_FORMATS='["png"]'. This will also ensure that ``IMG_Init`` works properly. Alternatively, you can use specify ``emcc --use-preload-plugins`` (and ``--preload-file`` your images, so the browser codecs decode them), but then your calls to ``IMG_Init`` will fail.
+.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-s SDL2_IMAGE_FORMATS='["bmp","png","xpm"]'`` (note: jpg support is not available yet as of Jun 22 2018 - libjpg needs to be added to emscripten-ports). This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` (and ``--preload-file`` your images, so the browser codecs decode them), a code path in the SDL2_image port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
 
 .. note:: *SDL_net* has also been added to ports, use it with ``-s USE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
 

@@ -10,6 +10,15 @@ There are two alternatives for how files are packaged: *preloading* and *embeddi
 	
 *Emcc* uses the *file packager* to package the files and generate the :ref:`File System API <Filesystem-API>` calls that create and load the file system at run time. While *Emcc* is the recommended tool for packaging, there are cases where it can make sense to run the *file packager* manually.
 
+With ``--use-preload-plugins``, files can be automatically decoded
+using the browser's codecs, based on their extension (this can also be
+done manually by calling :c:func:`emscripten_run_preload_plugins` on
+each file).  The files remain stored in their original form in the
+file system, but their decoded form can be used by ``IMG_Load`` (SDL1
+and SDL2 port, which rely on
+:c:func:`emscripten_get_preloaded_image_data`) or ``Mix_LoadWAV``
+(SDL1 only).
+
 
 Packaging using emcc
 ====================
@@ -106,7 +115,7 @@ Monitoring file usage
 
 .. important:: Only package the files your app actually needs, in order to reduce download size and improve startup speed. 
 
-There is an option to log which files are actually used at runtime. To use it, define the :js:attr:`Module.logReadFiles` object. The :js:attr:`Module.printErr` function will be called on each file that is read (this function must also be defined, and should log to a convenient place).
+There is an option to log which files are actually used at runtime. To use it, define the :js:attr:`Module.logReadFiles` object. Each file that is read will be logged to stderr.
 
 An alternative approach is to look at :js:func:`FS.readFiles` in your compiled JavaScript. This is an object with keys for all the files that were read from. You may find it easier to use than logging as it records files rather than potentially multiple file accesses. 
 
