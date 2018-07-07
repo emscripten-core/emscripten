@@ -7389,15 +7389,15 @@ function emterpretify(ast) {
     if (ignore) {
       // we are not emterpreting this function. not much to do here, but we do need to
       // set up some interactions with emterpreted code
-      function makeCheckBadState(state) {
-        // A bad state is when restoring the stack: we must only load the stack in that state,
-        // not do any actual work.
-        return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', state]];
-      }
-      function makeBadStateAbort(check, type, otherwise) {
-        return ['conditional', check, makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], type), otherwise];
-      }
       if (ASYNC && ASSERTIONS && !okToCallDuringAsyncRestore(func[1])) {
+        function makeCheckBadState(state) {
+          // A bad state is when restoring the stack: we must only load the stack in that state,
+          // not do any actual work.
+          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', state]];
+        }
+        function makeBadStateAbort(check, type, otherwise) {
+          return ['conditional', check, makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], type), otherwise];
+        }
         var stack = [];
         traverse(func, function(node, type) {
           stack.push(node);
@@ -7436,21 +7436,19 @@ function emterpretify(ast) {
             makeBadStateAbort(check, ASM_INT, ['num', 0])
           ]);
         });
-      }
-      // Add prelude code
-      if (ASYNC) {
         var stats = getStatements(func);
         for (var i = 0; i < stats.length; i++) {
           var node = stats[i];
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
             // in the prelude, we check that we are not restoring the stack
-            if (ASSERTIONS) {
-              stats.splice(i, 0, ['stat',
-                makeBadStateAbort(makeCheckBadState(2), ASM_INT, ['num', 0])
-              ]);
-            }
-            // update the state if necessary
+            stats.splice(i, 0, ['stat',
+              makeBadStateAbort(makeCheckBadState(2), ASM_INT, ['num', 0])
+            ]);
+            // update the state if necessary. note that we only do this when assertions are on,
+            // as in a non-emterpreted function the 1 => 3 change only matters for assertion
+            // purposes, no need to add overhead in fast code (but in emterpreted code, we
+            // need to do this on emtry, so that we know we are not saving the stack).
             stats.splice(i, 0, ['stat',
               makePreludeStateChange()
             ]);
