@@ -32,7 +32,7 @@ void __attribute__((noinline)) middle() { // not emterpreted, so sleeping in run
 int main() {
   EM_ASM({
     window.onerror = function(err) {
-      assert(err.toString().indexOf("This error happened during an emterpreter-async stack load") > 0, "expect good error message");
+      assert(err.toString().indexOf("This error happened during an emterpreter-async operation") > 0, "expect good error message");
       // manually REPORT_RESULT; we can't call back into native code at this point, assertions would trigger
       var xhr = new XMLHttpRequest();
       xhr.open("GET", "http://localhost:8888/report_result?1");

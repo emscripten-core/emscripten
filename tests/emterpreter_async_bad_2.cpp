@@ -31,7 +31,7 @@ int main() {
   EM_ASM({
     window.onerror = function(err) {
       var str = err.toString();
-      assert(str.indexOf('This error happened during an emterpreter-async save or load of the stack') > 0, 'expect good error message');
+      assert(err.toString().indexOf("This error happened during an emterpreter-async operation") > 0, "expect good error message");
       assert(str.indexOf('-12') > 0, '-12 error from emterpreter-async');
       // manually REPORT_RESULT; we can't call back into native code at this point, assertions would trigger
       var xhr = new XMLHttpRequest();
