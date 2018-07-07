@@ -259,8 +259,8 @@ mergeInto(LibraryManager.library, {
       this.initted = true;
 #if ASSERTIONS
       abortDecorators.push(function(output, what) {
-        if (EmterpreterAsync.state === 2) {
-          return output + '\nThis error happened during an emterpreter-async stack load. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
+        if (EmterpreterAsync.state === 1 || EmterpreterAsync.state === 2) {
+          return output + '\nThis error happened during an emterpreter-async operation. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
         }
         return output;
       });
