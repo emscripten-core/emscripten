@@ -234,7 +234,15 @@ mergeInto(LibraryManager.library, {
     state: 0, // 0 - Nothing/normal.
               // 1 - Sleeping: This is set when we start to save the stack, and continues through the
               //     sleep, until we start to restore the stack.
+              //     If we re-enter emterpreted code while in this state - that is, before we
+              //     start to restore the stack, or in other words if we run emterpreted code while
+              //     sleeping - then we switch to state 3, "definitely sleeping". That lets us know
+              //     we are no longer saving the stack. How this works is that while we save the stack
+              //     we don't hit any function entries, so they are valid places to switch to state 3,
+              //     and then when we reach code later that checks if we need to save the stack, we
+              //     know we don't need to.
               // 2 - Restoring the stack: On the way to resume normal execution.
+              // 3 - Definitely sleeping, that is, sleeping and after saving the stack.
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
@@ -251,8 +259,8 @@ mergeInto(LibraryManager.library, {
       this.initted = true;
 #if ASSERTIONS
       abortDecorators.push(function(output, what) {
-        if (EmterpreterAsync.state !== 0) {
-          return output + '\nThis error happened during an emterpreter-async operation. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
+        if (EmterpreterAsync.state === 2) {
+          return output + '\nThis error happened during an emterpreter-async stack load. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
         }
         return output;
       });
@@ -300,7 +308,8 @@ mergeInto(LibraryManager.library, {
             return;
           }
 
-          assert(EmterpreterAsync.state === 1);
+          assert(EmterpreterAsync.state === 1 || EmterpreterAsync.state === 3);
+          EmterpreterAsync.setState(3);
           if (yieldDuring) {
             resumeCallbacksForYield();
           }

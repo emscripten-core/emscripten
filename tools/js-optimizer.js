@@ -7384,9 +7384,9 @@ function emterpretify(ast) {
         // which is what happens if non-emterpreted code is on the stack while we attempt to save.
         // add asserts right after each call
         function makeCheckBadState() {
-          // A bad state is when saving or restoring the stack. Note that it is ok to run code
-          // during a sleep, for coroutines or yield funcs, etc. - we don't check those.
-          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 1]];
+          // A bad state is when restoring the stack: we must only load the stack in that state,
+          // not do any actual work.
+          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', 2]];
         }
         var stack = [];
         traverse(func, function(node, type) {
@@ -7593,6 +7593,7 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
+        argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
