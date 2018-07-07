@@ -5541,7 +5541,7 @@ function _main() {
 #include <stdio.h>
 #include <emscripten.h>
 
-void emterpreted_yielder() {
+EMSCRIPTEN_KEEPALIVE void emterpreted_yielder() {
   int counter = 0;
   while (1) {
     printf("emterpreted_yielder() sleeping...\n");
@@ -5565,12 +5565,21 @@ int main() {
       Module["_not_emterpreted"]();
     }, 0);
     console.log("calling emterpreted_yielder()");
+#ifdef BAD_EM_ASM
+    Module['_emterpreted_yielder']();
+#endif
   });
+#ifndef BAD_EM_ASM
   emterpreted_yielder();
+#endif
 }
     ''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]'])
     self.assertContained('Success', run_js('a.out.js'))
+
+    print('check for invalid EM_ASM usage')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]', '-DBAD_EM_ASM'])
+    self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js'))
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
