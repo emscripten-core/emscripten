@@ -7609,7 +7609,9 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        argStats.push(makeAssertionsPreludeStateChange());
+        if (ASSERTIONS) {
+          argStats.push(makeAssertionsPreludeStateChange());
+        }
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
