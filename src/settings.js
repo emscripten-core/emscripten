@@ -392,8 +392,7 @@ var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module
                                  // by having "Runtime" in this list.
 ];
 
-var EXTRA_EXPORTED_RUNTIME_METHODS = [];
-                                         // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
+var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
                                          // lets you remove methods that would be exported by default; setting values in
                                          // this list lets you add to the default list without modifying it.
 
