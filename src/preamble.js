@@ -430,55 +430,45 @@ function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
 
-// Given a pointer 'ptr' to an UTF8-encoded string (optionally null terminated) in the given array that contains uint8 values,
-// returns a copy of that string as a Javascript String object.
-// sizeInBytes parameter (optional): specify size of bytes to be converted in the array. When sizeInBytes is used,
-//                                   null bytes inside or at the end of the buffer are not interpreted as terminators.
-//                                   Note that partial/incomplete UTF-8 sequences at the end are discarded.
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
+// a copy of that string as a Javascript String object.
+
 #if TEXTDECODER
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
 #endif
-function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
-  var endIdx = idx;
-
-  if (typeof sizeInBytes === 'undefined') {
-    while (u8Array[endIdx]) ++endIdx;
-  } else {
-    endIdx += sizeInBytes; //Length info provided externally, e. g. when embedded null bytes should be processed
-  }
+function UTF8ArrayToString(u8Array, idx) {
 #if TEXTDECODER
+  var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  if (endIdx - idx > 16 && u8Array.subarray && UTF8Decoder) {
-    return UTF8Decoder.decode(u8Array.subarray(idx, endIdx));
+  while (u8Array[endPtr]) ++endPtr;
+
+  if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
+    return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
   } else {
 #endif
     var u0, u1, u2, u3, u4, u5;
-    var str = '';
 
-    while (idx < endIdx) {
+    var str = '';
+    while (1) {
       // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
       u0 = u8Array[idx++];
+      if (!u0) return str;
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-      if (idx >= endIdx) break;
       u1 = u8Array[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-      if (idx >= endIdx) break;
       u2 = u8Array[idx++] & 63;
       if ((u0 & 0xF0) == 0xE0) {
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
-        if (idx >= endIdx) break;
         u3 = u8Array[idx++] & 63;
         if ((u0 & 0xF8) == 0xF0) {
           u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
         } else {
-          if (idx >= endIdx) break;
           u4 = u8Array[idx++] & 63;
           if ((u0 & 0xFC) == 0xF8) {
             u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
           } else {
-            if (idx >= endIdx) break;
             u5 = u8Array[idx++] & 63;
             u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
           }
@@ -494,15 +484,13 @@ function UTF8ArrayToString(u8Array, idx, sizeInBytes) {
 #if TEXTDECODER
   }
 #endif
-  return str;
 }
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
-// len parameter (optional): bytewise length in case string is not null terminated
 
-function UTF8ToString(ptr, len) {
-  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, len);
+function UTF8ToString(ptr) {
+  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
