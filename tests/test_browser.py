@@ -56,8 +56,7 @@ def shell_with_script(shell_file, output_file, replacement):
     with open(output_file, 'w') as output:
       output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
 
-def requires_hardware(func):
-  return lambda self: self.skip("This test requires hardware access including graphics and sound devices") if os.environ.get("EM_LACKS_HARDWARE_ACCESS") else func(self)
+requires_hardware = unittest.skipIf(os.environ.get("EM_LACKS_HARDWARE_ACCESS"), "This test requires hardware access including graphics and sound devices")
 
 class browser(BrowserCore):
   @classmethod
@@ -69,7 +68,7 @@ class browser(BrowserCore):
     print()
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
-    if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']): return self.skip('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
+    if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']): self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
     # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
     # system JS libraries are no longer automatically linked to anymore.
     self.btest('hello_world_sdl.cpp', reference='htmltest.png')
@@ -82,7 +81,7 @@ class browser(BrowserCore):
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
   def test_zzz_html_source_map(self):
-    if not has_browser(): return self.skip('need a browser')
+    if not has_browser(): self.skipTest('need a browser')
     cpp_file = os.path.join(self.get_dir(), 'src.cpp')
     html_file = os.path.join(self.get_dir(), 'src.html')
     # browsers will try to 'guess' the corresponding original line if a
@@ -1219,8 +1218,8 @@ keydown(100);keyup(100); // trigger the end
   def test_emscripten_get_now(self):
     self.btest('emscripten_get_now.cpp', '1')
 
+  @unittest.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
   def test_fflush(self):
-    return self.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
     self.btest('test_fflush.cpp', '0', args=['--shell-file', path_from_root('tests', 'test_fflush.html')])
 
   def test_file_db(self):
@@ -2010,7 +2009,7 @@ void *getBindBuffer() {
     try:
       print('Crunch is located at ' + CRUNCH)
     except:
-      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
+      return self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     def test(args):
       print(args)
       shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
@@ -2030,7 +2029,7 @@ void *getBindBuffer() {
     try:
       print('Crunch is located at ' + CRUNCH)
     except:
-      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
+      return self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
     shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
@@ -2276,8 +2275,8 @@ void *getBindBuffer() {
     self.btest('http.cpp', expected='0', args=['-I' + path_from_root('tests')])
 
   # TODO: test only worked in non-fastcomp
+  @unittest.skip('non-fastcomp is deprecated and fails in 3.5')
   def test_module(self):
-    return self.skip('non-fastcomp is deprecated and fails in 3.5')
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
@@ -2287,7 +2286,7 @@ void *getBindBuffer() {
       self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
 
   def test_emrun_info(self):
-    if not has_browser(): return self.skip('need a browser')
+    if not has_browser(): self.skipTest('need a browser')
     result = run_process([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
@@ -2300,7 +2299,7 @@ void *getBindBuffer() {
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
   def test_zzz_emrun(self):
-    if not has_browser(): return self.skip('need a browser')
+    if not has_browser(): self.skipTest('need a browser')
     Popen([PYTHON, EMCC, path_from_root('tests', 'test_emrun.c'), '--emrun', '-o', 'hello_world.html']).communicate()
     outdir = os.getcwd()
     # We cannot run emrun from the temp directory the suite will clean up afterwards, since the browser that is launched will have that directory as startup directory,
@@ -2410,7 +2409,7 @@ Module["preRun"].push(function () {
 
   @requires_hardware
   def test_webgl_context_params(self):
-    if WINDOWS: return self.skip('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
+    if WINDOWS: self.skipTest('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest(path_from_root('tests', 'webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0', timeout=20)
 
   # Test for PR#5373 (https://github.com/kripken/emscripten/pull/5373)
@@ -3338,7 +3337,7 @@ window.close = function() {
   def test_pthread_kill(self):
     if get_browser() and 'chrom' in get_browser().lower():
       # This test hangs the chrome render process, and keep subsequent tests from passing too
-      return self.skip("pthread_kill hangs chrome renderer")
+      self.skipTest("pthread_kill hangs chrome renderer")
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.

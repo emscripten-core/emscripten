@@ -26,6 +26,8 @@ def g_testing_thread(work_queue, result_queue, temp_dir):
     test.set_temp_dir(temp_dir)
     try:
       test(result)
+    except unittest.SkipTest as e:
+      result.addSkip(test, e)
     except Exception as e:
       result.addError(test, e)
     result_queue.put(result)
@@ -132,6 +134,10 @@ class BufferedParallelTestResult(object):
     print(test, '... ok', file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
 
+  def addSkip(self, test, reason):
+    print(test, "... skipped '%s'" % reason, file=sys.stderr)
+    self.buffered_result = BufferedTestSkip(test, reason)
+
   def addFailure(self, test, err):
     print(test, '... FAIL', file=sys.stderr)
     self.buffered_result = BufferedTestFailure(test, err)
@@ -161,6 +167,15 @@ class BufferedTestBase(object):
 class BufferedTestSuccess(BufferedTestBase):
   def updateResult(self, result):
     result.addSuccess(self.test)
+
+
+class BufferedTestSkip(BufferedTestBase):
+  def __init__(self, test, reason):
+    self.test = test
+    self.reason = reason
+
+  def updateResult(self, result):
+    result.addSkip(self.test, self.reason)
 
 
 class BufferedTestFailure(BufferedTestBase):
