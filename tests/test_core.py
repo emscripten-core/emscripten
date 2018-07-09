@@ -5855,6 +5855,7 @@ def process(filename):
           '-Wno-logical-not-parentheses',
           '-Wno-unused-private-field',
           '-Wno-tautological-compare',
+          '-Wno-unknown-pragmas',
       ]
       poppler = self.get_library('poppler',
                                  [os.path.join('utils', 'pdftoppm.o'),
