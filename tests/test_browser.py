@@ -2391,6 +2391,13 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
   @requires_hardware
+  def test_html5_webgl_create_context_no_antialias(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+      print(opts)
+      self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0', timeout=20)
+
+  # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
+  @requires_hardware
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
