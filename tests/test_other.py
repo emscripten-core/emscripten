@@ -630,7 +630,7 @@ f.close()
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   def test_cmake_compile_features(self):
-    if WINDOWS: return self.skip('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
+    if WINDOWS: self.skipTest('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
 
     with temp_directory():
       cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
@@ -694,6 +694,14 @@ f.close()
       subprocess.check_call([Building.which('cmake'), '--build', '.'])
       assert tools.shared.Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
       assert tools.shared.Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+
+  # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
+  def test_cmake_emscripten_version(self):
+    if os.name == 'nt': emcmake = path_from_root('emcmake.bat')
+    else: emcmake = path_from_root('emcmake')
+
+    with temp_directory() as tempdirname:
+      subprocess.check_call([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
@@ -912,7 +920,7 @@ int main() {
 
   def test_outline(self):
     if WINDOWS and not Building.which('mingw32-make'):
-      return self.skip('Skipping other.test_outline: This test requires "mingw32-make" tool in PATH on Windows to drive a Makefile build of zlib')
+      self.skipTest('Skipping other.test_outline: This test requires "mingw32-make" tool in PATH on Windows to drive a Makefile build of zlib')
 
     def test(name, src, libs, expected, expected_ranges, args=[], suffix='cpp'):
       print(name)
@@ -1011,7 +1019,7 @@ int main() {
   def test_symlink(self):
     self.clear()
     if os.name == 'nt':
-      return self.skip('Windows FS does not need to be tested for symlinks support, since it does not have them.')
+      self.skipTest('Windows FS does not need to be tested for symlinks support, since it does not have them.')
     open(os.path.join(self.get_dir(), 'foobar.xxx'), 'w').write('int main(){ return 0; }')
     os.symlink(os.path.join(self.get_dir(), 'foobar.xxx'), os.path.join(self.get_dir(), 'foobar.c'))
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'foobar.c'), '-o', os.path.join(self.get_dir(), 'foobar')]).communicate()
@@ -2153,7 +2161,7 @@ int f() {
       assert 'error' not in proc.stderr, 'Unexpected stderr: ' + proc.stderr
 
   def test_emcc_debug_files(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
 
     for opts in [0, 1, 2, 3]:
       for debug in [None, '1', '2']:
@@ -2177,7 +2185,7 @@ int f() {
           if debug: del os.environ['EMCC_DEBUG']
 
   def test_debuginfo(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
@@ -2200,7 +2208,7 @@ int f() {
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
     scons_path = Building.which('scons')
     if not scons_path:
-      return self.skip('Skipping other.test_scons: The tool "scons" was not found in PATH!')
+      self.skipTest('Skipping other.test_scons: The tool "scons" was not found in PATH!')
     try_delete(os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tests', 'scons'), os.path.join(self.get_dir(), 'test'))
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join(self.get_dir(), 'test', 'site_scons'))
@@ -2255,12 +2263,12 @@ int f() {
         assert "FAIL" not in output, output
 
   def test_llvm_nativizer(self):
-    if WINDOWS: return self.skip('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
-    if MACOS: return self.skip('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
+    if WINDOWS: self.skipTest('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
+    if MACOS: self.skipTest('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
     try:
       Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
     except:
-      return self.skip('no gnu as, cannot run nativizer')
+      self.skipTest('no gnu as, cannot run nativizer')
 
     # avoid impure_ptr problems etc.
     shutil.copyfile(path_from_root('tests', 'files.cpp'), os.path.join(self.get_dir(), 'files.cpp'))
@@ -2413,7 +2421,7 @@ seeked= file.
     try:
       print('Crunch is located at ' + CRUNCH)
     except:
-      return self.skip('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
+      self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
     # crunch should not be run if a .crn exists that is more recent than the .dds
     shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
     time.sleep(0.1)
@@ -2635,7 +2643,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_extra_exported_methods(self):
     # Test with node.js that the EXTRA_EXPORTED_RUNTIME_METHODS setting is considered by libraries
     if NODE_JS not in JS_ENGINES:
-      return self.skip("node engine required for this test")
+      self.skipTest("node engine required for this test")
 
     open(os.path.join(self.get_dir(), 'count.c'), 'w').write('''
       #include <string.h>
@@ -3415,7 +3423,7 @@ int main() {
       self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
 
   def test_os_oz(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
     try:
       os.environ['EMCC_DEBUG'] = '1'
       for args, expect in [
@@ -3572,7 +3580,7 @@ int main()
   def test_llvm_lit(self):
     grep_path = Building.which('grep')
     if not grep_path:
-      return self.skip('Skipping other.test_llvm_lit: This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
+      self.skipTest('Skipping other.test_llvm_lit: This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
     llvm_src = get_fastcomp_src_dir()
     LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
     if not os.path.exists(LLVM_LIT):
@@ -5223,7 +5231,7 @@ pass: error == ENOTDIR
 
 
   def test_emterpreter(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('test_emterpreter requires SpiderMonkey to run.')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('test_emterpreter requires SpiderMonkey to run.')
 
     def do_emcc_test(source, args, output, emcc_args=[]):
       print()
@@ -5682,7 +5690,7 @@ int main(void) {
         main_name = 'main.c'
         open(main_name, 'w').write(main)
 
-        if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+        if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
         try:
           os.environ['EMCC_DEBUG'] = '1'
           err = run_process([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).stderr
@@ -5855,7 +5863,7 @@ int main() {
     self.clear()
 
   def test_massive_alloc(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey, node cannnot alloc huge arrays')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('cannot run without spidermonkey, node cannnot alloc huge arrays')
 
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
 #include <stdio.h>
@@ -6419,7 +6427,7 @@ int main() {
     assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
 
   def test_emcc_dev_null(self):
-    if WINDOWS: return self.skip('posix-only')
+    if WINDOWS: self.skipTest('posix-only')
     out = run_process([PYTHON, EMCC, '-dM', '-E', '-x', 'c', '/dev/null'], stdout=PIPE).stdout
     self.assertContained('#define __EMSCRIPTEN__ 1', out) # all our defines should show up
 
@@ -7316,7 +7324,7 @@ int main() {
       assert first < second and second < third, [first, second, third]
 
       print('helpful output')
-      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
         open('src.cpp', 'w').write(r'''
@@ -7644,7 +7652,7 @@ int main() {
             try_delete(f)
 
   def test_binaryen_opts(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
 
     with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
       try:
@@ -7696,7 +7704,7 @@ int main() {
         del os.environ['EMCC_DEBUG']
 
   def test_binaryen_and_precise_f32(self):
-    if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+    if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
@@ -7740,7 +7748,7 @@ int main() {
     assert sizes["['-O2']"] < sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names'
 
   def test_binaryen_warn_mem(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('cannot run without spidermonkey')
     # if user changes TOTAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
     open('pre.js', 'w').write('var Module = { TOTAL_MEMORY: 50*1024*1024 };\n')
     subprocess.check_call([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16*1024*1024), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
@@ -7753,7 +7761,7 @@ int main() {
     self.assertContained('hello, world!', run_js('a.out.js', engine=SPIDERMONKEY_ENGINE))
 
   def test_binaryen_warn_sync(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('cannot run without spidermonkey')
     # using a fallback to asm.js will disable async
     for method in ['native-wasm,asmjs', 'native-wasm', None]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1']
@@ -7853,7 +7861,7 @@ int main() {
     assert 'WASM_MEM_MAX must be a multiple of 64KB' in ret, ret
 
   def test_binaryen_ctors(self):
-    if SPIDERMONKEY_ENGINE not in JS_ENGINES: return self.skip('cannot run without spidermonkey')
+    if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('cannot run without spidermonkey')
     # ctor order must be identical to js builds, deterministically
     open('src.cpp', 'w').write(r'''
       #include <stdio.h>
@@ -7878,7 +7886,7 @@ int main() {
   # test debug info and debuggability of JS output
   def test_binaryen_debug(self):
     with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
       try:
         os.environ['EMCC_DEBUG'] = '1'
         for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
@@ -7918,7 +7926,7 @@ int main() {
 
   def test_binaryen_ignore_implicit_traps(self):
     with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      if os.environ.get('EMCC_DEBUG'): return self.skip('cannot run in debug mode')
+      if os.environ.get('EMCC_DEBUG'): self.skipTest('cannot run in debug mode')
       sizes = []
       try:
         os.environ['EMCC_DEBUG'] = '1'
@@ -8145,7 +8153,7 @@ int main() {
 
   def test_wasm_backend(self):
     if not has_wasm_target(get_llc_targets()):
-      return self.skip('wasm backend was not built')
+      self.skipTest('wasm backend was not built')
     old = os.environ.get('EMCC_WASM_BACKEND')
     if old == '1': return # already the default
     try:
@@ -8454,8 +8462,6 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]')
 
   def test_html_preprocess(self):
-    return self.skip('enable when html preprocessing is reenabled')
-
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
     output_file = path_from_root('tests', 'module', 'test_stdin.html')
     shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')

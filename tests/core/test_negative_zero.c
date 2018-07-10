@@ -2,7 +2,7 @@
 #include <math.h>
 
 // test copysign of 0
-int __attribute__((noinline,noclone))
+int __attribute__((noinline))
 copysign_bug (double x)
 {
   if (x != 0.0 && (x * 0.5 == x)) {

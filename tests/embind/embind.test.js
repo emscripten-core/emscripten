@@ -897,12 +897,24 @@ module({
                 assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
             }
 
+            var dummy_static_overloads = cm.MultipleOverloadsDependingOnDummy.staticDummy;
+            // check if the overloadTable is correctly named
+            // it can be minimized if using closure compiler
+            if (dummy_static_overloads.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_static_overloads.overloadTable.hasOwnProperty('undefined'));
+            }
+
             // this part should fail anyway if there is no overloadTable
             var dependOnDummy = new cm.MultipleOverloadsDependingOnDummy();
             var dummy = dependOnDummy.dummy();
             dependOnDummy.dummy(dummy);
             dummy.delete();
             dependOnDummy.delete();
+
+            // this part should fail anyway if there is no overloadTable
+            var dummy = cm.MultipleOverloadsDependingOnDummy.staticDummy();
+            cm.MultipleOverloadsDependingOnDummy.staticDummy(dummy);
+            dummy.delete();
         });
 
         test("no undefined entry in overload table for free functions", function() {
