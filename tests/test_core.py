@@ -484,6 +484,7 @@ int main()
       '''
       self.do_run(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
+      self.emcc_args.append('-Wno-constant-conversion')
       src = '''
         #include <stdio.h>
         int main()
@@ -5843,10 +5844,19 @@ def process(filename):
   src.close()
 '''
 
- #fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
-
+      # fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')]) # Used in file, but not needed, mostly
       freetype = self.get_freetype()
 
+
+      # Poppler has some pretty glaring warning.  Suppress them to keep the
+      # test output readable.
+      Building.COMPILER_TEST_OPTS += [
+          '-Wno-sentinel',
+          '-Wno-logical-not-parentheses',
+          '-Wno-unused-private-field',
+          '-Wno-tautological-compare',
+          '-Wno-unknown-pragmas',
+      ]
       poppler = self.get_library('poppler',
                                  [os.path.join('utils', 'pdftoppm.o'),
                                   os.path.join('utils', 'parseargs.o'),
@@ -6704,12 +6714,12 @@ def process(filename):
 
 class std_string {
 public:
-  std_string() { std::cout << "std_string()\n"; }
+  std_string(): ptr(nullptr) { std::cout << "std_string()\n"; }
   std_string(const char* s): ptr(s) { std::cout << "std_string(const char* s) " << std::endl; }
   std_string(const std_string& s): ptr(s.ptr) { std::cout << "std_string(const std_string& s) " << std::endl; }
   const char* data() const { return ptr; }
 private:
-  const char* ptr = 0;
+  const char* ptr;
 };
 
 const std_string txtTestString("212121\0");
@@ -7771,7 +7781,13 @@ def make_run(name, emcc_args=None, env=None):
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
 
-    Building.COMPILER_TEST_OPTS += ['-Wno-dynamic-class-memaccess', '-Wno-format', '-Wno-format-extra-args', '-Wno-format-security', '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue', '-Wno-c++11-compat-deprecated-writable-strings', '-Wno-invalid-pp-token']
+    Building.COMPILER_TEST_OPTS += [
+        '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+        '-Wno-format-extra-args', '-Wno-format-security',
+        '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
+        '-Wno-c++11-compat-deprecated-writable-strings',
+        '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
+    ]
 
     for arg in self.emcc_args:
       if arg.startswith('-O'):
