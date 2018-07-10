@@ -2155,6 +2155,7 @@ var LibraryEmbind = {
             var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
             var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn);
             if (undefined === proto[methodName].overloadTable) {
+                func.argCount = argCount-1;
                 proto[methodName] = func;
             } else {
                 proto[methodName].overloadTable[argCount-1] = func;
