@@ -258,10 +258,6 @@ class RunnerCore(unittest.TestCase):
       #    assert not temp_file.endswith('.ll'), temp_file
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
-  def skip(self, why):
-    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
-    return False
-
   def get_setting(self, key):
     if key in self.settings_mods:
       return self.settings_mods[key]
