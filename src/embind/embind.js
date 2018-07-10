@@ -622,11 +622,12 @@ var LibraryEmbind = {
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
+            var length = HEAPU32[value >> 2];
+
             var str;
             if(stdStringIsUTF8) {
-                str = UTF8ToString(value + 4);
+                str = UTF8ToString(value + 4, length);
             } else {
-                var length = HEAPU32[value >> 2];
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
                     a[i] = String.fromCharCode(HEAPU8[value + 4 + i]);
