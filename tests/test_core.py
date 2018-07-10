@@ -7334,13 +7334,8 @@ Success!
 
     if not emterpretify:
       if self.is_emterpreter():
-<<<<<<< HEAD
         self.skipTest("don't test both emterpretify and asyncify at once")
-      Settings.ASYNCIFY = 1
-=======
-        return self.skip("don't test both emterpretify and asyncify at once")
       self.set_setting('ASYNCIFY', 1)
->>>>>>> Don't set shared.Settings from test runners, only serialize modifications
     else:
       self.set_setting('EMTERPRETIFY', 1)
       self.set_setting('EMTERPRETIFY_ASYNC', 1)
