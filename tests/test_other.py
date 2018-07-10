@@ -5536,6 +5536,55 @@ function _main() {
       run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
       self.assertContained('result: ' + out, run_js('a.out.js'))
 
+  def test_call_nonemterpreted_during_sleep(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+EMSCRIPTEN_KEEPALIVE void emterpreted_yielder() {
+  int counter = 0;
+  while (1) {
+    printf("emterpreted_yielder() sleeping...\n");
+    emscripten_sleep_with_yield(10);
+    counter++;
+    if (counter == 3) {
+      printf("Success\n");
+      break;
+    }
+  }
+}
+
+EMSCRIPTEN_KEEPALIVE void not_emterpreted() {
+  printf("Entering not_emterpreted()\n");
+}
+
+int main() {
+  EM_ASM({
+    setTimeout(function () {
+      console.log("calling not_emterpreted()");
+      Module["_not_emterpreted"]();
+    }, 0);
+    console.log("calling emterpreted_yielder()");
+#ifdef BAD_EM_ASM
+    Module['_emterpreted_yielder']();
+#endif
+  });
+#ifndef BAD_EM_ASM
+  emterpreted_yielder();
+#endif
+}
+    ''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]'])
+    self.assertContained('Success', run_js('a.out.js'))
+
+    print('check calling of emterpreted as well')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+    self.assertContained('Success', run_js('a.out.js'))
+
+    print('check for invalid EM_ASM usage')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]', '-DBAD_EM_ASM'])
+    self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
+
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
       print(args)
