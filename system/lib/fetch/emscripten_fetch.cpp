@@ -74,7 +74,27 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.destinationPath = fetch->__attributes.destinationPath ? strdup(fetch->__attributes.destinationPath) : 0; // TODO: free
 	fetch->__attributes.userName = fetch->__attributes.userName ? strdup(fetch->__attributes.userName) : 0; // TODO: free
 	fetch->__attributes.password = fetch->__attributes.password ? strdup(fetch->__attributes.password) : 0; // TODO: free
-	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
+	if (fetch_attr->requestHeaders) {
+	  size_t n_values = 0;
+	  {
+	    const char * const *headers = fetch_attr->requestHeaders;
+	    while (*headers) {
+	      n_values++;
+	      headers++;
+	    }
+	  }
+
+	  // Allocate our own array.  +1 for null-termination.
+	  size_t n_bytes = sizeof(const char*) * (n_values + 1);
+	  const char** headers = (const char**)malloc(n_bytes);
+	  memset(headers, 0, n_bytes);
+
+	  // Copy in keys and values.
+	  for (size_t i = 0; i < n_values; ++i) {
+	    headers[i] = strdup(fetch_attr->requestHeaders[i]);
+	  }
+	  fetch->__attributes.requestHeaders = headers;
+	}
 	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
 
 #if __EMSCRIPTEN_PTHREADS__
@@ -146,6 +166,15 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 	}
 	fetch->id = 0;
 	free((void*)fetch->data);
+	if (fetch->__attributes.requestHeaders) {
+	  const char* const* headers = fetch->__attributes.requestHeaders;
+	  while (*headers) {
+	    free((char*)*headers);
+	    headers++;
+	  }
+	  free((void*)headers);
+	  fetch->__attributes.requestHeaders = 0;
+	}
 	free(fetch);
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
