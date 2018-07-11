@@ -1328,9 +1328,10 @@ def run_tests(suites, unmatched_test_names):
   num_failures = 0
 
   if len(unmatched_test_names):
-    print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
+    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_test_names))
     num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
+    return 1
 
   print('Test suites:')
   print([s[0] for s in suites])
