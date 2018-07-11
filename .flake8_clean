@@ -1,6 +1,7 @@
 emcc.py
 tools/shared.py
 tools/response_file.py
+tools/python_selector.py
 tools/wasm-sourcemap.py
 tools/clean_webconsole.py
 tools/emconfiguren.py
