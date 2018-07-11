@@ -5,16 +5,16 @@ language: python
 env:
   - TEST_TARGET=other
   - TEST_TARGET=browser
-  - TEST_TARGET="ALL.test_a* ALL.test_b*"
-  - TEST_TARGET=ALL.test_c*
+  - TEST_TARGET="asm*.test_a* asm*.test_b*"
+  - TEST_TARGET=asm*.test_c*
   - TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"
-  - TEST_TARGET=ALL.test_e*
-  - TEST_TARGET=ALL.test_f*
-  - TEST_TARGET="ALL.test_g* ALL.test_h* ALL.test_i*"
-  - TEST_TARGET="ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*"
+  - TEST_TARGET=asm*.test_e*
+  - TEST_TARGET=asm*.test_f*
+  - TEST_TARGET="asm*.test_g* asm*.test_h* asm*.test_i*"
+  - TEST_TARGET="asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   - TEST_TARGET="default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*"
-  - TEST_TARGET="ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t*"
-  - TEST_TARGET="ALL.test_u* ALL.test_v* ALL.test_w* ALL.test_x* ALL.test_y* ALL.test_z*"
+  - TEST_TARGET="asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
+  - TEST_TARGET="asm*.test_u* asm*.test_v* asm*.test_w* asm*.test_x* asm*.test_y* asm*.test_z*"
 
 services:
   - docker
