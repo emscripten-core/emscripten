@@ -2005,41 +2005,6 @@ void *getBindBuffer() {
     shutil.copyfile(path_from_root('tests', 'screenshot.dds'), os.path.join(self.get_dir(), 'screenshot.dds'))
     self.btest('s3tc.c', reference='s3tc.png', args=['--preload-file', 'screenshot.dds', '-s', 'LEGACY_GL_EMULATION=1', '-s', 'GL_FFP_ONLY=1', '-lGL', '-lSDL'])
 
-  def test_s3tc_crunch(self):
-    try:
-      print('Crunch is located at ' + CRUNCH)
-    except:
-      return self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
-    def test(args):
-      print(args)
-      shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-      shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
-      shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-      open('text.txt', 'w').write('123')
-      Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch', '--preload', 'ship.dds', 'bloom.dds', 'water.dds'] + args, stdout=open('pre.js', 'w')).communicate()
-      assert os.stat('test.data').st_size < 0.5*(os.stat('ship.dds').st_size+os.stat('bloom.dds').st_size+os.stat('water.dds').st_size), 'Compressed should be smaller than dds'
-      shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
-      shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
-      shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-      self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'pre.js', '-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
-    test([])
-    test(['text.txt']) # also package a non-crunch file
-
-  def test_s3tc_crunch_split(self): # load several datafiles/outputs of file packager
-    try:
-      print('Crunch is located at ' + CRUNCH)
-    except:
-      return self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
-    shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-    shutil.copyfile(path_from_root('tests', 'bloom.dds'), 'bloom.dds')
-    shutil.copyfile(path_from_root('tests', 'water.dds'), 'water.dds')
-    Popen([PYTHON, FILE_PACKAGER, 'asset_a.data', '--crunch', '--preload', 'ship.dds', 'bloom.dds'], stdout=open('asset_a.js', 'w')).communicate()
-    Popen([PYTHON, FILE_PACKAGER, 'asset_b.data', '--crunch', '--preload', 'water.dds'], stdout=open('asset_b.js', 'w')).communicate()
-    shutil.move('ship.dds', 'ship.donotfindme.dds') # make sure we load from the compressed
-    shutil.move('bloom.dds', 'bloom.donotfindme.dds') # make sure we load from the compressed
-    shutil.move('water.dds', 'water.donotfindme.dds') # make sure we load from the compressed
-    self.btest('s3tc_crunch.c', reference='s3tc_crunch.png', reference_slack=11, args=['--pre-js', 'asset_a.js', '--pre-js', 'asset_b.js', '-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
-
   @requires_hardware
   def test_aniso(self):
     if SPIDERMONKEY_ENGINE in JS_ENGINES:
