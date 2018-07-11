@@ -61,7 +61,7 @@ def run():
         i += 1
 
   if DEBUG:
-    print('Invoking ' + str(newargs))
+    print('Invoking ' + str(newargs), file=sys.stderr)
   try:
     return subprocess.call(newargs, stdin=sys.stdin)
   finally:

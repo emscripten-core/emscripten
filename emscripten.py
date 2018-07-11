@@ -79,7 +79,7 @@ def emscript(infile, outfile, libraries, compiler_engine, temp_files,
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
       backend_output = compile_js(infile, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+      funcs, metadata, mem_init = parse_fastcomp_output(backend_output, DEBUG)
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
@@ -117,7 +117,7 @@ def compile_js(infile, temp_files, DEBUG):
   return backend_output
 
 
-def parse_backend_output(backend_output, DEBUG):
+def parse_fastcomp_output(backend_output, DEBUG):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
   metadata_split_marker = '// EMSCRIPTEN_METADATA'
@@ -134,8 +134,8 @@ def parse_backend_output(backend_output, DEBUG):
   mem_init = mem_init.replace('Runtime.', '')
 
   try:
-    #if DEBUG: logging.debug("METAraw %s", metadata_raw)
-    metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
+    metadata = json.loads(metadata_raw)
+    if DEBUG: logging.debug("Metadata: " + pprint.pformat(metadata))
   except Exception as e:
     logging.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise e
@@ -1866,9 +1866,8 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
-  if DEBUG: logging.debug("Metadata raw: " + metadata_raw)
   metadata = load_metadata(metadata_raw)
-  if DEBUG: logging.debug("Metadata parsed: " + pprint.pformat(metadata))
+  if DEBUG: logging.debug("Metadata: " + pprint.pformat(metadata))
   return metadata
 
 

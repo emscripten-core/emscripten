@@ -1120,6 +1120,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
         forced_stdlibs += ['libcxxabi']
 
+      # These is needed by setjmp as well as C++ esceptions.
+      # TODO(sbc): Do this conditionally
+      shared.Settings.EXPORTED_FUNCTIONS += ['_setTempRet0', '_setThrew']
+
       if not shared.Settings.ONLY_MY_CODE:
         if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
           # always need malloc and free to be kept alive and exported, for internal use and other modules
