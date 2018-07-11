@@ -90,7 +90,7 @@ That runs test_loop in the default core test mode. You can also specify the mode
 
   python tests/runner.py asm2.test_loop
 
-You can also run a bunch of modes:
+You can also run a test in a bunch of modes:
 
   python tests/runner.py asm*.test_loop
 
@@ -100,9 +100,27 @@ And also a bunch of tests:
 
 That runs all core tests with 'i64' in the name in wasm -O3.
 
-The same works for non-core test suites, like
+All the above also works for non-core test modes, for example
 
   python tests/runner.py browser.test_sdl_image
+
+or
+
+  python tests/runner.py browser.test_sdl2*
+
+(The only difference is that something like asm*.test_loop - running
+a test in multiple modes - only really makes sense for the core test
+modes, as for example the 'other' and 'browser' modes do not have any
+tests with identical names, while the core test modes are literally
+the same tests with various optimization modes on them.)
+
+If you specify just a mode, all tests are run in that mode, for example
+
+  python tests/runner.py sanity
+
+or
+
+  python tests/runner.py binaryen1
 
 You can run a random set of N tests with a command like
 
