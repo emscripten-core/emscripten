@@ -68,96 +68,30 @@ except:
 
 HELP_TEXT = '''
 ==============================================================================
-This is the Emscripten test runner. To run some tests, specify which you
-want. The main 'suites' are:
+This is the Emscripten test runner. To run some tests, specify which tests you
+want, for example
 
-  asm0, asm1, and other asm* - core asm.js tests in various opt modes
-  binaryen0, binaryen1, and other binaryen* - core wasm tests in various opt modes
-  other - non-core tests (that define their own method of running, unlike core)
-  browser - runs pages in a web browser
-  other - tests separate from the main suite
-  interactive - runs interactive browser tests that need human verification, and could not be automated
-  sockets - runs websocket networking tests
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
-  sanity - tests for first run, etc., modifies ~/.emscripten
+  python tests/runner.py asm1.test_hello_world
 
-To run one of those parts, do something like
+There are many options for which tests to run and how to run them. For details,
+see
 
-  python tests/runner.py test_loop
-
-That runs test_loop in the default core test mode. You can also specify the mode,
-
-  python tests/runner.py asm2.test_loop
-
-You can also run a test in a bunch of modes:
-
-  python tests/runner.py asm*.test_loop
-
-And also a bunch of tests:
-
-  python tests/runner.py binaryen3.test_*i64*
-
-That runs all core tests with 'i64' in the name in wasm -O3.
-
-All the above also works for non-core test modes, for example
-
-  python tests/runner.py browser.test_sdl_image
-
-or
-
-  python tests/runner.py browser.test_sdl2*
-
-(The only difference is that something like asm*.test_loop - running
-a test in multiple modes - only really makes sense for the core test
-modes, as for example the 'other' and 'browser' modes do not have any
-tests with identical names, while the core test modes are literally
-the same tests with various optimization modes on them.)
-
-If you specify just a mode, all tests are run in that mode, for example
-
-  python tests/runner.py sanity
-
-or
-
-  python tests/runner.py binaryen1
-
-You can run a random set of N tests with a command like
-
-  python tests/runner.py random50
-
-An individual test can be skipped by passing the "skip:" prefix. E.g.
-
-  python tests/runner.py other skip:other.test_cmake
-
-Wildcards can also be passed in skip, so
-
-  python tests/runner.py browser skip:browser.test_pthread_*
-
-will run the whole browser suite except for all the pthread tests in it.
-
-Debugging: You can run
-
-  EM_SAVE_DIR=1 python tests/runner.py test_hello_world
-
-in order to save the test runner directory, in /tmp/emscripten_temp. All files
-created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, see emcc.
+http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 ==============================================================================
 
 '''
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = [
+
+
+# The core test modes
+core_test_modes = [
   'asm0',
   'asm1',
   'asm2',
   'asm3',
   'asm2g',
-]
-default_test_mode = test_modes[0]
-nondefault_test_modes = [
   'asm2f',
   'binaryen0',
   'binaryen1',
@@ -168,6 +102,19 @@ nondefault_test_modes = [
   'asmi',
   'asm2i',
 ]
+
+# The default core test mode, used when none is specified
+default_core_test_mode = 'binaryen0'
+
+# The non-core test modes
+non_core_test_modes = [
+  'other',
+  'browser',
+  'sanity',
+  'sockets',
+  'interactive',
+]
+
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -1156,7 +1103,7 @@ def args_with_extracted_js_engine_override(args):
 def args_with_default_suite_prepended(args):
   def prepend_default(arg):
     if arg.startswith('test_'):
-      return default_test_mode + '.' + arg
+      return default_core_test_mode + '.' + arg
     return arg
   return list(map(prepend_default, args))
 
@@ -1172,8 +1119,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = test_modes + nondefault_test_modes + \
-           ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  suites = core_test_modes + non_core_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -1237,8 +1183,8 @@ def args_for_random_tests(args, modules):
 
 def get_random_test_parameters(arg):
   num_tests = 1
-  base_module = default_test_mode
-  relevant_modes = test_modes
+  base_module = default_core_test_mode
+  relevant_modes = core_test_modes
   if len(arg):
     num_str = arg
     if arg.startswith('other'):
