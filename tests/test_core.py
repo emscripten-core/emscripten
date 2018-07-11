@@ -7805,7 +7805,7 @@ def make_run(name, emcc_args=None, env=None):
   return TT
 
 # Main asm.js test modes
-default = make_run('default', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
+asm0 = make_run('asm0', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
 asm1 = make_run('asm1', emcc_args=['-O1', '-s', 'WASM=0'])
 asm2 = make_run('asm2', emcc_args=['-O2', '-s', 'WASM=0'])
 asm3 = make_run('asm3', emcc_args=['-O3', '-s', 'WASM=0'])
