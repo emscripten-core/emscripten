@@ -65,8 +65,6 @@ ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
 WASM_ENDINGS = ('.wasm', '.wast')
 
-SUPPORTED_LINKER_FLAGS = ('--start-group', '-(', '--end-group', '-)')
-
 LIB_PREFIXES = ('', 'lib')
 
 JS_CONTAINING_SUFFIXES = ('js', 'html')
@@ -858,12 +856,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # (4, a), (4.25, b), (4.5, c), (4.75, d)
           link_flags_to_add = arg.split(',')[1:]
           for flag_index, flag in enumerate(link_flags_to_add):
-            # Only keep flags that shared.Building.link knows how to deal with.
-            # We currently can't handle flags with options (like
-            # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
-            # flag).
-            if flag in SUPPORTED_LINKER_FLAGS:
-              link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+
           newargs[i] = ''
 
       original_input_files = input_files[:]
