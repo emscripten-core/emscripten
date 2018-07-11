@@ -8200,6 +8200,15 @@ int main() {
       for x in os.listdir('.'):
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module'
 
+  def test_side_module_without_proper_target(self):
+    # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
+    # otherwise, we are just linking bitcode, and should show an error
+    for wasm in [0, 1]:
+      print(wasm)
+      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
+      self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode', process.stderr)
+      assert process.returncode is not 0
+
   def test_wasm_backend(self):
     if not has_wasm_target(get_llc_targets()):
       self.skipTest('wasm backend was not built')

@@ -1574,10 +1574,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # Sort arg tuples and pass the extracted values to link.
             shared.Building.link(linker_inputs, specified_target)
         logging.debug('stopping at bitcode')
+        if shared.Settings.SIDE_MODULE:
+          exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode. That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an LLVM bitcode file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ['so', 'dylib', 'dll']:
-          logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten' +
-                          ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,' +
-                          ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
+          logging.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a file with LLVM bitcode, \'.bc\', which would avoid this warning.)')
         return 0
 
     # exit block 'process inputs'
