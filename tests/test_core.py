@@ -7,7 +7,7 @@ from textwrap import dedent
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
-from runner import RunnerCore, path_from_root, checked_sanity, test_modes, get_zlib_library, get_bullet_library
+from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
 
 # decorators for limiting which modes a test can run in
 
@@ -4214,7 +4214,7 @@ Have even and odd!
 
   def test_fnmatch(self):
     # Run one test without assertions, for additional coverage
-    #assert 'asm2m' in test_modes
+    #assert 'asm2m' in core_test_modes
     if self.run_name == 'asm2m':
       i = self.emcc_args.index('ASSERTIONS=1')
       assert i > 0 and self.emcc_args[i-1] == '-s'
@@ -5350,7 +5350,7 @@ return malloc(size);
 
   @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
-    assert 'asm3' in test_modes
+    assert 'asm3' in core_test_modes
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -5361,7 +5361,7 @@ return malloc(size);
 
     test()
 
-    assert 'asm1' in test_modes
+    assert 'asm1' in core_test_modes
     if self.run_name == 'asm1':
       print('verifing postsets')
       generated = open('src.cpp.o.js').read()
@@ -5674,7 +5674,7 @@ return malloc(size);
 
   def test_freetype(self):
     if self.is_windows(): self.skipTest('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
-    assert 'asm2g' in test_modes
+    assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip for some more coverage here
 
@@ -5758,7 +5758,7 @@ def process(filename):
   def test_zlib(self):
     self.maybe_closure()
 
-    assert 'asm2g' in test_modes
+    assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
 
@@ -5801,7 +5801,7 @@ def process(filename):
 
       # TODO: test only worked in non-fastcomp (well, this section)
       continue
-      assert 'asm2g' in test_modes
+      assert 'asm2g' in core_test_modes
       if self.run_name == 'asm2g' and not use_cmake:
         # Test forced alignment
         print('testing FORCE_ALIGNED_MEMORY', file=sys.stderr)
@@ -6547,7 +6547,7 @@ def process(filename):
       Settings.ALIASING_FUNCTION_POINTERS = 1 - Settings.ALIASING_FUNCTION_POINTERS # flip the test
       self.do_run_from_file(src, expected)
 
-    assert 'asm2' in test_modes
+    assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
       print('closure')
       self.emcc_args += ['--closure', '1']
@@ -6883,7 +6883,7 @@ someweirdtext
   @sync
   @no_wasm_backend()
   def test_webidl(self):
-    assert 'asm2' in test_modes
+    assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1', '-g1'] # extra testing
       Settings.MODULARIZE = 1 # avoid closure minified names competing with our test code in the global name space
@@ -7805,7 +7805,7 @@ def make_run(name, emcc_args=None, env=None):
   return TT
 
 # Main asm.js test modes
-default = make_run('default', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
+asm0 = make_run('asm0', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
 asm1 = make_run('asm1', emcc_args=['-O1', '-s', 'WASM=0'])
 asm2 = make_run('asm2', emcc_args=['-O2', '-s', 'WASM=0'])
 asm3 = make_run('asm3', emcc_args=['-O3', '-s', 'WASM=0'])

@@ -68,79 +68,30 @@ except:
 
 HELP_TEXT = '''
 ==============================================================================
-Running the main part of the test suite. Don't forget to run the other parts!
-A recommended order is:
+This is the Emscripten test runner. To run some tests, specify which tests you
+want, for example
 
-  sanity - tests for first run, etc., modifies ~/.emscripten
-  (the main test suite)
-  other - tests separate from the main suite
-  browser - runs pages in a web browser
-  interactive - runs interactive browser tests that need human verification, and could not be automated
-  sockets - runs websocket networking tests
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
+  python tests/runner.py asm1.test_hello_world
 
-To run one of those parts, do something like
+There are many options for which tests to run and how to run them. For details,
+see
 
-  python tests/runner.py sanity
-
-To run a specific set of tests, you can do things like
-
-  python tests/runner.py asm2
-
-(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
-
-  python tests/runner.py test_hello_world
-
-Combinations work too, for example
-
-  python tests/runner.py browser.test_sdl_image
-
-In the main test suite, you can run all variations (O0, O1, O2, etc.) of
-an individual test with
-
-  python tests/runner.py ALL.test_hello_world
-
-You can run a random set of N tests with a command like
-
-  python tests/runner.py random50
-
-An individual test can be skipped by passing the "skip:" prefix. E.g.
-
-  python tests/runner.py other skip:other.test_cmake
-
-Passing a wildcard allows choosing a subset of tests in a suite, e.g.
-
-  python tests/runner.py browser.test_pthread_*
-
-will run all the pthreads related tests. Wildcards can also be passed in skip,
-so
-
-  python tests/runner.py browser skip:browser.test_pthread_*
-
-will run the whole browser suite except for all the pthread tests in it.
-
-Debugging: You can run
-
-  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
-
-in order to save the test runner directory, in /tmp/emscripten_temp. All files
-created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, see emcc.
+http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 ==============================================================================
 
 '''
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = [
-  'default',
+
+
+# The core test modes
+core_test_modes = [
+  'asm0',
   'asm1',
   'asm2',
   'asm3',
   'asm2g',
-]
-nondefault_test_modes = [
   'asm2f',
   'binaryen0',
   'binaryen1',
@@ -151,6 +102,19 @@ nondefault_test_modes = [
   'asmi',
   'asm2i',
 ]
+
+# The default core test mode, used when none is specified
+default_core_test_mode = 'binaryen0'
+
+# The non-core test modes
+non_core_test_modes = [
+  'other',
+  'browser',
+  'sanity',
+  'sockets',
+  'interactive',
+]
+
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -1094,12 +1058,10 @@ def get_bullet_library(runner_core, use_cmake):
 
 def main(args):
   print_help_if_args_empty(args)
-  args = get_default_args(args)
   print_js_engine_message()
   sanity_checks()
   args = args_with_extracted_js_engine_override(args)
   args = args_with_default_suite_prepended(args)
-  args = args_with_expanded_all_suite(args)
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   args = args_with_expanded_wildcards(args, all_tests)
@@ -1109,17 +1071,9 @@ def main(args):
   return run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
-  if len(args) == 2 and args[1] in ['--help', '-h']:
+  if len(args) == 1 or (len(args) == 2 and args[1] in ['--help', '-h']):
     print(HELP_TEXT)
     sys.exit(0)
-
-def get_default_args(args):
-  # If no tests were specified, run the core suite
-  if len(args) == 1:
-    print(HELP_TEXT)
-    time.sleep(2)
-    return [args[0]] + [mode for mode in test_modes]
-  return args
 
 def print_js_engine_message():
   if use_all_engines:
@@ -1149,22 +1103,9 @@ def args_with_extracted_js_engine_override(args):
 def args_with_default_suite_prepended(args):
   def prepend_default(arg):
     if arg.startswith('test_'):
-      return 'default.' + arg
+      return default_core_test_mode + '.' + arg
     return arg
   return list(map(prepend_default, args))
-
-def args_with_expanded_all_suite(args):
-  # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  new_args = [args[0]]
-  for i in range(1, len(args)):
-    arg = args[i]
-    if arg.startswith('ALL.'):
-      ignore, test = arg.split('.')
-      print('Running all test modes on test "%s"' % test)
-      new_args += [mode+'.'+test for mode in test_modes]
-    else:
-      new_args += [arg]
-  return new_args
 
 def get_and_import_modules():
   modules = []
@@ -1178,8 +1119,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = test_modes + nondefault_test_modes + \
-           ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  suites = core_test_modes + non_core_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -1210,12 +1150,7 @@ def skip_requested_tests(args, modules):
   for i in range(len(args)):
     arg = args[i]
     if arg.startswith('skip:'):
-      which = arg.split('skip:')[1]
-      if which.startswith('ALL.'):
-        ignore, test = which.split('.')
-        which = [mode+'.'+test for mode in test_modes]
-      else:
-        which = [which]
+      which = [arg.split('skip:')[1]]
 
       print(','.join(which), file=sys.stderr)
       for test in which:
@@ -1248,8 +1183,8 @@ def args_for_random_tests(args, modules):
 
 def get_random_test_parameters(arg):
   num_tests = 1
-  base_module = 'default'
-  relevant_modes = test_modes
+  base_module = default_core_test_mode
+  relevant_modes = core_test_modes
   if len(arg):
     num_str = arg
     if arg.startswith('other'):
@@ -1339,9 +1274,10 @@ def run_tests(suites, unmatched_test_names):
   num_failures = 0
 
   if len(unmatched_test_names):
-    print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
+    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_test_names))
     num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
+    return 1
 
   print('Test suites:')
   print([s[0] for s in suites])

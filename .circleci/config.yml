@@ -84,11 +84,11 @@ jobs:
   test-ab:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_a* ALL.test_b*
+      - TEST_TARGET=asm*.test_a* asm*.test_b*
   test-c:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_c*
+      - TEST_TARGET=asm*.test_c*
   test-d:
     <<: *test-defaults
     environment:
@@ -96,19 +96,19 @@ jobs:
   test-e:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_e*
+      - TEST_TARGET=asm*.test_e*
   test-f:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_f*
+      - TEST_TARGET=asm*.test_f*
   test-ghi:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_g* ALL.test_h* ALL.test_i*
+      - TEST_TARGET=asm*.test_g* asm*.test_h* asm*.test_i*
   test-jklmno:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_j* ALL.test_k* ALL.test_l* ALL.test_m* ALL.test_n* ALL.test_o*
+      - TEST_TARGET=asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*
   test-p:
     <<: *test-defaults
     environment:
@@ -116,12 +116,12 @@ jobs:
   test-qrst:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_q* ALL.test_r* ALL.test_s* ALL.test_t* skip:ALL.test_sse1_full skip:ALL.test_sse2_full skip:ALL.test_sse3_full skip:ALL.test_ssse3_full skip:ALL.test_sse4_1_full
+      - TEST_TARGET=asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t* skip:asm*.test_sse1_full skip:asm*.test_sse2_full skip:asm*.test_sse3_full skip:asm*.test_ssse3_full skip:asm*.test_sse4_1_full
       # SSE tests fail because of the lack of native headers on emsdk-bundled clang
   test-uvwxyz:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=ALL.test_u* ALL.test_w* ALL.test_v* ALL.test_x* ALL.test_y* ALL.test_z*
+      - TEST_TARGET=asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*
   test-binaryen0:
     <<: *test-defaults
     environment:

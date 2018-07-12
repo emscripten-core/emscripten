@@ -45,7 +45,7 @@ When porting native SIMD code, it should be noted that because of portability co
 Tests and Benchmarks
 ====================
 
-Emscripten repository has several tests for SIMD support. To run SIMD tests, execute e.g. "python tests/runner.py ALL.test_sse1_full" in Emscripten root directory. For the full list of tests, see test_simd* and test_sse* in `test_core.py <https://github.com/kripken/emscripten/blob/incoming/tests/test_core.py>`_.
+Emscripten repository has several tests for SIMD support. To run SIMD tests, execute e.g. "python tests/runner.py asm*.test_sse1_full" in Emscripten root directory (note that currently - 2018-7-11 - only asm.js supports SIMD, so we run the `asm*` tests). For the full list of tests, see test_simd* and test_sse* in `test_core.py <https://github.com/kripken/emscripten/blob/incoming/tests/test_core.py>`_.
 
 To run a synthetic SSE1 API benchmark, execute "python tests/benchmark_sse1.py" in Emscripten root directory.
 
