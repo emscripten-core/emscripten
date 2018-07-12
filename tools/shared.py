@@ -1924,6 +1924,10 @@ class Building(object):
     else:
       for export in expand_response(Settings.EXPORTED_FUNCTIONS):
         cmd += ['--export', export[1:]] # Strip the leading underscore
+        # For certainly symbols we also need to use --undefined so that the
+        # symbol is required to exist and will be pulled from .a file if needed.
+        if export in ('_setTempRet0', '_setThrew'):
+          cmd += ['-u', export[1:]] # Strip the leading underscore
 
     logging.debug('emcc: lld-linking: %s to %s', files, target)
     t = time.time()
