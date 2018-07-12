@@ -5646,7 +5646,8 @@ return malloc(size);
 
   @SIMD
   def test_simd15(self):
-    if self.run_name == 'asm1': self.skipTest('legalizing -O1 output is much harder, and not worth it - we work on -O0 and -O2+')
+    if any(opt in self.emcc_args for opt in ('-O1', '-Os', '-Oz')):
+      self.skipTest('legalizing -O1/s/z output is much harder, and not worth it - we work on -O0 and -O2+')
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd15')
     src, output = (test_path + s for s in ('.c', '.out'))
