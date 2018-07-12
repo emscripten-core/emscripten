@@ -18,8 +18,26 @@ test-defaults: &test-defaults
 
     - run: |
         apt-get update
+        # preseed packages so that apt-get won't prompt for user input
+        echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
         apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
+        if [ x"$DISPLAY" != x ]; then
+          # Start an X session. Openbox might be optional for now, but
+          # an ICCCM/EWMH compliant window manager is potentially needed
+          # for tests with fullscreen toggling (if we move to a headless
+          # browser, this may not be needed eventually).
+          TMPDIR=`mktemp -d`
+          mkfifo $TMPDIR/fifo
+          echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
+          EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
+          cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
+          rm -r $TMPDIR
+        fi
         EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
+        if [ x"$DISPLAY" != x ]; then
+          openbox --exit
+          wait # wait for startx to shutdown cleanly
+        fi
 
 version: 2
 jobs:
@@ -46,6 +64,47 @@ jobs:
           mkdir tmp-firefox-profile/
           echo 'user_pref("javascript.options.shared_memory", true);' >> tmp-firefox-profile/user.js
 
+          # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
+          mkdir -p .config/X11
+          cat > .config/X11/xorg.conf <<EOF
+          Section "ServerLayout"
+            Identifier "X.org Configured"
+            Screen 0 "Screen0" 0 0
+          EndSection
+
+          Section "Monitor"
+            Identifier "Monitor0"
+            HorizSync 72
+            Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
+          EndSection
+
+          Section "Device"
+            Identifier "Card0"
+            Driver "dummy"
+            VideoRam 1048576
+          EndSection
+
+          Section "Screen"
+            Identifier "Screen0"
+            Device "Card0"
+            Monitor "Monitor0"
+            DefaultDepth 24
+            SubSection "Display"
+              Depth 24
+              Modes "1920x1080@60"
+            EndSubSection
+          EndSection
+          EOF
+          mkdir -p .config/openbox
+          echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
+          mkdir -p .config/autostart
+          cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=AT-SPI D-Bus Bus
+          Hidden=true # do not auto-start AT-SPI to suppress one warning
+          EOF
+
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -56,6 +115,9 @@ jobs:
             - .emscripten_ports/
             - .emscripten
             - tmp-firefox-profile/
+            - .config/X11/xorg.conf
+            - .config/openbox/autostart
+            - .config/autostart/at-spi-dbus-bus.desktop
   flake8:
     <<: *defaults
     steps:
@@ -76,11 +138,19 @@ jobs:
     <<: *test-defaults
     environment:
       # browser.test_sdl_ttf_render_text_solid depends on Arial from Microsoft
-      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid
-      - TEST_DEPENDENCY=firefox
-      - EMSCRIPTEN_BROWSER=firefox -headless -profile tmp-firefox-profile/
-      - EM_LACKS_HARDWARE_ACCESS=1
+      # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
+      # to be failing here, and the root cause might be related with the
+      # initial position of the mouse pointer relative to the canvas.
+      # browser.test_html5_webgl_create_context is skipped because
+      # anti-aliasing is not well supported.
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context
+      # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
+      - TEST_DEPENDENCY=dbus-x11 firefox menu openbox xinit xserver-xorg xserver-xorg-video-dummy
+      - EMSCRIPTEN_BROWSER=firefox -profile tmp-firefox-profile/
+      - EM_LACKS_SOUND_HARDWARE=1
       - EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=0
+      - DISPLAY=:0
+      - GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
   test-ab:
     <<: *test-defaults
     environment:
