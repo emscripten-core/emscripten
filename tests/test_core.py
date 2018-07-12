@@ -7845,6 +7845,7 @@ def make_run(name, emcc_args=None, env=None):
 
     assert emcc_args is not None
     self.emcc_args = emcc_args[:]
+    Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
 
     Building.COMPILER_TEST_OPTS += [
@@ -7858,12 +7859,6 @@ def make_run(name, emcc_args=None, env=None):
     for arg in self.emcc_args:
       if arg.startswith('-O'):
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
-
-    # forward  -s K=V
-    for i in range(len(self.emcc_args)):
-      if self.emcc_args[i] == '-s':
-        key, value = self.emcc_args[i + 1].split('=', 1)
-        self.settings_mods[key] = json.loads(value)
 
   TT.setUp = setUp
 
