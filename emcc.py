@@ -1536,8 +1536,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
-
-
       # Decide what we will link
       stop_at_bitcode = final_suffix not in EXECUTABLE_SUFFIXES
 
