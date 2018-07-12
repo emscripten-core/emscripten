@@ -448,7 +448,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c'])
     files += files_in_path(path_components=['system', 'lib', 'compiler-rt'],
-             filenames=['extras.c'])
+                           filenames=['extras.c'])
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_libc_rt(libname):

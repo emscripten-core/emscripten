@@ -1912,7 +1912,6 @@ class Building(object):
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
 
-
     # emscripten-wasm-finalize currently depends on the presence of debug
     # symbols for renaming of the __invoke symbols
     # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
