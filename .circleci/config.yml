@@ -126,7 +126,7 @@ jobs:
           apt-get update
           apt-get install -y python-pip
           pip install flake8==3.4.1
-          cat .flake8_clean | xargs flake8
+          flake8
   test-other:
     <<: *test-defaults
     environment:
