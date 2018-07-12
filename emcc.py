@@ -858,12 +858,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # (4, a), (4.25, b), (4.5, c), (4.75, d)
           link_flags_to_add = arg.split(',')[1:]
           for flag_index, flag in enumerate(link_flags_to_add):
-            # Only keep flags that shared.Building.link knows how to deal with.
-            # We currently can't handle flags with options (like
-            # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
-            # flag).
-            if flag in SUPPORTED_LINKER_FLAGS:
-              link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+
           newargs[i] = ''
 
       original_input_files = input_files[:]
@@ -1540,11 +1536,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Building.llvm_opt(temp_file, opts, new_temp_file)
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
+
+
       # Decide what we will link
+      stop_at_bitcode = final_suffix not in EXECUTABLE_SUFFIXES
+
+      if stop_at_bitcode or not shared.Settings.WASM_BACKEND:
+        # Filter link flags, keeping only those that shared.Building.link knows
+        # how to deal with.  We currently can't handle flags with options (like
+        # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
+        # flag).
+        link_flags = [f for f in link_flags if f[1] in SUPPORTED_LINKER_FLAGS]
+
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
       # If we were just asked to generate bitcode, stop there
-      if final_suffix not in EXECUTABLE_SUFFIXES:
+      if stop_at_bitcode:
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for tempf, inputf in zip(temp_files, input_files):
