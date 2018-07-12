@@ -2417,30 +2417,6 @@ seeked= file.
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
-  def test_crunch(self):
-    try:
-      print('Crunch is located at ' + CRUNCH)
-    except:
-      self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
-    # crunch should not be run if a .crn exists that is more recent than the .dds
-    shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-    time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
-    crunch_time = os.stat('ship.crn').st_mtime
-    dds_time = os.stat('ship.dds').st_mtime
-    assert crunch_time >= dds_time, 'Crunch is more recent'
-    # run again, should not recrunch!
-    time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
-      assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
-    # update dds, so should recrunch
-    time.sleep(0.1)
-    os.utime('ship.dds', None)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
-
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
     MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
     open('data.txt', 'w').write('data1')
@@ -3631,11 +3607,20 @@ int main()
 
     for suffix in ['.o', '.a', '.bc', '.so', '.lib', '.dylib', '.js', '.html']:
       err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stdout=PIPE, stderr=PIPE).stderr
-      warning = 'Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten'
+      warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
       if suffix in shared_suffixes:
-        assert(warning in err)
+        self.assertContained(warning, err)
       else:
-        assert(warning not in err)
+        self.assertNotContained(warning, err)
+
+  def test_side_module_without_proper_target(self):
+    # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
+    # otherwise, we are just linking bitcode, and should show an error
+    for wasm in [0, 1]:
+      print(wasm)
+      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
+      self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode', process.stderr)
+      assert process.returncode is not 0
 
   def test_simplify_ifs(self):
     def test(src, nums):
