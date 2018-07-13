@@ -328,7 +328,7 @@ class RunnerCore(unittest.TestCase):
     if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
+  def build(self, src, dirname, filename, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
 
     Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -402,9 +402,6 @@ class RunnerCore(unittest.TestCase):
       output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
       if js_outfile:
         assert os.path.exists(filename + '.o.js')
-
-    if output_processor is not None:
-      output_processor(open(filename + '.o.js').read())
 
     if self.emcc_args is not None and js_outfile:
       src = open(filename + '.o.js').read()
@@ -677,7 +674,7 @@ class RunnerCore(unittest.TestCase):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             output_processor=None, no_build=False, main_file=None, additional_files=[],
+             no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False):
