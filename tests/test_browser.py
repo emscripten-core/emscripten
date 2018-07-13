@@ -2254,25 +2254,30 @@ void *getBindBuffer() {
       }
     ''')
     run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1'])
+    os.rename('library.wasm', 'library.so')
     main = r'''
       #include <dlfcn.h>
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
-        EM_ASM(
-          console.log(Object.keys(Module['preloadedWasm']));
-          if (Module['preloadedWasm']['/library.wasm'] === undefined) {
-            throw Error("Side module not preloaded");
-          }
+        int found = EM_ASM_INT(
+          return Module['preloadedWasm']['/library.so'] !== undefined;
         );
-        void *lib_handle = dlopen("/library.wasm", 0);
-        if (!lib_handle) {
+        if (!found) {
+          REPORT_RESULT(1);
           return 1;
+        }
+        void *lib_handle = dlopen("/library.so", 0);
+        if (!lib_handle) {
+          REPORT_RESULT(2);
+          return 2;
         }
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        if (!x) return 1;
-        if (x() != 42) return 1;
+        if (!x || x() != 42) {
+          REPORT_RESULT(3);
+          return 3;
+        }
         REPORT_RESULT(0);
         return 0;
       }
