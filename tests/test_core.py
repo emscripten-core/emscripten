@@ -1583,14 +1583,6 @@ int main() {
     self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
     test()
 
-  def test_ptrtoint(self):
-      runner = self
-      def check_warnings(output):
-          runner.assertEqual([line for line in output.split('\n') if 'Warning' in line].__len__(), 4)
-
-      self.do_run_in_out_file_test('tests', 'core', 'test_ptrtoint',
-                                   output_processor=check_warnings)
-
   def test_sizeof(self):
       # Has invalid writes between printouts
       self.set_setting('SAFE_HEAP', 0)
