@@ -7161,7 +7161,7 @@ err = err = function(){};
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
-    base_args = self.emcc_args[:] + [
+    base_args = self.emcc_args + [
       '--pre-js', path_from_root('tests', 'core', 'modularize_closure_pre.js'),
       '--closure', '1',
       '-g1'
