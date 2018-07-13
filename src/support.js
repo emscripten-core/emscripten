@@ -120,7 +120,7 @@ function loadDynamicLibrary(lib) {
 
 #if WASM
 // Loads a side module from binary data
-function loadWebAssemblyModule(binary) {
+function loadWebAssemblyModule(binary, loadAsync) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
   assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
   // we should see the dylink section right after the magic number and wasm version
@@ -201,59 +201,71 @@ function loadWebAssemblyModule(binary) {
     oldTable.push(table.get(i));
   }
 #endif
-  // create a module from the instance
-  var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+
+  function postInstantiation(instance) {
+    var exports = {};
 #if ASSERTIONS
-  // the table should be unchanged
-  assert(table === originalTable);
-  assert(table === Module['wasmTable']);
-  if (instance.exports['table']) {
-    assert(table === instance.exports['table']);
-  }
-  // the old part of the table should be unchanged
-  for (var i = 0; i < oldTableSize; i++) {
-    assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
-  }
-  // verify that the new table region was filled in
-  for (var i = 0; i < tableSize; i++) {
-    assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
-  }
-#endif
-  var exports = {};
-  for (var e in instance.exports) {
-    var value = instance.exports[e];
-    if (typeof value === 'object') {
-      // a breaking change in the wasm spec, globals are now objects
-      // https://github.com/WebAssembly/mutable-global/issues/1
-      value = value.value;
+    // the table should be unchanged
+    assert(table === originalTable);
+    assert(table === Module['wasmTable']);
+    if (instance.exports['table']) {
+      assert(table === instance.exports['table']);
     }
-    if (typeof value === 'number') {
-      // relocate it - modules export the absolute value, they can't relocate before they export
-#if EMULATED_FUNCTION_POINTERS
-      // it may be a function pointer
-      if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
-        value = value + env['tableBase'];
-      } else {
+    // the old part of the table should be unchanged
+    for (var i = 0; i < oldTableSize; i++) {
+      assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
+    }
+    // verify that the new table region was filled in
+    for (var i = 0; i < tableSize; i++) {
+      assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
+    }
 #endif
-        value = value + env['memoryBase'];
-#if EMULATED_FUNCTION_POINTERS
+    for (var e in instance.exports) {
+      var value = instance.exports[e];
+      if (typeof value === 'object') {
+        // a breaking change in the wasm spec, globals are now objects
+        // https://github.com/WebAssembly/mutable-global/issues/1
+        value = value.value;
       }
+      if (typeof value === 'number') {
+        // relocate it - modules export the absolute value, they can't relocate before they export
+#if EMULATED_FUNCTION_POINTERS
+        // it may be a function pointer
+        if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
+          value = value + env['tableBase'];
+        } else {
 #endif
+          value = value + env['memoryBase'];
+#if EMULATED_FUNCTION_POINTERS
+        }
+#endif
+      }
+      exports[e] = value;
     }
-    exports[e] = value;
-  }
-  // initialize the module
-  var init = exports['__post_instantiate'];
-  if (init) {
-    if (runtimeInitialized) {
-      init();
-    } else {
-      // we aren't ready to run compiled code yet
-      __ATINIT__.push(init);
+    // initialize the module
+    var init = exports['__post_instantiate'];
+    if (init) {
+      if (runtimeInitialized) {
+        init();
+      } else {
+        // we aren't ready to run compiled code yet
+        __ATINIT__.push(init);
+      }
     }
+    return exports;
   }
-  return exports;
+
+  if (loadAsync) {
+    return WebAssembly.instantiate(binary, info).then(function(result) {
+      return postInstantiation(result.instance);
+    });
+  } else {
+    var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+    return postInstantiation(instance);
+  }
 }
+Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
+
 #endif // WASM
 #endif // RELOCATABLE
 

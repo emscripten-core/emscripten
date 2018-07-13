@@ -1839,6 +1839,11 @@ function removeRunDependency(id) {
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
+#if WASM
+#if MAIN_MODULE
+Module["preloadedWasm"] = {}; // maps url to wasm instance exports
+#endif // MAIN_MODULE
+#endif // WASM
 
 #if PGO
 var PGOMonitor = {

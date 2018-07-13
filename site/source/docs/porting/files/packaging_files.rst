@@ -10,15 +10,8 @@ There are two alternatives for how files are packaged: *preloading* and *embeddi
 	
 *Emcc* uses the *file packager* to package the files and generate the :ref:`File System API <Filesystem-API>` calls that create and load the file system at run time. While *Emcc* is the recommended tool for packaging, there are cases where it can make sense to run the *file packager* manually.
 
-With ``--use-preload-plugins``, files can be automatically decoded
-using the browser's codecs, based on their extension (this can also be
-done manually by calling :c:func:`emscripten_run_preload_plugins` on
-each file).  The files remain stored in their original form in the
-file system, but their decoded form can be used by ``IMG_Load`` (SDL1
-and SDL2 port, which rely on
-:c:func:`emscripten_get_preloaded_image_data`) or ``Mix_LoadWAV``
-(SDL1 only).
-
+With ``--use-preload-plugins``, files can be automatically decoded based on
+their extension. See :ref:`preload-files` for more information.
 
 Packaging using emcc
 ====================
@@ -121,8 +114,35 @@ An alternative approach is to look at :js:func:`FS.readFiles` in your compiled J
 
 .. note:: You can also modify the :js:func:`FS.readFiles` object or remove it entirely. This can be useful, say, in order to see which files are read between two points in time in your app.
 
+.. _preloading-files:
+
+Preloading files
+================
+
+With ``--use-preload-plugins``, files can be automatically decoded based on
+their extension. This can also be done manually by calling
+:c:func:`emscripten_run_preload_plugins` on each file. The files remain stored
+in their original form in the file system, but their decoded form can be used
+directly.
+
+The following formats are supported:
+
+- **Images** (``.jpg``, ``.jpeg``, ``.png``, ``.bmp``): The files are decoded
+  using the browser's image decoder, and can then be used by ``IMG_Load`` (SDL1
+  and SDL2 port, which rely on :c:func:`emscripten_get_preloaded_image_data`).
+  (Set ``Module.noImageDecoding`` to ``true`` to disable).
+
+- **Audio** (``.ogg``, ``.wav``, ``.mp3``): The files are decoded using the
+  browser's audio decoder, and can then by used with ``Mix_LoadWAV`` (SDL1
+  only).  (Set ``Module.noAudioDecoding`` to ``true`` to disable).
+
+- **Dynamic libraries** (``.so``): The files are precompiled and instantiated
+  using ``WebAssembly.instantiate``. This is useful for browsers, such as
+  Chrome, that require compiling large WebAssembly modules asynchronously, if
+  you then want to load the module synchronously using ``dlopen`` later. (Set
+  ``Module.noWasmDecoding`` to ``true`` to disable).
+
 Test code
 =========
 
 The `test suite <https://github.com/kripken/emscripten/blob/master/tests/>`_ contains many file packaging examples, and is a good place to search for working code. 
-

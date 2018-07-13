@@ -2246,6 +2246,48 @@ void *getBindBuffer() {
     Popen([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]']).communicate()
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1'], expected='8')
 
+  def test_preload_module(self):
+    expected = 'hello from main\nhello from library'
+    open('library.c', 'w').write(r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'library.wasm', '-s', 'WASM=1'])
+    os.rename('library.wasm', 'library.so')
+    main = r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        int found = EM_ASM_INT(
+          return Module['preloadedWasm']['/library.so'] !== undefined;
+        );
+        if (!found) {
+          REPORT_RESULT(1);
+          return 1;
+        }
+        void *lib_handle = dlopen("/library.so", 0);
+        if (!lib_handle) {
+          REPORT_RESULT(2);
+          return 2;
+        }
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        if (!x || x() != 42) {
+          REPORT_RESULT(3);
+          return 3;
+        }
+        REPORT_RESULT(0);
+        return 0;
+      }
+    '''
+    self.btest(
+      main,
+      args=['-s', 'MAIN_MODULE=1', '--preload-file', '.@/', '-O2', '-s', 'WASM=1', '--use-preload-plugins'],
+      expected='0')
+
   def test_mmap_file(self):
     open(self.in_dir('data.dat'), 'w').write('data from the file ' + ('.' * 9000))
     for extra_args in [[], ['--no-heap-copy']]:
