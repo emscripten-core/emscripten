@@ -301,34 +301,33 @@ class RunnerCore(unittest.TestCase):
       else:
         safe_copy(ll_file, filename + '.o')
 
+  def get_emcc_transform_args(self, js_transform):
+    if not js_transform:
+      return []
+
+    transform_filename = os.path.join(self.get_dir(), 'transform.py')
+    with open(transform_filename, 'w') as f:
+      f.write('\nimport sys\nsys.path += [%r]\n' % path_from_root(''))
+      f.write(js_transform)
+      f.write('\nprocess(sys.argv[1])\n')
+
+    return ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
+
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
   # emcc, it would not apply on the optimized/minified JS)
-  def ll_to_js(self, filename, post_build):
-    if type(post_build) in (list, tuple):
-      post1, post2 = post_build
-    else:
-      post1 = post_build
-      post2 = None
-
+  def ll_to_js(self, filename, js_transform):
     emcc_args = self.emcc_args
     if emcc_args is None:
       emcc_args = []
 
-    transform_args = []
-    if post1:
-      transform_filename = os.path.join(self.get_dir(), 'transform.py')
-      transform = open(transform_filename, 'w')
-      transform.write('\nimport sys\nsys.path += [%r]\n' % path_from_root(''))
-      transform.write(post1)
-      transform.write('\nprocess(sys.argv[1])\n')
-      transform.close()
-      transform_args = ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
+    transform_args = self.get_emcc_transform_args(js_transform)
     Building.emcc(filename + '.o', self.serialize_settings() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
-    if post2: post2(filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
+  def build(self, src, dirname, filename, main_file=None,
+            additional_files=[], libraries=[], includes=[], build_ll_hook=None,
+            post_build=None, js_outfile=True, js_transform=None):
 
     Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -354,7 +353,7 @@ class RunnerCore(unittest.TestCase):
       additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
-    if build_ll_hook or post_build:
+    if build_ll_hook:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
@@ -373,19 +372,20 @@ class RunnerCore(unittest.TestCase):
         assert os.path.exists(f + '.o')
 
       # Link all files
+      object_file = filename + '.o'
       if len(additional_files) + len(libraries):
-        shutil.move(filename + '.o', filename + '.o.alone')
-        Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
-                 filename + '.o')
-        if not os.path.exists(filename + '.o'):
+        shutil.move(object_file, object_file + '.alone')
+        inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
+        Building.link(inputs, object_file)
+        if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", output)
           raise Exception("Linkage error")
 
       # Finalize
-      self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
+      self.prep_ll_run(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename, post_build)
+      self.ll_to_js(filename, js_transform)
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -397,11 +397,17 @@ class RunnerCore(unittest.TestCase):
              self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              ['-I' + include for include in includes] + \
-             all_files + \
+             all_files + self.get_emcc_transform_args(js_transform) + \
              ['-o', filename + '.o.js']
-      output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
+
+      run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
       if js_outfile:
         assert os.path.exists(filename + '.o.js')
+      else:
+        assert os.path.exists(filename + '.o.wasm')
+
+    if post_build:
+      post_build(filename + '.o.js')
 
     if self.emcc_args is not None and js_outfile:
       src = open(filename + '.o.js').read()
@@ -677,7 +683,7 @@ class RunnerCore(unittest.TestCase):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False):
+             assert_returncode=None, assert_identical=False, js_transform=None):
     if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -688,7 +694,8 @@ class RunnerCore(unittest.TestCase):
     filename = os.path.join(dirname, basename)
     if not no_build:
       self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                 build_ll_hook=build_ll_hook, post_build=post_build)
+                 build_ll_hook=build_ll_hook, post_build=post_build,
+                 js_transform=js_transform)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
@@ -723,13 +730,13 @@ class RunnerCore(unittest.TestCase):
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
   def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
-                output_nicerizer=None, post_build=None, force_recompile=False,
+                output_nicerizer=None, js_transform=None, force_recompile=False,
                 build_ll_hook=None, assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
 
-    self.ll_to_js(filename, post_build)
+    self.ll_to_js(filename, js_transform)
 
     self.do_run(None,
                 expected_output,
@@ -737,7 +744,6 @@ class RunnerCore(unittest.TestCase):
                 no_build=True,
                 js_engines=js_engines,
                 output_nicerizer=output_nicerizer,
-                post_build=None,
                 assert_returncode=assert_returncode) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
 
