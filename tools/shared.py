@@ -2032,7 +2032,9 @@ class Building(object):
           scan_archive_group(current_archive_group)
           current_archive_group = None
         else:
-          logging.debug('Ignoring unsupported link flag: %s' % f)
+          # Command line flags should already be vetted by the time this method
+          # is called, so this is an internal error
+          assert False, 'unsupported link flag: ' + f
       elif not Building.is_ar(absolute_path_f):
         if Building.is_bitcode(absolute_path_f):
           if has_ar:
