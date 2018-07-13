@@ -1814,6 +1814,7 @@ var LibraryJSEvents = {
     contextAttributes['minorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
     var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
     contextAttributes['explicitSwapControl'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
+    contextAttributes['renderViaOffscreenBackBuffer'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 'i32') }}};
 
     target = Pointer_stringify(target);
     var canvas;
@@ -1836,7 +1837,9 @@ var LibraryJSEvents = {
 #if OFFSCREEN_FRAMEBUFFER
         if (!contextAttributes['renderViaOffscreenBackBuffer']) {
           contextAttributes['renderViaOffscreenBackBuffer'] = true;
+#if GL_DEBUG
           console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
         }
 #else
 #if GL_DEBUG
@@ -1852,14 +1855,23 @@ var LibraryJSEvents = {
         canvas = GL.offscreenCanvases[canvas.id];
       }
     }
-#else
 #else // !OFFSCREENCANVAS_SUPPORT
-#if !OFFSCREEN_FRAMEBUFFER
+#if OFFSCREEN_FRAMEBUFFER
+    if (contextAttributes['explicitSwapControl'] && !contextAttributes['renderViaOffscreenBackBuffer']) {
+      contextAttributes['renderViaOffscreenBackBuffer'] = true;
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
+    }
+#else
     if (contextAttributes['explicitSwapControl']) {
+#if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
+#endif
       return 0;
     }
 #endif // ~!OFFSCREEN_FRAMEBUFFER
+
 #endif // ~!OFFSCREENCANVAS_SUPPORT
 
     var contextHandle = GL.createContext(canvas, contextAttributes);
