@@ -5,8 +5,11 @@ Tool to manage building of various useful things, such as libc, libc++, native o
 '''
 
 from __future__ import print_function
-import os, sys
-import tools.shared as shared
+import logging
+import os
+import sys
+
+from tools import shared
 
 if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
   print('''
@@ -27,8 +30,14 @@ Available operations and tasks:
 
   build libc
         libc-mt
+        libc-extras
+        struct_info
+        emmalloc
+        emmalloc_debug
         dlmalloc
+        dlmalloc_debug
         dlmalloc_threadsafe
+        dlmalloc_threadsafe_debug
         pthreads
         libcxx
         libcxx_noexcept
@@ -88,10 +97,11 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
 USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
+logger = logging.getLogger(__file__)
 
 def build(src, result_libs, args=[]):
   # if a library is a .a, also build the .bc, as we need it when forcing a
@@ -109,7 +119,6 @@ def build(src, result_libs, args=[]):
       with_forced.append(result_lib)
 
     if need_forced:
-      print(str(need_forced))
       if os.environ.get('EMCC_FORCE_STDLIBS'):
         print('skipping forced (.bc) versions of .a libraries, since EMCC_FORCE_STDLIBS already set')
       else:
@@ -120,10 +129,12 @@ def build(src, result_libs, args=[]):
           del os.environ['EMCC_FORCE_STDLIBS']
 
   # build in order to generate the libraries
-  with temp_files.get_file('.cpp') as temp:
-    open(temp, 'w').write(src)
-    temp_js = temp_files.get('.js').name
-    shared.Building.emcc(temp, args, output_filename=temp_js)
+  # do it all in a temp dir where everything will be cleaned up
+  temp_dir = temp_files.get_dir()
+  cpp = os.path.join(temp_dir, 'src.cpp')
+  open(cpp, 'w').write(src)
+  temp_js = os.path.join(temp_dir, 'out.js')
+  shared.Building.emcc(cpp, args, output_filename=temp_js)
 
   # verify
   assert os.path.exists(temp_js), 'failed to build file'
@@ -136,9 +147,12 @@ def build_port(port_name, lib_name, params):
   build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
 
-operation = sys.argv[1]
+def main():
+  operation = sys.argv[1]
+  if operation != 'build':
+    logger.error('unfamiliar operation: ' + operation)
+    return 1
 
-if operation == 'build':
   auto_tasks = False
   tasks = sys.argv[2:]
   if 'SYSTEM' in tasks:
@@ -161,7 +175,7 @@ if operation == 'build':
         tasks += ['native_optimizer']
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
-    shared.logging.info('building and verifying ' + what)
+    logger.info('building and verifying ' + what)
     if what == 'compiler-rt':
       build('''
         int main() {
@@ -170,20 +184,35 @@ if operation == 'build':
           return 0;
         }
       ''', ['compiler-rt.a'])
-    elif what in ('libc', 'dlmalloc'):
-      build(C_WITH_MALLOC, ['libc.bc', 'dlmalloc.bc'])
+    elif what == 'libc':
+      build(C_WITH_MALLOC, ['libc.bc'])
+    elif what == 'libc-extras':
+      build('''
+        extern char **environ;
+        int main() {
+          return (int)environ;
+        }
+      ''', ['libc-extras.bc'])
+    elif what == 'struct_info':
+      build(C_BARE, ['generated_struct_info.json'])
+    elif what == 'emmalloc':
+      build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
+    elif what == 'emmalloc_debug':
+      build(C_WITH_MALLOC, ['emmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
+    elif what == 'dlmalloc':
+      build(C_WITH_MALLOC, ['dlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
+    elif what == 'dlmalloc_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'dlmalloc_threadsafe_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
     elif what == 'wasm-libc':
       build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
-    elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
-      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
-    elif what == 'dlmalloc_debug':
-      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g'])
-    elif what == 'dlmalloc_threadsafe_debug':
-      build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1'])
     elif what == 'libcxx':
-      build(CXX_WITH_STDLIB, ['libcxx.a'])
+      build(CXX_WITH_STDLIB, ['libcxx.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     elif what == 'libcxx_noexcept':
-      build(CXX_WITH_STDLIB, ['libcxx_noexcept.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=1'])
+      build(CXX_WITH_STDLIB, ['libcxx_noexcept.a'])
     elif what == 'libcxxabi':
       build('''
         struct X { int x; virtual void a() {} };
@@ -202,12 +231,12 @@ if operation == 'build':
         }
       ''', ['gl.bc'])
     elif what == 'native_optimizer':
-      build(C_BARE, ['optimizer.2.exe'], ['-O2'])
+      build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'wasm_compiler_rt':
       if shared.Settings.WASM_BACKEND:
         build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
       else:
-        shared.logging.warning('wasm_compiler_rt not built when using JSBackend')
+        logger.warning('wasm_compiler_rt not built when using JSBackend')
     elif what == 'html5':
       build('''
         #include <stdlib.h>
@@ -252,11 +281,19 @@ if operation == 'build':
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     else:
-      shared.logging.error('unfamiliar build target: ' + what)
+      logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
 
-    shared.logging.info('...success')
+    logger.info('...success')
+  return 0
 
-else:
-  shared.logging.error('unfamiliar operation: ' + operation)
-  sys.exit(1)
+
+if __name__ == '__main__':
+  try:
+    sys.exit(main())
+  except KeyboardInterrupt:
+    logger.warning("KeyboardInterrupt")
+    sys.exit(1)
+  except shared.FatalError as e:
+    logger.error(str(e))
+    sys.exit(1)

@@ -19,7 +19,10 @@ int main(int argc, char** argv) {
   Uint32 ticks1 = SDL_GetTicks();
   SDL_Delay(5); // busy-wait
   Uint32 ticks2 = SDL_GetTicks();
-  assert(ticks2 >= ticks1 + 5);
+  if (ticks2 < ticks1 + 4) {
+    printf("not enough ticks from busy-wait\n");
+    REPORT_RESULT(9);
+  }
 
   int badret = 4;
   int goodret = 5;

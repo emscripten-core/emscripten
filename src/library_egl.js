@@ -283,7 +283,7 @@ var LibraryEGL = {
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS
-      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+      err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0; /* EGL_NO_CONTEXT */

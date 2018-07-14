@@ -23,7 +23,7 @@ Emscripten tools and dependencies
 A complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`. Then install any missing tools using the instructions in the appropriate platform-specific build topic (:ref:`building-emscripten-on-linux`, :ref:`building-emscripten-on-windows-from-source`, :ref:`building-emscripten-on-mac-osx-from-source`):
 
 	- :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
-	- :term:`Python` 2.7 (2.7.12 or above preferred)
+	- :term:`Python` 2.7.12 or above (Python 3.* may also work, work is ongoing)
 	- :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
 	- :term:`Git` client. Git is required if building tools from source.
 	- :term:`Fastcomp` (Emscripten's fork of LLVM and Clang)

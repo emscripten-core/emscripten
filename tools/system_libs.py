@@ -1,21 +1,26 @@
 from __future__ import print_function
-import os, json, logging, zipfile, tarfile, glob, shutil
+import json
+import logging
+import multiprocessing
+import os
+import re
+import shutil
+import sys
+import tarfile
+import zipfile
+
+from . import ports
 from . import shared
-from subprocess import Popen, CalledProcessError
-import subprocess, multiprocessing, re
 from tools.shared import check_call
 
 stdout = None
 stderr = None
+CORES = int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
+
 
 def call_process(cmd):
-  proc = Popen(cmd, stdout=stdout, stderr=stderr)
-  proc.communicate()
-  if proc.returncode != 0:
-    # Deliberately do not use CalledProcessError, see issue #2944
-    raise Exception('Command \'%s\' returned non-zero exit status %s' % (' '.join(cmd), proc.returncode))
+  shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
-CORES = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
 
 def run_commands(commands):
   cores = min(len(commands), CORES)
@@ -29,9 +34,11 @@ def run_commands(commands):
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
     pool.map_async(call_process, commands, chunksize=1).get(999999)
 
+
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
+
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
@@ -55,6 +62,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
   al_symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
   compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
+  libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
@@ -111,19 +119,55 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # libc
   def create_libc(libname):
     logging.debug(' building libc for cache')
-    libc_files = [
-    ]
+    libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
-    blacklist = set(
-      ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
-      ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c', '_exit.c'] + # individual files
-      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c', 'rintf.c'] # individual math files
-    )
+
+    # musl modules
+    blacklist = [
+        'ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux',
+        'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env',
+        'ldso', 'conf'
+    ]
+
+    # individual files
+    blacklist += [
+        'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
+        'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c',
+        'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+        'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
+        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'
+    ]
+
+    # individual math files
+    blacklist += [
+        'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
+        'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
+        'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
+        'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
+        'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
+        'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
+        'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
+        'rintf.c'
+    ]
+
+    if shared.Settings.WASM_BACKEND:
+      # With the wasm backend these are included in wasm_libc_rt instead
+      blacklist += [
+          'fmin.c', 'fminf.c', 'fminl.c', 'fmax.c', 'fmaxf.c', 'fmaxl.c',
+          'fmod.c', 'fmodf.c', 'fmodl.c', 'log2.c', 'log2f.c', 'log10.c',
+          'log10f.c', 'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c', 'scalbn.c',
+          '__fpclassifyl.c'
+      ]
+
+      blacklist += ['memcpy.c', 'memset.c', 'memmove.c']
+
+    blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       for f in filenames:
         if f.endswith('.c'):
-          if f in blacklist: continue
+          if f in blacklist:
+            continue
           dir_parts = os.path.split(dirpath)
           cancel = False
           for part in dir_parts:
@@ -132,7 +176,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
-    args = ['-Os']
+
+    # Without -fno-builtin, LLVM can optimize away or convert calls to library
+    # functions to something else based on assumptions that they behave exactly
+    # like the standard library. This can cause unexpected bugs when we use our
+    # custom standard library. The same for other libc/libm builds.
+    args = ['-Os', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       args += ['-s', 'USE_PTHREADS=1']
       assert '-mt' in libname
@@ -196,7 +245,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
                  'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2'])
+    return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
   # libcxx
   def create_libcxx(libname):
@@ -210,6 +259,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'debug.cpp',
       'exception.cpp',
       'future.cpp',
+      'functional.cpp',
       'hash.cpp',
       'ios.cpp',
       'iostream.cpp',
@@ -229,7 +279,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'typeinfo.cpp',
       'utility.cpp',
       'valarray.cpp',
-      'variant.cpp'
+      'variant.cpp',
+      'vector.cpp'
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
     return build_libcxx(
@@ -293,30 +344,66 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     shared.Building.emar('cr', in_temp(libname), o_s)
     return in_temp(libname)
 
-  def dlmalloc_name():
-    ret = 'dlmalloc'
-    if shared.Settings.USE_PTHREADS:
-      ret += '_threadsafe'
-    if shared.Settings.EMSCRIPTEN_TRACING:
-      ret += '_tracing'
-    if shared.Settings.SPLIT_MEMORY:
-      ret += '_split'
-    if shared.Settings.DEBUG_LEVEL:
-      ret += '_debug'
-    return ret
+  # libc_extras
+  def create_libc_extras(libname): # libname is ignored, this is just one .o file
+    o = in_temp('libc_extras.o')
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'extras.c'), '-o', o])
+    return o
 
-  def create_dlmalloc(out_name):
+  # decides which malloc to use, and returns the source for malloc and the full library name
+  def malloc_decision():
+    if shared.Settings.MALLOC == 'dlmalloc':
+      base = 'dlmalloc'
+    elif shared.Settings.MALLOC == 'emmalloc':
+      base = 'emmalloc'
+    else:
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+
+    # only dlmalloc supports most modes
+    def require_dlmalloc(what):
+      if base != 'dlmalloc':
+        logging.error('only dlmalloc is possible when using %s' % what)
+        sys.exit(1)
+
+    extra = ''
+    if shared.Settings.USE_PTHREADS:
+      extra += '_threadsafe'
+      require_dlmalloc('pthreads')
+    if shared.Settings.EMSCRIPTEN_TRACING:
+      extra += '_tracing'
+      require_dlmalloc('tracing')
+    if shared.Settings.SPLIT_MEMORY:
+      extra += '_split'
+      require_dlmalloc('split memory')
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      extra += '_debug'
+    if base == 'dlmalloc':
+      source = 'dlmalloc.c'
+    elif base == 'emmalloc':
+      source = 'emmalloc.cpp'
+    return (source, base + extra)
+
+  def malloc_source():
+    return malloc_decision()[0]
+
+  def malloc_name():
+    return malloc_decision()[1]
+
+  def create_malloc(out_name):
     o = in_temp(out_name)
-    cflags = ['-O2']
+    cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
       cflags += ['--tracing']
     if shared.Settings.SPLIT_MEMORY:
       cflags += ['-DMSPACES', '-DONLY_MSPACES']
-    if shared.Settings.DEBUG_LEVEL:
-      cflags += ['-DDLMALLOC_DEBUG']
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'dlmalloc.c'), '-o', o] + cflags)
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
+      # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
+    else:
+      cflags += ['-DNDEBUG']
+    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags)
     if shared.Settings.SPLIT_MEMORY:
       split_malloc_o = in_temp('sm' + out_name)
       check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'])
@@ -328,8 +415,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def create_wasm_rt_lib(libname, files):
     o_s = []
     commands = []
-    # Output should be an object file with lld, otherwise text assembly
-    output_flag = '-c' if shared.Settings.EXPERIMENTAL_USE_LLD else '-S'
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
@@ -337,10 +422,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([
         shared.CLANG_CC,
         '--target={}'.format(shared.WASM_TARGET),
-        '-mthread-model', 'single',
-        output_flag,
+        '-mthread-model', 'single', '-c',
         shared.path_from_root('system', 'lib', src),
-        '-O2', '-o', o] + musl_internal_includes() + shared.EMSDK_OPTS)
+        '-O2', '-fno-builtin', '-o', o] +
+        musl_internal_includes() +
+        shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -378,7 +464,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'fmod.c', 'fmodf.c', 'fmodl.c',
         'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
         'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c',
+        'scalbn.c', '__fpclassifyl.c'
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
@@ -391,7 +477,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
   force = set((force.split(',') if force else []) + forced)
-  if force: logging.debug('forcing stdlibs: ' + str(force))
+  if force:
+    logging.debug('forcing stdlibs: ' + str(force))
 
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
@@ -409,14 +496,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   #       both here and in the JS compiler.
   deps_info = json.loads(open(shared.path_from_root('src', 'deps_info.json')).read())
   added = set()
+
   def add_back_deps(need):
     more = False
     for ident, deps in deps_info.items():
-      if ident in need.undefs and not ident in added:
+      if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True
         for dep in deps:
           need.undefs.add(dep)
+          if shared.Settings.VERBOSE:
+            logging.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
@@ -432,7 +522,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # depend on exported functions
   for export in shared.Settings.EXPORTED_FUNCTIONS:
-    if shared.Settings.VERBOSE: logging.debug('adding dependency on export %s' % export)
+    if shared.Settings.VERBOSE:
+      logging.debug('adding dependency on export %s' % export)
     symbolses[0].undefs.add(export[1:])
 
   for symbols in symbolses:
@@ -446,27 +537,27 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
-                 ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
-                 ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False),
-                 ('al',            'bc', create_al,          al_symbols,          ['libc'],      False),
-                 ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False),
-                 ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False),
-                 (dlmalloc_name(), 'bc', create_dlmalloc,    [],                  [],            False)]
+  system_libs = [('libcxx',        'a',  create_libcxx,      libcxx_symbols, ['libcxxabi'], True), # noqa
+                 ('libcxxabi',     'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False), # noqa
+                 ('gl',            'bc', create_gl,          gl_symbols,          ['libc'],      False), # noqa
+                 ('al',            'bc', create_al,          al_symbols,          ['libc'],      False), # noqa
+                 ('html5',         'bc', create_html5,       html5_symbols,       ['html5'],     False), # noqa
+                 ('compiler-rt',   'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False), # noqa
+                 (malloc_name(),   'bc', create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False),
-                    ('pthreads',       'bc', create_pthreads,       pthreads_symbols, ['libc'], False),
-                    ('pthreads_asmjs', 'bc', create_pthreads_asmjs, asmjs_pthreads_symbols, ['libc'], False)]
+    system_libs += [('libc-mt',        'bc', create_libc,           libc_symbols,     [],       False), # noqa
+                    ('pthreads',       'bc', create_pthreads,       pthreads_symbols, ['libc'], False), # noqa
+                    ('pthreads_asmjs', 'bc', create_pthreads_asmjs, asmjs_pthreads_symbols, ['libc'], False)] # noqa
     force.add('pthreads')
     force.add('pthreads_asmjs')
   else:
     system_libs += [('libc', 'bc', create_libc, libc_symbols, [], False)]
 
-  force.add(dlmalloc_name())
+  force.add(malloc_name())
 
   # if building to wasm, we need more math code, since we have less builtins
-  if shared.Settings.BINARYEN:
+  if shared.Settings.WASM:
     system_libs += [('wasm-libc', 'bc', create_wasm_libc, wasm_libc_symbols, [], False)]
     # if libc is included, we definitely must be, as it might need us
     for data in system_libs:
@@ -475,6 +566,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         break
     else:
       raise Exception('did not find libc?')
+
+  # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
+  system_libs += [('libc-extras', 'bc', create_libc_extras, libc_extras_symbols, ['libc_extras'], False)]
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -486,7 +580,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
     force_this = force_all or shortname in force
-    if can_noexcept: shortname = maybe_noexcept(shortname)
+    if can_noexcept:
+      shortname = maybe_noexcept(shortname)
     if force_this:
       suffix = 'bc' # .a files do not always link in all their parts; don't use them when forced
     name = shortname + '.' + suffix
@@ -495,7 +590,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       need = set()
       has = set()
       for symbols in symbolses:
-        if shared.Settings.VERBOSE: logging.debug('undefs: ' + str(symbols.undefs))
+        if shared.Settings.VERBOSE:
+          logging.debug('undefs: ' + str(symbols.undefs))
         for library_symbol in library_symbols:
           if library_symbol in symbols.undefs:
             need.add(library_symbol)
@@ -504,13 +600,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for haz in has: # remove symbols that are supplied by another of the inputs
         if haz in need:
           need.remove(haz)
-      if shared.Settings.VERBOSE: logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
-    if force_this or (len(need) > 0 and not only_forced):
+      if shared.Settings.VERBOSE:
+        logging.debug('considering %s: we need %s and have %s' % (name, str(need), str(has)))
+    if force_this or (len(need) and not only_forced):
       # We need to build and link the library in
       logging.debug('including %s' % name)
+
       def do_create():
-        ret = create(name)
-        return ret
+        return create(name)
+
       libfile = shared.Cache.get(name, do_create, extension=suffix)
       ret.append(libfile)
       force = force.union(deps)
@@ -518,7 +616,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
   # Here, just ensure that it's in the cache.
-  if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
+  if shared.Settings.WASM and shared.Settings.WASM_BACKEND:
     shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
     shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
 
@@ -533,13 +631,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   return ret
 
-#---------------------------------------------------------------------------
-# emscripten-ports library management (https://github.com/emscripten-ports)
-#---------------------------------------------------------------------------
-
-from . import ports
 
 class Ports(object):
+  '''emscripten-ports library management (https://github.com/emscripten-ports)
+  '''
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
       srcs = []
@@ -549,7 +644,7 @@ class Ports(object):
         for file in files:
             if (file.endswith('.c') or file.endswith('.cpp')) and not any((excluded in file) for excluded in exclude_files):
                 srcs.append(os.path.join(root, file))
-      include_commands = ['-I' + src_path ]
+      include_commands = ['-I' + src_path]
       for include in includes:
           include_commands.append('-I' + include)
 
@@ -617,6 +712,7 @@ class Ports(object):
             logging.warning('grabbing local port: ' + name + ' from ' + path + ', into ' + subdir)
             # zip up the directory, so it looks the same as if we downloaded a zip from the remote server
             z = zipfile.ZipFile(fullname + '.zip', 'w')
+
             def add_dir(p):
               for f in os.listdir(p):
                 full = os.path.join(p, f)
@@ -625,6 +721,7 @@ class Ports(object):
                 else:
                   if not f.startswith('.'): # ignore hidden files, including .git/ etc.
                     z.write(full, os.path.join(subdir, os.path.relpath(full, path)))
+
             add_dir(path)
             z.close()
             State.retrieved = True
@@ -647,10 +744,9 @@ class Ports(object):
       else:
         names = zipfile.ZipFile(fullname + '.zip', 'r').namelist()
 
-      if not (names[0].startswith(subdir + '/') or names[0].startswith(subdir + '\\')):
-        # current zip file is old, force a retrieve
-        return False
-      return True
+      # check if first entry of the archive is prefixed with the same
+      # tag as we need so no longer download and recompile if so
+      return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
       logging.warning('unpacking port: ' + name)
@@ -700,7 +796,8 @@ class Ports(object):
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
                                            configure=configure, make=['make', '-j' + str(CORES)])
       assert len(libs) == 1
-      if post_create: post_create()
+      if post_create:
+        post_create()
       return libs[0]
     return shared.Cache.get(name, create)
 
@@ -721,7 +818,7 @@ class Ports(object):
       cmake_build_type = 'Release'
 
       # Configure
-      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+      check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
 
       # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
@@ -729,13 +826,16 @@ class Ports(object):
       # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
       num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
       make_args = []
-      if 'Makefiles' in generator and not 'NMake' in generator: make_args = ['--', '-j', num_cores]
-      elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
+      if 'Makefiles' in generator and 'NMake' not in generator:
+        make_args = ['--', '-j', num_cores]
+      elif 'Visual Studio' in generator:
+        make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.
-      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+      check_call(['cmake', '--build', '.'] + make_args)
     finally:
       os.chdir(old)
+
 
 # get all ports
 def get_ports(settings):
@@ -755,16 +855,19 @@ def get_ports(settings):
   ret.reverse()
   return ret
 
+
 def process_dependencies(settings):
   for port in reversed(ports.ports):
     if hasattr(port, "process_dependencies"):
       port.process_dependencies(settings)
+
 
 def process_args(args, settings):
   process_dependencies(settings)
   for port in ports.ports:
     args = port.process_args(Ports, args, settings, shared)
   return args
+
 
 # get a single port
 def get_port(name, settings):
@@ -773,6 +876,7 @@ def get_port(name, settings):
     port.process_dependencies(settings)
   # ports return their output files, which will be linked, or a txt file
   return [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+
 
 def show_ports():
   print('Available ports:')

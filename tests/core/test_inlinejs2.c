@@ -7,8 +7,8 @@ int mix(int x, int y) {
 }
 
 void mult() {
-  asm("var $_$1 = Math.abs(-100); $_$1 *= 2; Module.print($_$1)");  // multiline
-  asm __volatile__("Module.print('done')");
+  asm("var $_$1 = Math.abs(-100); $_$1 *= 2; out($_$1)");  // multiline
+  asm __volatile__("out('done')");
 }
 
 int main(int argc, char **argv) {

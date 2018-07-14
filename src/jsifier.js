@@ -122,8 +122,8 @@ function JSify(data, functionsOnly) {
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
     if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) Module.printErr("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
-      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") Module.printErr("  [     return:" + prettyPrint(ret)); return ret; \n}';
+      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
+      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}';
     }
     return snippet;
   }
@@ -247,7 +247,7 @@ function JSify(data, functionsOnly) {
         }
         if (!(MAIN_MODULE || SIDE_MODULE)) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[shortident] = new Function("Module['printErr']('missing function: " + shortident + "'); abort(-1);");
+          LibraryManager.library[shortident] = new Function("err('missing function: " + shortident + "'); abort(-1);");
         } else {
           var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
           var assertion = '';
@@ -389,7 +389,7 @@ function JSify(data, functionsOnly) {
         if (LibraryManager.library[shortident + '__asm']) {
           warn('cannot kill asm library function ' + item.ident);
         } else {
-          LibraryManager.library[shortident] = new Function("Module['printErr']('dead function: " + shortident + "'); abort(-1);");
+          LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
           delete LibraryManager.library[shortident + '__inline'];
           delete LibraryManager.library[shortident + '__deps'];
         }
@@ -432,10 +432,16 @@ function JSify(data, functionsOnly) {
           print('STATIC_BASE = GLOBAL_BASE;\n');
           print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
-          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}}, ' + MAX_GLOBAL_ALIGN + ' || 1));\n');
+          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
+          // The static area consists of explicitly initialized data, followed by zero-initialized data.
+          // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
+          // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
+          // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
+          // from uninitialized memory.
+          print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
           print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
-        if (BINARYEN) {
+        if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
           print('Module["STATIC_BASE"] = STATIC_BASE;');
@@ -618,4 +624,3 @@ function JSify(data, functionsOnly) {
   dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
   //B.stop('jsifier');
 }
-

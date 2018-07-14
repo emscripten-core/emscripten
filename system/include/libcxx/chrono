@@ -26,7 +26,7 @@ duration_cast(const duration<Rep, Period>& fd);
 
 template <class Rep> struct treat_as_floating_point : is_floating_point<Rep> {};
 
-template <class Rep> constexpr bool treat_as_floating_point_v
+template <class Rep> inline constexpr bool treat_as_floating_point_v
     = treat_as_floating_point<Rep>::value;                       // C++17
 
 template <class Rep>
@@ -48,7 +48,7 @@ class duration
     static_assert(Period::num > 0, "duration period must be positive");
 public:
     typedef Rep rep;
-    typedef Period period;
+    typedef typename _Period::type period;
 
     constexpr duration() = default;
     template <class Rep2>
@@ -75,8 +75,8 @@ public:
 
     // arithmetic
 
-    constexpr duration  operator+() const;
-    constexpr duration  operator-() const;
+    constexpr common_type<duration>::type  operator+() const;
+    constexpr common_type<duration>::type  operator-() const;
     constexpr duration& operator++();
     constexpr duration  operator++(int);
     constexpr duration& operator--();
@@ -283,18 +283,18 @@ typedef steady_clock high_resolution_clock;
 
 }  // chrono
 
-constexpr chrono::hours                                 operator "" h(unsigned long long); // C++14
-constexpr chrono::duration<unspecified , ratio<3600,1>> operator "" h(long double); // C++14
-constexpr chrono::minutes                               operator "" min(unsigned long long); // C++14
-constexpr chrono::duration<unspecified , ratio<60,1>>   operator "" min(long double); // C++14
-constexpr chrono::seconds                               operator "" s(unsigned long long); // C++14
-constexpr chrono::duration<unspecified >                operator "" s(long double); // C++14
-constexpr chrono::milliseconds                          operator "" ms(unsigned long long); // C++14
-constexpr chrono::duration<unspecified , milli>         operator "" ms(long double); // C++14
-constexpr chrono::microseconds                          operator "" us(unsigned long long); // C++14
-constexpr chrono::duration<unspecified , micro>         operator "" us(long double); // C++14
-constexpr chrono::nanoseconds                           operator "" ns(unsigned long long); // C++14
-constexpr chrono::duration<unspecified , nano>          operator "" ns(long double); // C++14
+constexpr chrono::hours                                 operator ""h(unsigned long long); // C++14
+constexpr chrono::duration<unspecified , ratio<3600,1>> operator ""h(long double); // C++14
+constexpr chrono::minutes                               operator ""min(unsigned long long); // C++14
+constexpr chrono::duration<unspecified , ratio<60,1>>   operator ""min(long double); // C++14
+constexpr chrono::seconds                               operator ""s(unsigned long long); // C++14
+constexpr chrono::duration<unspecified >                operator ""s(long double); // C++14
+constexpr chrono::milliseconds                          operator ""ms(unsigned long long); // C++14
+constexpr chrono::duration<unspecified , milli>         operator ""ms(long double); // C++14
+constexpr chrono::microseconds                          operator ""us(unsigned long long); // C++14
+constexpr chrono::duration<unspecified , micro>         operator ""us(long double); // C++14
+constexpr chrono::nanoseconds                           operator ""ns(unsigned long long); // C++14
+constexpr chrono::duration<unspecified , nano>          operator ""ns(long double); // C++14
 
 }  // std
 */
@@ -305,11 +305,13 @@ constexpr chrono::duration<unspecified , nano>          operator "" ns(long doub
 #include <ratio>
 #include <limits>
 
-#include <__undef_min_max>
-
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -417,7 +419,8 @@ template <class _Rep>
 struct _LIBCPP_TEMPLATE_VIS treat_as_floating_point : is_floating_point<_Rep> {};
 
 #if _LIBCPP_STD_VER > 14 && !defined(_LIBCPP_HAS_NO_VARIABLE_TEMPLATES)
-template <class _Rep> _LIBCPP_CONSTEXPR bool treat_as_floating_point_v
+template <class _Rep>
+_LIBCPP_INLINE_VAR _LIBCPP_CONSTEXPR bool treat_as_floating_point_v
     = treat_as_floating_point<_Rep>::value;
 #endif
 
@@ -523,7 +526,7 @@ class _LIBCPP_TEMPLATE_VIS duration
     
 public:
     typedef _Rep rep;
-    typedef _Period period;
+    typedef typename _Period::type period;
 private:
     rep __rep_;
 public:
@@ -565,8 +568,8 @@ public:
 
     // arithmetic
 
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR duration  operator+() const {return *this;}
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR duration  operator-() const {return duration(-__rep_);}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR typename common_type<duration>::type operator+() const {return typename common_type<duration>::type(*this);}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR typename common_type<duration>::type operator-() const {return typename common_type<duration>::type(-__rep_);}
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14 duration& operator++()      {++__rep_; return *this;}
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14 duration  operator++(int)   {return duration(__rep_++);}
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14 duration& operator--()      {--__rep_; return *this;}
@@ -1085,67 +1088,67 @@ inline namespace literals
   inline namespace chrono_literals
   {
 
-    constexpr chrono::hours operator"" h(unsigned long long __h)
+    constexpr chrono::hours operator""h(unsigned long long __h)
     {
         return chrono::hours(static_cast<chrono::hours::rep>(__h));
     }
 
-    constexpr chrono::duration<long double, ratio<3600,1>> operator"" h(long double __h)
+    constexpr chrono::duration<long double, ratio<3600,1>> operator""h(long double __h)
     {
         return chrono::duration<long double, ratio<3600,1>>(__h);
     }
 
 
-    constexpr chrono::minutes operator"" min(unsigned long long __m)
+    constexpr chrono::minutes operator""min(unsigned long long __m)
     {
         return chrono::minutes(static_cast<chrono::minutes::rep>(__m));
     }
 
-    constexpr chrono::duration<long double, ratio<60,1>> operator"" min(long double __m)
+    constexpr chrono::duration<long double, ratio<60,1>> operator""min(long double __m)
     {
         return chrono::duration<long double, ratio<60,1>> (__m);
     }
 
 
-    constexpr chrono::seconds operator"" s(unsigned long long __s)
+    constexpr chrono::seconds operator""s(unsigned long long __s)
     {
         return chrono::seconds(static_cast<chrono::seconds::rep>(__s));
     }
 
-    constexpr chrono::duration<long double> operator"" s(long double __s)
+    constexpr chrono::duration<long double> operator""s(long double __s)
     {
         return chrono::duration<long double> (__s);
     }
 
 
-    constexpr chrono::milliseconds operator"" ms(unsigned long long __ms)
+    constexpr chrono::milliseconds operator""ms(unsigned long long __ms)
     {
         return chrono::milliseconds(static_cast<chrono::milliseconds::rep>(__ms));
     }
 
-    constexpr chrono::duration<long double, milli> operator"" ms(long double __ms)
+    constexpr chrono::duration<long double, milli> operator""ms(long double __ms)
     {
         return chrono::duration<long double, milli>(__ms);
     }
 
 
-    constexpr chrono::microseconds operator"" us(unsigned long long __us)
+    constexpr chrono::microseconds operator""us(unsigned long long __us)
     {
         return chrono::microseconds(static_cast<chrono::microseconds::rep>(__us));
     }
 
-    constexpr chrono::duration<long double, micro> operator"" us(long double __us)
+    constexpr chrono::duration<long double, micro> operator""us(long double __us)
     {
         return chrono::duration<long double, micro> (__us);
     }
     
 
-    constexpr chrono::nanoseconds operator"" ns(unsigned long long __ns)
+    constexpr chrono::nanoseconds operator""ns(unsigned long long __ns)
     {
         return chrono::nanoseconds(static_cast<chrono::nanoseconds::rep>(__ns));
     }
 
-    constexpr chrono::duration<long double, nano> operator"" ns(long double __ns)
+    constexpr chrono::duration<long double, nano> operator""ns(long double __ns)
     {
         return chrono::duration<long double, nano> (__ns);
     }
@@ -1159,5 +1162,7 @@ namespace chrono { // hoist the literals into namespace std::chrono
 #endif
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP_CHRONO

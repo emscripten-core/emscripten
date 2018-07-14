@@ -33,12 +33,12 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
     // If the address contains localhost, or we are running the page from port 6931, we can assume we're running the test runner and should post stdout logs.
     if (document.URL.search("localhost") != -1 || document.URL.search(":6931/") != -1) {
       var emrun_http_sequence_number = 1;
-      var prevPrint = Module['print'];
-      var prevErr = Module['printErr'];
+      var prevPrint = out;
+      var prevErr = err;
       function emrun_exit() { if (emrun_num_post_messages_in_flight == 0) postExit('^exit^'+EXITSTATUS); else emrun_should_close_itself = true; };
       Module['addOnExit'](emrun_exit);
-      Module['print'] = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
-      Module['printErr'] = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
+      out = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
+      err = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
 
       // Notify emrun web server that this browser has successfully launched the page.
       post('^pageload^');
@@ -49,7 +49,7 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
   // To use from C code, call e.g. EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
   function emrun_file_dump(filename, data) {
     var http = new XMLHttpRequest();
-    Module['print']('Dumping out file "' + filename + '" with ' + data.length + ' bytes of data.');
+    out('Dumping out file "' + filename + '" with ' + data.length + ' bytes of data.');
     http.open("POST", "stdio.html?file=" + filename, true);
     http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
   }

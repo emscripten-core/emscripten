@@ -35,12 +35,14 @@ extern double llvm_log10_f64(double x);
 extern float llvm_copysign_f32(float x, float y);
 extern double llvm_copysign_f64(double x, double y);
 
-extern double llvm_round_f64(double x);
 extern float llvm_round_f32(float x);
+extern double llvm_round_f64(double x);
 extern float llvm_minnum_f32(float x, float y);
 extern double llvm_minnum_f64(double x, double y);
 extern float llvm_maxnum_f32(float x, float y);
 extern double llvm_maxnum_f64(double x, double y);
+extern float llvm_nearbyint_f32(float x);
+extern double llvm_nearbyint_f64(double x);
 }
 
 int main(void) {
@@ -63,6 +65,16 @@ int main(void) {
   printf("%d,%d\n", (int)llvm_ctpop_i64((0x3101ULL << 32) | 1),
          llvm_ctpop_i32(0x3101));
 
+  printf("llvm_cttz_i32:\n");
+  printf("(0, 0)=%d\n", llvm_cttz_i32(0, 0));
+  printf("(1, 0)=%d\n", llvm_cttz_i32(1, 0));
+  printf("(2, 0)=%d\n", llvm_cttz_i32(2, 0));
+  printf("(0x0000FFFF, 0)=%d\n", llvm_cttz_i32(0x0000FFFF, 0));
+  printf("(0x7FFF0000, 0)=%d\n", llvm_cttz_i32(0x7FFF0000, 0));
+  printf("(0xFFFF0000, 0)=%d\n", llvm_cttz_i32(0xFFFF0000, 0));
+  printf("(0x7FFFFFFF, 0)=%d\n", llvm_cttz_i32(0x7FFFFFFF, 0));
+  printf("(0xFFFFFFFE, 0)=%d\n", llvm_cttz_i32(0xFFFFFFFE, 0));
+  printf("(0xFFFFFFFF, 0)=%d\n", llvm_cttz_i32(0xFFFFFFFF, 0));
   printf("small ctlz: %d,%d\n", (int)llvm_ctlz_i8(2, 0), llvm_ctlz_i16(2, 0));
 
   printf("llvm_ctpop_i32:\n");
@@ -141,6 +153,20 @@ int main(void) {
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.49));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.5));
   printf("llvm_round_f32 %.1f\n", llvm_round_f32(-20.51));
+
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(20.50));
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(20.51));
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(42));
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(-20.49));
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(-20.5));
+  printf("llvm_nearbyint_f64 %.1f\n", llvm_nearbyint_f64(-20.51));
+
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(20.50));
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(20.51));
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(42));
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(-20.49));
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(-20.5));
+  printf("llvm_nearbyint_f32 %.1f\n", llvm_nearbyint_f32(-20.51));
 
   printf("llvm_minnum_f32 %.1f\n", llvm_minnum_f32(5.7, 10.2));
   printf("llvm_minnum_f32 %.1f\n", llvm_minnum_f32(8.5, 2.3));

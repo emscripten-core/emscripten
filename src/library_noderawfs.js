@@ -11,9 +11,9 @@ mergeInto(LibraryManager.library, {
       return { path: path, node: { mode: NODEFS.getMode(path) } };
     },
     createStandardStreams: function() {
-      FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true };
+      FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
       for (var i = 1; i < 3; i++) {
-        FS.streams[i] = { fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true };
+        FS.streams[i] = { fd: i, nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false };
       }
     },
     // generic function for all node creation
@@ -48,7 +48,7 @@ mergeInto(LibraryManager.library, {
       }
       var nfd = fs.openSync(path, NODEFS.flagsForNode(flags), mode);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags };
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },
@@ -82,9 +82,11 @@ mergeInto(LibraryManager.library, {
         // this stream is created by in-memory filesystem
         return VFS.read(stream, buffer, offset, length, position);
       }
+      var seeking = typeof position !== 'undefined';
+      if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
-      if (typeof position === 'undefined') stream.position += bytesRead;
+      if (!seeking) stream.position += bytesRead;
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position) {
@@ -96,9 +98,11 @@ mergeInto(LibraryManager.library, {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, +"{{{ cDefine('SEEK_END') }}}");
       }
+      var seeking = typeof position !== 'undefined';
+      if (!seeking && stream.seekable) position = stream.position;
       var bytesWritten = fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
       // update position marker when non-seeking
-      if (typeof position === 'undefined') stream.position += bytesWritten;
+      if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
     },
     allocate: function() {

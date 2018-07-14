@@ -46,7 +46,7 @@ void *ThreadMain(void *arg)
 	assert(globalDouble == 5.0);
 	assert(globalU64 == 5);
 	struct Test *t = (struct Test*)arg;
-	EM_ASM(Module['print']('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
 
 	for(int i = 0; i < 99999; ++i)
 		for(int j = 0; j < N; ++j)
@@ -86,7 +86,7 @@ void *ThreadMain(void *arg)
 				break;
 			}
 		}
-	EM_ASM(Module['print']('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
 	pthread_exit(0);
 }
 
@@ -110,7 +110,7 @@ void RunTest(int test)
 		default: memset(sharedData, 0, sizeof(sharedData)); break;
 	}
 
-	EM_ASM(Module['print']('Main: Starting test ' + $0), test);
+	EM_ASM(out('Main: Starting test ' + $0), test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -131,7 +131,7 @@ void RunTest(int test)
 	}
 
 	int val = sharedData[0];
-	EM_ASM(Module['print']('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
+	EM_ASM(out('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
 	if (test != 6)
 	{
 		for(int i = 1; i < N; ++i)
@@ -180,6 +180,6 @@ int main()
 	int result = (totalRead != totalWritten) ? 1 : 0;
 	REPORT_RESULT(result);
 #else
-	EM_ASM(Module['print']('Main: Test successfully finished.'));
+	EM_ASM(out('Main: Test successfully finished.'));
 #endif
 }

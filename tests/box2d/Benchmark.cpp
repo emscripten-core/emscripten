@@ -19,14 +19,16 @@ typedef struct {
 } result_t;
 // ==============================
 
-
-
 #include <cstdio>
 #include <time.h>
 #include <math.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
+
+#if NO_PRINTING
+#define printf(fmt, ...) (0)
 #endif
 
 #include "Box2D/Box2D.h"

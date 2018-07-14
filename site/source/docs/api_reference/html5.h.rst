@@ -1102,7 +1102,7 @@ Struct
 		
 		Maximum size 128 ``char`` (i.e. ``EM_UTF8 nodeName[128]``).
 		
-		If ``isFullscreen`` is ``false``, then ``nodeName``, ``id`` and ``elementWidth`` and ``ElementHeight`` specify information about the element that just exited fullscreen mode.
+		If ``isFullscreen`` is ``false``, then ``nodeName``, ``id`` and ``elementWidth`` and ``elementHeight`` specify information about the element that just exited fullscreen mode.
 		
 
 	.. c:member:: EM_UTF8 id

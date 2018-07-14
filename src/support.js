@@ -11,14 +11,21 @@ stackSave = stackRestore = stackAlloc = setTempRet0 = getTempRet0 = function() {
 #endif
 
 function staticAlloc(size) {
+#if ASSERTIONS
   assert(!staticSealed);
+#endif
   var ret = STATICTOP;
   STATICTOP = (STATICTOP + size + 15) & -16;
+#if ASSERTIONS
+  assert(STATICTOP < TOTAL_MEMORY, 'not enough memory for static allocation - increase TOTAL_MEMORY');
+#endif
   return ret;
 }
 
 function dynamicAlloc(size) {
+#if ASSERTIONS
   assert(DYNAMICTOP_PTR);
+#endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
   HEAP32[DYNAMICTOP_PTR>>2] = end;
@@ -40,16 +47,43 @@ function warnOnce(text) {
   if (!warnOnce.shown) warnOnce.shown = {};
   if (!warnOnce.shown[text]) {
     warnOnce.shown[text] = 1;
-    Module.printErr(text);
+    err(text);
   }
 }
+
+var asm2wasmImports = { // special asm2wasm imports
+    "f64-rem": function(x, y) {
+        return x % y;
+    },
+    "debugger": function() {
+        debugger;
+    }
+#if NEED_ALL_ASM2WASM_IMPORTS
+    ,
+    "f64-to-int": function(x) {
+        return x | 0;
+    },
+    "i32s-div": function(x, y) {
+        return ((x | 0) / (y | 0)) | 0;
+    },
+    "i32u-div": function(x, y) {
+        return ((x >>> 0) / (y >>> 0)) >>> 0;
+    },
+    "i32s-rem": function(x, y) {
+        return ((x | 0) % (y | 0)) | 0;
+    },
+    "i32u-rem": function(x, y) {
+        return ((x >>> 0) % (y >>> 0)) >>> 0;
+    }
+#endif // NEED_ALL_ASM2WASM_IMPORTS
+};
 
 #if RELOCATABLE
 var loadedDynamicLibraries = [];
 
 function loadDynamicLibrary(lib) {
   var libModule;
-#if BINARYEN
+#if WASM
   var bin;
   if (lib.buffer) {
     // we were provided the binary, in a typed array
@@ -76,7 +110,7 @@ function loadDynamicLibrary(lib) {
       var curr = Module[sym], next = libModule[sym];
       // don't warn on functions - might be odr, linkonce_odr, etc.
       if (!(typeof curr === 'function' && typeof next === 'function')) {
-        Module.printErr("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        err("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
       }
     }
 #endif
@@ -84,11 +118,11 @@ function loadDynamicLibrary(lib) {
   loadedDynamicLibraries.push(libModule);
 }
 
-#if BINARYEN
+#if WASM
 // Loads a side module from binary data
-function loadWebAssemblyModule(binary) {
+function loadWebAssemblyModule(binary, loadAsync) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
-  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0wasm
+  assert(int32View[0] == 0x6d736100, 'need to see wasm magic number'); // \0asm
   // we should see the dylink section right after the magic number and wasm version
   assert(binary[8] === 0, 'need the dylink section to be first')
   var next = 9;
@@ -112,12 +146,29 @@ function loadWebAssemblyModule(binary) {
   assert(binary[next] === 'n'.charCodeAt(0)); next++;
   assert(binary[next] === 'k'.charCodeAt(0)); next++;
   var memorySize = getLEB();
+  var memoryAlign = getLEB();
   var tableSize = getLEB();
+  var tableAlign = getLEB();
+  // alignments are powers of 2
+  memoryAlign = Math.pow(2, memoryAlign);
+  tableAlign = Math.pow(2, tableAlign);
+  // finalize alignments and verify them
+  memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
+  assert(tableAlign === 1);
+  // prepare memory
+  var memoryStart = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
+  // The static area consists of explicitly initialized data, followed by zero-initialized data.
+  // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
+  // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
+  // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
+  // from uninitialized memory.
+  for (var i = memoryStart; i < memoryStart + memorySize; ++i) HEAP8[i] = 0;
+  // prepare env imports
   var env = Module['asmLibraryArg'];
   // TODO: use only memoryBase and tableBase, need to update asm.js backend
   var table = Module['wasmTable'];
   var oldTableSize = table.length;
-  env['memoryBase'] = env['gb'] = alignMemory(getMemory(memorySize + STACK_ALIGN), STACK_ALIGN); // TODO: add to cleanups
+  env['memoryBase'] = env['gb'] = memoryStart;
   env['tableBase'] = env['fb'] = oldTableSize;
   var originalTable = table;
   table.grow(tableSize);
@@ -139,9 +190,10 @@ function loadWebAssemblyModule(binary) {
     global: {
       'NaN': NaN,
       'Infinity': Infinity,
-      'Math': Math
     },
-    env: env
+    'global.Math': Math,
+    env: env,
+    'asm2wasm': asm2wasmImports
   };
 #if ASSERTIONS
   var oldTable = [];
@@ -149,46 +201,72 @@ function loadWebAssemblyModule(binary) {
     oldTable.push(table.get(i));
   }
 #endif
-  // create a module from the instance
-  var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+
+  function postInstantiation(instance) {
+    var exports = {};
 #if ASSERTIONS
-  // the table should be unchanged
-  assert(table === originalTable);
-  assert(table === Module['wasmTable']);
-  if (instance.exports['table']) {
-    assert(table === instance.exports['table']);
-  }
-  // the old part of the table should be unchanged
-  for (var i = 0; i < oldTableSize; i++) {
-    assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
-  }
-  // verify that the new table region was filled in
-  for (var i = 0; i < tableSize; i++) {
-    assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
-  }
+    // the table should be unchanged
+    assert(table === originalTable);
+    assert(table === Module['wasmTable']);
+    if (instance.exports['table']) {
+      assert(table === instance.exports['table']);
+    }
+    // the old part of the table should be unchanged
+    for (var i = 0; i < oldTableSize; i++) {
+      assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
+    }
+    // verify that the new table region was filled in
+    for (var i = 0; i < tableSize; i++) {
+      assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
+    }
 #endif
-  var exports = {};
-  for (var e in instance.exports) {
-    var value = instance.exports[e];
-    if (typeof value === 'number') {
-      // relocate it - modules export the absolute value, they can't relocate before they export
-      value = value + env['memoryBase'];
+    for (var e in instance.exports) {
+      var value = instance.exports[e];
+      if (typeof value === 'object') {
+        // a breaking change in the wasm spec, globals are now objects
+        // https://github.com/WebAssembly/mutable-global/issues/1
+        value = value.value;
+      }
+      if (typeof value === 'number') {
+        // relocate it - modules export the absolute value, they can't relocate before they export
+#if EMULATED_FUNCTION_POINTERS
+        // it may be a function pointer
+        if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
+          value = value + env['tableBase'];
+        } else {
+#endif
+          value = value + env['memoryBase'];
+#if EMULATED_FUNCTION_POINTERS
+        }
+#endif
+      }
+      exports[e] = value;
     }
-    exports[e] = value;
-  }
-  // initialize the module
-  var init = exports['__post_instantiate'];
-  if (init) {
-    if (runtimeInitialized) {
-      init();
-    } else {
-      // we aren't ready to run compiled code yet
-      __ATINIT__.push(init);
+    // initialize the module
+    var init = exports['__post_instantiate'];
+    if (init) {
+      if (runtimeInitialized) {
+        init();
+      } else {
+        // we aren't ready to run compiled code yet
+        __ATINIT__.push(init);
+      }
     }
+    return exports;
   }
-  return exports;
+
+  if (loadAsync) {
+    return WebAssembly.instantiate(binary, info).then(function(result) {
+      return postInstantiation(result.instance);
+    });
+  } else {
+    var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
+    return postInstantiation(instance);
+  }
 }
-#endif // BINARYEN
+Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
+
+#endif // WASM
 #endif // RELOCATABLE
 
 #if EMULATED_FUNCTION_POINTERS
@@ -265,8 +343,7 @@ function addFunction(func, sig) {
 #endif // WASM_BACKEND
 #if ASSERTIONS
   if (typeof sig === 'undefined') {
-    Module.printErr('Warning: addFunction: Provide a wasm function signature ' +
-                    'string as a second argument');
+    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but is required for the LLVM wasm backend, so it is recommended for full portability.');
   }
 #endif // ASSERTIONS
 #if EMULATED_FUNCTION_POINTERS == 0
@@ -283,8 +360,8 @@ function addFunction(func, sig) {
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
-#if BINARYEN
-  // we can simply appent to the wasm table
+#if WASM
+  // we can simply append to the wasm table
   var table = Module['wasmTable'];
   var ret = table.length;
   table.grow(1);
@@ -474,4 +551,3 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 #if RELOCATABLE
 GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
-

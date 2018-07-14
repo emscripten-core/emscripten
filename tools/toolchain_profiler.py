@@ -4,7 +4,7 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import response_file
 
-EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
+EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN', '0'))
 
 if EM_PROFILE_TOOLCHAIN:
   original_sys_exit = sys.exit
@@ -61,7 +61,7 @@ if EM_PROFILE_TOOLCHAIN:
       ToolchainProfiler.record_subprocess_finish(self.pid, self.returncode)
       return output
 
-  exit = sys.exit = profiled_sys_exit
+  sys.exit = profiled_sys_exit
   subprocess.call = profiled_call
   subprocess.check_call = profiled_check_call
   subprocess.check_output = profiled_check_output
@@ -194,8 +194,6 @@ if EM_PROFILE_TOOLCHAIN:
       return ToolchainProfiler.imaginary_pid_
 
 else:
-  exit = sys.exit
-
   class ToolchainProfiler(object):
     @staticmethod
     def record_process_start():

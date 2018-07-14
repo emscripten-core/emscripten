@@ -61,10 +61,20 @@ sys.argv = list(filter(handle_arg, sys.argv))
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax'])
+# The blacklist contains functions we will not emterpret in any case: they are known to be safe to run normally, e.g.
+# because they don't call anything, or they only call trivial things we know are safe.
+# One particularly interesting case is SAFE_FT_MASK: we must not emterpret it, as it appears in expressions like
+#   FUNCTION_TABLE_vi[SAFE_FT_MASK(..) & 7](..)
+# which means that if we are in async mode and reloading the stack to resume, and we need to make that call as
+# part of getting there - say, if an invoke was part of the path to get here, and invoke calls dynCall which
+# calls SAFE_FT_MASK - then we'll end up doing that call during recreating the stack, which breaks. In other
+# words, dynCall_* must be calls without running emterpreted code in them. To avoid that, we blacklist
+# SAFE_FT_MASK, which should be blacklisted anyhow as it has no need for emterpretation.
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax', 'SAFE_FT_MASK', 'SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D'])
+
 WHITELIST = []
 
-SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
+SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete', '_emscripten_yield'])
 
 OPCODES = [ # l, lx, ly etc - one of 256 locals
   'SET',     # [lx, ly, 0]          lx = ly (int or float, not double)
@@ -458,7 +468,7 @@ def push_stacktop(zero):
   return (' sp = EMTSTACKTOP;' if not ASYNC else ' sp = EMTSTACKTOP + 8 | 0;') if not zero else ''
 
 def pop_stacktop(zero):
-  return '//Module.print("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
+  return '//out("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
 
 def handle_async_pre_call():
   return 'HEAP32[sp - 4 >> 2] = pc;' if ASYNC else ''
@@ -469,8 +479,9 @@ def handle_async_post_call():
 
 CASES[ROPCODES['INTCALL']] = '''
     lz = HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 1 | 0] | 0; // FUNC inst, see definition above; we read params here
-    ly = 0;
-    assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
+    ly = 0;''' + ('''
+    if (((EMTSTACKTOP + 8|0) > (EMT_STACK_MAX|0))|0) // for return value
+      abortStackOverflowEmterpreter(); ''' if ASSERTIONS else '') + '''
     %s
      %s
       while ((ly|0) < (lz|0)) {
@@ -633,7 +644,7 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //Module.print([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
+  //out([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
 '''
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -667,7 +678,7 @@ def make_emterpreter(zero=False):
 
   return process(r'''
 function emterpret%s(pc) {
- //Module.print('emterpret: ' + pc + ',' + EMTSTACKTOP);
+ //out('emterpret: ' + pc + ',' + EMTSTACKTOP);
  pc = pc | 0;
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
 %s
@@ -691,8 +702,9 @@ function emterpret%s(pc) {
   '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n',
   push_stacktop(zero),
   ROPCODES['FUNC'],
-  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
+  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;\n''' +
+    (''' if (((EMTSTACKTOP|0) > (EMT_STACK_MAX|0))|0) abortStackOverflowEmterpreter();\n''' if ASSERTIONS else '') +
+    (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
   ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
@@ -764,7 +776,7 @@ if __name__ == '__main__':
     shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
     shutil.copyfile(infile, orig)
 
-  if len(WHITELIST) > 0:
+  if len(WHITELIST):
     # we are using a whitelist: fill the blacklist with everything not whitelisted
     BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
 
@@ -970,7 +982,7 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(eb + %s | 0)' % (funcs[func]))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line) > 0])]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line)])]) + '\n'
   lines = None
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)

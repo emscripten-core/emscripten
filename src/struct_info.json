@@ -135,7 +135,8 @@
             "F_SETLK", 
             "O_WRONLY",
             "AT_FDCWD",
-            "AT_SYMLINK_NOFOLLOW"
+            "AT_SYMLINK_NOFOLLOW",
+            "AT_REMOVEDIR"
         ],
         "structs": {
             "flock": [
@@ -207,6 +208,7 @@
         "file": "libc/time.h", 
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
+            "TIME_UTC",
             "CLOCK_REALTIME",
             "CLOCK_MONOTONIC"
         ],
@@ -501,7 +503,8 @@
             "TCSETSF",
             "TIOCGPGRP",
             "TIOCSPGRP",
-            "TIOCGWINSZ"
+            "TIOCGWINSZ",
+            "TIOCSWINSZ"
         ],
         "structs": {}
     }, 

@@ -246,7 +246,7 @@ For example:
 
 .. note::
 
-   Currently the markup serves only to whitelist smart pointer use, and
+   Currently the markup serves only to whitelist raw pointer use, and
    show that you've thought about the use of the raw pointers. Eventually
    we hope to implement `Boost.Python-like raw pointer policies`_ for
    managing object ownership.
@@ -320,7 +320,7 @@ smart pointer type:
 
     EMSCRIPTEN_BINDINGS(better_smart_pointers) {
         class_<C>("C")
-            .smart_ptr_constructor(&std::make_shared<C>)
+            .smart_ptr_constructor("C", &std::make_shared<C>)
             ;
     }
 
@@ -335,7 +335,7 @@ An alternative is to use :cpp:func:`~class_::smart_ptr` in the
     EMSCRIPTEN_BINDINGS(smart_pointers) {
         class_<C>("C")
             .constructor<>()
-            .smart_ptr<std::shared_ptr<C>>()
+            .smart_ptr<std::shared_ptr<C>>("C")
             ;
     }
 
@@ -815,6 +815,71 @@ For convenience, *embind* provides factory functions to register
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
     }
+
+A full example is shown below:
+
+.. code:: cpp
+
+    #include <emscripten/bind.h>
+    #include <string>
+    #include <vector>
+
+    using namespace emscripten;
+
+    std::vector<int> returnVectorData () {
+      std::vector<int> v(10, 1);
+      return v;
+    }
+
+    std::map<int, std::string> returnMapData () {
+      std::map<int, std::string> m;
+      m.insert(std::pair<int, std::string>(10, "This is a string."));
+      return m;
+    }
+
+    EMSCRIPTEN_BINDINGS(module) {
+      function("returnVectorData", &returnVectorData);
+      function("returnMapData", &returnMapData);
+
+      // register bindings for std::vector<int> and std::map<int, std::string>.
+      register_vector<int>("vector<int>");
+      register_map<int, std::string>("map<int, string>");
+    }
+
+
+The following JavaScript can be used to interact with the above C++.
+
+.. code:: js
+
+    var retVector = Module['returnVectorData']();
+
+    // vector size
+    var vectorSize = retVector.size();
+
+    // reset vector value
+    retVector.set(vectorSize - 1, 11);
+
+    // push value into vector
+    retVector.push_back(12);
+
+    // retrieve value from the vector
+    for (var i = 0; i < retVector.size(); i++) {
+        console.log("Vector Value: ", retVector.get(i));
+    }
+
+    // expand vector size
+    retVector.resize(20, 1);
+
+    var retMap = Module['returnMapData']();
+
+    // map size
+    var mapSize = retMap.size();
+
+    // retrieve value from map
+    console.log("Map Value: ", retMap.get(10));
+
+    // reset the value at the given index position
+    retMap.set(10, "OtherValue");
 
 
 Performance

@@ -1,6 +1,7 @@
+#include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include "emscripten.h"
-#include "assert.h"
 
 extern "C" {
 void save_me_aimee() { printf("mann\n"); }
@@ -8,7 +9,7 @@ void save_me_aimee() { printf("mann\n"); }
 
 int main() {
   // EMSCRIPTEN_COMMENT("hello from the source");
-  emscripten_run_script("Module.print('hello world' + '!')");
+  emscripten_run_script("out('hello world' + '!')");
   printf("*%d*\n", emscripten_run_script_int("5*20"));
   printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
   emscripten_run_script("Module['_save_me_aimee']()");
@@ -16,7 +17,7 @@ int main() {
   double d = 0.1234567891231219886553;
   int len = emscripten_print_double(d, NULL, -1);
   char buffer[len+1];
-  buffer[len] = 255;
+  buffer[len] = CHAR_MAX;
   emscripten_print_double(d, buffer, len+1);
   assert(buffer[len] == 0); // null terminated
   double e;

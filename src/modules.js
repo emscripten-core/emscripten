@@ -173,8 +173,9 @@ var LibraryManager = {
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
       var src = read(filename);
+      var processed = undefined;
       try {
-        var processed = processMacros(preprocess(src, filename));
+        processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
         var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
@@ -268,7 +269,7 @@ var LibraryManager = {
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
 	if (key in C_DEFINES) return C_DEFINES[key];
-	throw 'XXX missing C define ' + key + '!';
+	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
 var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
@@ -304,9 +305,14 @@ function exportRuntime() {
     // if requested to be exported, export it
     if (name in EXPORTED_RUNTIME_METHODS_SET) {
       var exported = name;
+      // the exported name may differ from the internal name
       if (isFSPrefixed(exported)) {
         // this is a filesystem value, FS.x exported as FS_x
         exported = 'FS.' + exported.substr(3);
+      } else if (exported === 'print') {
+        exported = 'out';
+      } else if (exported === 'printErr') {
+        exported = 'err';
       }
       return 'Module["' + name + '"] = ' + exported + ';';
     }
@@ -396,6 +402,12 @@ function exportRuntime() {
     'makeBigInt',
     'dynCall',
     'getCompilerSetting',
+    'stackSave',
+    'stackRestore',
+    'stackAlloc',
+    'establishStackSpace',
+    'print',
+    'printErr',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');

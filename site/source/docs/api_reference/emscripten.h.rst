@@ -22,6 +22,91 @@ Guide material for the following APIs can be found in :ref:`interacting-with-cod
 Defines
 -------
 
+.. c:macro:: EM_JS(return_type, function_name, arguments, code)
+
+	Convenient syntax for JavaScript library functions.
+
+	This allows you to declare JavaScript in your C code as a function, which can
+	be called like a normal C function. For example, the following C program would
+	display two alerts if it was compiled with Emscripten and run in the browser: ::
+		EM_JS(void, two_alerts, (), {
+		  alert('hai');
+		  alert('bai');
+		});
+
+		int main() {
+		  two_alerts();
+		  return 0;
+		}
+
+	Arguments can be passed as normal C arguments, and have the same name in the
+	JavaScript code. These arguments can either be of type ``int32_t`` or
+	``double``. ::
+		EM_JS(void, take_args, (int x, float y), {
+		  console.log('I received: ' + [x, y]);
+		});
+
+		int main() {
+		  take_args(100, 35.5);
+		  return 0;
+		}
+
+	Null-terminated C strings can also be passed into ``EM_JS`` functions, but to
+	operate on them, they need to be copied out from the heap to convert to
+	high-level JavaScript strings. ::
+		EM_JS(void, say_hello, (const char* str), {
+		  console.log('hello ' + UTF8ToString(str));
+		}
+
+	In the same manner, pointers to any type (including ``void *``) can be passed
+	inside ``EM_JS`` code, where they appear as integers like ``char *`` pointers
+	above did. Accessing the data can be managed by reading the heap directly. ::
+		EM_JS(void, read_data, (int* data), {
+		  console.log('Data: ' + HEAP32[data>>2] + ', ' + HEAP32[(data+4)>>2]);
+		});
+
+		int main() {
+		  int arr[2] = { 30, 45 };
+		  read_data(arr);
+		  return 0;
+		}
+
+	In addition, EM_JS functions can return a value back to C code. The output
+	value is passed back with a ``return`` statement: ::
+		EM_JS(int, add_forty_two, (int n), {
+		  return n + 42;
+		});
+
+		EM_JS(int, get_total_memory, (), {
+		  return TOTAL_MEMORY;
+		});
+
+		int main() {
+		  int x = add_forty_two(100);
+		  int y = get_total_memory();
+		  // ...
+		}
+
+	Strings can be returned back to C from JavaScript, but one needs to be careful
+	about memory management. ::
+		EM_JS(const char*, get_unicode_str, (), {
+		  var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
+		  // 'jsString.length' would return the length of the string as UTF-16
+		  // units, but Emscripten C strings operate as UTF-8.
+		  var lengthBytes = lengthBytesUTF8(jsString)+1;
+		  var stringOnWasmHeap = _malloc(lengthBytes);
+		  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+		  return stringOnWasmHeap;
+		});
+
+		int main() {
+		  const char* str = get_unicode_str();
+		  printf("UTF8 string says: %s\n", str);
+		  // Each call to _malloc() must be paired with free(), or heap memory will leak!
+		  free(str);
+		  return 0;
+		}
+
 .. c:macro:: EM_ASM(...)
 
 	Convenient syntax for inline assembly/JavaScript.
@@ -470,7 +555,7 @@ Functions
 
 	Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
-	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-plugins` for more information on preloading files.
  
 	This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
 
@@ -484,7 +569,8 @@ Functions
 		 
 	Loads a file from a URL asynchronously. 
 
-	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-plugins` for more information on preloading files.
+
 
 	When the file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
@@ -530,7 +616,8 @@ Functions
 	
 	This is an **experimental** "more feature-complete" version of :c:func:`emscripten_async_wget`. 
 	
-	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.).
+	In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we asynchronously do the work to make the browser decode the image, audio, etc.). See :ref:`preloading-plugins` for more information on preloading files.
+
 
 	When the file is ready the ``onload`` callback will be called with the object pointers given in ``arg`` and ``file``. During the download the ``onprogress`` callback is called.
 	
@@ -610,7 +697,8 @@ Functions
 
 .. c:function:: void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror)
 		 
-	Runs preload plugins on a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_run_preload_plugins`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). 
+	Runs preload plugins on a buffer of data asynchronously. This is a "data" version of :c:func:`emscripten_run_preload_plugins`, which receives raw data as input instead of a filename (this can prevent the need to write data to a file first). See :ref:`preloading-plugins` for more information on preload plugins.
+
 	
 	When file is loaded then the ``onload`` callback will be called. If any error occurs ``onerror`` will be called.
 	
@@ -712,7 +800,8 @@ Emscripten Asynchronous IndexedDB API
 
 .. c:function:: int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 		 
-	Runs preload plugins on a file asynchronously. It works on file data already present and performs any required asynchronous operations available as preload plugins, such as decoding images for use in ``IMG_Load``, or decoding audio for use in ``Mix_LoadWAV``. 
+	Runs preload plugins on a file asynchronously. It works on file data already present and performs any required asynchronous operations available as preload plugins, such as decoding images for use in ``IMG_Load``, or decoding audio for use in ``Mix_LoadWAV``. See :ref:`preloading-plugins` for more information on preloading plugins.
+
 	
 	Once the operations are complete, the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 
@@ -1215,5 +1304,3 @@ Functions
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
-    
-

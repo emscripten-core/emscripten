@@ -1320,3 +1320,9 @@ var __registerRestoreOldStyle = function(canvas) {};
  * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
  */
 var __setLetterbox = function(element, topBottom, leftRight) {};
+
+/**
+ * @param {Object} message
+ */
+var onmessage = function(message) {};
+

@@ -242,7 +242,7 @@ LibraryManager.library = {
   _exit: function(status) {
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
-    Module['exit'](status);
+    exit(status);
   },
 
   fork__deps: ['__setErrNo', '$ERRNO_CODES'],
@@ -284,7 +284,7 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if BINARYEN
+#if WASM
         var maxHeapSize = 2*1024*1024*1024 - 65536;
 #else
         var maxHeapSize = 2*1024*1024*1024 - 16777216;
@@ -448,7 +448,6 @@ LibraryManager.library = {
     var oldDynamicTopOnChange = 0;
     var newDynamicTop = 0;
     var totalMemory = 0;
-    increment = ((increment + 15) & -16)|0;
 #if USE_PTHREADS
     totalMemory = getTotalMemory()|0;
 
@@ -613,16 +612,8 @@ LibraryManager.library = {
     Module['abort']();
   },
 
-  environ__deps: ['$ENV'],
-#if USE_PTHREADS
-  environ: '; if (ENVIRONMENT_IS_PTHREAD) _environ = PthreadWorkerInit._environ; else PthreadWorkerInit._environ = _environ = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  environ: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  __environ__deps: ['environ'],
-  __environ: 'environ',
-  __buildEnvironment__deps: ['__environ'],
-  __buildEnvironment: function(env) {
+  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
     var TOTAL_ENV_SIZE = 1024;
@@ -640,21 +631,21 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
-      poolPtr = staticAlloc(TOTAL_ENV_SIZE);
-      envPtr = staticAlloc(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      poolPtr = getMemory(TOTAL_ENV_SIZE);
+      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
-      {{{ makeSetValue(makeGlobalUse('_environ'), 0, 'envPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
     } else {
-      envPtr = {{{ makeGetValue(makeGlobalUse('_environ'), '0', 'i8**') }}};
+      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
     }
 
     // Collect key=value lines.
     var strings = [];
     var totalSize = 0;
-    for (var key in env) {
-      if (typeof env[key] === 'string') {
-        var line = key + '=' + env[key];
+    for (var key in ENV) {
+      if (typeof ENV[key] === 'string') {
+        var line = key + '=' + ENV[key];
         strings.push(line);
         totalSize += line.length;
       }
@@ -673,12 +664,6 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  $ENV__deps: ['__buildEnvironment'],
-#if USE_PTHREADS
-  $ENV__postset: 'if (!ENVIRONMENT_IS_PTHREAD) ___buildEnvironment(ENV);',
-#else
-  $ENV__postset: '___buildEnvironment(ENV);',
-#endif
   $ENV: {},
   getenv__deps: ['$ENV'],
   getenv__proxy: 'sync',
@@ -701,7 +686,7 @@ LibraryManager.library = {
     // int clearenv (void);
     // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
     ENV = {};
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -722,7 +707,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name) && !overwrite) return 0;
     ENV[name] = val;
-    ___buildEnvironment(ENV);
+    ___buildEnvironment(__get_environ());
     return 0;
   },
   unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
@@ -742,7 +727,7 @@ LibraryManager.library = {
     }
     if (ENV.hasOwnProperty(name)) {
       delete ENV[name];
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -769,7 +754,7 @@ LibraryManager.library = {
     var value = string.slice(splitPoint + 1);
     if (!(name in ENV) || ENV[name] !== value) {
       ENV[name] = value;
-      ___buildEnvironment(ENV);
+      ___buildEnvironment(__get_environ());
     }
     return 0;
   },
@@ -1013,7 +998,7 @@ LibraryManager.library = {
   llvm_va_copy: function(ppdest, ppsrc) {
     // copy the list start
     {{{ makeCopyValues('ppdest', 'ppsrc', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
-    
+
     // copy the list's current offset (will be advanced with each call to va_arg)
     {{{ makeCopyValues('(ppdest+'+Runtime.QUANTUM_SIZE+')', '(ppsrc+'+Runtime.QUANTUM_SIZE+')', Runtime.QUANTUM_SIZE, 'null', null, 1) }}};
   },
@@ -1068,37 +1053,13 @@ LibraryManager.library = {
     return ret | 0;
   },
 
-  llvm_cttz_i32__deps: [function() {
-    function cttz(x) {
-      for (var i = 0; i < 8; i++) {
-        if (x & (1 << i)) {
-          return i;
-        }
-      }
-      return 8;
-    }
-    if (SIDE_MODULE) return ''; // uses it from the parent
-
-#if USE_PTHREADS
-    return 'var cttz_i8; if (ENVIRONMENT_IS_PTHREAD) cttz_i8 = PthreadWorkerInit.cttz_i8; else PthreadWorkerInit.cttz_i8 = cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#else
-    return 'var cttz_i8 = allocate([' + range(256).map(function(x) { return cttz(x) }).join(',') + '], "i8", ALLOC_STATIC);';
-#endif
-  }],
-#if BINARYEN == 0 // binaryen will convert these calls to wasm anyhow
+#if WASM == 0 // binaryen will convert these calls to wasm anyhow
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
-  llvm_cttz_i32: function(x) {
-    x = x|0;
-    var ret = 0;
-    ret = {{{ makeGetValueAsm('cttz_i8', 'x & 0xff', 'i8') }}};
-    if ((ret|0) < 8) return ret|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 8)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 8)|0;
-    ret = {{{ makeGetValueAsm('cttz_i8', '(x >> 16)&0xff', 'i8') }}};
-    if ((ret|0) < 8) return (ret + 16)|0;
-    return ({{{ makeGetValueAsm('cttz_i8', 'x >>> 24', 'i8') }}} + 24)|0;
+  llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
+    x = x | 0;
+    return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
   },
 
   llvm_cttz_i64__deps: ['llvm_cttz_i32'],
@@ -1148,23 +1109,24 @@ LibraryManager.library = {
     infos: {},
     deAdjust: function(adjusted) {
       if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
-      for (var ptr in EXCEPTIONS.infos) {
+      for (var key in EXCEPTIONS.infos) {
+        var ptr = +key; // the iteration key is a string, and if we throw this, it must be an integer as that is what we look for
         var info = EXCEPTIONS.infos[ptr];
         if (info.adjusted === adjusted) {
 #if EXCEPTION_DEBUG
-          Module.printErr('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+          err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
 #endif
           return ptr;
         }
       }
 #if EXCEPTION_DEBUG
-      Module.printErr('no de-adjustment for unknown exception ptr ' + adjusted);
+      err('no de-adjustment for unknown exception ptr ' + adjusted);
 #endif
       return adjusted;
     },
     addRef: function(ptr) {
 #if EXCEPTION_DEBUG
-      Module.printErr('addref ' + ptr);
+      err('addref ' + ptr);
 #endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
@@ -1172,7 +1134,7 @@ LibraryManager.library = {
     },
     decRef: function(ptr) {
 #if EXCEPTION_DEBUG
-      Module.printErr('decref ' + ptr);
+      err('decref ' + ptr);
 #endif
       if (!ptr) return;
       var info = EXCEPTIONS.infos[ptr];
@@ -1193,7 +1155,7 @@ LibraryManager.library = {
         delete EXCEPTIONS.infos[ptr];
         ___cxa_free_exception(ptr);
 #if EXCEPTION_DEBUG
-        Module.printErr('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+        err('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
       }
     },
@@ -1215,7 +1177,7 @@ LibraryManager.library = {
       return _free(ptr);
     } catch(e) { // XXX FIXME
 #if ASSERTIONS
-      Module.printErr('exception during cxa_free_exception: ' + e);
+      err('exception during cxa_free_exception: ' + e);
 #endif
     }
   },
@@ -1233,7 +1195,7 @@ LibraryManager.library = {
   __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code throwing an exception, ' + [ptr,type,destructor]);
+    err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
 #endif
     EXCEPTIONS.infos[ptr] = {
       ptr: ptr,
@@ -1258,13 +1220,14 @@ LibraryManager.library = {
   __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
   __cxa_rethrow: function() {
     var ptr = EXCEPTIONS.caught.pop();
+    ptr = EXCEPTIONS.deAdjust(ptr);
     if (!EXCEPTIONS.infos[ptr].rethrown) {
       // Only pop if the corresponding push was through rethrow_primary_exception
       EXCEPTIONS.caught.push(ptr)
       EXCEPTIONS.infos[ptr].rethrown = true;
     }
 #if EXCEPTION_DEBUG
-    Module.printErr('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+    err('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     EXCEPTIONS.last = ptr;
     {{{ makeThrow('ptr') }}}
@@ -1295,7 +1258,7 @@ LibraryManager.library = {
     if (info) info.rethrown = false;
     EXCEPTIONS.caught.push(ptr);
 #if EXCEPTION_DEBUG
-		Module.printErr('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
+		err('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
 #endif
     EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
     return ptr;
@@ -1311,7 +1274,7 @@ LibraryManager.library = {
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
-    Module.printErr('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
+    err('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
 #endif
     if (ptr) {
       EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
@@ -1320,7 +1283,7 @@ LibraryManager.library = {
   },
   __cxa_get_exception_ptr: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.printErr('cxa_get_exception_ptr ' + ptr);
+    err('cxa_get_exception_ptr ' + ptr);
 #endif
     // TODO: use info.adjusted?
     return ptr;
@@ -1334,7 +1297,7 @@ LibraryManager.library = {
   },
 
   __cxa_call_unexpected: function(exception) {
-    Module.printErr('Unexpected exception thrown, this is not properly supported - aborting');
+    err('Unexpected exception thrown, this is not properly supported - aborting');
     ABORT = true;
     throw exception;
   },
@@ -1391,7 +1354,7 @@ LibraryManager.library = {
     // can_catch receives a **, add indirection
     if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
 #if EXCEPTION_DEBUG
-    Module.print("can_catch on " + [thrown]);
+    out("can_catch on " + [thrown]);
 #endif
     {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
     thrown = ___cxa_find_matching_catch.buffer;
@@ -1404,7 +1367,7 @@ LibraryManager.library = {
         thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
         info.adjusted = thrown;
 #if EXCEPTION_DEBUG
-        Module.print("  can_catch found " + [thrown, typeArray[i]]);
+        out("  can_catch found " + [thrown, typeArray[i]]);
 #endif
         {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
       }
@@ -1419,7 +1382,7 @@ LibraryManager.library = {
   __resumeException__deps: ['$EXCEPTIONS', function() { Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
-    Module.print("Resuming exception " + [ptr, EXCEPTIONS.last]);
+    out("Resuming exception " + [ptr, EXCEPTIONS.last]);
 #endif
     if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
     {{{ makeThrow('ptr') }}}
@@ -1572,10 +1535,6 @@ LibraryManager.library = {
   llvm_ceil_f64: 'Math_ceil',
   llvm_floor_f32: 'Math_floor',
   llvm_floor_f64: 'Math_floor',
-  llvm_minnum_f32: 'Math_min',
-  llvm_minnum_f64: 'Math_min',
-  llvm_maxnum_f32: 'Math_max',
-  llvm_maxnum_f64: 'Math_max',
 
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
@@ -1653,6 +1612,67 @@ LibraryManager.library = {
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
   },
 
+  // TODO: fround?
+  llvm_nearbyint_f32__asm: true,
+  llvm_nearbyint_f32__sig: 'ff',
+  llvm_nearbyint_f32__deps: ['roundf'],
+  llvm_nearbyint_f32: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
+  },
+
+  llvm_nearbyint_f64__asm: true,
+  llvm_nearbyint_f64__sig: 'dd',
+  llvm_nearbyint_f64__deps: ['round'],
+  llvm_nearbyint_f64: function(f) {
+    f = +f;
+    return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
+  },
+
+  // min/max num do not quite match the behavior of JS and wasm min/max:
+  // llvm and libc return the non-NaN if one is NaN, while JS and wasm
+  // return the NaN :(
+  // see also https://github.com/WebAssembly/design/issues/214
+  llvm_minnum_f32__asm: true,
+  llvm_minnum_f32__sig: 'ff',
+  llvm_minnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_minnum_f64__asm: true,
+  llvm_minnum_f64__sig: 'dd',
+  llvm_minnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_min(+x, +y);
+  },
+
+  llvm_maxnum_f32__asm: true,
+  llvm_maxnum_f32__sig: 'ff',
+  llvm_maxnum_f32: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
+  },
+
+  llvm_maxnum_f64__asm: true,
+  llvm_maxnum_f64__sig: 'dd',
+  llvm_maxnum_f64: function(x, y) {
+    x = +x;
+    y = +y;
+    if (x != x) return +y;
+    if (y != y) return +x;
+    return +Math_max(+x, +y);
+  },
+
   _reallyNegative: function(x) {
     return x < 0 || (x === 0 && (1/x) === -Infinity);
   },
@@ -1721,40 +1741,44 @@ LibraryManager.library = {
       return handle;
     }
 
+    var lib_module;
     if (filename === '__self__') {
       var handle = -1;
-      var lib_module = Module;
-      var cached_functions = {};
+      lib_module = Module;
     } else {
-      var target = FS.findObject(filename);
-      if (!target || target.isFolder || target.isDevice) {
-        DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
-        return 0;
-      }
-      FS.forceLoadFile(target);
+      if (Module['preloadedWasm'] !== undefined &&
+          Module['preloadedWasm'][filename] !== undefined) {
+        lib_module = Module['preloadedWasm'][filename];
+      } else {
+        var target = FS.findObject(filename);
+        if (!target || target.isFolder || target.isDevice) {
+          DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
+          return 0;
+        }
+        FS.forceLoadFile(target);
 
-      var lib_module;
-      try {
-#if BINARYEN
-        // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
-        var lib_data = FS.readFile(filename, { encoding: 'binary' });
-        if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
-        //Module.printErr('libfile ' + filename + ' size: ' + lib_data.length);
-        lib_module = loadWebAssemblyModule(lib_data);
+        try {
+#if WASM
+          // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
+          var lib_data = FS.readFile(filename, { encoding: 'binary' });
+          if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
+          //err('libfile ' + filename + ' size: ' + lib_data.length);
+          lib_module = loadWebAssemblyModule(lib_data);
 #else
-        // the shared library is a JS file, which we eval
-        var lib_data = FS.readFile(filename, { encoding: 'utf8' });
-        lib_module = eval(lib_data)(
-          alignFunctionTables(),
-          Module
-        );
+          // the shared library is a JS file, which we eval
+          var lib_data = FS.readFile(filename, { encoding: 'utf8' });
+          lib_module = eval(lib_data)(
+            alignFunctionTables(),
+            Module
+          );
 #endif
-      } catch (e) {
+        } catch (e) {
 #if ASSERTIONS
-        Module.printErr('Error in loading dynamic library: ' + e);
+          err('Error in loading dynamic library: ' + e);
 #endif
-        DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
-        return 0;
+          DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
+          return 0;
+        }
       }
 
       // Not all browsers support Object.keys().
@@ -1786,14 +1810,11 @@ LibraryManager.library = {
           }
         }
       }
-
-      var cached_functions = {};
     }
     DLFCN.loadedLibs[handle] = {
       refcount: 1,
       name: filename,
-      module: lib_module,
-      cached_functions: cached_functions
+      module: lib_module
     };
     DLFCN.loadedLibNames[filename] = handle;
 
@@ -1836,19 +1857,35 @@ LibraryManager.library = {
     } else {
       var lib = DLFCN.loadedLibs[handle];
       symbol = '_' + symbol;
-      if (lib.cached_functions.hasOwnProperty(symbol)) {
-        return lib.cached_functions[symbol];
-      }
       if (!lib.module.hasOwnProperty(symbol)) {
         DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
                                '" in dynamic lib: ' + lib.name);
         return 0;
       } else {
         var result = lib.module[symbol];
-        if (typeof result == 'function') {
-          result = addFunction(result);
-          //Module.printErr('adding function dlsym result for ' + symbol + ' => ' + result);
-          lib.cached_functions = result;
+        if (typeof result === 'function') {
+#if WASM
+#if EMULATED_FUNCTION_POINTERS
+          // for wasm with emulated function pointers, the i64 ABI is used for all
+          // function calls, so we can't just call addFunction on something JS
+          // can call (which does not use that ABI), as the function pointer would
+          // not be usable from wasm. instead, the wasm has exported function pointers
+          // for everything we need, with prefix fp$, use those
+          result = lib.module['fp$' + symbol];
+          if (typeof result === 'object') {
+            // a breaking change in the wasm spec, globals are now objects
+            // https://github.com/WebAssembly/mutable-global/issues/1
+            result = result.value;
+          }
+#if ASSERTIONS
+          assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
+#endif // ASSERTIONS
+          return result;
+#endif // EMULATED_FUNCTION_POINTERS
+#endif // WASM
+          // convert the exported function into a function pointer using our generic
+          // JS mechanism.
+          return addFunction(result);
         }
         return result;
       }
@@ -2038,7 +2075,7 @@ LibraryManager.library = {
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
 
-    var zonePtr = {{{ makeGetValue(makeGlobalUse('_tzname'), 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
+    var zonePtr = {{{ makeGetValue('__get_tzname()', 'dst ? ' + Runtime.QUANTUM_SIZE + ' : 0', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_zone, 'zonePtr', 'i32') }}};
 
     return tmPtr;
@@ -2098,16 +2135,6 @@ LibraryManager.library = {
 
   // TODO: Initialize these to defaults on startup from system settings.
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
-#if USE_PTHREADS
-  tzname: '; if (ENVIRONMENT_IS_PTHREAD) _tzname = PthreadWorkerInit._tzname; else PthreadWorkerInit._tzname = _tzname = allocate({{{ 2*Runtime.QUANTUM_SIZE }}}, "i32*", ALLOC_STATIC)',
-  daylight: '; if (ENVIRONMENT_IS_PTHREAD) _daylight = PthreadWorkerInit._daylight; else PthreadWorkerInit._daylight = _daylight = allocate(1, "i32*", ALLOC_STATIC)',
-  timezone: '; if (ENVIRONMENT_IS_PTHREAD) _timezone = PthreadWorkerInit._timezone; else PthreadWorkerInit._timezone = _timezone = allocate(1, "i32*", ALLOC_STATIC)',
-#else
-  tzname: '{{{ makeStaticAlloc(2*Runtime.QUANTUM_SIZE) }}}',
-  daylight: '{{{ makeStaticAlloc(1) }}}',
-  timezone: '{{{ makeStaticAlloc(1) }}}',
-#endif
-  tzset__deps: ['tzname', 'daylight', 'timezone'],
   tzset__proxy: 'sync',
   tzset__sig: 'v',
   tzset: function() {
@@ -2120,11 +2147,11 @@ LibraryManager.library = {
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by getTimezoneOffset().
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue(makeGlobalUse('_timezone'), '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
+    {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
     var winter = new Date(2000, 0, 1);
     var summer = new Date(2000, 6, 1);
-    {{{ makeSetValue(makeGlobalUse('_daylight'), '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
+    {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
       var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
@@ -2136,11 +2163,11 @@ LibraryManager.library = {
     var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
     if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
       // Northern hemisphere
-      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'winterNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'summerNamePtr', 'i32') }}};
     } else {
-      {{{ makeSetValue(makeGlobalUse('_tzname'), '0', 'summerNamePtr', 'i32') }}};
-      {{{ makeSetValue(makeGlobalUse('_tzname'), Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', '0', 'summerNamePtr', 'i32') }}};
+      {{{ makeSetValue('__get_tzname()', Runtime.QUANTUM_SIZE, 'winterNamePtr', 'i32') }}};
     }
   },
 
@@ -2188,7 +2215,7 @@ LibraryManager.library = {
           newDate.setFullYear(newDate.getFullYear()+1);
         }
       } else {
-        // we stay in current month 
+        // we stay in current month
         newDate.setDate(newDate.getDate()+days);
         return newDate;
       }
@@ -2300,7 +2327,7 @@ LibraryManager.library = {
           } else {
             return thisDate.getFullYear();
           }
-        } else { 
+        } else {
           return thisDate.getFullYear()-1;
         }
     };
@@ -2329,16 +2356,16 @@ LibraryManager.library = {
         return leadingSomething(date.tm_mday, 2, ' ');
       },
       '%g': function(date) {
-        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year. 
-        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes 
-        // January 4th, which is also the week that includes the first Thursday of the year, and 
-        // is also the first week that contains at least four days in the year. 
-        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of 
-        // the last week of the preceding year; thus, for Saturday 2nd January 1999, 
-        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th, 
-        // or 31st is a Monday, it and any following days are part of week 1 of the following year. 
+        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year.
+        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes
+        // January 4th, which is also the week that includes the first Thursday of the year, and
+        // is also the first week that contains at least four days in the year.
+        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of
+        // the last week of the preceding year; thus, for Saturday 2nd January 1999,
+        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th,
+        // or 31st is a Monday, it and any following days are part of week 1 of the following year.
         // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-        
+
         return getWeekBasedYear(date).toString().substring(2);
       },
       '%G': function(date) {
@@ -2384,13 +2411,13 @@ LibraryManager.library = {
         return day.getDay() || 7;
       },
       '%U': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53]. 
-        // The first Sunday of January is the first day of week 1; 
+        // Replaced by the week number of the year as a decimal number [00,53].
+        // The first Sunday of January is the first day of week 1;
         // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
         var janFirst = new Date(date.tm_year+1900, 0, 1);
         var firstSunday = janFirst.getDay() === 0 ? janFirst : __addDays(janFirst, 7-janFirst.getDay());
         var endDate = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday);
-        
+
         // is target date after the first Sunday?
         if (compareByDay(firstSunday, endDate) < 0) {
           // calculate difference in days between first Sunday and endDate
@@ -2403,10 +2430,10 @@ LibraryManager.library = {
         return compareByDay(firstSunday, janFirst) === 0 ? '01': '00';
       },
       '%V': function(date) {
-        // Replaced by the week number of the year (Monday as the first day of the week) 
-        // as a decimal number [01,53]. If the week containing 1 January has four 
-        // or more days in the new year, then it is considered week 1. 
-        // Otherwise, it is the last week of the previous year, and the next week is week 1. 
+        // Replaced by the week number of the year (Monday as the first day of the week)
+        // as a decimal number [01,53]. If the week containing 1 January has four
+        // or more days in the new year, then it is considered week 1.
+        // Otherwise, it is the last week of the previous year, and the next week is week 1.
         // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
         var janFourthThisYear = new Date(date.tm_year+1900, 0, 4);
         var janFourthNextYear = new Date(date.tm_year+1901, 0, 4);
@@ -2419,7 +2446,7 @@ LibraryManager.library = {
         if (compareByDay(endDate, firstWeekStartThisYear) < 0) {
           // if given date is before this years first week, then it belongs to the 53rd week of last year
           return '53';
-        } 
+        }
 
         if (compareByDay(firstWeekStartNextYear, endDate) <= 0) {
           // if given date is after next years first week, then it belongs to the 01th week of next year
@@ -2442,8 +2469,8 @@ LibraryManager.library = {
         return day.getDay();
       },
       '%W': function(date) {
-        // Replaced by the week number of the year as a decimal number [00,53]. 
-        // The first Monday of January is the first day of week 1; 
+        // Replaced by the week number of the year as a decimal number [00,53].
+        // The first Monday of January is the first day of week 1;
         // days in the new year before this are in week 0. [ tm_year, tm_wday, tm_yday]
         var janFirst = new Date(date.tm_year, 0, 1);
         var firstMonday = janFirst.getDay() === 1 ? janFirst : __addDays(janFirst, janFirst.getDay() === 0 ? 1 : 7-janFirst.getDay()+1);
@@ -2492,7 +2519,7 @@ LibraryManager.library = {
     var bytes = intArrayFromString(pattern, false);
     if (bytes.length > maxsize) {
       return 0;
-    } 
+    }
 
     writeArrayToMemory(bytes, s);
     return bytes.length-1;
@@ -2522,6 +2549,7 @@ LibraryManager.library = {
       '%c':  '%x\\s+%X',
       '%D':  '%m\\/%d\\/%y',
       '%e':  '%d',
+      '%F':  '%Y-%m-%d',
       '%h':  '%b',
       '%R':  '%H\\:%M',
       '%r':  '%I\\:%M\\:%S\\s%p',
@@ -2532,7 +2560,7 @@ LibraryManager.library = {
     for (var matcher in EQUIVALENT_MATCHERS) {
       pattern = pattern.replace(matcher, EQUIVALENT_MATCHERS[matcher]);
     }
-    
+
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
@@ -2562,7 +2590,7 @@ LibraryManager.library = {
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
     for (var datePattern in DATE_PATTERNS) {
-      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');    
+      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');
     }
 
     // take care of capturing groups
@@ -2573,7 +2601,7 @@ LibraryManager.library = {
     }
 
     var matches = new RegExp('^'+pattern, "i").exec(Pointer_stringify(buf))
-    // Module['print'](Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
+    // out(Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
       function fixup(value, min, max) {
@@ -2650,7 +2678,7 @@ LibraryManager.library = {
       } else if ((value=getMatch('b'))) {
         // parse from month name
         date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
-        // TODO: derive month from day in year+year, week number+day of week+year 
+        // TODO: derive month from day in year+year, week number+day of week+year
       }
 
       // day
@@ -2672,12 +2700,12 @@ LibraryManager.library = {
         var weekDay = value.substring(0,3).toUpperCase();
         if ((value=getMatch('U'))) {
           // ... and week number (Sunday being first day of week)
-          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53]. 
+          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Sunday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
           var weekNumber = parseInt(value);
 
-          // January 1st 
+          // January 1st
           var janFirst = new Date(date.year, 0, 1);
           var endDate;
           if (janFirst.getDay() === 0) {
@@ -2691,12 +2719,12 @@ LibraryManager.library = {
           date.month = endDate.getMonth();
         } else if ((value=getMatch('W'))) {
           // ... and week number (Monday being first day of week)
-          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53]. 
+          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Monday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
           var weekNumber = parseInt(value);
 
-          // January 1st 
+          // January 1st
           var janFirst = new Date(date.year, 0, 1);
           var endDate;
           if (janFirst.getDay()===1) {
@@ -2718,10 +2746,10 @@ LibraryManager.library = {
       tm_hour int hours since midnight  0-23
       tm_mday int day of the month  1-31
       tm_mon  int months since January  0-11
-      tm_year int years since 1900  
+      tm_year int years since 1900
       tm_wday int days since Sunday 0-6
       tm_yday int days since January 1  0-365
-      tm_isdst  int Daylight Saving Time flag 
+      tm_isdst  int Daylight Saving Time flag
       */
 
       var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
@@ -2738,7 +2766,7 @@ LibraryManager.library = {
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
       return buf+intArrayFromString(matches[0]).length-1;
-    } 
+    }
 
     return 0;
   },
@@ -2752,6 +2780,18 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getdate.html
     // TODO: Implement.
     return 0;
+  },
+
+  timespec_get__deps: ['clock_gettime', '$ERRNO_CODES', '__setErrNo'],
+  timespec_get: function(ts, base) {
+    //int timespec_get(struct timespec *ts, int base);
+    if (base !== {{{ cDefine('TIME_UTC') }}}) {
+      // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
+      ___setErrNo(ERRNO_CODES.EINVAL);
+      return 0;
+    }
+    var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
+    return ret < 0 ? 0 : base;
   },
 
   // ==========================================================================
@@ -2817,7 +2857,7 @@ LibraryManager.library = {
   // ==========================================================================
   // sys/timeb.h
   // ==========================================================================
-  
+
   ftime: function(p) {
     var millis = Date.now();
     {{{ makeSetValue('p', C_STRUCTS.timeb.time, '(millis/1000)|0', 'i32') }}};
@@ -3215,7 +3255,7 @@ LibraryManager.library = {
   __setErrNo: function(value) {
     if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
 #if ASSERTIONS
-    else Module.printErr('failed to set errno from JS');
+    else err('failed to set errno from JS');
 #endif
     return value;
   },
@@ -3847,7 +3887,7 @@ LibraryManager.library = {
 
     if (val in GAI_ERRNO_MESSAGES) {
       if (GAI_ERRNO_MESSAGES[val].length > buflen - 1) {
-        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above. 
+        msg = 'Message too long'; // EMSGSIZE message. This should never occur given the GAI_ERRNO_MESSAGES above.
       } else {
         msg = GAI_ERRNO_MESSAGES[val];
       }
@@ -3921,7 +3961,7 @@ LibraryManager.library = {
     // struct protoent *getprotoent(void);
     // reads the  next  entry  from  the  protocols 'database' or return NULL if 'eof'
     if (_setprotoent.index === Protocols.list.length) {
-      return 0; 
+      return 0;
     } else {
       var result = Protocols.list[_setprotoent.index++];
       return result;
@@ -4103,14 +4143,14 @@ LibraryManager.library = {
       while (stack_args[1].indexOf('_emscripten_') >= 0)
         stack_args = __emscripten_traverse_stack(stack_args[0]);
     }
-    
+
     // Process all lines:
     var lines = callstack.split('\n');
     callstack = '';
     var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)'); // New FF30 with column info: extract components of form '       Object._main@http://server.com:4324:12'
     var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?'); // Old FF without column info: extract components of form '       Object._main@http://server.com:4324'
     var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)'); // Extract components of form '    at Object._main (http://server.com/file.html:4324:12)'
-    
+
     for (var l in lines) {
       var line = lines[l];
 
@@ -4164,7 +4204,7 @@ LibraryManager.library = {
         }
         callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
-      
+
       // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
       if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
         if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
@@ -4209,9 +4249,9 @@ LibraryManager.library = {
         console.log(str);
       }
     } else if (flags & 6 /*EM_LOG_ERROR|EM_LOG_WARN*/) {
-      Module.printErr(str);
+      err(str);
     } else {
-      Module.print(str);
+      out(str);
     }
   },
 
@@ -4360,33 +4400,33 @@ LibraryManager.library = {
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: function(ex) {
-    Module.printErr('Warning: _Unwind_RaiseException is not correctly implemented');
+    err('Warning: _Unwind_RaiseException is not correctly implemented');
     return ___cxa_throw(ex, 0, 0);
   },
 
   _Unwind_DeleteException: function(ex) {
-    Module.printErr('TODO: Unwind_DeleteException');
+    err('TODO: Unwind_DeleteException');
   },
 
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
-    Module.print('AD:' + [line, valuel, valueh]);
+    out('AD:' + [line, valuel, valueh]);
   },
   emscripten_autodebug_i32: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_i16: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_i8: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_float: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
   emscripten_autodebug_double: function(line, value) {
-    Module.print('AD:' + [line, value]);
+    out('AD:' + [line, value]);
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
@@ -4744,15 +4784,13 @@ LibraryManager.library = {
 };
 
 function autoAddDeps(object, name) {
-  name = [name];
   for (var item in object) {
     if (item.substr(-6) != '__deps') {
       if (!object[item + '__deps']) {
-        object[item + '__deps'] = name;
+        object[item + '__deps'] = [name];
       } else {
-        object[item + '__deps'].push(name[0]); // add to existing list
+        object[item + '__deps'].push(name); // add to existing list
       }
     }
   }
 }
-

@@ -5,6 +5,16 @@ c5,de,15,8a
 23,21
 40,10
 5,4
+llvm_cttz_i32:
+(0, 0)=32
+(1, 0)=0
+(2, 0)=1
+(0x0000FFFF, 0)=0
+(0x7FFF0000, 0)=16
+(0xFFFF0000, 0)=16
+(0x7FFFFFFF, 0)=0
+(0xFFFFFFFE, 0)=1
+(0xFFFFFFFF, 0)=0
 small ctlz: 6,14
 llvm_ctpop_i32:
 22
@@ -71,6 +81,18 @@ llvm_round_f32 42.0
 llvm_round_f32 -20.0
 llvm_round_f32 -21.0
 llvm_round_f32 -21.0
+llvm_nearbyint_f64 20.0
+llvm_nearbyint_f64 21.0
+llvm_nearbyint_f64 42.0
+llvm_nearbyint_f64 -20.0
+llvm_nearbyint_f64 -20.0
+llvm_nearbyint_f64 -21.0
+llvm_nearbyint_f32 20.0
+llvm_nearbyint_f32 21.0
+llvm_nearbyint_f32 42.0
+llvm_nearbyint_f32 -20.0
+llvm_nearbyint_f32 -20.0
+llvm_nearbyint_f32 -21.0
 llvm_minnum_f32 5.7
 llvm_minnum_f32 2.3
 llvm_minnum_f64 5.7

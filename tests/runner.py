@@ -14,6 +14,7 @@ import os, unittest, tempfile, shutil, time, inspect, sys, math, glob, re, diffl
 import webbrowser, hashlib, threading, platform
 import multiprocessing, functools, stat, string, random, fnmatch
 import atexit
+import json
 import operator
 import parallel_runner
 
@@ -36,6 +37,8 @@ sys.path += [path_from_root(''), path_from_root('third_party/websockify')]
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
+
+logger = logging.getLogger(__file__)
 
 # User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
 # run using another browser command line than the default system browser.
@@ -66,88 +69,53 @@ except:
 
 HELP_TEXT = '''
 ==============================================================================
-Running the main part of the test suite. Don't forget to run the other parts!
-A recommended order is:
+This is the Emscripten test runner. To run some tests, specify which tests you
+want, for example
 
-  sanity - tests for first run, etc., modifies ~/.emscripten
-  (the main test suite)
-  other - tests separate from the main suite
-  browser - runs pages in a web browser
-  interactive - runs interactive browser tests that need human verification, and could not be automated
-  sockets - runs websocket networking tests
-  benchmark - run before and after each set of changes before pushing to
-              master, verify no regressions
+  python tests/runner.py asm1.test_hello_world
 
-To run one of those parts, do something like
+There are many options for which tests to run and how to run them. For details,
+see
 
-  python tests/runner.py sanity
-
-To run a specific set of tests, you can do things like
-
-  python tests/runner.py asm2
-
-(that runs the asm2 (asm.js, -O2) tests). You can run individual tests with
-
-  python tests/runner.py test_hello_world
-
-Combinations work too, for example
-
-  python tests/runner.py browser.test_sdl_image
-
-In the main test suite, you can run all variations (O0, O1, O2, etc.) of
-an individual test with
-
-  python tests/runner.py ALL.test_hello_world
-
-You can run a random set of N tests with a command like
-
-  python tests/runner.py random50
-
-An individual test can be skipped by passing the "skip:" prefix. E.g.
-
-  python tests/runner.py other skip:other.test_cmake
-
-Passing a wildcard allows choosing a subset of tests in a suite, e.g.
-
-  python tests/runner.py browser.test_pthread_*
-
-will run all the pthreads related tests. Wildcards can also be passed in skip,
-so
-
-  python tests/runner.py browser skip:browser.test_pthread_*
-
-will run the whole browser suite except for all the pthread tests in it.
-
-Debugging: You can run
-
-  EM_SAVE_DIR=1 python tests/runner.py ALL.test_hello_world
-
-in order to save the test runner directory, in /tmp/emscripten_temp. All files
-created by the test will be present there. You can also use EMCC_DEBUG to
-further debug the compiler itself, see emcc.
+http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 ==============================================================================
 
 '''
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
-test_modes = [
-  'default',
+
+
+# The core test modes
+core_test_modes = [
+  'asm0',
   'asm1',
   'asm2',
   'asm3',
   'asm2g',
-]
-nondefault_test_modes = [
   'asm2f',
-  'asm2i',
   'binaryen0',
   'binaryen1',
   'binaryen2',
   'binaryen3',
   'binaryens',
   'binaryenz',
+  'asmi',
+  'asm2i',
 ]
+
+# The default core test mode, used when none is specified
+default_core_test_mode = 'binaryen0'
+
+# The non-core test modes
+non_core_test_modes = [
+  'other',
+  'browser',
+  'sanity',
+  'sockets',
+  'interactive',
+]
+
 test_index = 0
 
 use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are equivalent, testing 1 is enough. set this
@@ -155,26 +123,29 @@ use_all_engines = os.environ.get('EM_ALL_ENGINES') # generally js engines are eq
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
+
+  # default temporary directory settings. set_temp_dir may be called later to
+  # override these
   temp_dir = TEMP_DIR
+  canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
+
   save_dir = os.environ.get('EM_SAVE_DIR')
   save_JS = 0
   stderr_redirect = STDOUT # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
                            # Change this to None to get stderr reporting, for debugging purposes
 
   env = {}
+  settings_mods = {}
 
   EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS = int(os.getenv('EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS')) if os.getenv('EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS') != None else 0
 
   temp_files_before_run = []
 
-  def skipme(self): # used by tests we ask on the commandline to be skipped, see right before call to unittest.main
-    return self.skip('requested to be skipped')
-
   def is_emterpreter(self):
     return False
 
   def is_wasm_backend(self):
-    return Settings.WASM_BACKEND
+    return self.get_setting('WASM_BACKEND')
 
   def uses_memory_init_file(self):
     if self.emcc_args is None:
@@ -183,7 +154,8 @@ class RunnerCore(unittest.TestCase):
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file')+1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      return ('-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Oz' in self.emcc_args) and not (Settings.SIDE_MODULE or Settings.BINARYEN)
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      return opt_supports and not (self.get_setting('SIDE_MODULE') or self.get_setting('WASM'))
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -192,7 +164,7 @@ class RunnerCore(unittest.TestCase):
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
   def setUp(self):
-    Settings.reset()
+    self.settings_mods = {}
 
     if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -232,8 +204,13 @@ class RunnerCore(unittest.TestCase):
           for dirname in dirnames: temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
           for filename in filenames: temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
-        left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run))
-        if len(left_over_files) > 0:
+        # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
+        # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
+        # ignore some temp file names that we see on our CI infrastructure.
+        ignorable_files = ['/tmp/tmpaddon']
+
+        left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
+        if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
@@ -245,9 +222,19 @@ class RunnerCore(unittest.TestCase):
       #    assert not temp_file.endswith('.ll'), temp_file
       #    # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
-  def skip(self, why):
-    print('<skipping: %s> ' % why, end=' ', file=sys.stderr)
-    return False
+  def get_setting(self, key):
+    if key in self.settings_mods:
+      return self.settings_mods[key]
+    return Settings[key]
+
+  def set_setting(self, key, value):
+    self.settings_mods[key] = value
+
+  def serialize_settings(self):
+    ret = []
+    for key, value in self.settings_mods.items():
+      ret += ['-s', '{}={}'.format(key, json.dumps(value))]
+    return ret
 
   def get_dir(self):
     return self.working_dir
@@ -267,6 +254,22 @@ class RunnerCore(unittest.TestCase):
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     #force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
 
+    def fix_target(ll_filename):
+      if LLVM_TARGET == ASM_JS_TARGET:
+         return
+      with open(ll_filename) as f:
+        contents = f.read()
+      if LLVM_TARGET in contents:
+        return
+      asmjs_layout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
+      wasm_layout = "e-m:e-p:32:32-i64:64-n32:64-S128"
+      assert(ASM_JS_TARGET in contents)
+      assert(asmjs_layout in contents)
+      contents = contents.replace(asmjs_layout, wasm_layout)
+      contents = contents.replace(ASM_JS_TARGET, WASM_TARGET)
+      with open(ll_filename, 'w') as f:
+        f.write(contents)
+
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
@@ -274,6 +277,7 @@ class RunnerCore(unittest.TestCase):
         Building.llvm_dis(filename)
       else:
         shutil.copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
 
       if build_ll_hook:
         need_post = build_ll_hook(filename)
@@ -292,38 +296,38 @@ class RunnerCore(unittest.TestCase):
     else:
       if ll_file.endswith('.ll'):
         safe_copy(ll_file, filename + '.o.ll')
+        fix_target(filename + '.o.ll')
         Building.llvm_as(filename)
       else:
         safe_copy(ll_file, filename + '.o')
 
+  def get_emcc_transform_args(self, js_transform):
+    if not js_transform:
+      return []
+
+    transform_filename = os.path.join(self.get_dir(), 'transform.py')
+    with open(transform_filename, 'w') as f:
+      f.write('\nimport sys\nsys.path += [%r]\n' % path_from_root(''))
+      f.write(js_transform)
+      f.write('\nprocess(sys.argv[1])\n')
+
+    return ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
+
   # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
   # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
   # emcc, it would not apply on the optimized/minified JS)
-  def ll_to_js(self, filename, post_build):
-    if type(post_build) in (list, tuple):
-      post1, post2 = post_build
-    else:
-      post1 = post_build
-      post2 = None
-
+  def ll_to_js(self, filename, js_transform):
     emcc_args = self.emcc_args
     if emcc_args is None:
       emcc_args = []
 
-    transform_args = []
-    if post1:
-      transform_filename = os.path.join(self.get_dir(), 'transform.py')
-      transform = open(transform_filename, 'w')
-      transform.write('\nimport sys\nsys.path += [%r]\n' % path_from_root(''))
-      transform.write(post1)
-      transform.write('\nprocess(sys.argv[1])\n')
-      transform.close()
-      transform_args = ['--js-transform', "%s '%s'" % (PYTHON, transform_filename)]
-    Building.emcc(filename + '.o', Settings.serialize() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
-    if post2: post2(filename + '.o.js')
+    transform_args = self.get_emcc_transform_args(js_transform)
+    Building.emcc(filename + '.o', self.serialize_settings() + emcc_args + transform_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
 
   # Build JavaScript code from source code
-  def build(self, src, dirname, filename, output_processor=None, main_file=None, additional_files=[], libraries=[], includes=[], build_ll_hook=None, post_build=None, js_outfile=True):
+  def build(self, src, dirname, filename, main_file=None,
+            additional_files=[], libraries=[], includes=[], build_ll_hook=None,
+            post_build=None, js_outfile=True, js_transform=None):
 
     Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
@@ -349,7 +353,7 @@ class RunnerCore(unittest.TestCase):
       additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
-    if build_ll_hook or post_build:
+    if build_ll_hook:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
@@ -360,7 +364,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -368,19 +372,20 @@ class RunnerCore(unittest.TestCase):
         assert os.path.exists(f + '.o')
 
       # Link all files
-      if len(additional_files) + len(libraries) > 0:
-        shutil.move(filename + '.o', filename + '.o.alone')
-        Building.link([filename + '.o.alone'] + [f + '.o' for f in additional_files] + libraries,
-                 filename + '.o')
-        if not os.path.exists(filename + '.o'):
+      object_file = filename + '.o'
+      if len(additional_files) + len(libraries):
+        shutil.move(object_file, object_file + '.alone')
+        inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
+        Building.link(inputs, object_file)
+        if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", output)
           raise Exception("Linkage error")
 
       # Finalize
-      self.prep_ll_run(filename, filename + '.o', build_ll_hook=build_ll_hook)
+      self.prep_ll_run(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename, post_build)
+      self.ll_to_js(filename, js_transform)
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -388,18 +393,21 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + Settings.serialize() + \
+      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
              self.emcc_args + \
              ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
              ['-I' + include for include in includes] + \
-             all_files + \
+             all_files + self.get_emcc_transform_args(js_transform) + \
              ['-o', filename + '.o.js']
-      output = subprocess.check_call(args, stderr=self.stderr_redirect if not DEBUG else None)
+
+      run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
       if js_outfile:
         assert os.path.exists(filename + '.o.js')
+      else:
+        assert os.path.exists(filename + '.o.wasm')
 
-    if output_processor is not None:
-      output_processor(open(filename + '.o.js').read())
+    if post_build:
+      post_build(filename + '.o.js')
 
     if self.emcc_args is not None and js_outfile:
       src = open(filename + '.o.js').read()
@@ -460,6 +468,21 @@ class RunnerCore(unittest.TestCase):
 
     return num_funcs
 
+  def count_wasm_contents(self, wasm_binary, what):
+    out = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
+    # output is something like
+    # [?]        : 125
+    line = [line for line in out.split('\n') if '[' + what + ']' in line][0].strip()
+    ret = line.split(':')[1].strip()
+    return int(ret)
+
+  def get_wasm_text(self, wasm_binary):
+    return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
+
+  def is_exported_in_wasm(self, name, wasm):
+    wat = self.get_wasm_text(wasm)
+    return ('(export "%s"' % name) in wat
+
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
     stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
     stderr = os.path.join(self.get_dir(), 'stderr')
@@ -474,7 +497,7 @@ class RunnerCore(unittest.TestCase):
       os.chdir(cwd)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and Settings.ASM_JS == 1:
+    if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
       err = self.validate_asmjs(err)
     if output_nicerizer:
       ret = output_nicerizer(out, err)
@@ -559,7 +582,7 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 10]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS).encode('utf-8')).hexdigest() + cache_name_extra
+    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS).encode('utf-8')).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -657,12 +680,12 @@ class RunnerCore(unittest.TestCase):
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
-             output_processor=None, no_build=False, main_file=None, additional_files=[],
+             no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False):
-    if Settings.ASYNCIFY == 1 and self.is_wasm_backend():
-      return self.skip("wasm backend doesn't support ASYNCIFY yet")
+             assert_returncode=None, assert_identical=False, js_transform=None):
+    if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
+      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -671,11 +694,13 @@ class RunnerCore(unittest.TestCase):
     filename = os.path.join(dirname, basename)
     if not no_build:
       self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
-                 build_ll_hook=build_ll_hook, post_build=post_build)
+                 build_ll_hook=build_ll_hook, post_build=post_build,
+                 js_transform=js_transform)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    if len(js_engines) == 0: return self.skip('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    js_file = filename + '.o.js'
+    if len(js_engines) == 0: self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
         js_engines = [SPIDERMONKEY_ENGINE]
@@ -683,7 +708,7 @@ class RunnerCore(unittest.TestCase):
         js_engines = js_engines[:1]
     for engine in js_engines:
       #print 'test in', engine
-      js_output = self.run_generated_code(engine, filename + '.o.js', args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
+      js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       try:
         if assert_identical:
@@ -699,19 +724,19 @@ class RunnerCore(unittest.TestCase):
 
     if self.save_JS:
       global test_index
-      self.hardcode_arguments(filename + '.o.js', args)
-      shutil.copyfile(filename + '.o.js', os.path.join(TEMP_DIR, str(test_index) + '.js'))
+      self.hardcode_arguments(js_file, args)
+      shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
 
   # No building - just process an existing .ll file (or .bc, which we turn into .ll)
   def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
-                output_nicerizer=None, post_build=None, force_recompile=False,
+                output_nicerizer=None, js_transform=None, force_recompile=False,
                 build_ll_hook=None, assert_returncode=None):
     filename = os.path.join(self.get_dir(), 'src.cpp')
 
     self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
 
-    self.ll_to_js(filename, post_build)
+    self.ll_to_js(filename, js_transform)
 
     self.do_run(None,
                 expected_output,
@@ -719,7 +744,6 @@ class RunnerCore(unittest.TestCase):
                 no_build=True,
                 js_engines=js_engines,
                 output_nicerizer=output_nicerizer,
-                post_build=None,
                 assert_returncode=assert_returncode) # post_build was already done in ll_to_js, this do_run call is just to test the output
 
 
@@ -780,7 +804,7 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
-    self.also_wasm = os.environ.get('EMCC_BROWSER_ALSO_WASM', '0') == '1'
+    self.also_asmjs = os.environ.get('EMCC_BROWSER_ALSO_ASMJS', '0') == '1'
     self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
     self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser(): return
@@ -833,7 +857,7 @@ class BrowserCore(RunnerCore):
             break
           time.sleep(0.1)
         if output.startswith('/report_result?skipped:'):
-          self.skip(unquote(output[len('/report_result?skipped:'):]).strip())
+          self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           self.assertIdentical(expectedResult, output)
       finally:
@@ -965,13 +989,22 @@ class BrowserCore(RunnerCore):
 ''' % (self.test_port, basename))
 
   def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None, also_wasm=True): # TODO: use in all other tests
+            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
+    if 'USE_PTHREADS=1' in args or 'USE_PTHREADS=2' in args:
+      if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
+        # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
+        args = args + ['-s', 'WASM=0']
+    if not 'WASM=0' in args:
+      # Filter out separate-asm, which is implied by wasm
+      args = [a for a in args if a != '--separate-asm']
+      # wasm doesn't support USE_PTHREADS=2
+      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     if filename_is_src:
       with open(temp_filepath, 'w') as f: f.write(src)
     if not reference:
@@ -986,21 +1019,16 @@ class BrowserCore(RunnerCore):
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
-    #print 'all args:', all_args
+    #print('all args:', all_args)
     try_delete(outfile)
     Popen(all_args).communicate()
     assert os.path.exists(outfile)
     if post_build: post_build()
     if not isinstance(expected, list): expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if also_wasm and self.also_wasm:
-      wasm_args = args + ['-s', 'WASM=1']
-      # Filter out separate-asm, which is implied by wasm
-      wasm_args = [a for a in wasm_args if a != '--separate-asm']
-      # wasm doesn't support USE_PTHREADS=2
-      wasm_args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in wasm_args]
+    if self.also_asmjs and not 'WASM=0' in args:
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 wasm_args, outfile, message, also_proxied=False, timeout=timeout, also_wasm=False)
+                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
     if also_proxied:
       print('proxied...')
       if reference:
@@ -1050,38 +1078,28 @@ def get_bullet_library(runner_core, use_cmake):
 
 def main(args):
   print_help_if_args_empty(args)
-  args = get_default_args(args)
   print_js_engine_message()
   sanity_checks()
   args = args_with_extracted_js_engine_override(args)
   args = args_with_default_suite_prepended(args)
-  args = args_with_expanded_all_suite(args)
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   args = args_with_expanded_wildcards(args, all_tests)
   args = skip_requested_tests(args, modules)
   args = args_for_random_tests(args, modules)
   suites, unmatched_tests = load_test_suites(args, modules)
-  run_tests(suites, unmatched_tests)
+  return run_tests(suites, unmatched_tests)
 
 def print_help_if_args_empty(args):
-  if len(args) == 2 and args[1] in ['--help', '-h']:
+  if len(args) == 1 or (len(args) == 2 and args[1] in ['--help', '-h']):
     print(HELP_TEXT)
     sys.exit(0)
-
-def get_default_args(args):
-  # If no tests were specified, run the core suite
-  if len(args) == 1:
-    print(HELP_TEXT)
-    time.sleep(2)
-    return [args[0]] + [mode for mode in test_modes]
-  return args
 
 def print_js_engine_message():
   if use_all_engines:
     print('(using ALL js engines)')
   else:
-    logging.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
+    logger.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 def sanity_checks():
   global JS_ENGINES
@@ -1105,22 +1123,9 @@ def args_with_extracted_js_engine_override(args):
 def args_with_default_suite_prepended(args):
   def prepend_default(arg):
     if arg.startswith('test_'):
-      return 'default.' + arg
+      return default_core_test_mode + '.' + arg
     return arg
   return list(map(prepend_default, args))
-
-def args_with_expanded_all_suite(args):
-  # If a test (e.g. test_html) is specified as ALL.test_html, add an entry for each test_mode
-  new_args = [args[0]]
-  for i in range(1, len(args)):
-    arg = args[i]
-    if arg.startswith('ALL.'):
-      ignore, test = arg.split('.')
-      print('Running all test modes on test "%s"' % test)
-      new_args += [mode+'.'+test for mode in test_modes]
-    else:
-      new_args += [arg]
-  return new_args
 
 def get_and_import_modules():
   modules = []
@@ -1134,8 +1139,7 @@ def get_and_import_modules():
 def get_all_tests(modules):
   # Create a list of all known tests so that we can choose from them based on a wildcard search
   all_tests = []
-  suites = test_modes + nondefault_test_modes + \
-           ['other', 'browser', 'sanity', 'sockets', 'interactive']
+  suites = core_test_modes + non_core_test_modes
   for m in modules:
     for s in suites:
       if hasattr(m, s):
@@ -1166,12 +1170,7 @@ def skip_requested_tests(args, modules):
   for i in range(len(args)):
     arg = args[i]
     if arg.startswith('skip:'):
-      which = arg.split('skip:')[1]
-      if which.startswith('ALL.'):
-        ignore, test = which.split('.')
-        which = [mode+'.'+test for mode in test_modes]
-      else:
-        which = [which]
+      which = [arg.split('skip:')[1]]
 
       print(','.join(which), file=sys.stderr)
       for test in which:
@@ -1180,7 +1179,7 @@ def skip_requested_tests(args, modules):
         for m in modules:
           try:
             suite = getattr(m, suite_name)
-            setattr(suite, test_name, lambda ignored:RunnerCore("skipme")())
+            setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
           except:
             pass
@@ -1204,9 +1203,9 @@ def args_for_random_tests(args, modules):
 
 def get_random_test_parameters(arg):
   num_tests = 1
-  base_module = 'default'
-  relevant_modes = test_modes
-  if len(arg) > 0:
+  base_module = default_core_test_mode
+  relevant_modes = core_test_modes
+  if len(arg):
     num_str = arg
     if arg.startswith('other'):
       base_module = 'other'
@@ -1266,7 +1265,7 @@ def load_test_suites(args, modules):
         unmatched_test_names.remove(name)
       except AttributeError:
         pass
-    if len(names_in_module) > 0:
+    if len(names_in_module):
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests)
@@ -1292,12 +1291,13 @@ def suite_for_module(module, tests):
 
 def run_tests(suites, unmatched_test_names):
   resultMessages = []
-  numFailures = 0
+  num_failures = 0
 
-  if len(unmatched_test_names) > 0:
-    print('WARNING: could not find the following tests: ' + ' '.join(unmatched_test_names))
-    numFailures += len(unmatched_test_names)
+  if len(unmatched_test_names):
+    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_test_names))
+    num_failures += len(unmatched_test_names)
     resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
+    return 1
 
   print('Test suites:')
   print([s[0] for s in suites])
@@ -1309,7 +1309,7 @@ def run_tests(suites, unmatched_test_names):
     msg = '%s: %s run, %s errors, %s failures, %s skipped' % (mod_name,
         res.testsRun, len(res.errors), len(res.failures), len(res.skipped)
     )
-    numFailures += len(res.errors) + len(res.failures)
+    num_failures += len(res.errors) + len(res.failures)
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
@@ -1320,9 +1320,12 @@ def run_tests(suites, unmatched_test_names):
       print('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
-  exitcode = min(numFailures, 255)
-  sys.exit(exitcode)
+  return min(num_failures, 255)
 
 
 if __name__ == '__main__':
-  main(sys.argv)
+  try:
+    sys.exit(main(sys.argv))
+  except KeyboardInterrupt:
+    logger.warning('KeyboardInterrupt')
+    sys.exit(1)

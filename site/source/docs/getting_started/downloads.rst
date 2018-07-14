@@ -4,31 +4,7 @@
 Download and install
 ====================
 
-**Emscripten SDK provides the whole Emscripten toolchain in a single package, with integrated support for** :ref:`updating to newer SDKs <updating-the-emscripten-sdk>` **as they are released.**
-
 .. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should :ref:`build Emscripten from source <installing-from-source>`.
-
-
-SDK Downloads
-=============
-
-Download one of the SDK installers below to get started with Emscripten development.
-
-.. emscripten-sdk-windows-installers:
-
-Windows
--------
-
-- `64-bit Emscripten SDK for Windows <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable-64bit.zip>`_ (emsdk-portable-64bit.zip)
-		A zipped package of the SDK that does not require system installation privileges. Follow the instructions below to :ref:`install Emscripten SDK on Windows <sdk-installation-instructions>`.
-
-Linux and Mac OS X
-------------------
-
-.. _emscripten-sdk-linux-osx:
-	
-- `Emscripten SDK for Linux and OS X <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz>`_ (emsdk-portable.tar.gz) 
-		A tar.gz archive package of the SDK that does not require system installation privileges. To install, follow the :ref:`platform-specific notes <platform-notes-installation_instructions-SDK>` and the :ref:`general instructions <sdk-installation-instructions>`.
 
 .. _sdk-installation-instructions:
 
@@ -37,10 +13,19 @@ Installation instructions
 
 First check the :ref:`Platform-specific notes <platform-notes-installation_instructions-SDK>` below and install any prerequisites.
 
-Install or update the SDK using the following steps:
+The core Emscripten SDK (emsdk) driver is a Python script. You can get it for the first time with
 
-1. Download and unzip the SDK package to a directory of your choice. This directory will contain the Emscripten SDK.
-#. Open a command prompt inside the SDK directory and run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Github and set them as :term:`active <Active Tool/SDK>`:
+  ::
+
+    # Get the emsdk repo
+    git clone https://github.com/juj/emsdk.git
+
+    # Enter that directory
+    cd emsdk
+
+.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/juj/emsdk>`_.
+
+Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>`:
 	
 	::
 
@@ -65,8 +50,17 @@ If you change the location of the SDK (e.g. take it to another computer on an US
 Platform-specific notes
 ----------------------------
 
+Windows
++++++++
+
+#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+
+	.. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
+
 Mac OS X
 ++++++++
+
+If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -94,20 +88,7 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- The system must have a working :ref:`compiler-toolchain` (because *emsdk* builds software from the source): 
-
-	::	
-	
-		#Update the package lists
-		sudo apt-get update
-		
-		# Install *gcc* (and related dependencies)
-		sudo apt-get install build-essential
-		
-		# Install cmake
-		sudo apt-get install cmake
-		
-- *Python*, *node.js* or *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python*, *node.js*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
 	::
 	
@@ -116,9 +97,14 @@ Linux
 		
 		# Install node.js
 		sudo apt-get install nodejs
+
+		# Install CMake (optional, only needed for tests and building Binaryen)
+		sudo apt-get install cmake
 		
 		# Install Java (optional, only needed for Closure Compiler minification)
 		sudo apt-get install default-jre
+
+.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 		
@@ -161,7 +147,7 @@ Type the following in a command prompt ::
 	# Activate PATH and other environment variables in the current terminal
 	source ./emsdk_env.sh
 
-The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on Github <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
+The package manager can do many other maintenance tasks ranging from fetching specific old versions of the SDK through to using the :ref:`versions of the tools on GitHub <emsdk-master-or-incoming-sdk>` (or even your own fork). Check out all the possibilities in the :ref:`emsdk_howto`.
 
 .. _downloads-uninstall-the-sdk:
 
