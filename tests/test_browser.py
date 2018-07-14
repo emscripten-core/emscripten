@@ -3750,7 +3750,7 @@ window.close = function() {
   def test_fetch_cached_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
     self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0'])
-    
+
   # Tests that response headers get set on emscripten_fetch_t values.
   def test_fetch_response_headers(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
@@ -3938,7 +3938,7 @@ window.close = function() {
     self.run_browser('test.html', None, '/report_result?0')
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
-  def test_node_js_run_from_different_directory(self):
+  def test_browser_run_from_different_directory(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
     Popen([PYTHON, EMCC, 'test.c', '-o', 'test.html', '-O3']).communicate()
@@ -3946,9 +3946,9 @@ window.close = function() {
     if not os.path.exists('subdir'):
       os.mkdir('subdir')
     shutil.move('test.js', os.path.join('subdir', 'test.js'))
-    shutil.move('test.html.mem', os.path.join('subdir', 'test.html.mem'))
+    shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
     src = open('test.html').read()
-    # Force mem file to be loaded by JS and make sure JS is loaded from subdirectory
-    open('test-subdir.html', 'w').write(src.replace('var meminitXHR', '//var meminitXHR').replace('meminitXHR.', '//meminitXHR.').replace('test.js', 'subdir/test.js'))
+    # Make sure JS is loaded from subdirectory
+    open('test-subdir.html', 'w').write(src.replace('test.js', 'subdir/test.js'))
 
     self.run_browser('test-subdir.html', None, '/report_result?0')
