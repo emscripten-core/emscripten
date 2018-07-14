@@ -6511,10 +6511,11 @@ def process(filename):
   def test_linker_response_file(self):
     objfile = os.path.join(self.get_dir(), 'response_file.o')
     run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.emcc_args)
-    # TODO(sbc): This should expand into -Wl,foobar which is currently ignored
-    # by emscripten
+    # This should expand into -Wl,--export=foo which will then be ignored
+    # by emscripten, except when using the wasm backend (lld) in which case it
+    # should pass the original flag to the linker.
     with open('rsp_file', 'w') as f:
-      f.write(objfile + ' -foobar')
+      f.write(objfile + ' --export=foo')
     run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
