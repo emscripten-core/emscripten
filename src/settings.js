@@ -380,17 +380,17 @@ var ASYNCIFY_WHITELIST = ['qsort',   // Functions in this list are never conside
                           '__fwritex',
                           'MUSL_vfprintf'];
 
-var EXPORTED_RUNTIME_METHODS = [ // Runtime elements that are exported on Module by default. We used to export quite a lot here,
-                                 // but have removed them all, so this option is redundant given that EXTRA_EXPORTED_RUNTIME_METHODS
-                                 // exists, and so this option exists only for backwards compatibility. You should use
-                                 // EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
-                                 // Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
-                                 // in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE)
-                                 // Note that the name may be slightly misleading, as this
-                                 // is for any JS library element, and not just
-                                 // methods. For example, we export the Runtime object
-                                 // by having "Runtime" in this list.
-];
+// Runtime elements that are exported on Module by default. We used to export quite a lot here,
+// but have removed them all, so this option is redundant given that EXTRA_EXPORTED_RUNTIME_METHODS
+// exists, and so this option exists only for backwards compatibility. You should use
+// EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the runtime.
+// Note that methods on this list are only exported if they are included (either automatically from linking, or due to being
+// in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE)
+// Note that the name may be slightly misleading, as this
+// is for any JS library element, and not just
+// methods. For example, we export the Runtime object
+// by having "Runtime" in this list.
+var EXPORTED_RUNTIME_METHODS = [];
 
 var EXTRA_EXPORTED_RUNTIME_METHODS = []; // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
                                          // lets you remove methods that would be exported by default; setting values in

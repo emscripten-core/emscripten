@@ -595,26 +595,17 @@ def get_all_implemented(forwarded_json, metadata):
 # be a response file, in which case, load it
 def get_original_exported_functions():
   ret = shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS
-  if ret[0] == '@':
+  if ret and ret[0] == '@':
     ret = json.loads(open(ret[1:]).read())
   return ret
 
 
 def check_all_implemented(all_implemented, pre):
-  if shared.Settings.ASSERTIONS and shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    original_exports = get_original_exported_functions()
-    for requested in original_exports:
-      if not is_already_implemented(requested, pre, all_implemented):
-        # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+  for requested in get_original_exported_functions():
+    if requested not in all_implemented:
+      logging.error('exported function not implemented: "%s"', requested)
+      sys.exit(1)
 
-
-def is_already_implemented(requested, pre, all_implemented):
-  is_implemented = requested in all_implemented
-  # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS
-  is_exception = requested == '_malloc'
-  in_pre = ('function ' + asstr(requested)) in pre
-  return is_implemented or is_exception or in_pre
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
   funcs = set(metadata['exports'])

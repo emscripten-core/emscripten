@@ -3843,9 +3843,9 @@ int main(int argc, char **argv) {
       self.clear()
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=["' + m + '_main"]']
       print(cmd)
-      stderr = run_process(cmd, stderr=PIPE).stderr
+      proc = run_process(cmd, stderr=PIPE, check=False)
       if m:
-        assert 'function requested to be exported, but not implemented: " _main"' in stderr, stderr
+        assert 'exported function not implemented: " _main"' in proc.stderr, proc.stderr
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -6433,10 +6433,6 @@ int main() {
 |inf : 8 : Infinity : inf : 3|
 |-inf : 9 : -Infinity : -inf : 4|
 ''', out)
-
-  def test_no_warn_exported_jslibfunc(self):
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).stderr
-    self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
 
   def test_almost_asm_warning(self):
     warning = "[-Walmost-asm]"

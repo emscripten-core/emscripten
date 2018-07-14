@@ -1922,8 +1922,9 @@ class Building(object):
     if Settings.EXPORT_ALL:
       cmd += ['--no-gc-sections', '--export-all']
     else:
-      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
-        cmd += ['--export', export[1:]] # Strip the leading underscore
+      for f in expand_response(Settings.EXPORTED_FUNCTIONS):
+        f = f[1:] # Strip the leading underscore
+        cmd += ['-u', f, '--export', f]
 
     logging.debug('emcc: lld-linking: %s to %s', files, target)
     t = time.time()
