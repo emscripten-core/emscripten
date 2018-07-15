@@ -83,41 +83,40 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
-// `/` should be present at the end if `Module['scriptDirectory']` is not empty
-if (!Module['scriptDirectory']) {
-  Module['scriptDirectory'] = '';
+#if ASSERTIONS
+assert(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
+#endif
+// `/` should be present at the end if `scriptDirectory` is not empty
+var scriptDirectory = '';
 #if !SUPPORT_BASE64_EMBEDDING
 #if ENVIRONMENT_MAY_BE_NODE
-  if (ENVIRONMENT_IS_NODE) {
-    Module['scriptDirectory'] = __dirname + '/';
-  }
+if (ENVIRONMENT_IS_NODE) {
+  scriptDirectory = __dirname + '/';
+}
 #endif
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
-  if (ENVIRONMENT_IS_WEB) {
-    // We do this for `-s MODULARIZE=1` where at the time when this code runs document.currentScript might already be unavailable
-    var currentScript = this['_currentScript'] || document.currentScript;
-    if (currentScript.src.indexOf('blob:') !== 0) {
-      Module['scriptDirectory'] = currentScript.src.split('/').slice(0, -1).join('/') + '/';
-    }
-  } else if (ENVIRONMENT_IS_WORKER) {
-    // We do this for `-s MODULARIZE=1` where at the time when this code runs self.location might already be unavailable
-    var selfLocation = this['_selfLocation'] || self.location;
-    Module['scriptDirectory'] = selfLocation.href.split('/').slice(0, -1).join('/') + '/';
+if (ENVIRONMENT_IS_WEB) {
+  // We do this for `-s MODULARIZE=1` where at the time when this code runs document.currentScript might already be unavailable
+  var currentScript = this['_currentScript'] || document.currentScript;
+  if (currentScript.src.indexOf('blob:') !== 0) {
+    scriptDirectory = currentScript.src.split('/').slice(0, -1).join('/') + '/';
   }
+} else if (ENVIRONMENT_IS_WORKER) {
+  // We do this for `-s MODULARIZE=1` where at the time when this code runs self.location might already be unavailable
+  var selfLocation = this['_selfLocation'] || self.location;
+  scriptDirectory = selfLocation.href.split('/').slice(0, -1).join('/') + '/';
+}
 #endif
 #endif // SUPPORT_BASE64_EMBEDDING
-}
-if (!Module['memoryInitializerPrefixURL']) {
-  Module['memoryInitializerPrefixURL'] = Module['scriptDirectory'];
-}
-if (!Module['pthreadMainPrefixURL']) {
-  Module['pthreadMainPrefixURL'] = Module['scriptDirectory'];
-}
-if (!Module['cdInitializerPrefixURL']) {
-  Module['cdInitializerPrefixURL'] = Module['scriptDirectory'];
-}
-if (!Module['filePackagePrefixURL']) {
-  Module['filePackagePrefixURL'] = Module['scriptDirectory'];
+Module._locateFile = function (path) {
+  if (Module['locateFile']) {
+    return Module['locateFile'](path, scriptDirectory);
+  } else {
+    return scriptDirectory + path;
+  }
 }
 
 #if ENVIRONMENT_MAY_BE_NODE

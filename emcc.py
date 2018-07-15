@@ -2708,11 +2708,7 @@ def generate_html(target, options, js_target, target_basename,
       script.un_src()
       script.inline = ('''
           var memoryInitializer = '%s';
-          if (typeof Module['locateFile'] === 'function') {
-            memoryInitializer = Module['locateFile'](memoryInitializer);
-          } else {
-            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-          }
+          memoryInitializer = Module._locateFile(memoryInitializer);
           Module['memoryInitializerRequestURL'] = memoryInitializer;
           var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
           meminitXHR.open('GET', memoryInitializer, true);

@@ -10,6 +10,10 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+ - Fix `Module.locateFile` to resolve relative paths to *.wasm, *.mem and other files relatively to JavaScript file rather than current working directory
+ - Add second argument `prefix` to `Module.locateFile` function that contains path to JavaScript file where files are loaded from by default
+ - Remove `Module.*PrefixURL` APIs (use `Module.locateFile` instead)
+
 v1.38.8: 07/06/2018
 -------------------
  - Fix a regression in 1.38.7 with binaryen no longer bundling binaryen.js (which emscripten doesn't need, that's just for handwritten JS users, but emscripten did check for its prescence).
@@ -72,7 +76,6 @@ v1.37.35: 02/23/2018
 --------------------
  - MALLOC option, allowing picking between dlmalloc (previous allocator and still the default) and emmalloc, a new allocator which is smaller and simpler.
  - Binaryen update that should fix all known determinism bugs.
- - Added new option "Module.scriptDirectory" that allows customizing the URL where .wasm, .mem and some other files are located (defaults to the same location as .js file)
 
 v1.37.34: 02/16/2018
 --------------------

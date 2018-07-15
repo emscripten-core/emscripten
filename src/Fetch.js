@@ -111,10 +111,9 @@ var Fetch = {
 
       var fetchJs = 'fetch-worker.js';
       // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-      // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
-      // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
-      if (typeof Module['locateFile'] === 'function') fetchJs = Module['locateFile'](fetchJs);
-      else fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
+      // via Module.locateFile() function. If not specified, then the default URL 'pthread-main.js' relative
+      // to the main html file is loaded.
+      fetchJs = Module._locateFile(fetchJs);
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
         out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);

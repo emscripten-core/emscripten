@@ -254,10 +254,9 @@ var LibraryPThread = {
       var numWorkersLoaded = 0;
       var pthreadMainJs = 'pthread-main.js';
       // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-      // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
-      // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
-      if (typeof Module['locateFile'] === 'function') pthreadMainJs = Module['locateFile'](pthreadMainJs);
-      else pthreadMainJs = Module['pthreadMainPrefixURL'] + pthreadMainJs;
+      // via Module.locateFile() function. If not specified, then the default URL 'pthread-main.js' relative
+      // to the main html file is loaded.
+      pthreadMainJs = Module._locateFile(pthreadMainJs);
 
       for (var i = 0; i < numWorkers; ++i) {
         var worker = new Worker(pthreadMainJs);

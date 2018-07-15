@@ -2020,26 +2020,14 @@ function integrateWasmJS() {
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
-  if (typeof Module['locateFile'] === 'function') {
-    if (!isDataURI(wasmTextFile)) {
-      wasmTextFile = Module['locateFile'](wasmTextFile);
-    }
-    if (!isDataURI(wasmBinaryFile)) {
-      wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
-    }
-    if (!isDataURI(asmjsCodeFile)) {
-      asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
-    }
-  } else {
-    if (!isDataURI(wasmTextFile)) {
-      wasmTextFile = Module['scriptDirectory'] + wasmTextFile;
-    }
-    if (!isDataURI(wasmBinaryFile)) {
-      wasmBinaryFile = Module['scriptDirectory'] + wasmBinaryFile;
-    }
-    if (!isDataURI(asmjsCodeFile)) {
-      asmjsCodeFile = Module['scriptDirectory'] + asmjsCodeFile;
-    }
+  if (!isDataURI(wasmTextFile)) {
+    wasmTextFile = Module._locateFile(wasmTextFile);
+  }
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = Module._locateFile(wasmBinaryFile);
+  }
+  if (!isDataURI(asmjsCodeFile)) {
+    asmjsCodeFile = Module._locateFile(asmjsCodeFile);
   }
 
   // utilities
