@@ -457,7 +457,7 @@ if has_preloaded:
           Module['removeRunDependency']('datafile_%s');
     ''' % (meta, shared.JS.escape_for_js_string(data_target))
 
-  package_uuid = uuid.uuid4();
+  package_uuid = uuid.uuid4()
   package_name = data_target
   statinfo = os.stat(package_name)
   remote_package_size = statinfo.st_size
@@ -478,7 +478,7 @@ if has_preloaded:
       Module['locateFile'] = Module['locateFilePackage'];
       err('warning: you defined Module.locateFilePackage, that has been renamed to Module.locateFile (using your locateFilePackage for now)');
     }
-    var REMOTE_PACKAGE_NAME = Module['locateFile'](REMOTE_PACKAGE_BASE);
+    var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;
   ''' % (shared.JS.escape_for_js_string(data_target), shared.JS.escape_for_js_string(remote_package_name))
   metadata['remote_package_size'] = remote_package_size
   metadata['package_uuid'] = str(package_uuid)
@@ -733,7 +733,7 @@ ret += '''%s
 
  function runMetaWithFS() {
   Module['addRunDependency']('%(metadata_file)s');
-  var REMOTE_METADATA_NAME = Module['locateFile']('%(metadata_file)s');
+  var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
   var xhr = new XMLHttpRequest();
   xhr.onreadystatechange = function() {
    if (xhr.readyState === 4 && xhr.status === 200) {
