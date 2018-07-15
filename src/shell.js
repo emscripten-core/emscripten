@@ -105,9 +105,7 @@ if (ENVIRONMENT_IS_WEB) {
     scriptDirectory = currentScript.src.split('/').slice(0, -1).join('/') + '/';
   }
 } else if (ENVIRONMENT_IS_WORKER) {
-  // We do this for `-s MODULARIZE=1` where at the time when this code runs self.location might already be unavailable
-  var selfLocation = this['_selfLocation'] || self.location;
-  scriptDirectory = selfLocation.href.split('/').slice(0, -1).join('/') + '/';
+  scriptDirectory = self.location.href.split('/').slice(0, -1).join('/') + '/';
 }
 #endif
 #endif // SUPPORT_BASE64_EMBEDDING
