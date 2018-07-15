@@ -577,7 +577,7 @@ def get_js_funcs(pre, funcs):
 def get_all_exported_functions(function_table_data):
   all_exported_functions = set(shared.expand_response(shared.Settings.EXPORTED_FUNCTIONS)) # both asm.js and otherwise
 
-  for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE: # additional functions to export from asm, if they are implemented
+  for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
     all_exported_functions.add('_' + additional_export)
   if shared.Settings.EXPORT_FUNCTION_TABLES:
     for table in function_table_data.values():

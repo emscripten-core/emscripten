@@ -466,6 +466,8 @@ var PROFILING_FUNCS = 0;     // Whether we are profiling functions. you should n
 // object by adding "$Browser" to this list.
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free'];
 
+var EXPORTED_LIBRARY_FUNCTIONS = [];
+
 var LIBRARY_DEPS_TO_AUTOEXPORT = ['memcpy']; // This list is also used to determine
                                              // auto-exporting of library dependencies (i.e., functions that
                                              // might be dependencies of JS library functions, that if
