@@ -100,6 +100,16 @@ class other(RunnerCore):
       assert expected_call not in output
       assert output == '', output
 
+  def test_emcc_generate_config(self):
+    for compiler in [EMCC, EMXX]:
+      config_path = './emscripten_config'
+      run_process([PYTHON, compiler, '--generate-config', config_path])
+      assert os.path.exists(config_path), 'A config file should have been created at %s' % config_path
+      config_contents = open(config_path).read()
+      self.assertContained('EMSCRIPTEN_ROOT', config_contents)
+      self.assertContained('LLVM_ROOT', config_contents)
+      os.remove(config_path)
+
   def test_emcc_1(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)

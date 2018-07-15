@@ -2313,6 +2313,14 @@ def parse_args(newargs):
         exit_with_error('Invalid value "' + newargs[i + 1] + '" to --output_eol!')
       newargs[i] = ''
       newargs[i + 1] = ''
+    elif newargs[i] == '--generate-config':
+      optarg = newargs[i + 1]
+      path = os.path.expanduser(optarg)
+      if os.path.exists(path):
+        exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
+      else:
+        shared.generate_config(optarg)
+      should_exit = True
 
   if should_exit:
     sys.exit(0)
