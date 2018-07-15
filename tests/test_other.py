@@ -5102,7 +5102,7 @@ main(const int argc, const char * const * const argv)
       do('normal', [])
       do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
-      assert abs(sizes['no_nuthin'] - sizes['normal']) < 10
+      assert abs(sizes['no_nuthin'] - sizes['normal']) < 15
       assert sizes['no_nuthin'] < absolute
     test(['-s', 'ASSERTIONS=0'], 95000) # we don't care about code size with assertions
     test(['-O1'], 80000)
