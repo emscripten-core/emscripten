@@ -362,7 +362,7 @@ function JSify(data, functionsOnly) {
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS) || (finalName in EXPORTED_LIBRARY_FUNCTIONS)) && !noExport) {
+      if ((EXPORT_ALL || (finalName in EXPORTED_LIBRARY_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       if (!LibraryManager.library[ident + '__asm']) {
