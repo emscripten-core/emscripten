@@ -1,18 +1,7 @@
 from __future__ import print_function
-import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
+import multiprocessing, os, shutil, subprocess, unittest, zlib, time
 from runner import BrowserCore, path_from_root
 from tools.shared import *
-
-# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
-# run using another browser command line than the default system browser.
-emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
-if emscripten_browser:
-  cmd = shlex.split(emscripten_browser)
-  def run_in_other_browser(url):
-    Popen(cmd + [url])
-  if EM_BUILD_VERBOSE_LEVEL >= 3:
-    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
-  webbrowser.open_new = run_in_other_browser
 
 class interactive(BrowserCore):
   @classmethod
