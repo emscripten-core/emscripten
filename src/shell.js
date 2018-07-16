@@ -91,7 +91,6 @@ assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackag
 #endif
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
-#if !SUPPORT_BASE64_EMBEDDING
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   scriptDirectory = __dirname + '/';
@@ -108,7 +107,6 @@ if (ENVIRONMENT_IS_WEB) {
   scriptDirectory = self.location.href.split('/').slice(0, -1).join('/') + '/';
 }
 #endif
-#endif // SUPPORT_BASE64_EMBEDDING
 Module._locateFile = function (path) {
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
