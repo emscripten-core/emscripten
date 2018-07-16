@@ -107,7 +107,7 @@ if (ENVIRONMENT_IS_WEB) {
   scriptDirectory = self.location.href.split('/').slice(0, -1).join('/') + '/';
 }
 #endif
-Module._locateFile = function (path) {
+function locateFile(path) {
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
   } else {

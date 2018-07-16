@@ -40,7 +40,7 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 if (memoryInitializer) {
 #endif
   if (!isDataURI(memoryInitializer)) {
-    memoryInitializer = Module._locateFile(memoryInitializer);
+    memoryInitializer = locateFile(memoryInitializer);
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);

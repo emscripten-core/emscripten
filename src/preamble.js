@@ -2021,13 +2021,13 @@ function integrateWasmJS() {
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
   if (!isDataURI(wasmTextFile)) {
-    wasmTextFile = Module._locateFile(wasmTextFile);
+    wasmTextFile = locateFile(wasmTextFile);
   }
   if (!isDataURI(wasmBinaryFile)) {
-    wasmBinaryFile = Module._locateFile(wasmBinaryFile);
+    wasmBinaryFile = locateFile(wasmBinaryFile);
   }
   if (!isDataURI(asmjsCodeFile)) {
-    asmjsCodeFile = Module._locateFile(asmjsCodeFile);
+    asmjsCodeFile = locateFile(asmjsCodeFile);
   }
 
   // utilities
