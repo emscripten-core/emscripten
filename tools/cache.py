@@ -31,8 +31,10 @@ class Cache(object):
     if use_subdir:
       if not shared.Settings.WASM_BACKEND:
         dirname = os.path.join(dirname, 'asmjs')
+      elif shared.Settings.WASM_OBJECT_FILES:
+        dirname = os.path.join(dirname, 'wasm_o')
       else:
-        dirname = os.path.join(dirname, 'wasm')
+        dirname = os.path.join(dirname, 'wasm_bc')
     self.dirname = dirname
     self.debug = debug
     self.acquired_count = 0
