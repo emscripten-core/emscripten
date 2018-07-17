@@ -38,6 +38,11 @@ class FatalError(Exception):
   pass
 
 
+def exit_with_error(*args):
+  logging.error(*args)
+  sys.exit(1)
+
+
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console
 # process.
@@ -576,25 +581,21 @@ def check_sanity(force=False):
 
     with ToolchainProfiler.profile_block('sanity compiler_engine'):
       if not jsrun.check_engine(COMPILER_ENGINE):
-        logging.critical('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s' % (COMPILER_ENGINE, EM_CONFIG))
-        sys.exit(1)
+        exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
 
     with ToolchainProfiler.profile_block('sanity LLVM'):
       for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
         if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-          logging.critical('Cannot find %s, check the paths in %s' % (cmd, EM_CONFIG))
-          sys.exit(1)
+          exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
     if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
       try:
-        run_process([PYTHON, '--version'], stdout=PIPE, stderr=PIPE)
+        run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
       except:
-        logging.critical('Cannot find %s, check the paths in %s' % (PYTHON, EM_CONFIG))
-        sys.exit(1)
+        exit_with_error('Cannot find %s, check the paths in %s', PYTHON, EM_CONFIG)
 
     if not fastcomp_ok:
-      logging.critical('failing sanity checks due to previous fastcomp failure')
-      sys.exit(1)
+      exit_with_error('failing sanity checks due to previous fastcomp failure')
 
     # Sanity check passed!
     with ToolchainProfiler.profile_block('sanity closure compiler'):
@@ -1562,8 +1563,7 @@ class Building(object):
     non_native = Building.get_building_env()
     if os.environ.get('CC') == non_native.get('CC'):
       # the environment CC is the one we change to when forcing our em* tools
-      logging.error(message)
-      sys.exit(1)
+      exit_with_error(message)
 
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
   @staticmethod
@@ -1670,8 +1670,7 @@ class Building(object):
     if env is None:
       env = Building.get_building_env()
     if not args:
-      logging.error('Executable to run not specified.')
-      sys.exit(1)
+      exit_with_error('Executable to run not specified.')
     # args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
@@ -2124,13 +2123,12 @@ class Building(object):
       run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
-      logging.error('Failed to run llvm optimizations: ' + e.output)
       for i in inputs:
         if not os.path.exists(i):
           logging.warning('Note: Input file "' + i + '" did not exist.')
         elif not Building.is_bitcode(i):
           logging.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
-      sys.exit(1)
+      exit_with_error('Failed to run llvm optimizations: ' + e.output)
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
@@ -2616,8 +2614,7 @@ class Building(object):
       library_files += ['library_' + library_name]
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
-        logging.fatal('emcc: cannot find library "%s"', library_name)
-        sys.exit(1)
+        exit_with_error('emcc: cannot find library "%s"', library_name)
       else:
         logging.warning('emcc: cannot find library "%s"', library_name)
 
@@ -2665,8 +2662,7 @@ class Building(object):
     for dirname in paths:
       if os.path.exists(os.path.join(dirname, 'wasm.js')):
         return dirname
-    logging.fatal('emcc: cannot find binaryen js libraries (tried: %s)' % str(paths))
-    sys.exit(1)
+    exit_with_error('emcc: cannot find binaryen js libraries (tried: %s)', str(paths))
 
 
 # compatibility with existing emcc, etc. scripts
@@ -3042,8 +3038,7 @@ def make_fetch_worker(source_file, output_file):
   for func in funcs_to_import + asm_funcs_to_import:
     loc = src.find('function ' + func + '(', asm_start if func in asm_funcs_to_import else 0)
     if loc == -1:
-      logging.fatal('failed to find function ' + func + '!')
-      sys.exit(1)
+      exit_with_error('failed to find function %s!', func)
     end_loc = src.find('{', loc) + 1
     nesting_level = 1
     while nesting_level > 0:
