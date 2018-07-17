@@ -35,7 +35,7 @@ import logging
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
-from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess
+from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error
 from tools.response_file import substitute_response_files
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
@@ -110,11 +110,6 @@ EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we 
 
 # Target options
 final = None
-
-
-def exit_with_error(message):
-  logging.error(message)
-  sys.exit(1)
 
 
 class Intermediate(object):
@@ -806,7 +801,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if not arg.startswith('-'):
           if not os.path.exists(arg):
-            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)' % (arg, arg))
+            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
 
           arg_ending = filename_type_ending(arg)
           if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
@@ -966,7 +961,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         try:
           setattr(shared.Settings, key, parse_value(value))
         except Exception as e:
-          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s' % (change, str(e)))
+          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
