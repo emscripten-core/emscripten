@@ -15,7 +15,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
@@ -38,8 +37,8 @@ class FatalError(Exception):
   pass
 
 
-def exit_with_error(*args):
-  logging.error(*args)
+def exit_with_error(msg, *args):
+  logging.error(msg, *args)
   sys.exit(1)
 
 
@@ -1341,10 +1340,13 @@ def verify_settings():
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
 
     if Settings.EMTERPRETIFY:
-      exit_with_error('emcc: EMTERPRETIFY is not is not supported by the LLVM wasm backend')
+      exit_with_error('emcc: EMTERPRETIFY is not supported by the LLVM wasm backend')
 
     if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
       exit_with_error('WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
+
+    if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
+      exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
 
 
 Settings = SettingsManager()
@@ -1948,12 +1950,7 @@ class Building(object):
         cmd += ['--export', export[1:]] # Strip the leading underscore
 
     logging.debug('emcc: lld-linking: %s to %s', files, target)
-    t = time.time()
     check_call(cmd)
-    if DEBUG:
-      logging.debug('  emscript: lld took %s seconds' % (time.time() - t))
-      t = time.time()
-
     return target
 
   @staticmethod

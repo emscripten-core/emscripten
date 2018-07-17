@@ -23,15 +23,16 @@ emcc can be influenced by a few environment variables:
 
 from __future__ import print_function
 
-import stat
-import os
-import sys
-import shutil
-import tempfile
-import shlex
-import time
-import re
+import json
 import logging
+import os
+import re
+import shlex
+import shutil
+import stat
+import sys
+import tempfile
+import time
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
@@ -2359,7 +2360,6 @@ def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush('pre-emterpretify')
   logging.debug('emterpretifying')
-  import json
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
@@ -2571,14 +2571,13 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shutil.copyfile(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), 'pre-eval-ctors.wasm'))
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
-  if not shared.Settings.WASM_BACKEND:
-    if shared.Settings.SIDE_MODULE:
-      wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
-      # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
-      shutil.move(wso, wasm_binary_target)
-      if not DEBUG:
-        os.unlink(asm_target) # we don't need the asm.js, it can just confuse
-      sys.exit(0) # and we are done.
+  if shared.Settings.SIDE_MODULE:
+    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
+    # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+    shutil.move(wso, wasm_binary_target)
+    if not shared.Settings.WASM_BACKEND and not DEBUG:
+      os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+    sys.exit(0) # and we are done.
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
