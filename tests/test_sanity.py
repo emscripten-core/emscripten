@@ -244,20 +244,20 @@ class sanity(RunnerCore):
     # The correct path
     restore_and_set_up()
     add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root())
-    output = self.check_working(EMCC)
+    self.check_working(EMCC)
 
     # The correct path with extra stuff
     restore_and_set_up()
     add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
-    output = self.check_working(EMCC)
+    self.check_working(EMCC)
 
     restore_and_set_up()
     add_to_config("EMSCRIPTEN_ROOT = '/bad/path'")
-    output = self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
+    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
 
     restore_and_set_up()
     add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root('x'))
-    output = self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
+    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
 
   def test_llvm_fastcomp(self):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'

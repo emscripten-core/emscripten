@@ -301,8 +301,7 @@ except Exception as e:
 # within emscripten itself this is good to time sanity check the value.
 EMSCRIPTEN_ROOT = os.path.expanduser(os.path.normpath(EMSCRIPTEN_ROOT))
 if EMSCRIPTEN_ROOT != __rootpath__:
-  logging.error('Incorrect EMSCRIPTEN_ROOT in config file: %s (Expected %s)', EMSCRIPTEN_ROOT, __rootpath__)
-  sys.exit(1)
+  exit_with_error('Incorrect EMSCRIPTEN_ROOT in config file: %s (Expected %s)', EMSCRIPTEN_ROOT, __rootpath__)
 
 
 # Returns a suggestion where current .emscripten config file might be located
