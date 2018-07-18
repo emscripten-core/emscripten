@@ -1337,7 +1337,7 @@ def verify_settings():
     # TODO(sbc): Make this into a hard error.  We still have a few places that
     # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
     # generate_struct_info).
-    logging.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+    logging.debug('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
     Settings.WASM = 1
 
   if Settings.WASM_BACKEND and not BINARYEN_ROOT:
