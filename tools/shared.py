@@ -1334,13 +1334,15 @@ class SettingsManager(object):
 
 def verify_settings():
   if Settings.WASM_BACKEND and not Settings.WASM:
-    logging.error('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0)')
-    sys.exit(1)
+    # TODO(sbc): Make this into a hard error.  We still have a few places that
+    # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
+    # generate_struct_info).
+    logging.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+    Settings.WASM = 1
 
   if Settings.WASM_BACKEND and not BINARYEN_ROOT:
-    logging.error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                  ' when using the LLVM wasm backend')
-    sys.exit(1)
+    exit_with_error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
+                    ' when using the LLVM wasm backend')
 
 
 Settings = SettingsManager()
