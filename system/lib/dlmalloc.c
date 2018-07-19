@@ -1,7 +1,7 @@
 
 /* XXX Emscripten XXX */
 #if __EMSCRIPTEN__
-#define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
+#define DLMALLOC_EXPORT __attribute__((__weak__))
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
