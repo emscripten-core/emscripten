@@ -617,8 +617,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
   # Here, just ensure that it's in the cache.
   if shared.Settings.WASM and shared.Settings.WASM_BACKEND:
-    shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
-    shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a')
+    ret.append(shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a'))
+    ret.append(shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a'))
 
   for actual in ret:
     if os.path.basename(actual) == 'libcxxabi.bc':
