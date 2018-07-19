@@ -124,6 +124,7 @@ bv2.getAnother().PrintFloat(21.12);
 console.log(new TheModule.Inner().get());
 console.log('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
+new TheModule.Inner().incInPlace(new TheModule.Inner());
 
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
