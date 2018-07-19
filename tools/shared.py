@@ -1333,16 +1333,23 @@ class SettingsManager(object):
 
 
 def verify_settings():
-  if Settings.WASM_BACKEND and not Settings.WASM:
-    # TODO(sbc): Make this into a hard error.  We still have a few places that
-    # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
-    # generate_struct_info).
-    logging.debug('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
-    Settings.WASM = 1
+  if Settings.WASM_BACKEND:
+    if not Settings.WASM:
+      # TODO(sbc): Make this into a hard error.  We still have a few places that
+      # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
+      # generate_struct_info).
+      logging.debug('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+      Settings.WASM = 1
 
-  if Settings.WASM_BACKEND and not BINARYEN_ROOT:
-    exit_with_error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                    ' when using the LLVM wasm backend')
+    if not BINARYEN_ROOT:
+      exit_with_error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
+                      ' when using the LLVM wasm backend')
+
+    if Settings.CYBERDWARF:
+      exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
+
+    if Settings.EMTERPRETIFY:
+      exit_with_error('emcc: EMTERPRETIFY is not is not supported by the LLVM wasm backend')
 
 
 Settings = SettingsManager()
@@ -1921,7 +1928,7 @@ class Building(object):
         '-z',
         'stack-size=%s' % Settings.TOTAL_STACK,
         '--global-base=%s' % Settings.GLOBAL_BASE,
-        '--initial-memory=%s' % Settings.TOTAL_MEMORY,
+        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
         '-o',
         target,
         '--no-entry',
@@ -1931,6 +1938,11 @@ class Building(object):
         '__wasm_call_ctors',
         '--lto-O%d' % lto_level,
     ] + files + [libc_rt_lib, compiler_rt_lib]
+
+    if Settings.WASM_MEM_MAX != -1:
+      cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+    elif not Settings.ALLOW_MEMORY_GROWTH:
+      cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
@@ -2293,8 +2305,9 @@ class Building(object):
   @staticmethod
   def is_wasm_only():
     if not Settings.WASM:
-      return False # not even wasm, much less wasm-only
-    # if the asm.js code will not run, and won't be run through the js optimizer, then
+      return False
+    if Settings.WASM_BACKEND:
+      return True
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
     # compatible with it.
