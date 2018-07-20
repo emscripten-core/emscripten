@@ -626,7 +626,35 @@ var LibraryEmbind = {
 
             var str;
             if(stdStringIsUTF8) {
-                str = UTF8ToString(value + 4, length);
+                //ensure null termination at one-past-end byte if not present yet
+                var endChar = HEAPU8[value + 4 + length];
+                var endCharSwap = 0;
+                if(endChar != 0)
+                {
+                  endCharSwap = endChar;
+                  HEAPU8[value + 4 + length] = 0;
+                }
+
+                var decodeStartPtr = value + 4;
+                //looping here to support possible embedded '0' bytes
+                for (var i = 0; i <= length; ++i) {
+                  var currentBytePtr = value + 4 + i;
+                  if(HEAPU8[currentBytePtr] == 0)
+                  {
+                    var stringSegment = UTF8ToString(decodeStartPtr);
+                    if(str === undefined)
+                      str = stringSegment;
+                    else
+                    {
+                      str += String.fromCharCode(0);
+                      str += stringSegment;
+                    }
+                    decodeStartPtr = currentBytePtr + 1;
+                  }
+                }
+
+                if(endCharSwap != 0)
+                  HEAPU8[value + 4 + length] = endCharSwap;
             } else {
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
