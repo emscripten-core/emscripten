@@ -1843,6 +1843,11 @@ function removeRunDependency(id) {
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
+#if WASM
+#if MAIN_MODULE
+Module["preloadedWasm"] = {}; // maps url to wasm instance exports
+#endif // MAIN_MODULE
+#endif // WASM
 
 #if PGO
 var PGOMonitor = {
@@ -2116,7 +2121,11 @@ function integrateWasmJS() {
       if (Module['readBinary']) {
         return Module['readBinary'](wasmBinaryFile);
       } else {
-        throw "on the web, we need the wasm binary to be preloaded and set on Module['wasmBinary']. emcc.py will do that for you when generating HTML (but not JS)";
+#if BINARYEN_ASYNC_COMPILATION
+        throw "both async and sync fetching of the wasm failed";
+#else
+        throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
       }
     }
     catch (err) {

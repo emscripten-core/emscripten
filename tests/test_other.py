@@ -100,6 +100,16 @@ class other(RunnerCore):
       assert expected_call not in output
       assert output == '', output
 
+  def test_emcc_generate_config(self):
+    for compiler in [EMCC, EMXX]:
+      config_path = './emscripten_config'
+      run_process([PYTHON, compiler, '--generate-config', config_path])
+      assert os.path.exists(config_path), 'A config file should have been created at %s' % config_path
+      config_contents = open(config_path).read()
+      self.assertContained('EMSCRIPTEN_ROOT', config_contents)
+      self.assertContained('LLVM_ROOT', config_contents)
+      os.remove(config_path)
+
   def test_emcc_1(self):
     for compiler in [EMCC, EMXX]:
       shortcompiler = os.path.basename(compiler)
@@ -2422,30 +2432,6 @@ seeked= file.
     assert unicode_name in proc.stdout, proc.stdout
     print(len(proc.stderr))
 
-  def test_crunch(self):
-    try:
-      print('Crunch is located at ' + CRUNCH)
-    except:
-      self.skipTest('Skipped: Crunch is not present on the current system. Please install it (manually or via emsdk) and make sure it is activated in the Emscripten configuration file.')
-    # crunch should not be run if a .crn exists that is more recent than the .dds
-    shutil.copyfile(path_from_root('tests', 'ship.dds'), 'ship.dds')
-    time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert os.stat('test.data').st_size < 0.25*os.stat('ship.dds').st_size, 'Compressed should be much smaller than dds'
-    crunch_time = os.stat('ship.crn').st_mtime
-    dds_time = os.stat('ship.dds').st_mtime
-    assert crunch_time >= dds_time, 'Crunch is more recent'
-    # run again, should not recrunch!
-    time.sleep(0.1)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    if 'linux' in sys.platform: # OS time reporting in other OSes (macOS) seems flaky here
-      assert crunch_time == os.stat('ship.crn').st_mtime, 'Crunch is unchanged ' + str([crunch_time, os.stat('ship.crn').st_mtime])
-    # update dds, so should recrunch
-    time.sleep(0.1)
-    os.utime('ship.dds', None)
-    Popen([PYTHON, FILE_PACKAGER, 'test.data', '--crunch=32', '--preload', 'ship.dds'], stdout=open('pre.js', 'w')).communicate()
-    assert crunch_time < os.stat('ship.crn').st_mtime, 'Crunch was changed'
-
   def test_file_packager_mention_FORCE_FILESYSTEM(self):
     MESSAGE = 'Remember to build the main file with  -s FORCE_FILESYSTEM=1  so that it includes support for loading this file package'
     open('data.txt', 'w').write('data1')
@@ -3636,11 +3622,20 @@ int main()
 
     for suffix in ['.o', '.a', '.bc', '.so', '.lib', '.dylib', '.js', '.html']:
       err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stdout=PIPE, stderr=PIPE).stderr
-      warning = 'Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten'
+      warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
       if suffix in shared_suffixes:
-        assert(warning in err)
+        self.assertContained(warning, err)
       else:
-        assert(warning not in err)
+        self.assertNotContained(warning, err)
+
+  def test_side_module_without_proper_target(self):
+    # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
+    # otherwise, we are just linking bitcode, and should show an error
+    for wasm in [0, 1]:
+      print(wasm)
+      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
+      self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode', process.stderr)
+      assert process.returncode is not 0
 
   def test_simplify_ifs(self):
     def test(src, nums):
@@ -5540,6 +5535,55 @@ function _main() {
       ''' % t)
       run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
       self.assertContained('result: ' + out, run_js('a.out.js'))
+
+  def test_call_nonemterpreted_during_sleep(self):
+    open('src.c', 'w').write(r'''
+#include <stdio.h>
+#include <emscripten.h>
+
+EMSCRIPTEN_KEEPALIVE void emterpreted_yielder() {
+  int counter = 0;
+  while (1) {
+    printf("emterpreted_yielder() sleeping...\n");
+    emscripten_sleep_with_yield(10);
+    counter++;
+    if (counter == 3) {
+      printf("Success\n");
+      break;
+    }
+  }
+}
+
+EMSCRIPTEN_KEEPALIVE void not_emterpreted() {
+  printf("Entering not_emterpreted()\n");
+}
+
+int main() {
+  EM_ASM({
+    setTimeout(function () {
+      console.log("calling not_emterpreted()");
+      Module["_not_emterpreted"]();
+    }, 0);
+    console.log("calling emterpreted_yielder()");
+#ifdef BAD_EM_ASM
+    Module['_emterpreted_yielder']();
+#endif
+  });
+#ifndef BAD_EM_ASM
+  emterpreted_yielder();
+#endif
+}
+    ''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]'])
+    self.assertContained('Success', run_js('a.out.js'))
+
+    print('check calling of emterpreted as well')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+    self.assertContained('Success', run_js('a.out.js'))
+
+    print('check for invalid EM_ASM usage')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_BLACKLIST=["_not_emterpreted"]', '-DBAD_EM_ASM'])
+    self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
 
   def test_link_with_a_static(self):
     for args in [[], ['-O2']]:
@@ -8095,15 +8139,18 @@ int main() {
         output, err = proc.communicate()
         assert proc.returncode == 0
         text = open('a.out.wast').read()
-        #print "text: %s" % text
-        e_add_f32 = re.search('func \$_add_f \(; \d+ ;\) \(param \$*. f32\) \(param \$*. f32\) \(result f32\)', text)
+        # remove internal comments and extra whitespace
+        text = re.sub(r'\(;[^;]+;\)', '', text)
+        text = re.sub(r' +', ' ', text)
+        #print("text: %s" % text)
+        e_add_f32 = re.search('func \$_add_f \(param \$*. f32\) \(param \$*. f32\) \(result f32\)', text)
         i_i64_i32 = re.search('import .*"_import_ll" .*\(param i32 i32\) \(result i32\)', text)
         i_f32_f64 = re.search('import .*"_import_f" .*\(param f64\) \(result f64\)', text)
         i_i64_i64 = re.search('import .*"_import_ll" .*\(param i64\) \(result i64\)', text)
         i_f32_f32 = re.search('import .*"_import_f" .*\(param f32\) \(result f32\)', text)
-        e_i64_i32 = re.search('func \$_add_ll \(; \d+ ;\) \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(result i32\)', text)
-        e_f32_f64 = re.search('func \$legalstub\$_add_f \(; \d+ ;\) \(param \$*. f64\) \(param \$*. f64\) \(result f64\)', text)
-        e_i64_i64 = re.search('func \$_add_ll \(; \d+ ;\) \(param \$*. i64\) \(param \$*. i64\) \(result i64\)', text)
+        e_i64_i32 = re.search('func \$_add_ll \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(param \$*. i32\) \(result i32\)', text)
+        e_f32_f64 = re.search('func \$legalstub\$_add_f \(param \$*. f64\) \(param \$*. f64\) \(result f64\)', text)
+        e_i64_i64 = re.search('func \$_add_ll \(param \$*. i64\) \(param \$*. i64\) \(result i64\)', text)
         #print e_add_f32, i_i64_i32, i_f32_f64, i_i64_i64, i_f32_f32, e_i64_i32, e_f32_f64, e_i64_i64
         assert e_add_f32, 'add_f export missing'
         if js_ffi:

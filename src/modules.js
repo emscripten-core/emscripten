@@ -376,6 +376,7 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
+    'ENV',
     'FS',
     'FS_createFolder',
     'FS_createPath',

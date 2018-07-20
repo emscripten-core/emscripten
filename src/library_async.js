@@ -231,10 +231,18 @@ mergeInto(LibraryManager.library, {
   $EmterpreterAsync__deps: ['$Browser'],
   $EmterpreterAsync: {
     initted: false,
-    state: 0, // 0 - nothing/normal
-              // 1 - saving the stack: functions should all be in emterpreter, and should all save&exit/return
-              // 2 - restoring the stack: functions should all be in emterpreter, and should all restore&continue
-              // 3 - during sleep. this is between 1 and 2. at this time it is ok to call yield funcs
+    state: 0, // 0 - Nothing/normal.
+              // 1 - Sleeping: This is set when we start to save the stack, and continues through the
+              //     sleep, until we start to restore the stack.
+              //     If we enter a function while in this state - that is, before we
+              //     start to restore the stack, or in other words if we call a function while
+              //     sleeping - then we switch to state 3, "definitely sleeping". That lets us know
+              //     we are no longer saving the stack. How this works is that while we save the stack
+              //     we don't hit any function entries, so they are valid places to switch to state 3,
+              //     and then when we reach code later that checks if we need to save the stack, we
+              //     know we don't need to.
+              // 2 - Restoring the stack: On the way to resume normal execution.
+              // 3 - Definitely sleeping, that is, sleeping and after saving the stack.
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
@@ -251,8 +259,8 @@ mergeInto(LibraryManager.library, {
       this.initted = true;
 #if ASSERTIONS
       abortDecorators.push(function(output, what) {
-        if (EmterpreterAsync.state !== 0) {
-          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? You may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST.\nThis is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
+        if (EmterpreterAsync.state === 1 || EmterpreterAsync.state === 2) {
+          return output + '\nThis error happened during an emterpreter-async operation. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
         }
         return output;
       });
@@ -310,6 +318,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
           assert(stacktop === Module['stackSave']()); // nothing should have modified the stack meanwhile
 #endif
+          // we are now starting to restore the stack
           EmterpreterAsync.setState(2);
           // Resume the main loop
           if (Browser.mainLoop.func) {

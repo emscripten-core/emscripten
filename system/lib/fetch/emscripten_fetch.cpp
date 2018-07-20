@@ -14,6 +14,8 @@ struct __emscripten_fetch_queue
 	int queueSize;
 };
 
+static void fetch_free( emscripten_fetch_t *fetch );
+
 extern "C" {
 	void emscripten_start_fetch(emscripten_fetch_t *fetch);
 	__emscripten_fetch_queue *_emscripten_get_fetch_work_queue();
@@ -66,16 +68,67 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	}
 
 	emscripten_fetch_t *fetch = (emscripten_fetch_t *)malloc(sizeof(emscripten_fetch_t));
+	if (!fetch) return 0;
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
-	fetch->url = strdup(url); // TODO: free
-	fetch->__attributes = *fetch_attr;
-	fetch->__attributes.destinationPath = fetch->__attributes.destinationPath ? strdup(fetch->__attributes.destinationPath) : 0; // TODO: free
-	fetch->__attributes.userName = fetch->__attributes.userName ? strdup(fetch->__attributes.userName) : 0; // TODO: free
-	fetch->__attributes.password = fetch->__attributes.password ? strdup(fetch->__attributes.password) : 0; // TODO: free
-	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
-	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
+	fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
+	fetch->__attributes.attributes = fetch_attr->attributes;
+	fetch->__attributes.withCredentials = fetch_attr->withCredentials;
+	fetch->__attributes.requestData = fetch_attr->requestData;
+	fetch->__attributes.requestDataSize = fetch_attr->requestDataSize;
+	strcpy(fetch->__attributes.requestMethod, fetch_attr->requestMethod);
+	fetch->__attributes.onerror = fetch_attr->onerror;
+	fetch->__attributes.onsuccess = fetch_attr->onsuccess;
+	fetch->__attributes.onprogress = fetch_attr->onprogress;
+#define STRDUP_OR_ABORT(s, str_to_dup)		\
+	if (str_to_dup)							\
+	{										\
+		s = strdup(str_to_dup);				\
+		if (!s)								\
+		{									\
+			fetch_free(fetch);				\
+			return 0;						\
+		}									\
+	}
+	STRDUP_OR_ABORT(fetch->url, url);
+	STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->destinationPath);
+	STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
+	STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
+	STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
+	if (fetch_attr->requestHeaders)
+	{
+		size_t headersCount = 0;
+		while (fetch_attr->requestHeaders[headersCount]) ++headersCount;
+		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
+		if (!headers)
+		{
+			fetch_free(fetch);
+			return 0;
+		}
+		memset((void*)headers, 0, (headersCount + 1) * sizeof(const char*));
+
+		for (size_t i = 0; i < headersCount; ++i)
+		{
+			headers[i] = strdup(fetch_attr->requestHeaders[i]);
+			if (!headers[i])
+
+			{
+				for (size_t j = 0; j < i; ++j)
+				{
+					free((void*)headers[j]);
+				}
+				free((void*)headers);
+				fetch_free(fetch);
+				return 0;
+			}
+		}
+		headers[headersCount] = 0;
+		fetch->__attributes.requestHeaders = headers;
+	}
+
+#undef STRDUP_OR_ABORT
+
 
 #if __EMSCRIPTEN_PTHREADS__
 	const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
@@ -144,8 +197,25 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 		strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
 		fetch->__attributes.onerror(fetch);
 	}
+
+	fetch_free(fetch);
+	return EMSCRIPTEN_RESULT_SUCCESS;
+}
+
+static void fetch_free(emscripten_fetch_t *fetch)
+{
 	fetch->id = 0;
 	free((void*)fetch->data);
+	free((void*)fetch->url);
+	free((void*)fetch->__attributes.destinationPath);
+	free((void*)fetch->__attributes.userName);
+	free((void*)fetch->__attributes.password);
+	if(fetch->__attributes.requestHeaders)
+	{
+		for(size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i)
+			free((void*)fetch->__attributes.requestHeaders[i]);
+		free((void*)fetch->__attributes.requestHeaders);
+	}
+	free((void*)fetch->__attributes.overriddenMimeType);
 	free(fetch);
-	return EMSCRIPTEN_RESULT_SUCCESS;
 }

@@ -27,8 +27,6 @@ JAVA = 'java' # executable
 
 TEMP_DIR = '{{{ TEMP }}}'
 
-CRUNCH = os.path.expanduser(os.getenv('CRUNCH', 'crunch')) # executable
-
 #CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ########################################################################################################
@@ -37,13 +35,10 @@ CRUNCH = os.path.expanduser(os.getenv('CRUNCH', 'crunch')) # executable
 # Pick the JS engine to use for running the compiler. This engine must exist, or
 # nothing can be compiled.
 #
-# Recommendation: If you already have node installed, use that. Otherwise, build v8 or
-#                 spidermonkey from source. Any of these three is fine, as long as it's
-#                 a recent version (especially for v8 and spidermonkey).
+# This should be left on node.js, as that is the VM we test running the
+# compiler in. Other VMs may or may not work.
 
 COMPILER_ENGINE = NODE_JS
-#COMPILER_ENGINE = V8_ENGINE
-#COMPILER_ENGINE = SPIDERMONKEY_ENGINE
 
 
 # All JS engines to use when running the automatic tests. Not all the engines in this list

@@ -16,7 +16,7 @@ data downloads.
 
 Usage:
 
-  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
+  file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -25,14 +25,6 @@ Usage:
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
   --from-emcc Indicate that `file_packager.py` was called from `emcc.py` and will be further processed by it, so some code generation can be skipped here
-
-  --crunch=X Will compress dxt files to crn with quality level X. The crunch commandline tool must be present
-             and CRUNCH should be defined in ~/.emscripten that points to it. JS crunch decompressing code will
-             be added to convert the crn to dds in the browser.
-             crunch-worker.js will be generated in the current directory. You should include that file when
-             packaging your site.
-             DDS files will not be crunched if the .crn is more recent than the .dds. This prevents a lot of
-             unneeded computation.
 
   --js-output=FILE Writes output in FILE, if not specified, standard output is used.
 
@@ -60,9 +52,6 @@ Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
-
-TODO:        You can also provide .crn files yourself, pre-crunched. With this option, they will be decompressed
-             to dds files in the browser, exactly the same as if this tool compressed them.
 '''
 
 from __future__ import print_function
@@ -83,7 +72,7 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print('''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure] [--crunch[=X]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+  print('''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
 See the source for more details.''')
   sys.exit(0)
 
@@ -94,8 +83,6 @@ data_target = sys.argv[1]
 IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
 AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
 AUDIO_MIMETYPES = { 'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg' }
-CRUNCH_INPUT_SUFFIX = '.dds'
-CRUNCH_OUTPUT_SUFFIX = '.crn'
 
 DDS_HEADER_SIZE = 128
 
@@ -107,7 +94,6 @@ export_name = 'Module'
 leading = ''
 has_preloaded = False
 compress_cnt = 0
-crunch = 0
 plugins = []
 jsoutput = None
 from_emcc = False
@@ -163,14 +149,6 @@ for arg in sys.argv[2:]:
     leading = ''
   elif arg.startswith('--from-emcc'):
     from_emcc = True
-    leading = ''
-  elif arg.startswith('--crunch'):
-    try:
-      from tools.shared import CRUNCH
-    except Exception as e:
-      print('could not import CRUNCH (make sure it is defined properly in ' + shared.hint_config_file_location() + ')', file=sys.stderr)
-      raise e
-    crunch = arg.split('=', 1)[1] if '=' in arg else '128'
     leading = ''
   elif arg.startswith('--plugin'):
     plugin = open(arg.split('=', 1)[1], 'r').read()
@@ -329,66 +307,6 @@ for file_ in data_files:
 
 metadata = {'files': []}
 
-# Crunch files
-if crunch:
-  shutil.copyfile(shared.path_from_root('tools', 'crunch-worker.js'), 'crunch-worker.js')
-  ret += '''
-    var decrunchWorker = new Worker('crunch-worker.js');
-    var decrunchCallbacks = [];
-    decrunchWorker.onmessage = function(msg) {
-      decrunchCallbacks[msg.data.callbackID](msg.data.data);
-      console.log('decrunched ' + msg.data.filename + ' in ' + msg.data.time + ' ms, ' + msg.data.data.length + ' bytes');
-      decrunchCallbacks[msg.data.callbackID] = null;
-    };
-    function requestDecrunch(filename, data, callback) {
-      decrunchWorker.postMessage({
-        filename: filename,
-        data: new Uint8Array(data),
-        callbackID: decrunchCallbacks.length
-      });
-      decrunchCallbacks.push(callback);
-    }
-'''
-
-  for file_ in data_files:
-    if file_['dstpath'].endswith(CRUNCH_INPUT_SUFFIX):
-      src_dds_name = file_['srcpath']
-      src_crunch_name = unsuffixed(src_dds_name) + CRUNCH_OUTPUT_SUFFIX
-
-      # Preload/embed the .crn version instead of the .dds version, but use the .dds suffix for the target file in the virtual FS.
-      file_['srcpath'] = src_crunch_name
-
-      try:
-        # Do not crunch if crunched version exists and is more recent than dds source
-        crunch_time = os.stat(src_crunch_name).st_mtime
-        dds_time = os.stat(src_dds_name).st_mtime
-        if dds_time < crunch_time: continue
-      except:
-        pass # if one of them does not exist, continue on
-
-      # guess at format. this lets us tell crunch to not try to be clever and use odd formats like DXT5_AGBR
-      try:
-        format = run_process(['file', file_['srcpath']], stdout=PIPE).stdout
-        if 'DXT5' in format:
-          format = ['-dxt5']
-        elif 'DXT1' in format:
-          format = ['-dxt1']
-        else:
-          raise Exception('unknown format')
-      except:
-        format = []
-      Popen([CRUNCH, '-outsamedir', '-file', src_dds_name, '-quality', crunch] + format, stdout=sys.stderr).communicate()
-      #if not os.path.exists(os.path.basename(crunch_name)):
-      #  print >> sys.stderr, 'Failed to crunch, perhaps a weird dxt format? Looking for a source PNG for the DDS'
-      #  Popen([CRUNCH, '-file', unsuffixed(file_['srcpath']) + '.png', '-quality', crunch] + format, stdout=sys.stderr).communicate()
-      assert os.path.exists(src_crunch_name), 'crunch failed to generate output'
-      # prepend the dds header
-      crunched = open(src_crunch_name, 'rb').read()
-      c = open(src_crunch_name, 'wb')
-      c.write(open(src_dds_name, 'rb').read()[:DDS_HEADER_SIZE])
-      c.write(crunched)
-      c.close()
-
 # Set up folders
 partial_dirs = []
 for file_ in data_files:
@@ -437,10 +355,9 @@ if has_preloaded:
 
   # Data requests - for getting a block of data out of the big archive - have a similar API to XHRs
   code += '''
-    function DataRequest(start, end, crunched, audio) {
+    function DataRequest(start, end, audio) {
       this.start = start;
       this.end = end;
-      this.crunched = crunched;
       this.audio = audio;
     }
     DataRequest.prototype = {
@@ -453,9 +370,7 @@ if has_preloaded:
       send: function() {},
       onload: function() {
         var byteArray = this.byteArray.subarray(this.start, this.end);
-%s
-          this.finish(byteArray);
-%s
+        this.finish(byteArray);
       },
       finish: function(byteArray) {
         var that = this;
@@ -464,23 +379,10 @@ if has_preloaded:
       }
     };
 %s
-  ''' % ('' if not crunch else '''
-        if (this.crunched) {
-          var ddsHeader = byteArray.subarray(0, 128);
-          var that = this;
-          requestDecrunch(this.name, byteArray.subarray(128), function(ddsData) {
-            byteArray = new Uint8Array(ddsHeader.length + ddsData.length);
-            byteArray.set(ddsHeader, 0);
-            byteArray.set(ddsData, 128);
-            that.finish(byteArray);
-          });
-        } else {
-''', '' if not crunch else '''
-        }
-''', create_preloaded if use_preload_plugins else create_data, '''
+  ''' % (create_preloaded if use_preload_plugins else create_data, '''
         var files = metadata.files;
         for (var i = 0; i < files.length; ++i) {
-          new DataRequest(files[i].start, files[i].end, files[i].crunched, files[i].audio).open('GET', files[i].filename);
+          new DataRequest(files[i].start, files[i].end, files[i].audio).open('GET', files[i].filename);
         }
 ''' if not lz4 else '')
 
@@ -511,7 +413,6 @@ for file_ in data_files:
       'filename': file_['dstpath'],
       'start': file_['data_start'],
       'end': file_['data_end'],
-      'crunched': 1 if crunch and filename.endswith(CRUNCH_INPUT_SUFFIX) else 0,
       'audio': 1 if filename[-4:] in AUDIO_SUFFIXES else 0,
     })
   else:
@@ -824,14 +725,6 @@ ret += '''
     if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
   }
-'''
-
-if crunch:
-  ret += '''
-  if (!Module['postRun']) Module['postRun'] = [];
-  Module["postRun"].push(function() {
-    decrunchWorker.terminate();
-  });
 '''
 
 ret += '''%s

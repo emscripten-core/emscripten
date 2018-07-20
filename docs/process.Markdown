@@ -39,5 +39,4 @@ Requirements:
 How:
 
  * First, follow all the steps for a minor version update.
- * Also merge the `incoming` branch to `master`.
-
+ * Also merge the `incoming` branch to `master`. This should not be done immediately, rather first we should at minimum see that CI and new builds are all green. If a problem occurs, we may only merge to master the minor version update that fixes things.

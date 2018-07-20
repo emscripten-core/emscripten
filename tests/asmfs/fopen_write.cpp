@@ -8,8 +8,14 @@ void create_file()
 {
   FILE *file = fopen("hello_file.txt", "wb");
   assert(file);
-  const char *data = "Hello data!";
+  const char *data = "Hello world";
+  const char *data2 = "da";
+  const char *data3 = "ta!";
   fwrite(data, 1, strlen(data), file);
+  fseek(file, 8, SEEK_SET);
+  fwrite(data3, 1, strlen(data3), file);
+  fseek(file, 6, SEEK_SET);
+  fwrite(data2, 1, strlen(data2), file);
   fclose(file);
 }
 

@@ -35,7 +35,7 @@ import logging
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
-from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess
+from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error
 from tools.response_file import substitute_response_files
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
@@ -110,11 +110,6 @@ EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS') # Additional compiler flags that we 
 
 # Target options
 final = None
-
-
-def exit_with_error(message):
-  logging.error(message)
-  sys.exit(1)
 
 
 class Intermediate(object):
@@ -806,7 +801,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if not arg.startswith('-'):
           if not os.path.exists(arg):
-            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)' % (arg, arg))
+            exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
 
           arg_ending = filename_type_ending(arg)
           if arg_ending.endswith(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS) or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
@@ -858,12 +853,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # (4, a), (4.25, b), (4.5, c), (4.75, d)
           link_flags_to_add = arg.split(',')[1:]
           for flag_index, flag in enumerate(link_flags_to_add):
-            # Only keep flags that shared.Building.link knows how to deal with.
-            # We currently can't handle flags with options (like
-            # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
-            # flag).
-            if flag in SUPPORTED_LINKER_FLAGS:
-              link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+
           newargs[i] = ''
 
       original_input_files = input_files[:]
@@ -970,11 +961,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         try:
           setattr(shared.Settings, key, parse_value(value))
         except Exception as e:
-          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s' % (change, str(e)))
+          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
         if key == 'EXPORTED_FUNCTIONS':
           # used for warnings in emscripten.py
           shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+
+      shared.verify_settings()
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -1009,6 +1002,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
         assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
       except Exception as e:
+        logging.error('Compiler settings error: {}'.format(e))
         exit_with_error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
 
       assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
@@ -1249,7 +1243,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
-        shared.Settings.WASM = 1
 
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
@@ -1540,10 +1533,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
+      stop_at_bitcode = final_suffix not in EXECUTABLE_SUFFIXES
+
+      if stop_at_bitcode or not shared.Settings.WASM_BACKEND:
+        # Filter link flags, keeping only those that shared.Building.link knows
+        # how to deal with.  We currently can't handle flags with options (like
+        # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
+        # flag).
+        link_flags = [f for f in link_flags if f[1] in SUPPORTED_LINKER_FLAGS]
+
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
       # If we were just asked to generate bitcode, stop there
-      if final_suffix not in EXECUTABLE_SUFFIXES:
+      if stop_at_bitcode:
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for tempf, inputf in zip(temp_files, input_files):
@@ -1574,10 +1576,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # Sort arg tuples and pass the extracted values to link.
             shared.Building.link(linker_inputs, specified_target)
         logging.debug('stopping at bitcode')
+        if shared.Settings.SIDE_MODULE:
+          exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode. That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an LLVM bitcode file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ['so', 'dylib', 'dll']:
-          logging.warning('Dynamic libraries (.so, .dylib, .dll) are currently not supported by Emscripten. For build system emulation purposes, Emscripten' +
-                          ' will now generate a static library file (.bc) with the suffix \'.' + final_suffix + '\'. For best practices,' +
-                          ' please adapt your build system to directly generate a static LLVM bitcode library by setting the output suffix to \'.bc.\')')
+          logging.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a file with LLVM bitcode, \'.bc\', which would avoid this warning.)')
         return 0
 
     # exit block 'process inputs'
@@ -2313,6 +2315,14 @@ def parse_args(newargs):
         exit_with_error('Invalid value "' + newargs[i + 1] + '" to --output_eol!')
       newargs[i] = ''
       newargs[i + 1] = ''
+    elif newargs[i] == '--generate-config':
+      optarg = newargs[i + 1]
+      path = os.path.expanduser(optarg)
+      if os.path.exists(path):
+        exit_with_error('File ' + optarg + ' passed to --generate-config already exists!')
+      else:
+        shared.generate_config(optarg)
+      should_exit = True
 
   if should_exit:
     sys.exit(0)

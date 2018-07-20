@@ -28,6 +28,12 @@ def wipe():
   try_delete(CONFIG_FILE)
   try_delete(SANITY_FILE)
 
+
+def add_to_config(content):
+  with open(CONFIG_FILE, 'a') as f:
+    f.write(content + '\n')
+
+
 def mtime(filename):
   return os.stat(filename).st_mtime
 
@@ -233,6 +239,25 @@ class sanity(RunnerCore):
             assert LLVM_WARNING not in output, output
     finally:
       del os.environ['EM_IGNORE_SANITY']
+
+  def test_emscripten_root(self):
+    # The correct path
+    restore_and_set_up()
+    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root())
+    self.check_working(EMCC)
+
+    # The correct path with extra stuff
+    restore_and_set_up()
+    add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
+    self.check_working(EMCC)
+
+    restore_and_set_up()
+    add_to_config("EMSCRIPTEN_ROOT = '/bad/path'")
+    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
+
+    restore_and_set_up()
+    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root('x'))
+    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
 
   def test_llvm_fastcomp(self):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
