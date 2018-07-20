@@ -9,6 +9,7 @@ import argparse
 from collections import OrderedDict
 import json
 import logging
+from math import floor, log
 import os
 import re
 from subprocess import Popen, PIPE
@@ -149,9 +150,28 @@ def read_dwarf_entries(wasm, options):
       file_path = (dir + '/' if dir != '' else '') + file.group(2)
       files[file.group(1)] = file_path
 
-    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)", line_chunk):
-      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)]}
+    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
+      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
       entries.append(entry)
+
+  # Remove dead functions' data. It is a heuristics to ignore data if the
+  # function starting address near to 0 (is equal to its size field length).
+  block_start = 0
+  cur_entry = 0
+  while cur_entry < len(entries):
+    if not entries[cur_entry]['eos']:
+      cur_entry += 1
+      continue
+    fn_start = entries[block_start]['address']
+    fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
+    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
+    if fn_start < min_live_offset:
+      # Remove dead code debug info block.
+      del entries[block_start:cur_entry + 1]
+      cur_entry = block_start
+      continue
+    cur_entry += 1
+    block_start = cur_entry
 
   return entries
 
