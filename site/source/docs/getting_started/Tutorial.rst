@@ -74,7 +74,11 @@ Emscripten can also generate HTML for testing embedded JavaScript. To generate H
 
     ./emcc tests/hello_world.c -o hello.html
 
-Open the web page in a web browser. As you can see, the framework defines a text area for displaying the output of the ``printf()`` calls in the native code.
+You can now open ``hello.html`` in a web browser.
+
+.. note:: Unfortunately several browsers (including *Chrome*, *Safari*, and *Internet Explorer*) do not support ``file://`` :term:`XHR` requests, and can't load extra files needed by the HTML (like a ``.wasm`` file, or packaged file data as mentioned lower down). For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
+
+Once you have the HTML loaded in your browser, you'll see a text area for displaying the output of the ``printf()`` calls in the native code.
 
 The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
 
@@ -119,9 +123,7 @@ The following command is used to specify a data file to :ref:`preload <emcc-prel
     ./emcc tests/hello_world_file.cpp -o hello.html --preload-file tests/hello_world_file.txt
 	
 
-Run the above command, then open **hello.html** in the *Firefox web browser* to see the data from **hello_world_file.txt** being displayed. 
-
-.. note:: Unfortunately *Chrome* and *Internet Explorer* do not support ``file://`` :term:`XHR` requests, and can't directly load the local file in which preloaded data is stored. For these browsers you'll need to serve the files using a webserver. The easiest way to do this is to use the python **SimpleHTTPServer** (in the current directory do ``python -m SimpleHTTPServer 8080`` and then open ``http://localhost:8080/hello.html``).
+Run the above command, then open **hello.html** in a web browser to see the data from **hello_world_file.txt** being displayed.
 
 For more information about working with the file system see the :ref:`file-system-overview`, :ref:`Filesystem-API` and :ref:`Synchronous-virtual-XHR-backed-file-system-usage`.
 
