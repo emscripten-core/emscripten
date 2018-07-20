@@ -27,7 +27,7 @@ When generating only JavaScript (as opposed to HTML), no ``Module`` object is cr
 	::
 
 		var Module = {
-		  'print': function(text) { alert('stdout: ' + text) }
+		  'print': function(text) { alert('stdout: ' + text) },
 		  'printErr': function(text) { alert('stderr: ' + text) }
 		};
 
