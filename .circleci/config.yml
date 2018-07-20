@@ -62,7 +62,10 @@ jobs:
           EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
           python3 emscripten/tests/runner.py test_hello_world
           mkdir tmp-firefox-profile/
-          echo 'user_pref("javascript.options.shared_memory", true);' >> tmp-firefox-profile/user.js
+          cat > tmp-firefox-profile/user.js <<EOF
+          user_pref("gfx.offscreencanvas.enabled", true);
+          user_pref("javascript.options.shared_memory", true);
+          EOF
 
           # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
           mkdir -p .config/X11
@@ -143,7 +146,11 @@ jobs:
       # initial position of the mouse pointer relative to the canvas.
       # browser.test_html5_webgl_create_context is skipped because
       # anti-aliasing is not well supported.
-      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context
+      # browser.test_webgl_offscreen_canvas_in_pthread and
+      # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+      # are crashing Firefox (bugzil.la/1281796). The former case is
+      # further blocked by issue #6897.
+      - TEST_TARGET=browser skip:browser.test_sdl_ttf_render_text_solid skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
       # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
       - TEST_DEPENDENCY=dbus-x11 firefox menu openbox xinit xserver-xorg xserver-xorg-video-dummy
       - EMSCRIPTEN_BROWSER=firefox -profile tmp-firefox-profile/
