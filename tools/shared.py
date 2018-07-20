@@ -2304,8 +2304,10 @@ class Building(object):
 
   @staticmethod
   def is_wasm_only():
+    # not even wasm, much less wasm-only
     if not Settings.WASM:
       return False
+    # llvm backend can only ever produce wasm
     if Settings.WASM_BACKEND:
       return True
     # fastcomp can emit wasm-only code.
