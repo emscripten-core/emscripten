@@ -614,9 +614,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
 
-  # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
-  # Here, just ensure that it's in the cache.
-  if shared.Settings.WASM and shared.Settings.WASM_BACKEND:
+  if shared.Settings.WASM_BACKEND:
     ret.append(shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a'))
     ret.append(shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a'))
 
