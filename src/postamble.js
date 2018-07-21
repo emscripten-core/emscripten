@@ -45,7 +45,9 @@ if (memoryInitializer) {
     } else if (Module['memoryInitializerPrefixURL']) {
       memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
     }
+    memoryInitializer = joinUrl(Module['scriptDirectory'], memoryInitializer);
   }
+
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
     HEAPU8.set(data, GLOBAL_BASE);

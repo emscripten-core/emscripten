@@ -2713,6 +2713,8 @@ def generate_html(target, options, js_target, target_basename,
           } else if (Module['memoryInitializerPrefixURL']) {
             memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
           }
+          // If URL to memory initializer is relative, treat it relative with respect to Module['scriptDirectory'], if that is present.
+          if (Module['scriptDirectory'] && !/^(?:[a-z]+:)?[\/\\\\]\/?/i.test(memoryInitializer)) memoryInitializer = Module['scriptDirectory'] + memoryInitializer;
           Module['memoryInitializerRequestURL'] = memoryInitializer;
           var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
           meminitXHR.open('GET', memoryInitializer, true);
