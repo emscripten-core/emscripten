@@ -57,6 +57,17 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 	.. note:: ``prefix`` might be an empty string, if ``locateFile`` is called before we load the main JavaScript. For example, that can happen if a file package or a mememory initializer file are loaded beforehand (perhaps from the HTML, before it loads the main JavaScript).
 
+	.. note:: Several ``Module.*PrefixURL`` options have been deprecated in favor of ``locateFile``, which includes ``memoryInitializerPrefixURL``, ``pthreadMainPrefixURL``, ``cdInitializerPrefixURL``, ``filePackagePrefixURL``. To update your code, for example if you used ``Module.memoryInitializerPrefixURL`` equal to ``"https://mycdn.com/memory-init-dir/"``, then you can replace that with something like
+
+	::
+
+		Module['locateFile'] = function(path, prefix) {
+		  // if it's a mem init file, use a custom dir
+		  if (path.endsWith(".mem")) return "https://mycdn.com/memory-init-dir/" + path;
+		  // otherwise, use the default, the prefix (JS file's dir) + the path
+		  return prefix + path;
+		}
+
 .. js:attribute:: Module.logReadFiles
 
 	If set, stderr will log when any file is read.
