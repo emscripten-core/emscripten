@@ -500,7 +500,7 @@ If manually bisecting:
     open(os.path.join(self.get_dir(), 'subdirr', 'data1.txt'), 'w').write('''1214141516171819''')
     # change the file package base dir to look in a "cdn". note that normally you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "cdn/", '))
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
       #include <stdio.h>
       #include <string.h>
@@ -555,7 +555,7 @@ If manually bisecting:
               setTimeout(function() { window.close() }, 1000);
             }
             var Module = {
-              filePackagePrefixURL: "''' + assetLocalization + r'''",
+              locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {
                 var element = document.getElementById('output');
                 return function(text) { element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';};
@@ -588,8 +588,8 @@ If manually bisecting:
     test()
 
 
-    # TODO: CORS, test using a full url for filePackagePrefixURL
-    #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { filePackagePrefixURL: "http:/localhost:8888/cdn/", '))
+    # TODO: CORS, test using a full url for locateFile
+    #open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     #test()
 
   def test_sdl_swsurface(self):
@@ -3459,8 +3459,8 @@ window.close = function() {
       }
     '''))
 
-    # Test that it is possible to define "Module.pthreadMainPrefixURL" string to locate where pthread-main.js will be loaded from.
-    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { pthreadMainPrefixURL: "cdn/", '))
+    # Test that it is possible to define "Module.locateFile" string to locate where pthread-main.js will be loaded from.
+    open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html']).communicate()
     shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
     self.run_browser('test.html', '', '/report_result?1')
@@ -3750,7 +3750,7 @@ window.close = function() {
   def test_fetch_cached_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
     self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0'])
-    
+
   # Tests that response headers get set on emscripten_fetch_t values.
   def test_fetch_response_headers(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
@@ -3936,3 +3936,39 @@ window.close = function() {
     open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
     subprocess.check_output([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-o', 'test.html'])
     self.run_browser('test.html', None, '/report_result?0')
+
+  # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
+  def test_browser_run_from_different_directory(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    open('test.c', 'w').write(self.with_report_result(src))
+    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.html', '-O3']).communicate()
+
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
+    shutil.move('test.js', os.path.join('subdir', 'test.js'))
+    shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
+    src = open('test.html').read()
+    # Make sure JS is loaded from subdirectory
+    open('test-subdir.html', 'w').write(src.replace('test.js', 'subdir/test.js'))
+
+    self.run_browser('test-subdir.html', None, '/report_result?0')
+
+  # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-s MODULARIZE=1`
+  def test_browser_run_from_different_directory_async(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    open('test.c', 'w').write(self.with_report_result(src))
+    # compile the code with the modularize feature and the preload-file option enabled
+    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1', '-O3']).communicate()
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
+    shutil.move('test.js', os.path.join('subdir', 'test.js'))
+    shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
+    # Make sure JS is loaded from subdirectory
+    open('test-subdir.html', 'w').write('''
+      <script src="subdir/test.js"></script>
+      <script>
+        Module();
+      </script>
+    ''')
+
+    self.run_browser('test-subdir.html', None, '/report_result?0')

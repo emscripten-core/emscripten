@@ -5112,7 +5112,7 @@ main(const int argc, const char * const * const argv)
       do('normal', [])
       do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
-      assert abs(sizes['no_nuthin'] - sizes['normal']) < 10
+      assert abs(sizes['no_nuthin'] - sizes['normal']) < 15
       assert sizes['no_nuthin'] < absolute
     test(['-s', 'ASSERTIONS=0'], 95000) # we don't care about code size with assertions
     test(['-O1'], 80000)
@@ -8539,3 +8539,11 @@ T3:(else) NO_EXIT_RUNTIME >= 2
 T4:NO_EXIT_RUNTIME > 1
 T5:NO_EXIT_RUNTIME
 T6:(else) !NO_EXIT_RUNTIME""", output)
+
+  # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
+  def test_node_js_run_from_different_directory(self):
+      if not os.path.exists('subdir'):
+          os.mkdir('subdir')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '-O3'])
+      ret = run_process(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
+      assert 'hello, world!' in ret

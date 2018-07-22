@@ -2602,7 +2602,10 @@ def modularize():
 %(src)s
 
   return %(EXPORT_NAME)s;
-}%(instantiate)s;
+};
+%(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
+  _currentScript: typeof document !== 'undefined' ? document.currentScript : undefined
+})%(instantiate)s;
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
@@ -2708,11 +2711,7 @@ def generate_html(target, options, js_target, target_basename,
       script.un_src()
       script.inline = ('''
           var memoryInitializer = '%s';
-          if (typeof Module['locateFile'] === 'function') {
-            memoryInitializer = Module['locateFile'](memoryInitializer);
-          } else if (Module['memoryInitializerPrefixURL']) {
-            memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-          }
+          memoryInitializer = Module['locateFile'] ? Module['locateFile'](memoryInitializer, '') : memoryInitializer;
           Module['memoryInitializerRequestURL'] = memoryInitializer;
           var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
           meminitXHR.open('GET', memoryInitializer, true);
