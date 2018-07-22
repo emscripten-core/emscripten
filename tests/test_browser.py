@@ -3952,3 +3952,23 @@ window.close = function() {
     open('test-subdir.html', 'w').write(src.replace('test.js', 'subdir/test.js'))
 
     self.run_browser('test-subdir.html', None, '/report_result?0')
+
+  # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-s MODULARIZE=1`
+  def test_browser_run_from_different_directory_async(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    open('test.c', 'w').write(self.with_report_result(src))
+    # compile the code with the modularize feature and the preload-file option enabled
+    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1', '-O3']).communicate()
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
+    shutil.move('test.js', os.path.join('subdir', 'test.js'))
+    shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
+    # Make sure JS is loaded from subdirectory
+    open('test-subdir.html', 'w').write('''
+      <script src="subdir/test.js"></script>
+      <script>
+        Module();
+      </script>
+    ''')
+
+    self.run_browser('test-subdir.html', None, '/report_result?0')
