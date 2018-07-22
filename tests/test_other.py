@@ -8542,8 +8542,9 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
 
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   def test_node_js_run_from_different_directory(self):
-      if not os.path.exists('subdir'):
-          os.mkdir('subdir')
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '-O3'])
-      ret = run_process(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
-      assert 'hello, world!' in ret
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'a.js'), '-O3'])
+    ret = run_process(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
+    self.assertContained('hello, world!', ret)
+
