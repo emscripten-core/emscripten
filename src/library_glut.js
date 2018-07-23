@@ -565,13 +565,13 @@ var LibraryGLUT = {
       stencil: ((GLUT.initDisplayMode & 0x0020 /*GLUT_STENCIL*/) != 0),
       alpha: ((GLUT.initDisplayMode & 0x0008 /*GLUT_ALPHA*/) != 0)
     };
-    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-    return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
+    Module['ctx'] = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+    return Module['ctx'] ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },
 
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: function(name) {
-    Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+    Module['ctx'] = Browser.destroyContext(Module['canvas'], true, true);
     return 1;
   },
 

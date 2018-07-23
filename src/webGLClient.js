@@ -266,7 +266,7 @@ function WebGLClient() {
   };
 
   function renderCommands(buf) {
-    ctx = Module.ctx;
+    ctx = Module['ctx'];
     i = 0;
     buffer = buf;
     var len = buffer.length;

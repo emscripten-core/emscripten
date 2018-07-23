@@ -296,7 +296,7 @@ var LibraryBrowser = {
     },
 
     createContext: function(canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Module['ctx'] && canvas == Module.canvas) return Module['ctx']; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -326,7 +326,7 @@ var LibraryBrowser = {
       if (setInModule) {
         if (!useWebGL) assert(typeof GLctx === 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 
-        Module.ctx = ctx;
+        Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
@@ -1191,7 +1191,7 @@ var LibraryBrowser = {
       }
 #endif
 
-      if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
+      if (Browser.mainLoop.method === 'timeout' && Module['ctx']) {
         err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }

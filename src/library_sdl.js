@@ -3421,7 +3421,7 @@ var LibrarySDL = {
   SDL_GL_ExtensionSupported__proxy: 'sync',
   SDL_GL_ExtensionSupported__sig: 'ii',
   SDL_GL_ExtensionSupported: function(extension) {
-    return Module.ctx.getExtension(extension) | 0;
+    return Module['ctx'].getExtension(extension) | 0;
   },
 
   SDL_DestroyWindow: function(window) {},
