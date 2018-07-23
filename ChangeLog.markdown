@@ -10,9 +10,11 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
- - Fix `Module.locateFile` to resolve relative paths to *.wasm, *.mem and other files relatively to JavaScript file rather than current working directory
- - Add second argument `prefix` to `Module.locateFile` function that contains path to JavaScript file where files are loaded from by default
- - Remove `Module.*PrefixURL` APIs (use `Module.locateFile` instead)
+v1.38.9: 07/22/2018
+-------------------
+ - Fix `Module.locateFile` to resolve relative paths to *.wasm, *.mem and other files relatively to the main JavaScript file rather than the current working directory (see #5368).
+   - Add second argument `prefix` to `Module.locateFile` function that contains path to JavaScript file where files are loaded from by default.
+   - Remove `Module.*PrefixURL` APIs (use `Module.locateFile` instead).
 
 v1.38.8: 07/06/2018
 -------------------
