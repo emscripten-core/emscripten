@@ -2604,7 +2604,7 @@ def modularize():
   return %(EXPORT_NAME)s;
 };
 %(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
-  _currentScript: typeof document !== 'undefined' ? document.currentScript : undefined
+  _currentScript: typeof document !== 'undefined' ? document.currentScript.src : undefined
 })%(instantiate)s;
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
