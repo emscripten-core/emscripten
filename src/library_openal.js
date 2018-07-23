@@ -499,16 +499,6 @@ var LibraryOpenAL = {
       }
     },
 
-    inverseMagnitude: function(x, y, z) {
-      var length = Math.sqrt(x * x + y * y + z * z);
-
-      if (length < Number.EPSILON) {
-        return 0.0;
-      }
-
-      return 1.0 / length;
-    },
-
     updateSourceSpace: function(src) {
       if (!src.panner) {
         return;
@@ -549,14 +539,24 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
+        function inverseMagnitude(x, y, z) {
+          var length = Math.sqrt(x * x + y * y + z * z);
+
+          if (length < Number.EPSILON) {
+            return 0.0;
+          }
+
+          return 1.0 / length;
+        }
+
         // Normalize the Back vector
-        var invMag = AL.inverseMagnitude(lBackX, lBackY, lBackZ);
+        var invMag = inverseMagnitude(lBackX, lBackY, lBackZ);
         lBackX *= invMag;
         lBackY *= invMag;
         lBackZ *= invMag;
 
         // ...and the Up vector
-        var invMag = AL.inverseMagnitude(lUpX, lUpY, lUpZ);
+        var invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
         lUpX *= invMag;
         lUpY *= invMag;
         lUpZ *= invMag;
@@ -567,7 +567,7 @@ var LibraryOpenAL = {
         var lRightZ = (lUpX * lBackY - lUpY * lBackX);
 
         // Back and Up might not be exactly perpendicular, so the cross product also needs normalization
-        var invMag = AL.inverseMagnitude(lRightX, lRightY, lRightZ);
+        var invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
         lRightX *= invMag;
         lRightY *= invMag;
         lRightZ *= invMag;
