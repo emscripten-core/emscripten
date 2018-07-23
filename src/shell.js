@@ -230,8 +230,13 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WEB) {
-    // We do this for `-s MODULARIZE=1` where at the time when this code runs document.currentScript might already be unavailable
+#if MODULARIZE
+    // When MODULARIZE, this JS may be executed later, after document.currentScript is gone, so we send it
+    // using this._currentScript.
     var currentScript = this['_currentScript'] || document.currentScript;
+#else
+    var currentScript = document.currentScript;
+#endif
     if (currentScript.src.indexOf('blob:') !== 0) {
       scriptDirectory = currentScript.src.split('/').slice(0, -1).join('/') + '/';
     }
