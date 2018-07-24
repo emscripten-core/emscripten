@@ -2499,7 +2499,7 @@ done.
 
     run_process([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1'])
     output = run_js('a.out.js')
-    self.assertContained('''operator new(unsigned int)
+    self.assertContained('''operator new(unsigned long)
 _main
 f2()
 abcdabcdabcd(int)
