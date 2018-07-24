@@ -573,7 +573,7 @@ var LibraryGL = {
     makeContextCurrent: function(contextHandle) {
       var context = GL.contexts[contextHandle];
       if (!context) return false;
-      GLctx = Module['ctx'] = context.GLctx; // Active WebGL context object.
+      GLctx = Module.ctx = context.GLctx; // Active WebGL context object.
       GL.currentContext = context; // Active Emscripten GL layer context object.
       return true;
     },

@@ -996,11 +996,11 @@ var LibraryGLFW = {
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
           alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
-        Module['ctx'] = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+        Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module['ctx']) return 0;
+      if (!Module.ctx) return 0;
 
       // Get non alive id
       var win = new GLFW.Window(id, width, height, title, monitor, share);
@@ -1033,7 +1033,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module['ctx'] = Browser.destroyContext(Module['canvas'], true, true);
+      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     },
 
     swapBuffers: function(winid) {
