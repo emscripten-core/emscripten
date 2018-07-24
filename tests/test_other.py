@@ -2473,7 +2473,7 @@ done.
         two(x % 17);
       }
       int main() {
-        EM_ASM(out(demangle('__Znwj'))); // check for no aborts
+        EM_ASM(out(demangle('__Znwm'))); // check for no aborts
         EM_ASM(out(demangle('_main')));
         EM_ASM(out(demangle('__Z2f2v')));
         EM_ASM(out(demangle('__Z12abcdabcdabcdi')));
