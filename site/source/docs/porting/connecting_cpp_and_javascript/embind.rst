@@ -65,11 +65,18 @@ or via a ``<script>`` tag:
 
     <!doctype html>
     <html>
-      <script src="quick_example.js"></script>
       <script>
-        console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+        var Module = {
+          onRuntimeInitialized: function() {
+            console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+          }
+        };
       </script>
+      <script src="quick_example.js"></script>
     </html>
+
+.. note:: We use the ``onRuntimeInitialized`` callback to run code when the runtime is ready, which is an asynchronous operation (in order to compile WebAssembly).
+.. note:: Open the developer tools console to see the output of ``console.log``.
 
 The code in an :cpp:func:`EMSCRIPTEN_BINDINGS` block runs when the JavaScript
 file is initially loaded (at the same time as the global constructors). The
