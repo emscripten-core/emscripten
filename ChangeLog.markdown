@@ -10,6 +10,10 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+v1.38.10: 07/23/2018
+--------------------
+ - Change the type of `size_t` and friends from int to long. This may have noticeable effects if you depend on the name mangling of a function that uses `size_t` (like in `EXPORTED_FUNCTIONS`), and you must rebuild source files to bitcode (so your bitcode is in sync with the system libraries after they are rebuilt with this change). Otherwise this should not have any noticeable effects for users. See #5916.
+
 v1.38.9: 07/22/2018
 -------------------
  - Fix `Module.locateFile` to resolve relative paths to *.wasm, *.mem and other files relatively to the main JavaScript file rather than the current working directory (see #5368).
