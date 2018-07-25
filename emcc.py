@@ -322,6 +322,40 @@ def embed_memfile(options):
   return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not use_source_map(options)))
 
 
+def apply_settings(changes):
+  """Take a list of settings in form `NAME=VALUE` and apply them to the global
+  Settings object.
+  """
+
+  for change in changes:
+    key, value = change.split('=', 1)
+
+    # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
+    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
+               'SPLIT_MEMORY', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
+      value = str(shared.expand_byte_size_suffixes(value))
+
+    original_exported_response = False
+
+    if value[0] == '@':
+      if key not in DEFERRED_REPONSE_FILES:
+        if key == 'EXPORTED_FUNCTIONS':
+          original_exported_response = value
+        value = open(value[1:]).read()
+      else:
+        value = '"' + value + '"'
+    else:
+      value = value.replace('\\', '\\\\')
+    try:
+      setattr(shared.Settings, key, parse_value(value))
+    except Exception as e:
+      exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    if key == 'EXPORTED_FUNCTIONS':
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+
+
 #
 # Main run() function
 #
@@ -756,11 +790,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       settings_key_changes = set()
 
       def setting_sub(s):
-        key, rest = s.split('=', 1)
+        key, value = s.split('=', 1)
         settings_key_changes.add(key)
-        return '='.join([settings_aliases.get(key, key), rest])
+        return '='.join([settings_aliases.get(key, key), value])
 
-      settings_changes = list(map(setting_sub, settings_changes))
+      settings_changes = [setting_sub(c) for c in settings_changes]
 
       # Find input files
 
@@ -940,32 +974,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
 
       # Apply -s settings in newargs here (after optimization levels, so they can override them)
-      for change in settings_changes:
-        key, value = change.split('=', 1)
-
-        # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-        if key in ['TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE', 'SPLIT_MEMORY', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE']:
-          value = str(shared.expand_byte_size_suffixes(value))
-
-        original_exported_response = False
-
-        if value[0] == '@':
-          if key not in DEFERRED_REPONSE_FILES:
-            if key == 'EXPORTED_FUNCTIONS':
-              original_exported_response = value
-            value = open(value[1:]).read()
-          else:
-            value = '"' + value + '"'
-        else:
-          value = value.replace('\\', '\\\\')
-        try:
-          setattr(shared.Settings, key, parse_value(value))
-        except Exception as e:
-          exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
-
-        if key == 'EXPORTED_FUNCTIONS':
-          # used for warnings in emscripten.py
-          shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+      apply_settings(settings_changes)
 
       shared.verify_settings()
 

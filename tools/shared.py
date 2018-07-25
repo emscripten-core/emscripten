@@ -1916,13 +1916,6 @@ class Building(object):
 
   @staticmethod
   def link_lld(files, target, opts=[], lto_level=0):
-    def wasm_rt_fail(archive_file):
-      def wrapped():
-        raise FatalError('Expected {} to already be built'.format(archive_file))
-      return wrapped
-
-    libc_rt_lib = Cache.get('wasm_libc_rt.a', wasm_rt_fail('wasm_libc_rt.a'), 'a')
-    compiler_rt_lib = Cache.get('wasm_compiler_rt.a', wasm_rt_fail('wasm_compiler_rt.a'), 'a')
     cmd = [
         WASM_LD,
         '-z',
@@ -1937,7 +1930,7 @@ class Building(object):
         '--export',
         '__wasm_call_ctors',
         '--lto-O%d' % lto_level,
-    ] + files + [libc_rt_lib, compiler_rt_lib]
+    ] + files
 
     if Settings.WASM_MEM_MAX != -1:
       cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)

@@ -201,7 +201,7 @@ void http::onLoaded(const char* file) {
 			char* data = new char[size];
 			fread(data,size,1,f);
 			_content = data;
-			delete data;
+			delete[] data;
 			fclose(f);
 		} else {
 			_content = file;

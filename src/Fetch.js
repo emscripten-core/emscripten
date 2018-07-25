@@ -81,14 +81,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = db;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#else
-      if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) removeRunDependency('library_fetch_init');
-#endif
     };
     var onerror = function() {
 #if FETCH_DEBUG
@@ -96,12 +94,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = false;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#endif
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 

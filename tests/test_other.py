@@ -2473,7 +2473,7 @@ done.
         two(x % 17);
       }
       int main() {
-        EM_ASM(out(demangle('__Znwj'))); // check for no aborts
+        EM_ASM(out(demangle('__Znwm'))); // check for no aborts
         EM_ASM(out(demangle('_main')));
         EM_ASM(out(demangle('__Z2f2v')));
         EM_ASM(out(demangle('__Z12abcdabcdabcdi')));
@@ -2499,7 +2499,7 @@ done.
 
     run_process([PYTHON, EMCC, 'src.cpp', '-s', 'DEMANGLE_SUPPORT=1'])
     output = run_js('a.out.js')
-    self.assertContained('''operator new(unsigned int)
+    self.assertContained('''operator new(unsigned long)
 _main
 f2()
 abcdabcdabcd(int)
