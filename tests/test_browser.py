@@ -3972,3 +3972,34 @@ window.close = function() {
     ''')
 
     self.run_browser('test-subdir.html', None, '/report_result?0')
+
+  # Similar to `test_browser_run_from_different_directory`, but
+  # also also we eval the initial code, so currentScript is not present. That prevents us
+  # from finding the file in a subdir, but here we at least check we do not regress compared to the
+  # normal case of finding in the current dir.
+  # In addition, check for new Module(), which overrides the bind() and replaces the object
+  # which saved the _scriptDir. Again, we can't get the script dir that way, but at least we
+  # should not regress compared to the normal case.
+  def test_browser_modularize_no_current_script(self):
+    src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+    open('test.c', 'w').write(self.with_report_result(src))
+    # compile the code with the modularize feature and the preload-file option enabled
+    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1']).communicate()
+    for creation in (
+      'Module();',
+      'new Module();'
+    ):
+      print(creation)
+      open('test.html', 'w').write('''
+        <script>
+          setTimeout(function() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'test.js', false);
+            xhr.send(null);
+            eval(xhr.responseText);
+            %s
+          }, 1);
+        </script>
+      ''' % creation)
+      self.run_browser('test.html', None, '/report_result?0')
+

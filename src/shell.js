@@ -233,16 +233,16 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     if (document.currentScript) {
       scriptDirectory = document.currentScript.src;
     }
-#if MODULARIZE
-    // When MODULARIZE, this JS may be executed later, after document.currentScript
-    // is gone, so we saved it, and we use it here instead of any other info.
-    if (Module['_currentScript']) {
-      scriptDirectory = Module['_currentScript'].src;
-    }
-#endif
   } else { // worker
     scriptDirectory = self.location.href;
   }
+#if MODULARIZE
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
+  // is gone, so we saved it, and we use it here instead of any other info.
+  if (this['_scriptDir']) {
+    scriptDirectory = this['_scriptDir'];
+  }
+#endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
   // otherwise, slice off the final part of the url to find the script directory.
   if (scriptDirectory.indexOf('blob:') !== 0) {
