@@ -2603,9 +2603,9 @@ def modularize():
 
   return %(EXPORT_NAME)s;
 };
-%(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
-  _currentScript: typeof document !== 'undefined' ? document.currentScript.src : undefined
-})%(instantiate)s;
+// When MODULARIZE, this JS may be executed later, after document.currentScript
+// is gone, so we save it.
+%(EXPORT_NAME)s._currentScript = typeof document !== 'undefined' && document ? document.currentScript : undefined;
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,

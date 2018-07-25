@@ -230,12 +230,15 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WEB) {
+    if (document.currentScript) {
+      scriptDirectory = document.currentScript.src;
+    }
 #if MODULARIZE
-    // When MODULARIZE, this JS may be executed later, after document.currentScript is gone, so we send it
-    // using this._currentScript.
-    scriptDirectory = this['_currentScript'] || document.currentScript.src;
-#else
-    scriptDirectory = document.currentScript.src;
+    // When MODULARIZE, this JS may be executed later, after document.currentScript
+    // is gone, so we saved it, and we use it here instead of any other info.
+    if (Module['_currentScript']) {
+      scriptDirectory = Module['_currentScript'].src;
+    }
 #endif
   } else { // worker
     scriptDirectory = self.location.href;
