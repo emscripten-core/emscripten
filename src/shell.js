@@ -230,18 +230,25 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WEB) {
-#if MODULARIZE
-    // When MODULARIZE, this JS may be executed later, after document.currentScript is gone, so we send it
-    // using this._currentScript.
-    var currentScript = this['_currentScript'] || document.currentScript;
-#else
-    var currentScript = document.currentScript;
-#endif
-    if (currentScript.src.indexOf('blob:') !== 0) {
-      scriptDirectory = currentScript.src.split('/').slice(0, -1).join('/') + '/';
+    if (document.currentScript) {
+      scriptDirectory = document.currentScript.src;
     }
-  } else if (ENVIRONMENT_IS_WORKER) {
-    scriptDirectory = self.location.href.split('/').slice(0, -1).join('/') + '/';
+  } else { // worker
+    scriptDirectory = self.location.href;
+  }
+#if MODULARIZE
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
+  // is gone, so we saved it, and we use it here instead of any other info.
+  if (this['_scriptDir']) {
+    scriptDirectory = this['_scriptDir'];
+  }
+#endif
+  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
+  // otherwise, slice off the final part of the url to find the script directory.
+  if (scriptDirectory.indexOf('blob:') !== 0) {
+    scriptDirectory = scriptDirectory.split('/').slice(0, -1).join('/') + '/';
+  } else {
+    scriptDirectory = '';
   }
 
 #if ENVIRONMENT
