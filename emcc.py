@@ -2616,7 +2616,7 @@ def modularize():
 // is gone, so we save it.
 %(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
   _scriptDir: typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined
-});
+})%(instantiate)s;
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
