@@ -2237,6 +2237,11 @@ int f() {
         (['--bind', '-O2'], False),
         (['--bind', '-O2', '-s', 'ALLOW_MEMORY_GROWTH=1', path_from_root('tests', 'embind', 'isMemoryGrowthEnabled=true.cpp')], False),
     ]
+    without_utf8_args = ['-s', 'EMBIND_STD_STRING_IS_UTF8=0']
+    test_cases_without_utf8 = []
+    for args, fail in test_cases:
+        test_cases_without_utf8.append((args + without_utf8_args, fail))
+    test_cases += test_cases_without_utf8
     test_cases.extend([ (args[:] + ['-s', 'NO_DYNAMIC_EXECUTION=1'], status) for args, status in test_cases])
     test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with NO_DYNAMIC_EXECUTION=1
     test_cases = [(args + ['-s', 'IN_TEST_HARNESS=1'], status) for args, status in test_cases]

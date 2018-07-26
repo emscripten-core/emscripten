@@ -378,20 +378,38 @@ module({
     });
 
     BaseFixture.extend("string", function() {
+        var stdStringIsUTF8 = (Module['EMBIND_STD_STRING_IS_UTF8'] == true);
+
         test("non-ascii strings", function() {
-            var expected = '';
-            for (var i = 0; i < 128; ++i) {
-                expected += String.fromCharCode(128 + i);
+
+            if(stdStringIsUTF8) {
+                //ASCII
+                var expected = 'aei';
+                //Latin-1 Supplement
+                expected += '\u00E1\u00E9\u00ED';
+                //Greek
+                expected += '\u03B1\u03B5\u03B9';
+                //Cyrillic
+                expected += '\u0416\u041B\u0424';
+                //CJK
+                expected += '\u5F9E\u7345\u5B50';
+                //Euro sign
+                expected += '\u20AC';
+            } else {
+                var expected = '';
+                for (var i = 0; i < 128; ++i) {
+                    expected += String.fromCharCode(128 + i);
+                }
             }
-            assert.equal(expected, cm.get_non_ascii_string());
+            assert.equal(expected, cm.get_non_ascii_string(stdStringIsUTF8));
         });
-
-        test("passing non-8-bit strings from JS to std::string throws", function() {
-            assert.throws(cm.BindingError, function() {
-                cm.emval_test_take_and_return_std_string("\u1234");
+        if(!stdStringIsUTF8) {
+            test("passing non-8-bit strings from JS to std::string throws", function() {
+                assert.throws(cm.BindingError, function() {
+                    cm.emval_test_take_and_return_std_string("\u1234");
+                });
             });
-        });
-
+        }
         test("can't pass integers as strings", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.emval_test_take_and_return_std_string(10);
@@ -437,6 +455,13 @@ module({
         test("can pass ArrayBuffer to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
+        });
+
+        test("can pass string to std::string", function() {
+            var string = stdStringIsUTF8?"aeiáéíαειЖЛФ從獅子€":"ABCD";
+
+            var e = cm.emval_test_take_and_return_std_string(string);
+            assert.equal(string, e);
         });
 
         test("non-ascii wstrings", function() {
