@@ -2604,25 +2604,44 @@ def modularize():
   final = final + '.modular.js'
   f = open(final, 'w')
 
-  # Included code may refer to Module (e.g. from file packager), so alias it.
-  # _scriptDir is used to since when MODULARIZE this JS may be executed later,
-  # after document.currentScript is gone, so we save it for later
-  f.write('''
-var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-  return (function(%(EXPORT_NAME)s) {
-    %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+  src = '''
+function %(EXPORT_NAME)s(%(EXPORT_NAME)s) {
+  %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-    return %(EXPORT_NAME)s;
-  })%(instantiate)s;
-})();
+  return %(EXPORT_NAME)s;
+}
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-    'src': src,
-    'instantiate': '()' if shared.Settings.MODULARIZE_INSTANCE else ''
-  })
+    'src': src
+  }
+
+  if not shared.Settings.MODULARIZE_INSTANCE:
+    # Included code may refer to Module (e.g. from file packager), so alias it.
+    # _scriptDir is used to since when MODULARIZE this JS may be executed later,
+    # after document.currentScript is gone, so we save it for later (when
+    # MODULARIZE_INSTANCE, an instance is created immediately anyhow, like in
+    # non-modularize mode)
+    src = '''
+var %(EXPORT_NAME)s = (function() {
+  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+%(src)s
+  return (%(src)s);
+})();
+''' % {
+      'EXPORT_NAME': shared.Settings.EXPORT_NAME,
+      'src': src
+    }
+  else:
+    # Create the MODULARIZE_INSTANCE instance
+    src = '''
+var %(EXPORT_NAME)s = (%(src)s)();
+''' % {
+      'src': src
+    }
+
+  f.write(src)
 
   # Export using a UMD style export, or ES6 exports if selected
   if shared.Settings.EXPORT_ES6:
