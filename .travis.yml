@@ -10,10 +10,10 @@ env:
   - TEST_TARGET="default.test_d* asm1.test_d* asm2.test_d* asm2f.test_d* asm2g.test_d* asm3.test_d*"
   - TEST_TARGET=asm*.test_e*
   - TEST_TARGET=asm*.test_f*
-  - TEST_TARGET="asm*.test_g* asm*.test_h* asm*.test_i*"
+  - TEST_TARGET="asm*.test_g* asm*.test_h* asm*.test_i* asm*.test_t*"
   - TEST_TARGET="asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   - TEST_TARGET="default.test_p* asm1.test_p* asm2.test_p* asm2f.test_p* asm2g.test_p* asm3.test_p*"
-  - TEST_TARGET="asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
+  - TEST_TARGET="asm*.test_q* asm*.test_r* asm*.test_s*"
   - TEST_TARGET="asm*.test_u* asm*.test_v* asm*.test_w* asm*.test_x* asm*.test_y* asm*.test_z*"
 
 services:
