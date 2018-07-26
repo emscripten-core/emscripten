@@ -1074,6 +1074,10 @@ var wakaUnknownAfter;
  */
 var wakaUnknownBefore;
 /**
+ * @suppress {undefinedVars}
+ */
+var _scriptDir;
+/**
  * @suppress {duplicate}
  */
 var env;
