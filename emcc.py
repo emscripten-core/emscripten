@@ -2605,13 +2605,13 @@ def modularize():
   f = open(final, 'w')
 
   src = '''
-var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
+function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
   return %(EXPORT_NAME)s;
-};
+}
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src
@@ -2623,9 +2623,8 @@ var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
     # (when MODULARIZE_INSTANCE, an instance is created
     # immediately anyhow, like in non-modularize mode)
     src = '''
-%(EXPORT_NAME)s = (function() {
+var %(EXPORT_NAME)s = (function() {
   var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-%(src)s
   return (%(src)s);
 })();
 ''' % {
@@ -2635,7 +2634,7 @@ var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
   else:
     # Create the MODULARIZE_INSTANCE instance
     src = '''
-%(EXPORT_NAME)s = (%(src)s)();
+var %(EXPORT_NAME)s = (%(src)s)();
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
       'src': src
