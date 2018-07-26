@@ -2604,19 +2604,20 @@ def modularize():
   final = final + '.modular.js'
   f = open(final, 'w')
 
-  # Included code may refer to Module (e.g. from file packager), so alias it
-  f.write('''var %(EXPORT_NAME)s = function(%(EXPORT_NAME)s) {
-  %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
+  # Included code may refer to Module (e.g. from file packager), so alias it.
+  # _scriptDir is used to since when MODULARIZE this JS may be executed later,
+  # after document.currentScript is gone, so we save it for later
+  f.write('''
+var %(EXPORT_NAME)s = (function() {
+  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  return (function(%(EXPORT_NAME)s) {
+    %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return %(EXPORT_NAME)s;
-};
-// When MODULARIZE, this JS may be executed later, after document.currentScript
-// is gone, so we save it.
-%(EXPORT_NAME)s = %(EXPORT_NAME)s.bind({
-  _scriptDir: typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined
-})%(instantiate)s;
+    return %(EXPORT_NAME)s;
+  })%(instantiate)s;
+})();
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
