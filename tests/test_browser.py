@@ -4003,6 +4003,6 @@ window.close = function() {
             %s
           }, 1);
         </script>
-      ''' % 'Module();' if not instance else '')
+      ''' % ('Module();' if not instance else ''))
       self.run_browser('test.html', None, '/report_result?0')
 
