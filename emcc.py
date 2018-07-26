@@ -2618,11 +2618,10 @@ function %(EXPORT_NAME)s(%(EXPORT_NAME)s) {
   }
 
   if not shared.Settings.MODULARIZE_INSTANCE:
-    # Included code may refer to Module (e.g. from file packager), so alias it.
-    # _scriptDir is used to since when MODULARIZE this JS may be executed later,
-    # after document.currentScript is gone, so we save it for later (when
-    # MODULARIZE_INSTANCE, an instance is created immediately anyhow, like in
-    # non-modularize mode)
+    # When MODULARIZE this JS may be executed later,
+    # after document.currentScript is gone, so we save it.
+    # (when MODULARIZE_INSTANCE, an instance is created
+    # immediately anyhow, like in non-modularize mode)
     src = '''
 var %(EXPORT_NAME)s = (function() {
   var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
