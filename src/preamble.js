@@ -1709,11 +1709,13 @@ if (!Math['fround']) Math['fround'] = function(x) { return x };
 #endif
 
 if (!Math['clz32']) Math['clz32'] = function(x) {
-  x = x >>> 0;
-  for (var i = 0; i < 32; i++) {
-    if (x & (1 << (31 - i))) return i;
-  }
-  return 32;
+  var n = 32;
+  var y = x >> 16; if (y) { n -= 16; x = y; }
+  y = x >> 8; if (y) { n -= 8; x = y; }
+  y = x >> 4; if (y) { n -= 4; x = y; }
+  y = x >> 2; if (y) { n -= 2; x = y; }
+  y = x >> 1; if (y) return n - 2;
+  return n - x;
 };
 Math.clz32 = Math['clz32']
 
@@ -2024,16 +2026,14 @@ function integrateWasmJS() {
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
-  if (typeof Module['locateFile'] === 'function') {
-    if (!isDataURI(wasmTextFile)) {
-      wasmTextFile = Module['locateFile'](wasmTextFile);
-    }
-    if (!isDataURI(wasmBinaryFile)) {
-      wasmBinaryFile = Module['locateFile'](wasmBinaryFile);
-    }
-    if (!isDataURI(asmjsCodeFile)) {
-      asmjsCodeFile = Module['locateFile'](asmjsCodeFile);
-    }
+  if (!isDataURI(wasmTextFile)) {
+    wasmTextFile = locateFile(wasmTextFile);
+  }
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
+  if (!isDataURI(asmjsCodeFile)) {
+    asmjsCodeFile = locateFile(asmjsCodeFile);
   }
 
   // utilities

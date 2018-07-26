@@ -10,6 +10,16 @@ Not all changes are documented here. In particular, new features, user-oriented 
 Current Trunk
 -------------
 
+v1.38.10: 07/23/2018
+--------------------
+ - Change the type of `size_t` and friends from int to long. This may have noticeable effects if you depend on the name mangling of a function that uses `size_t` (like in `EXPORTED_FUNCTIONS`), and you must rebuild source files to bitcode (so your bitcode is in sync with the system libraries after they are rebuilt with this change). Otherwise this should not have any noticeable effects for users. See #5916.
+
+v1.38.9: 07/22/2018
+-------------------
+ - Fix `Module.locateFile` to resolve relative paths to *.wasm, *.mem and other files relatively to the main JavaScript file rather than the current working directory (see #5368).
+   - Add second argument `prefix` to `Module.locateFile` function that contains path to JavaScript file where files are loaded from by default.
+   - Remove `Module.*PrefixURL` APIs (use `Module.locateFile` instead).
+
 v1.38.8: 07/06/2018
 -------------------
  - Fix a regression in 1.38.7 with binaryen no longer bundling binaryen.js (which emscripten doesn't need, that's just for handwritten JS users, but emscripten did check for its prescence).

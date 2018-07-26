@@ -40,11 +40,7 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 if (memoryInitializer) {
 #endif
   if (!isDataURI(memoryInitializer)) {
-    if (typeof Module['locateFile'] === 'function') {
-      memoryInitializer = Module['locateFile'](memoryInitializer);
-    } else if (Module['memoryInitializerPrefixURL']) {
-      memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-    }
+    memoryInitializer = locateFile(memoryInitializer);
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
@@ -88,8 +84,8 @@ if (memoryInitializer) {
             response = data.buffer;
           } else {
 #endif
-            // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
-            // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
+            // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That
+            // means that the HTML file doesn't know about it, and when it tries to create the mem init request early, does it to the wrong place.
             // Look in your browser's devtools network console to see what's going on.
             console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
             doBrowserLoad();

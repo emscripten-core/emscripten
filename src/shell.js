@@ -83,9 +83,26 @@ if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
+#if ASSERTIONS
+assert(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
+#endif
+
+// `/` should be present at the end if `scriptDirectory` is not empty
+var scriptDirectory = '';
+function locateFile(path) {
+  if (Module['locateFile']) {
+    return Module['locateFile'](path, scriptDirectory);
+  } else {
+    return scriptDirectory + path;
+  }
+}
+
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-
+  scriptDirectory = __dirname + '/';
 #if ENVIRONMENT
 #if ASSERTIONS
   if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
@@ -212,6 +229,27 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT_IS_WEB) {
+    if (document.currentScript) {
+      scriptDirectory = document.currentScript.src;
+    }
+  } else { // worker
+    scriptDirectory = self.location.href;
+  }
+#if MODULARIZE
+  // When MODULARIZE, this JS may be executed later, after document.currentScript
+  // is gone, so we saved it, and we use it here instead of any other info.
+  if (this['_scriptDir']) {
+    scriptDirectory = this['_scriptDir'];
+  }
+#endif
+  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
+  // otherwise, slice off the final part of the url to find the script directory.
+  if (scriptDirectory.indexOf('blob:') !== 0) {
+    scriptDirectory = scriptDirectory.split('/').slice(0, -1).join('/') + '/';
+  } else {
+    scriptDirectory = '';
+  }
 
 #if ENVIRONMENT
 #if ASSERTIONS

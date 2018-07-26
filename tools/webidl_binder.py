@@ -504,7 +504,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
-      maybe_deref = '*' if sig[0] in interfaces else ''
+      maybe_deref = deref_if_nonpointer(raw[0])
       if '=' in operator:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
