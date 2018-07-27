@@ -1779,12 +1779,14 @@ var LibrarySDL = {
   SDL_WarpMouse__sig: 'vii',
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
+    /*
     var rect = Module["canvas"].getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
       pageX: x + (window.scrollX + rect.left),
       pageY: y + (window.scrollY + rect.top)
     });
+    */
   },
 
   SDL_ShowCursor__proxy: 'sync',
