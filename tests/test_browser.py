@@ -3956,21 +3956,20 @@ window.close = function() {
   def test_browser_run_from_different_directory_async(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
-    for instance in (0, 1):
-      print(instance)
+    for args, creations in [
+      (['-s', 'MODULARIZE=1'], [
+        'Module();',    # documented way for using modularize
+        'new Module();' # not documented as working, but we support it
+       ]),
+      (['-s', 'MODULARIZE_INSTANCE=1'], ['']) # instance: no need to create anything
+    ]:
+      print(args)
       # compile the code with the modularize feature and the preload-file option enabled
-      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1', '-O3', '-s', 'MODULARIZE_INSTANCE=%d' % instance]).communicate()
+      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-O3'] + args).communicate()
       if not os.path.exists('subdir'):
         os.mkdir('subdir')
       shutil.move('test.js', os.path.join('subdir', 'test.js'))
       shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
-      if instance:
-        creations = ['']
-      else:
-        creations = [
-        'Module();',
-        'new Module();' # not documented as working, but we support it
-        ]
       for creation in creations:
         print(creation)
         # Make sure JS is loaded from subdirectory
@@ -3989,10 +3988,15 @@ window.close = function() {
   def test_browser_modularize_no_current_script(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
-    for instance in (0, 1):
-      print(instance)
+    # test both modularize (and creating an instance) and modularize-instance
+    # (which creates by itself)
+    for args, creation in [
+      (['-s', 'MODULARIZE=1'], 'Module();'),
+      (['-s', 'MODULARIZE_INSTANCE=1'], '')
+    ]:
+      print(args, creation)
       # compile the code with the modularize feature and the preload-file option enabled
-      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1', '-s', 'MODULARIZE_INSTANCE=%d' % instance]).communicate()
+      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js'] + args).communicate()
       open('test.html', 'w').write('''
         <script>
           setTimeout(function() {
@@ -4003,6 +4007,6 @@ window.close = function() {
             %s
           }, 1);
         </script>
-      ''' % ('Module();' if not instance else ''))
+      ''' % creation)
       self.run_browser('test.html', None, '/report_result?0')
 
