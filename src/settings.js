@@ -326,8 +326,8 @@ var ENVIRONMENT = ''; // By default, emscripten output will run on the web, in a
                       //    'worker' - a web worker environment.
                       //    'node'   - Node.js.
                       //    'shell'  - a JS shell like d8, js, or jsc.
-                      // There is also a 'pthread' environment, see shell.js, but it cannot be specified
-                      // manually yet TODO
+                      // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
+                      // manually yet TODO)
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
