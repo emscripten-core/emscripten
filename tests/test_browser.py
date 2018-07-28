@@ -3950,46 +3950,53 @@ window.close = function() {
     src = open('test.html').read()
     # Make sure JS is loaded from subdirectory
     open('test-subdir.html', 'w').write(src.replace('test.js', 'subdir/test.js'))
-
     self.run_browser('test-subdir.html', None, '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-s MODULARIZE=1`
   def test_browser_run_from_different_directory_async(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
-    # compile the code with the modularize feature and the preload-file option enabled
-    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1', '-O3']).communicate()
-    if not os.path.exists('subdir'):
-      os.mkdir('subdir')
-    shutil.move('test.js', os.path.join('subdir', 'test.js'))
-    shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
-    # Make sure JS is loaded from subdirectory
-    open('test-subdir.html', 'w').write('''
-      <script src="subdir/test.js"></script>
-      <script>
-        Module();
-      </script>
-    ''')
-
-    self.run_browser('test-subdir.html', None, '/report_result?0')
+    for args, creations in [
+      (['-s', 'MODULARIZE=1'], [
+        'Module();',    # documented way for using modularize
+        'new Module();' # not documented as working, but we support it
+       ]),
+      (['-s', 'MODULARIZE_INSTANCE=1'], ['']) # instance: no need to create anything
+    ]:
+      print(args)
+      # compile the code with the modularize feature and the preload-file option enabled
+      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-O3'] + args).communicate()
+      if not os.path.exists('subdir'):
+        os.mkdir('subdir')
+      shutil.move('test.js', os.path.join('subdir', 'test.js'))
+      shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
+      for creation in creations:
+        print(creation)
+        # Make sure JS is loaded from subdirectory
+        open('test-subdir.html', 'w').write('''
+          <script src="subdir/test.js"></script>
+          <script>
+            %s
+          </script>
+        ''' % creation)
+        self.run_browser('test-subdir.html', None, '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but
   # also also we eval the initial code, so currentScript is not present. That prevents us
   # from finding the file in a subdir, but here we at least check we do not regress compared to the
   # normal case of finding in the current dir.
-  # In addition, check for new Module(), which overrides the bind() and replaces the object
-  # which saved the _scriptDir. Again, we can't get the script dir that way, but at least we
-  # should not regress compared to the normal case.
   def test_browser_modularize_no_current_script(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
-    # compile the code with the modularize feature and the preload-file option enabled
-    Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js', '-s', 'MODULARIZE=1']).communicate()
-    for creation in (
-      'Module();',
-      'new Module();'
-    ):
-      print(creation)
+    # test both modularize (and creating an instance) and modularize-instance
+    # (which creates by itself)
+    for args, creation in [
+      (['-s', 'MODULARIZE=1'], 'Module();'),
+      (['-s', 'MODULARIZE_INSTANCE=1'], '')
+    ]:
+      print(args, creation)
+      # compile the code with the modularize feature and the preload-file option enabled
+      Popen([PYTHON, EMCC, 'test.c', '-o', 'test.js'] + args).communicate()
       open('test.html', 'w').write('''
         <script>
           setTimeout(function() {

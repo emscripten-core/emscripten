@@ -237,11 +237,13 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     scriptDirectory = self.location.href;
   }
 #if MODULARIZE
-  // When MODULARIZE, this JS may be executed later, after document.currentScript
+#if MODULARIZE_INSTANCE == 0
+  // When MODULARIZE (and not _INSTANCE), this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
-  if (this['_scriptDir']) {
-    scriptDirectory = this['_scriptDir'];
+  if (_scriptDir) {
+    scriptDirectory = _scriptDir;
   }
+#endif
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
   // otherwise, slice off the final part of the url to find the script directory.
