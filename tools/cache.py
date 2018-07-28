@@ -86,7 +86,7 @@ class Cache(object):
   # the given creator function
   def get(self, shortname, creator, extension='.bc', what=None, force=False):
     if not shortname.endswith(extension): shortname += extension
-    cachename = os.path.join(self.dirname, shortname)
+    cachename = os.path.abspath(os.path.join(self.dirname, shortname))
 
     self.acquire_cache_lock()
     try:
