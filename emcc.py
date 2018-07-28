@@ -2584,9 +2584,15 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     f.close()
     f = open(final, 'w')
     for target, replacement_string, should_embed in (
-        (wasm_text_target, shared.FilenameReplacementStrings.WASM_TEXT_FILE, True),
-        (wasm_binary_target, shared.FilenameReplacementStrings.WASM_BINARY_FILE, True),
-        (asm_target, shared.FilenameReplacementStrings.ASMJS_CODE_FILE, not shared.Building.is_wasm_only())
+        (wasm_text_target,
+         shared.FilenameReplacementStrings.WASM_TEXT_FILE,
+         'interpret-s-expr' in shared.Settings.BINARYEN_METHOD),
+        (wasm_binary_target,
+         shared.FilenameReplacementStrings.WASM_BINARY_FILE,
+         'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD),
+        (asm_target,
+         shared.FilenameReplacementStrings.ASMJS_CODE_FILE,
+         'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD),
       ):
       if should_embed and os.path.isfile(target):
         js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
