@@ -153,7 +153,7 @@ var LibraryManager = {
 
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+      libraries = libraries.concat(SYSTEM_JS_LIBRARIES);
     }
 
     libraries = libraries.concat(additionalLibraries);

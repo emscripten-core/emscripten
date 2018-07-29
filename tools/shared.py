@@ -1248,7 +1248,7 @@ class SettingsManager(object):
           if v in ['s', 'z']:
             shrink = 1 if v == 's' else 2
             v = '2'
-          level = eval(v)
+          level = int(v)
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
@@ -2657,16 +2657,17 @@ class Building(object):
   # that should get linked automatically in to the build when those link settings are present.
   def path_to_system_js_libraries_for_settings(link_settings):
     system_js_libraries = []
-    if 'EMTERPRETIFY_ASYNC=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'LZ4=1' in link_settings:
-      system_js_libraries += ['library_lz4.js']
-    if 'USE_SDL=1' in link_settings:
-      system_js_libraries += ['library_sdl.js']
-    if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
+    lib_dict = {
+      'EMTERPRETIFY_ASYNC': {1: ['library_async.js']},
+      'ASYNCIFY': {1: ['library_async.js']},
+      'LZ4': {1: ['library_lz4.js']},
+      'USE_SDL': {1: ['library_sdl.js'],
+                  2: ['library_egl.js', 'library_glut.js', 'library_gl.js']}
+    }
+    for setting in lib_dict:
+      for value in lib_dict[setting]:
+        if link_settings.get(setting) == value:
+          system_js_libraries += lib_dict[setting][value]
     return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod
