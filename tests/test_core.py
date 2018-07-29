@@ -6510,7 +6510,8 @@ def process(filename):
 
   def test_response_file(self):
     with open('rsp_file', 'w') as f:
-      f.write('-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp')))
+      response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
+      f.write(response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
@@ -6521,7 +6522,8 @@ def process(filename):
     # by emscripten, except when using the wasm backend (lld) in which case it
     # should pass the original flag to the linker.
     with open('rsp_file', 'w') as f:
-      f.write(objfile + ' --export=foo')
+      response_data = objfile + ' --export=foo'
+      f.write(response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', os.path.join(self.get_dir(), 'response_file.o.js')] + self.emcc_args)
     self.do_run('' , 'hello, world', basename='response_file', no_build=True)
 
