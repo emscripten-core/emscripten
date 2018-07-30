@@ -7120,6 +7120,46 @@ int main() {
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
+  def test_settings_parser(self):
+    text = r'''
+var0 = []; ; var1 = [v0  ]
+n = [00 10 20  30  '40' end] # ; n = 555
+q = 'four "five" six', "seven,"'eight'"", "'"nine"'"
+p = :\ab\cde//fghi*:;
+w = [_zeroth,_first, second,third];
+
+multiline0 = [ ###
+ zero # [],;=
+  one     #  comment;
+# n = t; comment
+# comment;
+   "two"
+    thr'ee'
+  ""
+];
+
+;
+yy = @/a/b/c/good.filename
+zz = @\abc\de\f\'bad ,,file ,"name"'
+
+'''
+    res = settings_parser(text).parse_settings()
+    expected = {
+      'var0': [],
+      'var1': ['v0'],
+      'n': ['00', '10', '20', '30', '40', 'end'],
+      'q': ['four "five" six', 'seven,eight', "'nine'"],
+      'p': [':\\ab\\cde//fghi*:'],
+      'w': ['_zeroth', '_first', 'second', 'third'],
+      'multiline0': ['zero', 'one', 'two', 'three', ''],
+      'yy': '@/a/b/c/good.filename',
+      'zz' : '@\\abc\\de\\f\\bad ,,file ,"name"'
+    }
+    for key in set().union(res, expected):
+      v = repr(res[key]) if key in res else 'undefined'
+      ev = repr(expected[key]) if key in expected else 'undefined'
+      assert v == ev, "expected the value of key %s to be %s, got %s" % (key, ev, v)
+
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     # remove .py from EMCC(=emcc.py)
     def trim_py_suffix(filename):
