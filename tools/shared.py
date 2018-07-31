@@ -273,7 +273,6 @@ else:
     sys.exit(0)
 
 # The following globals can be overridden by the config file.
-EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
 BINARYEN_ROOT = None
 EM_POPEN_WORKAROUND = None
@@ -295,13 +294,6 @@ try:
 except Exception as e:
   logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
   sys.exit(1)
-
-# EMSCRIPTEN_ROOT is set in the config file so that external tools such as
-# scons can find emscripten by looking at the config.  Although its not used
-# within emscripten itself this is good to time sanity check the value.
-EMSCRIPTEN_ROOT = os.path.expanduser(os.path.normpath(EMSCRIPTEN_ROOT))
-if EMSCRIPTEN_ROOT != __rootpath__:
-  exit_with_error('Incorrect EMSCRIPTEN_ROOT in config file: %s (Expected %s)', EMSCRIPTEN_ROOT, __rootpath__)
 
 
 # Returns a suggestion where current .emscripten config file might be located
