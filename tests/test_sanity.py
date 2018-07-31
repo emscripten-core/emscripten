@@ -251,14 +251,6 @@ class sanity(RunnerCore):
     add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
     self.check_working(EMCC)
 
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '/bad/path'")
-    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
-
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root('x'))
-    self.check_working(EMCC, 'Incorrect EMSCRIPTEN_ROOT in config file')
-
   def test_llvm_fastcomp(self):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
     WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html'
