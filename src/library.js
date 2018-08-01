@@ -1865,7 +1865,7 @@ LibraryManager.library = {
         var result = lib.module[symbol];
         if (typeof result === 'function') {
 #if WASM
-#if EMULATED_FUNCTION_POINTERS
+#if EMULATE_FUNCTION_POINTER_CASTS
           // for wasm with emulated function pointers, the i64 ABI is used for all
           // function calls, so we can't just call addFunction on something JS
           // can call (which does not use that ABI), as the function pointer would
@@ -1881,7 +1881,7 @@ LibraryManager.library = {
           assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
 #endif // ASSERTIONS
           return result;
-#endif // EMULATED_FUNCTION_POINTERS
+#endif // EMULATE_FUNCTION_POINTER_CASTS
 #endif // WASM
           // convert the exported function into a function pointer using our generic
           // JS mechanism.

@@ -1289,7 +1289,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
       exports.append(quote(str(k)) + ': ' + str(v))
   # shared wasm emulated function pointer mode requires us to know the function pointer for
   # each function. export fp$func => function pointer for func
-  if shared.Settings.WASM and shared.Settings.RELOCATABLE and shared.Settings.EMULATED_FUNCTION_POINTERS:
+  if shared.Settings.WASM and shared.Settings.RELOCATABLE and shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
     for k, v in metadata['functionPointers'].items():
       exports.append(quote('fp$' + str(k)) + ': ' + str(v))
   return '{ ' + ', '.join(exports) + ' }'
