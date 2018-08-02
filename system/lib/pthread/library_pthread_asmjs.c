@@ -20,7 +20,7 @@
 #define NUM_64BIT_LOCKS 256
 static int emulated64BitAtomicsLocks[NUM_64BIT_LOCKS] = {};
 
-#define SPINLOCK_ACQUIRE(addr) do { while(emscripten_atomic_exchange_u32((void*)(addr), 1)) /*nop*/; } while(0)
+#define SPINLOCK_ACQUIRE(addr) do { while(emscripten_atomic_cas_u32((void*)(addr), 0, 1)) /*nop*/; } while(0)
 #define SPINLOCK_RELEASE(addr) emscripten_atomic_store_u32((void*)(addr), 0)
 
 float EMSCRIPTEN_KEEPALIVE emscripten_atomic_load_f32(const void *addr)
