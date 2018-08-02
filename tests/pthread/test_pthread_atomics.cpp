@@ -22,7 +22,6 @@ volatile unsigned short globalUshort = 0;
 volatile unsigned int globalUint = 0;
 volatile float globalFloat = 0.0f;
 volatile double globalDouble = 0.0;
-volatile uint64_t globalU64 = 0;
 
 const int N = 10;
 int sharedData[N] = {};
@@ -49,7 +48,6 @@ void *ThreadMain(void *arg)
 	assert(globalUint == 5);
 	assert(globalFloat == 5.0f);
 	assert(globalDouble == 5.0);
-	assert(globalU64 == 5);
 	struct Test *t = (struct Test*)arg;
 	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
 
@@ -146,12 +144,15 @@ void RunTest(int test)
 
 int main()
 {
-	globalUchar = 5;
-	globalUshort = 5;
-	globalUint = 5;
+	globalUchar = 4;
+	globalUshort = 4;
+	globalUint = 4;
 	globalFloat = 5.0f;
 	globalDouble = 5.0;
-	globalU64 = 5;
+
+	uint8_t prevUchar = emscripten_atomic_add_u8((void*)&globalUchar, 1); assert(prevUchar == 4);
+	uint16_t prevUshort = emscripten_atomic_add_u16((void*)&globalUshort, 1); assert(prevUshort == 4);
+	uint32_t prevUint = emscripten_atomic_add_u32((void*)&globalUint, 1); assert(prevUint == 4);
 
 	emscripten_atomic_fence();
 	__sync_synchronize();

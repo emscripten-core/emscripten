@@ -136,7 +136,9 @@ void RunTest(int test)
 int main()
 {
 	globalDouble = 5.0;
-	globalU64 = 5;
+	globalU64 = 4;
+
+	uint64_t prevU64 = emscripten_atomic_add_u64((void*)&globalU64, 1); assert(prevU64 == 4);
 
 	if (!emscripten_has_threading_support())
 	{
