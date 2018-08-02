@@ -11,6 +11,9 @@ mergeInto(LibraryManager.library, {
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
+	DB_MAXRECORDSIZE: 133000000,
+	DB_PARTSSUFFIX:'.idbfsp.',
+	
     mount: function(mount) {
       // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
@@ -128,8 +131,20 @@ mergeInto(LibraryManager.library, {
             if (!cursor) {
               return callback(null, { type: 'remote', db: db, entries: entries });
             }
-
-            entries[cursor.primaryKey] = { timestamp: cursor.key };
+			
+			var regex = new RegExp( IDBFS.DB_PARTSSUFFIX+'(\\d)(\\d)');
+			var match=cursor.primaryKey.match(regex);
+			if (match)
+			{
+				if (match[1]==='0' && match[2]==='0')
+				{
+					entries[cursor.primaryKey.substring(0, cursor.primaryKey.length-(IDBFS.DB_PARTSSUFFIX.length+2))] = { timestamp: cursor.key , nbParts:match[2]};
+				}
+			}
+			else
+			{
+				entries[cursor.primaryKey] = { timestamp: cursor.key };
+			}
 
             cursor.continue();
           };
@@ -195,28 +210,190 @@ mergeInto(LibraryManager.library, {
       callback(null);
     },
     loadRemoteEntry: function(store, path, callback) {
-      var req = store.get(path);
-      req.onsuccess = function(event) { callback(null, event.target.result); };
-      req.onerror = function(e) {
-        callback(this.error);
-        e.preventDefault();
-      };
+		function loadRemoteMulti(store, path, contents,index,total,callback)
+		{
+			var req = store.get(path+IDBFS.DB_PARTSSUFFIX+index+total);
+			req.onsuccess = function(event) 
+			{
+				if (total===0)
+				{
+					total=event.target.result.contents[0];
+					loadRemoteMulti(store, path, contents,1,total,callback);
+				}
+				else if (event && event.target && event.target.result && event.target.result.contents)
+				{
+					var cl=new event.target.result.contents.constructor(contents.length+event.target.result.contents.length);
+					cl.set(contents,0);
+					cl.set(event.target.result.contents,contents.length);
+					contents=cl;
+					if (index<total)
+					{
+						loadRemoteMulti(store, path, contents,index+1,total,callback);
+					}
+					else
+					{
+						event.target.result.contents=contents;
+						event.target.result.nbParts=total;
+						callback(null,event.target.result);
+					}
+				}
+				else if (event && event.target)
+				{
+					callback(null,event.target.result);
+				}
+				else
+				{
+					callback(null,undefined);
+				}
+			};
+			req.onerror = function(e) {
+				callback(this.error);
+				e.preventDefault();
+			};
+		}
+		var req = store.get(path);
+		req.onsuccess = function(event) 
+		{
+			if (typeof event.target.result === 'undefined' )
+			{
+				var contents=[];
+				loadRemoteMulti(store, path, contents,0,0,callback);
+			}
+			else
+			{
+				callback(null, event.target.result); 
+			}
+		};
+		req.onerror = function(e) {
+			callback(this.error);
+			e.preventDefault();
+		};
     },
-    storeRemoteEntry: function(store, path, entry, callback) {
-      var req = store.put(entry, path);
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
-        callback(this.error);
-        e.preventDefault();
-      };
+    storeRemoteEntry: function(store, path, entry, callback) 
+	{
+		function storeRemoteEntryMulti(store, path, entry,contents, index,total, callback) 
+		{
+			if (index>0)
+			{
+				entry.contents=contents.slice((index-1)*IDBFS.DB_MAXRECORDSIZE,index*IDBFS.DB_MAXRECORDSIZE);
+			}
+			else
+			{
+				entry.contents=contents;
+			}
+			var req = store.put(entry, path+IDBFS.DB_PARTSSUFFIX+index+total);
+			req.onsuccess = function() 
+			{
+				if (index>0 && index<total)
+				{
+					storeRemoteEntryMulti(store, path, entry,contents,index+1,total, callback);
+				}
+				else
+				{
+					callback(null);
+				}
+			};
+			req.onerror = function(e) 
+			{
+				callback(this.error);
+				e.preventDefault();
+			};
+		}
+		
+		var clength=(entry && entry.contents)?entry.contents.length:0;
+		var nbParts=Math.ceil(clength/IDBFS.DB_MAXRECORDSIZE);
+		var req;
+		if (nbParts>1 && nbParts<10)
+		{
+			var contents=entry.contents;
+			entry.contents=new entry.contents.constructor(1);
+			entry.contents[0]=nbParts;
+			req = store.put(entry, path+IDBFS.DB_PARTSSUFFIX+'00');
+			req.onsuccess = function() 
+			{
+				storeRemoteEntryMulti(store, path, entry,contents,1,nbParts, callback);
+			};
+		}
+		else
+		{
+			req = store.put(entry, path);
+			req.onsuccess = function() 
+			{
+				callback(null);
+			};
+		}
+		req.onerror = function(e) 
+		{
+			callback(this.error);
+			e.preventDefault();
+		};
     },
     removeRemoteEntry: function(store, path, callback) {
-      var req = store.delete(path);
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
+		function remoteDelete(store,path,index,total,callback)
+		{
+			var addstr=(index>=0?IDBFS.DB_PARTSSUFFIX+index+total:'');
+			  var req = store.delete(path+addstr);
+			  req.onsuccess = function() 
+			  { 
+				if (total>0 && index>0)
+				{
+					remoteDelete(store,path,index-1,total,callback);
+				}
+				else if (total>0 && index===0 )
+				{
+					remoteDelete(store,path,0,0,callback);
+				}
+				else
+				{
+					callback(null); 
+				}
+			  };
+			  req.onerror = function(e) {
+				callback(this.error);
+				e.preventDefault();
+			  };
+		}
+/*		function remoteExists(store,path,cbk)
+		{
+          var index = store.index('timestamp');
+          index.openKeyCursor().onsuccess = function(event) 
+		  {
+            var cursor = event.target.result;
+
+            if (!cursor) {
+              return cbk(false);
+            }
+			if (cursor.primaryKey===path)
+			{
+				return cbk(true);
+			}
+            cursor.continue();
+          };
+		}*/
+		//IF EXISTS path+'p00'
+		// get nbParts
+		var regex = new RegExp( IDBFS.DB_PARTSSUFFIX+'(\\d)(\\d)');
+		if (path.match(regex))
+		{
+			path=path.substring(path.length-(IDBFS.DB_PARTSSUFFIX.length+2));
+		}
+		var ereq = store.get(path+IDBFS.DB_PARTSSUFFIX+'00');
+		ereq.onsuccess = function(event) 
+		{
+			  if (event.target.result)
+			  {
+				  var total=event.target.result.contents[0];
+				  remoteDelete(store,path,total,total,callback);
+			  }
+			  else
+			  {
+				  remoteDelete(store,path,-1,0,callback);
+			  }
+		};
+		ereq.onerror = function(e) {
         callback(this.error);
         e.preventDefault();
-      };
+       };
     },
     reconcile: function(src, dst, callback) {
       var total = 0;
@@ -275,12 +452,12 @@ mergeInto(LibraryManager.library, {
         if (dst.type === 'local') {
           IDBFS.loadRemoteEntry(store, path, function (err, entry) {
             if (err) return done(err);
-            IDBFS.storeLocalEntry(path, entry, done);
-          });
+					IDBFS.storeLocalEntry(path, entry, done);
+		  }	);
         } else {
           IDBFS.loadLocalEntry(path, function (err, entry) {
             if (err) return done(err);
-            IDBFS.storeRemoteEntry(store, path, entry, done);
+				IDBFS.storeRemoteEntry(store, path, entry, done);
           });
         }
       });
