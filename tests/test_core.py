@@ -1,10 +1,19 @@
 # coding=utf-8
 
 from __future__ import print_function
-import glob, hashlib, os, re, shutil, subprocess, sys, json, random
+import glob
+import hashlib
 import json
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
 import unittest
 from textwrap import dedent
+
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
