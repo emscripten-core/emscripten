@@ -53,6 +53,7 @@
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
   "emscripten_log": ["strlen"],
   "setjmp": ["realloc"],
+  "saveSetjmp": ["realloc"],
   "glfwSleep": ["sleep"],
   "bind": ["htonl", "htons", "ntohs"],
   "connect": ["htonl", "htons", "ntohs"],

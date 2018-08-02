@@ -911,18 +911,20 @@ fi
         del os.environ['EMCC_WASM_BACKEND']
 
     def make_fake(report):
-      f = open(CONFIG_FILE, 'a')
-      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
-      # BINARYEN_ROOT needs to exist in the config, even though this test
-      # doesn't actually use it.
-      f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
-      f.close()
+      with open(CONFIG_FILE, 'a') as f:
+        f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
+        # BINARYEN_ROOT needs to exist in the config, even though this test
+        # doesn't actually use it.
+        f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
 
-      f = open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w')
-      f.write('#!/bin/sh\n')
-      f.write('echo "llc fake output\nRegistered Targets:\n%s"' % report)
-      f.close()
+      with open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w') as f:
+        f.write('#!/bin/sh\n')
+        f.write('echo "llc fake output\nRegistered Targets:\n%s"' % report)
       os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+      with open(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), 'w') as f:
+        f.write('#!/bin/sh\n')
+        f.write('exit 0\n')
+      os.chmod(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
     try:
       os.environ['EMCC_DEBUG'] = '1'
