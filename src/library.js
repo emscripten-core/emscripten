@@ -4376,7 +4376,7 @@ LibraryManager.library = {
   },
 
   // USE_FULL_LIBRARY hacks
-  realloc: function() { throw 'bad' },
+  realloc: function() { throw 'bad realloc called' },
 
   // libunwind
 

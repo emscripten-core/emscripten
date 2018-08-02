@@ -1866,7 +1866,6 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
-  if DEBUG: logging.debug("Metadata raw: " + metadata_raw)
   metadata = load_metadata(metadata_raw)
   if DEBUG: logging.debug("Metadata parsed: " + pprint.pformat(metadata))
   return metadata
