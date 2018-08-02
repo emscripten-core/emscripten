@@ -46,8 +46,8 @@ Module['quit'] = function(status, toThrow) {
 Module['preRun'] = [];
 Module['postRun'] = [];
 
-// The environment setup code below is customized to use Module.
-// *** Environment setup code ***
+// Determine the runtime environment we are in. You can customize this by
+// setting the ENVIRONMENT setting at compile time (see settings.js).
 
 #if ENVIRONMENT
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
@@ -339,8 +339,6 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
 var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
 var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
-
-// *** Environment setup code ***
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
