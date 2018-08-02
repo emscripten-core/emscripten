@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import unittest
 
 from tools.shared import *
@@ -3233,7 +3234,7 @@ int main() {
     # wasm is on by default, and does not mix with legacy, so we show an error
     test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
     # legacy + disabling wasm works
-    if is_wasm_backend():
+    if self.is_wasm_backend():
       return
     test('hello, world!', ['-s', 'LEGACY_VM_SUPPORT=1', '-s', 'WASM=0'])
 
@@ -7921,7 +7922,7 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
 
     # But not in asm.js
-    if not is_wasm_backend():
+    if not self.is_wasm_backend():
       ret = run_process([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'], stderr=subprocess.PIPE, check=False).stderr
       assert 'TOTAL_MEMORY must be a multiple of 16MB' in ret, ret
 
@@ -7931,7 +7932,7 @@ int main() {
     self.assertContained('hello, world!', run_js('a.out.js'))
 
     # But not in asm.js
-    if not is_wasm_backend():
+    if not self.is_wasm_backend():
       ret = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'WASM=0'], stderr=subprocess.PIPE, check=False).stderr
       assert 'TOTAL_MEMORY must be at least 16MB' in ret, ret
 
