@@ -23,7 +23,7 @@ before_install:
   - docker pull ubuntu:16.04
 
 install:
-  - pip install flake8==3.4.1 mock==2.0.0
+  - pip install flake8==3.4.1
 
 script:
   - set -o errexit

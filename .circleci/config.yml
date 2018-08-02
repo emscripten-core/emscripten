@@ -129,7 +129,7 @@ jobs:
       - run: |
           apt-get update
           apt-get install -y python-pip
-          pip install flake8==3.4.1 mock==2.0.0
+          pip install flake8==3.4.1
           flake8
   test-other:
     <<: *test-defaults

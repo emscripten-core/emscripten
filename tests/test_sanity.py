@@ -1,6 +1,5 @@
 from __future__ import print_function
 import contextlib
-import mock
 import os
 import platform
 import shutil
@@ -14,6 +13,7 @@ from tools.shared import *
 SANITY_FILE = CONFIG_FILE + '_sanity'
 commands = [[PYTHON, EMCC], [PYTHON, path_from_root('tests', 'runner.py'), 'blahblah']]
 
+
 def restore():
   shutil.copyfile(CONFIG_FILE + '_backup', CONFIG_FILE)
 
@@ -21,10 +21,11 @@ def restore():
 # restore the config file and set it up for our uses
 def restore_and_set_up():
   restore()
-  # don't use the native optimizer from the emsdk - we want to test how it builds
-  open(CONFIG_FILE, 'a').write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
-  # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-  open(CONFIG_FILE, 'a').write('\nLLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
+  with open(CONFIG_FILE, 'a') as f:
+    # don't use the native optimizer from the emsdk - we want to test how it builds
+    f.write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
+    # make LLVM_ROOT sensitive to the LLVM env var, as we test that
+    f.write('\nLLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
 
 
 # wipe the config and sanity files, creating a blank slate
@@ -36,6 +37,7 @@ def wipe():
 def add_to_config(content):
   with open(CONFIG_FILE, 'a') as f:
     f.write(content + '\n')
+
 
 def mtime(filename):
   return os.stat(filename).st_mtime
@@ -52,6 +54,20 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+@contextlib.contextmanager
+def env_modify(updates):
+  """A context manager that updates os.environ."""
+  # This could also be done with mock.patch.dict() but taking a dependency
+  # on the mock library is probably not worth the benefit.
+  old_env = os.environ.copy()
+  os.environ.update(updates)
+  try:
+    yield
+  finally:
+    os.environ.clear()
+    os.environ.update(old_env)
+
+
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 EMBUILDER = path_from_root('embuilder.py')
@@ -60,6 +76,7 @@ EMBUILDER = path_from_root('embuilder.py')
 # (-O1 avoids -O0's default assertions which bring in checking code;
 #  NO_FILESYSTEM avoids bringing libc for that)
 MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'NO_FILESYSTEM=1']
+
 
 class sanity(RunnerCore):
   @classmethod
@@ -230,7 +247,7 @@ class sanity(RunnerCore):
     if not os.path.exists(path_from_root('tests', 'fake')):
       os.makedirs(path_from_root('tests', 'fake'))
 
-    with mock.patch.dict(os.environ, {'EM_IGNORE_SANITY': '1'}):
+    with env_modify({'EM_IGNORE_SANITY': '1'}):
       for x in range(-2, 3):
         for y in range(-2, 3):
           f = open(path_from_root('tests', 'fake', 'clang'), 'w')
@@ -367,7 +384,7 @@ class sanity(RunnerCore):
     if not os.path.exists(path_from_root('tests', 'fake')):
       os.makedirs(path_from_root('tests', 'fake'))
 
-    with mock.patch.dict(os.environ, {'EM_IGNORE_SANITY': '1'}):
+    with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
                                ('v4.1.0', False),
                                ('v4.1.1', True),
@@ -423,7 +440,7 @@ fi
     self.assertContained(SANITY_MESSAGE, output)
 
     # but with EMCC_DEBUG=1 we should check
-    with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+    with env_modify({'EMCC_DEBUG': '1'}):
       output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
     output = self.check_working(EMCC)
@@ -460,7 +477,7 @@ fi
     ''')
 
     wipe()
-    with mock.patch.dict(os.environ, {'EM_CONFIG': config}):
+    with env_modify({'EM_CONFIG': config}):
       run_process([PYTHON, EMCC, os.path.join(dirname, 'main.cpp'), '-o', os.path.join(dirname, 'a.out.js')])
 
     with chdir(dirname):
@@ -484,7 +501,7 @@ fi
       Cache.erase()
       assert not os.path.exists(EMCC_CACHE)
 
-      with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+      with env_modify({'EMCC_DEBUG': '1'}):
         self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
         if not os.path.exists(self.working_dir):
           os.mkdir(self.working_dir)
@@ -521,19 +538,19 @@ fi
 
     # Manual cache clearing
     ensure_cache()
-    assert os.path.exists(EMCC_CACHE)
+    self.assertTrue(os.path.exists(EMCC_CACHE))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
-    assert ERASING_MESSAGE in output
-    assert not os.path.exists(EMCC_CACHE)
-    assert SANITY_MESSAGE in output
+    self.assertIn(ERASING_MESSAGE, output)
+    self.assertFalse(os.path.exists(EMCC_CACHE))
+    self.assertIn(SANITY_MESSAGE, output)
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     ensure_cache()
-    with mock.patch.dict(os.environ, {'LLVM': 'waka'}):
-      assert os.path.exists(EMCC_CACHE)
+    with env_modify({'LLVM': 'waka'}):
+      self.assertTrue(os.path.exists(EMCC_CACHE))
       output = self.do([PYTHON, EMCC])
-      assert ERASING_MESSAGE in output, output
-      assert not os.path.exists(EMCC_CACHE)
+      self.assertIn(ERASING_MESSAGE, output)
+      self.assertFalse(os.path.exists(EMCC_CACHE))
 
     try_delete(CANONICAL_TEMP_DIR)
 
@@ -561,11 +578,11 @@ fi
 
   def test_emconfig(self):
     restore_and_set_up()
-    
+
     (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
 
     orig_config = open(CONFIG_FILE, 'r').read()
- 
+
     # Move the ~/.emscripten to a custom location.
     tfile = os.fdopen(fd, "w")
     tfile.write(orig_config)
@@ -668,7 +685,7 @@ fi
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
 
-    with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+    with env_modify({'EMCC_DEBUG': '1'}):
       # basic usage or lack of usage
       for native in [None, 0, 1]:
         print('phase 1, part', native)
@@ -691,7 +708,7 @@ fi
       # force a build failure, see we fall back to non-native
 
       for native in [1, 'g']:
-        with mock.patch.dict(os.environ, {'EMCC_NATIVE_OPTIMIZER': str(native)}):
+        with env_modify({'EMCC_NATIVE_OPTIMIZER': str(native)}):
           print('phase 2, part', native)
           Cache.erase()
 
@@ -809,7 +826,7 @@ fi
     if not os.path.exists(test_path):
       os.makedirs(test_path)
 
-    with mock.patch.dict(os.environ, {'EM_IGNORE_SANITY': '1'}):
+    with env_modify({'EM_IGNORE_SANITY': '1'}):
       jsengines = [('d8',     V8_ENGINE),
                    ('d8_g',   V8_ENGINE),
                    ('js',     SPIDERMONKEY_ENGINE),
@@ -858,7 +875,7 @@ fi
     test()
 
     print('wacky env vars, these should not mess our bootstrapping')
-    with mock.patch.dict(os.environ, {'EMCC_FORCE_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': '1'}):
       Cache.erase()
       build()
       test()
@@ -867,7 +884,7 @@ fi
     restore_and_set_up()
     Cache.erase()
 
-    with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+    with env_modify({'EMCC_DEBUG': '1'}):
       # see that we test vanilla status, and just once
       TESTING = 'testing for asm.js target'
       self.check_working(EMCC, TESTING)
@@ -875,9 +892,9 @@ fi
         output = self.check_working(EMCC, 'check tells us to use')
         assert TESTING not in output
       # if env var tells us, do what it says
-      with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '1'}):
+      with env_modify({'EMCC_WASM_BACKEND': '1'}):
         self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use wasm backend')
-      with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '0'}):
+      with env_modify({'EMCC_WASM_BACKEND': '0'}):
         self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use asm.js backend')
 
     def make_fake(report):
@@ -896,13 +913,13 @@ fi
         f.write('exit 0\n')
       os.chmod(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
-    with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+    with env_modify({'EMCC_DEBUG': '1'}):
       make_fake('wasm32-unknown-unknown-elf')
       # see that we request the right backend from llvm
-      with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '1'}):
+      with env_modify({'EMCC_WASM_BACKEND': '1'}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'wasm32-unknown-unknown-elf')
       make_fake('asmjs-unknown-emscripten')
-      with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '0'}):
+      with env_modify({'EMCC_WASM_BACKEND': '0'}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
       # check the current installed one is ok
       restore_and_set_up()
@@ -921,7 +938,7 @@ fi
 
     def test_with_fake(report, expected):
       make_fake(report)
-      with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+      with env_modify({'EMCC_DEBUG': '1'}):
         output = self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
         self.assertContained('config file changed since we checked vanilla', output)
 
@@ -950,9 +967,9 @@ fi
     f.close()
     os.chmod(path_from_root('tests', 'fake2', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
-    with mock.patch.dict(os.environ, {'EMCC_DEBUG': '1'}):
+    with env_modify({'EMCC_DEBUG': '1'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'use asm.js backend')
-      with mock.patch.dict(os.environ, {'LLVM': path_from_root('tests', 'fake2', 'bin')}):
+      with env_modify({'LLVM': path_from_root('tests', 'fake2', 'bin')}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
 
     return # TODO: the rest of this
@@ -968,11 +985,11 @@ fi
     if os.path.exists(os.path.join(root_cache, 'wasm')):
       shutil.rmtree(os.path.join(root_cache, 'wasm'))
 
-    with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '1'}):
+    with env_modify({'EMCC_WASM_BACKEND': '1'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
       assert os.path.exists(os.path.join(root_cache, 'wasm'))
 
-    with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '0'}):
+    with env_modify({'EMCC_WASM_BACKEND': '0'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
       assert os.path.exists(os.path.join(root_cache, 'asmjs'))
       shutil.rmtree(os.path.join(root_cache, 'asmjs'))
@@ -986,7 +1003,7 @@ fi
     def check():
       print(self.do([PYTHON, EMCC, '--clear-cache']))
       print(self.do([PYTHON, EMCC, '--clear-ports']))
-      with mock.patch.dict(os.environ, {'EMCC_WASM_BACKEND': '1'}):
+      with env_modify({'EMCC_WASM_BACKEND': '1'}):
         self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
     print('normally')
     check()
