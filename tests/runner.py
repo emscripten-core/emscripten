@@ -97,6 +97,14 @@ def skip_if(func, condition, explanation=''):
   return decorated
 
 
+def needs_dlfcn(func):
+  def decorated(self):
+    self.check_dlfcn()
+    return func(self)
+
+  return decorated
+
+
 def no_wasm_backend(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note)
@@ -186,15 +194,23 @@ class RunnerCore(unittest.TestCase):
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
 
+  def check_dlfcn(self):
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
+      self.skipTest('no dlfcn with memory growth (without wasm)')
+    if self.is_wasm_backend():
+      self.skipTest('no shared modules in wasm backend')
+
   def uses_memory_init_file(self):
+    if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
+      return False
     if self.emcc_args is None:
-      return None
+      return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
       opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
-      return opt_supports and not (self.get_setting('SIDE_MODULE') or self.get_setting('WASM'))
+      return opt_supports
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -214,10 +230,10 @@ class RunnerCore(unittest.TestCase):
 
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if not self.save_dir:
-      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
-    else:
+    if self.save_dir:
       dirname = CANONICAL_TEMP_DIR
+    else:
+      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     if not os.path.exists(dirname):
       os.makedirs(dirname)
     self.working_dir = dirname
@@ -520,9 +536,11 @@ class RunnerCore(unittest.TestCase):
     out = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
     # output is something like
     # [?]        : 125
-    line = [line for line in out.split('\n') if '[' + what + ']' in line][0].strip()
-    ret = line.split(':')[1].strip()
-    return int(ret)
+    for line in out.splitlines():
+      if '[' + what + ']' in line:
+        ret = line.split(':')[1].strip()
+        return int(ret)
+    assert False
 
   def get_wasm_text(self, wasm_binary):
     return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
@@ -648,8 +666,7 @@ class RunnerCore(unittest.TestCase):
   def clear(self, in_curr=False):
     for name in os.listdir(self.get_dir()):
       try_delete(os.path.join(self.get_dir(), name) if not in_curr else name)
-    emcc_debug = os.environ.get('EMCC_DEBUG')
-    if emcc_debug and not in_curr and EMSCRIPTEN_TEMP_DIR:
+    if 'EMCC_DEBUG' in os.environ and not in_curr and EMSCRIPTEN_TEMP_DIR:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
