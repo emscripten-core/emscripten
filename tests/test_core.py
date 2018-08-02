@@ -22,10 +22,13 @@ def SIMD(f):
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition, explanation=''):
+def skip_if(func, condition, explanation='', negate=False):
   explanation_str = ' : %s' % explanation if explanation else ''
   def decorated(self):
-    if self.__getattribute__(condition)():
+    result = self.__getattribute__(condition)()
+    if negate:
+      result = not result
+    if result:
       return self.skipTest(condition + explanation_str)
     return func(self)
   return decorated
@@ -35,6 +38,9 @@ def no_emterpreter(f):
 
 def no_wasm(f):
   return skip_if(f, 'is_wasm')
+
+def only_wasm(f):
+  return skip_if(f, 'is_wasm', negate=True)
 
 def no_wasm_backend(note=''):
   def decorated(f):
@@ -1830,6 +1836,12 @@ int main(int argc, char **argv) {
     # checks handling of malloc failure properly
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
+  @only_wasm
+  def test_memorygrowth_wasm_mem_max(self):
+    # check that memory growth does not exceed the wasm mem max limit
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']

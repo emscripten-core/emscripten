@@ -1027,6 +1027,20 @@ function enlargeMemory() {
     }
   }
 
+#if WASM_MEM_MAX != -1
+  // A limit was set for how much we can grow. We should not exceed that
+  // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+  TOTAL_MEMORY = Math.min(TOTAL_MEMORY, {{{ WASM_MEM_MAX }}});
+  if (TOTAL_MEMORY == OLD_TOTAL_MEMORY) {
+#if ASSERTIONS
+    err('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
+#endif
+    // restore the state to before this call, we failed
+    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
+    return false;
+  }
+#endif
+
 #if ASSERTIONS
   var start = Date.now();
 #endif
