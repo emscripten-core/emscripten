@@ -1750,6 +1750,8 @@ void* emscripten_GetProcAddress(const char *name_) {
   if (!strcmp(name, "glCopyTexImage2D")) return emscripten_glCopyTexImage2D;
   if (!strcmp(name, "glCopyTexSubImage2D")) return emscripten_glCopyTexSubImage2D;
   if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffers;
+  if (!strcmp(name, "glBlitFramebuffer")) return emscripten_glBlitFramebuffer;
+  if (!strcmp(name, "glRenderbufferStorageMultisample")) return emscripten_glRenderbufferStorageMultisample;
   // UBO
   if (!strcmp(name, "glGetUniformIndices")) return emscripten_glGetUniformIndices;
   if (!strcmp(name, "glGetActiveUniformsiv")) return emscripten_glGetActiveUniformsiv;
