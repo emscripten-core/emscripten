@@ -560,7 +560,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  ('gl',            ext, create_gl,          gl_symbols,          ['libc'],      False), # noqa
                  ('al',            ext, create_al,          al_symbols,          ['libc'],      False), # noqa
                  ('html5',         ext, create_html5,       html5_symbols,       ['html5'],     False), # noqa
-                 ('compiler_rt',   'a', create_compiler_rt, compiler_rt_symbols, ['libc'],      False), # noqa
+                 ('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, ['libc'],      False), # noqa
                  (malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
@@ -603,7 +603,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if force_this and not shared.Settings.WASM_OBJECT_FILES:
       # .a files do not always link in all their parts; don't use them when forced
       # When using wasm object files there are only .a archives but they get
-      # includes via --whole-archive.
+      # included via --whole-archive.
       suffix = 'bc'
     name = shortname + '.' + suffix
 
@@ -651,7 +651,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.WASM_BACKEND:
     # Mimick the beviour of the bitcode archives by treating .a files as object
-    # files.  This is need so that --export will work correctly for symbols
+    # files.  This is needed so that --export will work correctly for symbols
     # that would not otherwise be pulled out of the archive.
     ret = ['--whole-archive'] + ret + ['--no-whole-archive']
 
