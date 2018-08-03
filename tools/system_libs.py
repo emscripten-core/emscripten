@@ -576,7 +576,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.WASM:
-    system_libs += [('wasm_libc', ext, create_wasm_libc, wasm_libc_symbols, [], False)]
+    system_libs += [('wasm-libc', ext, create_wasm_libc, wasm_libc_symbols, [], False)]
     # if libc is included, we definitely must be, as it might need us
     for data in system_libs:
       if data[3] == libc_symbols:
