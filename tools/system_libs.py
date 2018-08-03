@@ -649,12 +649,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # header methods. To avoid that, we link libcxxabi last.
       ret = [f for f in ret if f != actual] + [actual]
 
-  if shared.Settings.WASM_BACKEND:
-    # Mimick the beviour of the bitcode archives by treating .a files as object
-    # files.  This is needed so that --export will work correctly for symbols
-    # that would not otherwise be pulled out of the archive.
-    ret = ['--whole-archive'] + ret + ['--no-whole-archive']
-
   return ret
 
 
