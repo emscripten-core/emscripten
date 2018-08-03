@@ -1452,7 +1452,7 @@ class Building(object):
 
   @staticmethod
   def get_num_cores():
-    return int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+    return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
   # Multiprocessing pools are very slow to build up and tear down, and having several pools throughout
   # the application has a problem of overallocating child processes. Therefore maintain a single

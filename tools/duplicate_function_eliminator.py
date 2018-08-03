@@ -217,7 +217,7 @@ def run_on_js(filename, gen_hash_info=False):
 
   # if we are making source maps, we want our debug numbering to start from the
   # top of the file, so avoid breaking the JS into chunks
-  cores = int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+  cores = shared.Building.get_num_cores()
 
   intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
   chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
