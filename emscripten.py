@@ -1741,6 +1741,8 @@ def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
   #   * We may also run some Binaryen passes here.
 
   metadata = finalize_wasm(temp_files, infile, outfile, DEBUG)
+  if shared.Settings.SIDE_MODULE:
+    return
 
   # optimize syscalls
 

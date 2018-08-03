@@ -60,6 +60,21 @@ def has_browser():
 def get_browser():
   return emscripten_browser
 
+# Generic decorator that calls a function named 'condition' on the test class and
+# skips the test if that function returns true
+def skip_if(func, condition, explanation=''):
+  explanation_str = ' : %s' % explanation if explanation else ''
+  def decorated(self):
+    if self.__getattribute__(condition)():
+      return self.skipTest(condition + explanation_str)
+    return func(self)
+  return decorated
+
+def no_wasm_backend(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_wasm_backend', note)
+  return decorated
+
 # Sanity check for config
 
 try:

@@ -1,14 +1,24 @@
 # coding=utf-8
 
 from __future__ import print_function
-import glob, hashlib, os, re, shutil, subprocess, sys, json, random
+import glob
+import hashlib
 import json
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
 import unittest
 from textwrap import dedent
+
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
+from runner import skip_if, no_wasm_backend
 
 # decorators for limiting which modes a test can run in
 
@@ -20,25 +30,12 @@ def SIMD(f):
     f(self)
   return decorated
 
-# Generic decorator that calls a function named 'condition' on the test class and
-# skips the test if that function returns true
-def skip_if(func, condition, explanation=''):
-  explanation_str = ' : %s' % explanation if explanation else ''
-  def decorated(self):
-    if self.__getattribute__(condition)():
-      return self.skipTest(condition + explanation_str)
-    return func(self)
-  return decorated
-
 def no_emterpreter(f):
   return skip_if(f, 'is_emterpreter')
 
-def no_wasm(f):
-  return skip_if(f, 'is_wasm')
-
-def no_wasm_backend(note=''):
+def no_wasm(note=''):
   def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note)
+    return skip_if(f, 'is_wasm', note)
   return decorated
 
 def no_linux(note=''):
@@ -1513,7 +1510,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
   # Fails in wasm because of excessive slowness in the wasm-shell
-  @no_wasm
+  @no_wasm()
   def test_life(self):
     self.emcc_args += ['-std=c99']
     src = open(path_from_root('tests', 'life.c'), 'r').read()
@@ -4725,9 +4722,8 @@ def process(filename):
       self.set_setting('LINKABLE', linkable)
       self.do_run_from_file(src, output)
 
-  @no_wasm
+  @no_wasm('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
   def test_fs_base(self):
-    if self.is_wasm(): self.skipTest('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     Settings.INCLUDE_FULL_LIBRARY = 1
     try:
@@ -7187,8 +7183,8 @@ err = err = function(){};
       self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_emterpreter
+  @no_wasm('wasmifying destroys debug info and stack tracability')
   def test_exception_source_map(self):
-    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     self.emcc_args.append('-g4')
     if not jsrun.check_engine(NODE_JS): self.skipTest('sourcemapper requires Node to run')
 
@@ -7228,8 +7224,8 @@ err = err = function(){};
     dirname = self.get_dir()
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=post)
 
+  @no_wasm('wasmifying destroys debug info and stack tracability')
   def test_emscripten_log(self):
-    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if self.is_emterpreter():
