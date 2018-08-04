@@ -1,7 +1,6 @@
 from __future__ import print_function
 import json
 import logging
-import multiprocessing
 import os
 import re
 import shutil
@@ -15,7 +14,6 @@ from tools.shared import check_call
 
 stdout = None
 stderr = None
-CORES = int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
 
 
 def call_process(cmd):
@@ -23,7 +21,7 @@ def call_process(cmd):
 
 
 def run_commands(commands):
-  cores = min(len(commands), CORES)
+  cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
       call_process(command)
@@ -819,8 +817,12 @@ class Ports(object):
       logging.info('building port: ' + name + '...')
       port_build_dir = Ports.get_build_dir()
       shared.safe_ensure_dirs(port_build_dir)
-      libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
-                                           configure=configure, make=['make', '-j' + str(CORES)])
+      libs = shared.Building.build_library(name, port_build_dir, None,
+                                           generated_libs,
+                                           source_dir=os.path.join(Ports.get_dir(), name, subdir),
+                                           copy_project=True,
+                                           configure=configure,
+                                           make=['make', '-j' + str(shared.Building.get_num_cores())])
       assert len(libs) == 1
       if post_create:
         post_create()
@@ -851,7 +853,7 @@ class Ports(object):
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
 
       # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
-      num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
+      num_cores = str(shared.Building.get_num_cores())
       make_args = []
       if 'Makefiles' in generator and 'NMake' not in generator:
         make_args = ['--', '-j', num_cores]

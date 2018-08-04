@@ -406,7 +406,7 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = 1 if source_map else int(os.environ.get('EMCC_CORES') or multiprocessing.cpu_count())
+    cores = 1 if source_map else shared.Building.get_num_cores()
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
