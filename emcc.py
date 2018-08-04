@@ -35,8 +35,9 @@ import logging
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
-from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, settings_parser
+from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error
 from tools.response_file import substitute_response_files
+from tools.parse import SettingsParser
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
@@ -758,7 +759,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if is_minus_s_for_emcc(newargs, i):
             optarg = newargs[i + 1]
             try:
-              changes = settings_parser(optarg).parse_settings()
+              changes = SettingsParser(optarg).parse_settings()
               changes = evaluate_settings(changes)
               settings_changes.update(changes)
             except Exception as e:
@@ -768,7 +769,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           optarg = newargs[i + 1]
           try:
             with open(optarg) as settings_file:
-              changes = settings_parser(settings_file).parse_settings()
+              changes = SettingsParser(settings_file).parse_settings()
               changes = evaluate_settings(changes)
               settings_changes.update(changes)
           except Exception as e:
@@ -2081,7 +2082,7 @@ def parse_args(newargs):
       if optarg.isdigit():
         options.llvm_opts = int(optarg)
       else:
-        options.llvm_opts = settings_parser(optarg).parse_list()
+        options.llvm_opts = SettingsParser(optarg).parse_list()
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('--llvm-lto'):
@@ -2929,42 +2930,47 @@ def evaluate_settings(settings):
 
   res = {}
   for key, value in settings.items():
-    try:
-      if key in settings_aliases:
-        key = settings_aliases[key]
+    if key in settings_aliases:
+      key = settings_aliases[key]
 
-      deferred = False
+    deferred = False
 
+    if key == 'EXPORTED_FUNCTIONS':
+      res['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = ''
+
+    if type(value) is str and value and value[0] == '@':
       if key == 'EXPORTED_FUNCTIONS':
-        res['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = ''
+        res['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = value
+      if key in DEFERRED_RESPONSE_FILES:
+        deferred = True
+      else:
+        filename = value[1:]
+        with open(filename) as f:
+          try:
+            value = SettingsParser(f).parse_list()
+          except Exception as e:
+            exit_with_error('error while parsing respose file @"%s": %s', filename, str(e))
 
-      if type(value) is str and value[0] == '@':
-        if key == 'EXPORTED_FUNCTIONS':
-          res['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = value
-        if key in DEFERRED_RESPONSE_FILES:
-          deferred = True
-        else:
-          filename = value[1:]
-          with open(filename) as f:
+    if not deferred:
+      try:
+        default_type = type(getattr(shared.Settings, key))
+        if default_type != type(value):
+          if default_type is int:
+            if not value:
+              raise Exception('expected the value of key %s to be a number, got []' % key)
+            value = value[0]
             try:
-              value = settings_parser(f).parse_list()
-            except Exception as e:
-              exit_with_error('error while parsing respose file @"%s": %s', filename, str(e))
+              value = shared.expand_byte_size_suffixes(value)
+            except:
+              raise Exception('expected the value of key %s to be a number, got "%s"' % (key, value))
+          if default_type is str:
+            if not value:
+              raise Exception('expected the value of key %s to be a string, got []' % key)
+            value = value[0]
+      except AttributeError:
+        pass
 
-      if not deferred:
-        try:
-          default_type = type(getattr(shared.Settings, key))
-          if default_type != type(value):
-            if default_type is int:
-              value = shared.expand_byte_size_suffixes(value[0])
-            if default_type is str:
-              value = value[0]
-        except AttributeError:
-          pass
-
-      res[key] = value
-    except Exception as e:
-      exit_with_error('a problem occured in setting variable "%s" to value "%s": %s', key, value, str(e))
+    res[key] = value
   return res
 
 

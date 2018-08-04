@@ -18,6 +18,7 @@ import tools.line_endings
 import tools.js_optimizer
 import tools.tempfiles
 import tools.duplicate_function_eliminator
+import tools.parse
 
 
 class temp_directory(object):
@@ -7120,10 +7121,17 @@ int main() {
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
+  def test_s_from_file(self):
+    s_file_path = './settings.txt'
+    with open(s_file_path, 'w') as s_file:
+      s_file.write('WASM=0')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--s-from-file', s_file_path])
+    assert not os.path.exists('a.out.wasm'), 'file a.out.wasm was created, even though WASM was set to 0 in settings file %s' % s_file_path
+
   def test_settings_parser(self):
     text = r'''
 var0 = []; ; var1 = [v0  ]
-n = [00 10 20  30  '40' end] # ; n = 555
+n = [00 10 20  30  '40' end] # ; n =  555
 q = 'four "five" six', "seven,"'eight'"", "'"nine"'"
 p = :\ab\cde//fghi*:;
 w = [_zeroth,_first, second,third];
@@ -7143,7 +7151,7 @@ yy = @/a/b/c/good.filename
 zz = @\abc\de\f\'bad ,,file ,"name"'
 
 '''
-    res = settings_parser(text).parse_settings()
+    res = tools.parse.SettingsParser(text).parse_settings()
     expected = {
       'var0': [],
       'var1': ['v0'],
