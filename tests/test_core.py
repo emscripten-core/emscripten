@@ -3343,7 +3343,7 @@ ok
 
       # side settings
       self.set_setting('MAIN_MODULE', 0)
-      self.set_setting('SIDE_MODULE', 1)
+      self.set_setting('SIDE_MODULE', 2)
       side_suffix = 'js' if not self.is_wasm() else 'wasm'
       if isinstance(side, list):
         # side is just a library
@@ -4101,9 +4101,11 @@ Module = {
     ''', main=r'''
       #include "header.h"
       #include <iostream>
+      #include "emscripten.h"
 
       using namespace std;
       extern void sidey();
+      /*EMSCRIPTEN_KEEPALIVE*/ Base Base::member;
       int main() {
         cout << "starting main" << endl;
         sidey();
@@ -4113,10 +4115,11 @@ Module = {
     ''', side=r'''
       #include "header.h"
       #include <iostream>
+      #include "emscripten.h"
       
       using namespace std;
-
-      void sidey() {
+      
+      EMSCRIPTEN_KEEPALIVE void sidey() {
           Base temp;
           temp.value = 5;
           cout << "sidey:" << (Base::member == temp) << endl;
