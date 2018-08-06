@@ -1,14 +1,24 @@
 # coding=utf-8
 
 from __future__ import print_function
-import glob, hashlib, os, re, shutil, subprocess, sys, json, random
+import glob
+import hashlib
 import json
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
 import unittest
 from textwrap import dedent
+
 import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
+from runner import skip_if, no_wasm_backend
 
 # decorators for limiting which modes a test can run in
 
@@ -20,31 +30,12 @@ def SIMD(f):
     f(self)
   return decorated
 
-# Generic decorator that calls a function named 'condition' on the test class and
-# skips the test if that function returns true
-def skip_if(func, condition, explanation='', negate=False):
-  explanation_str = ' : %s' % explanation if explanation else ''
-  def decorated(self):
-    result = self.__getattribute__(condition)()
-    if negate:
-      result = not result
-    if result:
-      return self.skipTest(condition + explanation_str)
-    return func(self)
-  return decorated
-
 def no_emterpreter(f):
   return skip_if(f, 'is_emterpreter')
 
-def no_wasm(f):
-  return skip_if(f, 'is_wasm')
-
-def only_wasm(f):
-  return skip_if(f, 'is_wasm', negate=True)
-
-def no_wasm_backend(note=''):
+def no_wasm(note=''):
   def decorated(f):
-    return skip_if(f, 'is_wasm_backend', note)
+    return skip_if(f, 'is_wasm', note)
   return decorated
 
 def no_linux(note=''):
@@ -888,7 +879,7 @@ base align: 0, 0, 0, 0'''])
       }
     '''
     for num in [1, 5, 20, 1000]:
-      print(num)
+      print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
   def test_setjmp_many_2(self):
@@ -1519,7 +1510,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
   # Fails in wasm because of excessive slowness in the wasm-shell
-  @no_wasm
+  @no_wasm()
   def test_life(self):
     self.emcc_args += ['-std=c99']
     src = open(path_from_root('tests', 'life.c'), 'r').read()
@@ -4737,9 +4728,8 @@ def process(filename):
       self.set_setting('LINKABLE', linkable)
       self.do_run_from_file(src, output)
 
-  @no_wasm
+  @no_wasm('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
   def test_fs_base(self):
-    if self.is_wasm(): self.skipTest('wasm libc overlaps js lib, so no INCLUDE_FULL_LIBRARY')
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     Settings.INCLUDE_FULL_LIBRARY = 1
     try:
@@ -6195,6 +6185,8 @@ def process(filename):
     Building.llvm_dis(filename)
 
   def test_autodebug(self):
+    if self.get_setting('WASM_OBJECT_FILES'):
+      self.skipTest('autodebugging only works with bitcode objects')
     if Building.LLVM_OPTS:
       self.skipTest('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
@@ -7197,8 +7189,8 @@ err = err = function(){};
       self.do_run_in_out_file_test('tests', 'core', 'modularize_closure_pre', post_build=post)
 
   @no_emterpreter
+  @no_wasm('wasmifying destroys debug info and stack tracability')
   def test_exception_source_map(self):
-    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     self.emcc_args.append('-g4')
     if not jsrun.check_engine(NODE_JS): self.skipTest('sourcemapper requires Node to run')
 
@@ -7238,8 +7230,8 @@ err = err = function(){};
     dirname = self.get_dir()
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=post)
 
+  @no_wasm('wasmifying destroys debug info and stack tracability')
   def test_emscripten_log(self):
-    if self.is_wasm(): self.skipTest('wasmifying destroys debug info and stack tracability')
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
     if self.is_emterpreter():
@@ -7891,6 +7883,14 @@ binaryen2 = make_run('binaryen2', emcc_args=['-O2'])
 binaryen3 = make_run('binaryen3', emcc_args=['-O3'])
 binaryens = make_run('binaryens', emcc_args=['-Os'])
 binaryenz = make_run('binaryenz', emcc_args=['-Oz'])
+
+wasmobj0 = make_run('wasmobj0', emcc_args=['-O0', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj1 = make_run('wasmobj1', emcc_args=['-O1', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj2 = make_run('wasmobj2', emcc_args=['-O2', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj3 = make_run('wasmobj3', emcc_args=['-O3', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobjs = make_run('wasmobjs', emcc_args=['-Os', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobjz = make_run('wasmobjz', emcc_args=['-Oz', '-s', 'WASM_OBJECT_FILES=1'])
+
 
 # Secondary test modes - run directly when there is a specific need
 

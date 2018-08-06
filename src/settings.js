@@ -326,8 +326,8 @@ var ENVIRONMENT = ''; // By default, emscripten output will run on the web, in a
                       //    'worker' - a web worker environment.
                       //    'node'   - Node.js.
                       //    'shell'  - a JS shell like d8, js, or jsc.
-                      // There is also a 'pthread' environment, see shell.js, but it cannot be specified
-                      // manually yet TODO
+                      // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
+                      // manually yet TODO)
 
 var LZ4 = 0; // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and
              // decompressed on the fly, avoiding storing the entire decompressed data in memory at once.
@@ -740,6 +740,9 @@ var WASM = 1; // Whether to use compile code to WebAssembly. Set this to 0 to co
 var WASM_BACKEND = 0; // Whether to use the WebAssembly backend that is in development in LLVM.
                       // You should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
                       // environment.
+
+var WASM_OBJECT_FILES = 0; // Whether to compile object files as wasm as opposed to the default
+                           // of using LLVM IR.
 
 var BINARYEN_METHOD = "native-wasm"; // How we should run WebAssembly code. By default, we run it natively.
                                      // See binaryen's src/js/wasm.js-post.js for more details and options.

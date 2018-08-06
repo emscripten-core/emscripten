@@ -54,12 +54,13 @@ static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 {
 	a_store(l, 0);
 #ifdef __EMSCRIPTEN__
-	int futexResult;
-	do {
-		// We want to wake one and requeue all others, without comparing the value, but SAB spec doesn't
-		// have requeue without comparing, so implement it by spinning instead.
-		futexResult = emscripten_futex_wake_or_requeue(l, 0, r, *l);
-	} while(futexResult == -EAGAIN);
+	// Here the intent is to wake one waiter, and requeue all other waiters from waiting on address 'l'
+	// to wait on address 'r' instead. This is not possible at the moment with SharedArrayBuffer Atomics,
+	// as it does not have a "wake X waiters and requeue the rest" primitive. However this kind of
+	// primitive is strictly not needed, since it is more like an optimization to avoid spuriously waking
+	// all waiters, just to make them wait on another location immediately afterwards. Here we do exactly
+	// that: wake every waiter.
+	emscripten_futex_wake(l, 0x7FFFFFFF);
 #else
 	if (w) __wake(l, 1, 1);
 	else __syscall(SYS_futex, l, FUTEX_REQUEUE|128, 0, 1, r) != -ENOSYS

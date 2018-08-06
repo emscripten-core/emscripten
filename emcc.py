@@ -23,15 +23,16 @@ emcc can be influenced by a few environment variables:
 
 from __future__ import print_function
 
-import stat
-import os
-import sys
-import shutil
-import tempfile
-import shlex
-import time
-import re
+import json
 import logging
+import os
+import re
+import shlex
+import shutil
+import stat
+import sys
+import tempfile
+import time
 from subprocess import PIPE
 
 from tools import shared, jsrun, system_libs, client_mods, js_optimizer
@@ -859,6 +860,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                   break
               libs.append((i, l))
               newargs[i] = ''
+            elif 'WASM_OBJECT_FILES=1' in settings_changes and shared.Building.is_wasm(arg):
+              input_files.append((i, arg))
             else:
               logging.warning(arg + ' is not valid LLVM bitcode')
           elif arg_ending.endswith(STATICLIB_ENDINGS):
@@ -978,6 +981,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       shared.verify_settings()
 
+      # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
+      shared.reconfigure_cache()
+
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
@@ -991,6 +997,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
       if shared.Settings.ASSERTIONS:
         shared.Settings.STACK_OVERFLOW_CHECK = 2
+
+      if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
+        logging.error('WASM_OBJECT_FILES can only be used with wasm backend')
+        return 1
 
       if not shared.Settings.STRICT:
         # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -1072,7 +1082,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.SPLIT_MEMORY:
         if shared.Settings.WASM:
           logging.error('WASM is not compatible with SPLIT_MEMORY')
-          sys.exit(1)
+          return 1
         assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
         assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY - 1) == 0, 'SPLIT_MEMORY must be a power of 2'
         if shared.Settings.ASM_JS == 1:
@@ -1459,15 +1469,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.DEBUG_LEVEL = 4
 
       # Bitcode args generation code
-      def get_bitcode_args(input_files):
+      def get_clang_args(input_files):
         file_ending = filename_type_ending(input_files[0])
         args = [call] + newargs + input_files
         if file_ending.endswith(CXX_ENDINGS):
           args += shared.EMSDK_CXX_OPTS
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
-        # For fastcomp backend, no LLVM IR functions should ever be annotated 'optnone', because that would skip running the SimplifyCFG pass on them, which is required to always run to
-        # clean up LandingPadInst instructions that are not needed.
+        # For fastcomp backend, no LLVM IR functions should ever be annotated
+        # 'optnone', because that would skip running the SimplifyCFG pass on
+        # them, which is required to always run to clean up LandingPadInst
+        # instructions that are not needed.
         if not shared.Settings.WASM_BACKEND:
           args += ['-Xclang', '-disable-O0-optnone']
         args = system_libs.process_args(args, shared.Settings)
@@ -1476,10 +1488,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -E preprocessor-only support
       if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
         input_files = [x[1] for x in input_files]
-        cmd = get_bitcode_args(input_files)
+        cmd = get_clang_args(input_files)
         if specified_target:
           cmd += ['-o', specified_target]
-        # Do not compile, but just output the result from preprocessing stage or output the dependency rule. Warning: clang and gcc behave differently with -MF! (clang seems to not recognize it)
+        # Do not compile, but just output the result from preprocessing stage or
+        # output the dependency rule. Warning: clang and gcc behave differently
+        # with -MF! (clang seems to not recognize it)
         logging.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
         return run_process(cmd, check=False).returncode
 
@@ -1487,7 +1501,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.debug('compiling source file: ' + input_file)
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
-        args = get_bitcode_args([input_file]) + ['-emit-llvm', '-c', '-o', output_file]
+        args = get_clang_args([input_file]) + ['-c', '-o', output_file]
+        if shared.Settings.WASM_OBJECT_FILES:
+          for a in shared.Building.llvm_backend_args():
+            args += ['-mllvm', a]
+        else:
+          args.append('-emit-llvm')
         logging.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
         if run_process(args, check=False).returncode != 0:
           exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
@@ -2344,7 +2363,6 @@ def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush('pre-emterpretify')
   logging.debug('emterpretifying')
-  import json
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
@@ -2556,14 +2574,13 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shutil.copyfile(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), 'pre-eval-ctors.wasm'))
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
-  if not shared.Settings.WASM_BACKEND:
-    if shared.Settings.SIDE_MODULE:
-      wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
-      # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
-      shutil.move(wso, wasm_binary_target)
-      if not DEBUG:
-        os.unlink(asm_target) # we don't need the asm.js, it can just confuse
-      sys.exit(0) # and we are done.
+  if shared.Settings.SIDE_MODULE:
+    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
+    # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+    shutil.move(wso, wasm_binary_target)
+    if not shared.Settings.WASM_BACKEND and not DEBUG:
+      os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+    sys.exit(0) # and we are done.
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify

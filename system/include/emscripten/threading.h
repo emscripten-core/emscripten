@@ -82,7 +82,6 @@ uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // Emu
 
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
-int emscripten_futex_wake_or_requeue(volatile void/*uint32_t*/ *addr, int count, volatile void/*uint32_t*/ *addr2, int cmpValue);
 
 typedef union em_variant_val
 {
