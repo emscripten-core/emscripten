@@ -4085,6 +4085,43 @@ Module = {
                        force_c=True)
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
+  
+  def test_dylink_static_member(self):
+    self.dylink_test(header=r'''
+      class Base {
+      public:
+          Base() : value(1) {}
+          static Base member;
+          int value;
+
+          bool operator==(const Base &rhs) const {
+            return value == rhs.value;
+          }
+      };
+    ''', main=r'''
+      #include "header.h"
+      #include <iostream>
+
+      using namespace std;
+      extern void sidey();
+      int main() {
+        cout << "starting main" << endl;
+        sidey();
+      
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      #include <iostream>
+      
+      using namespace std;
+
+      void sidey() {
+          Base temp;
+          temp.value = 5;
+          cout << "sidey:" << (Base::member == temp) << endl;
+      }
+    ''', expected=['starting main\nsidey:0'])
 
   #def test_dylink_bullet(self):
   #  Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
