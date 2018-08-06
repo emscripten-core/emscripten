@@ -1056,40 +1056,6 @@ var LibraryPThread = {
     throw 'Atomics.wake returned an unexpected value ' + ret;
   },
 
-  // Returns the number of threads (>= 0) woken up, or one of the values -EINVAL or -EAGAIN on error.
-  emscripten_futex_wake_or_requeue__deps: ['_main_thread_futex_wait_address'],
-  emscripten_futex_wake_or_requeue: function(addr, count, addr2, cmpValue) {
-    if (addr <= 0 || addr2 <= 0 || addr >= HEAP8.length || addr2 >= HEAP8.length || count < 0
-      || addr&3 != 0 || addr2&3 != 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
-
-    // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero,
-    // or move it to wait on addr2. Note that this is not a fair procedure, since we always wake main thread first before
-    // any workers, so this scheme does not adhere to real queue-based waiting.
-    var mainThreadWaitAddress = Atomics.load(HEAP32, __main_thread_futex_wait_address >> 2);
-    var mainThreadWoken = 0;
-    if (mainThreadWaitAddress == addr) {
-      // Check cmpValue precondition before taking any action.
-      var val1 = Atomics.load(HEAP32, addr >> 2);
-      if (val1 != cmpValue) return -{{{ cDefine('EAGAIN') }}};
-
-      // If we are actually waking any waiters, then new main thread wait location is reset, otherwise requeue it to wait on addr2.
-      var newMainThreadWaitAddress = (count > 0) ? 0 : addr2;
-      var loadedAddr = Atomics.compareExchange(HEAP32, __main_thread_futex_wait_address >> 2, mainThreadWaitAddress, newMainThreadWaitAddress);
-      if (loadedAddr == mainThreadWaitAddress && count > 0) {
-        --count; // Main thread was woken, so one less workers to wake up.
-        mainThreadWoken = 1;
-      }
-    }
-
-    // Wake any workers waiting on this address.
-    var ret = Atomics.wakeOrRequeue(HEAP32, addr >> 2, count, addr2 >> 2, cmpValue);
-    if (ret == Atomics.NOTEQUAL) return -{{{ cDefine('EAGAIN') }}};
-    if (ret >= 0) return ret + mainThreadWoken;
-    throw 'Atomics.wakeOrRequeue returned an unexpected value ' + ret;
-  },
-
   __atomic_is_lock_free: function(size, ptr) {
     return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
   },
