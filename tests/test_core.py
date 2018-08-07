@@ -3983,9 +3983,12 @@ Module = {
       int sideg = 49;
       int bsidef() { return 536; }
       extern void only_in_second(int x);
+      extern int second_to_third;
+      int third_to_second = 1337;
       void only_in_third(int x) {
-        printf("%d only_in_third: %d, %d\n", x, sidef(), sideg); // prints the ones from this compilation unit; they are not accessed dynamically,
-                                                                 // so it doesn't matter that overriding failed
+        // note we access our own globals directly, so
+        // it doesn't matter that overriding failed
+        printf("%d only_in_third: %d, %d, %d\n", x, sidef(), sideg, second_to_third);
         if (x == 0) {
           only_in_second(1);
         }
@@ -4016,13 +4019,15 @@ Module = {
       int sidef() { return 10; } // third will try to override these, but fail!
       int sideg = 20;
       extern void only_in_third(int x);
+      int second_to_third = 500;
+      extern int third_to_second;
       void only_in_second(int x) {
-        printf("%d only_in_second: %d, %d\n", x, sidef(), sideg);
+        printf("%d only_in_second: %d, %d, %d\n", x, sidef(), sideg, third_to_second);
         if (x == 0) {
           only_in_third(1);
         }
       }
-    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\n0 only_in_second: 10, 20\n1 only_in_third: 36, 49\n0 only_in_third: 36, 49\n1 only_in_second: 10, 20\n'],
+    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\n0 only_in_second: 10, 20, 1337\n1 only_in_third: 36, 49, 500\n0 only_in_third: 36, 49, 500\n1 only_in_second: 10, 20, 1337\n'],
          need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
     if self.get_setting('ASSERTIONS'):

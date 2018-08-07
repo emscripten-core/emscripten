@@ -186,13 +186,40 @@ function loadWebAssemblyModule(binary, loadAsync) {
       env[x] = Module[x];
     }
   }
+  // wasm dynamic libraries are pure wasm, so they cannot assist in
+  // their own loading. When side module A wants to import something
+  // provided by a side module B that is loaded later, we need to
+  // add a layer of indirection, but worse, we can't even tell what
+  // to add the indirection for, without inspecting what A's imports
+  // are. To do that here, we use a JS proxy (another option would
+  // be to inspect the binary directly).
+  var proxyHandler = {
+    'get': function(obj, prop) {
+      if (prop in obj) {
+        return obj[prop]; // already present
+      }
+      if (prop.startsWith('g$')) {
+        // This is a getter function for a global address, which
+        // may be linked in after us. Add indirection.
+        var name = prop.substr(2); // without g$ prefix
+        return env[prop] = function() {
+#if ASSERTIONS
+          assert(Module[name], 'missing linked global ' + name);
+#endif
+          return Module[name];
+        };
+      }
+      // fall through, we don't know what to do here
+      return undefined;
+    }
+  };
   var info = {
     global: {
       'NaN': NaN,
       'Infinity': Infinity,
     },
     'global.Math': Math,
-    env: env,
+    env: new Proxy(env, proxyHandler),
     'asm2wasm': asm2wasmImports
   };
 #if ASSERTIONS
