@@ -1272,9 +1272,9 @@ int f() {
     open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
-    err = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE).stderr
-    self.assertContained('warning: unresolved symbol: _Z4sidev', err) # was native, could not link it
-    self.assertContained('is not LLVM bitcode, cannot link', err)
+    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertIn('is not LLVM bitcode, cannot link', proc.stderr)
 
   def test_export_all(self):
     lib = r'''

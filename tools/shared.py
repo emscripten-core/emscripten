@@ -1989,8 +1989,7 @@ class Building(object):
       # Check the object is valid for us, and not a native object file.
       # TODO: for lld, also check if a wasm object file?
       if not Building.is_bitcode(f):
-        logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
-        return False
+        exit_with_error('object %s is not LLVM bitcode, cannot link' % (f))
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
