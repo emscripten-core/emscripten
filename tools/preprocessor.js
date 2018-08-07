@@ -133,7 +133,10 @@ set = function() {}
 var settings_file = arguments_[0];
 var shell_file = arguments_[1];
 
-load(settings_file);
+var settings = eval('(' + read(settings_file) + ')');
+for (key in settings) {
+  globalEval('var ' + key + ' = ' + JSON.stringify(settings[key]));
+}
 load('parseTools.js');
 
 var from_html = read(shell_file);

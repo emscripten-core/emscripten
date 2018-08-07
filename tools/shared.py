@@ -1227,9 +1227,12 @@ class SettingsManager(object):
     @classmethod
     def load(self, args=[]):
       # Load the JS defaults into python
-      settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
-      exec(settings)
+      settings_path = path_from_root('src', 'settings.js')
+      with open(settings_path) as settings_file:
+        text = settings_file.read()
+        data = json.loads(strip_json_comments(text))
+        for key, value in data.items():
+          self.attrs[key] = value
 
       # Apply additional settings. First -O, then -s
       for arg in args:
@@ -1258,6 +1261,14 @@ class SettingsManager(object):
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
+      return ret
+
+    @classmethod
+    def get_settings(self):
+      ret = {}
+      for key, value in self.attrs.items():
+        if key == key.upper():
+          ret[key] = value
       return ret
 
     @classmethod
@@ -1321,6 +1332,57 @@ class SettingsManager(object):
 
   def __getitem__(self, key):
     return self.instance()[key]
+
+
+class StringScanner:
+  def __init__(self, s):
+    self.s = s
+    self.idx = 0
+
+  def eos(self):
+    return self.idx == len(self.s)
+
+  def peek(self, n=1):
+    return self.s[self.idx:self.idx + n]
+
+  def get_char(self):
+    self.idx += 1
+    return self.s[self.idx - 1]
+
+  def scan(self, pattern, flags=0):
+    if type(pattern) is str:
+      pattern = re.compile(pattern, flags)
+    match = pattern.match(self.s, self.idx)
+    if match:
+      self.idx = match.end()
+      return match.group(0)
+    return ''
+
+
+def strip_json_comments(text):
+  s = StringScanner(text)
+  text = ''
+
+  def scan_string():
+    res = ''
+    res += s.get_char()
+    while not s.eos() and s.peek() != '"':
+      if s.peek() == '\\':
+        res += s.get_char()
+        res += s.get_char()
+      else:
+        res += s.get_char()
+    res += s.get_char()
+    return res
+
+  while not s.eos():
+    if s.peek(2) == '//':
+      s.scan('[^\n]+')
+    elif s.peek() == '"':
+      text += scan_string()
+    else:
+      text += s.get_char()
+  return text
 
 
 def verify_settings():
@@ -3028,11 +3090,9 @@ def clang_preprocess(filename):
 def read_and_preprocess(filename):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
-  # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
-  #       we only want the actual settings, hence the [1::2] slice operation.
-  settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
   settings_file = os.path.join(temp_dir, 'settings.js')
-  open(settings_file, 'w').write(settings_str)
+  with open(settings_file, 'w') as f:
+    json.dump(Settings.get_settings(), f)
 
   # Run the JS preprocessor
   # N.B. We can't use the default stdout=PIPE here as it only allows 64K of output before it hangs

@@ -7142,6 +7142,26 @@ int main() {
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
+  def test_strip_json_comments(self):
+    text = r'''
+    {
+    //comment1
+    "ab": 123,//comment2
+    "cde": "str//str",// comment3
+    "efgh": "\"//string"
+    }
+    '''
+    res = json.loads(strip_json_comments(text))
+    expected = {
+      "ab": 123,
+      "cde": "str//str",
+      "efgh": "\"//string"
+    }
+    for key in set().union(res, expected):
+      v = res.get(key)
+      ev = expected.get(key)
+      assert v == ev, "expected value of key %s to be %s, got %s" % (key, repr(ev), repr(v))
+
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     # remove .py from EMCC(=emcc.py)
     def trim_py_suffix(filename):

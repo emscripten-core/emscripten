@@ -138,7 +138,10 @@ load('utility.js');
 
 // Load settings, can be overridden by commandline
 
-load('settings.js');
+var settings = eval('(' + read('settings.js') + ')');
+for (key in settings) {
+  globalEval('var ' + key + ' = ' + JSON.stringify(settings[key]));
+}
 
 var settings_file = arguments_[0];
 additionalLibraries = Array.prototype.slice.call(arguments_, 1);
