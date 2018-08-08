@@ -6693,8 +6693,10 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
+  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
-    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): self.skipTest('need js optimizations')
+    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
+      self.skipTest('need js optimizations')
 
     orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
@@ -6709,30 +6711,38 @@ def process(filename):
       int main() {}
     ''', "constructing!\n");
 
-    code_file = 'src.cpp.o.js' if not self.get_setting('WASM') else 'src.cpp.o.wasm'
+
+    def get_code_size():
+      if self.is_wasm():
+        # Use number of functions as a for code size
+        return self.count_wasm_contents('src.cpp.o.wasm', 'funcs')
+      else:
+        return os.path.getsize('src.cpp.o.js')
+
+    def get_mem_size():
+      if self.is_wasm():
+        # Use number of functions as a for code size
+        return self.count_wasm_contents('src.cpp.o.wasm', 'memory-data')
+      if self.uses_memory_init_file():
+        return os.path.getsize('src.cpp.o.js.mem')
+
+      # otherwise we ignore memory size
+      return 0
 
     def do_test(test):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
       test()
-      ec_code_size = os.stat(code_file).st_size
-      if self.uses_memory_init_file():
-        ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      ec_code_size = get_code_size()
+      ec_mem_size = get_mem_size()
       self.emcc_args = orig_args[:]
       test()
-      code_size = os.stat(code_file).st_size
-      if self.uses_memory_init_file():
-        mem_size = os.stat('src.cpp.o.js.mem').st_size
-      # if we are wasm, then the mem init is inside the wasm too, so the total change in code+data may grow *or* shrink
-      code_size_should_shrink = not self.is_wasm()
-      print(code_size, ' => ', ec_code_size, ', are we testing code size?', code_size_should_shrink)
-      if self.uses_memory_init_file():
-        print(mem_size, ' => ', ec_mem_size)
-      if code_size_should_shrink:
-        assert ec_code_size < code_size
-      else:
-        assert ec_code_size != code_size, 'should at least change'
-      if self.uses_memory_init_file():
-        assert ec_mem_size > mem_size
+      code_size = get_code_size()
+      mem_size = get_mem_size()
+      if mem_size:
+        print('mem: ', mem_size, '=>', ec_mem_size)
+        self.assertGreater(ec_mem_size, mem_size)
+      print('code:', code_size, '=>', ec_code_size)
+      self.assertLess(ec_code_size, code_size)
 
     print('remove ctor of just assigns to memory')
     def test1():
@@ -6768,6 +6778,7 @@ def process(filename):
     self.set_setting('ASSERTIONS', 0)
 
     print('remove just some, leave others')
+
     def test3():
       self.do_run(r'''
 #include <iostream>
