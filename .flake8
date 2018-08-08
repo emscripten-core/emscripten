@@ -1,5 +1,5 @@
 [flake8]
-ignore = E111,E114,E501,E261,E266,E121
+ignore = E111,E114,E501,E261,E266,E121,E402
 # TODO(sbc): Switch from the whitelist of a blacklist such as:
 # exclude = ./third_party/,emmaken.py,./tools/scons/,./tools/ports/,./tests/
 filename =
@@ -16,3 +16,4 @@ filename =
   */tools/find_bigvars.py,
   */tools/merge_pair.py,
   */tools/system_libs.py
+  */tests/runner.py

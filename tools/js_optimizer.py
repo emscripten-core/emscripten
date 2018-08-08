@@ -280,7 +280,7 @@ def run_on_chunk(command):
       while os.path.exists(saved): saved = 'input' + str(int(saved.replace('input', '').replace('.txt', ''))+1) + '.txt'
       print('running js optimizer command', ' '.join([c if c != filename else saved for c in command]), file=sys.stderr)
       shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-    if shared.EM_BUILD_VERBOSE_LEVEL >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
+    if shared.EM_BUILD_VERBOSE >= 3: print('run_on_chunk: ' + str(command), file=sys.stderr)
     proc = shared.run_process(command, stdout=subprocess.PIPE)
     output = proc.stdout
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
