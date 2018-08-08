@@ -6693,6 +6693,7 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
+  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
@@ -6739,9 +6740,9 @@ def process(filename):
       mem_size = get_mem_size()
       if mem_size:
         print('mem: ', mem_size, '=>', ec_mem_size)
-        assert ec_mem_size > mem_size
+        self.assertGreater(ec_mem_size, mem_size)
       print('code:', code_size, '=>', ec_code_size)
-      assert ec_code_size < code_size
+      self.assertLess(ec_code_size, code_size)
 
     print('remove ctor of just assigns to memory')
     def test1():
