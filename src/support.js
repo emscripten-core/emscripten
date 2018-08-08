@@ -199,8 +199,7 @@ function loadWebAssemblyModule(binary, loadAsync) {
         return obj[prop]; // already present
       }
       if (prop.startsWith('g$')) {
-        // This is a getter function for a global address, which
-        // may be linked in after us. Add indirection.
+        // a global. the g$ function returns the global address.
         var name = prop.substr(2); // without g$ prefix
         return env[prop] = function() {
 #if ASSERTIONS
@@ -209,8 +208,13 @@ function loadWebAssemblyModule(binary, loadAsync) {
           return Module[name];
         };
       }
-      // fall through, we don't know what to do here
-      return undefined;
+      // if not a global, then a function - call it indirectly
+      return env[prop] = function() {
+#if ASSERTIONS
+        assert(Module[prop], 'missing linked function ' + prop);
+#endif
+        return Module[prop].apply(null, arguments);
+      };
     }
   };
   var info = {

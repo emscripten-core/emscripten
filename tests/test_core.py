@@ -3982,16 +3982,17 @@ Module = {
       int sidef() { return 36; }
       int sideg = 49;
       int bsidef() { return 536; }
-      extern void only_in_second(int x);
+      extern void only_in_second_1(int x);
       extern int second_to_third;
       int third_to_second = 1337;
-      void only_in_third(int x) {
+      void only_in_third_0() {
         // note we access our own globals directly, so
         // it doesn't matter that overriding failed
-        printf("%d only_in_third: %d, %d, %d\n", x, sidef(), sideg, second_to_third);
-        if (x == 0) {
-          only_in_second(1);
-        }
+        printf("only_in_third_0: %d, %d, %d\n", sidef(), sideg, second_to_third);
+        only_in_second_1(2112);
+      }
+      void only_in_third_1(int x) {
+        printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
     run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
@@ -4003,31 +4004,32 @@ Module = {
       extern int sideg;
       extern int bsidef();
       extern int bsideg;
-      extern void only_in_second(int x);
-      extern void only_in_third(int x);
+      extern void only_in_second_0();
+      extern void only_in_third_0();
       int main() {
         EM_ASM({
           loadDynamicLibrary('third%s'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
         printf("sidef: %%d, sideg: %%d.\n", sidef(), sideg);
         printf("bsidef: %%d.\n", bsidef());
-        only_in_second(0);
-        only_in_third(0);
+        only_in_second_0();
+        only_in_third_0();
       }
     ''' % dylib_suffix, side=r'''
       #include <stdio.h>
       int sidef() { return 10; } // third will try to override these, but fail!
       int sideg = 20;
-      extern void only_in_third(int x);
+      extern void only_in_third_1(int x);
       int second_to_third = 500;
       extern int third_to_second;
-      void only_in_second(int x) {
-        printf("%d only_in_second: %d, %d, %d\n", x, sidef(), sideg, third_to_second);
-        if (x == 0) {
-          only_in_third(1);
-        }
+      void only_in_second_0() {
+        printf("only_in_second_0: %d, %d, %d\n", sidef(), sideg, third_to_second);
+        only_in_third_1(1221);
       }
-    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\n0 only_in_second: 10, 20, 1337\n1 only_in_third: 36, 49, 500\n0 only_in_third: 36, 49, 500\n1 only_in_second: 10, 20, 1337\n'],
+      void only_in_second_1(int x) {
+        printf("only_in_second_1: %d, %d, %d, %d\n", sidef(), sideg, third_to_second, x);
+      }
+    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
          need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
     if self.get_setting('ASSERTIONS'):
