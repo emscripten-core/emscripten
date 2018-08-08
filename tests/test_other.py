@@ -7305,6 +7305,7 @@ int main() {
     self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
 
   @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
+  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     for wasm in (1, 0):
       print('wasm', wasm)
@@ -7320,25 +7321,31 @@ int main() {
         int main() {}
       '''
       open('src.cpp', 'w').write(src)
-      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+      run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
       print('check no ctors is ok')
-      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz', '-s', 'WASM=%d' % wasm])
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz', '-s', 'WASM=%d' % wasm])
       self.assertContained('hello, world!', run_js('a.out.js'))
+
       # on by default in -Oz, but user-overridable
       def get_size(args):
         print('get_size', args)
         check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=%d' % wasm] + args)
         self.assertContained('hello, world!', run_js('a.out.js'))
-        if not wasm:
-          return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
+        if wasm:
+          codesize = self.count_wasm_contents('a.out.wasm', 'funcs')
+          memsize = self.count_wasm_contents('a.out.wasm', 'memory-data')
         else:
-          return (os.stat('a.out.js').st_size, 0) # can't measure just the mem out of the wasm
+          codesize = os.path.getsize('a.out.js')
+          memsize = os.path.getsize('a.out.js.mem')
+        return (codesize, memsize)
+
       def check_size(left, right):
         # can't measure just the mem out of the wasm, so ignore [1] for wasm
-        if left[0] == right[0] and (wasm or left[1] == right[1]): return 0
-        if left[0] < right[0] and (wasm or left[1] > right[1]): return -1 # smaller js, bigger mem
-        if left[0] > right[0] and (wasm or left[1] < right[1]): return 1
+        if left[0] == right[0] and left[1] == right[1]: return 0
+        if left[0] < right[0] and left[1] > right[1]: return -1 # smaller code, bigger mem
+        if left[0] > right[0] and left[1] < right[1]: return 1
         assert 0, [left, right]
+
       o2_size = get_size(['-O2'])
       assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
       assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS=1']), o2_size) < 0, 'eval_ctors works if user asks for it'
@@ -7376,14 +7383,14 @@ int main() {
           }
         ''' % (p1, p2, p3, last)
         open('src.cpp', 'w').write(src)
-        check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+        run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
         self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
         shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
-        if not wasm:
-          return open('a.out.js').read().count('function _')
-        else:
+        if wasm:
           shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
-          return self.count_wasm_contents('a.out.wasm', 'total')
+          return self.count_wasm_contents('a.out.wasm', 'funcs')
+        else:
+          return open('a.out.js').read().count('function _')
       print('no bad ctor')
       first  = test(1000, 2000, 3000, 0xe, 0x58e)
       second = test(3000, 1000, 2000, 0xe, 0x8e5)
