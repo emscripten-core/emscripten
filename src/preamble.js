@@ -1029,7 +1029,12 @@ function enlargeMemory() {
 
 #if WASM_MEM_MAX != -1
   // A limit was set for how much we can grow. We should not exceed that
-  // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+  // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
+  // if we are at say 64MB, and the max is 100MB, then we should *not* try to
+  // grow 64->128MB which is the default behavior (doubling), as 128MB will
+  // fail because of the max limit. Instead, we should only try to grow
+  // 64->100MB in this example, which has a chance of succeeding (but may
+  // still fail for another reason, of actually running out of memory).
   TOTAL_MEMORY = Math.min(TOTAL_MEMORY, {{{ WASM_MEM_MAX }}});
   if (TOTAL_MEMORY == OLD_TOTAL_MEMORY) {
 #if ASSERTIONS
