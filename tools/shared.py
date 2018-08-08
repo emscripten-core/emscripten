@@ -29,14 +29,6 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
 
-class FatalError(Exception):
-  """Error representing an unrecoverable error such as the failure of
-  a subprocess.
-
-  These are usually handled at the entry point of each script."""
-  pass
-
-
 def exit_with_error(msg, *args):
   logging.error(msg, *args)
   sys.exit(1)
@@ -171,7 +163,7 @@ def check_execute(cmd, *args, **kw):
     run_process(cmd, stdout=PIPE, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    exit_with_error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
 
 
 def check_call(cmd, *args, **kw):
@@ -179,7 +171,7 @@ def check_call(cmd, *args, **kw):
     run_process(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError:
-    raise FatalError("'%s' failed" % " ".join(cmd))
+    exit_with_error("'%s' failed" % " ".join(cmd))
 
 
 def generate_config(path, first_time=False):
