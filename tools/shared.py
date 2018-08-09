@@ -1210,6 +1210,19 @@ def expand_byte_size_suffixes(value):
     raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
 
 
+def _byteify(data, ignore_dicts=False):
+  if isinstance(data, unicode):
+    return data.encode('utf-8')
+  if isinstance(data, list):
+    return [_byteify(item, ignore_dicts=True) for item in data]
+  if isinstance(data, dict) and not ignore_dicts:
+    return {
+      _byteify(key): _byteify(value, ignore_dicts=True)
+      for key, value in data.iteritems()
+    }
+  return data
+
+
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
   class __impl(object):
@@ -1228,9 +1241,14 @@ class SettingsManager(object):
     def load(self, args=[]):
       # Load the JS defaults into python
       settings_path = path_from_root('src', 'settings.js')
+
       with open(settings_path) as settings_file:
-        text = settings_file.read()
-        data = json.loads(strip_json_comments(text))
+        text = strip_json_comments(settings_file.read())
+        if sys.version_info[0] >= 3:
+          data = json.loads(text)
+        else:
+          # Convert all strings from unicode to str (str is not unicode in python 2)
+          data = json.loads(text, object_hook=_byteify)
         for key, value in data.items():
           self.attrs[key] = value
 
