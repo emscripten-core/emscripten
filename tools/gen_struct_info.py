@@ -380,9 +380,12 @@ def inspect_code(headers, cpp_opts, structs, defines):
       del safe_env[opt]
 
   # Use binaryen, if necessary
-  binaryen = os.environ.get('EMCC_WASM_BACKEND_BINARYEN')
-  if binaryen:
+  if os.environ.get('EMCC_WASM_BACKEND_BINARYEN'):
     cpp_opts += ['-s', 'BINARYEN=1']
+
+  # Avoid building wasm (e.g. the binaryen dependency) if we are using fastcomp
+  if not shared.Settings.WASM_BACKEND:
+    cpp_opts += ['-s', 'WASM=0']
 
   info = []
   # Compile the program.
