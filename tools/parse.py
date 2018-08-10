@@ -1,79 +1,52 @@
 from collections import namedtuple
-try:
-  from StringIO import StringIO
-except ImportError:
-  from io import StringIO
+from tools.shared import StringScanner
 
 
 class SettingsParser:
-  make_token = namedtuple('token', 'kind value')
-
-  def __init__(self, stream):
-    if type(stream) is str:
-      stream = StringIO(stream)
-    self.stream = stream
+  def __init__(self, s):
+    self.s = StringScanner(s)
     self.token_buffer = []
-    self.char_buffer = []
 
   def get_token(self):
     if self.token_buffer:
       return self.token_buffer.pop()
 
-    def end():
-      return peek() == ''
+    s = self.s
 
-    def peek():
-      if self.char_buffer:
-        return self.char_buffer[-1]
-      ch = self.stream.read(1)
-      self.char_buffer.append(ch)
-      return ch
+    # skip spaces
+    s.scan(' *')
 
-    def pop():
-      if self.char_buffer:
-        return self.char_buffer.pop()
-      return self.stream.read(1)
-
-    def pop_while(chars):
-      s = ''
-      while not end() and peek() in chars:
-        s += pop()
-      return s
-
-    def pop_until(chars):
-      s = ''
-      while not end() and peek() not in chars:
-        s += pop()
-      return s
-
-    space_chars = ' '
-    op_chars = '[]=,;@'
-    non_word_chars = op_chars + space_chars + '#\n'
-
-    pop_while(space_chars)
-    if end():
-      token = self.make_token('endmarker', '')
-    elif peek() in op_chars:
-      token = self.make_token('op', pop())
-    elif peek() == '#':
-      token = self.make_token('comment', pop_until('\n'))
-    elif peek() == '\n':
-      token = self.make_token('newline', pop())
+    if s.eos():
+      kind = 'endmarker'
+      value = ''
+    elif s.peek() in '[]=,;@':
+      kind = 'op'
+      value = s.get_char()
+    elif s.peek() == '#':
+      kind = 'comment'
+      value = s.scan('[^\n]+')
+    elif s.peek() == '\n':
+      kind = 'newline'
+      value = s.get_char()
     else:
-      res = ''
-      while not end() and peek() not in non_word_chars:
-        if peek() in '"\'':
-          qch = pop()
-          res += pop_until(qch)
-          if end():
+      kind = 'string'
+      value = ''
+      non_word_chars = '[]=,;@ #\n'
+      while not s.eos() and s.peek() not in non_word_chars:
+        if s.peek() in '"\'':
+          qch = s.get_char()
+          value += s.scan('[^%s]+' % qch)
+          if s.eos():
             raise Exception('unclosed opened quoted string. expected final character to be "%s"' % qch)
-          pop()
+          s.get_char()
         else:
-          res += pop()
-      token = self.make_token('string', res)
-    if token.kind == 'comment':
+          value += s.get_char()
+
+    # skip comments
+    if kind == 'comment':
       return self.get_token()
-    return token
+
+    return namedtuple('Token', 'kind value')(kind, value)
 
   def peek_token(self):
     if self.token_buffer:
@@ -93,6 +66,7 @@ class SettingsParser:
     if self.peek_token() == ('op', '['):
       brackets = True
       self.get_token()
+
     res = []
     while 1:
       token = self.peek_token()
@@ -103,14 +77,17 @@ class SettingsParser:
         res.append(self.parse_string())
       else:
         break
+
     if brackets:
       if self.peek_token() != ('op', ']'):
         raise Exception('unclosed opened string list. expected final character to be "]"')
       self.get_token()
+
     return res
 
   def parse_value(self):
     if self.peek_token() == ('op', '@'):
+      # response file
       self.get_token()
       return '@' + self.parse_string()
     else:

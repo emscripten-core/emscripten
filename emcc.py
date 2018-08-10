@@ -769,7 +769,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           optarg = newargs[i + 1]
           try:
             with open(optarg) as settings_file:
-              changes = SettingsParser(settings_file).parse_settings()
+              text = settings_file.read()
+              changes = SettingsParser(text).parse_settings()
               changes = evaluate_settings(changes)
               settings_changes.update(changes)
           except Exception as e:
@@ -2947,7 +2948,7 @@ def evaluate_settings(settings):
         filename = value[1:]
         with open(filename) as f:
           try:
-            value = SettingsParser(f).parse_list()
+            value = SettingsParser(f.read()).parse_list()
           except Exception as e:
             exit_with_error('error while parsing respose file @"%s": %s', filename, str(e))
 

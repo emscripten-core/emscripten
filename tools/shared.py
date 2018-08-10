@@ -1248,7 +1248,7 @@ class SettingsManager(object):
           if v in ['s', 'z']:
             shrink = 1 if v == 's' else 2
             v = '2'
-          level = int(v)
+          level = eval(v)
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
@@ -2963,6 +2963,31 @@ class WebAssembly(object):
     f.write(wasm[8:]) # copy rest of binary
     f.close()
     return wso
+
+
+class StringScanner:
+  def __init__(self, s):
+    self.s = s
+    self.idx = 0
+
+  def eos(self):
+    return self.idx == len(self.s)
+
+  def peek(self, n=1):
+    return self.s[self.idx:self.idx + n]
+
+  def get_char(self):
+    self.idx += 1
+    return self.s[self.idx - 1]
+
+  def scan(self, pattern, flags=0):
+    if type(pattern) is str:
+      pattern = re.compile(pattern, flags)
+    match = pattern.match(self.s, self.idx)
+    if match:
+      self.idx = match.end()
+      return match.group(0)
+    return ''
 
 
 # Python 2-3 compatibility helper function:

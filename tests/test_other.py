@@ -7161,12 +7161,12 @@ zz = @\abc\de\f\'bad ,,file ,"name"'
       'w': ['_zeroth', '_first', 'second', 'third'],
       'multiline0': ['zero', 'one', 'two', 'three', ''],
       'yy': '@/a/b/c/good.filename',
-      'zz' : '@\\abc\\de\\f\\bad ,,file ,"name"'
+      'zz': '@\\abc\\de\\f\\bad ,,file ,"name"'
     }
     for key in set().union(res, expected):
-      v = repr(res[key]) if key in res else 'undefined'
-      ev = repr(expected[key]) if key in expected else 'undefined'
-      assert v == ev, "expected the value of key %s to be %s, got %s" % (key, ev, v)
+      v = res.get(key)
+      ev = expected.get(key)
+      assert v == ev, "expected the value of key %s to be %s, got %s" % (key, repr(ev), repr(v))
 
   def test_python_2_3(self): # check emcc/em++ can be called by any python
     # remove .py from EMCC(=emcc.py)
