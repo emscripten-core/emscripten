@@ -1828,6 +1828,13 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  def test_memorygrowth_wasm_mem_max(self):
+    if not self.is_wasm():
+      self.skipTest('wasm memory specific test')
+    # check that memory growth does not exceed the wasm mem max limit
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
+
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')

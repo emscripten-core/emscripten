@@ -1,0 +1,22 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+
+int main() {
+  const int MB = 1024 * 1024;
+  // TOTAL_MEMORY starts at 64MB, and max is 100. allocate enough
+  // to prove we can grow. 70 is enough to prove we can grow,
+  // higher can prove we stop at the right point.
+  for (int i = 0; 1; i++) {
+    printf("%d\n", i);
+    volatile int sink = (int)malloc(MB);
+    if (!sink) {
+      printf("failed at %d\n", i);
+      assert(i > 70);
+      break;
+    }
+    assert(i <= 100); // the wasm mem max limit, we must not get there
+  }
+  printf("grew memory ok.\n");
+}
+

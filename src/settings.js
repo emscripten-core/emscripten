@@ -766,7 +766,9 @@ var BINARYEN_PASSES = ""; // A comma-separated list of passes to run in the bina
                           // When set, this overrides the default passes we would normally run.
 var WASM_MEM_MAX = -1; // Set the maximum size of memory in the wasm module (in bytes).
                        // Without this, TOTAL_MEMORY is used (as it is used for the initial value),
-                       // or if memory growth is enabled, no limit is set. This overrides both of those.
+                       // or if memory growth is enabled, the default value here (-1) is to have
+                       // no limit, but you can set this to set a maximum size that growth will
+                       // stop at.
                        // (This option was formerly called BINARYEN_MEM_MAX)
 var BINARYEN_ASYNC_COMPILATION = 1; // Whether to compile the wasm asynchronously, which is more
                                     // efficient and does not block the main thread. This is currently
