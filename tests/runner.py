@@ -185,7 +185,22 @@ class RunnerCore(unittest.TestCase):
   temp_files_before_run = []
 
   def is_emterpreter(self):
-    return False
+    return self.emcc_args and 'EMTERPRETIFY=1' in self.emcc_args
+
+  def is_split_memory(self):
+    return self.emcc_args and 'SPLIT_MEMORY=' in str(self.emcc_args)
+
+  def is_wasm(self):
+    return (self.emcc_args and 'WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
+
+  def is_linux(self):
+    return LINUX
+
+  def is_macos(self):
+    return MACOS
+
+  def is_windows(self):
+    return WINDOWS
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
@@ -481,9 +496,11 @@ class RunnerCore(unittest.TestCase):
                " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd]), file=sys.stderr)
         err = err.replace(m.group(0), '')
 
+    # check for asm.js validation
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
       print("[was asm.js'ified]", file=sys.stderr)
-    elif 'asm.js' in err: # if no asm.js error, then not an odin build
+    # check for an asm.js validation error, if we expect one
+    elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
       raise Exception("did NOT asm.js'ify: " + err)
     err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
     return err
