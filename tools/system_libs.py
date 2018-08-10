@@ -785,8 +785,9 @@ class Ports(object):
     # retrieve the same port at once
 
     shared.Cache.acquire_cache_lock()
+    extension = '.tar.bz2' if is_tarbz2 else '.zip'
     try:
-      if not os.path.exists(fullname + '.zip'):
+      if not os.path.exists(fullname + extension):
         retrieve()
 
       if not os.path.exists(fullname):
@@ -795,7 +796,7 @@ class Ports(object):
       if not check_tag():
         logging.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
-        shared.try_delete(fullname + '.zip')
+        shared.try_delete(fullname + extension)
         retrieve()
         unpack()
 
