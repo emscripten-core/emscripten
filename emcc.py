@@ -73,7 +73,7 @@ LIB_PREFIXES = ('', 'lib')
 JS_CONTAINING_SUFFIXES = ('js', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
-DEFERRED_REPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
+DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc opt
 # levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to get
@@ -339,7 +339,7 @@ def apply_settings(changes):
     original_exported_response = False
 
     if value[0] == '@':
-      if key not in DEFERRED_REPONSE_FILES:
+      if key not in DEFERRED_RESPONSE_FILES:
         if key == 'EXPORTED_FUNCTIONS':
           original_exported_response = value
         value = open(value[1:]).read()
