@@ -1524,6 +1524,17 @@ namespace emscripten {
             ) {
                 m[k] = v;
             }
+
+            static std::vector<typename MapType::key_type> keys(
+                const MapType& m
+            ) {
+              std::vector<typename MapType::key_type> keys;
+              keys.reserve(m.size());
+              for (const auto& pair : m) {
+                keys.push_back(pair.first);
+              }
+              return keys;
+            }
         };
     }
 
@@ -1536,6 +1547,7 @@ namespace emscripten {
             .function("size", &MapType::size)
             .function("get", internal::MapAccess<MapType>::get)
             .function("set", internal::MapAccess<MapType>::set)
+            .function("keys", internal::MapAccess<MapType>::keys)
             ;
     }
 
