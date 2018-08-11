@@ -324,37 +324,17 @@ def embed_memfile(options):
 
 
 def apply_settings(changes):
-  """Take a list of settings in form `NAME=VALUE` and apply them to the global
-  Settings object.
-  """
+  """Take a dictionary with settings and apply them to the global Settings object."""
 
-  for change in changes:
-    key, value = change.split('=', 1)
+  for key, value in changes.items():
+    if key == 'EXPORTED_FUNCTIONS_RESPONSE_FILE':
+      continue
 
-    # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
-               'SPLIT_MEMORY', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
-      value = str(shared.expand_byte_size_suffixes(value))
-
-    original_exported_response = False
-
-    if value[0] == '@':
-      if key not in DEFERRED_RESPONSE_FILES:
-        if key == 'EXPORTED_FUNCTIONS':
-          original_exported_response = value
-        value = open(value[1:]).read()
-      else:
-        value = '"' + value + '"'
-    else:
-      value = value.replace('\\', '\\\\')
-    try:
-      setattr(shared.Settings, key, parse_value(value))
-    except Exception as e:
-      exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+    setattr(shared.Settings, key, value)
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = changes['EXPORTED_FUNCTIONS_RESPONSE_FILE'] or shared.Settings.EXPORTED_FUNCTIONS[:]
 
 
 #
@@ -775,27 +755,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for i in range(len(newargs)):
         if newargs[i] == '-s':
           if is_minus_s_for_emcc(newargs, i):
-            key = newargs[i + 1]
-            settings_changes.append(key)
+            key, value = newargs[i + 1].split('=', 1)
+            changes = {key: value}
+            changes = evaluate_settings(changes)
+            settings_changes.update(changes)
             newargs[i] = newargs[i + 1] = ''
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
-
-      # Handle aliases in settings flags. These are settings whose name
-      # has changed.
-      settings_aliases = {
-          'BINARYEN': 'WASM',
-          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
-          # TODO: change most (all?) other BINARYEN* names to WASM*
-      }
-      settings_key_changes = set()
-
-      def setting_sub(s):
-        key, value = s.split('=', 1)
-        settings_key_changes.add(key)
-        return '='.join([settings_aliases.get(key, key), value])
-
-      settings_changes = [setting_sub(c) for c in settings_changes]
 
       # Find input files
 
@@ -917,7 +883,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
-      if final_suffix == 'html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
+      if final_suffix == 'html' and not options.separate_asm and (settings_changes.get('PRECISE_F32') == 2 or settings_changes.get('USE_PTHREADS') == 2):
         options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
       if options.separate_asm:
@@ -929,22 +895,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Libraries are searched before settings_changes are applied, so apply the value for STRICT and ERROR_ON_MISSING_LIBRARIES from
       # command line already now.
 
-      def get_last_setting_change(setting):
-        return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
-
-      strict_cmdline = get_last_setting_change('STRICT')
-      if strict_cmdline:
-        shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
+      if 'STRICT' in settings_changes:
+        shared.Settings.STRICT = settings_changes['STRICT']
 
       if shared.Settings.STRICT:
         shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
 
-      error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
-      if error_on_missing_libraries_cmdline:
-        shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
+      if 'ERROR_ON_MISSING_LIBRARIES' in settings_changes:
+        shared.Settings.ERROR_ON_MISSING_LIBRARIES = settings_changes['ERROR_ON_MISSING_LIBRARIES']
 
-      settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files))
+      settings_changes['SYSTEM_JS_LIBRARIES'] = system_js_libraries_setting_value(libs, lib_dirs, settings_changes, input_files)
 
       # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
       # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1191,8 +1152,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:
-        if not any(s.startswith('PTHREAD_POOL_SIZE=') for s in settings_changes):
-          settings_changes.append('PTHREAD_POOL_SIZE=0')
+        if 'PTHREAD_POOL_SIZE' not in settings_changes:
+          settings_changes['PTHREAD_POOL_SIZE'] = 0
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
@@ -1265,7 +1226,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
-        if 'BINARYEN_PASSES' not in settings_key_changes:
+        if 'BINARYEN_PASSES' not in settings_changes:
           if options.opt_level > 0 or options.shrink_level > 0:
             shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
 
@@ -1294,7 +1255,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.warning('for wasm there is usually no need to set OUTLINING_LIMIT, as VMs can handle large functions well anyhow')
         # default precise-f32 to on, since it works well in wasm
         # also always use f32s when asm.js is not in the picture
-        if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
+        if (settings_changes.get('PRECISE_F32') not in [0, 2]) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
           shared.Settings.PRECISE_F32 = 1
         if options.js_opts and not options.force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
           options.js_opts = None
@@ -1316,9 +1277,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # modes than wasm (like asm.js) which may not support an async step
           shared.Settings.BINARYEN_ASYNC_COMPILATION = 0
           warning = 'This will reduce performance and compatibility (some browsers limit synchronous compilation), see https://github.com/kripken/emscripten/wiki/WebAssembly#codegen-effects'
-          if 'BINARYEN_ASYNC_COMPILATION=1' in settings_changes:
+          if settings_changes.get('BINARYEN_ASYNC_COMPILATION') == 1:
             logging.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
-          elif 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
+          elif settings_changes.get('BINARYEN_ASYNC_COMPILATION') != 0:
             logging.warning('BINARYEN_ASYNC_COMPILATION disabled due to user options. ' + warning)
         # run safe-heap as a binaryen pass
         if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
@@ -2089,7 +2050,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 def parse_args(newargs):
   options = EmccOptions()
-  settings_changes = []
+  settings_changes = {}
   should_exit = False
 
   for i in range(len(newargs)):
@@ -2103,12 +2064,12 @@ def parse_args(newargs):
         options.llvm_opts = ['-Os']
         options.requested_level = 2
         options.shrink_level = 1
-        settings_changes.append('INLINING_LIMIT=50')
+        settings_changes['INLINING_LIMIT'] = 50
       elif options.requested_level == 'z':
         options.llvm_opts = ['-Oz']
         options.requested_level = 2
         options.shrink_level = 2
-        settings_changes.append('INLINING_LIMIT=25')
+        settings_changes['INLINING_LIMIT'] = 25
       options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
@@ -2171,7 +2132,7 @@ def parse_args(newargs):
       options.tracing = True
       newargs[i] = ''
       newargs.append('-D__EMSCRIPTEN_TRACING__=1')
-      settings_changes.append("EMSCRIPTEN_TRACING=1")
+      settings_changes['EMSCRIPTEN_TRACING'] = 1
       options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
@@ -2299,7 +2260,7 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--threadprofiler':
       options.thread_profiler = True
-      settings_changes.append('PTHREADS_PROFILING=1')
+      settings_changes['PTHREADS_PROFILING'] = 1
       newargs[i] = ''
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
@@ -2905,7 +2866,7 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files):
+def system_js_libraries_setting_value(libs, lib_dirs, settings_changes, input_files):
   libraries = []
 
   # Find library files
@@ -2931,7 +2892,7 @@ def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_file
 
   # Certain linker flags imply some link libraries to be pulled in by default.
   libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
-  return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
+  return ','.join(libraries)
 
 
 class ScriptSource(object):
@@ -3035,6 +2996,51 @@ def parse_value(text):
       return int(text)
     except ValueError:
       return parse_string_value(text)
+
+
+def evaluate_settings(settings):
+  # Handle aliases in settings flags. These are settings whose name
+  # has changed.
+  settings_aliases = {
+      'BINARYEN': 'WASM',
+      'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+      # TODO: change most (all?) other BINARYEN* names to WASM*
+  }
+
+  ret = {}
+
+  for key, value in settings.items():
+    if key in settings_aliases:
+      key = settings_aliases[key]
+
+    # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
+    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
+               'SPLIT_MEMORY', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
+      value = str(shared.expand_byte_size_suffixes(value))
+
+    if key == 'EXPORTED_FUNCTIONS':
+      ret['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = ''
+
+    deferred = False
+
+    if value and value[0] == '@':
+      if key in DEFERRED_RESPONSE_FILES:
+        deferred = True
+      else:
+        if key == 'EXPORTED_FUNCTIONS':
+          ret['EXPORTED_FUNCTIONS_RESPONSE_FILE'] = value
+        with open(value[1:]) as f:
+          value = f.read()
+
+    if not deferred:
+      try:
+        value = parse_value(value)
+      except Exception as e:
+        exit_with_error('a problem occured in evaluating the content after a "-s", specifically %s=%s: %s', key, value, str(e))
+
+    ret[key] = value
+
+  return ret
 
 
 def check_bad_eq(arg):
