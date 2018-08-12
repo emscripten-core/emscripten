@@ -11,12 +11,17 @@ as taken from http://docs.python.org/dev/library/ssl.html#certificates
 
 '''
 from __future__ import print_function
+from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from past.utils import old_div
 import signal, socket, optparse, time, os, sys, subprocess, logging, errno
 try:    from socketserver import ForkingMixIn
-except: from SocketServer import ForkingMixIn
+except: from socketserver import ForkingMixIn
 try:    from http.server import HTTPServer
-except: from BaseHTTPServer import HTTPServer
+except: from http.server import HTTPServer
 import select
 from websockify import websocket
 from websockify import auth_plugins as auth
@@ -24,7 +29,7 @@ try:
     from urllib.parse import parse_qs, urlparse
 except:
     from cgi import parse_qs
-    from urlparse import urlparse
+    from urllib.parse import urlparse
 
 class ProxyRequestHandler(websocket.WebSocketRequestHandler):
 
@@ -43,7 +48,7 @@ Traffic Legend:
     def send_auth_error(self, ex):
         self.send_response(ex.code, ex.msg)
         self.send_header('Content-Type', 'text/html')
-        for name, val in ex.headers.items():
+        for name, val in list(ex.headers.items()):
             self.send_header(name, val)
         
         self.end_headers()
@@ -318,7 +323,7 @@ class WebSocketProxy(websocket.WebSocketServer):
                 sys.exit(ret)
             elif self.wrap_mode == "respawn":
                 now = time.time()
-                avg = sum(self.wrap_times)/len(self.wrap_times)
+                avg = old_div(sum(self.wrap_times),len(self.wrap_times))
                 if (now - avg) < 10:
                     # 3 times in the last 10 seconds
                     if self.spawn_message:
@@ -562,7 +567,7 @@ class LibProxyServer(ForkingMixIn, HTTPServer):
         self.run_once  = kwargs.pop('run_once', False)
         self.handler_id = 0
 
-        for arg in kwargs.keys():
+        for arg in list(kwargs.keys()):
             print("warning: option %s ignored when using --libserver" % arg)
 
         if web:

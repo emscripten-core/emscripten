@@ -2,13 +2,15 @@
 Tool to find or compare big functions in a js or ll file
 '''
 from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import os, sys
 
 def humanbytes(nbytes):
     if nbytes > 9*1024*1024:
         return '{}MB'.format(nbytes/1024/1024)
     elif nbytes > 9*1024:
-        return '{}KB'.format(nbytes/1024)
+        return '{}KB'.format(old_div(nbytes,1024))
     else:
         return '{}B'.format(nbytes)
 

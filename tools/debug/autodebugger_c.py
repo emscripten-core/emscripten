@@ -6,6 +6,7 @@ overwrite the files it is given!
 '''
 
 from __future__ import print_function
+from builtins import range
 import os, sys, re
 
 filenames = sys.argv[1:]

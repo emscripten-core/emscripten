@@ -2,7 +2,9 @@
 Runs a build command many times to search for any nondeterminism.
 '''
 from __future__ import print_function
+from __future__ import division
 
+from past.utils import old_div
 import os
 import random
 import shutil
@@ -19,7 +21,7 @@ def run():
 def write(data, subdir):
   if not os.path.exists(subdir):
     os.mkdir(subdir)
-  for relevant_file in data.keys():
+  for relevant_file in list(data.keys()):
     open(os.path.join(subdir, relevant_file), 'w').write(data[relevant_file])
 
 old = os.getcwd()
@@ -45,7 +47,7 @@ try:
   while 1:
     print(i)
     i += 1
-    time.sleep(random.random()/(10*5)) # add some timing nondeterminism here, not that we need it, but whatever
+    time.sleep(old_div(random.random(),(10*5))) # add some timing nondeterminism here, not that we need it, but whatever
     curr = run()
     if first != curr:
       print('NONDETERMINISM!!!1')

@@ -4,6 +4,8 @@
 Display UTF-8 encoding for 0-255.'''
 from __future__ import print_function
 
+from builtins import chr
+from builtins import range
 import sys, os, socket, ssl, time, traceback
 from select import select
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), ".."))

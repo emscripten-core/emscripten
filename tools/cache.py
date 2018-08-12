@@ -1,5 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from builtins import object
 from .toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
 from . import tempfiles, filelock

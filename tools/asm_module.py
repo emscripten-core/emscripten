@@ -1,11 +1,15 @@
 
 from __future__ import print_function
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 import sys, re, itertools
 
 from . import shared, js_optimizer
 
 
-class AsmModule():
+class AsmModule(object):
   def __init__(self, filename):
     self.filename = filename
     self.js = open(filename).read()
@@ -114,7 +118,7 @@ class AsmModule():
 
     # imports
     all_imports = main.imports
-    for key, value in self.imports.items():
+    for key, value in list(self.imports.items()):
       if key in self.funcs or key in main.funcs: continue # external function in one module, implemented in the other
       value_concrete = '.' not in value # env.key means it is an import, an external value, and not a concrete one
       main_value = main.imports.get(key)
@@ -130,10 +134,10 @@ class AsmModule():
         all_imports[key] = value
       if (value_concrete or main_value_concrete) and key in all_sendings:
         del all_sendings[key] # import of external value no longer needed
-    for key in all_imports.keys():
+    for key in list(all_imports.keys()):
       if key in self.funcs:
         del all_imports[key] # import in main, provided in side
-    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.items()]) + '\n'
+    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in list(all_imports.items())]) + '\n'
 
     # check for undefined references to global variables
     def check_import(key, value):
@@ -141,10 +145,10 @@ class AsmModule():
         if key not in all_sendings:
           print('warning: external variable %s is still not defined after linking' % key, file=sys.stderr)
           all_sendings[key] = '0'
-    for key, value in all_imports.items(): check_import(key, value)
+    for key, value in list(all_imports.items()): check_import(key, value)
 
     if added_sending:
-      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.items()])
+      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in list(all_sendings.items())])
       sendings_start = main.post_js.find('}, { ')+5
       sendings_end = main.post_js.find(' }, buffer);')
       main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
@@ -152,7 +156,7 @@ class AsmModule():
     # tables
     f_bases = {}
     f_sizes = {}
-    for table, data in self.tables.items():
+    for table, data in list(self.tables.items()):
       main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases, f_sizes)
     main.combine_tables()
     #print >> sys.stderr, 'f bases', f_bases
@@ -296,11 +300,11 @@ class AsmModule():
 
   def combine_tables(self):
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
-    for table, data in self.tables.items():
+    for table, data in list(self.tables.items()):
       self.tables_js += 'var %s = %s;\n' % (table, data)
 
   def get_table_funcs(self):
-    return set(itertools.chain.from_iterable([[y.strip() for y in x[1:-1].split(',')] for x in self.tables.values()]))
+    return set(itertools.chain.from_iterable([[y.strip() for y in x[1:-1].split(',')] for x in list(self.tables.values())]))
 
   def get_funcs_map(self):
     funcs = js_optimizer.split_funcs(self.funcs_js)

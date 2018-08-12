@@ -7,6 +7,8 @@ given a sequence number. Any errors are reported and counted.
 '''
 from __future__ import print_function
 
+from builtins import str
+from builtins import range
 import sys, os, select, random, time, optparse, logging
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), ".."))
 from websockify.websocket import WebSocketServer, WebSocketRequestHandler

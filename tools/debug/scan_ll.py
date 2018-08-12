@@ -3,6 +3,7 @@ Finds why an .ll file is large by printing functions by size
 '''
 
 from __future__ import print_function
+from builtins import str
 import os, sys
 
 funcs = []

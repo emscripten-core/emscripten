@@ -12,6 +12,10 @@
 # -----------------------------------------------------------------------------
 
 from __future__ import print_function
+from __future__ import division
+from builtins import input
+from past.utils import old_div
+from builtins import object
 import sys
 sys.path.insert(0,"../..")
 
@@ -51,7 +55,7 @@ class Parser(object):
     def run(self):
         while 1:
             try:
-                s = raw_input('calc > ')
+                s = input('calc > ')
             except EOFError:
                 break
             if not s: continue     
@@ -127,7 +131,7 @@ class Calc(Parser):
         if p[2] == '+'  : p[0] = p[1] + p[3]
         elif p[2] == '-': p[0] = p[1] - p[3]
         elif p[2] == '*': p[0] = p[1] * p[3]
-        elif p[2] == '/': p[0] = p[1] / p[3]
+        elif p[2] == '/': p[0] = old_div(p[1], p[3])
         elif p[2] == '**': p[0] = p[1] ** p[3]
 
     def p_expression_uminus(self, p):

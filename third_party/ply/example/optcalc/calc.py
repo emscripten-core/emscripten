@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 # -----------------------------------------------------------------------------
 # calc.py
 #
@@ -6,6 +7,8 @@ from __future__ import print_function
 # "Lex and Yacc", p. 63.
 # -----------------------------------------------------------------------------
 
+from builtins import input
+from past.utils import old_div
 import sys
 sys.path.insert(0,"../..")
 
@@ -79,7 +82,7 @@ def p_expression_binop(t):
     if t[2] == '+'  : t[0] = t[1] + t[3]
     elif t[2] == '-': t[0] = t[1] - t[3]
     elif t[2] == '*': t[0] = t[1] * t[3]
-    elif t[2] == '/': t[0] = t[1] / t[3]
+    elif t[2] == '/': t[0] = old_div(t[1], t[3])
     elif t[2] == '<': t[0] = t[1] < t[3]
 
 def p_expression_uminus(t):
@@ -113,7 +116,7 @@ yacc.yacc(optimize=1)
 
 while 1:
     try:
-        s = raw_input('calc > ')
+        s = input('calc > ')
     except EOFError:
         break
     yacc.parse(s)

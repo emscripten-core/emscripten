@@ -1,6 +1,13 @@
 
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
+from builtins import str
+from builtins import filter
+from builtins import map
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -251,7 +258,7 @@ class Minifier(object):
 
     if self.symbols_file:
       mapfile = open(self.symbols_file, 'w')
-      for key, value in self.globs.items():
+      for key, value in list(self.globs.items()):
         mapfile.write(value + ':' + key + '\n')
       mapfile.close()
       print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
@@ -387,7 +394,7 @@ EMSCRIPTEN_FUNCS();
       minify_info = minifier.serialize()
 
       if extra_info:
-        for key, value in extra_info.items():
+        for key, value in list(extra_info.items()):
           assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
           minify_info[key] = value
 
@@ -411,14 +418,14 @@ EMSCRIPTEN_FUNCS();
 
     if not just_split:
       intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-      chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+      chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, old_div(total_size, intended_num_chunks)))
       chunks = shared.chunkify(funcs, chunk_size)
     else:
       # keep same chunks as before
       chunks = [f[1] for f in funcs]
 
     chunks = [chunk for chunk in chunks if len(chunk)]
-    if DEBUG and len(chunks): print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+    if DEBUG and len(chunks): print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
     funcs = None
 
     if len(chunks):
@@ -455,7 +462,7 @@ EMSCRIPTEN_FUNCS();
       cores = min(cores, len(filenames))
       if len(chunks) > 1 and cores >= 2:
         # We can parallelize
-        if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.)), file=sys.stderr)
+        if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, old_div(total_size,(1024*1024.))), file=sys.stderr)
         with ToolchainProfiler.profile_block('optimizer_pool'):
           pool = shared.Building.get_multiprocessing_pool()
           filenames = pool.map(run_on_chunk, commands, chunksize=1)

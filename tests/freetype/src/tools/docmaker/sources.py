@@ -20,6 +20,7 @@ from __future__ import print_function
 # and basic documentation block extraction
 #
 
+from builtins import object
 import fileinput, re, sys, os, string
 
 
@@ -35,7 +36,7 @@ import fileinput, re, sys, os, string
 ##   note that the 'column' pattern must contain a group that will
 ##   be used to "unbox" the content of documentation comment blocks
 ##
-class  SourceBlockFormat:
+class  SourceBlockFormat(object):
 
     def  __init__( self, id, start, column, end ):
         """create a block pattern, used to recognize special documentation blocks"""
@@ -199,7 +200,7 @@ re_source_keywords = re.compile( '''\\b ( typedef   |
 ##                    (i.e. sources or ordinary comments with no starting
 ##                     markup tag)
 ##
-class  SourceBlock:
+class  SourceBlock(object):
 
     def  __init__( self, processor, filename, lineno, lines ):
         self.processor = processor
@@ -268,7 +269,7 @@ class  SourceBlock:
 ##   - normal sources lines, include comments
 ##
 ##
-class  SourceProcessor:
+class  SourceProcessor(object):
 
     def  __init__( self ):
         """initialize a source processor"""

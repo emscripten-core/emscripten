@@ -7,6 +7,9 @@ the programs differ on each line but lines have not been added or removed
 '''
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 
@@ -46,7 +49,7 @@ left_lines = file1.split('\n')
 right_lines = file2.split('\n')
 
 while True:
-  mid = int((low + high)/2)
+  mid = int(old_div((low + high),2))
   print(low, high, '  current: %d' % mid, end=' ')
   open('middle', 'w').write('\n'.join(left_lines[:mid] + right_lines[mid:]))
   shutil.copyfile('middle', 'middle' + str(mid))

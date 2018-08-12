@@ -5,17 +5,25 @@
 # See emrun --help for more information
 
 from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import bytes
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os, platform, argparse, logging, re, pprint, atexit, subprocess, sys, time, struct, socket, cgi, tempfile, stat, shutil, json, uuid, shlex
 from operator import itemgetter
 from threading import Thread, RLock
 
 if sys.version_info.major == 2:
-  import SocketServer as socketserver
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
-  from urlparse import urlsplit
-  from Queue import PriorityQueue
+  import socketserver as socketserver
+  from http.server import HTTPServer
+  from http.server import SimpleHTTPRequestHandler
+  from urllib.parse import unquote
+  from urllib.parse import urlsplit
+  from queue import PriorityQueue
 else:
   import socketserver
   from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -87,7 +95,7 @@ def import_win32api_modules():
     try:
       import winreg
     except ImportError:
-      import _winreg as winreg
+      import winreg as winreg
 
   except Exception as e:
     global import_win32api_modules_warned_once
@@ -855,8 +863,8 @@ def win_get_file_properties(fname):
     # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struc
     fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
     props['FixedFileInfo'] = fixedInfo
-    props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
-        fixedInfo['FileVersionMS'] % 65536, fixedInfo['FileVersionLS'] / 65536,
+    props['FileVersion'] = "%d.%d.%d.%d" % (old_div(fixedInfo['FileVersionMS'], 65536),
+        fixedInfo['FileVersionMS'] % 65536, old_div(fixedInfo['FileVersionLS'], 65536),
         fixedInfo['FileVersionLS'] % 65536)
 
     # \VarFileInfo\Translation returns list of available (language, codepage)

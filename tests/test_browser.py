@@ -1,6 +1,13 @@
 # coding=utf-8
 
 from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
 from runner import BrowserCore, path_from_root, has_browser, get_browser
 from tools.shared import *
@@ -9,7 +16,7 @@ try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
 except ImportError:
   # Python 2 compatibility
-  from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+  from http.server import BaseHTTPRequestHandler, HTTPServer
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
   class ChunkedServerHandler(BaseHTTPRequestHandler):
@@ -1307,7 +1314,7 @@ keydown(100);keyup(100); // trigger the end
     print('emcc-normal')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
     assert os.stat('file1.txt').st_size + os.stat(os.path.join('subdir', 'file2.txt')).st_size + os.stat('file3.txt').st_size == 3*1024*128*10 + 1
-    assert os.stat('test.data').st_size < (3*1024*128*10)/2 # over half is gone
+    assert os.stat('test.data').st_size < old_div((3*1024*128*10),2) # over half is gone
     print('    emcc-opts')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
 
@@ -1601,7 +1608,7 @@ keydown(100);keyup(100); // trigger the end
   def test_glgears_long(self):
     for proxy in [0, 1]:
       print('proxy', proxy)
-      self.btest('hello_world_gles.c', expected=list(map(str, range(30, 500))), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut'] + (['--proxy-to-worker'] if proxy else []), timeout=30)
+      self.btest('hello_world_gles.c', expected=list(map(str, list(range(30, 500)))), args=['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut'] + (['--proxy-to-worker'] if proxy else []), timeout=30)
 
   @requires_graphics_hardware
   def test_glgears_animation(self):

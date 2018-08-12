@@ -6,6 +6,14 @@
 # XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
 
 from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import filter
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 from subprocess import Popen, PIPE, STDOUT
 import atexit
 import difflib
@@ -33,10 +41,10 @@ import webbrowser
 import parallel_runner
 
 if sys.version_info.major == 2:
-  from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from httplib import HTTPConnection
-  from urllib import unquote
+  from http.server import HTTPServer, BaseHTTPRequestHandler
+  from http.server import SimpleHTTPRequestHandler
+  from http.client import HTTPConnection
+  from urllib.parse import unquote
 else:
   from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
   from http.client import HTTPConnection
@@ -279,7 +287,7 @@ class RunnerCore(unittest.TestCase):
 
   def serialize_settings(self):
     ret = []
-    for key, value in self.settings_mods.items():
+    for key, value in list(self.settings_mods.items()):
       ret += ['-s', '{}={}'.format(key, json.dumps(value))]
     return ret
 
@@ -1308,7 +1316,7 @@ def choose_random_tests(base, num_tests, relevant_modes):
 
 
 def print_random_test_statistics(num_tests):
-  std = 0.5 / math.sqrt(num_tests)
+  std = old_div(0.5, math.sqrt(num_tests))
   expected = 100.0 * (1.0 - std)
   print()
   print('running those %d randomly-selected tests. if they all pass, then there is a '

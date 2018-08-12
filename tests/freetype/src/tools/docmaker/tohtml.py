@@ -1,7 +1,10 @@
 from __future__ import print_function
+from __future__ import division
 #  ToHTML (c) 2002, 2003, 2005, 2006, 2007, 2008
 #    David Turner <david@freetype.org>
 
+from builtins import range
+from past.utils import old_div
 from sources import *
 from content import *
 from formatter import *
@@ -410,7 +413,7 @@ class  HtmlFormatter( Formatter ):
     def  index_exit( self ):
         # block_index already contains the sorted list of index names
         count = len( self.block_index )
-        rows  = ( count + self.columns - 1 ) / self.columns
+        rows  = old_div(( count + self.columns - 1 ), self.columns)
 
         print("<table align=center border=0 cellpadding=0 cellspacing=0>")
         for r in range( rows ):
@@ -499,7 +502,7 @@ class  HtmlFormatter( Formatter ):
         print(section_title_footer)
 
         maxwidth = 0
-        for b in section.blocks.values():
+        for b in list(section.blocks.values()):
             if len( b.name ) > maxwidth:
                 maxwidth = len( b.name )
 
@@ -509,12 +512,12 @@ class  HtmlFormatter( Formatter ):
             print(section_synopsis_header)
             print("<table align=center cellspacing=5 cellpadding=0 border=0>")
 
-            columns = width / maxwidth
+            columns = old_div(width, maxwidth)
             if columns < 1:
                 columns = 1
 
             count = len( section.block_names )
-            rows  = ( count + columns - 1 ) / columns
+            rows  = old_div(( count + columns - 1 ), columns)
 
             for r in range( rows ):
                 line = "<tr>"
@@ -546,7 +549,7 @@ class  HtmlFormatter( Formatter ):
         # dump the block C source lines now
         if block.code:
             header = ''
-            for f in self.headers.keys():
+            for f in list(self.headers.keys()):
                 if block.source.filename.find( f ) >= 0:
                     header = self.headers[f] + ' (' + f + ')'
                     break;

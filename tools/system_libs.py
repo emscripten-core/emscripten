@@ -1,4 +1,9 @@
 from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import object
 import json
 import logging
 import os
@@ -510,7 +515,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def add_back_deps(need):
     more = False
-    for ident, deps in deps_info.items():
+    for ident, deps in list(deps_info.items()):
       if ident in need.undefs and ident not in added:
         added.add(ident)
         more = True
@@ -544,7 +549,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # and must assume all of deps_info must be exported. Note that this might cause
   # warnings on exports that do not exist.
   if only_forced:
-    for key, value in deps_info.items():
+    for key, value in list(deps_info.items()):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
@@ -750,7 +755,7 @@ class Ports(object):
         from urllib.request import urlopen
       except ImportError:
         # Python 2 compatibility
-        from urllib2 import urlopen
+        from urllib.request import urlopen
       f = urlopen(url)
       data = f.read()
       open(fullname + ('.zip' if not is_tarbz2 else '.tar.bz2'), 'wb').write(data)

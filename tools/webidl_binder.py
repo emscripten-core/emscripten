@@ -6,6 +6,10 @@ http://kripken.github.io/emscripten-site/docs/porting/connecting_cpp_and_javascr
 '''
 
 from __future__ import print_function
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 import os, sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -30,7 +34,7 @@ if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
 class Dummy(object):
   def __init__(self, init):
-    for k, v in init.items():
+    for k, v in list(init.items()):
       self.__dict__[k] = v
 
   def getExtendedAttribute(self, name):
@@ -553,7 +557,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
           (', ' if js_call_args else '') + js_call_args)]
 
 
-for name, interface in interfaces.items():
+for name, interface in list(interfaces.items()):
   js_impl = interface.getExtendedAttribute('JSImplementation')
   if not js_impl: continue
   implements[name] = [js_impl[0]]
@@ -567,7 +571,7 @@ for name, interface in interfaces.items():
 # that invariant. Further, the height of a node never decreases. Therefore, when the loop
 # finishes, all ancestors of a given node should have a larger height number than that node.
 nodeHeight = {}
-for child, parent in implements.items():
+for child, parent in list(implements.items()):
   parent = parent[0]
   while parent:
     nodeHeight[parent] = max(nodeHeight.get(parent, 0), nodeHeight.get(child, 0) + 1)
@@ -578,7 +582,7 @@ for child, parent in implements.items():
     else:
       parent = None
 
-names = sorted(interfaces.keys(), key=lambda x: nodeHeight.get(x, 0), reverse=True)
+names = sorted(list(interfaces.keys()), key=lambda x: nodeHeight.get(x, 0), reverse=True)
 
 for name in names:
   interface = interfaces[name]
@@ -714,10 +718,10 @@ public:
 
 deferred_js = []
 
-for name, enum in enums.items():
+for name, enum in list(enums.items()):
   mid_c += ['\n// ' + name + '\n']
   deferred_js += ['\n', '// ' + name + '\n']
-  for value in enum.values():
+  for value in list(enum.values()):
     function_id = "%s_%s" % (name, value.split('::')[-1])
     function_id = 'emscripten_enum_%s' % function_id
     mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {

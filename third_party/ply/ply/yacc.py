@@ -60,6 +60,11 @@ from __future__ import absolute_import
 # own risk!
 # ----------------------------------------------------------------------------
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 __version__    = "3.4"
 __tabversion__ = "3.2"       # Table version
 
@@ -176,7 +181,7 @@ def format_stack_entry(r):
 #        .lexpos     = Starting lex position
 #        .endlexpos  = Ending lex position (optional, set automatically)
 
-class YaccSymbol:
+class YaccSymbol(object):
     def __str__(self):    return self.type
     def __repr__(self):   return str(self)
 
@@ -189,7 +194,7 @@ class YaccSymbol:
 # for a symbol.  The lexspan() method returns a tuple (lexpos,endlexpos)
 # representing the range of positional information for a symbol.
 
-class YaccProduction:
+class YaccProduction(object):
     def __init__(self,s,stack=None):
         self.slice = s
         self.stack = stack
@@ -237,7 +242,7 @@ class YaccProduction:
 # The LR Parsing engine.
 # -----------------------------------------------------------------------------
 
-class LRParser:
+class LRParser(object):
     def __init__(self,lrtab,errorf):
         self.productions = lrtab.lr_productions
         self.action      = lrtab.lr_action
@@ -1191,7 +1196,7 @@ class Production(object):
     def __len__(self):
         return len(self.prod)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return 1
 
     def __getitem__(self,index):
@@ -1534,7 +1539,7 @@ class Grammar(object):
         # Then propagate termination until no change:
         while 1:
             some_change = 0
-            for (n,pl) in self.Prodnames.items():
+            for (n,pl) in list(self.Prodnames.items()):
                 # Nonterminal n terminates iff any of its productions terminates.
                 for p in pl:
                     # Production p terminates iff all of its rhs symbols terminate.
@@ -1562,7 +1567,7 @@ class Grammar(object):
                 break
 
         infinite = []
-        for (s,term) in terminates.items():
+        for (s,term) in list(terminates.items()):
             if not term:
                 if not s in self.Prodnames and not s in self.Terminals and s != 'error':
                     # s is used-but-not-defined, and we've already warned of that,
@@ -1599,7 +1604,7 @@ class Grammar(object):
     # -----------------------------------------------------------------------------
     def unused_terminals(self):
         unused_tok = []
-        for s,v in self.Terminals.items():
+        for s,v in list(self.Terminals.items()):
             if s != 'error' and not v:
                 unused_tok.append(s)
 
@@ -1614,7 +1619,7 @@ class Grammar(object):
 
     def unused_rules(self):
         unused_prod = []
-        for s,v in self.Nonterminals.items():
+        for s,v in list(self.Nonterminals.items()):
             if not v:
                 p = self.Prodnames[s][0]
                 unused_prod.append(p)
@@ -1845,7 +1850,7 @@ class LRTable(object):
 
     def read_pickle(self,filename):
         try:
-            import cPickle as pickle
+            import pickle as pickle
         except ImportError:
             import pickle
 
@@ -2320,7 +2325,7 @@ class LRGeneratedTable(LRTable):
     # -----------------------------------------------------------------------------
 
     def add_lookaheads(self,lookbacks,followset):
-        for trans,lb in lookbacks.items():
+        for trans,lb in list(lookbacks.items()):
             # Loop over productions in lookback
             for state,p in lb:
                  if not state in p.lookaheads:
@@ -2566,8 +2571,8 @@ _lr_signature = %r
             if smaller:
                 items = { }
 
-                for s,nd in self.lr_action.items():
-                   for name,v in nd.items():
+                for s,nd in list(self.lr_action.items()):
+                   for name,v in list(nd.items()):
                       i = items.get(name)
                       if not i:
                          i = ([],[])
@@ -2576,7 +2581,7 @@ _lr_signature = %r
                       i[1].append(v)
 
                 f.write("\n_lr_action_items = {")
-                for k,v in items.items():
+                for k,v in list(items.items()):
                     f.write("%r:([" % k)
                     for i in v[0]:
                         f.write("%r," % i)
@@ -2598,7 +2603,7 @@ del _lr_action_items
 
             else:
                 f.write("\n_lr_action = { ");
-                for k,v in self.lr_action.items():
+                for k,v in list(self.lr_action.items()):
                     f.write("(%r,%r):%r," % (k[0],k[1],v))
                 f.write("}\n");
 
@@ -2606,8 +2611,8 @@ del _lr_action_items
                 # Factor out names to try and make smaller
                 items = { }
 
-                for s,nd in self.lr_goto.items():
-                   for name,v in nd.items():
+                for s,nd in list(self.lr_goto.items()):
+                   for name,v in list(nd.items()):
                       i = items.get(name)
                       if not i:
                          i = ([],[])
@@ -2616,7 +2621,7 @@ del _lr_action_items
                       i[1].append(v)
 
                 f.write("\n_lr_goto_items = {")
-                for k,v in items.items():
+                for k,v in list(items.items()):
                     f.write("%r:([" % k)
                     for i in v[0]:
                         f.write("%r," % i)
@@ -2637,7 +2642,7 @@ del _lr_goto_items
 """)
             else:
                 f.write("\n_lr_goto = { ");
-                for k,v in self.lr_goto.items():
+                for k,v in list(self.lr_goto.items()):
                     f.write("(%r,%r):%r," % (k[0],k[1],v))
                 f.write("}\n");
 
@@ -2666,7 +2671,7 @@ del _lr_goto_items
 
     def pickle_table(self,filename,signature=""):
         try:
-            import cPickle as pickle
+            import pickle as pickle
         except ImportError:
             import pickle
         outf = open(filename,"wb")
@@ -2829,7 +2834,7 @@ class ParserReflect(object):
         # Match def p_funcname(
         fre = re.compile(r'\s*def\s+(p_[a-zA-Z_0-9]*)\(')
 
-        for filename in self.files.keys():
+        for filename in list(self.files.keys()):
             base,ext = os.path.splitext(filename)
             if ext != '.py': return 1          # No idea. Assume it's okay.
 
@@ -2958,7 +2963,7 @@ class ParserReflect(object):
     # Get all p_functions from the grammar
     def get_pfunctions(self):
         p_functions = []
-        for name, item in self.pdict.items():
+        for name, item in list(self.pdict.items()):
             if name[:2] != 'p_': continue
             if name == 'p_error': continue
             if isinstance(item,(types.FunctionType,types.MethodType)):
@@ -3011,7 +3016,7 @@ class ParserReflect(object):
         # Secondary validation step that looks for p_ definitions that are not functions
         # or functions that look like they might be grammar rules.
 
-        for n,v in self.pdict.items():
+        for n,v in list(self.pdict.items()):
             if n[0:2] == 'p_' and isinstance(v, (types.FunctionType, types.MethodType)): continue
             if n[0:2] == 't_': continue
             if n[0:2] == 'p_' and n != 'p_error':

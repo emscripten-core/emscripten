@@ -15,6 +15,9 @@
 #    under the License.
 
 """ Unit tests for websocket """
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import errno
 import os
 import logging
@@ -31,12 +34,12 @@ import signal
 from websockify import websocket
 
 try:
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    from http.server import SimpleHTTPRequestHandler
 except ImportError:
     from http.server import SimpleHTTPRequestHandler
 
 try:
-    from StringIO import StringIO
+    from io import StringIO
     BytesIO = StringIO
 except ImportError:
     from io import StringIO

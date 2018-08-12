@@ -28,6 +28,8 @@ usage: %s <output-file>
 from __future__ import print_function
 
 
+from builtins import range
+from builtins import object
 import sys, string, struct, re, os.path
 
 
@@ -4706,7 +4708,7 @@ zukatakana;30BA
 
 # string table management
 #
-class StringTable:
+class StringTable(object):
   def __init__( self, name_list, master_table_name ):
     self.names        = name_list
     self.master_table = master_table_name
@@ -4834,7 +4836,7 @@ class StringTable:
 #
 # The root node has first letter = 0, and no value.
 #
-class StringNode:
+class StringNode(object):
   def __init__( self, letter, value ):
     self.letter   = letter
     self.value    = value
@@ -4861,7 +4863,7 @@ class StringNode:
 
   def optimize( self ):
     # optimize all children first
-    children      = self.children.values()
+    children      = list(self.children.values())
     self.children = {}
 
     for child in children:
@@ -4896,7 +4898,7 @@ class StringNode:
 
     if self.children:
       margin += "| "
-      for child in self.children.values():
+      for child in list(self.children.values()):
         child.dump_debug( write, margin )
 
   def locate( self, index ):
@@ -4909,7 +4911,7 @@ class StringNode:
     if self.value != 0:
       index += 2
 
-    children = self.children.values()
+    children = list(self.children.values())
     children.sort()
 
     index += 2 * len( children )
@@ -4931,7 +4933,7 @@ class StringNode:
         storage += struct.pack( "B", val )
 
     # write the count
-    children = self.children.values()
+    children = list(self.children.values())
     children.sort()
 
     count = len( children )

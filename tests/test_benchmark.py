@@ -1,4 +1,10 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import math, os, shutil, subprocess, zlib
 import runner
 from runner import RunnerCore, path_from_root
@@ -37,7 +43,7 @@ class Benchmarker(object):
       output = self.run(args)
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
         if IGNORE_COMPILATION:
-          curr = float(re.search('took +([\d\.]+) milliseconds', output).group(1)) / 1000
+          curr = old_div(float(re.search('took +([\d\.]+) milliseconds', output).group(1)), 1000)
         else:
           curr = time.time() - start
       else:
@@ -52,19 +58,19 @@ class Benchmarker(object):
     # speed
 
     if baseline == self: baseline = None
-    mean = sum(self.times)/len(self.times)
+    mean = old_div(sum(self.times),len(self.times))
     squared_times = [x*x for x in self.times]
-    mean_of_squared = sum(squared_times)/len(self.times)
+    mean_of_squared = old_div(sum(squared_times),len(self.times))
     std = math.sqrt(mean_of_squared - mean*mean)
     sorted_times = self.times[:]
     sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1])/2
+    median = old_div(sum(sorted_times[len(sorted_times)//2 - 1:len(sorted_times)//2 + 1]),2)
 
     print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100*std/mean, self.reps), end=' ')
 
     if baseline:
-      mean_baseline = sum(baseline.times)/len(baseline.times)
-      final = mean / mean_baseline
+      mean_baseline = old_div(sum(baseline.times),len(baseline.times))
+      final = old_div(mean, mean_baseline)
       print('  Relative: %.2f X slower' % final)
     else:
       print()
@@ -136,7 +142,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.engine = engine
     self.extra_args = extra_args[:]
     self.env = os.environ.copy()
-    for k, v in env.items():
+    for k, v in list(env.items()):
       self.env[k] = v
     self.binaryen_opts = binaryen_opts[:]
 
@@ -800,7 +806,7 @@ class benchmark(RunnerCore):
   def test_linpack(self):
     def output_parser(output):
       mflops = re.search('Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
-      return 100.0/float(mflops)
+      return old_div(100.0,float(mflops))
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
@@ -912,7 +918,7 @@ class benchmark(RunnerCore):
 
   def test_zzz_lua_scimark(self):
     def output_parser(output):
-      return 100.0/float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
+      return old_div(100.0,float(re.search('\nSciMark +([\d\.]+) ', output).group(1)))
 
     self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 

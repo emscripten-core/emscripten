@@ -1,5 +1,10 @@
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging, traceback
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -85,7 +90,7 @@ def dump_equivalent_functions(passed_in_filename, global_data):
 
   # Merge the global data's fn_hash_to_fn_name structure into
   # the equivalent function info hash.
-  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].items():
+  for fn_hash, fn_names in list(global_data['fn_hash_to_fn_name'].items()):
     if fn_hash not in equivalent_fn_info:
       # Exclude single item arrays as they are of no use to us.
       if len(fn_names) > 1:
@@ -112,7 +117,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
       # Merge the data's fn_hash_to_fn_name structure into
       # the global data hash.
-      for fn_hash, fn_names in data['fn_hash_to_fn_name'].items():
+      for fn_hash, fn_names in list(data['fn_hash_to_fn_name'].items()):
         if fn_hash not in global_data['fn_hash_to_fn_name']:
             global_data['fn_hash_to_fn_name'][fn_hash] = fn_names[:]
             global_data['fn_hash_to_fn_body'][fn_hash] = data['fn_hash_to_fn_body'][fn_hash]
@@ -125,7 +130,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
       # Merge the data's variable_names structure into
       # the global data hash.
-      for variable, value in data['variable_names'].items():
+      for variable, value in list(data['variable_names'].items()):
         if variable not in global_data['variable_names']:
             global_data['variable_names'][variable] = value
 
@@ -133,7 +138,7 @@ def write_equivalent_fn_hash_to_file(f, json_files, passed_in_filename):
 
   # Lets generate the equivalent function hash from the global data set
   equivalent_fn_hash = {}
-  for fn_hash, fn_names in global_data['fn_hash_to_fn_name'].items():
+  for fn_hash, fn_names in list(global_data['fn_hash_to_fn_name'].items()):
     shortest_fn = None
     for fn_name in fn_names:
       if (fn_name not in variable_names) and (shortest_fn is None or (len(fn_name) < len(shortest_fn))):
@@ -220,11 +225,11 @@ def run_on_js(filename, gen_hash_info=False):
   cores = shared.Building.get_num_cores()
 
   intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+  chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, old_div(total_size, intended_num_chunks)))
   chunks = shared.chunkify(funcs, chunk_size)
 
   chunks = [chunk for chunk in chunks if len(chunk)]
-  if DEBUG and len(chunks): print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+  if DEBUG and len(chunks): print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(list(map(len, chunks))), '-', min(list(map(len, chunks))), file=sys.stderr)
   funcs = None
 
   if len(chunks):
@@ -252,7 +257,7 @@ def run_on_js(filename, gen_hash_info=False):
     cores = min(cores, len(filenames))
     if len(chunks) > 1 and cores >= 2:
       # We can parallelize
-      if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, total_size/(1024*1024.)), file=sys.stderr)
+      if DEBUG: print('splitting up js optimization into %d chunks, using %d cores  (total: %.2f MB)' % (len(chunks), cores, old_div(total_size,(1024*1024.))), file=sys.stderr)
       pool = shared.Building.get_multiprocessing_pool()
       filenames = pool.map(run_on_chunk, commands, chunksize=1)
     else:

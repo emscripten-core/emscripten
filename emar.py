@@ -8,6 +8,8 @@ This script acts as a frontend replacement for ar. See emcc.
 '''
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()

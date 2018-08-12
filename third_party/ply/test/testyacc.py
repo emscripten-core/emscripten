@@ -1,8 +1,11 @@
 # testyacc.py
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
 import unittest
 try:
-    import StringIO
+    import io
 except ImportError:
     import io as StringIO
 
@@ -60,8 +63,8 @@ def run_import(module):
 # Tests related to errors and warnings when building parsers
 class YaccErrorWarningTests(unittest.TestCase):
     def setUp(self):
-        sys.stderr = StringIO.StringIO()
-        sys.stdout = StringIO.StringIO()
+        sys.stderr = io.StringIO()
+        sys.stdout = io.StringIO()
         try:
             os.remove("parsetab.py")
             pymodule_out_remove("parsetab.pyc")

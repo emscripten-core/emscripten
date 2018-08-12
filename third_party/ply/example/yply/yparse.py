@@ -4,6 +4,7 @@ from __future__ import print_function
 # Author: David Beazley (dave@dabeaz.com)
 # Date  : October 2, 2006
 
+from builtins import range
 import ylex
 tokens = ylex.tokens
 

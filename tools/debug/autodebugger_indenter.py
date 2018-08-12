@@ -4,6 +4,8 @@ This script will indent the output nicely
 '''
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import os, sys
 
 lines = sys.stdin.read().split('\n')

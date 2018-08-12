@@ -7,6 +7,12 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 '''
 
 from __future__ import print_function
+from __future__ import division
+from builtins import filter
+from builtins import str
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import os, sys, re, json, shutil
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -749,7 +755,7 @@ if __name__ == '__main__':
     total_funcs = data['total_funcs']
     print("Suggested list of functions to run in the emterpreter:")
     print("  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'")
-    print("(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs))
+    print("(%d%% out of %d functions)" % (int(old_div((100.0*len(advised)),total_funcs)), total_funcs))
     sys.exit(0)
 
   # final global functions
@@ -1033,7 +1039,7 @@ __ATPRERUN__.push(function() {
 
   else:
     if len(all_code) > 1024*1024:
-      shared.logging.warning('warning: emterpreter bytecode is fairly large, %.2f MB. It is recommended to use  -s EMTERPRETIFY_FILE=..  so that it is saved as a binary file, instead of the default behavior which is to embed it as text (as text, it can cause very slow compile and startup times)' % (len(all_code) / (1024*1024.)))
+      shared.logging.warning('warning: emterpreter bytecode is fairly large, %.2f MB. It is recommended to use  -s EMTERPRETIFY_FILE=..  so that it is saved as a binary file, instead of the default behavior which is to embed it as text (as text, it can cause very slow compile and startup times)' % (old_div(len(all_code), (1024*1024.))))
 
     CHUNK_SIZE = 10240
 

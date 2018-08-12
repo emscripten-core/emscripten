@@ -22,7 +22,16 @@ emcc can be influenced by a few environment variables:
 """
 
 from __future__ import print_function
+from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import json
 import logging
 import os
@@ -47,7 +56,7 @@ try:
   from urllib.parse import quote
 except ImportError:
   # Python 2 compatibility
-  from urllib import quote
+  from urllib.parse import quote
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
 C_ENDINGS = ('.c', '.C', '.i')
@@ -556,7 +565,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return run_process(cmd, check=False).returncode
     else:
       only_object = '-c' in cmd
-      for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
+      for i in reversed(list(range(len(cmd) - 1))): # Last -o directive should take precedence, if multiple are specified
         if cmd[i] == '-o':
           if not only_object:
             cmd[i + 1] += '.js'
@@ -625,7 +634,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if any(arg.startswith('-o=') for arg in sys.argv):
     raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-  for i in reversed(range(len(sys.argv) - 1)): # Last -o directive should take precedence, if multiple are specified
+  for i in reversed(list(range(len(sys.argv) - 1))): # Last -o directive should take precedence, if multiple are specified
     if sys.argv[i] == '-o':
       target = sys.argv[i + 1]
       sys.argv = sys.argv[:i] + sys.argv[i + 2:]
@@ -890,7 +899,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # (4, a), (4.25, b), (4.5, c), (4.75, d)
           link_flags_to_add = arg.split(',')[1:]
           for flag_index, flag in enumerate(link_flags_to_add):
-            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+            link_flags.append((i + old_div(float(flag_index), len(link_flags_to_add)), flag))
 
           newargs[i] = ''
 

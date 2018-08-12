@@ -6,6 +6,8 @@ from __future__ import print_function
 #  comment blocks and build more structured objects out of them.
 #
 
+from builtins import range
+from builtins import object
 from sources import *
 from utils import *
 import string, re
@@ -53,7 +55,7 @@ re_header_macro = re.compile( r'^#define\s{1,}(\w{1,}_H)\s{1,}<(.*)>' )
 #   The object is filled line by line by the parser; it strips the leading
 #   "margin" space from each input line before storing it in 'self.lines'.
 #
-class  DocCode:
+class  DocCode(object):
 
     def  __init__( self, margin, lines ):
         self.lines = []
@@ -84,7 +86,7 @@ class  DocCode:
 #
 #   'self.words' contains the list of words that make up the paragraph
 #
-class  DocPara:
+class  DocPara(object):
 
     def  __init__( self, lines ):
         self.lines = None
@@ -131,7 +133,7 @@ class  DocPara:
 #  DocCode objects. Each DocField also has an optional "name" which is used
 #  when the object corresponds to a field or value definition
 #
-class  DocField:
+class  DocField(object):
 
     def  __init__( self, name, lines ):
         self.name  = name  # can be None for normal paragraphs/sources
@@ -230,7 +232,7 @@ re_field = re.compile( r"\s*(\w*|\w(\w|\.)*\w)\s*::" )
 
 
 
-class  DocMarkup:
+class  DocMarkup(object):
 
     def  __init__( self, tag, lines ):
         self.tag    = string.lower( tag )
@@ -286,7 +288,7 @@ class  DocMarkup:
 
 
 
-class  DocChapter:
+class  DocChapter(object):
 
     def  __init__( self, block ):
         self.block    = block
@@ -302,7 +304,7 @@ class  DocChapter:
 
 
 
-class  DocSection:
+class  DocSection(object):
 
     def  __init__( self, name = "Other" ):
         self.name        = name
@@ -338,7 +340,7 @@ class  DocSection:
 
 
 
-class  ContentProcessor:
+class  ContentProcessor(object):
 
     def  __init__( self ):
         """initialize a block content processor"""
@@ -440,7 +442,7 @@ class  ContentProcessor:
         # process all sections to extract their abstract, description
         # and ordered list of items
         #
-        for sec in self.sections.values():
+        for sec in list(self.sections.values()):
             sec.process()
 
         # process chapters to check that all sections are correctly
@@ -460,7 +462,7 @@ class  ContentProcessor:
         # check that all sections are in a chapter
         #
         others = []
-        for sec in self.sections.values():
+        for sec in list(self.sections.values()):
             if not sec.chapter:
                 others.append( sec )
 
@@ -474,7 +476,7 @@ class  ContentProcessor:
 
 
 
-class  DocBlock:
+class  DocBlock(object):
 
     def  __init__( self, source, follow, processor ):
         processor.reset()

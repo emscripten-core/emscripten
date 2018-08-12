@@ -1,4 +1,9 @@
 from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
 import multiprocessing
 import os
 import subprocess
@@ -18,7 +23,7 @@ try:
   import queue
 except ImportError:
   # Python 2 compatibility
-  import Queue as queue
+  import queue as queue
 
 def g_testing_thread(work_queue, result_queue, temp_dir):
   for test in iter(lambda: get_from_queue(work_queue), None):

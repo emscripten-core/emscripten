@@ -2,12 +2,13 @@ from __future__ import print_function
 # -----------------------------------------------------------------------------
 # lex_object.py
 # -----------------------------------------------------------------------------
+from builtins import object
 import sys
 
 if ".." not in sys.path: sys.path.insert(0,"..")
 import ply.lex as lex
 
-class CalcLexer:
+class CalcLexer(object):
     tokens = (
         'NAME','NUMBER',
         'PLUS','MINUS','TIMES','DIVIDE','EQUALS',

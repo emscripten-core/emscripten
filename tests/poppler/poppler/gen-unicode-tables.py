@@ -1,4 +1,7 @@
 from __future__ import print_function
+from builtins import map
+from builtins import chr
+from builtins import range
 UNICODE_LAST_CHAR_PART1 = 0x2FAFF
 HANGUL_S_BASE = 0xAC00
 HANGUL_S_COUNT = 19 * 21 * 28
@@ -17,10 +20,10 @@ decomp_table = []
 max_index = 0
 decomp_expansion_index = {}
 decomp_expansion = []
-for u in xrange(0, UNICODE_LAST_CHAR_PART1):
+for u in range(0, UNICODE_LAST_CHAR_PART1):
 	if (u >= HANGUL_S_BASE and u < HANGUL_S_BASE + HANGUL_S_COUNT):
 		continue
-	norm = tuple(map(ord, unicodedata.normalize("NFKD", unichr(u))))
+	norm = tuple(map(ord, unicodedata.normalize("NFKD", chr(u))))
 	if norm != (u,):
 		try: 
 			i = decomp_expansion_index[norm]

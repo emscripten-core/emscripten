@@ -1,6 +1,7 @@
 #  Formatter (c) 2002, 2004, 2007, 2008 David Turner <david@freetype.org>
 #
 
+from builtins import object
 from sources import *
 from content import *
 from utils   import *
@@ -14,19 +15,19 @@ from utils   import *
 # used to output -- you guessed it -- HTML.
 #
 
-class  Formatter:
+class  Formatter(object):
 
     def  __init__( self, processor ):
         self.processor   = processor
         self.identifiers = {}
         self.chapters    = processor.chapters
-        self.sections    = processor.sections.values()
+        self.sections    = list(processor.sections.values())
         self.block_index = []
 
         # store all blocks in a dictionary
         self.blocks = []
         for section in self.sections:
-            for block in section.blocks.values():
+            for block in list(section.blocks.values()):
                 self.add_identifier( block.name, block )
 
                 # add enumeration values to the index, since this is useful
@@ -35,7 +36,7 @@ class  Formatter:
                         for field in markup.fields:
                             self.add_identifier( field.name, block )
 
-        self.block_index = self.identifiers.keys()
+        self.block_index = list(self.identifiers.keys())
         self.block_index.sort( index_sort )
 
     def  add_identifier( self, name, block ):

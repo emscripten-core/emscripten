@@ -1,3 +1,5 @@
+from future import standard_library
+standard_library.install_aliases()
 import os, shutil, logging
 from subprocess import Popen
 

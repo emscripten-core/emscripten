@@ -1,12 +1,17 @@
 from __future__ import print_function
+from __future__ import division
 # This file provides the runtime support for running a basic program
 # Assumes the program has been parsed using basparse.py
 
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import sys
 import math
 import random
 
-class BasicInterpreter:
+class BasicInterpreter(object):
 
     # Initialize the interpreter. prog is a dictionary
     # containing (line,statement) mappings
@@ -76,7 +81,7 @@ class BasicInterpreter:
              if expr[1] == '+': return self.eval(expr[2])+self.eval(expr[3])
              elif expr[1] == '-': return self.eval(expr[2])-self.eval(expr[3])
              elif expr[1] == '*': return self.eval(expr[2])*self.eval(expr[3])
-             elif expr[1] == '/': return float(self.eval(expr[2]))/self.eval(expr[3])
+             elif expr[1] == '/': return old_div(float(self.eval(expr[2])),self.eval(expr[3]))
              elif expr[1] == '^': return abs(self.eval(expr[2]))**self.eval(expr[3])
         elif etype == 'VAR':
              var,dim1,dim2 = expr[1]
@@ -430,7 +435,7 @@ class BasicInterpreter:
  
     # Insert statements
     def add_statements(self,prog):
-         for line,stat in prog.items():
+         for line,stat in list(prog.items()):
               self.prog[line] = stat
 
     # Delete a statement

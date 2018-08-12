@@ -16,6 +16,9 @@
 
 """ Unit tests for websocketproxy """
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import unittest
 import unittest
 import socket
@@ -28,7 +31,7 @@ from websockify import token_plugins
 from websockify import auth_plugins
 
 try:
-    from StringIO import StringIO
+    from io import StringIO
     BytesIO = StringIO
 except ImportError:
     from io import StringIO

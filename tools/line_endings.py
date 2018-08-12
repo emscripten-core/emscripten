@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import str
 import sys, shutil, os
 
 def convert_line_endings(text, from_eol, to_eol):

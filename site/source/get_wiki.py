@@ -6,6 +6,8 @@ from __future__ import print_function
 # It should be called prior to building the site.
 #
 
+from builtins import input
+from builtins import range
 import re #for fixing links in the imported text
 
 import pprint
@@ -234,7 +236,7 @@ print('Clone wiki: %s' % options.clonewiki)
 
 if options.clonewiki==True:
     CloneWiki()   
-    input= raw_input('CHECK ALL files were cloned! (look for "error: unable to create file" )\n')
+    input= input('CHECK ALL files were cloned! (look for "error: unable to create file" )\n')
     
 ConvertFilesToRst()    
 FixupConvertedRstFiles()

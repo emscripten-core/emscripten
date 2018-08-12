@@ -16,7 +16,14 @@ as taken from http://docs.python.org/dev/library/ssl.html#certificates
 
 '''
 from __future__ import print_function
+from __future__ import division
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import os, sys, time, errno, signal, socket, select, logging
 import array, struct
 from base64 import b64encode, b64decode
@@ -33,9 +40,9 @@ else:
     s2b = lambda s: s      # No-op
     s2a = lambda s: [ord(c) for c in s]
 try:    from io import StringIO
-except: from cStringIO import StringIO
+except: from io import StringIO
 try:    from http.server import SimpleHTTPRequestHandler
-except: from SimpleHTTPServer import SimpleHTTPRequestHandler
+except: from http.server import SimpleHTTPRequestHandler
 
 # python 2.6 differences
 try:    from hashlib import sha1
@@ -129,7 +136,7 @@ class WebSocketRequestHandler(SimpleHTTPRequestHandler):
                     dtype = dtype.newbyteorder('>')
                 mask = numpy.frombuffer(buf, dtype, offset=hlen, count=1)
                 data = numpy.frombuffer(buf, dtype, offset=pstart,
-                        count=int(plen / 4))
+                        count=int(old_div(plen, 4)))
                 #b = numpy.bitwise_xor(data, mask).data
                 b = numpy.bitwise_xor(data, mask).tostring()
 
@@ -773,7 +780,7 @@ class WebSocketServer(object):
         # Close open files
         maxfd = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
         if maxfd == resource.RLIM_INFINITY: maxfd = 256
-        for fd in reversed(range(maxfd)):
+        for fd in reversed(list(range(maxfd))):
             try:
                 if fd not in keepfd:
                     os.close(fd)
@@ -1104,7 +1111,7 @@ class WebSocketServer(object):
             lsock.close()
 
             # Restore signals
-            for sig, func in original_signals.items():
+            for sig, func in list(original_signals.items()):
                 signal.signal(sig, func)
 
 

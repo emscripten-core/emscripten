@@ -1,3 +1,6 @@
+from builtins import str
+from builtins import range
+from builtins import object
 import subprocess, os, time, sys, tempfile
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -98,7 +101,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def escape_args(args):
-      return map(lambda arg: arg.replace('\\', '\\\\').replace('"', '\\"'), args)
+      return [arg.replace('\\', '\\\\').replace('"', '\\"') for arg in args]
 
     @staticmethod
     def record_process_start(write_log_entry=True):

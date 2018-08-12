@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from builtins import chr
+from builtins import str
+from builtins import range
 from base64 import b64encode, b64decode
 from codecs import (utf_8_encode, utf_8_decode,
                     latin_1_encode, latin_1_decode)
@@ -13,7 +16,7 @@ print("Generating random input buffer")
 r = random.Random()
 buf = "".join([chr(r.randint(0, 255)) for i in range(buf_len)])
 
-tests = {'UTF8 encode': lambda: utf_8_encode(unicode(buf, 'latin-1'))[0],
+tests = {'UTF8 encode': lambda: utf_8_encode(str(buf, 'latin-1'))[0],
          'B64 encode': lambda: b64encode(buf)}
 utf8_buf = tests['UTF8 encode']()
 b64_buf = tests['B64 encode']()

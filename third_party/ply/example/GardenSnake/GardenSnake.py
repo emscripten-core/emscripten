@@ -37,6 +37,12 @@ from __future__ import print_function
 #  30 August - added link to CC license; removed the "swapcase" encoding
 
 # Modifications for inclusion in PLY distribution
+from builtins import map
+from builtins import next
+from builtins import filter
+from builtins import range
+from past.builtins import basestring
+from builtins import object
 import sys
 sys.path.insert(0,"../..")
 from ply import *
@@ -321,7 +327,7 @@ class IndentLexer(object):
     def input(self, s, add_endmarker=True):
         self.lexer.paren_count = 0
         self.lexer.input(s)
-        self.token_stream = filter(self.lexer, add_endmarker)
+        self.token_stream = list(filter(self.lexer, add_endmarker))
     def token(self):
         try:
             return next(self.token_stream)

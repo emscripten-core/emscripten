@@ -35,6 +35,7 @@ A platform independent file lock that supports the with-statement.
 
 # Modules
 # ------------------------------------------------
+from builtins import object
 import os
 import threading
 import time

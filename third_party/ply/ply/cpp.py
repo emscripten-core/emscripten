@@ -15,6 +15,10 @@ from __future__ import print_function
 # a basic preprocessor working.   Other modules may import these if they want
 # -----------------------------------------------------------------------------
 
+from builtins import next
+from builtins import str
+from builtins import range
+from builtins import object
 tokens = (
    'CPP_ID','CPP_INTEGER', 'CPP_FLOAT', 'CPP_STRING', 'CPP_CHAR', 'CPP_WS', 'CPP_COMMENT', 'CPP_POUND','CPP_DPOUND'
 )
@@ -263,7 +267,7 @@ class Preprocessor(object):
     def group_lines(self,input):
         lex = self.lexer.clone()
         lines = [x.rstrip() for x in input.splitlines()]
-        for i in xrange(len(lines)):
+        for i in range(len(lines)):
             j = i+1
             while lines[i].endswith('\\') and (j < len(lines)):
                 lines[i] = lines[i][:-1]+lines[j]
@@ -772,7 +776,7 @@ class Preprocessor(object):
     # ----------------------------------------------------------------------
 
     def define(self,tokens):
-        if isinstance(tokens,(str,unicode)):
+        if isinstance(tokens,(str,str)):
             tokens = self.tokenize(tokens)
 
         linetok = tokens

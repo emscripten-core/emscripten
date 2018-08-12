@@ -6,6 +6,8 @@ sections from a wasm file.
 """
 from __future__ import print_function
 
+from builtins import bytes
+from builtins import range
 import argparse
 from collections import OrderedDict
 import json

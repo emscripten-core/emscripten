@@ -55,6 +55,10 @@ Notes:
 '''
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os, sys, shutil, random, uuid, ctypes
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -211,7 +215,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
     assert attrs != -1
     result = bool(attrs & 2)
   except:
@@ -335,7 +339,7 @@ if has_preloaded:
   data.close()
   # TODO: sha256sum on data_target
   if start > 256*1024*1024:
-    print('warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (start/(1024*1024)), file=sys.stderr)
+    print('warning: file packager is creating an asset bundle of %d MB. this is very large, and browsers might have trouble loading it. see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/' % (old_div(start,(1024*1024))), file=sys.stderr)
 
   create_preloaded = '''
         Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {

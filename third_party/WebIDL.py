@@ -9,6 +9,9 @@
 from __future__ import print_function
 from __future__ import absolute_import
 
+from builtins import str
+from builtins import range
+from builtins import object
 from .ply import lex, yacc
 import re
 import os
@@ -2443,7 +2446,7 @@ integerTypeSizes = {
     }
 
 def matchIntegerValueToType(value):
-    for type, extremes in integerTypeSizes.items():
+    for type, extremes in list(integerTypeSizes.items()):
         (min, max) = extremes
         if value <= max and value >= min:
             return BuiltinTypes[type]
@@ -2507,7 +2510,7 @@ class IDLValue(IDLObject):
         elif self.type.isString() and type.isEnum():
             # Just keep our string, but make sure it's a valid value for this enum
             enum = type.unroll().inner
-            if self.value not in enum.values():
+            if self.value not in list(enum.values()):
                 raise WebIDLError("'%s' is not a valid default value for enum %s"
                                   % (self.value, enum.identifier.name),
                                   [location, enum.location])
@@ -3653,7 +3656,7 @@ class Tokenizer(object):
         "or": "OR"
         }
 
-    tokens.extend(keywords.values())
+    tokens.extend(list(keywords.values()))
 
     def t_error(self, t):
         raise WebIDLError("Unrecognized Input",

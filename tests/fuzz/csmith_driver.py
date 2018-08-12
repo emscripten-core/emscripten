@@ -4,7 +4,10 @@
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 """
 from __future__ import print_function
+from __future__ import division
 
+from builtins import str
+from past.utils import old_div
 import os, sys, difflib, shutil, random
 from distutils.spawn import find_executable
 from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
@@ -64,7 +67,7 @@ while 1:
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
                  stdout=open(fullname, 'w'))
-  print('1) Generate source... %.2f K' % (len(open(fullname).read())/1024.))
+  print('1) Generate source... %.2f K' % (old_div(len(open(fullname).read()),1024.)))
 
   tried += 1
 
@@ -159,7 +162,7 @@ while 1:
       js_args += ['-s', 'ASSERTIONS=1']
     print('(compile)', ' '.join(js_args))
     short_args = [shared.PYTHON, shared.EMCC, fail_output_name] + js_args[5:]
-    escaped_short_args = map(lambda x : ("'" + x + "'") if '"' in x else x, short_args)
+    escaped_short_args = [("'" + x + "'") if '"' in x else x for x in short_args]
     open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
       shared.check_execute(js_args)

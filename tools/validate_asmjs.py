@@ -12,6 +12,7 @@
 # This script depends on the SpiderMonkey JS engine, which must be present in PATH in order for this script to function.
 
 from __future__ import print_function
+from builtins import str
 import subprocess, sys, re, tempfile, os, time
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

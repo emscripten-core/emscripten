@@ -3,6 +3,7 @@ Very simple line-by line diff of autodebugger outputs. useful when there are no 
 and there are float differences
 '''
 from __future__ import print_function
+from builtins import range
 import os, sys
 
 f1 = open(sys.argv[1], 'r').readlines()

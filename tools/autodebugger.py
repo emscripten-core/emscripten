@@ -9,6 +9,7 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
 '''
 
 from __future__ import print_function
+from builtins import range
 import os, sys, re
 
 ALLOW_POINTERS = True

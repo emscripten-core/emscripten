@@ -5,6 +5,8 @@ diff that makes the outputs different.
 '''
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import os, sys, shutil
 from subprocess import Popen, PIPE, STDOUT
 

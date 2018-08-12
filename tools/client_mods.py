@@ -1,4 +1,5 @@
 
+from builtins import object
 class PreciseF32(object):
   name = 'PRECISE_F32 == 2'
 

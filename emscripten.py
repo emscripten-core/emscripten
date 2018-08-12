@@ -3,7 +3,13 @@ compiler with the settings given to it. It can also read data from C/C++
 header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
+from __future__ import division
 
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import difflib
 import os, sys, json, argparse, subprocess, re, time, logging
 import shutil
@@ -152,9 +158,9 @@ def fixup_metadata_tables(metadata):
   # here)
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM:
     max_size = 0
-    for k, v in metadata['tables'].items():
+    for k, v in list(metadata['tables'].items()):
       max_size = max(max_size, v.count(',')+1)
-    for k, v in metadata['tables'].items():
+    for k, v in list(metadata['tables'].items()):
       curr = v.count(',')+1
       if curr < max_size:
         if v.count('[]') == 1:
@@ -163,14 +169,14 @@ def fixup_metadata_tables(metadata):
           metadata['tables'][k] = v.replace(']', (',0'*(max_size - curr)) + ']')
 
   if shared.Settings.SIDE_MODULE:
-    for k in metadata['tables'].keys():
+    for k in list(metadata['tables'].keys()):
       metadata['tables'][k] = metadata['tables'][k].replace('var FUNCTION_TABLE_', 'var SIDE_FUNCTION_TABLE_')
 
 
 def fixup_functions(funcs, metadata):
   # function table masks
   table_sizes = {}
-  for k, v in metadata['tables'].items():
+  for k, v in list(metadata['tables'].items()):
     table_sizes[k] = str(v.count(',')) # undercounts by one, but that is what we want
     #if shared.Settings.ASSERTIONS >= 2 and table_sizes[k] == 0:
     #  print >> sys.stderr, 'warning: no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
@@ -293,7 +299,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     global_vars = metadata['externs']
   else:
     global_vars = [] # linkable code accesses globals through function calls
-  global_funcs = sorted(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2])
+  global_funcs = sorted(set([key for key, value in list(forwarded_json['Functions']['libraryFunctions'].items()) if value != 2])
                       .difference(set(global_vars)).difference(implemented_functions))
   if shared.Settings.RELOCATABLE:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
@@ -580,7 +586,7 @@ def get_all_exported_functions(function_table_data):
   for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE: # additional functions to export from asm, if they are implemented
     all_exported_functions.add('_' + additional_export)
   if shared.Settings.EXPORT_FUNCTION_TABLES:
-    for table in function_table_data.values():
+    for table in list(function_table_data.values()):
       for func in table.split('[')[1].split(']')[0].split(','):
         if func[0] == '_':
           all_exported_functions.add(func)
@@ -730,14 +736,14 @@ def all_asm_consts(metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
   all_call_types = []
-  for k, v in metadata['asmConsts'].items():
+  for k, v in list(metadata['asmConsts'].items()):
     const = asstr(v[0])
     sigs = v[1]
     call_types = v[2] if len(v) >= 3 else None
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
-    arity = max(map(len, sigs)) - 1
+    arity = max(list(map(len, sigs))) - 1
     for i in range(arity):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
@@ -768,7 +774,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
   # when emulating function pointer casts, we need to know what is the target of each pointer
   if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM:
     function_pointer_targets = {}
-    for sig, table in function_table_data.items():
+    for sig, table in list(function_table_data.items()):
       start = table.index('[')
       end = table.rindex(']')
       body = table[start+1:end].split(',')
@@ -877,7 +883,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
     body = ','.join(map(fix_item, body))
     return ('\n'.join(Counter.pre), ''.join([raw[:start+1], body, raw[end:]]))
 
-  infos = [make_table(sig, raw) for sig, raw in function_table_data.items()]
+  infos = [make_table(sig, raw) for sig, raw in list(function_table_data.items())]
   Counter.pre = []
 
   function_tables_defs = '\n'.join([info[0] for info in infos]) + '\n'
@@ -896,7 +902,7 @@ def math_fix(g):
 
 def make_function_tables_impls(function_table_data):
   function_tables_impls = []
-  for sig, table in function_table_data.items():
+  for sig, table in list(function_table_data.items()):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
     coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i]) for i in range(1, len(sig))])
@@ -932,7 +938,7 @@ def create_mftCall_funcs(function_table_data):
   mftCall_funcs = []
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
     if shared.Settings.RELOCATABLE and not shared.Settings.WASM: # in wasm, emulated function pointers are just simple table calls
-      for sig, table in function_table_data.items():
+      for sig, table in list(function_table_data.items()):
         params = ','.join(['ptr'] + ['p%d' % p for p in range(len(sig)-1)])
         coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i')] + [shared.JS.make_coercion('p%d', unfloat(sig[p+1])) % p for p in range(len(sig)-1)])
         coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (p, shared.JS.make_coercion('p%d' % p, unfloat(sig[p+1]))) for p in range(len(sig)-1)]) + ';'
@@ -982,7 +988,7 @@ def signature_sort_key(sig):
     ret -= 133*difflib.SequenceMatcher(a=other, b=sig).ratio() # prioritize on diff similarity
     ret += 15*abs(len(other) - len(sig))/float(maxlen) # deprioritize the bigger the length difference is
     for i in range(minlen):
-      if other[i] == sig[i]: ret -= 5/float(maxlen) # prioritize on identically-placed params
+      if other[i] == sig[i]: ret -= old_div(5,float(maxlen)) # prioritize on identically-placed params
     ret += 20*len(other) # deprioritize on length
     return ret
   return closure
@@ -1282,15 +1288,15 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     exports.append(quote(export) + ": " + export)
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # named globals in side wasm modules are exported globals from asm/wasm
-    for k, v in metadata['namedGlobals'].items():
+    for k, v in list(metadata['namedGlobals'].items()):
       exports.append(quote('_' + str(k)) + ': ' + str(v))
     # aliases become additional exports
-    for k, v in metadata['aliases'].items():
+    for k, v in list(metadata['aliases'].items()):
       exports.append(quote(str(k)) + ': ' + str(v))
   # shared wasm emulated function pointer mode requires us to know the function pointer for
   # each function. export fp$func => function pointer for func
   if shared.Settings.WASM and shared.Settings.RELOCATABLE and shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-    for k, v in metadata['functionPointers'].items():
+    for k, v in list(metadata['functionPointers'].items()):
       exports.append(quote('fp$' + str(k)) + ': ' + str(v))
   return '{ ' + ', '.join(exports) + ' }'
 
@@ -1351,7 +1357,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   receiving += ';\n'
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
-    for table in function_table_data.values():
+    for table in list(function_table_data.values()):
       tableName = table.split()[1]
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
@@ -1359,7 +1365,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not shared.Settings.WASM:
-      for sig in function_table_data.keys():
+      for sig in list(function_table_data.keys()):
         name = 'FUNCTION_TABLE_' + sig
         fullname = name if not shared.Settings.SIDE_MODULE else ('SIDE_' + name)
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
@@ -1376,7 +1382,7 @@ for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+''' % ', '.join('"' + k + '": ' + str(v) for k, v in list(metadata['namedGlobals'].items()))
     if shared.Settings.WASM:
       # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
       # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
@@ -1390,7 +1396,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in list(metadata['aliases'].items())])
   return named_globals
 
 
@@ -1903,7 +1909,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
 def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0]*len(metadata['asmConsts'])
   all_sigs = []
-  for k, v in metadata['asmConsts'].items():
+  for k, v in list(metadata['asmConsts'].items()):
     const = asstr(v[0])
     sigs = v[1]
     const = trim_asm_const_body(const)
@@ -1950,7 +1956,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
 def create_em_js(forwarded_json, metadata):
   em_js_funcs = []
   separator = '<::>'
-  for name, raw in metadata.get('emJsFuncs', {}).items():
+  for name, raw in list(metadata.get('emJsFuncs', {}).items()):
     assert separator in raw
     args, body = raw.split(separator, 1)
     args = args[1:-1]
@@ -1981,7 +1987,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
     global_vars = [] # linkable code accesses globals through function calls
 
   implemented_functions = set(metadata['implementedFunctions'])
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+  global_funcs = list(set([key for key, value in list(forwarded_json['Functions']['libraryFunctions'].items()) if value != 2]).difference(set(global_vars)).difference(implemented_functions))
 
   jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
 
@@ -2075,7 +2081,7 @@ def load_metadata(metadata_raw):
     'invokeFuncs': [],
   }
 
-  for key, value in metadata_json.items():
+  for key, value in list(metadata_json.items()):
     # json.loads returns `unicode` for strings but other code in this file
     # generally works with utf8 encoded `str` objects, and they don't alwasy
     # mix well.  e.g. s.replace(x, y) will blow up is `s` a uts8 str containing

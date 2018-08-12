@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 # -----------------------------------------------------------------------------
 # calc.py
 #
@@ -7,6 +8,8 @@ from __future__ import print_function
 # lexing rules, parsing rules, and internal state are held inside the function.
 # -----------------------------------------------------------------------------
 
+from builtins import input
+from past.utils import old_div
 import sys
 sys.path.insert(0,"../..")
 
@@ -76,7 +79,7 @@ def make_calculator():
         if p[2] == '+'  : p[0] = p[1] + p[3]
         elif p[2] == '-': p[0] = p[1] - p[3]
         elif p[2] == '*': p[0] = p[1] * p[3]
-        elif p[2] == '/': p[0] = p[1] / p[3]
+        elif p[2] == '/': p[0] = old_div(p[1], p[3])
 
     def p_expression_uminus(p):
         "expression : '-' expression %prec UMINUS"
@@ -121,7 +124,7 @@ calc = make_calculator()
 
 while True:
     try:
-        s = raw_input("calc > ")
+        s = input("calc > ")
     except EOFError:
         break
     r = calc(s)

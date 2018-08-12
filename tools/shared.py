@@ -1,5 +1,12 @@
 from __future__ import print_function
+from __future__ import division
 
+from builtins import filter
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 from distutils.spawn import find_executable
 from subprocess import PIPE, STDOUT
 import atexit
@@ -119,7 +126,7 @@ class Py2CalledProcessError(subprocess.CalledProcessError):
 
 
 # https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess
-class Py2CompletedProcess:
+class Py2CompletedProcess(object):
   def __init__(self, args, returncode, stdout, stderr):
     self.args = args
     self.returncode = returncode
@@ -1138,7 +1145,7 @@ def line_splitter(data):
 def limit_size(string, MAX=800 * 20):
   if len(string) < MAX:
     return string
-  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+  return string[0:old_div(MAX, 2)] + '\n[..]\n' + string[old_div(-MAX, 2):]
 
 
 def read_pgo_data(filename):
@@ -1246,7 +1253,7 @@ class SettingsManager(object):
     @classmethod
     def serialize(self):
       ret = []
-      for key, value in self.attrs.items():
+      for key, value in list(self.attrs.items()):
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
@@ -1767,7 +1774,7 @@ class Building(object):
     #   except:
     #     pass
     env = Building.get_building_env(native, True)
-    for k, v in env_init.items():
+    for k, v in list(env_init.items()):
       env[k] = v
     if configure:
       # Useful in debugging sometimes to comment this out (and the lines below
@@ -2385,14 +2392,14 @@ class Building(object):
           targets = curr[2]
           can_call[func] = set(targets)
       # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-      for name, funcs in asm.tables.items():
+      for name, funcs in list(asm.tables.items()):
         can_call[name] = set([x.strip() for x in funcs[1:-1].split(',')])
       # print can_call
       # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
       #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
       # print 'can call', can_call, '\n!!!\n', asm.tables, '!'
       reachable_from = {}
-      for func, targets in can_call.items():
+      for func, targets in list(can_call.items()):
         for target in targets:
           if target not in reachable_from:
             reachable_from[target] = set()
@@ -2413,7 +2420,7 @@ class Building(object):
       else:
         # find all functions that are reachable from the initial list, including it
         # all tables are assumed reachable, as they can be called from dyncall from outside
-        for name, funcs in asm.tables.items():
+        for name, funcs in list(asm.tables.items()):
           to_check.append(name)
         while len(to_check):
           curr = to_check.pop()
@@ -2696,7 +2703,7 @@ def reconfigure_cache():
 
 
 # Placeholder strings used for SINGLE_FILE
-class FilenameReplacementStrings:
+class FilenameReplacementStrings(object):
   WASM_TEXT_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_TEXT_FILE }}}'
   WASM_BINARY_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_WASM_BINARY_FILE }}}'
   ASMJS_CODE_FILE = '{{{ FILENAME_REPLACEMENT_STRINGS_ASMJS_CODE_FILE }}}'
@@ -2956,7 +2963,7 @@ class WebAssembly(object):
 # Converts a string to the native str type.
 def asstr(s):
   if str is bytes:
-    if isinstance(s, unicode):
+    if isinstance(s, str):
       return s.encode('utf-8')
   elif isinstance(s, bytes):
     return s.decode('utf-8')

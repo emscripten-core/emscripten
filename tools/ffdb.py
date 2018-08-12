@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from __future__ import division
+from builtins import hex
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import socket, json, sys, uuid, datetime, time, logging, cgi, zipfile, os, tempfile, atexit, subprocess, re, base64, struct, imghdr
 
 WINDOWS = sys.platform == 'win32'
@@ -284,7 +289,7 @@ def b2g_install(target_app_path):
       cur_time = time.time()
       secs_elapsed = cur_time - start_time
       percentage_done = bytes_uploaded * 1.0 / file_size
-      total_time = secs_elapsed / percentage_done
+      total_time = old_div(secs_elapsed, percentage_done)
       time_left = total_time - secs_elapsed
       print(sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed))
 
@@ -318,7 +323,7 @@ def b2g_memory(app_name):
   if 'actor' in appActor:
     memoryActor = appActor['actor']['memoryActor']
     measure = send_b2g_cmd(memoryActor, 'measure')
-    for k,v in measure.items():
+    for k,v in list(measure.items()):
       if k != 'from':
         if k in ['otherSize', 'jsStringsSize', 'jsObjectsSize', 'styleSize', 'jsOtherSize', 'domSize', 'total']: # These are formatted in bytes
           print(k + ': ' + sizeof_fmt(v))
@@ -465,7 +470,7 @@ def b2g_get_description(desc):
   if desc and desc in data_reply['value']:
     print(desc + ': ' + str(data_reply['value'][desc]))
   else: # Print all with case-insensitive substring search
-    for k,v in data_reply['value'].items():
+    for k,v in list(data_reply['value'].items()):
       if not desc or desc.lower() in k.lower():
         print(k + ': ' + str(v))
 

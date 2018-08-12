@@ -1,6 +1,11 @@
 # coding=utf-8
 
 from __future__ import print_function
+from __future__ import division
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import glob
 import hashlib
 import json
@@ -5103,7 +5108,7 @@ PORT: 3979
     num = 5
     def test():
       print('(iteration)')
-      time.sleep(random.random()/(10*num)) # add some timing nondeterminism here, not that we need it, but whatever
+      time.sleep(old_div(random.random(),(10*num))) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
       if self.get_setting('WASM'):
@@ -5996,9 +6001,9 @@ def process(filename):
         js_total += js_data[i]
         true_total += true_data[i]
         diff_total += abs(js_data[i] - true_data[i])
-      js_mean = js_total/float(num)
-      true_mean = true_total/float(num)
-      diff_mean = diff_total/float(num)
+      js_mean = old_div(js_total,float(num))
+      true_mean = old_div(true_total,float(num))
+      diff_mean = old_div(diff_total,float(num))
 
       image_mean = 83.265
       #print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
@@ -7142,7 +7147,7 @@ err = err = function(){};
           for i in range(len(data)):
             data[i] = encode_utf8(data[i])
           return data
-        elif isinstance(data, unicode):
+        elif isinstance(data, str):
           return data.encode('utf8')
         else:
           return data
@@ -7646,7 +7651,7 @@ extern "C" {
     # needs to flush stdio streams
     self.set_setting('NO_EXIT_RUNTIME', 0)
     src = open(path_from_root('tests', 'test_coroutines.cpp')).read()
-    for (k, v) in additional_settings.items():
+    for (k, v) in list(additional_settings.items()):
       self.set_setting(k, v)
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
@@ -7837,7 +7842,7 @@ def make_run(name, emcc_args=None, env=None):
     try:
       super(TT, self).tearDown()
     finally:
-      for k, v in self.env.items():
+      for k, v in list(self.env.items()):
         del os.environ[k]
 
       # clear global changes to Building
@@ -7848,7 +7853,7 @@ def make_run(name, emcc_args=None, env=None):
 
   def setUp(self):
     super(TT, self).setUp()
-    for k, v in self.env.items():
+    for k, v in list(self.env.items()):
       assert k not in os.environ, k + ' should not be in environment'
       os.environ[k] = v
 

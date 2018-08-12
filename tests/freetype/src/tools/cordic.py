@@ -1,10 +1,13 @@
 from __future__ import print_function
+from __future__ import division
 # compute arctangent table for CORDIC computations in fttrigon.c
+from builtins import range
+from past.utils import old_div
 import sys, math
 
 #units  = 64*65536.0   # don't change !!
 units  = 256
-scale  = units/math.pi
+scale  = old_div(units,math.pi)
 shrink = 1.0
 comma  = ""
 
@@ -34,16 +37,16 @@ def  print_val( n, x ):
 
 
 print("")
-print("table of arctan( 1/2^n ) for PI = " + repr(units/65536.0) + " units")
+print("table of arctan( 1/2^n ) for PI = " + repr(old_div(units,65536.0)) + " units")
 
 # compute range of "i"
 r = [-1]
-r = r + range(32)
+r = r + list(range(32))
 
 for n in r:
 
     if n >= 0:
-        x = 1.0/(2.0**n)    # tangent value
+        x = old_div(1.0,(2.0**n))    # tangent value
     else:
         x = 2.0**(-n)
 
@@ -53,8 +56,8 @@ for n in r:
     # determine which integer value for angle gives the best tangent
     lo  = int(angle2)
     hi  = lo + 1
-    tlo = math.tan(lo/scale)
-    thi = math.tan(hi/scale)
+    tlo = math.tan(old_div(lo,scale))
+    thi = math.tan(old_div(hi,scale))
 
     errlo = abs( tlo - x )
     errhi = abs( thi - x )
@@ -69,12 +72,12 @@ for n in r:
     sys.stdout.write( comma + repr( int(angle2) ) )
     comma = ", "
 
-    shrink = shrink * math.cos( angle2/scale)
+    shrink = shrink * math.cos( old_div(angle2,scale))
 
 
 print()
 print("shrink factor    = " + repr( shrink ))
 print("shrink factor 2  = " + repr( shrink * (2.0**32) ))
-print("expansion factor = " + repr(1/shrink))
+print("expansion factor = " + repr(old_div(1,shrink)))
 print("")
 

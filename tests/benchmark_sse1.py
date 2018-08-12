@@ -1,4 +1,7 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import subprocess, tempfile, os, sys, shutil, json
 from subprocess import Popen, PIPE, STDOUT
 
@@ -136,8 +139,8 @@ def find_result_in_category(results, category):
 	return None
 
 def format_comparison(a, b):
-	if a <= b: return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(b/a) + 'x FASTER</span>'
-	else: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(a/b) + 'x SLOWER</span>'
+	if a <= b: return "<span style='color:green;font-weight:bold;'> {:10.2f}".format(old_div(b,a)) + 'x FASTER</span>'
+	else: return "<span style='color:red;font-weight:bold;'> {:10.2f}".format(old_div(a,b)) + 'x SLOWER</span>'
 
 chartNumber = 0
 
@@ -146,7 +149,7 @@ total_time_native_simd = 0
 total_time_html_scalar = 0
 total_time_html_simd = 0
 
-for chart_name in charts_native.keys():
+for chart_name in list(charts_native.keys()):
 	# Extract data for each chart.
 	categories = []
 	nativeScalarResults = []
@@ -283,15 +286,15 @@ html += '''<script>$(function () {
 
         }, {
             name: 'Native SSE1',
-            data: [''' + str(total_time_native_simd/total_time_native_scalar) + ''']
+            data: [''' + str(old_div(total_time_native_simd,total_time_native_scalar)) + ''']
 
         }, {
             name: 'JS scalar',
-            data: [''' + str(total_time_html_scalar/total_time_native_scalar) + ''']
+            data: [''' + str(old_div(total_time_html_scalar,total_time_native_scalar)) + ''']
 
         }, {
             name: 'JS SSE1',
-            data: [''' + str(total_time_html_simd/total_time_native_scalar) + ''']
+            data: [''' + str(old_div(total_time_html_simd,total_time_native_scalar)) + ''']
 
         }]
     });

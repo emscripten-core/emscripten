@@ -75,6 +75,8 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 
 '''
 
+from builtins import str
+from builtins import object
 import sys, os, re, json, argparse, tempfile, subprocess
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -213,7 +215,7 @@ else:
       else:
         return look_through(root, path[:-1], item.dest)
     elif isinstance(item, dict):
-      for name, val in item.items():
+      for name, val in list(item.items()):
         item[name] = resolve_delayed(val, root, path + [ name ])
     elif isinstance(item, list):
       for i, val in enumerate(item):
@@ -340,12 +342,12 @@ def inspect_code(headers, cpp_opts, structs, defines):
 
   code.append('int main() {')
   c_descent('structs', code)
-  for name, struct in structs.items():
+  for name, struct in list(structs.items()):
     gen_inspect_code([name], struct, code)
 
   c_ascent(code)
   c_descent('defines', code)
-  for name, type_ in defines.items():
+  for name, type_ in list(defines.items()):
     # Add the necessary python type, if missing.
     if '%' not in type_:
       if type_[-1] in ('d', 'i', 'u'):
@@ -427,7 +429,7 @@ def parse_json(path, header_files, structs, defines):
 
   for item in data:
     header_files.append(item['file'])
-    for name, data in item['structs'].items():
+    for name, data in list(item['structs'].items()):
       if name in structs:
         show('WARN: Description of struct "' + name + '" in file "' + item['file'] + '" replaces an existing description!')
 

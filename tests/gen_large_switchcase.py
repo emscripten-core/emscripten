@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import random, sys
 num_cases = int(sys.argv[1])
 cases = ''

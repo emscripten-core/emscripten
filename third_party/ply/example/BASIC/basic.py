@@ -1,6 +1,7 @@
 # An implementation of Dartmouth BASIC (1964)
 #
 
+from builtins import input
 import sys
 sys.path.insert(0,"../..")
 
@@ -36,7 +37,7 @@ else:
 
 while 1:
     try:
-        line = raw_input("[BASIC] ")
+        line = input("[BASIC] ")
     except EOFError:
         raise SystemExit
     if not line: continue

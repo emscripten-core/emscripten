@@ -3,6 +3,7 @@
 # Test lex's ability to handle a large number of tokens (beyond the
 # 100-group limit of the re module)
 
+from builtins import range
 import sys
 if ".." not in sys.path: sys.path.insert(0,"..")
 

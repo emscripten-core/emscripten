@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 from __future__ import print_function
+from builtins import range
 import sys
 print('\n\nemmaken.py is deprecated! use "emcc"\n\n', file=sys.stderr)
 

@@ -1,4 +1,8 @@
 from __future__ import print_function
+from builtins import str
+from builtins import chr
+from builtins import range
+from builtins import object
 import os, multiprocessing, subprocess, socket, time
 from runner import BrowserCore, path_from_root
 from tools.shared import *
@@ -413,7 +417,7 @@ int main () {
     # generate a large string literal to use as our message
     message = ''
     for i in range(256*256*2):
-        message += str(unichr(ord('a') + (i % 26)))
+        message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')

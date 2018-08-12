@@ -1,6 +1,13 @@
 # coding=utf-8
 
 from __future__ import print_function
+from __future__ import division
+from builtins import hex
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import glob
 import itertools
 import multiprocessing
@@ -6186,7 +6193,7 @@ int main(int argc, char** argv) {
       def percent_diff(x, y):
         small = min(x, y)
         large = max(x, y)
-        return float(100*large)/small - 100
+        return old_div(float(100*large),small) - 100
 
       # main module tests
 
@@ -7176,7 +7183,7 @@ int main() {
     check_execute([PYTHON, EMCC, 'src.c', '-O2', '-g'])
     size = os.stat('a.out.wasm').st_size
     # size should be much smaller than the size of that zero-initialized buffer
-    assert size < (123456 / 2), size
+    assert size < (old_div(123456, 2)), size
 
   @no_wasm_backend()
   def test_separate_asm_warning(self):
@@ -8121,7 +8128,7 @@ int main() {
           self.assertNotIn(not_exists, sent)
         self.assertEqual(len(sent), expected_len)
         wasm_size = os.stat('a.out.wasm').st_size
-        ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
+        ratio = old_div(abs(wasm_size - expected_wasm_size), float(expected_wasm_size))
         print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
         self.assertLess(ratio, 0.05)
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout

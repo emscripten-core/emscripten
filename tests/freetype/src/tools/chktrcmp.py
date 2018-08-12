@@ -7,6 +7,7 @@
 
 
 from __future__ import print_function
+from builtins import range
 import sys
 import os
 import re
@@ -99,14 +100,14 @@ for f in TRACE_DEF_FILES:
 #
 
 print("# Trace component used in the implementations but not defined in fttrace.h.")
-cmpnt = USED_COMPONENT.keys()
+cmpnt = list(USED_COMPONENT.keys())
 cmpnt.sort()
 for c in cmpnt:
   if c not in KNOWN_COMPONENT:
     print("Trace component %s (used in %s) is not defined." % ( c, ", ".join( USED_COMPONENT[c] ) ))
 
 print("# Trace component is defined but not used in the implementations.")
-cmpnt = KNOWN_COMPONENT.keys()
+cmpnt = list(KNOWN_COMPONENT.keys())
 cmpnt.sort()
 for c in cmpnt:
   if c not in USED_COMPONENT:

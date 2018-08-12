@@ -8,6 +8,7 @@ where a change occurs shows which function is the culprit.
 """
 
 from __future__ import print_function
+from builtins import range
 import os
 import sys
 

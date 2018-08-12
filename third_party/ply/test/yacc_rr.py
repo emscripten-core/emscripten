@@ -1,9 +1,11 @@
 from __future__ import print_function
+from __future__ import division
 # -----------------------------------------------------------------------------
 # yacc_rr.py
 #
 # A grammar with a reduce/reduce conflict
 # -----------------------------------------------------------------------------
+from past.utils import old_div
 import sys
 
 if ".." not in sys.path: sys.path.insert(0,"..")
@@ -41,7 +43,7 @@ def p_expression_binop(t):
     if t[2] == '+'  : t[0] = t[1] + t[3]
     elif t[2] == '-': t[0] = t[1] - t[3]
     elif t[2] == '*': t[0] = t[1] * t[3]
-    elif t[2] == '/': t[0] = t[1] / t[3]
+    elif t[2] == '/': t[0] = old_div(t[1], t[3])
 
 def p_expression_uminus(t):
     'expression : MINUS expression %prec UMINUS'

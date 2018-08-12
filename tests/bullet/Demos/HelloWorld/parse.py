@@ -1,4 +1,7 @@
 from __future__ import print_function
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import math
 
 data = '''
@@ -42,7 +45,7 @@ data = '''
 
 total_time = 3000 # ms
 bin_size = 50 # ms
-bins = [0]*(total_time/bin_size)
+bins = [0]*(old_div(total_time,bin_size))
 
 for line in data.split('\n'):
   line = line.strip()
@@ -54,7 +57,7 @@ for line in data.split('\n'):
   #print i, fps, wall
   fps = float(fps)
   wall = float(wall)
-  pos = wall/bin_size
+  pos = old_div(wall,bin_size)
   start_bin = int(math.floor(pos))
   assert start_bin < len(bins)
   end_bin = int(math.ceil(pos))

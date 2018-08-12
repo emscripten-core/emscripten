@@ -1,3 +1,4 @@
+from builtins import object
 class BasePlugin(object):
     def __init__(self, src=None):
         self.source = src

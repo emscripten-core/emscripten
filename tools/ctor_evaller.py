@@ -4,6 +4,8 @@ Tries to evaluate global constructors, applying their effects ahead of time.
 This is an LTO-like operation, and to avoid parsing the entire tree (we might fail to parse a massive project, we operate on the text in python.
 '''
 
+from builtins import bytes
+from builtins import str
 import os, sys, json, subprocess, time
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

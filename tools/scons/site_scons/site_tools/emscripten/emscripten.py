@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 from __future__ import print_function
+from builtins import str
 import os
 
 def generate(env, emscripten_path=None, **kw):

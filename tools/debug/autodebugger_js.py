@@ -5,6 +5,7 @@ Similar to autodebugger.py, but runs on .js files.
 '''
 
 from __future__ import print_function
+from builtins import range
 import os, sys, re
 
 filename = sys.argv[1]
