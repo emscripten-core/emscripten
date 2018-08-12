@@ -1,5 +1,6 @@
 
 from __future__ import print_function
+from __future__ import absolute_import
 import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,7 +13,7 @@ try:
   from tools import shared
 except ImportError:
   # Python 2 circular import compatibility
-  import shared
+  from . import shared
 
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()

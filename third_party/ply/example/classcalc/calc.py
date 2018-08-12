@@ -9,6 +9,7 @@
 # Class-based example contributed to PLY by David McNab
 # -----------------------------------------------------------------------------
 
+from __future__ import print_function
 import sys
 sys.path.insert(0,"../..")
 

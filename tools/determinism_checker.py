@@ -1,6 +1,7 @@
 '''
 Runs a build command many times to search for any nondeterminism.
 '''
+from __future__ import print_function
 
 import os
 import random

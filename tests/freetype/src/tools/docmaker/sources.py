@@ -1,3 +1,4 @@
+from __future__ import print_function
 #  Sources (c) 2002, 2003, 2004, 2006, 2007, 2008, 2009
 #    David Turner <david@freetype.org>
 #
@@ -236,10 +237,10 @@ class  SourceBlock:
     # debugging only - not used in normal operations
     def  dump( self ):
         if self.content:
-            print "{{{content start---"
+            print("{{{content start---")
             for l in self.content:
-                print l
-            print "---content end}}}"
+                print(l)
+            print("---content end}}}")
             return
 
         fmt = ""
@@ -247,7 +248,7 @@ class  SourceBlock:
             fmt = repr( self.format.id ) + " "
 
         for line in self.lines:
-            print line
+            print(line)
 
 
 

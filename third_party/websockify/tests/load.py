@@ -5,6 +5,7 @@ WebSocket server-side load test program. Sends and receives traffic
 that has a random payload (length and content) that is checksummed and
 given a sequence number. Any errors are reported and counted.
 '''
+from __future__ import print_function
 
 import sys, os, select, random, time, optparse, logging
 sys.path.insert(0,os.path.join(os.path.dirname(__file__), ".."))
@@ -26,7 +27,7 @@ class WebSocketLoad(WebSocketRequestHandler):
     max_packet_size = 10000
 
     def new_websocket_client(self):
-        print "Prepopulating random array"
+        print("Prepopulating random array")
         self.rand_array = []
         for i in range(0, self.max_packet_size):
             self.rand_array.append(random.randint(0, 9))
@@ -38,7 +39,7 @@ class WebSocketLoad(WebSocketRequestHandler):
         try:
             self.responder(self.request)
         except:
-            print "accumulated errors:", self.errors
+            print("accumulated errors:", self.errors)
             self.errors = 0
             raise
 
@@ -59,7 +60,7 @@ class WebSocketLoad(WebSocketRequestHandler):
                 err = self.check(frames)
                 if err:
                     self.errors = self.errors + 1
-                    print err
+                    print(err)
 
                 if closed:
                     self.send_close()
@@ -108,7 +109,7 @@ class WebSocketLoad(WebSocketRequestHandler):
                 length = int(length)
                 chksum = int(chksum)
             except:
-                print "\n<BOF>" + repr(data) + "<EOF>"
+                print("\n<BOF>" + repr(data) + "<EOF>")
                 err += "Invalid data format\n"
                 continue
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 # lexer for yacc-grammars
 #
 # Author: David Beazley (dave@dabeaz.com)
@@ -95,8 +96,8 @@ def t_code_error(t):
     raise RuntimeError
 
 def t_error(t):
-    print "%d: Illegal character '%s'" % (t.lexer.lineno, t.value[0])
-    print t.value
+    print("%d: Illegal character '%s'" % (t.lexer.lineno, t.value[0]))
+    print(t.value)
     t.lexer.skip(1)
 
 lex.lex()

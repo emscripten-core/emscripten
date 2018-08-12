@@ -9,6 +9,7 @@ This is different than say socat which will listen to one port
 and then make a connection to another port, and do bidirectional
 communication. We need to actually listen on both ports.
 '''
+from __future__ import print_function
 
 import os, sys, socket, time, threading, signal
 from subprocess import Popen, PIPE, STDOUT
@@ -22,22 +23,22 @@ class Listener(threading.Thread):
     global ports
     port = ports[0]
     ports = ports[1:]
-    print 'listener binding to ', port
+    print('listener binding to ', port)
     s.bind(('127.0.0.1', port))
     s.listen(1)
-    print 'listener', port, 'waiting for connection'
+    print('listener', port, 'waiting for connection')
     conn, addr = s.accept()
     self.conn = conn
     while 1:
       time.sleep(0.5)
-      print 'listener', port, 'waiting for data'
+      print('listener', port, 'waiting for data')
       data = conn.recv(20*1024)
       if not data:
         continue
       while not self.other.conn:
-        print 'listener', port, 'waiting for other connection in order to send data'
+        print('listener', port, 'waiting for other connection in order to send data')
         time.sleep(1)
-      print 'listener', port, 'sending data', len(data)
+      print('listener', port, 'sending data', len(data))
       self.other.conn.send(data)
 
 in_listener = Listener()

@@ -6,8 +6,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 """ A WebIDL parser. """
+from __future__ import print_function
+from __future__ import absolute_import
 
-from ply import lex, yacc
+from .ply import lex, yacc
 import re
 import os
 import traceback

@@ -4,6 +4,7 @@ produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
 it can collect original sources, change files prefixes, and strip debug
 sections from a wasm file.
 """
+from __future__ import print_function
 
 import argparse
 from collections import OrderedDict

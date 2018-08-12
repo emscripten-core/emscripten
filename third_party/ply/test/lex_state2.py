@@ -1,3 +1,4 @@
+from __future__ import print_function
 # lex_state2.py
 #
 # Bad state declaration

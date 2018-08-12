@@ -11,6 +11,7 @@
 # Modified to use new-style classes.   Test case.
 # -----------------------------------------------------------------------------
 
+from __future__ import print_function
 import sys
 sys.path.insert(0,"../..")
 

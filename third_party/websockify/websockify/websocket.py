@@ -15,6 +15,7 @@ openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
 as taken from http://docs.python.org/dev/library/ssl.html#certificates
 
 '''
+from __future__ import print_function
 
 import os, sys, time, errno, signal, socket, select, logging
 import array, struct

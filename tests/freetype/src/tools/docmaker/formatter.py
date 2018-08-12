@@ -39,7 +39,7 @@ class  Formatter:
         self.block_index.sort( index_sort )
 
     def  add_identifier( self, name, block ):
-        if self.identifiers.has_key( name ):
+        if name in self.identifiers:
             # duplicate name!
             sys.stderr.write(                                           \
                "WARNING: duplicate definition for '" + name + "' in " + \

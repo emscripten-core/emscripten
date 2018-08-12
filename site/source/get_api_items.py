@@ -1,3 +1,4 @@
+from __future__ import print_function
 # 
 # This script gets all the API items defined in the emscripten documentation. These can then be used for automated adding of cross links in other scripts. It writes api_items.py which has function that is imported into get-wiki.py
 #
@@ -69,7 +70,7 @@ def parseFiles():
     for file in os.listdir(api_reference_directory):
         if file.endswith(".rst"):
             filepath=api_reference_directory+file
-            print file
+            print(file)
             #open file
             infile=open(filepath,'r')
             

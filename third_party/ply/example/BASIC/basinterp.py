@@ -1,3 +1,4 @@
+from __future__ import print_function
 # This file provides the runtime support for running a basic program
 # Assumes the program has been parsed using basparse.py
 

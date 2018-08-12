@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import absolute_import
 from .toolchain_profiler import ToolchainProfiler
 import os.path, sys, shutil, time, logging
 from . import tempfiles, filelock
@@ -136,4 +137,4 @@ try:
   from . import shared
 except ImportError:
   # Python 2 circular import compatibility
-  import shared
+  from . import shared

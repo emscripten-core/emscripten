@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # This script gets the Emscripten wiki, converts files from markdown to restructure text using pandoc (and also prepends the text with a title/heading based on the filename)
 # It also fixes up inline code items to become links to api-reference
@@ -59,17 +60,17 @@ def CleanWiki():
 
     def errorhandler(func, path, exc_info):
         # where  func is os.listdir, os.remove, or os.rmdir; path is the argument to that function that caused it to fail; and  exc_info is a tuple returned by  sys.exc_info()
-        print func
-        print path
-        print exc_info
+        print(func)
+        print(path)
+        print(exc_info)
         os.chmod(path, stat.S_IWRITE)
         os.remove(path)
 
     try:
         shutil.rmtree(wiki_directory, ignore_errors=False, onerror=errorhandler)
-        print 'Old wiki clone removed'
+        print('Old wiki clone removed')
     except:
-        print 'No directory to clean found'
+        print('No directory to clean found')
         
 
 
@@ -85,7 +86,7 @@ def CloneWiki():
     try:
         os.makedirs(wiki_directory)
         os.makedirs(wiki_temp_directory)
-        print 'Created directory'
+        print('Created directory')
     except:
         pass
     
@@ -104,7 +105,7 @@ def ConvertFilesToRst():
     indexfiletext='============================\nWiki snapshot (ready-for-review)\n============================\n\n%s\n.. toctree::\n    :maxdepth: 2\n' % snapshot_version_information
     for file in os.listdir(wiki_temp_directory):
         if file.endswith(".md"):
-            print file
+            print(file)
             #get name of file
             filenamestripped=file.replace('.md','')
             indexfiletext+='\n    %s' % filenamestripped
@@ -112,7 +113,7 @@ def ConvertFilesToRst():
             outputfilename=wiki_directory+filenamestripped+'.rst'
             #
             command='pandoc -f markdown -t rst -o %s %s' % (outputfilename,inputfilename)
-            print command
+            print(command)
             os.system(command)
             title=filenamestripped.replace('-',' ')
             #print title
@@ -229,7 +230,7 @@ parser.add_option("-c", "--clonewiki", dest="clonewiki", default=True, help="Cle
 
 (options, args) = parser.parse_args()
 
-print 'Clone wiki: %s' % options.clonewiki
+print('Clone wiki: %s' % options.clonewiki)
 
 if options.clonewiki==True:
     CloneWiki()   
@@ -237,7 +238,7 @@ if options.clonewiki==True:
     
 ConvertFilesToRst()    
 FixupConvertedRstFiles()
-print 'See LOG for details: %s ' % logfilename
+print('See LOG for details: %s ' % logfilename)
 
 
 logfile.close()

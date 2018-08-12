@@ -1,3 +1,4 @@
+from __future__ import print_function
 # -----------------------------------------------------------------------------
 # calc.py
 #
@@ -32,7 +33,7 @@ def t_NUMBER(t):
     try:
         t.value = int(t.value)
     except ValueError:
-        print "Integer value too large", t.value
+        print("Integer value too large", t.value)
         t.value = 0
     return t
 
@@ -43,7 +44,7 @@ def t_newline(t):
     t.lexer.lineno += t.value.count("\n")
     
 def t_error(t):
-    print "Illegal character '%s'" % t.value[0]
+    print("Illegal character '%s'" % t.value[0])
     t.lexer.skip(1)
     
 # Build the lexer
@@ -67,7 +68,7 @@ def p_statement_assign(p):
 
 def p_statement_expr(p):
     'statement : expression'
-    print p[1]
+    print(p[1])
 
 def p_expression_binop(p):
     '''expression : expression PLUS expression
@@ -96,14 +97,14 @@ def p_expression_name(p):
     try:
         p[0] = names[p[1]]
     except LookupError:
-        print "Undefined name '%s'" % p[1]
+        print("Undefined name '%s'" % p[1])
         p[0] = 0
 
 def p_error(p):
     if p:
-        print "Syntax error at '%s'" % p.value
+        print("Syntax error at '%s'" % p.value)
     else:
-        print "Syntax error at EOF"
+        print("Syntax error at EOF")
 
 import ply.yacc as yacc
 yacc.yacc()

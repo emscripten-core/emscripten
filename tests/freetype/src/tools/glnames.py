@@ -25,6 +25,7 @@ usage: %s <output-file>
 
   Its single argument is the name of the header file to be created.
 """
+from __future__ import print_function
 
 
 import sys, string, struct, re, os.path
@@ -4850,7 +4851,7 @@ class StringNode:
     letter = word[0]
     word   = word[1:]
 
-    if self.children.has_key( letter ):
+    if letter in self.children:
       child = self.children[letter]
     else:
       child = StringNode( letter, 0 )
@@ -5039,7 +5040,7 @@ def main():
   """main program body"""
 
   if len( sys.argv ) != 2:
-    print __doc__ % sys.argv[0]
+    print(__doc__ % sys.argv[0])
     sys.exit( 1 )
 
   file  = open( sys.argv[1], "w\n" )

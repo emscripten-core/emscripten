@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # -----------------------------------------------------------------------------
 # ply: yacc.py
 #
@@ -89,21 +90,21 @@ import re, types, sys, os.path
 # Compatibility function for python 2.6/3.0
 if sys.version_info[0] < 3:
     def func_code(f):
-        return f.func_code
+        return f.__code__
 else:
     def func_code(f):
         return f.__code__
 
 # Compatibility
 try:
-    MAXINT = sys.maxint
+    MAXINT = sys.maxsize
 except AttributeError:
     MAXINT = sys.maxsize
 
 # Python 2.x/3.0 compatibility.
 def load_ply_lex():
     if sys.version_info[0] < 3:
-        import lex
+        from . import lex
     else:
         import ply.lex as lex
     return lex

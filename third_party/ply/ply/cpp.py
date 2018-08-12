@@ -8,6 +8,7 @@
 # This module implements an ANSI-C style lexical preprocessor for PLY. 
 # -----------------------------------------------------------------------------
 from __future__ import generators
+from __future__ import print_function
 
 # -----------------------------------------------------------------------------
 # Default preprocessor lexer definitions.   These tokens are enough to get
@@ -581,7 +582,7 @@ class Preprocessor(object):
         expr = expr.replace("!"," not ")
         try:
             result = eval(expr)
-        except StandardError:
+        except Exception:
             self.error(self.source,tokens[0].lineno,"Couldn't evaluate expression")
             result = 0
         return result
@@ -884,7 +885,7 @@ if __name__ == '__main__':
     while True:
         tok = p.token()
         if not tok: break
-        print(p.source, tok)
+        print((p.source, tok))
 
 
 

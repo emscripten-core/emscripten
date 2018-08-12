@@ -1,3 +1,4 @@
+from __future__ import print_function
 # An implementation of Dartmouth BASIC (1964)
 
 from ply import *

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import subprocess, tempfile, os, sys, shutil, json
 from subprocess import Popen, PIPE, STDOUT
 
@@ -23,21 +24,21 @@ emscripten_info = Popen([PYTHON, EMCC, '-v'], stdout=PIPE, stderr=PIPE).communic
 out_file = os.path.join(temp_dir, 'benchmark_sse2_native')
 if WINDOWS: out_file += '.exe'
 cmd = [CLANG_CPP] + get_clang_native_args() + [path_from_root('tests', 'benchmark_sse2.cpp'), '-O3', '-o', out_file]
-print 'Building native version of the benchmark:'
-print ' '.join(cmd)
+print('Building native version of the benchmark:')
+print(' '.join(cmd))
 build = Popen(cmd, env=get_clang_native_env())
 out = build.communicate()
 if build.returncode != 0:
     sys.exit(1)
 
 native_results = Popen([out_file], stdout=PIPE, stderr=PIPE).communicate()
-print native_results[0]
+print(native_results[0])
 
 # Run emscripten build
 out_file = os.path.join(temp_dir, 'benchmark_sse2_html.html')
 cmd = [PYTHON, EMCC, path_from_root('tests', 'benchmark_sse2.cpp'), '-O3', '-msse2', '--emrun', '-s', 'TOTAL_MEMORY=536870912', '-o', out_file]
-print 'Building Emscripten version of the benchmark:'
-print ' '.join(cmd)
+print('Building Emscripten version of the benchmark:')
+print(' '.join(cmd))
 build = Popen(cmd)
 out = build.communicate()
 if build.returncode != 0:
@@ -48,14 +49,14 @@ if build.returncode != 0:
 out_js_file = out_file.replace('.html', '.js')
 js = open(out_js_file, 'r').read()
 if 'almost asm' in js:
-    print 'Replacing "almost asm" with "use asm" in generated output to attempt asm.js and detect errors with asm.js validation.'
+    print('Replacing "almost asm" with "use asm" in generated output to attempt asm.js and detect errors with asm.js validation.')
     open(out_js_file, 'w').write(js.replace('almost asm', 'use asm'))
 
 # Enforce asm.js validation for the output file so that we can capture any validation errors.
 asmjs_validation_status = Popen([PYTHON, path_from_root('tools', 'validate_asmjs.py'), out_file], stdout=PIPE, stderr=PIPE).communicate()
 asmjs_validation_status = (asmjs_validation_status[0].strip() + '\n' + asmjs_validation_status[1].strip()).strip()
 if 'is not valid asm.js' in asmjs_validation_status:
-    print >> sys.stderr, asmjs_validation_status
+    print(asmjs_validation_status, file=sys.stderr)
     asmjs_validation_status = '<span style="color:red;">' + asmjs_validation_status + '</span>'
 
 browser = 'firefox_nightly'
@@ -63,20 +64,20 @@ if len(sys.argv) > 1 and sys.argv[1].startswith('--browser='):
   browser = sys.argv[1][len('--browser='):].strip()
 
 # We require running in FF Nightly, since no other browsers support SIMD yet.
-print 'Now launching Firefox to run the browser benchmark. For this to work properly, ensure the following:'
-print ' - Firefox Nightly is installed.'
-print ' - No version of Firefox was running beforehand (autostart conflicts with Firefox profile mechanism).'
-print ' - The slow script dialog in Firefox is disabled.'
-print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
-print ''
-print 'Once the test has finished, close the browser application to continue.'
+print('Now launching Firefox to run the browser benchmark. For this to work properly, ensure the following:')
+print(' - Firefox Nightly is installed.')
+print(' - No version of Firefox was running beforehand (autostart conflicts with Firefox profile mechanism).')
+print(' - The slow script dialog in Firefox is disabled.')
+print(' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).')
+print('')
+print('Once the test has finished, close the browser application to continue.')
 cmd = [PYTHON, path_from_root('emrun'), '--safe_firefox_profile', '--browser=' + browser, out_file]
-print ' '.join(cmd)
+print(' '.join(cmd))
 html_results = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
 
 if not html_results or not html_results[0].strip():
-    print html_results[1]
-    print 'Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox'
+    print(html_results[1])
+    print('Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox')
     sys.exit(1)
 
 def strip_comments(text):
@@ -89,7 +90,7 @@ if '*************************' in benchmark_results:
     benchmark_results = benchmark_results[:benchmark_results.find('*************************')].strip()
 
 ##html_results = native_results
-print benchmark_results
+print(benchmark_results)
 
 browser_info = html_results[1]
 browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') if line.startswith('User Agent')])
@@ -298,4 +299,4 @@ html += '''<script>$(function () {
 html += '</body></html>'
 
 open('results_sse2.html', 'w').write(html)
-print 'Wrote ' + str(len(html)) + ' bytes to file results_sse2.html.'
+print('Wrote ' + str(len(html)) + ' bytes to file results_sse2.html.')

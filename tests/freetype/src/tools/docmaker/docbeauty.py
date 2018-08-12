@@ -6,6 +6,7 @@
 # in the FreeType 2 public headers.
 #
 
+from __future__ import print_function
 from sources import *
 from content import *
 from utils   import *
@@ -40,13 +41,13 @@ def  beautify_block( block ):
 
 
 def  usage():
-    print "\nDocBeauty 0.1 Usage information\n"
-    print "  docbeauty [options] file1 [file2 ...]\n"
-    print "using the following options:\n"
-    print "  -h : print this page"
-    print "  -b : backup original files with the 'orig' extension"
-    print ""
-    print "  --backup : same as -b"
+    print("\nDocBeauty 0.1 Usage information\n")
+    print("  docbeauty [options] file1 [file2 ...]\n")
+    print("using the following options:\n")
+    print("  -h : print this page")
+    print("  -b : backup original files with the 'orig' extension")
+    print("")
+    print("  --backup : same as -b")
 
 
 def  main( argv ):

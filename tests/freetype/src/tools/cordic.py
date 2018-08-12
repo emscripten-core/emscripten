@@ -1,3 +1,4 @@
+from __future__ import print_function
 # compute arctangent table for CORDIC computations in fttrigon.c
 import sys, math
 
@@ -32,8 +33,8 @@ def  print_val( n, x ):
     comma = ", "
 
 
-print ""
-print "table of arctan( 1/2^n ) for PI = " + repr(units/65536.0) + " units"
+print("")
+print("table of arctan( 1/2^n ) for PI = " + repr(units/65536.0) + " units")
 
 # compute range of "i"
 r = [-1]
@@ -71,9 +72,9 @@ for n in r:
     shrink = shrink * math.cos( angle2/scale)
 
 
-print
-print "shrink factor    = " + repr( shrink )
-print "shrink factor 2  = " + repr( shrink * (2.0**32) )
-print "expansion factor = " + repr(1/shrink)
-print ""
+print()
+print("shrink factor    = " + repr( shrink ))
+print("shrink factor 2  = " + repr( shrink * (2.0**32) ))
+print("expansion factor = " + repr(1/shrink))
+print("")
 

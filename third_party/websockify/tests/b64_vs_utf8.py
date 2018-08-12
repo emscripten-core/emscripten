@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 from base64 import b64encode, b64decode
 from codecs import (utf_8_encode, utf_8_decode,
                     latin_1_encode, latin_1_decode)
@@ -8,7 +9,7 @@ import random, time
 buf_len = 10000
 iterations = 10000
 
-print "Generating random input buffer"
+print("Generating random input buffer")
 r = random.Random()
 buf = "".join([chr(r.randint(0, 255)) for i in range(buf_len)])
 
@@ -19,11 +20,11 @@ b64_buf = tests['B64 encode']()
 tests.update({'UTF8 decode': lambda: latin_1_encode(utf_8_decode(utf8_buf)[0])[0],
               'B64 decode': lambda: b64decode(b64_buf)})
 
-print "Running tests"
+print("Running tests")
 for test in 'UTF8 encode', 'B64 encode', 'UTF8 decode', 'B64 decode':
     start = time.time()
     for i in range(iterations):
         res_buf = tests[test]()
-    print "%s took %s seconds (result size %s)" % (
-            test, (time.time() -  start), len(res_buf))
+    print("%s took %s seconds (result size %s)" % (
+            test, (time.time() -  start), len(res_buf)))
 
