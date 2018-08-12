@@ -1949,6 +1949,20 @@ Struct
 		If ``true``, all GLES2-compatible non-performance-impacting WebGL extensions will automatically be enabled for you after the context has been created. If ``false``, no extensions are enabled by default, and you need to manually call :c:func:`emscripten_webgl_enable_extension` to enable each extension that you want to use. Default value: ``true``.
 
 
+	.. c:member:: EM_BOOL explicitSwapControl
+
+		By default, when ``explicitSwapControl`` is in its default state ``false``, rendered WebGL content is implicitly presented (displayed to the user) on the canvas when the event handler that renders with WebGL returns back to the browser event loop. If ``explicitSwapControl`` is set to ``true``, rendered content will not be displayed on screen automatically when event handler function finishes, but the control of swapping is given to the user to manage, via the ``emscripten_webgl_commit_frame()`` function.
+
+		In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the the linker flag ``-s OFFSCREENCANVAS_SUPPORT=1``, and running in a browser that supports OffscreenCanvas.
+
+
+	.. c:member:: EM_BOOL renderViaOffscreenBackBuffer
+
+		If ``true``, an extra intermediate backbuffer (offscreen render target) is allocated to the created WebGL context, and rendering occurs to this backbuffer instead of directly onto the WebGL "default backbuffer". This is required to be enabled if 1) ``explicitSwapControl==true`` and the browser does not support OffscreenCanvas, 2) when performing WebGL rendering in a worker thread and the browser does not support OffscreenCanvas, and 3) when performing WebGL context accesses from multiple threads simultaneously (independent of whether OffscreenCanvas is supported or not).
+
+		Because supporting offscreen framebuffer adds some amount of extra code to the compiled output, support for it must explicitly be enabled via the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag. When building simultaneously with both ``-s OFFSCREEN_FRAMEBUFFER=1`` and ``-s OFFSCREENCANVAS_SUPPORT=1`` linker flags enabled, offscreen backbuffer can be used as a polyfill-like compatibility fallback to enable rendering WebGL from a pthread when the browser does not support the OffscreenCanvas API.
+
+
 	
 Callback functions
 ------------------
@@ -2044,7 +2058,14 @@ Functions
 	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 	
 	
-	
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_commit_frame()
+
+	Presents ("swaps") the content rendered on the currently active WebGL context to be visible on the canvas. This function is available on WebGL contexts that were created with the ``explicitSwapControl==true`` context creation attribute. If ``explicitSwapControl==false``, then the rendered content is displayed on the screen "implicitly" when yielding back to the browser from the calling event handler.
+
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values, denoting a reason for failure.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height)
 
 	Gets the ``drawingBufferWidth`` and ``drawingBufferHeight`` of the specified WebGL context.

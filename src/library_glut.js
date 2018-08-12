@@ -565,6 +565,10 @@ var LibraryGLUT = {
       stencil: ((GLUT.initDisplayMode & 0x0020 /*GLUT_STENCIL*/) != 0),
       alpha: ((GLUT.initDisplayMode & 0x0008 /*GLUT_ALPHA*/) != 0)
     };
+#if OFFSCREEN_FRAMEBUFFER
+    // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+    GL.enableOffscreenFramebufferAttributes(contextAttributes);
+#endif
     Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },

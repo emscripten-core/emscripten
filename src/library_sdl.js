@@ -395,6 +395,10 @@ var LibrarySDL = {
         alpha: (SDL.glAttributes[3 /*SDL_GL_ALPHA_SIZE*/] > 0)
       };
 
+#if OFFSCREEN_FRAMEBUFFER
+      // TODO: Make SDL explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+      GL.enableOffscreenFramebufferAttributes(webGLContextAttributes);
+#endif
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
 
       SDL.surfaces[surf] = {
