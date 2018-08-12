@@ -1311,6 +1311,8 @@ int f() {
           os.system('type "in.txt" | {} >out.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(os.path.normpath(exe), engine)))))
         else: # posix
           os.system('cat in.txt | {} > out.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(exe, engine)))))
+          os.system('{} <in.txt >outx.txt'.format(' '.join(Building.doublequote_spaces(make_js_command(exe, engine)))))
+          self.assertContained('abcdef\nghijkl\neof', open('outx.txt').read())
         self.assertContained('abcdef\nghijkl\neof', open('out.txt').read())
 
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')

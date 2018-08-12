@@ -37,10 +37,16 @@ mergeInto(LibraryManager.library, {
         }
         stream.tty = tty;
         stream.seekable = false;
+        if (stream.tty.ops.open) {
+          stream.tty.ops.open(stream.tty);
+        }
       },
       close: function(stream) {
         // flush any pending line data
         stream.tty.ops.flush(stream.tty);
+        if (stream.tty.ops.close) {
+          stream.tty.ops.close(stream.tty);
+        }
       },
       flush: function(stream) {
         stream.tty.ops.flush(stream.tty);
@@ -87,6 +93,26 @@ mergeInto(LibraryManager.library, {
       }
     },
     default_tty_ops: {
+      open: function(tty) {
+        if (ENVIRONMENT_IS_NODE) {
+          var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion
+
+          tty.fd = process.stdin.fd;
+          if (isPosixPlatform) {
+            // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
+            tty.usingDevice = false;
+            try {
+              tty.fd = fs.openSync('/dev/stdin', 'r');
+              tty.usingDevice = true;
+            } catch (e) {}
+          }
+        }
+      },
+      close: function(tty) {
+        if (ENVIRONMENT_IS_NODE && tty.usingDevice) {
+          fs.closeSync(tty.fd);
+        }
+      },
       // get_char has 3 particular return values:
       // a.) the next character represented as an integer
       // b.) undefined to signal that no data is currently available
@@ -100,20 +126,8 @@ mergeInto(LibraryManager.library, {
             var buf = new Buffer(BUFSIZE);
             var bytesRead = 0;
 
-            var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion
-
-            var fd = process.stdin.fd;
-            if (isPosixPlatform) {
-              // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
-              var usingDevice = false;
-              try {
-                fd = fs.openSync('/dev/stdin', 'r');
-                usingDevice = true;
-              } catch (e) {}
-            }
-
             try {
-              bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+              bytesRead = fs.readSync(tty.fd, buf, 0, BUFSIZE, null);
             } catch(e) {
               // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
               // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
@@ -121,7 +135,6 @@ mergeInto(LibraryManager.library, {
               else throw e;
             }
 
-            if (usingDevice) { fs.closeSync(fd); }
             if (bytesRead > 0) {
               result = buf.slice(0, bytesRead).toString('utf-8');
             } else {
