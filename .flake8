@@ -17,3 +17,4 @@ filename =
   */tools/merge_pair.py,
   */tools/system_libs.py
   */tests/runner.py
+  */tests/test_browser.py
