@@ -496,7 +496,7 @@ void emscripten_dump_fs_tree(inode *root, char *path)
 	uint64_t totalSize = 0;
 	while(child)
 	{
-		sprintf(str,"%c%c%c%c%c%c%c%c%c%c  %d user%u group%u %u Jan 1 1970 %s%c",
+		sprintf(str,"%c%c%c%c%c%c%c%c%c%c  %d user%u group%u %lu Jan 1 1970 %s%c",
 			child->type == INODE_DIR ? 'd' : '-',
 			(child->mode & S_IRUSR) ? 'r' : '-',
 			(child->mode & S_IWUSR) ? 'w' : '-',
