@@ -193,15 +193,6 @@ class RunnerCore(unittest.TestCase):
   def is_wasm(self):
     return (self.emcc_args and 'WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
 
-  def is_linux(self):
-    return LINUX
-
-  def is_macos(self):
-    return MACOS
-
-  def is_windows(self):
-    return WINDOWS
-
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
 
