@@ -3,7 +3,6 @@ defaults: &defaults
     - image: buildpack-deps:xenial
       environment:
         LANG: C.UTF-8
-        EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
         EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS: 1
 
 test-defaults: &test-defaults
