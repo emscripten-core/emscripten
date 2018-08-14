@@ -719,17 +719,15 @@ var LibraryGL = {
         GL.initExtensions(context);
       }
 
-      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) {
 #if OFFSCREEN_FRAMEBUFFER
-        GL.createOffscreenFramebuffer(context);
+      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) GL.createOffscreenFramebuffer(context);
 #else
-#if GL_DEBUG
-        Module.printErr('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
-#endif
-        return 0;
-#endif
-      }
 
+#if GL_DEBUG
+      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
+#endif
+
+#endif
       return handle;
     },
 
