@@ -414,6 +414,7 @@ typedef struct EmscriptenWebGLContextAttributes {
 
   EM_BOOL enableExtensionsByDefault;
   EM_BOOL explicitSwapControl;
+  EM_BOOL renderViaOffscreenBackBuffer;
 } EmscriptenWebGLContextAttributes;
 
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
@@ -436,7 +437,7 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char
 
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 
-extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame();
+extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);

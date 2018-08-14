@@ -1212,7 +1212,7 @@ class SettingsManager(object):
 
     @classmethod
     def reset(self):
-      self.attrs = {'QUANTUM_SIZE': 4}
+      self.attrs = {}
       self.load()
 
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
@@ -1231,7 +1231,7 @@ class SettingsManager(object):
           if v in ['s', 'z']:
             shrink = 1 if v == 's' else 2
             v = '2'
-          level = eval(v)
+          level = int(v)
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':

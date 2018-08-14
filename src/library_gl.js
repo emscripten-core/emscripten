@@ -497,6 +497,12 @@ var LibraryGL = {
         webGLContextAttributes['minorVersion'] = 0;
       }
 
+#if OFFSCREEN_FRAMEBUFFER
+      // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
+      // try to detect when it's ok to discard contents of the rendered backbuffer.
+      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) webGLContextAttributes['preserveDrawingBuffer'] = true;
+#endif
+
 #if GL_TESTING
       webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
@@ -542,6 +548,151 @@ var LibraryGL = {
       return context;
     },
 
+#if OFFSCREEN_FRAMEBUFFER
+    enableOffscreenFramebufferAttributes: function(webGLContextAttributes) {
+      webGLContextAttributes.renderViaOffscreenBackBuffer = true;
+      webGLContextAttributes.preserveDrawingBuffer = true;
+    },
+
+    // If WebGL is being proxied from a pthread to the main thread, we can't directly render to the WebGL default back buffer
+    // because of WebGL's implicit swap behavior. Therefore in such modes, create an offscreen render target surface to
+    // which rendering is performed to, and finally flipped to the main screen.
+    createOffscreenFramebuffer: function(context) {
+      var gl = context.GLctx;
+
+      // Create FBO
+      var fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      context.defaultFbo = fbo;
+
+      // Create render targets to the FBO
+      context.defaultColorTarget = gl.createTexture();
+      context.defaultDepthTarget = gl.createRenderbuffer();
+      GL.resizeOffscreenFramebuffer(context); // Size them up correctly (use the same mechanism when resizing on demand)
+
+      gl.bindTexture(gl.TEXTURE_2D, context.defaultColorTarget);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.canvas.width, gl.canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, context.defaultColorTarget, 0);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+
+      // Create depth render target to the FBO
+      var depthTarget = gl.createRenderbuffer();
+      gl.bindRenderbuffer(gl.RENDERBUFFER, context.defaultDepthTarget);
+      gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, gl.canvas.width, gl.canvas.height);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, context.defaultDepthTarget);
+      gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+
+      // Create blitter
+      var vertices = [
+        -1, -1,
+        -1,  1,
+         1, -1,
+         1,  1
+      ];
+      var vb = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      context.blitVB = vb;
+
+      var vsCode =
+        'attribute vec2 pos;' +
+        'varying lowp vec2 tex;' +
+        'void main() { tex = pos * 0.5 + vec2(0.5,0.5); gl_Position = vec4(pos, 0.0, 1.0); }';
+      var vs = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vs, vsCode);
+      gl.compileShader(vs);
+
+      var fsCode =
+        'varying lowp vec2 tex;' +
+        'uniform sampler2D sampler;' +
+        'void main() { gl_FragColor = texture2D(sampler, tex); }';
+      var fs = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fs, fsCode);
+      gl.compileShader(fs);
+
+      var blitProgram = gl.createProgram();
+      gl.attachShader(blitProgram, vs);
+      gl.attachShader(blitProgram, fs);
+      gl.linkProgram(blitProgram);
+      context.blitProgram = blitProgram;
+      context.blitPosLoc = gl.getAttribLocation(blitProgram, "pos");
+      gl.useProgram(blitProgram);
+      gl.uniform1i(gl.getUniformLocation(blitProgram, "sampler"), 0);
+      gl.useProgram(null);
+    },
+
+    resizeOffscreenFramebuffer: function(context) {
+      var gl = context.GLctx;
+
+      // Resize color buffer
+      if (context.defaultColorTarget) {
+        var prevTextureBinding = gl.getParameter(gl.TEXTURE_BINDING_2D);
+        gl.bindTexture(gl.TEXTURE_2D, context.defaultColorTarget);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.drawingBufferWidth, gl.drawingBufferHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.bindTexture(gl.TEXTURE_2D, prevTextureBinding);
+      }
+
+      // Resize depth buffer
+      if (context.defaultDepthTarget) {
+        var prevRenderBufferBinding = gl.getParameter(gl.RENDERBUFFER_BINDING);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, context.defaultDepthTarget);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, gl.drawingBufferWidth, gl.drawingBufferHeight); // TODO: Read context creation parameters for what type of depth and stencil to use
+        gl.bindRenderbuffer(gl.RENDERBUFFER, prevRenderBufferBinding);
+      }
+    },
+
+    // Renders the contents of the offscreen render target onto the visible screen.
+    blitOffscreenFramebuffer: function(context) {
+      var gl = context.GLctx;
+
+      var prevFbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      var prevProgram = gl.getParameter(gl.CURRENT_PROGRAM);
+      gl.useProgram(context.blitProgram);
+
+      var prevVB = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+      gl.bindBuffer(gl.ARRAY_BUFFER, context.blitVB);
+
+      gl.vertexAttribPointer(context.blitPosLoc, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(context.blitPosLoc);
+
+      var prevActiveTexture = gl.getParameter(gl.ACTIVE_TEXTURE);
+      gl.activeTexture(gl.TEXTURE0);
+
+      var prevTextureBinding = gl.getParameter(gl.TEXTURE_BINDING_2D);
+      gl.bindTexture(gl.TEXTURE_2D, context.defaultColorTarget);
+
+      var prevBlend = gl.getParameter(gl.BLEND);
+      if (prevBlend) gl.disable(gl.BLEND);
+
+      var prevCullFace = gl.getParameter(gl.CULL_FACE);
+      if (prevCullFace) gl.disable(gl.CULL_FACE);
+
+      var prevDepthTest = gl.getParameter(gl.DEPTH_TEST);
+      if (prevDepthTest) gl.disable(gl.DEPTH_TEST);
+
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      if (prevDepthTest) gl.enable(gl.DEPTH_TEST);
+      if (prevCullFace) gl.enable(gl.CULL_FACE);
+      if (prevBlend) gl.enable(gl.BLEND);
+
+      gl.bindTexture(gl.TEXTURE_2D, prevTextureBinding);
+      gl.activeTexture(prevActiveTexture);
+      // prevEnableVertexAttribArray?
+      // prevVertexAttribPointer?
+      gl.bindBuffer(gl.ARRAY_BUFFER, prevVB);
+      gl.useProgram(prevProgram);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, prevFbo);
+    },
+#endif
+
     registerContext: function(ctx, webGLContextAttributes) {
       var handle = GL.getNewId(GL.contexts);
       var context = {
@@ -567,6 +718,16 @@ var LibraryGL = {
       if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes['enableExtensionsByDefault']) {
         GL.initExtensions(context);
       }
+
+#if OFFSCREEN_FRAMEBUFFER
+      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) GL.createOffscreenFramebuffer(context);
+#else
+
+#if GL_DEBUG
+      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
+#endif
+
+#endif
       return handle;
     },
 
@@ -3865,7 +4026,16 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.framebuffers, framebuffer, 'glBindFramebuffer', 'framebuffer');
 #endif
+
+#if OFFSCREEN_FRAMEBUFFER
+    // defaultFbo may not be present if 'renderViaOffscreenBackBuffer' was not enabled during context creation time,
+    // i.e. setting -s OFFSCREEN_FRAMEBUFFER=1 at compilation time does not yet mandate that offscreen back buffer
+    // is being used, but that is ultimately decided at context creation time.
+    GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : GLctx.canvas.GLctxObject.defaultFbo);
+#else
     GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
+#endif
+
   },
 
   glGenFramebuffers__sig: 'vii',
