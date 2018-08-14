@@ -1212,7 +1212,7 @@ class SettingsManager(object):
 
     @classmethod
     def reset(self):
-      self.attrs = {'QUANTUM_SIZE': 4}
+      self.attrs = {}
       self.load()
 
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
