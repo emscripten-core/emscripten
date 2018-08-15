@@ -8587,3 +8587,30 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
     ret = run_process(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
+  def test_is_bitcode(self):
+    fname = os.path.join(self.get_dir(), 'tmp.o')
+
+    with open(fname, 'wb') as f:
+      f.write(b'foo')
+    self.assertFalse(Building.is_bitcode(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'\xDE\xC0\x17\x0B')
+      f.write(16 * b'\x00')
+      f.write(b'BC')
+    self.assertTrue(Building.is_bitcode(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'BC')
+    self.assertTrue(Building.is_bitcode(fname))
+
+  def test_is_ar(self):
+    fname = os.path.join(self.get_dir(), 'tmp.a')
+
+    with open(fname, 'wb') as f:
+      f.write(b'foo')
+    self.assertFalse(Building.is_ar(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'!<arch>\n')
+    self.assertTrue(Building.is_ar(fname))

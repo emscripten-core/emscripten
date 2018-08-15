@@ -2562,11 +2562,8 @@ class Building(object):
     try:
       if Building._is_ar_cache.get(filename):
         return Building._is_ar_cache[filename]
-      b = bytearray(open(filename, 'rb').read(8))
-      sigcheck = b[0] == ord('!') and b[1] == ord('<') and \
-                 b[2] == ord('a') and b[3] == ord('r') and \
-                 b[4] == ord('c') and b[5] == ord('h') and \
-                 b[6] == ord('>') and b[7] == 10
+      header = open(filename, 'rb').read(8)
+      sigcheck = header == b'!<arch>\n'
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
     except Exception as e:
@@ -2576,18 +2573,17 @@ class Building(object):
   @staticmethod
   def is_bitcode(filename):
     # look for magic signature
-    b = bytearray(open(filename, 'rb').read(4))
-    if len(b) < 4:
-      return False
-    if b[0] == ord('B') and b[1] == ord('C'):
+    b = open(filename, 'rb').read(4)
+    if b[:2] == b'BC':
       return True
     # look for ar signature
     elif Building.is_ar(filename):
       return True
-    # on macOS, there is a 20-byte prefix
-    elif b[0] == 222 and b[1] == 192 and b[2] == 23 and b[3] == 11:
-      b = bytearray(open(filename, 'rb').read(24))
-      return b[20] == ord('B') and b[21] == ord('C')
+    # on macOS, there is a 20-byte prefix which starts with little endian
+    # encoding of 0x0B17C0DE
+    elif b == b'\xDE\xC0\x17\x0B':
+      b = bytearray(open(filename, 'rb').read(22))
+      return b[20:] == b'BC'
 
     return False
 
