@@ -978,39 +978,6 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def with_report_result(self, code):
-    return r'''
-#ifdef __EMSCRIPTEN__
-  #ifndef __REPORT_RESULT_DEFINED__
-  #define __REPORT_RESULT_DEFINED__
-  #include <emscripten.h>
-
-  static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
-  {
-    EM_ASM({
-      var xhr = new XMLHttpRequest();
-      var result = $0;
-      if (Module['pageThrewException']) result = 12345;
-      xhr.open('GET', 'http://localhost:%s/report_result?' + result, !$1);
-      xhr.send();
-      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
-    }, result, sync);
-  }
-
-  #if __EMSCRIPTEN_PTHREADS__
-    #include <emscripten/threading.h>
-    #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
-    #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
-  #else
-    #define REPORT_RESULT(result) _ReportResult((result), 0)
-    #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
-  #endif
-
-  #endif // ~__REPORT_RESULT_DEFINED__
-
-#endif
-''' % self.test_port + code
-
   def reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
@@ -1112,16 +1079,13 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.test_port, '-include', path_from_root('tests', 'report_result.h')]
     if filename_is_src:
       with open(temp_filepath, 'w') as f:
        f.write(src)
-    if not reference:
-      if not src:
-        with open(filepath) as f:
-          src = f.read()
-      with open(temp_filepath, 'w') as f:
-        f.write(self.with_report_result(src))
     else:
+      shutil.copyfile(filepath, temp_filepath)
+    if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
       shutil.copyfile(filepath, temp_filepath)
