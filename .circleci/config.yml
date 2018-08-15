@@ -15,7 +15,6 @@ test-defaults: &test-defaults
     - attach_workspace:
         # Must be absolute path or relative path from working_directory
         at: ~/
-
     - run:
         name: install package dependencies
         command: |
@@ -67,8 +66,9 @@ jobs:
             ./emsdk update-tags
             ./emsdk install latest
             ./emsdk activate latest
-            echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
-            echo BINARYEN_ROOT="''" >> .emscripten
+            cd -
+            echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> ~/.emscripten
+            echo BINARYEN_ROOT="''" >> ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
