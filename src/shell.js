@@ -247,7 +247,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
   // otherwise, slice off the final part of the url to find the script directory.
-  if (scriptDirectory.indexOf('blob:') !== 0) {
+  // be sure to leave an empty scriptDirectory alone.
+  if (scriptDirectory && scriptDirectory.indexOf('blob:') !== 0) {
     scriptDirectory = scriptDirectory.split('/').slice(0, -1).join('/') + '/';
   } else {
     scriptDirectory = '';
