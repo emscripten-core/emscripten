@@ -2025,7 +2025,7 @@ class Building(object):
       while loop_again:
         loop_again = False
         for archive in group:
-          if consider_archive(archive, False):
+          if consider_archive(archive, force_add=False):
             loop_again = True
       logging.debug('done with archive group loop')
 
