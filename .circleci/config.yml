@@ -66,6 +66,10 @@ jobs:
             ./emsdk install latest
             ./emsdk activate latest
             cd -
+            # Remove the emsdk version of emscripten save space in the
+            # persistent workspace and to avoid any confusion with that version
+            # we are trying to test.
+            rm -r ~/emsdk-master/emscripten/
             echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> ~/.emscripten
             echo BINARYEN_ROOT="''" >> ~/.emscripten
       - run:
