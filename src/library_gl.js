@@ -350,7 +350,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         GL.validateVertexAttribPointer(cb.size, cb.type, cb.stride, 0);
 #endif
-        GLctx.vertexAttribPointer(i, cb.size, cb.type, cb.normalized, cb.stride, 0);
+        cb.vertexAttribPointerAdaptor.call(GLctx, i, cb.size, cb.type, cb.normalized, cb.stride, 0);
       }
     },
 
@@ -766,7 +766,7 @@ var LibraryGL = {
 #if FULL_ES2
       context.clientBuffers = [];
       for (var i = 0; i < context.maxVertexAttribs; i++) {
-        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0 };
+        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
       }
 
       GL.generateTempBuffers(false, context);
@@ -7609,6 +7609,9 @@ var LibraryGL = {
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
+      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+        this.vertexAttribPointer(index, size, type, normalized, stride, ptr);
+      };
       return;
     }
     cb.clientside = false;
@@ -7634,6 +7637,9 @@ var LibraryGL = {
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
+      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+        this.vertexAttribIPointer(index, size, type, stride, ptr);
+      };
       return;
     }
     cb.clientside = false;
