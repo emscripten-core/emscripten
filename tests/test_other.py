@@ -1148,8 +1148,8 @@ int main() {
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
 
   def test_whole_archive(self):
-    """Verify that -Wl,--whole-archive will include a the static constrcutor
-    from an otherwise unrefereced library."""
+    # Verify that -Wl,--whole-archive will include a the static constrcutor
+    # from an otherwise unrefereced library.
     run_process([PYTHON, EMCC, '-c', '-o', 'main.o', path_from_root('tests', 'test_whole_archive', 'main.c')])
     run_process([PYTHON, EMCC, '-c', '-o', 'testlib.o', path_from_root('tests', 'test_whole_archive', 'testlib.c')])
     run_process([PYTHON, EMAR, 'crs', 'libtest.a', 'testlib.o'])
@@ -1160,6 +1160,7 @@ int main() {
     run_process([PYTHON, EMCC, '-Wl,-whole-archive', 'libtest.a', '-Wl,-no-whole-archive', 'main.o'])
     self.assertContained('foo is: 42\n', run_js('a.out.js'))
 
+    # Verify the --no-whole-archive prevents the inclusion
     run_process([PYTHON, EMCC, '-Wl,-whole-archive', '-Wl,--no-whole-archive', 'libtest.a', 'main.o'])
     self.assertContained('foo is: 0\n', run_js('a.out.js'))
 
