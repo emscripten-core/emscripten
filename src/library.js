@@ -250,7 +250,7 @@ LibraryManager.library = {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
     // We don't support multiple processes.
-    ___setErrNo(ERRNO_CODES.EAGAIN);
+    ___setErrNo(ERRNO_CODES.ENOTSUP);
     return -1;
   },
   vfork: 'fork',
@@ -545,7 +545,7 @@ LibraryManager.library = {
     // int system(const char *command);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
-    ___setErrNo(ERRNO_CODES.EAGAIN);
+    ___setErrNo(ERRNO_CODES.ENOTSUP);
     return -1;
   },
 
