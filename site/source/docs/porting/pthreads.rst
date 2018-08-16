@@ -26,7 +26,10 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- If a page is built with the `-s USE_PTHREADS=1` linker flag, then it will not run backwards compatibly in a non-supporting browser. In order to enable backwards compatibility so that multithreaded pages can run in non-supporting browsers (except with pthread_create() disabled), pass the linker flag `-s USE_PTHREADS=2` instead. At runtime, you can use the `emscripten_has_threading_support()` function to test whether the current browser does have the capability to launch pthreads with `pthread_create()`. If a browser does not support threads, calls to `pthread_create()` will fail with error code `EAGAIN`.
+- At runtime, you can use the `emscripten_has_threading_support()` function to
+  test whether the current browser does have the capability to launch pthreads
+  with `pthread_create()`. If a browser does not support threads, calls to
+  `pthread_create()` will fail with error code `EAGAIN`.
 
 - When the linker flag `-s PTHREAD_POOL_SIZE=<integer>` is not specified and `pthread_create()` is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`_.
 
