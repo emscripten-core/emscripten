@@ -1979,7 +1979,6 @@ class Building(object):
         logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
         return False
       # Check the object is valid for us, and not a native object file.
-      # TODO: for lld, also check if a wasm object file?
       if not Building.is_bitcode(f):
         logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
@@ -1999,7 +1998,7 @@ class Building(object):
     # Traverse a single archive. The object files are repeatedly scanned for
     # newly satisfied symbols until no new symbols are found. Returns true if
     # any object files were added to the link.
-    def consider_archive(f):
+    def consider_archive(f, force_add):
       added_any_objects = False
       loop_again = True
       logging.debug('considering archive %s' % (f))
@@ -2010,7 +2009,7 @@ class Building(object):
           if content in added_contents:
             continue
           # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-          if consider_object(content, force_add=force_add_all):
+          if consider_object(content, force_add=force_add):
             added_contents.add(content)
             loop_again = True
             added_any_objects = True
@@ -2019,8 +2018,6 @@ class Building(object):
 
     Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
-    current_archive_group = None
-
     # Rescan a group of archives until we don't find any more objects to link.
     def scan_archive_group(group):
       loop_again = True
@@ -2028,10 +2025,12 @@ class Building(object):
       while loop_again:
         loop_again = False
         for archive in group:
-          if consider_archive(archive):
+          if consider_archive(archive, force_add=False):
             loop_again = True
       logging.debug('done with archive group loop')
 
+    current_archive_group = None
+    in_whole_archive = False
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
       if f.startswith('-'):
@@ -2042,6 +2041,10 @@ class Building(object):
           assert current_archive_group is not None, '--end-group without --start-group'
           scan_archive_group(current_archive_group)
           current_archive_group = None
+        elif f in ['--whole-archive', '-whole-archive']:
+          in_whole_archive = True
+        elif f in ['--no-whole-archive', '-no-whole-archive']:
+          in_whole_archive = False
         else:
           # Command line flags should already be vetted by the time this method
           # is called, so this is an internal error
@@ -2057,7 +2060,7 @@ class Building(object):
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(absolute_path_f)
+        consider_archive(absolute_path_f, in_whole_archive or force_add_all)
         # If we're inside a --start-group/--end-group section, add to the list
         # so we can loop back around later.
         if current_archive_group is not None:

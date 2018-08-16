@@ -1147,6 +1147,23 @@ int main() {
     ''')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
 
+  def test_whole_archive(self):
+    # Verify that -Wl,--whole-archive includes the static constructor from the
+    # otherwise unreferenced library.
+    run_process([PYTHON, EMCC, '-c', '-o', 'main.o', path_from_root('tests', 'test_whole_archive', 'main.c')])
+    run_process([PYTHON, EMCC, '-c', '-o', 'testlib.o', path_from_root('tests', 'test_whole_archive', 'testlib.c')])
+    run_process([PYTHON, EMAR, 'crs', 'libtest.a', 'testlib.o'])
+
+    run_process([PYTHON, EMCC, '-Wl,--whole-archive', 'libtest.a', '-Wl,--no-whole-archive', 'main.o'])
+    self.assertContained('foo is: 42\n', run_js('a.out.js'))
+
+    run_process([PYTHON, EMCC, '-Wl,-whole-archive', 'libtest.a', '-Wl,-no-whole-archive', 'main.o'])
+    self.assertContained('foo is: 42\n', run_js('a.out.js'))
+
+    # Verify the --no-whole-archive prevents the inclusion of the ctor
+    run_process([PYTHON, EMCC, '-Wl,-whole-archive', '-Wl,--no-whole-archive', 'libtest.a', 'main.o'])
+    self.assertContained('foo is: 0\n', run_js('a.out.js'))
+
   def test_link_group_bitcode(self):
     one = open('1.c', 'w').write(r'''
 int f(void);
