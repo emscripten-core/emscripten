@@ -1367,7 +1367,7 @@ def extract_archive_contents(archive_file):
   # ignore empty lines
   contents = [l for l in lines if len(l)]
   if len(contents) == 0:
-    logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
+    logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
     return {
       'returncode': 0,
       'dir': None,
