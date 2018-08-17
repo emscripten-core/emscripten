@@ -1359,51 +1359,46 @@ def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
         warned.add(curr)
 
 
-# N.B. This function creates a temporary directory specified by the 'dir' field in the returned dictionary. Caller
-# is responsible for cleaning up those files after done.
-def extract_archive_contents(f):
-  try:
-    cwd = os.getcwd()
-    temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-    safe_ensure_dirs(temp_dir)
-    os.chdir(temp_dir)
-    contents = [x for x in run_process([LLVM_AR, 't', f], stdout=PIPE).stdout.split('\n') if len(x)]
-    warn_if_duplicate_entries(contents, f)
-    if len(contents) == 0:
-      logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-      return {
-        'returncode': 0,
-        'dir': temp_dir,
-        'files': []
-      }
-
-    # We are about to ask llvm-ar to extract all the files in the .a archive file, but
-    # it will silently fail if the directory for the file does not exist, so make all the necessary directories
-    for content in contents:
-      dirname = os.path.dirname(content)
-      if dirname:
-        safe_ensure_dirs(dirname)
-    proc = run_process([LLVM_AR, 'xo', f], stdout=PIPE, stderr=STDOUT)
-    # if absolute paths, files will appear there. otherwise, in this directory
-    contents = [os.path.abspath(c) for c in contents]
-    nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-    if len(nonexisting_contents):
-      raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
-
+# This function creates a temporary directory specified by the 'dir' field in
+# the returned dictionary. Caller is responsible for cleaning up those files
+# after done.
+def extract_archive_contents(archive_file):
+  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
+  # ignore empty lines
+  contents = [l for l in lines if len(l)]
+  if len(contents) == 0:
+    logging.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
     return {
-      'returncode': proc.returncode,
-      'dir': temp_dir,
-      'files': contents
+      'returncode': 0,
+      'dir': None,
+      'files': []
     }
-  except Exception as e:
-    print('extract archive contents( ' + str(f) + ') failed with error: ' + str(e), file=sys.stderr)
-  finally:
-    os.chdir(cwd)
+
+  # `ar` files can only contains filenames. Just to be sure,  verify that each
+  # file has only as filename component and is not absolute
+  for f in contents:
+    assert not os.path.dirname(f)
+    assert not os.path.isabs(f)
+
+  warn_if_duplicate_entries(contents, f)
+
+  # create temp dir
+  temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
+  safe_ensure_dirs(temp_dir)
+
+  # extract file in temp dir
+  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
+  abs_contents = [os.path.join(temp_dir, c) for c in contents]
+
+  # check that all files were created
+  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
+  if missing_contents:
+    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
 
   return {
-    'returncode': 1,
-    'dir': None,
-    'files': []
+    'returncode': proc.returncode,
+    'dir': temp_dir,
+    'files': abs_contents
   }
 
 
