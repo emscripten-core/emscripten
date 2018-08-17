@@ -1049,8 +1049,10 @@ class BrowserCore(RunnerCore):
 
 ''' % (self.test_port, basename))
 
-  def btest(self, filename, expected=None, reference=None, force_c=False, reference_slack=0, manual_reference=False, post_build=None,
-            args=[], outfile='test.html', message='.', also_proxied=False, url_suffix='', timeout=None):
+  def btest(self, filename, expected=None, reference=None, force_c=False,
+            reference_slack=0, manual_reference=False, post_build=None,
+            args=[], outfile='test.html', message='.', also_proxied=False,
+            url_suffix='', timeout=None, also_asmjs=False):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -1092,9 +1094,12 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     self.run_browser(outfile + url_suffix, message, ['/report_result?' + e for e in expected], timeout=timeout)
-    if self.also_asmjs and 'WASM=0' not in args:
+
+    # Tests can opt into being run under asmjs as well
+    if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
                  args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
+
     if also_proxied:
       print('proxied...')
       if reference:
