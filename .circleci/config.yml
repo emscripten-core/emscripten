@@ -17,11 +17,11 @@ test-defaults: &test-defaults
     - run:
         name: install package dependencies
         command: |
-          apt-get update
+          apt-get update -q
           # preseed packages so that apt-get won't prompt for user input
           echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
           echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
-          apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
+          apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
     - run:
         name: run tests
         command: |
@@ -54,8 +54,8 @@ jobs:
       - run:
           name: install package dependencies
           command: |
-            apt-get update
-            apt-get install -y python3 cmake
+            apt-get update -q
+            apt-get install -q -y python3 cmake
       - run:
           name: install emsdk
           command: |
@@ -148,8 +148,8 @@ jobs:
       - run:
           name: install pip
           command: |
-            apt-get update
-            apt-get install -y python-pip
+            apt-get update -q
+            apt-get install -q -y python-pip
       - run: pip install flake8==3.4.1
       - run: flake8
   test-other:
