@@ -4015,6 +4015,8 @@ window.close = function() {
   def test_browser_modularize_no_current_script(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
     # test both modularize (and creating an instance) and modularize-instance
     # (which creates by itself)
     for args, creation in [
@@ -4024,7 +4026,9 @@ window.close = function() {
       print(args, creation)
       # compile the code with the modularize feature and the preload-file option enabled
       run_process([PYTHON, EMCC, 'test.c', '-o', 'test.js'] + args)
-      open('test.html', 'w').write('''
+      shutil.move('test.js', os.path.join('subdir', 'test.js'))
+      shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
+      open('subdir/test.html', 'w').write('''
         <script>
           setTimeout(function() {
             var xhr = new XMLHttpRequest();
@@ -4035,4 +4039,4 @@ window.close = function() {
           }, 1);
         </script>
       ''' % creation)
-      self.run_browser('test.html', None, '/report_result?0')
+      self.run_browser('subdir/test.html', None, '/report_result?0')
