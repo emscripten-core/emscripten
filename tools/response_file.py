@@ -58,7 +58,13 @@ def substitute_response_files(args):
   """Substitute any response files found in args with their contents."""
   new_args = []
   for arg in args:
-    if arg.startswith('@'):
+    if arg.startswith('@rpath'):
+      new_args.append(arg)
+    elif arg.startswith('@loader_path'):
+      new_args.append(arg)
+    elif arg.startswith('@executable_path'):
+      new_args.append(arg)
+    elif arg.startswith('@'):
       new_args += read_response_file(arg)
     elif arg.startswith('-Wl,@'):
       for a in read_response_file(arg[5:]):
