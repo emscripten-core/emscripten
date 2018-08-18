@@ -3,7 +3,6 @@ defaults: &defaults
     - image: buildpack-deps:xenial
       environment:
         LANG: C.UTF-8
-        EMSCRIPTEN_ALLOW_NEWER_PYTHON: 1
         EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS: 1
 
 test-defaults: &test-defaults
@@ -15,30 +14,34 @@ test-defaults: &test-defaults
     - attach_workspace:
         # Must be absolute path or relative path from working_directory
         at: ~/
-
-    - run: |
-        apt-get update
-        # preseed packages so that apt-get won't prompt for user input
-        echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
-        echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
-        apt-get install -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
-        if [ x"$DISPLAY" != x ]; then
-          # Start an X session. Openbox might be optional for now, but
-          # an ICCCM/EWMH compliant window manager is potentially needed
-          # for tests with fullscreen toggling (if we move to a headless
-          # browser, this may not be needed eventually).
-          TMPDIR=`mktemp -d`
-          mkfifo $TMPDIR/fifo
-          echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
-          EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
-          cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
-          rm -r $TMPDIR
-        fi
-        EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
-        if [ x"$DISPLAY" != x ]; then
-          openbox --exit
-          wait # wait for startx to shutdown cleanly
-        fi
+    - run:
+        name: install package dependencies
+        command: |
+          apt-get update -q
+          # preseed packages so that apt-get won't prompt for user input
+          echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
+          echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
+          apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCY
+    - run:
+        name: run tests
+        command: |
+          if [ x"$DISPLAY" != x ]; then
+            # Start an X session. Openbox might be optional for now, but
+            # an ICCCM/EWMH compliant window manager is potentially needed
+            # for tests with fullscreen toggling (if we move to a headless
+            # browser, this may not be needed eventually).
+            TMPDIR=`mktemp -d`
+            mkfifo $TMPDIR/fifo
+            echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
+            EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
+            cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
+            rm -r $TMPDIR
+          fi
+          EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
+          if [ x"$DISPLAY" != x ]; then
+            openbox --exit
+            wait # wait for startx to shutdown cleanly
+          fi
 
 version: 2
 jobs:
@@ -48,67 +51,83 @@ jobs:
     steps:
       - checkout:
           path: emscripten/
-      - run: |
-          apt-get update
-          apt-get install -y python3 cmake
-          wget https://github.com/juj/emsdk/archive/master.tar.gz
-          tar -xf master.tar.gz
-          pushd emsdk-master
-          ./emsdk update-tags
-          ./emsdk install latest
-          ./emsdk activate latest
-          popd
-          echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> .emscripten
-          echo BINARYEN_ROOT="''" >> .emscripten
-          EMCC_CORES=4 python3 emscripten/embuilder.py build ALL
-          python3 emscripten/tests/runner.py test_hello_world
-          mkdir tmp-firefox-profile/
-          cat > tmp-firefox-profile/user.js <<EOF
-          user_pref("gfx.offscreencanvas.enabled", true);
-          user_pref("javascript.options.shared_memory", true);
-          EOF
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            apt-get install -q -y python3 cmake
+      - run:
+          name: install emsdk
+          command: |
+            wget https://github.com/juj/emsdk/archive/master.tar.gz
+            tar -xf master.tar.gz
+            cd emsdk-master
+            ./emsdk update-tags
+            ./emsdk install latest
+            ./emsdk activate latest
+            cd -
+            # Remove the emsdk version of emscripten save space in the
+            # persistent workspace and to avoid any confusion with that version
+            # we are trying to test.
+            rm -r ~/emsdk-master/emscripten/
+            echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> ~/.emscripten
+            echo BINARYEN_ROOT="''" >> ~/.emscripten
+      - run:
+          name: embuilder build ALL
+          command: |
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
+            python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: configure firefox
+          command: |
+            mkdir tmp-firefox-profile/
+            cat > tmp-firefox-profile/user.js <<EOF
+            user_pref("gfx.offscreencanvas.enabled", true);
+            user_pref("javascript.options.shared_memory", true);
+            EOF
+      - run:
+          name: configure openbox
+          command: |
+            # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
+            mkdir -p .config/X11
+            cat > .config/X11/xorg.conf <<EOF
+            Section "ServerLayout"
+              Identifier "X.org Configured"
+              Screen 0 "Screen0" 0 0
+            EndSection
 
-          # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
-          mkdir -p .config/X11
-          cat > .config/X11/xorg.conf <<EOF
-          Section "ServerLayout"
-            Identifier "X.org Configured"
-            Screen 0 "Screen0" 0 0
-          EndSection
+            Section "Monitor"
+              Identifier "Monitor0"
+              HorizSync 72
+              Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
+            EndSection
 
-          Section "Monitor"
-            Identifier "Monitor0"
-            HorizSync 72
-            Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
-          EndSection
+            Section "Device"
+              Identifier "Card0"
+              Driver "dummy"
+              VideoRam 1048576
+            EndSection
 
-          Section "Device"
-            Identifier "Card0"
-            Driver "dummy"
-            VideoRam 1048576
-          EndSection
-
-          Section "Screen"
-            Identifier "Screen0"
-            Device "Card0"
-            Monitor "Monitor0"
-            DefaultDepth 24
-            SubSection "Display"
-              Depth 24
-              Modes "1920x1080@60"
-            EndSubSection
-          EndSection
-          EOF
-          mkdir -p .config/openbox
-          echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
-          mkdir -p .config/autostart
-          cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
-          [Desktop Entry]
-          Type=Application
-          Name=AT-SPI D-Bus Bus
-          Hidden=true # do not auto-start AT-SPI to suppress one warning
-          EOF
-
+            Section "Screen"
+              Identifier "Screen0"
+              Device "Card0"
+              Monitor "Monitor0"
+              DefaultDepth 24
+              SubSection "Display"
+                Depth 24
+                Modes "1920x1080@60"
+              EndSubSection
+            EndSection
+            EOF
+            mkdir -p .config/openbox
+            echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
+            mkdir -p .config/autostart
+            cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
+            [Desktop Entry]
+            Type=Application
+            Name=AT-SPI D-Bus Bus
+            Hidden=true # do not auto-start AT-SPI to suppress one warning
+            EOF
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -126,11 +145,13 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - run: |
-          apt-get update
-          apt-get install -y python-pip
-          pip install flake8==3.4.1
-          flake8
+      - run:
+          name: install pip
+          command: |
+            apt-get update -q
+            apt-get install -q -y python-pip
+      - run: pip install flake8==3.4.1
+      - run: flake8
   test-other:
     <<: *test-defaults
     environment:

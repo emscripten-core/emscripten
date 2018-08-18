@@ -294,6 +294,3 @@ if __name__ == '__main__':
   except KeyboardInterrupt:
     logger.warning("KeyboardInterrupt")
     sys.exit(1)
-  except shared.FatalError as e:
-    logger.error(str(e))
-    sys.exit(1)

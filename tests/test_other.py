@@ -80,28 +80,6 @@ class other(RunnerCore):
       self.assertNotContained('this is dangerous', output.stdout)
       self.assertNotContained('this is dangerous', output.stderr)
 
-  def test_emcc_python_version(self):
-    env = os.environ.copy()
-    env['EMSCRIPTEN_ALLOW_NEWER_PYTHON'] = '1'
-
-    for version in [2, 3]:
-      py = ["py", '-%s' % version] if WINDOWS else ["python%s" % version]
-      try:
-        output = run_process(py + ['--version'], stdout=PIPE, stderr=PIPE)
-        print("python%s" % version)
-      except:
-        print("python%s does not exist, skipping" % version)
-        continue
-
-      # Python 2 emits its version in stderr
-      major = int((output.stdout if output.stdout else output.stderr)[7])
-
-      output = run_process(py + [path_from_root('emcc'), '--version'], stdout=PIPE, stderr=PIPE, env=env).stderr
-      expected_call = 'Running on Python %s which is not officially supported yet' % major
-      # we currently support python 2 and 3 officially
-      assert expected_call not in output
-      assert output == '', output
-
   def test_emcc_generate_config(self):
     for compiler in [EMCC, EMXX]:
       config_path = './emscripten_config'
@@ -609,7 +587,7 @@ f.close()
           if test_dir == 'target_html':
             env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print(str(cmd))
-          ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE_LEVEL >= 1 else PIPE)
+          ret = run_process(cmd, env=env, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EM_BUILD_VERBOSE >= 1 else PIPE)
           if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stderr != None and 'error' in ret.stderr.lower():
@@ -622,9 +600,9 @@ f.close()
 
           # Build
           cmd = make
-          if EM_BUILD_VERBOSE_LEVEL >= 3 and 'Ninja' not in generator:
+          if EM_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
             cmd += ['VERBOSE=1']
-          ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE_LEVEL >= 2 else PIPE)
+          ret = run_process(cmd, stdout=None if EM_BUILD_VERBOSE >= 2 else PIPE)
           if ret.stderr != None and len(ret.stderr.strip()):
             logging.error(ret.stderr) # If there were any errors, print them directly to console for diagnostics.
           if ret.stdout != None and 'error' in ret.stdout.lower() and not '0 error(s)' in ret.stdout.lower():
@@ -1168,6 +1146,23 @@ int main() {
       }
     ''')
     test(['-Wl,--start-group', lib_name, '-Wl,--end-group', '--bind'], None)
+
+  def test_whole_archive(self):
+    # Verify that -Wl,--whole-archive includes the static constructor from the
+    # otherwise unreferenced library.
+    run_process([PYTHON, EMCC, '-c', '-o', 'main.o', path_from_root('tests', 'test_whole_archive', 'main.c')])
+    run_process([PYTHON, EMCC, '-c', '-o', 'testlib.o', path_from_root('tests', 'test_whole_archive', 'testlib.c')])
+    run_process([PYTHON, EMAR, 'crs', 'libtest.a', 'testlib.o'])
+
+    run_process([PYTHON, EMCC, '-Wl,--whole-archive', 'libtest.a', '-Wl,--no-whole-archive', 'main.o'])
+    self.assertContained('foo is: 42\n', run_js('a.out.js'))
+
+    run_process([PYTHON, EMCC, '-Wl,-whole-archive', 'libtest.a', '-Wl,-no-whole-archive', 'main.o'])
+    self.assertContained('foo is: 42\n', run_js('a.out.js'))
+
+    # Verify the --no-whole-archive prevents the inclusion of the ctor
+    run_process([PYTHON, EMCC, '-Wl,-whole-archive', '-Wl,--no-whole-archive', 'libtest.a', 'main.o'])
+    self.assertContained('foo is: 0\n', run_js('a.out.js'))
 
   def test_link_group_bitcode(self):
     one = open('1.c', 'w').write(r'''
@@ -7305,6 +7300,7 @@ int main() {
     self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', err)
 
   @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
+  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     for wasm in (1, 0):
       print('wasm', wasm)
@@ -7320,25 +7316,31 @@ int main() {
         int main() {}
       '''
       open('src.cpp', 'w').write(src)
-      check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+      run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
       print('check no ctors is ok')
-      check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz', '-s', 'WASM=%d' % wasm])
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz', '-s', 'WASM=%d' % wasm])
       self.assertContained('hello, world!', run_js('a.out.js'))
+
       # on by default in -Oz, but user-overridable
       def get_size(args):
         print('get_size', args)
         check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=%d' % wasm] + args)
         self.assertContained('hello, world!', run_js('a.out.js'))
-        if not wasm:
-          return (os.stat('a.out.js').st_size, os.stat('a.out.js.mem').st_size)
+        if wasm:
+          codesize = self.count_wasm_contents('a.out.wasm', 'funcs')
+          memsize = self.count_wasm_contents('a.out.wasm', 'memory-data')
         else:
-          return (os.stat('a.out.js').st_size, 0) # can't measure just the mem out of the wasm
+          codesize = os.path.getsize('a.out.js')
+          memsize = os.path.getsize('a.out.js.mem')
+        return (codesize, memsize)
+
       def check_size(left, right):
         # can't measure just the mem out of the wasm, so ignore [1] for wasm
-        if left[0] == right[0] and (wasm or left[1] == right[1]): return 0
-        if left[0] < right[0] and (wasm or left[1] > right[1]): return -1 # smaller js, bigger mem
-        if left[0] > right[0] and (wasm or left[1] < right[1]): return 1
+        if left[0] == right[0] and left[1] == right[1]: return 0
+        if left[0] < right[0] and left[1] > right[1]: return -1 # smaller code, bigger mem
+        if left[0] > right[0] and left[1] < right[1]: return 1
         assert 0, [left, right]
+
       o2_size = get_size(['-O2'])
       assert check_size(get_size(['-O2']), o2_size) == 0, 'deterministic'
       assert check_size(get_size(['-O2', '-s', 'EVAL_CTORS=1']), o2_size) < 0, 'eval_ctors works if user asks for it'
@@ -7376,14 +7378,14 @@ int main() {
           }
         ''' % (p1, p2, p3, last)
         open('src.cpp', 'w').write(src)
-        check_execute([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+        run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
         self.assertContained('total is %s.' % hex(expected), run_js('a.out.js'))
         shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
-        if not wasm:
-          return open('a.out.js').read().count('function _')
-        else:
+        if wasm:
           shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
-          return self.count_wasm_contents('a.out.wasm', 'total')
+          return self.count_wasm_contents('a.out.wasm', 'funcs')
+        else:
+          return open('a.out.js').read().count('function _')
       print('no bad ctor')
       first  = test(1000, 2000, 3000, 0xe, 0x58e)
       second = test(3000, 1000, 2000, 0xe, 0x8e5)
@@ -8602,3 +8604,30 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
     ret = run_process(NODE_JS + [os.path.join('subdir', 'a.js')], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
+  def test_is_bitcode(self):
+    fname = os.path.join(self.get_dir(), 'tmp.o')
+
+    with open(fname, 'wb') as f:
+      f.write(b'foo')
+    self.assertFalse(Building.is_bitcode(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'\xDE\xC0\x17\x0B')
+      f.write(16 * b'\x00')
+      f.write(b'BC')
+    self.assertTrue(Building.is_bitcode(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'BC')
+    self.assertTrue(Building.is_bitcode(fname))
+
+  def test_is_ar(self):
+    fname = os.path.join(self.get_dir(), 'tmp.a')
+
+    with open(fname, 'wb') as f:
+      f.write(b'foo')
+    self.assertFalse(Building.is_ar(fname))
+
+    with open(fname, 'wb') as f:
+      f.write(b'!<arch>\n')
+    self.assertTrue(Building.is_ar(fname))

@@ -29,14 +29,6 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
 
-class FatalError(Exception):
-  """Error representing an unrecoverable error such as the failure of
-  a subprocess.
-
-  These are usually handled at the entry point of each script."""
-  pass
-
-
 def exit_with_error(msg, *args):
   logging.error(msg, *args)
   sys.exit(1)
@@ -171,7 +163,7 @@ def check_execute(cmd, *args, **kw):
     run_process(cmd, stdout=PIPE, *args, **kw)
     logging.debug("Successfuly executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError as e:
-    raise FatalError("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    exit_with_error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
 
 
 def check_call(cmd, *args, **kw):
@@ -179,7 +171,7 @@ def check_call(cmd, *args, **kw):
     run_process(cmd, *args, **kw)
     logging.debug("Successfully executed %s" % " ".join(cmd))
   except subprocess.CalledProcessError:
-    raise FatalError("'%s' failed" % " ".join(cmd))
+    exit_with_error("'%s' failed" % " ".join(cmd))
 
 
 def generate_config(path, first_time=False):
@@ -346,7 +338,7 @@ else:
 # 1: Log stderr of subprocess spawns.
 # 2: Log stdout and stderr of subprocess spawns. Print out subprocess commands that were executed.
 # 3: Log stdout and stderr, and pass VERBOSE=1 to CMake configure steps.
-EM_BUILD_VERBOSE_LEVEL = int(os.getenv('EM_BUILD_VERBOSE', '0'))
+EM_BUILD_VERBOSE = int(os.getenv('EM_BUILD_VERBOSE', '0'))
 
 # Expectations
 
@@ -1220,7 +1212,7 @@ class SettingsManager(object):
 
     @classmethod
     def reset(self):
-      self.attrs = {'QUANTUM_SIZE': 4}
+      self.attrs = {}
       self.load()
 
     # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
@@ -1239,7 +1231,7 @@ class SettingsManager(object):
           if v in ['s', 'z']:
             shrink = 1 if v == 's' else 2
             v = '2'
-          level = eval(v)
+          level = int(v)
           self.apply_opt_level(level, shrink)
       for i in range(len(args)):
         if args[i] == '-s':
@@ -1677,11 +1669,11 @@ class Building(object):
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
     try:
-      if EM_BUILD_VERBOSE_LEVEL >= 3:
+      if EM_BUILD_VERBOSE >= 3:
         print('configure: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE_LEVEL >= 2:
+      if EM_BUILD_VERBOSE >= 2:
         stdout = None
-      if EM_BUILD_VERBOSE_LEVEL >= 1:
+      if EM_BUILD_VERBOSE >= 1:
         stderr = None
       res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
     except Exception:
@@ -1713,11 +1705,11 @@ class Building(object):
 
     try:
       # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE_LEVEL >= 3:
+      if EM_BUILD_VERBOSE >= 3:
         print('make: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE_LEVEL >= 2:
+      if EM_BUILD_VERBOSE >= 2:
         stdout = None
-      if EM_BUILD_VERBOSE_LEVEL >= 1:
+      if EM_BUILD_VERBOSE >= 1:
         stderr = None
       res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
     except Exception:
@@ -1780,11 +1772,11 @@ class Building(object):
     if configure:
       # Useful in debugging sometimes to comment this out (and the lines below
       # up to and including the |link| call)
-      if EM_BUILD_VERBOSE_LEVEL < 2:
+      if EM_BUILD_VERBOSE < 2:
         stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
       else:
         stdout = None
-      if EM_BUILD_VERBOSE_LEVEL < 1:
+      if EM_BUILD_VERBOSE < 1:
         stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
       else:
         stderr = None
@@ -1799,15 +1791,15 @@ class Building(object):
     def open_make_err(i, mode='r'):
       return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
 
-    if EM_BUILD_VERBOSE_LEVEL >= 3:
+    if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
     # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
     for i in range(2):
       with open_make_out(i, 'w') as make_out:
         with open_make_err(i, 'w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE_LEVEL < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE_LEVEL < 1 else None
+          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
           try:
             Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
           except subprocess.CalledProcessError as e:
@@ -1821,7 +1813,7 @@ class Building(object):
         break
       except Exception as e:
         if i > 0:
-          if EM_BUILD_VERBOSE_LEVEL == 0:
+          if EM_BUILD_VERBOSE == 0:
             # Due to the ugly hack above our best guess is to output the first run
             with open_make_err(0) as ferr:
               for line in ferr:
@@ -1987,7 +1979,6 @@ class Building(object):
         logging.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
         return False
       # Check the object is valid for us, and not a native object file.
-      # TODO: for lld, also check if a wasm object file?
       if not Building.is_bitcode(f):
         logging.warning('object %s is not LLVM bitcode, cannot link' % (f))
         return False
@@ -2007,7 +1998,7 @@ class Building(object):
     # Traverse a single archive. The object files are repeatedly scanned for
     # newly satisfied symbols until no new symbols are found. Returns true if
     # any object files were added to the link.
-    def consider_archive(f):
+    def consider_archive(f, force_add):
       added_any_objects = False
       loop_again = True
       logging.debug('considering archive %s' % (f))
@@ -2018,7 +2009,7 @@ class Building(object):
           if content in added_contents:
             continue
           # Link in the .o if it provides symbols, *or* this is a singleton archive (which is apparently an exception in gcc ld)
-          if consider_object(content, force_add=force_add_all):
+          if consider_object(content, force_add=force_add):
             added_contents.add(content)
             loop_again = True
             added_any_objects = True
@@ -2027,8 +2018,6 @@ class Building(object):
 
     Building.read_link_inputs([x for x in files if not x.startswith('-')])
 
-    current_archive_group = None
-
     # Rescan a group of archives until we don't find any more objects to link.
     def scan_archive_group(group):
       loop_again = True
@@ -2036,10 +2025,12 @@ class Building(object):
       while loop_again:
         loop_again = False
         for archive in group:
-          if consider_archive(archive):
+          if consider_archive(archive, force_add=False):
             loop_again = True
       logging.debug('done with archive group loop')
 
+    current_archive_group = None
+    in_whole_archive = False
     for f in files:
       absolute_path_f = Building.make_paths_absolute(f)
       if f.startswith('-'):
@@ -2050,6 +2041,10 @@ class Building(object):
           assert current_archive_group is not None, '--end-group without --start-group'
           scan_archive_group(current_archive_group)
           current_archive_group = None
+        elif f in ['--whole-archive', '-whole-archive']:
+          in_whole_archive = True
+        elif f in ['--no-whole-archive', '-no-whole-archive']:
+          in_whole_archive = False
         else:
           # Command line flags should already be vetted by the time this method
           # is called, so this is an internal error
@@ -2065,7 +2060,7 @@ class Building(object):
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
-        consider_archive(absolute_path_f)
+        consider_archive(absolute_path_f, in_whole_archive or force_add_all)
         # If we're inside a --start-group/--end-group section, add to the list
         # so we can loop back around later.
         if current_archive_group is not None:
@@ -2570,11 +2565,8 @@ class Building(object):
     try:
       if Building._is_ar_cache.get(filename):
         return Building._is_ar_cache[filename]
-      b = bytearray(open(filename, 'rb').read(8))
-      sigcheck = b[0] == ord('!') and b[1] == ord('<') and \
-                 b[2] == ord('a') and b[3] == ord('r') and \
-                 b[4] == ord('c') and b[5] == ord('h') and \
-                 b[6] == ord('>') and b[7] == 10
+      header = open(filename, 'rb').read(8)
+      sigcheck = header == b'!<arch>\n'
       Building._is_ar_cache[filename] = sigcheck
       return sigcheck
     except Exception as e:
@@ -2584,18 +2576,17 @@ class Building(object):
   @staticmethod
   def is_bitcode(filename):
     # look for magic signature
-    b = bytearray(open(filename, 'rb').read(4))
-    if len(b) < 4:
-      return False
-    if b[0] == ord('B') and b[1] == ord('C'):
+    b = open(filename, 'rb').read(4)
+    if b[:2] == b'BC':
       return True
     # look for ar signature
     elif Building.is_ar(filename):
       return True
-    # on macOS, there is a 20-byte prefix
-    elif b[0] == 222 and b[1] == 192 and b[2] == 23 and b[3] == 11:
-      b = bytearray(open(filename, 'rb').read(24))
-      return b[20] == ord('B') and b[21] == ord('C')
+    # on macOS, there is a 20-byte prefix which starts with little endian
+    # encoding of 0x0B17C0DE
+    elif b == b'\xDE\xC0\x17\x0B':
+      b = bytearray(open(filename, 'rb').read(22))
+      return b[20:] == b'BC'
 
     return False
 

@@ -996,6 +996,10 @@ var LibraryGLFW = {
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
           alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
+#if OFFSCREEN_FRAMEBUFFER
+        // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+        GL.enableOffscreenFramebufferAttributes(contextAttributes);
+#endif
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
 

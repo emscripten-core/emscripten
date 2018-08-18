@@ -24,34 +24,38 @@ from runner import skip_if, no_wasm_backend
 
 def SIMD(f):
   def decorated(self):
-    if self.is_emterpreter(): return self.skipTest('simd not supported in emterpreter yet')
-    if self.is_wasm(): return self.skipTest('wasm will not support SIMD in the MVP')
+    if self.is_emterpreter():
+      self.skipTest('simd not supported in emterpreter yet')
+    if self.is_wasm():
+      self.skipTest('wasm will not support SIMD in the MVP')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
   return decorated
 
+
 def no_emterpreter(f):
   return skip_if(f, 'is_emterpreter')
+
+
+def needs_dlfcn(func):
+  def decorated(self):
+    self.check_dlfcn()
+    return func(self)
+
+  return decorated
+
 
 def no_wasm(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
   return decorated
 
-def no_linux(note=''):
-  def decorated(f):
-    return skip_if(f, 'is_linux', note)
-  return decorated
-
-def no_macos(note=''):
-  def decorated(f):
-    return skip_if(f, 'is_macos', note)
-  return decorated
 
 def no_windows(note=''):
-  def decorated(f):
-    return skip_if(f, 'is_windows', note)
-  return decorated
+  if WINDOWS:
+    return unittest.skip(note)
+  return lambda f: f
+
 
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
@@ -60,6 +64,7 @@ def sync(f):
       self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
+
 
 def also_with_noderawfs(func):
   def decorated(self):
@@ -71,24 +76,13 @@ def also_with_noderawfs(func):
     func(self, js_engines=[NODE_JS])
   return decorated
 
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
 
-class T(RunnerCore): # Short name, to make it more fun to use manually on the commandline
-  def is_emterpreter(self):
-    return 'EMTERPRETIFY=1' in self.emcc_args
-  def is_split_memory(self):
-    return 'SPLIT_MEMORY=' in str(self.emcc_args)
-  def is_wasm(self):
-    return 'WASM=0' not in str(self.emcc_args) or self.is_wasm_backend()
-  def is_linux(self):
-    return LINUX
-  def is_macos(self):
-    return MACOS
-  def is_windows(self):
-    return WINDOWS
 
+class TestCoreBase(RunnerCore):
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
     if self.is_wasm(): return False # wasm does this when optimizing anyhow
@@ -1828,6 +1822,13 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  def test_memorygrowth_wasm_mem_max(self):
+    if not self.is_wasm():
+      self.skipTest('wasm memory specific test')
+    # check that memory growth does not exceed the wasm mem max limit
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
+
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
@@ -2415,12 +2416,11 @@ The current type of b is: 9
     self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
 
-  def can_dlfcn(self):
+  def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
     if self.is_wasm_backend():
       self.skipTest('no shared modules in wasm backend')
-    return True
 
   def prep_dlfcn_lib(self):
     self.set_setting('MAIN_MODULE', 0)
@@ -2448,9 +2448,8 @@ def process(filename):
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
+  @needs_dlfcn
   def test_dlfcn_basic(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = '''
       #include <cstdio>
@@ -2490,10 +2489,10 @@ def process(filename):
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\n',
                 js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_i64(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-    if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
@@ -2535,9 +2534,8 @@ def process(filename):
     self.do_run(src, '|65830|', js_transform=self.dlfcn_post_build)
 
   @no_wasm # TODO: EM_ASM in shared wasm modules, stored inside the wasm somehow
+  @needs_dlfcn
   def test_dlfcn_em_asm(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = '''
       #include <emscripten.h>
@@ -2572,9 +2570,8 @@ def process(filename):
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\nAll done.\n',
                 js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_qsort(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
     lib_src = '''
@@ -2656,9 +2653,8 @@ def process(filename):
       if 'asm' in out:
         self.validate_asmjs(out)
 
+  @needs_dlfcn
   def test_dlfcn_data_and_fptr(self):
-    if not self.can_dlfcn(): return
-
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
@@ -2754,10 +2750,9 @@ def process(filename):
                  output_nicerizer=lambda x, err: x.replace('\n', '*'),
                  js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_varargs(self):
     # this test is not actually valid - it fails natively. the child should fail to be loaded, not load and successfully see the parent print_ints func
-    if not self.can_dlfcn(): return
-
     self.set_setting('LINKABLE', 1)
 
     self.prep_dlfcn_lib()
@@ -2806,9 +2801,8 @@ def process(filename):
     self.do_run(src, '100\n200\n13\n42\n',
                 js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_alignment_and_zeroing(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     self.set_setting('TOTAL_MEMORY', 16 * 1024 * 1024)
     lib_src = r'''
@@ -2888,8 +2882,8 @@ def process(filename):
                 js_transform=self.dlfcn_post_build)
 
   @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
+  @needs_dlfcn
   def test_dlfcn_self(self):
-    if not self.can_dlfcn(): return
     self.prep_dlfcn_main()
 
     def post(filename):
@@ -2909,9 +2903,8 @@ def process(filename):
 
     self.do_run_from_file(src, output, post_build=post)
 
+  @needs_dlfcn
   def test_dlfcn_unique_sig(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = '''
       #include <stdio.h>
@@ -2952,8 +2945,8 @@ def process(filename):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, 'success', force_c=True, js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_info(self):
-    if not self.can_dlfcn(): return
 
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -3010,9 +3003,8 @@ def process(filename):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, 'success', force_c=True, js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_stacks(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = '''
       #include <assert.h>
@@ -3069,9 +3061,8 @@ def process(filename):
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_strcmp'])
     self.do_run(src, 'success', force_c=True, js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_funcs(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = r'''
       #include <assert.h>
@@ -3168,9 +3159,8 @@ int 1 9000
 ok
 ''', force_c=True, js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_mallocs(self):
-    if not self.can_dlfcn(): return
-
     # will be exhausted without functional malloc/free
     self.set_setting('TOTAL_MEMORY', 64*1024*1024)
 
@@ -3194,9 +3184,8 @@ ok
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_run(src, '''*294,153*''', force_c=True, js_transform=self.dlfcn_post_build)
 
+  @needs_dlfcn
   def test_dlfcn_longjmp(self):
-    if not self.can_dlfcn(): return
-
     self.prep_dlfcn_lib()
     lib_src = r'''
       #include <setjmp.h>
@@ -3258,9 +3247,8 @@ pre 9
 out!
 ''', js_transform=self.dlfcn_post_build, force_c=True)
 
+  @needs_dlfcn
   def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
-    if not self.can_dlfcn(): return
-
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.prep_dlfcn_lib()
@@ -3327,8 +3315,6 @@ ok
 ''', js_transform=self.dlfcn_post_build)
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
-    if not self.can_dlfcn(): return
-
     if header:
       open('header.h', 'w').write(header)
 
@@ -3384,6 +3370,7 @@ Module = {
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
+  @needs_dlfcn
   def test_dylink_basics(self):
     def test():
       self.dylink_test('''
@@ -3403,6 +3390,7 @@ Module = {
       self.set_setting('ALLOW_MEMORY_GROWTH', 1)
       test()
 
+  @needs_dlfcn
   def test_dylink_floats(self):
     self.dylink_test('''
       #include <stdio.h>
@@ -3415,6 +3403,7 @@ Module = {
       float sidey() { return 11.5; }
     ''', 'other says 12.50')
 
+  @needs_dlfcn
   def test_dylink_printfs(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3429,6 +3418,7 @@ Module = {
       void sidey() { printf("hello from side\n"); }
     ''', 'hello from main\nhello from side\n')
 
+  @needs_dlfcn
   def test_dylink_funcpointer(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3444,6 +3434,7 @@ Module = {
       voidfunc sidey(voidfunc f) { return f; }
     ''', 'hello from funcptr\n', header='typedef void (*voidfunc)();')
 
+  @needs_dlfcn
   def test_dylink_funcpointers(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3463,6 +3454,7 @@ Module = {
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
   @no_wasm # uses function tables in an asm.js specific way
+  @needs_dlfcn
   def test_dylink_funcpointers2(self):
     self.dylink_test(r'''
       #include "header.h"
@@ -3524,6 +3516,7 @@ Module = {
       void second();
     ''', need_reverse=False, auto_load=False)
 
+  @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3546,6 +3539,7 @@ Module = {
       extern charfunc get();
     ''')
 
+  @needs_dlfcn
   def test_dylink_funcpointers_float(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -3566,6 +3560,7 @@ Module = {
       int sidey(floatfunc f) { if (f) f(56.78); return 1; }
     ''', 'hello 1: 12.340000\ngot: 1\n', header='typedef float (*floatfunc)(float);')
 
+  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3580,8 +3575,8 @@ Module = {
       void nothing() {}
     ''', 'a new Class\n')
 
+  @needs_dlfcn
   def test_dylink_global_inits(self):
-    if not self.can_dlfcn(): return
     def test():
       self.dylink_test(header=r'''
         #include <stdio.h>
@@ -3608,6 +3603,7 @@ Module = {
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
+  @needs_dlfcn
   def test_dylink_i64(self):
     self.dylink_test('''
       #include <stdio.h>
@@ -3638,6 +3634,7 @@ Module = {
       }
     ''', 'other says 175a1ddee82b8c31.')
 
+  @needs_dlfcn
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3657,6 +3654,7 @@ Module = {
       }
     ''', 'other says -1311768467750121224.')
 
+  @needs_dlfcn
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3674,6 +3672,7 @@ Module = {
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
 
+  @needs_dlfcn
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3686,6 +3685,7 @@ Module = {
       int x = 123;
     ''', expected=['extern is 123.\n'])
 
+  @needs_dlfcn
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3702,6 +3702,7 @@ Module = {
       Initter initter;
     ''', expected=['extern is 456.\n'])
 
+  @needs_dlfcn
   def test_dylink_stdlib(self):
     self.dylink_test(header=r'''
       #include <math.h>
@@ -3733,6 +3734,7 @@ Module = {
       }
     ''', expected=['hello through side\n\npow_two: 59.'])
 
+  @needs_dlfcn
   def test_dylink_jslib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -3769,6 +3771,7 @@ Module = {
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
 
+  @needs_dlfcn
   def test_dylink_global_var_jslib(self):
     open('lib.js', 'w').write(r'''
       mergeInto(LibraryManager.library, {
@@ -3793,6 +3796,7 @@ Module = {
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
 
+  @needs_dlfcn
   def test_dylink_many_postSets(self):
     NUM = 1234
     self.dylink_test(header=r'''
@@ -3823,6 +3827,7 @@ Module = {
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
+  @needs_dlfcn
   def test_dylink_postSets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
@@ -3857,9 +3862,8 @@ Module = {
     ''', expected=['12345\n'])
 
   @no_wasm # todo
+  @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    if not self.can_dlfcn(): return
-
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
@@ -3899,6 +3903,7 @@ Module = {
     self.set_setting('ASSERTIONS', 1)
     test('', expect_pass=False, need_reverse=False)
 
+  @needs_dlfcn
   def test_dylink_iostream(self):
     try:
       os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx'
@@ -3919,6 +3924,7 @@ Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  @needs_dlfcn
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -3967,6 +3973,7 @@ Module = {
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
+  @needs_dlfcn
   def test_dylink_hyper_dupe(self):
     if not self.can_dlfcn(): return
 
@@ -4037,6 +4044,7 @@ Module = {
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third%s') that already exists" % dylib_suffix, full)
 
+  @needs_dlfcn
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
     open('third.cpp', 'w').write(r'''
@@ -4062,6 +4070,7 @@ Module = {
     ''', side=['libfourth.a', 'third.o'], # contents of libtwo.a must be included, even if they aren't referred to!
     expected=['sidef: 36, sideg: 17.\n'])
 
+  @needs_dlfcn
   def test_dylink_spaghetti(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4094,6 +4103,7 @@ Module = {
     ''', expected=['side init sees 82, 72, -534.\nmain init sees -524, -534, 72.\nmain main sees -524, -534, 72.',
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
+  @needs_dlfcn
   def test_dylink_zlib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -4112,6 +4122,7 @@ Module = {
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
 
+  #@needs_dlfcn
   #def test_dylink_bullet(self):
   #  Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
   #  side = get_bullet_library(self, True)
@@ -4870,7 +4881,7 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
-    if not self.is_windows():
+    if not WINDOWS:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
@@ -4920,11 +4931,9 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
+  @unittest.skipIf(os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
-    if self.is_windows():
-      self.skipTest("Windows throws EPERM rather than EACCES or EINVAL")
-    if not os.geteuid(): # 0 if root
-      self.skipTest("Root access invalidates this test by being able to write on readonly files")
     self.emcc_args += ['-s', 'NODERAWFS=1']
     test_path = path_from_root('tests', 'unistd', 'truncate')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -4962,10 +4971,10 @@ def process(filename):
     for fs in ['MEMFS', 'NODEFS']:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
-      if self.is_windows() and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      if WINDOWS and fs == 'NODEFS': Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not self.is_windows():
+    if not WINDOWS:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       if not os.geteuid(): # 0 if root
         Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
@@ -4978,7 +4987,7 @@ def process(filename):
     src = open(path_from_root('tests', 'unistd', 'links.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'links.out'), 'r').read()
     for fs in ['MEMFS', 'NODEFS']:
-      if self.is_windows() and fs == 'NODEFS':
+      if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
         # Also, other detected discrepancies if you do end up running this test on NODEFS:
         # test expects /, but Windows gives \ as path slashes.
@@ -4987,12 +4996,11 @@ def process(filename):
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   def test_unistd_symlink_on_nodefs(self):
-    if self.is_windows():
-      self.skipTest('Skipping NODEFS part of this test for test_unistd_symlink_on_nodefs on Windows, since it would require administrative privileges.')
-      # Also, other detected discrepancies if you do end up running this test on NODEFS:
-      # test expects /, but Windows gives \ as path slashes.
-      # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    # Also, other detected discrepancies if you do end up running this test on NODEFS:
+    # test expects /, but Windows gives \ as path slashes.
+    # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.clear()
     src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c'), 'r').read()
     expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out'), 'r').read()
@@ -5747,8 +5755,8 @@ return malloc(size);
     return self.get_library('freetype',
                             os.path.join('objs', '.libs', 'libfreetype.a'))
 
+  @no_windows('./configure scripts dont to run on windows.')
   def test_freetype(self):
-    if self.is_windows(): self.skipTest('test_freetype uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
     assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       # flip for some more coverage here
@@ -5838,7 +5846,7 @@ def process(filename):
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
 
-    use_cmake_configure = self.is_windows()
+    use_cmake_configure = WINDOWS
     if use_cmake_configure:
       make_args = []
       configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
@@ -5860,7 +5868,7 @@ def process(filename):
     for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       print('cmake', use_cmake)
       # Windows cannot run configure sh scripts.
-      if self.is_windows() and not use_cmake:
+      if WINDOWS and not use_cmake:
         continue
 
       # extra testing for ASSERTIONS == 2
@@ -5891,9 +5899,8 @@ def process(filename):
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   @sync
+  @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   def test_poppler(self):
-    if self.is_windows(): self.skipTest('test_poppler depends on freetype, which uses a ./configure script to build and therefore currently only runs on Linux and macOS.')
-
     def test():
       Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'freetype', 'include'),
@@ -6722,8 +6729,10 @@ def process(filename):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
+  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
-    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args): self.skipTest('need js optimizations')
+    if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
+      self.skipTest('need js optimizations')
 
     orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
 
@@ -6738,30 +6747,38 @@ def process(filename):
       int main() {}
     ''', "constructing!\n");
 
-    code_file = 'src.cpp.o.js' if not self.get_setting('WASM') else 'src.cpp.o.wasm'
+
+    def get_code_size():
+      if self.is_wasm():
+        # Use number of functions as a for code size
+        return self.count_wasm_contents('src.cpp.o.wasm', 'funcs')
+      else:
+        return os.path.getsize('src.cpp.o.js')
+
+    def get_mem_size():
+      if self.is_wasm():
+        # Use number of functions as a for code size
+        return self.count_wasm_contents('src.cpp.o.wasm', 'memory-data')
+      if self.uses_memory_init_file():
+        return os.path.getsize('src.cpp.o.js.mem')
+
+      # otherwise we ignore memory size
+      return 0
 
     def do_test(test):
       self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
       test()
-      ec_code_size = os.stat(code_file).st_size
-      if self.uses_memory_init_file():
-        ec_mem_size = os.stat('src.cpp.o.js.mem').st_size
+      ec_code_size = get_code_size()
+      ec_mem_size = get_mem_size()
       self.emcc_args = orig_args[:]
       test()
-      code_size = os.stat(code_file).st_size
-      if self.uses_memory_init_file():
-        mem_size = os.stat('src.cpp.o.js.mem').st_size
-      # if we are wasm, then the mem init is inside the wasm too, so the total change in code+data may grow *or* shrink
-      code_size_should_shrink = not self.is_wasm()
-      print(code_size, ' => ', ec_code_size, ', are we testing code size?', code_size_should_shrink)
-      if self.uses_memory_init_file():
-        print(mem_size, ' => ', ec_mem_size)
-      if code_size_should_shrink:
-        assert ec_code_size < code_size
-      else:
-        assert ec_code_size != code_size, 'should at least change'
-      if self.uses_memory_init_file():
-        assert ec_mem_size > mem_size
+      code_size = get_code_size()
+      mem_size = get_mem_size()
+      if mem_size:
+        print('mem: ', mem_size, '=>', ec_mem_size)
+        self.assertGreater(ec_mem_size, mem_size)
+      print('code:', code_size, '=>', ec_code_size)
+      self.assertLess(ec_code_size, code_size)
 
     print('remove ctor of just assigns to memory')
     def test1():
@@ -6797,6 +6814,7 @@ def process(filename):
     self.set_setting('ASSERTIONS', 0)
 
     print('remove just some, leave others')
+
     def test3():
       self.do_run(r'''
 #include <iostream>
@@ -7842,7 +7860,7 @@ def make_run(name, emcc_args=None, env=None):
   if env is None:
     env = {}
 
-  TT = type(name, (T,), dict(run_name=name, env=env))
+  TT = type(name, (TestCoreBase,), dict(run_name=name, env=env))  # no-qa
 
   def tearDown(self):
     try:
@@ -7931,4 +7949,4 @@ binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2', '-s', 'B
 asmi = make_run('asmi', emcc_args=['-s', 'ASM_JS=2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
 asm2i = make_run('asm2i', emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
 
-del T # T is just a shape for the specific subclasses, we don't test it itself
+del TestCoreBase # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
