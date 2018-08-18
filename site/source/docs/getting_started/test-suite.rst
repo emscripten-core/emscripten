@@ -143,7 +143,7 @@ Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emi
 	EMCC_DEBUG=2 python tests/runner.py test_hello_world
 
 
-You can also specify ``EM_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_temp/** (same place where ``EMCC_DEBUG`` intermediate files go). This is a test suite-specific feature, and is useful for tests that create temporary files.
+You can also specify ``EMTEST_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_temp/** (same place where ``EMCC_DEBUG`` intermediate files go). This is a test suite-specific feature, and is useful for tests that create temporary files.
 
 The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code. 
 

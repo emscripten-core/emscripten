@@ -73,8 +73,8 @@ def shell_with_script(shell_file, output_file, replacement):
       output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
 
 
-requires_graphics_hardware = unittest.skipIf(os.environ.get('EM_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
-requires_sound_hardware = unittest.skipIf(os.environ.get('EM_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
+requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
+requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 
 
 class browser(BrowserCore):
@@ -136,7 +136,8 @@ class browser(BrowserCore):
     print('''
 If manually bisecting:
   Check that you see src.cpp among the page sources.
-  Even better, add a breakpoint, e.g. on the printf, then reload, then step through and see the print (best to run with EM_SAVE_DIR=1 for the reload).
+  Even better, add a breakpoint, e.g. on the printf, then reload, then step
+  through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
   def test_emscripten_log(self):
@@ -2341,7 +2342,9 @@ void *getBindBuffer() {
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     browser = get_browser()
     if browser is not None:
-      # If EMSCRIPTEN_BROWSER carried command line arguments to pass to the browser, (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun, so strip them out.
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
       browser_cmd = shlex.split(browser)
       browser_path = browser_cmd[0]
       args += ['--browser', browser_path]
