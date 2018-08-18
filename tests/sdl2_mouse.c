@@ -17,10 +17,10 @@ void one() {
         assert(m->state == 0);
         printf("motion : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
 #ifdef TEST_SDL_MOUSE_OFFSETS
-        assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 5) && eq(m->yrel, 15)
+        assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 0) && eq(m->yrel, 0)
           || eq(m->x, 25) && eq(m->y, 65) && eq(m->xrel, 20) && eq(m->yrel, 50));
 #else        
-        assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 10) && eq(m->yrel, 20)
+        assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 0) && eq(m->yrel, 0)
           || eq(m->x, 30) && eq(m->y, 70) && eq(m->xrel, 20) && eq(m->yrel, 50));
 #endif
         break;
