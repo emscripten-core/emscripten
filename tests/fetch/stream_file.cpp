@@ -15,11 +15,11 @@ int main()
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
+    printf("Finished downloading %llu bytes\n", fetch->totalBytes);
+    printf("Data checksum: %08X\n", checksum);
     assert(fetch->data == 0); // The data was streamed via onprogress, no bytes available here.
     assert(fetch->numBytes == 0);
     assert(fetch->totalBytes == 134217728);
-    printf("Finished downloading %llu bytes\n", fetch->totalBytes);
-    printf("Data checksum: %08X\n", checksum);
     assert(checksum == 0xA7F8E858U);
     emscripten_fetch_close(fetch);
 
@@ -28,15 +28,15 @@ int main()
 #endif
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
-    assert(fetch->data != 0);
-    assert(fetch->numBytes > 0);
-    assert(fetch->dataOffset + fetch->numBytes <= fetch->totalBytes);
-    assert(fetch->totalBytes <= 134217728);
     printf("Downloading.. %.2f%s complete. Received chunk [%llu, %llu[\n", 
       (fetch->totalBytes > 0) ? ((fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes) : (double)(fetch->dataOffset + fetch->numBytes),
       (fetch->totalBytes > 0) ? "%" : " bytes",
       fetch->dataOffset,
       fetch->dataOffset + fetch->numBytes);
+    assert(fetch->data != 0);
+    assert(fetch->numBytes > 0);
+    assert(fetch->dataOffset + fetch->numBytes <= fetch->totalBytes);
+    assert(fetch->totalBytes <= 134217728);
 
     for(int i = 0; i < fetch->numBytes; ++i)
       checksum = ((checksum << 8) | (checksum >> 24)) * fetch->data[i] + fetch->data[i];

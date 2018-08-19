@@ -3767,16 +3767,25 @@ window.close = function() {
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
-    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-DFILE_DOES_NOT_EXIST'])
+    self.btest('fetch/to_memory.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'],
+               also_asmjs=True)
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/to_memory.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0'])
+    self.btest('fetch/to_memory.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               also_asmjs=True)
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   def test_fetch_cached_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/cached_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0'])
+    self.btest('fetch/cached_xhr.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               also_asmjs=True)
 
   # Tests that response headers get set on emscripten_fetch_t values.
   def test_fetch_response_headers(self):
@@ -3787,14 +3796,16 @@ window.close = function() {
   def test_fetch_stream_file(self):
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
-    f = open('largefile.txt', 'w')
     s = '12345678'
     for i in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
-    for i in range(1024):
-      f.write(s)
-    f.close()
-    self.btest('fetch/stream_file.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'TOTAL_MEMORY=536870912'])
+    with open('largefile.txt', 'w') as f:
+      for i in range(1024):
+        f.write(s)
+    self.btest('fetch/stream_file.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'],
+               also_asmjs=True)
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   def test_fetch_sync_xhr(self):
@@ -3804,7 +3815,10 @@ window.close = function() {
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '--proxy-to-worker'])
+    self.btest('fetch/sync_xhr.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'],
+               also_asmjs=True)
 
   def test_fetch_idb_store(self):
     self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
