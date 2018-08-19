@@ -3,7 +3,7 @@ defaults: &defaults
     - image: buildpack-deps:xenial
       environment:
         LANG: C.UTF-8
-        EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS: 1
+        EMTEST_DETECT_TEMPFILE_LEAKS: 1
 
 test-defaults: &test-defaults
   <<: *defaults
@@ -174,9 +174,9 @@ jobs:
       - TEST_TARGET=browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
       # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
       - TEST_DEPENDENCY=dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
-      - EMSCRIPTEN_BROWSER=firefox -profile tmp-firefox-profile/
-      - EM_LACKS_SOUND_HARDWARE=1
-      - EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS=0
+      - EMTEST_BROWSER=firefox -profile tmp-firefox-profile/
+      - EMTEST_LACKS_SOUND_HARDWARE=1
+      - EMTEST_DETECT_TEMPFILE_LEAKS=0
       - DISPLAY=:0
       - GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
   test-ab:

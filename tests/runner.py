@@ -3,7 +3,7 @@
 """
 
 # This Python file uses the following encoding: utf-8
-# XXX Use EM_ALL_ENGINES=1 in the env to test all engines!
+# XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
 from __future__ import print_function
 from subprocess import Popen, PIPE, STDOUT
@@ -61,14 +61,26 @@ sys.path.append(path_from_root('third_party/websockify'))
 
 logger = logging.getLogger(__file__)
 
-# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
-# run using another browser command line than the default system browser.
-# Setting '0' as the browser disables running a browser (but we still see tests compile)
-emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
+# User can specify an environment variable EMTEST_BROWSER to force the browser
+# test suite to run using another browser command line than the default system
+# browser.  Setting '0' as the browser disables running a browser (but we still
+# see tests compile)
+EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+
+EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
+
+EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '0'))
+
+# Also suppot the old name: EM_SAVE_DIR
+EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
+
+# generally js engines are equivalent, testing 1 is enough. set this
+# to force testing on all js engines, good to find js engine bugs
+EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 
-if emscripten_browser:
-  cmd = shlex.split(emscripten_browser)
+if EMTEST_BROWSER:
+  cmd = shlex.split(EMTEST_BROWSER)
 
   def run_in_other_browser(url):
     Popen(cmd + [url])
@@ -80,12 +92,12 @@ if emscripten_browser:
 
 # checks if browser testing is enabled
 def has_browser():
-  return emscripten_browser != '0'
+  return EMTEST_BROWSER != '0'
 
 
 # returns what browser is being used (None means the default)
 def get_browser():
-  return emscripten_browser
+  return EMTEST_BROWSER
 
 
 # Generic decorator that calls a function named 'condition' on the test class and
@@ -158,10 +170,6 @@ non_core_test_modes = [
 
 test_index = 0
 
-# generally js engines are equivalent, testing 1 is enough. set this
-# to force testing on all js engines, good to find js engine bugs
-use_all_engines = os.environ.get('EM_ALL_ENGINES')
-
 
 class RunnerCore(unittest.TestCase):
   emcc_args = None
@@ -171,7 +179,7 @@ class RunnerCore(unittest.TestCase):
   temp_dir = TEMP_DIR
   canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
 
-  save_dir = os.environ.get('EM_SAVE_DIR')
+  save_dir = EMTEST_SAVE_DIR
   save_JS = 0
   # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
   # Change this to None to get stderr reporting, for debugging purposes
@@ -179,8 +187,6 @@ class RunnerCore(unittest.TestCase):
 
   env = {}
   settings_mods = {}
-
-  EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS = int(os.getenv('EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS', '0'))
 
   temp_files_before_run = []
 
@@ -215,7 +221,7 @@ class RunnerCore(unittest.TestCase):
   def setUp(self):
     self.settings_mods = {}
 
-    if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS:
+    if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
         for dirname in dirnames:
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, dirname)))
@@ -223,7 +229,7 @@ class RunnerCore(unittest.TestCase):
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     self.banned_js_engines = []
-    self.use_all_engines = use_all_engines
+    self.use_all_engines = EMTEST_ALL_ENGINES
     if not self.save_dir:
       dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     else:
@@ -249,7 +255,7 @@ class RunnerCore(unittest.TestCase):
       os.chdir(os.path.join(self.get_dir(), '..'))
       try_delete(self.get_dir())
 
-      if self.EM_TESTRUNNER_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
@@ -861,9 +867,9 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(self):
     super(BrowserCore, self).setUpClass()
-    self.also_asmjs = os.environ.get('EMCC_BROWSER_ALSO_ASMJS', '0') == '1'
-    self.test_port = int(os.environ.get('EMCC_BROWSER_TEST_PORT', '8888'))
-    self.harness_port = int(os.environ.get('EMCC_BROWSER_HARNESS_PORT', '9999'))
+    self.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
+    self.test_port = int(os.getenv('EMTEST_BROWSER_TEST_PORT', '8888'))
+    self.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser():
       return
     self.browser_timeout = 30
@@ -1060,7 +1066,7 @@ class BrowserCore(RunnerCore):
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
     if 'USE_PTHREADS=1' in args or 'USE_PTHREADS=2' in args:
-      if os.environ.get('EMCC_TEST_WASM_PTHREADS', '0') != '1':
+      if not EMTEST_WASM_PTHREADS:
         # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
         args = args + ['-s', 'WASM=0']
     if 'WASM=0' not in args:
@@ -1171,10 +1177,10 @@ def print_help_if_args_empty(args):
 
 
 def print_js_engine_message():
-  if use_all_engines:
+  if EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')
   else:
-    logger.warning('use EM_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
+    logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
 
 
 def sanity_checks():
