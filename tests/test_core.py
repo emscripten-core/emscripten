@@ -3975,8 +3975,6 @@ Module = {
 
   @needs_dlfcn
   def test_dylink_hyper_dupe(self):
-    if not self.can_dlfcn(): return
-
     dylib_suffix = '.js' if not self.is_wasm() else '.wasm'
 
     self.set_setting('TOTAL_MEMORY', 64*1024*1024)
