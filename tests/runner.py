@@ -84,11 +84,6 @@ def has_browser():
   return EMTEST_BROWSER != '0'
 
 
-# returns what browser is being used (None means the default)
-def get_browser():
-  return EMTEST_BROWSER
-
-
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
 def skip_if(func, condition, explanation=''):
@@ -861,7 +856,9 @@ class BrowserCore(RunnerCore):
     self.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser():
       return
-    if EMTEST_BROWSER:
+    if not EMTEST_BROWSER:
+      print("Using default system browser")
+    else:
       cmd = shlex.split(EMTEST_BROWSER)
 
       def run_in_other_browser(url):
@@ -869,8 +866,6 @@ class BrowserCore(RunnerCore):
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
-    else:
-      print("Using default system browser")
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue, self.harness_port))

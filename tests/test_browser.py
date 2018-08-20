@@ -15,7 +15,7 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, get_browser
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
@@ -2345,12 +2345,11 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    browser = get_browser()
-    if browser is not None:
+    if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
-      browser_cmd = shlex.split(browser)
+      browser_cmd = shlex.split(EMTEST_BROWSER)
       browser_path = browser_cmd[0]
       args += ['--browser', browser_path]
       if len(browser_cmd) > 1:
@@ -3380,7 +3379,7 @@ window.close = function() {
 
   # Test pthread_kill() operation
   def test_pthread_kill(self):
-    if get_browser() and 'chrom' in get_browser().lower():
+    if EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower():
       # This test hangs the chrome render process, and keep subsequent tests from passing too
       self.skipTest("pthread_kill hangs chrome renderer")
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=2', '--separate-asm', '-s', 'PTHREAD_POOL_SIZE=8'], timeout=30)

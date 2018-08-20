@@ -210,7 +210,7 @@ jobs:
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox"
             CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
-            export EMSCRIPTEN_BROWSER="xvfb-run $HOME/chrome-linux/chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+            export EMTEST_BROWSER="xvfb-run $HOME/chrome-linux/chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             # Just run a subset of the tests for now.  To be expanded.
             EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_a*
   test-ab:
