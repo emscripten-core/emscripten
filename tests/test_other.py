@@ -3591,7 +3591,7 @@ int main()
     # compile a minimal program, with as few dependencies as possible, as
     # native building on CI may not always work well
     with open('minimal.cpp', 'w') as f:
-			f.write('int main() { return 0; }')
+      f.write('int main() { return 0; }')
     run_process([CLANG, 'minimal.cpp', '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env())
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).stderr
     if self.is_wasm_backend():
