@@ -62,9 +62,9 @@ jobs:
             wget https://github.com/juj/emsdk/archive/master.tar.gz
             tar -xf master.tar.gz
             cd emsdk-master
-            ./emsdk update-tags
-            ./emsdk install latest
-            ./emsdk activate latest
+            ./emsdk --notty update-tags
+            ./emsdk --notty install latest
+            ./emsdk --notty activate latest
             cd -
             # Remove the emsdk version of emscripten save space in the
             # persistent workspace and to avoid any confusion with that version
