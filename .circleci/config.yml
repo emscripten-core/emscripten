@@ -181,6 +181,9 @@ jobs:
       - GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
   test-browser-chrome:
     <<: *defaults
+    environment:
+      - EMTEST_LACKS_SOUND_HARDWARE=1
+      - EMTEST_DETECT_TEMPFILE_LEAKS=0
     working_directory: ~/
     steps:
       - checkout:
