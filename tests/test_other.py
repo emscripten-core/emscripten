@@ -3589,9 +3589,7 @@ int main()
 
   def test_bad_triple(self):
     Popen([CLANG, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env(), stdout=PIPE, stderr=PIPE).communicate()
-    proc = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False)
-    self.assertNotEqual(proc.returncode, 0)
-    err = proc.stderr
+    err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE).stderr
     if self.is_wasm_backend():
       assert 'machine type must be wasm32' in err, err
     else:
