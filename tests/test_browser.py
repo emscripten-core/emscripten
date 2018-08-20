@@ -3312,7 +3312,8 @@ window.close = function() {
   # Test 64-bit C++11 atomics.
   def test_pthread_64bit_cxx11_atomics(self):
     for opt in [['-O0'], ['-O3']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + ['-std=c++11', '-s', 'USE_PTHREADS=1'])
+      for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   def test_pthread_gcc_atomic_fetch_and_op(self):
@@ -3320,7 +3321,7 @@ window.close = function() {
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
     for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os'], ['-Oz']]:
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
-        for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm']]:
+        for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm', '-s', 'WASM=0']]:
           print(opt, debug, f32)
           self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt + debug + f32 + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
