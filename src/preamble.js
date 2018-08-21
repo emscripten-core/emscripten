@@ -1189,6 +1189,9 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
 #endif
   buffer = Module['wasmMemory'].buffer;
+#if ASSERTIONS
+  assert(buffer instanceof SharedArrayBuffer, 'requested a WebAssembly.Memory with the shared flag, but the buffer is not a SharedArrayBuffer (in Chrome, you need to set the wasm-threads flag, it is not enough to have SharedArrayBuffer enabled)');
+#endif
 }
 
 updateGlobalBufferViews();
