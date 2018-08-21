@@ -5501,7 +5501,8 @@ return malloc(size);
   # Tests the full SSE2 API.
   @SIMD
   def test_sse2_full(self):
-    if self.run_name == 'asm1': self.skipTest("some i64 thing we can't legalize yet. possible hint: optimize with -O0 or -O2+, and not -O1");
+    if self.run_name == 'asm1' or self.run_name == 'asm2f':
+      self.skipTest("some i64 thing we can't legalize");
     import platform
     is_64bits = platform.architecture()[0] == '64bit'
     if not is_64bits: self.skipTest('This test requires 64-bit system, since it tests SSE2 intrinsics only available in 64-bit mode!')
