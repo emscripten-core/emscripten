@@ -3973,20 +3973,34 @@ Module = {
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  @no_wasm # TODO
   @needs_dlfcn
   def test_dylink_hyper_dupe(self):
+    dylib_suffix = '.js' if not self.is_wasm() else '.wasm'
+
     self.set_setting('TOTAL_MEMORY', 64*1024*1024)
 
     if self.get_setting('ASSERTIONS'): self.emcc_args += ['-s', 'ASSERTIONS=2']
 
     # test hyper-dynamic linking, and test duplicate warnings
     open('third.cpp', 'w').write(r'''
+      #include <stdio.h>
       int sidef() { return 36; }
       int sideg = 49;
       int bsidef() { return 536; }
+      extern void only_in_second_1(int x);
+      extern int second_to_third;
+      int third_to_second = 1337;
+      void only_in_third_0() {
+        // note we access our own globals directly, so
+        // it doesn't matter that overriding failed
+        printf("only_in_third_0: %d, %d, %d\n", sidef(), sideg, second_to_third);
+        only_in_second_1(2112);
+      }
+      void only_in_third_1(int x) {
+        printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
+      }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.js'])
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3995,23 +4009,38 @@ Module = {
       extern int sideg;
       extern int bsidef();
       extern int bsideg;
+      extern void only_in_second_0();
+      extern void only_in_third_0();
       int main() {
         EM_ASM({
-          loadDynamicLibrary('third.js'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+          loadDynamicLibrary('third%s'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
-        printf("sidef: %d, sideg: %d.\n", sidef(), sideg);
-        printf("bsidef: %d.\n", bsidef());
+        printf("sidef: %%d, sideg: %%d.\n", sidef(), sideg);
+        printf("bsidef: %%d.\n", bsidef());
+        only_in_second_0();
+        only_in_third_0();
       }
-    ''', side=r'''
-      int sidef() { return 10; } // third.js will try to override these, but fail!
+    ''' % dylib_suffix, side=r'''
+      #include <stdio.h>
+      int sidef() { return 10; } // third will try to override these, but fail!
       int sideg = 20;
-    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\n'])
+      extern void only_in_third_1(int x);
+      int second_to_third = 500;
+      extern int third_to_second;
+      void only_in_second_0() {
+        printf("only_in_second_0: %d, %d, %d\n", sidef(), sideg, third_to_second);
+        only_in_third_1(1221);
+      }
+      void only_in_second_1(int x) {
+        printf("only_in_second_1: %d, %d, %d, %d\n", sidef(), sideg, third_to_second, x);
+      }
+    ''', expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
+         need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
     if self.get_setting('ASSERTIONS'):
       print('check warnings')
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
-      #self.assertContained("warning: trying to dynamically load symbol '__Z5sidefv' (from 'third.js') that already exists", full)
-      self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third.js') that already exists", full)
+      self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third%s') that already exists" % dylib_suffix, full)
 
   @needs_dlfcn
   def test_dylink_dot_a(self):

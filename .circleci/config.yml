@@ -92,11 +92,11 @@ jobs:
   test-other:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other skip:other.test_bad_triple skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_llvm_lit
+      - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_llvm_lit
       # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
       # CircleCI actively kills memory-over-consuming process
       # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
-  test-browser:
+  test-browser-firefox:
     <<: *test-defaults
     environment:
       # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
@@ -114,6 +114,40 @@ jobs:
       - EMTEST_LACKS_SOUND_HARDWARE=1
       - EMTEST_DETECT_TEMPFILE_LEAKS=0
       - GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
+  test-browser-chrome:
+    <<: *defaults
+    environment:
+      - EMTEST_LACKS_SOUND_HARDWARE=1
+      - EMTEST_DETECT_TEMPFILE_LEAKS=0
+    working_directory: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            # install chromium-browser in order to ensure we have all the
+            # dependecies for chrome.
+            apt-get install -q -y unzip xvfb chromium-browser
+      - run:
+          name: download chrome
+          command: |
+            wget http://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/583421/chrome-linux.zip
+            unzip -q chrome-linux.zip
+      - run:
+          name: run tests
+          command: |
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox"
+            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
+            export EMTEST_BROWSER="xvfb-run $HOME/chrome-linux/chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+            # Just run a subset of the tests for now.  To be expanded.
+            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_a*
   test-ab:
     <<: *test-defaults
     environment:
@@ -186,7 +220,10 @@ workflows:
       - test-other:
           requires:
             - build
-      - test-browser:
+      - test-browser-firefox:
+          requires:
+            - build
+      - test-browser-chrome:
           requires:
             - build
       - test-ab:

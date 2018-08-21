@@ -1117,7 +1117,7 @@ if (ENVIRONMENT_IS_WEB) {
   });
 }
 
-#if USE_PTHREADS == 1
+#if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
