@@ -109,7 +109,7 @@ jobs:
       # are crashing Firefox (bugzil.la/1281796). The former case is
       # further blocked by issue #6897.
       - TEST_TARGET=browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-      - TEST_DEPENDENCIES=firefox xvfb-run
+      - TEST_DEPENDENCIES=firefox xvfb
       - EMTEST_BROWSER=xvfb-run -a /usr/bin/firefox -profile tmp-firefox-profile/
       - EMTEST_LACKS_SOUND_HARDWARE=1
       - EMTEST_DETECT_TEMPFILE_LEAKS=0
