@@ -22,16 +22,10 @@
       flex: 1;
     }
   </style>
-</head>
-<body>
-<span class="topbar">Running test <span id="count"></span>...</span>
-<iframe class="full" id="iframe" allowfullscreen="true"></iframe>
 <script>
   var counter = 0;
   function check() {
     var request = new XMLHttpRequest();
-    request.open('GET', '/check');
-    request.send(null);
     request.addEventListener("load", function() {
       if (request.responseText != 'False') {
         iframe.src = request.responseText;
@@ -40,11 +34,18 @@
       setTimeout(check, 333);
     });
     request.addEventListener("error", function() {
-      document.write('Tests complete. View log in console.');
+      document.body.innerHTML = 'Tests complete. View log in console.';
       window.close();
-      return;
     });
+    request.open('GET', '/check');
+    request.send();
   }
+</script>
+</head>
+<body>
+<span class="topbar">Running test <span id="count"></span>...</span>
+<iframe class="full" id="iframe" allowfullscreen="true"></iframe>
+<script>
   check();
 </script>
 </body>

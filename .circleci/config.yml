@@ -24,7 +24,7 @@ test-defaults: &test-defaults
           apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless $TEST_DEPENDENCIES
     - run:
         name: run tests
-          EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
+        command: EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
 version: 2
 jobs:
