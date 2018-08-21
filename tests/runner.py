@@ -1059,15 +1059,13 @@ class BrowserCore(RunnerCore):
     filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
     temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args or 'USE_PTHREADS=2' in args:
+    if 'USE_PTHREADS=1' in args:
       if not EMTEST_WASM_PTHREADS:
         # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
         args = args + ['-s', 'WASM=0']
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
-      # wasm doesn't support USE_PTHREADS=2
-      args = ['USE_PTHREADS=1' if a == 'USE_PTHREADS=2' else a for a in args]
     if filename_is_src:
       with open(temp_filepath, 'w') as f:
        f.write(src)

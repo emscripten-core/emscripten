@@ -921,9 +921,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
-      if final_suffix == 'html' and not options.separate_asm and ('PRECISE_F32=2' in settings_changes or 'USE_PTHREADS=2' in settings_changes):
+      if final_suffix == 'html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
         options.separate_asm = True
-        logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 or -s USE_PTHREADS=2 was passed.')
+        logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
       if options.separate_asm:
         shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
@@ -1119,7 +1119,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.NO_FILESYSTEM = 1
         shared.Settings.FETCH = 1
         if not shared.Settings.USE_PTHREADS:
-          exit_with_error('-s ASMFS=1 requires either -s USE_PTHREADS=1 or -s USE_PTHREADS=2 to be set!')
+          exit_with_error('-s ASMFS=1 requires -s USE_PTHREADS=1 to be set!')
 
       if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
@@ -1189,6 +1189,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:
+        if shared.Settings.USE_PTHREADS == 2:
+          exit_with_error('USE_PTHREADS=2 is not longer supported')
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
