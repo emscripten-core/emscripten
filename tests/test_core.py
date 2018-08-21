@@ -3326,7 +3326,7 @@ ok
 
       # side settings
       self.set_setting('MAIN_MODULE', 0)
-      self.set_setting('SIDE_MODULE', 1)
+      self.set_setting('SIDE_MODULE', 2)
       side_suffix = 'js' if not self.is_wasm() else 'wasm'
       if isinstance(side, list):
         # side is just a library
@@ -4090,6 +4090,46 @@ Module = {
                        force_c=True)
     finally:
       del os.environ['EMCC_FORCE_STDLIBS']
+  
+  def test_dylink_static_member(self):
+    self.dylink_test(header=r'''
+      class Base {
+      public:
+          Base() : value(1) {}
+          static Base member;
+          int value;
+
+          bool operator==(const Base &rhs) const {
+            return value == rhs.value;
+          }
+      };
+    ''', main=r'''
+      #include "header.h"
+      #include <iostream>
+      #include "emscripten.h"
+
+      using namespace std;
+      extern void sidey();
+      /*EMSCRIPTEN_KEEPALIVE*/ Base Base::member;
+      int main() {
+        cout << "starting main" << endl;
+        sidey();
+      
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      #include <iostream>
+      #include "emscripten.h"
+      
+      using namespace std;
+      
+      EMSCRIPTEN_KEEPALIVE void sidey() {
+          Base temp;
+          temp.value = 5;
+          cout << "sidey:" << (Base::member == temp) << endl;
+      }
+    ''', expected=['starting main\nsidey:0'])
 
   #@needs_dlfcn
   #def test_dylink_bullet(self):
