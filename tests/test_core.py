@@ -6686,8 +6686,15 @@ def process(filename):
   def test_demangle_stacks(self):
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
+    # when optimizing function names are not preserved by default.
     if '-O' in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
+    # in the emterpreter, we interpret code execution and control flow,
+    # so there is nothing on the browser-visible stack for meaningful
+    # stack traces. enabling profiling makes the emterpreter call through
+    # stubs with the full names.
+    if self.is_emterpreter():
+      self.emcc_args += ['--profiling-funcs']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
     if 'ASSERTIONS' not in str(self.emcc_args):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
