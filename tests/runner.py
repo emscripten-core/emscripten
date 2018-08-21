@@ -47,7 +47,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-from tools.shared import EM_BUILD_VERBOSE, EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools.line_endings import check_line_endings
 from tools import jsrun, shared
@@ -79,25 +79,9 @@ EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 
-if EMTEST_BROWSER:
-  cmd = shlex.split(EMTEST_BROWSER)
-
-  def run_in_other_browser(url):
-    Popen(cmd + [url])
-
-  if EM_BUILD_VERBOSE >= 3:
-    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
-  webbrowser.open_new = run_in_other_browser
-
-
 # checks if browser testing is enabled
 def has_browser():
   return EMTEST_BROWSER != '0'
-
-
-# returns what browser is being used (None means the default)
-def get_browser():
-  return EMTEST_BROWSER
 
 
 # Generic decorator that calls a function named 'condition' on the test class and
@@ -872,6 +856,16 @@ class BrowserCore(RunnerCore):
     self.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser():
       return
+    if not EMTEST_BROWSER:
+      print("Using default system browser")
+    else:
+      cmd = shlex.split(EMTEST_BROWSER)
+
+      def run_in_other_browser(url):
+        Popen(cmd + [url])
+
+      webbrowser.open_new = run_in_other_browser
+      print("Using Emscripten browser: " + str(cmd))
     self.browser_timeout = 30
     self.harness_queue = multiprocessing.Queue()
     self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue, self.harness_port))
