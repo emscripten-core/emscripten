@@ -91,8 +91,8 @@ def skip_if(func, condition, explanation=''):
 
   def decorated(self):
     if self.__getattribute__(condition)():
-      return self.skipTest(condition + explanation_str)
-    return func(self)
+      self.skipTest(condition + explanation_str)
+    func(self)
 
   return decorated
 
