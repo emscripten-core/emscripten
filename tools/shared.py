@@ -1384,7 +1384,6 @@ def extract_archive_contents(archive_file):
 
   # create temp dir
   temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-  safe_ensure_dirs(temp_dir)
 
   # extract file in temp dir
   proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
