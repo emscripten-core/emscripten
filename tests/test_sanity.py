@@ -202,7 +202,7 @@ class sanity(RunnerCore):
           self.assertContained('CRITICAL', output) # sanity check should fail
 
   def test_closure_compiler(self):
-    CLOSURE_FATAL = 'fatal: closure compiler'
+    CLOSURE_FATAL = 'closure compiler is not configured correctly'
     CLOSURE_WARNING = 'does not exist'
 
     # Sanity check should find closure

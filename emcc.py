@@ -1044,7 +1044,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.use_closure_compiler:
         shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
         if not shared.check_closure_compiler():
-          exit_with_error('fatal: closure compiler is not configured correctly')
+          exit_with_error('closure compiler is not configured correctly')
         if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1:
           shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
           shared.Settings.ASM_JS = 2
