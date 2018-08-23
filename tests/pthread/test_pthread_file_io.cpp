@@ -25,15 +25,6 @@ static void *thread1_start(void *arg)
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   FILE *handle = fopen("file1.txt", "w");
   fputs("hello!", handle);
   fclose(handle);

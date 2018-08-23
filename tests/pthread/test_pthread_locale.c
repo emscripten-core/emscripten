@@ -31,19 +31,12 @@ int main (int argc, char *argv[])
   locale_t main_loc = do_test();
   locale_t child_loc;
 
-  if (!emscripten_has_threading_support())
-  {
-    child_loc = main_loc;
-  }
-  else
-  {
-    long id = 1;
-    pthread_t thread;
+  long id = 1;
+  pthread_t thread;
 
-    pthread_create(&thread, NULL, thread_test, (void *)id);
+  pthread_create(&thread, NULL, thread_test, (void *)id);
 
-    pthread_join(thread, (void**)&child_loc);
-  }
+  pthread_join(thread, (void**)&child_loc);
 
 #ifdef REPORT_RESULT
   int result = (main_loc == child_loc);

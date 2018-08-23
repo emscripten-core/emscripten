@@ -26,11 +26,6 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- At runtime, you can use the `emscripten_has_threading_support()` function to
-  test whether the current browser does have the capability to launch pthreads
-  with `pthread_create()`. If a browser does not support threads, calls to
-  `pthread_create()` will fail with error code `EAGAIN`.
-
 - When the linker flag `-s PTHREAD_POOL_SIZE=<integer>` is not specified and `pthread_create()` is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`_.
 
 - Currently several of the functions in the C runtime, such as filesystem functions like `fopen()`, `fread()`, `printf()`, `fprintf()` etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via `malloc()` and `free()` is fully multithreaded though. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/kripken/emscripten/issues/3495>`_ for more information and how to work around this until proxying is no longer needed in Emscripten.
@@ -46,8 +41,6 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 - Some of the features in the pthreads specification are unsupported since the upstream musl library that Emscripten utilizes does not support them, or they are marked optional and a conformant implementation need not support them. Such unsupported features in Emscripten include prioritization of threads, and pthread_rwlock_unlock() is not performed in thread priority order. The functions pthread_mutexattr_set/getprotocol(), pthread_mutexattr_set/getprioceiling() and pthread_attr_set/getscope() are no-ops.
 
 - One particular note to pay attention to when porting is that sometimes in existing codebases the callback function pointers to pthread_create() and pthread_cleanup_push() omit the void* argument, which strictly speaking is undefined behavior in C/C++, but works in several x86 calling conventions. Doing this in Emscripten will issue a compiler warning, and can abort at runtime when attempting to call a function pointer with incorrect signature, so in the presence of such errors, it is good to check the signatures of the thread callback functions.
-
-- Note that the function emscripten_num_logical_cores() will always return the value of navigator.hardwareConcurrency, i.e. the number of logical cores on the system, even when shared memory is not supported. This means that it is possible for emscripten_num_logical_cores() to return a value greater than 1, while at the same time emscripten_has_threading_support() can return false. The return value of emscripten_has_threading_support() denotes whether the browser has shared memory support available.
 
 Also note that when compiling code that uses pthreads, an additional JavaScript file `pthread-main.js` is generated alongside the output .js file. That file must be deployed with the rest of the generated code files. By default, `pthread-main.js` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the `Module.locateFile(filename)` function in the main HTML `Module` object to return the URL of the target location of the `pthread-main.js` entry point. If this function is not defined in `Module`, then the default location relative to the main HTML file is used.
 

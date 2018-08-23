@@ -32,15 +32,6 @@ pthread_t thr;
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   int s = pthread_create(&thr, NULL, thread_start, (void*)0);
   assert(s == 0);
   EM_ASM(out('Canceling thread..'););

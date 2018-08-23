@@ -30,15 +30,6 @@ int main()
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(6765);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
 
   int n = 20;

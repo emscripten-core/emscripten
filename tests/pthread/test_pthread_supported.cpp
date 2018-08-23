@@ -21,8 +21,7 @@ int main()
 	pthread_attr_destroy(&attr);
 	pthread_join(thread, 0);
 
-	if (emscripten_has_threading_support()) assert(rc == 0);
-	else assert(rc == EAGAIN);
+	assert(rc == 0);
 
 #ifdef REPORT_RESULT
 	REPORT_RESULT(0);

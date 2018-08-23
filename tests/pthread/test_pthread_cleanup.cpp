@@ -66,15 +66,6 @@ int main()
 {
    int result = 0;
 
-   if (!emscripten_has_threading_support())
-   {
-#ifdef REPORT_RESULT
-      REPORT_RESULT(907640832);
-#endif
-      printf("Skipped: Threading is not supported.\n");
-      return 0;
-   }
-
    pthread_cleanup_push(cleanup_handler1, (void*)9998);
    pthread_cleanup_push(cleanup_handler1, (void*)9999);
 

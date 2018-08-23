@@ -72,13 +72,6 @@ static void *thread_start(void *arg)
 int main()
 {
   int result = 0;
-  if (!emscripten_has_threading_support()) {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: threading support is not available!\n");
-    return 0;
-  }
 
   int ret = pthread_barrier_init(&barrierWaitToAlloc, NULL, NUM_THREADS);
   assert(ret == 0);

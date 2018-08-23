@@ -97,15 +97,9 @@ int main()
 	pthread_mutex_lock(&lock);
 	pthread_mutex_unlock(&lock);
 
-	if (emscripten_has_threading_support()) {
-		// Create new threads in parallel.
-		for(int i = 0; i < NUM_THREADS; ++i)
-			CreateThread(i, threadNum++);
+	// Create new threads in parallel.
+	for(int i = 0; i < NUM_THREADS; ++i)
+		CreateThread(i, threadNum++);
 
-		emscripten_set_main_loop(WaitToJoin, 0, 0);
-	} else {
-#ifdef REPORT_RESULT
-		REPORT_RESULT(50);
-#endif
-	}
+	emscripten_set_main_loop(WaitToJoin, 0, 0);
 }
