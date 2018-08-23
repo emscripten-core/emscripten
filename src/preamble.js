@@ -2509,7 +2509,7 @@ function integrateWasmJS() {
 #endif // native-wasm
 
 #if ASSERTIONS
-    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: https://github.com/kripken/emscripten/wiki/WebAssembly#binaryen-methods');
+    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: http://kripken.github.io/emscripten-site/docs/compiling/WebAssembly.html#binaryen-methods');
 #else
     assert(exports, 'no binaryen method succeeded.');
 #endif
