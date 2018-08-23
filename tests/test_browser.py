@@ -3466,12 +3466,8 @@ window.close = function() {
 
       int main() {
         pthread_t t;
-        if (emscripten_has_threading_support()) {
-          pthread_create(&t, 0, thread_main, 0);
-          pthread_join(t, 0);
-        } else {
-          result = 1;
-        }
+        pthread_create(&t, 0, thread_main, 0);
+        pthread_join(t, 0);
         REPORT_RESULT(result);
       }
     '''))

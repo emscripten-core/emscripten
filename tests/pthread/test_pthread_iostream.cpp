@@ -17,15 +17,6 @@ int numThreadsToCreate = 1000;
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);

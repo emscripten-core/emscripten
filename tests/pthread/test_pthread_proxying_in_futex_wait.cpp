@@ -26,15 +26,6 @@ void *ThreadMain(void *arg)
 
 int main()
 {
-	if (!emscripten_has_threading_support())
-	{
-#ifdef REPORT_RESULT
-		REPORT_RESULT(0);
-#endif
-		printf("Skipped: Threading is not supported.\n");
-		return 0;
-	}
-
 	pthread_t thread;
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);

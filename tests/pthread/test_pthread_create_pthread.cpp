@@ -25,15 +25,6 @@ static void *thread1_start(void *arg)
 
 int main()
 {
-  if (!emscripten_has_threading_support())
-  {
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
-    printf("Skipped: Threading is not supported.\n");
-    return 0;
-  }
-
   pthread_t thr;
   pthread_create(&thr, NULL, thread1_start, 0);
 

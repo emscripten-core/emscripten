@@ -526,41 +526,34 @@ static volatile main_args _main_arguments;
 // TODO: Create a separate library of this to be able to drop EMSCRIPTEN_KEEPALIVE from this definition.
 int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char **argv)
 {
-  if (emscripten_has_threading_support())
-  {
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    // TODO: Read this from -s STACK_SIZE parameter, and make actual main browser thread stack something tiny, or create a -s PROXY_THREAD_STACK_SIZE parameter.
+  // TODO: Read this from -s STACK_SIZE parameter, and make actual main browser thread stack something tiny, or create a -s PROXY_THREAD_STACK_SIZE parameter.
 #define EMSCRIPTEN_PTHREAD_STACK_SIZE (128*1024)
 
-    pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
-    // TODO: Add a -s PROXY_CANVASES_TO_THREAD=parameter or similar to allow configuring this
+  pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
+  // TODO: Add a -s PROXY_CANVASES_TO_THREAD=parameter or similar to allow configuring this
 #ifdef EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES
-    // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases over to the pthread.
-    emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
+  // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases over to the pthread.
+  emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
 #else
-    // Otherwise by default, transfer whatever is set to Module.canvas.
-    if (EM_ASM_INT(return !!(Module['canvas']))) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+  // Otherwise by default, transfer whatever is set to Module.canvas.
+  if (EM_ASM_INT(return !!(Module['canvas']))) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
 #endif
-    _main_arguments.argc = argc;
-    _main_arguments.argv = argv;
-    pthread_t thread;
-    int rc = pthread_create(&thread, &attr, __emscripten_thread_main, (void*)&_main_arguments);
-    pthread_attr_destroy(&attr);
-    if (rc)
-    {
-      // Proceed by running main() on the main browser thread as a fallback.
-      return __call_main(_main_arguments.argc, _main_arguments.argv);
-    }
-    EM_ASM(Module['noExitRuntime'] = true);
-    return 0;
-  }
-  else
+  _main_arguments.argc = argc;
+  _main_arguments.argv = argv;
+  pthread_t thread;
+  int rc = pthread_create(&thread, &attr, __emscripten_thread_main, (void*)&_main_arguments);
+  pthread_attr_destroy(&attr);
+  if (rc)
   {
+    // Proceed by running main() on the main browser thread as a fallback.
     return __call_main(_main_arguments.argc, _main_arguments.argv);
   }
+  EM_ASM(Module['noExitRuntime'] = true);
+  return 0;
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);

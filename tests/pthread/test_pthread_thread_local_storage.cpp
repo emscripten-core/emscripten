@@ -50,8 +50,7 @@ void CreateThread(int i)
 	pthread_attr_init(&attr);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 	int rc = pthread_create(&thread[i], &attr, ThreadMain, (void*)i);
-	if (emscripten_has_threading_support()) assert(rc == 0);
-	else assert(rc == EAGAIN);
+	assert(rc == 0);
 	pthread_attr_destroy(&attr);
 }
 
@@ -65,23 +64,20 @@ int main()
 		CreateThread(i);
 
 	// Join all threads and create more.
-	if (emscripten_has_threading_support())
+	for(int i = 0; i < NUM_THREADS; ++i)
 	{
-		for(int i = 0; i < NUM_THREADS; ++i)
+		if (thread[i])
 		{
-			if (thread[i])
+			int status;
+			int rc = pthread_join(thread[i], (void**)&status);
+			assert(rc == 0);
+			EM_ASM(err('Main: Joined thread idx ' + $0 + ' with status ' + $1), i, (int)status);
+			assert(status == 0);
+			thread[i] = 0;
+			if (numThreadsToCreate > 0)
 			{
-				int status;
-				int rc = pthread_join(thread[i], (void**)&status);
-				assert(rc == 0);
-				EM_ASM(err('Main: Joined thread idx ' + $0 + ' with status ' + $1), i, (int)status);
-				assert(status == 0);
-				thread[i] = 0;
-				if (numThreadsToCreate > 0)
-				{
-					--numThreadsToCreate;
-					CreateThread(i);
-				}
+				--numThreadsToCreate;
+				CreateThread(i);
 			}
 		}
 	}
