@@ -3704,7 +3704,7 @@ window.close = function() {
       (['-O3'], 1),
       (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
       (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
-      (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], 0), # try to force it on, but have it disabled
+      (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="interpret-binary"'], 0), # try to force it on, but have it disabled
     ]:
       print(opts, expect)
       self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)

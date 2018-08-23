@@ -2915,6 +2915,7 @@ myreade(){
            '-o', 'proxyfs_test.js', 'proxyfs_test.c',
            '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
            '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+           '-s', 'BINARYEN_ASYNC_COMPILATION=0',
            '-s', 'MAIN_MODULE=1']).communicate()
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
@@ -7851,8 +7852,8 @@ int main() {
 
   def test_binaryen_warn_sync(self):
     if SPIDERMONKEY_ENGINE not in JS_ENGINES: self.skipTest('cannot run without spidermonkey')
-    # using a fallback to asm.js will disable async
-    for method in ['native-wasm,asmjs', 'native-wasm', None]:
+    # interpreting will disable async
+    for method in ['interpret-binary', 'native-wasm', None]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1']
       if method is not None:
         cmd += ['-s', 'BINARYEN_METHOD="' + method + '"']
@@ -7860,7 +7861,7 @@ int main() {
       err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
       print(err)
       warning = 'BINARYEN_ASYNC_COMPILATION disabled due to user options. This will reduce performance and compatibility'
-      if method and ',' in method:
+      if method and 'interpret' in method:
         self.assertContained(warning, err)
       else:
         self.assertNotContained(warning, err)
