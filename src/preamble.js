@@ -1107,7 +1107,6 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 #endif
 
 #if IN_TEST_HARNESS
-
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
@@ -1118,12 +1117,8 @@ if (ENVIRONMENT_IS_WEB) {
 }
 
 #if USE_PTHREADS
-if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  xhr = new XMLHttpRequest();
-  xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
-  xhr.send();
-  setTimeout(function() { window.close() }, 2000);
-}
+if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined')
+  reportResult('skipped:%20SharedArrayBuffer%20is%20not%20supported!');
 #endif
 #endif
 

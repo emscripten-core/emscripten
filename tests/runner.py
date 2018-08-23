@@ -939,16 +939,9 @@ class BrowserCore(RunnerCore):
   #define __REPORT_RESULT_DEFINED__
   #include <emscripten.h>
 
-  static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
+  static void _ReportResult(int result, int sync)
   {
-    EM_ASM({
-      var xhr = new XMLHttpRequest();
-      var result = $0;
-      if (Module['pageThrewException']) result = 12345;
-      xhr.open('GET', 'http://localhost:%s/report_result?' + result, !$1);
-      xhr.send();
-      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
-    }, result, sync);
+    EM_ASM({reportResult($0, $1)}, result, !sync);
   }
 
   #if __EMSCRIPTEN_PTHREADS__
@@ -960,10 +953,9 @@ class BrowserCore(RunnerCore):
     #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
   #endif
 
-  #endif // ~__REPORT_RESULT_DEFINED__
-
+  #endif // __REPORT_RESULT_DEFINED__
 #endif
-''' % self.test_port + code
+''' + code
 
   def reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
@@ -1016,9 +1008,7 @@ class BrowserCore(RunnerCore):
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?' + wrong);
-            xhr.send();
+            reportResult(wrong, true);
             if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
           };
           actualImage.src = actualUrl;
@@ -1047,7 +1037,27 @@ class BrowserCore(RunnerCore):
         };
       }
 
-''' % (self.test_port, basename))
+''' % (basename))
+
+  def create_btest_js(self):
+    # Create reportResult function that is used by REPORT_RESULT macro
+    # Also, add `quit` handler so that exit code is reported by default.
+    with open(os.path.join(self.get_dir(), 'btest.js'), 'w') as f:
+      f.write('''
+        Module.quit = function(exitStatus) {
+          reportResult(exitStatus, true);
+        }
+
+        function reportResult(result, async) {
+          xhr = new XMLHttpRequest();
+          if (Module['pageThrewException']) result = 12345;
+          xhr.open('GET', 'http://localhost:%s/report_result?' + result, async);
+          xhr.send();
+          /* for easy debugging, don't close window on failure */
+          if (!Module['pageThrewException']) setTimeout(function() { window.close() }, 1000);
+        }
+        ''' % self.test_port)
+    return ['--pre-js', 'btest.js']
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
@@ -1082,6 +1092,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+    args += self.create_btest_js()
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)

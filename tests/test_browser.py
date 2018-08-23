@@ -86,6 +86,9 @@ class browser(BrowserCore):
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()
 
+  def test_exit_code(self):
+    self.btest('exit_code.c', expected='42')
+
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
