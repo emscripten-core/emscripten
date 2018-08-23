@@ -4015,20 +4015,23 @@ window.close = function() {
   def test_browser_modularize_no_current_script(self):
     src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
     open('test.c', 'w').write(self.with_report_result(src))
-    if not os.path.exists('subdir'):
-      os.mkdir('subdir')
     # test both modularize (and creating an instance) and modularize-instance
     # (which creates by itself)
-    for args, creation in [
-      (['-s', 'MODULARIZE=1'], 'Module();'),
-      (['-s', 'MODULARIZE_INSTANCE=1'], '')
+    for path, args, creation in [
+      ([], ['-s', 'MODULARIZE=1'], 'Module();'),
+      ([], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
+      (['subdir'], ['-s', 'MODULARIZE=1'], 'Module();'),
+      (['subdir'], ['-s', 'MODULARIZE_INSTANCE=1'], ''),
     ]:
-      print(args, creation)
+      print(path, args, creation)
+      filesystem_path = os.path.join('.', *path)
+      if not os.path.exists(filesystem_path):
+        os.makedirs(filesystem_path)
       # compile the code with the modularize feature and the preload-file option enabled
       run_process([PYTHON, EMCC, 'test.c', '-o', 'test.js'] + args)
-      shutil.move('test.js', os.path.join('subdir', 'test.js'))
-      shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
-      open('subdir/test.html', 'w').write('''
+      shutil.move('test.js', os.path.join(filesystem_path, 'test.js'))
+      shutil.move('test.wasm', os.path.join(filesystem_path, 'test.wasm'))
+      open(os.path.join(filesystem_path, 'test.html'), 'w').write('''
         <script>
           setTimeout(function() {
             var xhr = new XMLHttpRequest();
@@ -4039,4 +4042,4 @@ window.close = function() {
           }, 1);
         </script>
       ''' % creation)
-      self.run_browser('subdir/test.html', None, '/report_result?0')
+      self.run_browser('/'.join(path + ['test.html']), None, '/report_result?0')
