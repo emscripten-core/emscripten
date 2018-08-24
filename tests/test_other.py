@@ -1887,27 +1887,34 @@ int f() {
     assert os.path.exists('a.out.js')
 
   def test_prepost(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write('''
+    with open('main.cpp', 'w') as f:
+      f.write('''
       #include <stdio.h>
       int main() {
         printf("hello from main\\n");
         return 0;
       }
-    ''')
-    open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
+      ''')
+    with open('pre.js', 'w') as f:
+      f.write('''
       var Module = {
         preRun: function() { out('pre-run') },
         postRun: function() { out('post-run') }
       };
-    ''')
+      ''')
 
+    run_process([PYTHON, EMCC, 'main.cpp', '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+    self.assertContained('pre-run\nhello from main\npost-run\n', run_js('a.out.js'))
+
+    # addRunDependency during preRun should prevent main, and post-run from
+    # running.
+    with open('pre.js', 'a') as f:
+      f.write('Module.preRun = function() { out("add-dep"); addRunDependency(); }\n')
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
-    self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
-
-    # never run, so no preRun or postRun
-    src = open(os.path.join(self.get_dir(), 'a.out.js')).read().replace('// {{PRE_RUN_ADDITIONS}}', 'addRunDependency()')
-    open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
-    self.assertNotContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+    output = run_js('a.out.js')
+    self.assertContained('add-dep\n', output)
+    self.assertNotContained('hello from main\n', output)
+    self.assertNotContained('post-run\n', output)
 
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
