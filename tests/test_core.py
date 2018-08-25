@@ -6213,11 +6213,10 @@ return malloc(size);
 
   ### Integration tests
 
-  @sync
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
-    create_test_file('post.js', '''
+    self.add_pre_run('''
       out('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); out([typeof ret, ret].join(','));
@@ -6249,7 +6248,6 @@ return malloc(size);
       out('stack is ok.');
       ccall('call_ccall_again', null);
       ''')
-    self.emcc_args += ['--post-js', 'post.js']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall.cpp')
@@ -6434,14 +6432,12 @@ return malloc(size);
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', open('src.js').read())
 
-  @sync
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
     src = path_from_root('tests', 'interop', 'test_add_function.cpp')
-    post_js = path_from_root('tests', 'interop', 'test_add_function_post.js')
-    self.emcc_args += ['--post-js', post_js]
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'interop', 'test_add_function_pre.js')]
 
     print('basics')
     self.do_run_in_out_file_test('tests', 'interop', 'test_add_function.cpp')
@@ -7650,7 +7646,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 |IDBFS is no longer included by default; build with -lidbfs.js|'''
     self.do_run('int main() { return 0; }', expected)
 
-  @sync
+  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow_check(self):
     self.set_setting('TOTAL_STACK', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
