@@ -3975,30 +3975,31 @@ Module = {
 
     self.dylink_test(main=r'''
       #include <stdio.h>
-      extern void side();
+      extern int side();
       int main() {
-        side();
+        printf("from side: %d.\n", side());
       }
     ''', side=r'''
       #include <stdio.h>
-      typedef void (*vfdi)(float, double, int);
-      void func_with_special_sig(float a, double b, int c) {
+      typedef int (*ifdi)(float, double, int);
+      int func_with_special_sig(float a, double b, int c) {
         printf("special %f %f %d\n", a, b, c);
+        return 1337;
       }
       struct DestructorCaller {
         ~DestructorCaller() { printf("destroy\n"); }
       };
-      void side() {
+      int side() {
         // d has a destructor that must be called on function
         // exit, which means an invoke will be used for the
         // indirect call here - and the signature of that call
         // is special and not present in the main module, so
         // it must be generated for the side module.
         DestructorCaller d;
-        volatile vfdi p = func_with_special_sig;
-        p(2.18281, 3.14159, 42);
+        volatile ifdi p = func_with_special_sig;
+        return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\n'])
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337\n'])
 
   @needs_dlfcn
   def test_dylink_hyper_dupe(self):
