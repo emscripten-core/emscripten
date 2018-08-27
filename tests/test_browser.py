@@ -73,6 +73,25 @@ def shell_with_script(shell_file, output_file, replacement):
       output.write(input.read().replace('{{{ SCRIPT }}}', replacement))
 
 
+def is_chrome():
+  return EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower()
+
+
+def no_chrome(note='chome is not supported'):
+  if is_chrome():
+    return unittest.skip(note)
+  return lambda f: f
+
+
+def no_swiftshader(f):
+  def decorated(self):
+    if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
+      self.skipTest('not compatible with swiftshader')
+    return f(self)
+
+  return decorated
+
+
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 
@@ -1850,15 +1869,22 @@ keydown(100);keyup(100); // trigger the end
     self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
+  @no_chrome("RELOCATABLE=1 forces synchronous compilation which chrome doesn't support")
+  def test_cubegeom_pre_relocatable(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre2(self):
     self.btest('cubegeom_pre2.c', reference='cubegeom_pre2.png', args=['-s', 'GL_DEBUG=1', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre3(self):
     self.btest('cubegeom_pre3.c', reference='cubegeom_pre2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
@@ -1932,10 +1958,12 @@ void *getBindBuffer() {
     self.btest('cubegeom_fog.c', reference='cubegeom_fog.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre_vao(self):
     self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre2_vao(self):
     self.btest('cubegeom_pre2_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
@@ -1944,6 +1972,7 @@ void *getBindBuffer() {
     self.btest('cubegeom_pre2_vao2.c', reference='cubegeom_pre2_vao2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
     self.btest('cubegeom_pre_vao_es.c', reference='cubegeom_pre_vao.png', args=['-s', 'FULL_ES2=1', '-lGL', '-lSDL'])
 
@@ -3046,7 +3075,11 @@ window.close = function() {
       self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
 
   def test_emterpreter_async_2(self):
-    self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3'])
+    # Error.stackTraceLimit default to 10 in chrome but this test relies on more
+    # than 40 stack frames being reported.
+    with open('pre.js', 'w') as f:
+      f.write('Error.stackTraceLimit = 80;\n')
+    self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '--pre-js', 'pre.js', ])
 
   def test_emterpreter_async_virtual(self):
     for opts in [0, 1, 2, 3]:
@@ -3198,6 +3231,7 @@ window.close = function() {
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'] + opts)
 
+  @no_chrome("required synchronous wasm compilation")
   def test_dynamic_link(self):
     open('pre.js', 'w').write('''
       Module.dynamicLibraries = ['side.wasm'];
@@ -3256,6 +3290,7 @@ window.close = function() {
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1'])
 
   @requires_graphics_hardware
+  @no_chrome("required synchronous wasm compilation")
   def test_dynamic_link_glemu(self):
     open('pre.js', 'w').write('''
       Module.dynamicLibraries = ['side.wasm'];
@@ -3372,10 +3407,8 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
+  @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   def test_pthread_kill(self):
-    if EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower():
-      # This test hangs the chrome render process, and keep subsequent tests from passing too
-      self.skipTest("pthread_kill hangs chrome renderer")
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_kill.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
@@ -3669,6 +3702,7 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
 
+  @no_chrome("chrome doesn't support synchronous compilation over 4k")
   def test_binaryen_async(self):
     # notice when we use async compilation
     script = '''
@@ -3696,7 +3730,7 @@ window.close = function() {
     {{{ SCRIPT }}}
 '''
     shell_with_script('shell.html', 'shell.html', script)
-    common_args = ['-s', 'WASM=1', '--shell-file', 'shell.html']
+    common_args = ['--shell-file', 'shell.html']
     for opts, expect in [
       ([], 1),
       (['-O1'], 1),

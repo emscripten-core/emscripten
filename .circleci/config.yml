@@ -195,24 +195,25 @@ jobs:
           name: install package dependencies
           command: |
             apt-get update -q
-            # install chromium-browser in order to ensure we have all the
+            # install chromium-browser in order to ensure we have most of the
             # dependecies for chrome.
-            apt-get install -q -y unzip xvfb chromium-browser
+            EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
+            apt-get install -q -y unzip xvfb chromium-browser openjdk-9-jre-headless $EXTRA_CHROME_DEPS
       - run:
           name: download chrome
           command: |
-            wget http://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/583421/chrome-linux.zip
-            unzip -q chrome-linux.zip
+            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            dpkg -i google-chrome-stable_current_amd64.deb
       - run:
           name: run tests
           command: |
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox"
-            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
-            export EMTEST_BROWSER="xvfb-run $HOME/chrome-linux/chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+            CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
+            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
+            export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             # Just run a subset of the tests for now.  To be expanded.
-            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_a*
+            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_[a-e]*
   test-ab:
     <<: *test-defaults
     environment:
