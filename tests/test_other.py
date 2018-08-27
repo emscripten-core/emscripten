@@ -8644,30 +8644,25 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
         void c() { printf("c\n"); }
         void d() { printf("d\n"); }
       ''')
-    with open('pre.js', 'wb') as f:
-      f.write(r'''
-        Module.onRuntimeInitialized = function() {
-          Module._a();
-          Module._b();
-          Module._c();
-          Module._d();
-        };
-      ''')
     for export_arg, expected in [
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"')
+      # extra space at end - should be ignored
+      ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
+      # stray slash
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''function requested to be exported, but not implemented: "\\\\'_c'"'''),
+      # stray slash
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''function requested to be exported, but not implemented: "\\\\ '_c'"'''),
+      # stray slash
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\"_c""'),
+      # stray slash
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\ "_c"'),
+      # missing comma
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"'),
     ]:
       print(export_arg)
       err = run_process([PYTHON, EMCC, 'src.c', '--pre-js', 'pre.js', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
       print(err)
-      self.assertContained(expected, err)
-    #self.assertContained('a\nb\nc\nd\n', run_js('a.out.js'))
-'''
-'_spatialite_alloc_connection'
-'_spatialite_init_ex',
+      if not expected:
+        assert not err
+      else:
+        self.assertContained(expected, err)
 
-
-'_sqlite3_clear_bindings',
-'_sqlite3_finalize',\
-'_sqlite3_close_v2',
-'_main'
-'''

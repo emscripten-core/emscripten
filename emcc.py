@@ -3007,7 +3007,7 @@ def parse_value(text):
           new = values[index].rstrip()
           if not len(new) == 0 and new[-1] == first:
             if start == index:
-              result.append(current[1:-1])
+              result.append(current.rstrip()[1:-1])
             else:
               result.append((current + sep + new)[1:-1])
             break
