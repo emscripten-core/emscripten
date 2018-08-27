@@ -3999,7 +3999,7 @@ Module = {
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337\n'])
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dlfcn
   def test_dylink_hyper_dupe(self):
