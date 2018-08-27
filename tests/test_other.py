@@ -1917,7 +1917,7 @@ int f() {
         args += ['-s', 'INVOKE_RUN=0']
       if run_dep:
         with open('pre.js', 'w') as f:
-          f.write('Module.preInit = function() { addRunDependency("test"); }')
+          f.write('Module.preRun = function() { addRunDependency("test"); }')
         with open('post.js', 'w') as f:
           f.write('removeRunDependency("test");')
         args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
