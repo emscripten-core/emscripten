@@ -1901,7 +1901,7 @@ int f() {
       };
     ''')
 
-    Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0']).communicate()
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     self.assertContained('pre-run\nhello from main\npost-run\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # never run, so no preRun or postRun
@@ -1912,20 +1912,30 @@ int f() {
     # noInitialRun prevents run
     for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
       print(no_initial_run, run_dep)
-      Popen([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '-s', 'BINARYEN_ASYNC_COMPILATION=0']).communicate()
-      src = 'var Module = { noInitialRun: %d };\n' % no_initial_run + open(os.path.join(self.get_dir(), 'a.out.js')).read()
+      args = ['-s', 'BINARYEN_ASYNC_COMPILATION=0']
+      if no_initial_run:
+        args += ['-s', 'INVOKE_RUN=0']
       if run_dep:
-        src = src.replace('// {{PRE_RUN_ADDITIONS}}', '// {{PRE_RUN_ADDITIONS}}\naddRunDependency("test");') \
-                 .replace('// {{POST_RUN_ADDITIONS}}', '// {{POST_RUN_ADDITIONS}}\nremoveRunDependency("test");')
-      open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
-      assert ('hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js'))) != no_initial_run, 'only run if no noInitialRun'
+        with open('pre.js', 'w') as f:
+          f.write('Module.preRun = function() { addRunDependency("test"); }')
+        with open('post.js', 'w') as f:
+          f.write('removeRunDependency("test");')
+        args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+
+      run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] +  args)
+
+      output = run_js(os.path.join(self.get_dir(), 'a.out.js'))
+      if no_initial_run:
+        self.assertNotContained('hello from main', output)
+      else:
+        self.assertContained('hello from main', output)
 
       if no_initial_run:
         # Calling main later should still work, filesystem etc. must be set up.
         print('call main later')
         src = open(os.path.join(self.get_dir(), 'a.out.js')).read() + '\nModule.callMain();\n';
         open(os.path.join(self.get_dir(), 'a.out.js'), 'w').write(src)
-        assert 'hello from main' in run_js(os.path.join(self.get_dir(), 'a.out.js')), 'main should print when called manually'
+        self.assertContained('hello from main', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
     # Use postInit
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
@@ -5904,9 +5914,9 @@ int main() {
   });
   return 14;
 }
-    ''')
+''')
     try_delete('a.out.js')
-    Popen([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0']).communicate()
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0'])
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
   def test_underscore_exit(self):
@@ -5914,7 +5924,8 @@ int main() {
 #include <unistd.h>
 int main() {
   _exit(0); // should not end up in an infinite loop with non-underscore exit
-}    ''')
+}
+''')
     subprocess.check_call([PYTHON, EMCC, 'src.cpp'])
     self.assertContained('', run_js('a.out.js', assert_returncode=0))
 
