@@ -2837,7 +2837,7 @@ class JS(object):
 
   @staticmethod
   def make_invoke(sig, named=True):
-    if sig == 'X' and Settings.WASM:
+    if sig == 'X':
       # 'X' means the generic unknown signature, used in wasm dynamic linking
       # to indicate an invoke that the main JS may not have defined, so we
       # go through this (which may be slower, as we don't declare the
@@ -2845,6 +2845,7 @@ class JS(object):
       # have JS and so can define their own invokes to be linked in.
       # This only makes sense in function pointer emulation mode, where we
       # can do a direct table call.
+      assert Settings.WASM
       assert Settings.EMULATED_FUNCTION_POINTERS
       args = ''
       body = '''
