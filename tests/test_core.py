@@ -1604,7 +1604,6 @@ def process(filename):
       # test EXPORT_ALL
       self.set_setting('EXPORTED_FUNCTIONS', [])
       self.set_setting('EXPORT_ALL', 1)
-      self.set_setting('LINKABLE', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
                                    js_transform=check)
 
