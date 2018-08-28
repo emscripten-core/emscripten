@@ -5098,60 +5098,34 @@ main(const int argc, const char * const * const argv)
     # check NO_FILESYSTEM is automatically set, and effective
     def test(opts, ratio, absolute):
       print('opts, ratio, absolute:', opts, ratio, absolute)
-      def get_size(name):
-        return os.stat(name).st_size
       sizes = {}
       def do(name, source, moar_opts):
         self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts).communicate()
-        sizes[name] = get_size(name + '.js')
+        run_process([PYTHON, EMCC, path_from_root('tests', source), '-o', name + '.js'] + opts + moar_opts)
+        sizes[name] = os.path.getsize(name + '.js')
         if os.path.exists(name + '.wasm'):
-          sizes[name] += get_size(name + '.wasm')
+          sizes[name] += os.path.getsize(name + '.wasm')
         self.assertContained('hello, world!', run_js(name + '.js'))
       do('normal', 'hello_world_fopen.c', [])
       do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do NO_FILESYSTEM
       do('no_fs_manual', 'hello_world.c', ['-s', 'NO_FILESYSTEM=1'])
       do('no_nuthin', 'hello_world.c', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
       print('  ', sizes)
-      assert sizes['no_fs'] < sizes['normal']
-      assert abs(sizes['no_nuthin'] - sizes['no_fs']) < 30, 'almost no difference between then, now that we export nothing by default anyhow'
-      assert sizes['no_nuthin'] < ratio*sizes['normal']
-      assert sizes['no_nuthin'] < absolute, str(sizes['no_nuthin']) + ' >= ' + str(absolute)
-      assert sizes['no_fs_manual'] < sizes['no_fs'] + 30 # manual can usually remove a tiny bit more
+      self.assertLess(sizes['no_fs'], sizes['normal'])
+      # almost no difference between then, now that we export nothing by default anyhow
+      self.assertLess(abs(sizes['no_nuthin'] - sizes['no_fs']), 30)
+      self.assertLess(sizes['no_nuthin'], ratio*sizes['normal'])
+      self.assertLess(sizes['no_nuthin'], absolute)
+      # manual can usually remove a tiny bit more
+      self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
     test(['-s', 'ASSERTIONS=0'], 0.75, 120000) # we don't care about code size with assertions
     test(['-O1'], 0.66, 90000)
     test(['-O2'], 0.50, 45000)
     test(['-O3', '--closure', '1'], 0.60, 17000)
     # asm.js too
-    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 0.60, 36000)
-    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 0.60, 33000) # might change now and then
-
-  def test_no_nuthin_2(self):
-    # focus on EXPORTED_RUNTIME_METHODS effects, on hello_world_em_asm
-    def test(opts, absolute):
-      print('opts, absolute:', opts, absolute)
-      def get_size(name):
-        return os.stat(name).st_size
-      sizes = {}
-      def do(name, moar_opts):
-        self.clear()
-        Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world_em_asm.c'), '-o', name + '.js'] + opts + moar_opts).communicate()
-        sizes[name] = get_size(name + '.js')
-        if os.path.exists(name + '.wasm'):
-          sizes[name] += get_size(name + '.wasm')
-        self.assertContained('hello, world!', run_js(name + '.js'))
-      do('normal', [])
-      do('no_nuthin', ['-s', 'EXPORTED_RUNTIME_METHODS=[]'])
-      print('  ', sizes)
-      assert abs(sizes['no_nuthin'] - sizes['normal']) < 15
-      assert sizes['no_nuthin'] < absolute
-    test(['-s', 'ASSERTIONS=0'], 95000) # we don't care about code size with assertions
-    test(['-O1'], 80000)
-    test(['-O2'], 42000)
-    test(['-O3', '--closure', '1'], 12000) # closure is great!
-    # asm.js comparison with closure 1 and 2. these numbers are fairly close, might change now and then.
-    test(['-O3', '--closure', '1', '-s', 'WASM=0'], 28000)
-    test(['-O3', '--closure', '2', '-s', 'WASM=0'], 26000)
+    if not self.is_wasm_backend():
+      test(['-O3', '--closure', '1', '-s', 'WASM=0'], 0.60, 36000)
+      test(['-O3', '--closure', '2', '-s', 'WASM=0'], 0.60, 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
