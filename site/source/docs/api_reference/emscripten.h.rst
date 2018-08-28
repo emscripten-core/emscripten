@@ -352,6 +352,8 @@ Functions
 	
 	See also :c:func:`emscripten_set_main_loop` and :c:func:`emscripten_set_main_loop_arg` for information about setting and using the main loop. 
 
+	.. note:: This function cancels the main loop, which means that it will no longer be called. No other changes occur to control flow. In particular, if you started the main loop with the ``simulate_infinite_loop`` option, you can still cancel the main loop, but execution will not continue in the code right after setting the main loop (we do not actually run an infinite loop there - that's not possible in JavaScript, so to simulate an infinite loop we halt execution at that stage, and then the next thing that runs is the main loop itself, so it seems like an infinite loop has begun there; canceling the main loop sort of breaks the metaphor).
+
 .. c:function:: int emscripten_set_main_loop_timing(int mode, int value)
 
 	Specifies the scheduling mode that the main loop tick function of the calling thread will be called with.
