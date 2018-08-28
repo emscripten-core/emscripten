@@ -292,7 +292,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'valarray.cpp',
       'variant.cpp',
       'vector.cpp',
-      'experimental/filesystem/path.cpp'
+      os.path.join('experimental', 'filesystem', 'path.cpp')
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
     return build_libcxx(
