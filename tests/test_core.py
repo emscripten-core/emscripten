@@ -2448,6 +2448,23 @@ def process(filename):
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
   @needs_dlfcn
+  def test_dlfcn_missing(self):
+    self.set_setting('MAIN_MODULE', 1)
+    src = r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <assert.h>
+
+      int main() {
+        void* lib_handle = dlopen("libfoo.so", RTLD_NOW);
+        assert(!lib_handle);
+        printf("error: %s\n", dlerror());
+        return 0;
+      }
+      '''
+    self.do_run(src, 'error: Could not find dynamic lib: libfoo.so\n')
+
+  @needs_dlfcn
   def test_dlfcn_basic(self):
     self.prep_dlfcn_lib()
     lib_src = '''
