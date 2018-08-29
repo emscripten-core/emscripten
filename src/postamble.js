@@ -466,8 +466,6 @@ if (!ENVIRONMENT_IS_PTHREAD) run();
 run();
 #endif
 
-// {{POST_RUN_ADDITIONS}}
-
 #if BUILD_AS_WORKER
 
 var workerResponded = false, workerCallbackId = -1;

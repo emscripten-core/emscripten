@@ -962,14 +962,10 @@ function abortOnCannotGrowMemory() {
 if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   var ret;
   try {
-    if (ArrayBuffer.transfer) {
-      ret = ArrayBuffer.transfer(buffer, size);
-    } else {
-      var oldHEAP8 = HEAP8;
-      ret = new ArrayBuffer(size);
-      var temp = new Int8Array(ret);
-      temp.set(oldHEAP8);
-    }
+    var oldHEAP8 = HEAP8;
+    ret = new ArrayBuffer(size);
+    var temp = new Int8Array(ret);
+    temp.set(oldHEAP8);
   } catch(e) {
     return false;
   }
