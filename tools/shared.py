@@ -2837,20 +2837,38 @@ class JS(object):
 
   @staticmethod
   def make_invoke(sig, named=True):
-    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-    args = 'index' + (',' if args else '') + args
+    if sig == 'X':
+      # 'X' means the generic unknown signature, used in wasm dynamic linking
+      # to indicate an invoke that the main JS may not have defined, so we
+      # go through this (which may be slower, as we don't declare the
+      # arguments explicitly). In non-wasm dynamic linking, the other modules
+      # have JS and so can define their own invokes to be linked in.
+      # This only makes sense in function pointer emulation mode, where we
+      # can do a direct table call.
+      assert Settings.WASM
+      assert Settings.EMULATED_FUNCTION_POINTERS
+      args = ''
+      body = '''
+        var args = Array.prototype.slice.call(arguments);
+        return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+      '''
+    else:
+      legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+      args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
+      args = 'index' + (',' if args else '') + args
+      ret = 'return ' if sig[0] != 'v' else ''
+      body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
   var sp = stackSave();
   try {
-    %sModule["dynCall_%s"](%s);
+    %s
   } catch(e) {
     stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+}''' % ((' invoke_' + sig) if named else '', args, body)
     return ret
 
   @staticmethod

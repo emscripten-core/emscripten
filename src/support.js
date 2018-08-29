@@ -208,6 +208,13 @@ function loadWebAssemblyModule(binary, loadAsync) {
           return Module[name];
         };
       }
+      if (prop.startsWith('invoke_')) {
+        // A missing invoke, i.e., an invoke for a function type
+        // present in the dynamic library but not in the main JS,
+        // and the dynamic library cannot provide JS for it. Use
+        // the generic "X" invoke for it.
+        return env[prop] = invoke_X;
+      }
       // if not a global, then a function - call it indirectly
       return env[prop] = function() {
 #if ASSERTIONS
