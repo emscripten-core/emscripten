@@ -981,7 +981,6 @@ int main() {
     self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
   def test_exceptions_custom(self):
-    #self.emcc_args.append('--profiling-funcs')
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
     self.set_setting('NO_EXIT_RUNTIME', 0)

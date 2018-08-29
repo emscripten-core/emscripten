@@ -3687,7 +3687,7 @@ int main()
         raise Exception('cannot find llvm-lit tool')
     cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print(cmd)
-    p = run_process(cmd)
+    run_process(cmd)
 
   def test_bad_triple(self):
     # compile a minimal program, with as few dependencies as possible, as
@@ -7196,8 +7196,8 @@ int main() {
                    '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
                    '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'),
                    '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
-                   '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', # '-O2', '--closure', '1',
-                   '-g1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+                   '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
+                   '--closure', '1', '-g1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
 
     # Simple test program to load the test.js binding library and call the binding to the
     # C function returning the 64 bit long.
@@ -7989,8 +7989,8 @@ int main() {
         self.assertNotContained(warning, err)
 
   def test_binaryen_invalid_method(self):
-    proc = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"])
-    proc.communicate()
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"], stderr=PIPE, check=False)
+    self.assertContained('Unrecognized BINARYEN_METHOD', proc.stderr)
     assert proc.returncode != 0
 
   @no_wasm_backend()
