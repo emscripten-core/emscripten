@@ -1836,6 +1836,7 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
   metadata_file = basename + '.metadata'
   wasm = basename + '.wasm'
   base_wasm = infile
+  debug_copy(infile, 'base.wasm')
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
@@ -1857,19 +1858,23 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
           shared.Settings.RESERVED_FUNCTION_POINTERS)]
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
     cmd.append('-g')
+  if shared.Settings.LEGALIZE_JS_FFI != 1:
+    cmd.append('--no-legalize-javascript-ffi')
   if write_source_map:
     cmd.append('--input-source-map=' + base_source_map)
     cmd.append('--output-source-map=' + wasm + '.map')
   shared.check_call(cmd, stdout=open(metadata_file, 'w'))
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
+  debug_copy(wasm, 'post_finalize.wasm')
 
   return create_metadata_wasm(open(metadata_file).read(), DEBUG)
 
 
 def create_metadata_wasm(metadata_raw, DEBUG):
   metadata = load_metadata(metadata_raw)
-  if DEBUG: logging.debug("Metadata parsed: " + pprint.pformat(metadata))
+  if DEBUG:
+    logging.debug("Metadata parsed: " + pprint.pformat(metadata))
   return metadata
 
 
