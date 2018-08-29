@@ -74,11 +74,11 @@ class other(RunnerCore):
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
-      output = run_process([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE)
-      self.assertContained('''clang version %s''' % expected_llvm_version(), output.stderr.replace('\r', ''), output.stderr.replace('\r', ''))
-      self.assertContained('''GNU''', output.stdout)
-      self.assertNotContained('this is dangerous', output.stdout)
-      self.assertNotContained('this is dangerous', output.stderr)
+      proc = run_process([PYTHON, compiler, '-v'], stdout=PIPE, stderr=PIPE)
+      self.assertContained('clang version %s' % expected_llvm_version(), proc.stderr)
+      self.assertContained('GNU', proc.stderr)
+      self.assertNotContained('this is dangerous', proc.stdout)
+      self.assertNotContained('this is dangerous', proc.stderr)
 
   def test_emcc_generate_config(self):
     for compiler in [EMCC, EMXX]:
