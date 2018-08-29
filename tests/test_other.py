@@ -8636,7 +8636,7 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
     self.assertTrue(Building.is_ar(fname))
 
   def test_emcc_parsing(self):
-    with open('src.c', 'wb') as f:
+    with open('src.c', 'w') as f:
       f.write(r'''
         #include <stdio.h>
         void a() { printf("a\n"); }
@@ -8659,7 +8659,7 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"'),
     ]:
       print(export_arg)
-      err = run_process([PYTHON, EMCC, 'src.c', '--pre-js', 'pre.js', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
+      err = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
       print(err)
       if not expected:
         assert not err
