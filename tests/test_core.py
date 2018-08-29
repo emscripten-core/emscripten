@@ -5872,9 +5872,6 @@ return malloc(size);
         '-I' + path_from_root('tests', 'poppler', 'include')
       ]
 
-      # We append code that does run() ourselves
-      #self.set_setting('INVOKE_RUN', 0)
-
       with open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w') as f:
         f.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
 
@@ -5890,10 +5887,7 @@ return malloc(size);
 ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      # Used in file, but not needed, mostly
-      # fontconfig = self.get_library('fontconfig', [os.path.join('src', '.libs', 'libfontconfig.a')])
       freetype = self.get_freetype()
-
 
       # Poppler has some pretty glaring warning.  Suppress them to keep the
       # test output readable.
