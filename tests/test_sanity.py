@@ -568,14 +568,13 @@ fi
   def test_emconfig(self):
     restore_and_set_up()
 
-    (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
+    fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
     orig_config = open(CONFIG_FILE, 'r').read()
 
     # Move the ~/.emscripten to a custom location.
-    tfile = os.fdopen(fd, "w")
-    tfile.write(orig_config)
-    tfile.close()
+    with os.fdopen(fd, "w") as f:
+      f.write(orig_config)
 
     # Make a syntax error in the original config file so that attempting to access it would fail.
     open(CONFIG_FILE, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
@@ -586,11 +585,15 @@ fi
       self.do([PYTHON, EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = run_js('a.out.js')
 
+    self.assertContained('hello, world!', result)
+
     # Clean up created temp files.
     os.remove(custom_config_filename)
+    if Settings.WASM_BACKEND:
+      os.remove(custom_config_filename + "_sanity_wasm")
+    else:
+      os.remove(custom_config_filename + "_sanity")
     shutil.rmtree(temp_dir)
-
-    self.assertContained('hello, world!', result)
 
   def test_emcc_ports(self):
     restore_and_set_up()
@@ -738,6 +741,8 @@ fi
           output = build()
           assert 'js optimizer using native' in output
           test() # still works
+
+    try_delete(CANONICAL_TEMP_DIR)
 
   def test_embuilder(self):
     restore_and_set_up()
