@@ -3692,11 +3692,11 @@ int main()
     with open('minimal.cpp', 'w') as f:
       f.write('int main() { return 0; }')
     run_process([CLANG, 'minimal.cpp', '-c', '-emit-llvm', '-o', 'a.bc'] + get_clang_native_args(), env=get_clang_native_env())
-    proc = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False)
+    err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
-      self.assertContained('machine type must be wasm32', proc.stderr)
+      self.assertContained('machine type must be wasm32', err)
     else:
-      assert 'warning' in err or 'WARNING' in proc.stderr, proc.stderr
+      assert 'warning' in err or 'WARNING' in err, err
       assert 'incorrect target triple' in err or 'different target triples' in err, err
 
   def test_valid_abspath(self):
