@@ -80,8 +80,8 @@ MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '
 
 class sanity(RunnerCore):
   @classmethod
-  def setUpClass(self):
-    super(RunnerCore, self).setUpClass()
+  def setUpClass(cls):
+    super(sanity, cls).setUpClass()
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
@@ -98,15 +98,17 @@ class sanity(RunnerCore):
     assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
   @classmethod
-  def tearDownClass(self):
-    super(RunnerCore, self).tearDownClass()
+  def tearDownClass(cls):
+    super(sanity, cls).tearDownClass()
     restore()
 
   def setUp(self):
+    super(sanity, self).setUp()
     wipe()
     self.start_time = time.time()
 
   def tearDown(self):
+    super(sanity, self).tearDown()
     print('time:', time.time() - self.start_time)
 
   def do(self, command):
@@ -131,7 +133,8 @@ class sanity(RunnerCore):
     self.assertContained(expected, output)
     return output
 
-  def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  def test_aaa_normal(self):
     for command in commands:
       # Your existing EM_CONFIG should work!
       restore_and_set_up()
@@ -493,43 +496,36 @@ fi
 
     EMCC_CACHE = Cache.dirname
 
-    for compiler in [EMCC]:
-      print(compiler)
+    restore_and_set_up()
 
-      restore_and_set_up()
+    Cache.erase()
+    assert not os.path.exists(EMCC_CACHE)
 
-      Cache.erase()
-      assert not os.path.exists(EMCC_CACHE)
+    with env_modify({'EMCC_DEBUG': '1'}):
+      basebc_name = os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc')
+      dcebc_name = os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc')
+      ll_names = [os.path.join(CANONICAL_TEMP_DIR, 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
 
-      with env_modify({'EMCC_DEBUG': '1'}):
-        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
-        if not os.path.exists(self.working_dir):
-          os.mkdir(self.working_dir)
-
-        basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
-        ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
-
-        # Building a file that *does* need something *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
-          for i in range(3):
-            print(filename, libname, i)
-            self.clear()
-            try_delete(basebc_name) # we might need to check this file later
-            try_delete(dcebc_name) # we might need to check this file later
-            for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-            #print '\n\n\n', output
-            assert INCLUDING_MESSAGE.replace('X', libname) in output
-            if libname == 'libc':
-              assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
-            else:
-              assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
-            assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-            self.assertContained('hello, world!', run_js('a.out.js'))
-            assert os.path.exists(EMCC_CACHE)
-            full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
-            assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
+      # Building a file that *does* need something *should* trigger cache generation, but only the first time
+      for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
+        for i in range(3):
+          print(filename, libname, i)
+          self.clear()
+          try_delete(basebc_name) # we might need to check this file later
+          try_delete(dcebc_name) # we might need to check this file later
+          for ll_name in ll_names: try_delete(ll_name)
+          output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+          #print '\n\n\n', output
+          assert INCLUDING_MESSAGE.replace('X', libname) in output
+          if libname == 'libc':
+            assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
+          else:
+            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
+          assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert os.path.exists(EMCC_CACHE)
+          full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
+          assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
 
     restore_and_set_up()
 
@@ -1084,4 +1080,3 @@ BINARYEN_ROOT = ''
           if not side_module:
             assert os.path.exists('a.out.js')
             self.assertContained('hello, world!', run_js('a.out.js'))
-
