@@ -502,18 +502,12 @@ fi
     assert not os.path.exists(EMCC_CACHE)
 
     with env_modify({'EMCC_DEBUG': '1'}):
-      basebc_name = os.path.join(CANONICAL_TEMP_DIR, 'emcc-0-basebc.bc')
-      dcebc_name = os.path.join(CANONICAL_TEMP_DIR, 'emcc-1-linktime.bc')
-      ll_names = [os.path.join(CANONICAL_TEMP_DIR, 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
-
-      # Building a file that *does* need something *should* trigger cache generation, but only the first time
+      # Building a file that *does* need something *should* trigger cache
+      # generation, but only the first time
       for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
         for i in range(3):
           print(filename, libname, i)
           self.clear()
-          try_delete(basebc_name) # we might need to check this file later
-          try_delete(dcebc_name) # we might need to check this file later
-          for ll_name in ll_names: try_delete(ll_name)
           output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
           #print '\n\n\n', output
           assert INCLUDING_MESSAGE.replace('X', libname) in output
@@ -527,6 +521,7 @@ fi
           full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
           assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
 
+    try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
     def ensure_cache():
@@ -547,8 +542,6 @@ fi
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
       self.assertFalse(os.path.exists(EMCC_CACHE))
-
-    try_delete(CANONICAL_TEMP_DIR)
 
   def test_nostdincxx(self):
     restore_and_set_up()
