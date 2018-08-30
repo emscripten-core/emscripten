@@ -1255,7 +1255,7 @@ def create_basic_funcs(function_table_sigs):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
-  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr', 'ABORT']
+  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr']
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
     basic_vars += ['STACKTOP', 'STACK_MAX']
   if shared.Settings.RELOCATABLE:
@@ -1978,7 +1978,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR', 'ABORT']
+  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR']
 
   if not shared.Settings.RELOCATABLE:
     global_vars = metadata['externs']
