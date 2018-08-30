@@ -18,7 +18,7 @@ import tools.shared
 from tools.shared import *
 from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
-from runner import skip_if, no_wasm_backend
+from runner import skip_if, no_wasm_backend, needs_dlfcn
 
 # decorators for limiting which modes a test can run in
 
@@ -35,14 +35,6 @@ def SIMD(f):
 
 def no_emterpreter(f):
   return skip_if(f, 'is_emterpreter')
-
-
-def needs_dlfcn(func):
-  def decorated(self):
-    self.check_dlfcn()
-    return func(self)
-
-  return decorated
 
 
 def no_wasm(note=''):
@@ -555,41 +547,41 @@ int main()
     self.do_run_in_out_file_test('tests', 'core', 'test_globaldoubles')
 
   def test_math(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_math')
+    self.do_run_in_out_file_test('tests', 'core', 'test_math')
 
   def test_erf(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_erf')
+    self.do_run_in_out_file_test('tests', 'core', 'test_erf')
 
   def test_math_hyperbolic(self):
-      src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
-      expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
-      self.do_run(src, expected)
+    src = open(path_from_root('tests', 'hyperbolic', 'src.c'), 'r').read()
+    expected = open(path_from_root('tests', 'hyperbolic', 'output.txt'), 'r').read()
+    self.do_run(src, expected)
 
   def test_math_lgamma(self):
-      test_path = path_from_root('tests', 'math', 'lgamma')
-      src, output = (test_path + s for s in ('.c', '.out'))
+    test_path = path_from_root('tests', 'math', 'lgamma')
+    src, output = (test_path + s for s in ('.c', '.out'))
 
+    self.do_run_from_file(src, output)
+
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+      print('main module')
+      self.set_setting('MAIN_MODULE', 1)
       self.do_run_from_file(src, output)
 
-      if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
-        print('main module')
-        self.set_setting('MAIN_MODULE', 1)
-        self.do_run_from_file(src, output)
-
   def test_frexp(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
   def test_rounding(self):
-      # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
-      for precise_f32 in [0, 1]:
-        print(precise_f32)
-        self.set_setting('PRECISE_F32', precise_f32)
+    # needs to flush stdio streams
+    self.set_setting('NO_EXIT_RUNTIME', 0)
+    for precise_f32 in [0, 1]:
+      print(precise_f32)
+      self.set_setting('PRECISE_F32', precise_f32)
 
-        self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
+      self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
+    self.do_run_in_out_file_test('tests', 'core', 'test_fcvt')
 
   def test_llrint(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llrint')
@@ -953,97 +945,98 @@ int main() {
     self.do_run(src, r'''ok.''')
 
   def test_exceptions(self):
-      self.set_setting('EXCEPTION_DEBUG', 1)
-      # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXCEPTION_DEBUG', 1)
+    # needs to flush stdio streams
+    self.set_setting('NO_EXIT_RUNTIME', 0)
 
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.maybe_closure()
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.maybe_closure()
 
-      src = '''
-        #include <stdio.h>
-        void thrower() {
-          printf("infunc...");
-          throw(99);
+    src = '''
+      #include <stdio.h>
+      void thrower() {
+        printf("infunc...");
+        throw(99);
+        printf("FAIL");
+      }
+      int main() {
+        try {
+          printf("*throw...");
+          throw(1);
           printf("FAIL");
+        } catch(...) {
+          printf("caught!");
         }
-        int main() {
-          try {
-            printf("*throw...");
-            throw(1);
-            printf("FAIL");
-          } catch(...) {
-            printf("caught!");
-          }
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-          return 0;
+        try {
+          thrower();
+        } catch(...) {
+          printf("done!*\\n");
         }
-      '''
-      self.do_run(src, '*throw...caught!infunc...done!*')
-
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
-
-      src = '''
-      #include <iostream>
-
-      class MyException
-      {
-      public:
-          MyException(){ std::cout << "Construct..."; }
-          MyException( const MyException & ) { std::cout << "Copy..."; }
-          ~MyException(){ std::cout << "Destruct..."; }
-      };
-
-      int function()
-      {
-          std::cout << "Throw...";
-          throw MyException();
+        return 0;
       }
+    '''
+    self.do_run(src, '*throw...caught!infunc...done!*')
 
-      int function2()
-      {
-          return function();
-      }
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
-      int main()
-      {
-          try
-          {
-              function2();
-          }
-          catch (MyException & e)
-          {
-              std::cout << "Caught...";
-          }
+  def test_exceptions_custom(self):
+    self.set_setting('EXCEPTION_DEBUG', 1)
+    # needs to flush stdio streams
+    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.maybe_closure()
+    src = '''
+    #include <iostream>
 
-          try
-          {
-              function2();
-          }
-          catch (MyException e)
-          {
-              std::cout << "Caught...";
-          }
+    class MyException
+    {
+    public:
+        MyException(){ std::cout << "Construct..."; }
+        MyException( const MyException & ) { std::cout << "Copy..."; }
+        ~MyException(){ std::cout << "Destruct..."; }
+    };
 
-          return 0;
-      }
-      '''
+    int function()
+    {
+        std::cout << "Throw...";
+        throw MyException();
+    }
 
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
+    int function2()
+    {
+        return function();
+    }
+
+    int main()
+    {
+        try
+        {
+            function2();
+        }
+        catch (MyException & e)
+        {
+            std::cout << "Caught...";
+        }
+
+        try
+        {
+            function2();
+        }
+        catch (MyException e)
+        {
+            std::cout << "Caught...";
+        }
+
+        return 0;
+    }
+    '''
+
+    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
   def test_exceptions_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-
-    for safe in [0,1]:
-      # Wasm backend does not support SAFE_HEAP option
-      if self.is_wasm_backend() and safe == 1:
-        continue
+    for safe in [0, 1]:
       print(safe)
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
@@ -1934,12 +1927,12 @@ Success!''')
       self.do_run(src, '*4,3,4*\n*6,4,6*')
 
   def test_varargs(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_varargs')
+    self.do_run_in_out_file_test('tests', 'core', 'test_varargs')
 
   @no_wasm_backend('Calling varargs across function calls is undefined behavior in C,'
                    ' and asmjs and wasm implement it differently.')
   def test_varargs_multi(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_varargs_multi')
+    self.do_run_in_out_file_test('tests', 'core', 'test_varargs_multi')
 
   @unittest.skip('clang cannot compile this code with that target yet')
   def test_varargs_byval(self):
@@ -2016,121 +2009,121 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_functionpointer_libfunc_varargs')
 
   def test_structbyval(self):
-      self.set_setting('INLINING_LIMIT', 50)
+    self.set_setting('INLINING_LIMIT', 50)
 
-      # part 1: make sure that normally, passing structs by value works
+    # part 1: make sure that normally, passing structs by value works
 
-      src = r'''
-        #include <stdio.h>
+    src = r'''
+      #include <stdio.h>
 
-        struct point
-        {
-          int x, y;
-        };
+      struct point
+      {
+        int x, y;
+      };
 
-        void dump(struct point p) {
-          p.x++; // should not modify
-          p.y++; // anything in the caller!
-          printf("dump: %d,%d\n", p.x, p.y);
-        }
+      void dump(struct point p) {
+        p.x++; // should not modify
+        p.y++; // anything in the caller!
+        printf("dump: %d,%d\n", p.x, p.y);
+      }
 
-        void dumpmod(struct point *p) {
-          p->x++; // should not modify
-          p->y++; // anything in the caller!
-          printf("dump: %d,%d\n", p->x, p->y);
-        }
+      void dumpmod(struct point *p) {
+        p->x++; // should not modify
+        p->y++; // anything in the caller!
+        printf("dump: %d,%d\n", p->x, p->y);
+      }
 
-        int main( int argc, const char *argv[] ) {
-          point p = { 54, 2 };
-          printf("pre:  %d,%d\n", p.x, p.y);
-          dump(p);
-          void (*dp)(point p) = dump; // And, as a function pointer
-          dp(p);
-          printf("post: %d,%d\n", p.x, p.y);
-          dumpmod(&p);
-          dumpmod(&p);
-          printf("last: %d,%d\n", p.x, p.y);
-          return 0;
-        }
-      '''
-      self.do_run(src, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2\ndump: 55,3\ndump: 56,4\nlast: 56,4')
+      int main( int argc, const char *argv[] ) {
+        point p = { 54, 2 };
+        printf("pre:  %d,%d\n", p.x, p.y);
+        dump(p);
+        void (*dp)(point p) = dump; // And, as a function pointer
+        dp(p);
+        printf("post: %d,%d\n", p.x, p.y);
+        dumpmod(&p);
+        dumpmod(&p);
+        printf("last: %d,%d\n", p.x, p.y);
+        return 0;
+      }
+    '''
+    self.do_run(src, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2\ndump: 55,3\ndump: 56,4\nlast: 56,4')
 
-      # Check for lack of warning in the generated code (they should appear in part 2)
-      generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'Casting a function pointer type to another with a different number of arguments.' not in generated, 'Unexpected warning'
+    # Check for lack of warning in the generated code (they should appear in part 2)
+    generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+    assert 'Casting a function pointer type to another with a different number of arguments.' not in generated, 'Unexpected warning'
 
-      # part 2: make sure we warn about mixing c and c++ calling conventions here
+    # part 2: make sure we warn about mixing c and c++ calling conventions here
 
-      if self.emcc_args != []: return # Optimized code is missing the warning comments
+    if self.emcc_args != []: return # Optimized code is missing the warning comments
 
-      header = r'''
-        struct point
-        {
-          int x, y;
-        };
+    header = r'''
+      struct point
+      {
+        int x, y;
+      };
 
-      '''
-      open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+    '''
+    open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
 
-      supp = r'''
-        #include <stdio.h>
-        #include "header.h"
+    supp = r'''
+      #include <stdio.h>
+      #include "header.h"
 
-        void dump(struct point p) {
-          p.x++; // should not modify
-          p.y++; // anything in the caller!
-          printf("dump: %d,%d\n", p.x, p.y);
-        }
-      '''
-      supp_name = os.path.join(self.get_dir(), 'supp.c')
-      open(supp_name, 'w').write(supp)
+      void dump(struct point p) {
+        p.x++; // should not modify
+        p.y++; // anything in the caller!
+        printf("dump: %d,%d\n", p.x, p.y);
+      }
+    '''
+    supp_name = os.path.join(self.get_dir(), 'supp.c')
+    open(supp_name, 'w').write(supp)
 
-      main = r'''
-        #include <stdio.h>
-        #include "header.h"
+    main = r'''
+      #include <stdio.h>
+      #include "header.h"
 
-        #ifdef __cplusplus
-        extern "C" {
-        #endif
-          void dump(struct point p);
-        #ifdef __cplusplus
-        }
-        #endif
+      #ifdef __cplusplus
+      extern "C" {
+      #endif
+        void dump(struct point p);
+      #ifdef __cplusplus
+      }
+      #endif
 
-        int main( int argc, const char *argv[] ) {
-          struct point p = { 54, 2 };
-          printf("pre:  %d,%d\n", p.x, p.y);
-          dump(p);
-          void (*dp)(struct point p) = dump; // And, as a function pointer
-          dp(p);
-          printf("post: %d,%d\n", p.x, p.y);
-          return 0;
-        }
-      '''
-      main_name = os.path.join(self.get_dir(), 'main.cpp')
-      open(main_name, 'w').write(main)
+      int main( int argc, const char *argv[] ) {
+        struct point p = { 54, 2 };
+        printf("pre:  %d,%d\n", p.x, p.y);
+        dump(p);
+        void (*dp)(struct point p) = dump; // And, as a function pointer
+        dp(p);
+        printf("post: %d,%d\n", p.x, p.y);
+        return 0;
+      }
+    '''
+    main_name = os.path.join(self.get_dir(), 'main.cpp')
+    open(main_name, 'w').write(main)
 
-      Building.emcc(supp_name)
-      Building.emcc(main_name)
-      all_name = os.path.join(self.get_dir(), 'all.bc')
-      Building.link([supp_name + '.o', main_name + '.o'], all_name)
+    Building.emcc(supp_name)
+    Building.emcc(main_name)
+    all_name = os.path.join(self.get_dir(), 'all.bc')
+    Building.link([supp_name + '.o', main_name + '.o'], all_name)
 
-      # This will fail! See explanation near the warning we check for, in the compiler source code
-      run_process([PYTHON, EMCC, all_name] + self.emcc_args, check=False, stderr=PIPE)
+    # This will fail! See explanation near the warning we check for, in the compiler source code
+    run_process([PYTHON, EMCC, all_name] + self.emcc_args, check=False, stderr=PIPE)
 
-      # Check for warning in the generated code
-      generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      print('skipping C/C++ conventions warning check, since not i386-pc-linux-gnu', file=sys.stderr)
+    # Check for warning in the generated code
+    generated = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+    print('skipping C/C++ conventions warning check, since not i386-pc-linux-gnu', file=sys.stderr)
 
   def test_stdlibs(self):
-      # safe heap prints a warning that messes up our output.
-      self.set_setting('SAFE_HEAP', 0)
-      # needs atexit
-      self.set_setting('NO_EXIT_RUNTIME', 0)
-      self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
+    # safe heap prints a warning that messes up our output.
+    self.set_setting('SAFE_HEAP', 0)
+    # needs atexit
+    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
   def test_stdbool(self):
-      src = r'''
+    src = r'''
         #include <stdio.h>
         #include <stdbool.h>
 
@@ -2142,7 +2135,7 @@ The current type of b is: 9
         }
       '''
 
-      self.do_run(src, '*1*', force_c=True)
+    self.do_run(src, '*1*', force_c=True)
 
   def test_strtoll_hex(self):
     # tests strtoll for hex strings (0x...)
@@ -2414,12 +2407,6 @@ The current type of b is: 9
 
     self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
     self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
-
-  def check_dlfcn(self):
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dlfcn with memory growth (without wasm)')
-    if self.is_wasm_backend():
-      self.skipTest('no shared modules in wasm backend')
 
   def prep_dlfcn_lib(self):
     self.set_setting('MAIN_MODULE', 0)

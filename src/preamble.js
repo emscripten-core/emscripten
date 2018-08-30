@@ -782,12 +782,9 @@ function demangle(func) {
   var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
   assert(__cxa_demangle_func);
   try {
-    var s =
-#if WASM_BACKEND
-      func;
-#else
-      func.substr(1);
-#endif
+    var s = func;
+    if (s.startsWith('__Z'))
+      s = s.substr(1);
     var len = lengthBytesUTF8(s)+1;
     var buf = _malloc(len);
     stringToUTF8(s, buf, len);
