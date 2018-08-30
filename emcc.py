@@ -431,7 +431,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
-    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION)
+    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
