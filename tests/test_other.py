@@ -1303,14 +1303,11 @@ int f() {
     open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
-    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE, check=False)
-    if proc.returncode == 0:
-      print(proc.stderr)
+    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE)
     if self.is_wasm_backend():
       self.assertIn('error: unknown file type:', proc.stderr)
     else:
       self.assertIn('is not LLVM bitcode, cannot link', proc.stderr)
-    self.assertNotEqual(proc.returncode, 0)
 
   def test_export_all(self):
     lib = r'''
@@ -3560,7 +3557,7 @@ int main() {
     assert opt_min - opt_max <= opt_max*0.1, 'opt builds are all fairly close'
     assert sizes['0'] > 1.20*opt_max, 'unopt build is quite larger'
 
-  @no_wasm_backend('relies on ctor evaluation and dtor elimiation')
+  @no_wasm_backend('relies on ctor evaluation and dtor elimination')
   def test_global_inits(self):
     open('inc.h', 'w').write(r'''
 #include <stdio.h>

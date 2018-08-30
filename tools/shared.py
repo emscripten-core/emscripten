@@ -1899,7 +1899,7 @@ class Building(object):
   @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
     # lld doesn't currently support --start-group/--end-group since the
-    # sematics are more like the windows linker where there is no need for
+    # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
     cmd = [
