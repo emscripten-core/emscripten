@@ -966,6 +966,7 @@ fi
       with env_modify({'LLVM': path_from_root('tests', 'fake2', 'bin')}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
 
+    try_delete(CANONICAL_TEMP_DIR)
     return # TODO: the rest of this
 
     # check separate cache dirs are used
