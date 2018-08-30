@@ -14,7 +14,7 @@ import time
 import unittest
 
 from tools.shared import *
-from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library, no_wasm_backend, needs_dlfcn
+from runner import RunnerCore, path_from_root, get_zlib_library, get_bullet_library, no_wasm_backend, needs_dlfcn, env_modify
 import tools.shared
 import tools.line_endings
 import tools.js_optimizer
@@ -24,7 +24,7 @@ import tools.duplicate_function_eliminator
 
 class temp_directory(object):
   def __enter__(self):
-    self.directory = tempfile.mkdtemp(prefix='emsripten_temp_', dir=TEMP_DIR)
+    self.directory = tempfile.mkdtemp(prefix='emtest_temp_', dir=TEMP_DIR)
     self.prev_cwd = os.getcwd()
     os.chdir(self.directory)
     return self.directory
@@ -34,30 +34,24 @@ class temp_directory(object):
     try_delete(self.directory)
 
 
-class clean_write_access_to_canonical_temp_dir(object):
-  def __init__(self, dir=CANONICAL_TEMP_DIR):
-    self.canonical_temp_dir = dir
+def uses_canonical_tmp(func):
+  """Decorator that signals the use of the canonical temp by a test method.
 
-  def clean_emcc_files_in_temp_dir(self):
-    for x in os.listdir(self.canonical_temp_dir):
-      if x.startswith('emcc-') or x.startswith('a.out'):
-        os.unlink(os.path.join(self.canonical_temp_dir, x))
+  This decorator takes care of cleaning the directory after the
+  test to satisfy the leak detector.
+  """
+  def decorated(self):
+    # Before running the test completely remove the canonical_tmp
+    if os.path.exists(self.canonical_temp_dir):
+      shutil.rmtree(self.canonical_temp_dir)
+    func(self)
+    # Make sure the test isn't lying about the fact that it uses
+    # canonical_tmp
+    self.assertTrue(os.path.exists(self.canonical_temp_dir))
+    shutil.rmtree(self.canonical_temp_dir)
 
-  def __enter__(self):
-    self.CANONICAL_TEMP_DIR_exists = os.path.exists(self.canonical_temp_dir)
-    if not self.CANONICAL_TEMP_DIR_exists:
-      os.makedirs(self.canonical_temp_dir)
-    else:
-      # Delete earlier files in the canonical temp directory so that
-      # previous leftover files don't have a possibility of confusing
-      # the test result e.g. on failure of the actual task
-      self.clean_emcc_files_in_temp_dir()
+  return decorated
 
-  def __exit__(self, type, value, traceback):
-    if not self.CANONICAL_TEMP_DIR_exists:
-      try_delete(self.canonical_temp_dir)
-    else:
-      self.clean_emcc_files_in_temp_dir()
 
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
@@ -484,11 +478,11 @@ f.close()
       else:
         self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
+  @uses_canonical_tmp
   def test_emcc_cflags(self):
     # see we print them out
     # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
-    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
+    output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(COMPILER_OPTS)), flags)
     # check they work
@@ -2052,12 +2046,9 @@ int f() {
       if save:
         try_delete('a.out.js')
         Building.llvm_dis(self.in_dir('my_bitcode.bc'), self.in_dir('my_ll.ll'))
-        try:
-          os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-          Popen([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js']).communicate()
+        with env_modify({'EMCC_LEAVE_INPUTS_RAW': '1'}):
+          run_process([PYTHON, EMCC, 'my_ll.ll', '-o', 'two.js'])
           assert 'hello, world!' in run_js(self.in_dir('two.js'))
-        finally:
-          del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
   def test_js_optimizer(self):
     for input, expected, passes in [
@@ -2239,41 +2230,39 @@ int f() {
       assert 'foo.o: ' in proc.stdout, '-%s failed to produce the right output: %s' % (opt, proc.stdout)
       assert 'error' not in proc.stderr, 'Unexpected stderr: ' + proc.stderr
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
+  @uses_canonical_tmp
   def test_emcc_debug_files(self):
     for opts in [0, 1, 2, 3]:
       for debug in [None, '1', '2']:
         print(opts, debug)
-        if debug:
-          os.environ['EMCC_DEBUG'] = debug
-        try:
-          with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-            check_execute([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O'+ str(opts)], stderr=PIPE)
-            if debug is None:
-              for x in os.listdir(self.canonical_temp_dir):
-                if x.startswith('emcc-'):
-                  assert 0
-            elif debug == '1':
-              if self.is_wasm_backend():
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
-              else:
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
-            elif debug == '2':
-              if self.is_wasm_backend():
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
-              else:
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
-                assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
-        finally:
-          if debug:
-            del os.environ['EMCC_DEBUG']
+        if os.path.exists(self.canonical_temp_dir):
+          shutil.rmtree(self.canonical_temp_dir)
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
+        env = os.environ.copy()
+        if debug is None:
+          env.pop('EMCC_DEBUG', None)
+        else:
+          env['EMCC_DEBUG'] = debug
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-O' + str(opts)], stderr=PIPE, env=env)
+        if debug is None:
+          self.assertFalse(os.path.exists(self.canonical_temp_dir))
+        elif debug == '1':
+          if self.is_wasm_backend():
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
+          else:
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
+        elif debug == '2':
+          if self.is_wasm_backend():
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
+          else:
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
+            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
+
+  @uses_canonical_tmp
   def test_debuginfo(self):
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
+    with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect_debug in [
           (['-O0'], False),
           (['-O0', '-g'], True),
@@ -2284,8 +2273,7 @@ int f() {
           (['-O2', '-g'], True),
         ]:
         print(args, expect_debug)
-        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         lines = err.splitlines()
         if self.is_wasm_backend():
           finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
@@ -2299,8 +2287,6 @@ int f() {
             self.assertNotIn('strip-debug', opts)
           else:
             self.assertIn('strip-debug', opts)
-    finally:
-      del os.environ['EMCC_DEBUG']
 
   def test_scons(self): # also incidentally tests c++11 integration in llvm 3.1
     scons_path = Building.which('scons')
@@ -2344,7 +2330,7 @@ int f() {
         path_from_root('tests', 'embind', 'embind.test.js'),
       ]
 
-      Popen(
+      proc = run_process(
         [ PYTHON,
           EMCC,
           path_from_root('tests', 'embind', 'embind_test.cpp'),
@@ -2353,10 +2339,12 @@ int f() {
           '-s', 'BINARYEN_ASYNC_COMPILATION=0'
         ] + args,
         stderr=PIPE if fail else None,
-        env=environ).communicate()
+        check=not fail,
+        env=environ)
 
-      assert os.path.exists(self.in_dir('a.out.js')) == (not fail)
-      if not fail:
+      if fail:
+        self.assertNotEqual(proc.returncode, 0)
+      else:
         with open(self.in_dir('a.out.js'), 'ab') as f:
           for tf in testFiles:
             f.write(open(tf, 'rb').read())
@@ -2446,10 +2434,9 @@ seeked= file.
         return 0;
       }
     ''')
-    os.environ["EMMAKEN_JUST_CONFIGURE"] = "1"
-    cmd = [PYTHON, EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
+    with env_modify({'EMMAKEN_JUST_CONFIGURE': '1'}):
+      cmd = [PYTHON, EMCC, '-s', 'ASSERTIONS=1', os.path.join(self.get_dir(), 'conftest.c'), '-o', 'conftest']
     output = run_process(cmd, stderr=PIPE)
-    del os.environ["EMMAKEN_JUST_CONFIGURE"]
     self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
     assert os.path.exists('conftest')
 
@@ -3510,11 +3497,10 @@ int main() {
       run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp')])
       self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
   @no_wasm_backend('tests internal compiler command')
+  @uses_canonical_tmp
   def test_os_oz(self):
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
+    with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
           (['-O1'], 'LLVM opts: -O1'),
           (['-O2'], 'LLVM opts: -O3'),
@@ -3523,12 +3509,9 @@ int main() {
           (['-O3'], 'LLVM opts: -O3'),
         ]:
         print(args, expect)
-        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         self.assertContained(expect, err)
         self.assertContained('hello, world!', run_js('a.out.js'))
-    finally:
-      del os.environ['EMCC_DEBUG']
 
   def test_oz_size(self):
     sizes = {}
@@ -4599,44 +4582,27 @@ main()
     run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1'])
 
   def test_only_force_stdlibs(self):
-    def test(name):
+    def test(name, fail=False):
       print(name)
-      Popen([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE).communicate()
-      self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
+      run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE)
+      if fail:
+        run_js('a.out.js', stderr=PIPE, assert_returncode=1)
+      else:
+        self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
 
     test('normal') # normally is ok
 
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx'}):
       test('forced libs is ok, they were there anyhow')
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
 
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
       test('partial list, but ok since we grab them as needed')
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
 
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc'
-      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-      ok = False
-      test('fail! not enough stdlibs')
-    except:
-      ok = True
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
-      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
-    assert ok
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc', 'EMCC_ONLY_FORCED_STDLIBS':'1'}):
+      test('fail! not enough stdlibs', fail=True)
 
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
-      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx', 'EMCC_ONLY_FORCED_STDLIBS':'1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
-      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
 
   def test_only_force_stdlibs_2(self):
     open('src.cpp', 'w').write(r'''
@@ -4654,14 +4620,9 @@ int main()
   }
 }
 ''')
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libc,libcxxabi,libcxx'
-      os.environ['EMCC_ONLY_FORCED_STDLIBS'] = '1'
-      Popen([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0']).communicate()
-      self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
-      del os.environ['EMCC_ONLY_FORCED_STDLIBS']
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx', 'EMCC_ONLY_FORCED_STDLIBS':'1'}):
+      run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+    self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
   def test_strftime_zZ(self):
     open('src.cpp', 'w').write(r'''
@@ -5568,11 +5529,8 @@ function _main() {
 
     def do_log_test(source, expected, func):
       print('log test', source, expected)
-      try:
-        os.environ['EMCC_LOG_EMTERPRETER_CODE'] = '1'
+      with env_modify({'EMCC_LOG_EMTERPRETER_CODE': '1'}):
         err = run_process([PYTHON, EMCC, source, '-O3', '-s', 'EMTERPRETIFY=1'], stderr=PIPE).stderr
-      finally:
-        del os.environ['EMCC_LOG_EMTERPRETER_CODE']
       lines = err.split('\n')
       lines = [line for line in lines if 'raw bytecode for ' + func in line]
       assert len(lines) == 1, '\n\n'.join(lines)
@@ -5772,21 +5730,12 @@ int main(void) {
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
   @no_wasm_backend('tests asmjs optimizer')
+  @uses_canonical_tmp
   def test_native_optimizer(self):
     def test(args, expected):
       print(args, expected)
-      old_debug = os.environ.get('EMCC_DEBUG')
-      old_native = os.environ.get('EMCC_NATIVE_OPTIMIZER')
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        os.environ['EMCC_NATIVE_OPTIMIZER'] = '1'
-        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'WASM=0'] + args, stderr=PIPE).stderr
-      finally:
-        if old_debug: os.environ['EMCC_DEBUG'] = old_debug
-        else: del os.environ['EMCC_DEBUG']
-        if old_native: os.environ['EMCC_NATIVE_OPTIMIZER'] = old_native
-        else: del os.environ['EMCC_NATIVE_OPTIMIZER']
+      with env_modify({'EMCC_DEBUG': '1', 'EMCC_NATIVE_OPTIMIZER': '1'}):
+        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'WASM=0'] + args, stderr=PIPE).stderr
       assert err.count('js optimizer using native') == expected, [err, expected]
       self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -5798,8 +5747,7 @@ int main(void) {
     for i in [0, 1, 2]:
       for f in ['hello_world.c', 'files.cpp']:
         print(i, f)
-        try:
-          os.environ['EMCONFIGURE_JS'] = str(i)
+        with env_modify({'EMCONFIGURE_JS': str(i)}):
           self.clear()
           Popen([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', f)]).communicate()
           Popen([PYTHON, EMCC, 'a.o']).communicate()
@@ -5814,54 +5762,48 @@ int main(void) {
               assert not os.path.exists('a.out.js') # native .o, not bitcode!
             else:
               assert os.path.exists('a.out.js')
-        finally:
-          del os.environ['EMCONFIGURE_JS']
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
   @no_wasm_backend('tests fastcomp specific passes')
+  @uses_canonical_tmp
   def test_emcc_c_multi(self):
-    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      def test(args, llvm_opts=None):
-        print(args)
-        lib = r'''
-          int mult() { return 1; }
-        '''
+    def test(args, llvm_opts=None):
+      print(args)
+      lib = r'''
+        int mult() { return 1; }
+      '''
 
-        lib_name = 'libA.c'
-        open(lib_name, 'w').write(lib)
-        main = r'''
-          #include <stdio.h>
-          int mult();
-          int main() {
-            printf("result: %d\n", mult());
-            return 0;
-          }
-        '''
-        main_name = 'main.c'
-        open(main_name, 'w').write(main)
+      lib_name = 'libA.c'
+      open(lib_name, 'w').write(lib)
+      main = r'''
+        #include <stdio.h>
+        int mult();
+        int main() {
+          printf("result: %d\n", mult());
+          return 0;
+        }
+      '''
+      main_name = 'main.c'
+      open(main_name, 'w').write(main)
 
-        try:
-          os.environ['EMCC_DEBUG'] = '1'
-          err = run_process([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).stderr
-        finally:
-          del os.environ['EMCC_DEBUG']
+      with env_modify({'EMCC_DEBUG': '1'}):
+        err = run_process([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).stderr
 
-        VECTORIZE = '-disable-loop-vectorization'
+      VECTORIZE = '-disable-loop-vectorization'
 
-        if args:
-          assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-          assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
-        else:
-          assert err.count(VECTORIZE) == 0, err # no optimizations
+      if args:
+        assert err.count(VECTORIZE) == 2, err # specified twice, once per file
+        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
+      else:
+        assert err.count(VECTORIZE) == 0, err # no optimizations
 
-        Popen([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')]).communicate()
+      run_process([PYTHON, EMCC, main_name.replace('.c', '.o'), lib_name.replace('.c', '.o')])
 
-        self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+      self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-      test([])
-      test(['-O2'], '-O3')
-      test(['-Oz'], '-Oz')
-      test(['-Os'], '-Os')
+    test([])
+    test(['-O2'], '-O3')
+    test(['-Oz'], '-Oz')
+    test(['-Os'], '-Os')
 
   def test_export_all_3142(self):
     open('src.cpp', 'w').write(r'''
@@ -7421,8 +7363,8 @@ int main() {
     if not self.is_wasm_backend():
       self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', proc.stderr)
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
   @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
+  @uses_canonical_tmp
   def test_eval_ctors(self):
     for wasm in (1, 0):
       print('wasm', wasm)
@@ -7524,8 +7466,7 @@ int main() {
       assert first < second and second < third, [first, second, third]
 
       print('helpful output')
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
+      with env_modify({'EMCC_DEBUG': '1'}):
         open('src.cpp', 'w').write(r'''
   #include <stdio.h>
   struct C {
@@ -7534,14 +7475,11 @@ int main() {
   C c;
   int main() {}
         ''')
-        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
+        err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
         self.assertContained('___syscall54', err) # the failing call should be mentioned
         if not wasm: # js will show a stack trace
           self.assertContained('ctorEval.js', err) # with a stack trace
         self.assertContained('ctor_evaller: not successful', err) # with logging
-      finally:
-        del os.environ['EMCC_DEBUG']
 
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
@@ -7853,67 +7791,61 @@ int main() {
           for f in files:
             try_delete(f)
 
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
   @no_wasm_backend('asm2wasm specific')
+  @uses_canonical_tmp
   def test_binaryen_opts(self):
-    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        for args, expect_js_opts, expect_only_wasm in [
-            ([], False, True),
-            (['-O0'], False, True),
-            (['-O1'], False, True),
-            (['-O2'], False, True),
-            (['-O2', '--js-opts', '1'], True, False), # user asked
-            (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
-            (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-            (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
-            (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
-            (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-            (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
-            (['-O3'], False, True),
-            (['-Os'], False, True),
-            (['-Oz'], False, True), # ctor evaller turned off since only-wasm
-          ]:
-          try_delete('a.out.js')
-          try_delete('a.out.wast')
-          cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
-          print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
-          err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-          assert expect_js_opts == ('applying js optimization passes:' in err), err
-          if not self.is_wasm_backend():
-            assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-          wast = open('a.out.wast').read()
-          # i64s
-          i64s = wast.count('(i64.')
-          print('    seen i64s:', i64s)
-          assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
-          selects = wast.count('(select')
-          print('    seen selects:', selects)
-          if '-Os' in args or '-Oz' in args:
-            # when optimizing for size we should create selects
-            self.assertGreater(selects, 50)
-          else:
-            # when not optimizing for size we should not create selects
-            self.assertLess(selects, 10)
-          # asm2wasm opt line
-          asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
-          asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
-          if '-O0' in args or '-O' not in str(args):
-            assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
-          else:
-            opts_str = args[0]
-            assert opts_str.startswith('-O')
-            assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
-      finally:
-        del os.environ['EMCC_DEBUG']
+    with env_modify({'EMCC_DEBUG': '1'}):
+      for args, expect_js_opts, expect_only_wasm in [
+          ([], False, True),
+          (['-O0'], False, True),
+          (['-O1'], False, True),
+          (['-O2'], False, True),
+          (['-O2', '--js-opts', '1'], True, False), # user asked
+          (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
+          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
+          (['-O3'], False, True),
+          (['-Os'], False, True),
+          (['-Oz'], False, True), # ctor evaller turned off since only-wasm
+        ]:
+        try_delete('a.out.js')
+        try_delete('a.out.wast')
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+        print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
+        err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+        assert expect_js_opts == ('applying js optimization passes:' in err), err
+        if not self.is_wasm_backend():
+          assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
+        wast = open('a.out.wast').read()
+        # i64s
+        i64s = wast.count('(i64.')
+        print('    seen i64s:', i64s)
+        assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
+        selects = wast.count('(select')
+        print('    seen selects:', selects)
+        if '-Os' in args or '-Oz' in args:
+          # when optimizing for size we should create selects
+          self.assertGreater(selects, 50)
+        else:
+          # when not optimizing for size we should not create selects
+          self.assertLess(selects, 10)
+        # asm2wasm opt line
+        asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
+        asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
+        if '-O0' in args or '-O' not in str(args):
+          assert '-O' not in asm2wasm_line, 'no opts should be passed to asm2wasm: ' + asm2wasm_line
+        else:
+          opts_str = args[0]
+          assert opts_str.startswith('-O')
+          assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
 
-
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
   @no_wasm_backend()
+  @uses_canonical_tmp
   def test_binaryen_and_precise_f32(self):
-    try:
-      os.environ['EMCC_DEBUG'] = '1'
+    with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
           ([], True),
           (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
@@ -7923,12 +7855,9 @@ int main() {
         ]:
         print(args, expect)
         try_delete('a.out.js')
-        with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-          err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).stderr
+        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect == (' -emscripten-precise-f32' in err), err
         self.assertContained('hello, world!', run_js('a.out.js'))
-    finally:
-      del os.environ['EMCC_DEBUG']
 
   def test_binaryen_names(self):
     sizes = {}
@@ -8096,72 +8025,63 @@ int main() {
       seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
-#test debug info and debuggability of JS output
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
+  # test debug info and debuggability of JS output
+  @uses_canonical_tmp
   def test_binaryen_debug(self):
-    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
-            (['-O0'], False, False, False, True, False),
-            (['-O0', '-g1'], False, False, False, True, False),
-            (['-O0', '-g2'], True, False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
-            (['-O0', '-g'], True, True, False, True, False),
-            (['-O0', '--profiling-funcs'], True, False, False, True, False),
-            (['-O1'],        False, False, False, True, False),
-            (['-O2'],        False, False, True,  False, False),
-            (['-O2', '-g1'], False, False, True,  True, False),
-            (['-O2', '-g'],  True,  True,  False, True, False),
-            (['-O2', '--closure', '1'],         False, False, True, False, True),
-            (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
-            (['-O2', '--js-opts', '1'], False, False, True,  False, False),
-          ]:
-          print(args, expect_dash_g, expect_emit_text)
-          try_delete('a.out.wast')
-          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
-          print(' '.join(cmd))
-          err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-          if not self.is_wasm_backend():
-            asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
-            asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
-            print('|' + asm2wasm_line + '|')
-            assert expect_dash_g == (' -g ' in asm2wasm_line)
-            assert expect_emit_text == (' -S ' in asm2wasm_line)
-            if expect_emit_text:
-              text = open('a.out.wast').read()
-              assert ';;' in text, 'must see debug info comment'
-              assert 'hello_world.cpp:6' in text, 'must be file:line info'
-          js = open('a.out.js').read()
-          assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
-          assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
-          assert expect_closured == ('var a;' in js or 'var a,' in js or 'var a=' in js or 'var a ' in js), 'closured js must have tiny variable names'
-      finally:
-        del os.environ['EMCC_DEBUG']
-
-  @unittest.skipIf('EMCC_DEBUG' in os.environ, 'cannot run in debug mode')
-  @no_wasm_backend()
-  def test_binaryen_ignore_implicit_traps(self):
-    with clean_write_access_to_canonical_temp_dir(self.canonical_temp_dir):
-      sizes = []
-      try:
-        os.environ['EMCC_DEBUG'] = '1'
-        for args, expect in [
-            ([], False),
-            (['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1'], True),
-          ]:
-          print(args, expect)
-          cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
-          print(' '.join(cmd))
-          err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+    with env_modify({'EMCC_DEBUG': '1'}):
+      for args, expect_dash_g, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured in [
+          (['-O0'], False, False, False, True, False),
+          (['-O0', '-g1'], False, False, False, True, False),
+          (['-O0', '-g2'], True, False, False, True, False), # in -g2+, we emit -g to asm2wasm so function names are saved
+          (['-O0', '-g'], True, True, False, True, False),
+          (['-O0', '--profiling-funcs'], True, False, False, True, False),
+          (['-O1'],        False, False, False, True, False),
+          (['-O2'],        False, False, True,  False, False),
+          (['-O2', '-g1'], False, False, True,  True, False),
+          (['-O2', '-g'],  True,  True,  False, True, False),
+          (['-O2', '--closure', '1'],         False, False, True, False, True),
+          (['-O2', '--closure', '1', '-g1'],  False, False, True, True,  True),
+          (['-O2', '--js-opts', '1'], False, False, True,  False, False),
+        ]:
+        print(args, expect_dash_g, expect_emit_text)
+        try_delete('a.out.wast')
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
+        print(' '.join(cmd))
+        err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+        if not self.is_wasm_backend():
           asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
           asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
           print('|' + asm2wasm_line + '|')
-          assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
-          sizes.append(os.stat('a.out.wasm').st_size)
-      finally:
-        del os.environ['EMCC_DEBUG']
-      print('sizes:', sizes)
-      assert sizes[1] < sizes[0], 'ignoring implicit traps must reduce code size'
+          assert expect_dash_g == (' -g ' in asm2wasm_line)
+          assert expect_emit_text == (' -S ' in asm2wasm_line)
+          if expect_emit_text:
+            text = open('a.out.wast').read()
+            assert ';;' in text, 'must see debug info comment'
+            assert 'hello_world.cpp:6' in text, 'must be file:line info'
+        js = open('a.out.js').read()
+        assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
+        assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
+        assert expect_closured == ('var a;' in js or 'var a,' in js or 'var a=' in js or 'var a ' in js), 'closured js must have tiny variable names'
+
+  @no_wasm_backend()
+  @uses_canonical_tmp
+  def test_binaryen_ignore_implicit_traps(self):
+    sizes = []
+    with env_modify({'EMCC_DEBUG': '1'}):
+      for args, expect in [
+          ([], False),
+          (['-s', 'BINARYEN_IGNORE_IMPLICIT_TRAPS=1'], True),
+        ]:
+        print(args, expect)
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
+        print(' '.join(cmd))
+        err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+        asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
+        asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
+        print('|' + asm2wasm_line + '|')
+        assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
+        sizes.append(os.stat('a.out.wasm').st_size)
+    print('sizes:', sizes)
 
   def test_binaryen_methods(self):
     for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
@@ -8387,19 +8307,13 @@ int main() {
   def test_wasm_backend(self):
     if not has_wasm_target(get_llc_targets()):
       self.skipTest('wasm backend was not built')
-    old = os.environ.get('EMCC_WASM_BACKEND')
-    if old == '1': return # already the default
-    try:
-      os.environ['EMCC_WASM_BACKEND'] = '1'
+    if self.is_wasm_backend():
+      return # already the default
+    with env_modify({'EMCC_WASM_BACKEND': '1'}):
       for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
         print(args)
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
         self.assertContained('hello, world!', run_js('a.out.js'))
-    finally:
-      if not old:
-        del os.environ['EMCC_WASM_BACKEND']
-      else:
-        os.environ['EMCC_WASM_BACKEND'] = old
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -8446,22 +8360,19 @@ int main() {
     env = os.environ.copy()
     if 'EMCC_STRICT' in env: del env['EMCC_STRICT']
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is not 0, '-llsomenonexistingfile is an error in strict mode'
+    # -llsomenonexistingfile is an error in strict mode
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env, check=False)
+    self.assertNotEqual(proc.returncode, 0)
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is 0, '-llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed'
+    # -llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
-    assert process.returncode is 0, '-s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1'
+    # -s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
 
-    process = Popen([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
-    process.communicate()
+    # -llsomenonexistingfile is not yet an error in non-strict mode
     # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
-    assert process.returncode is 0, '-llsomenonexistingfile is not yet an error in non-strict mode'
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
 
   # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
