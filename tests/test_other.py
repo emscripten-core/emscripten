@@ -8628,9 +8628,20 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
         void c() { printf("c\n"); }
         void d() { printf("d\n"); }
       ''')
+    with open('response', 'w') as f:
+      f.write(r'''[
+"_a",
+"_b",
+"_c",
+"_d"
+]
+''')
+
     for export_arg, expected in [
       # extra space at end - should be ignored
       ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
+      # extra newline in response file - should be ignored
+      ("EXPORTED_FUNCTIONS=@response", ''),
       # stray slash
       ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''function requested to be exported, but not implemented: "\\\\'_c'"'''),
       # stray slash
