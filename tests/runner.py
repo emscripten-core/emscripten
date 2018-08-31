@@ -1,5 +1,13 @@
 #!/usr/bin/env python2
-"""Simple test runner.
+"""This is the Emscripten test runner. To run some tests, specify which tests
+you want, for example
+
+  python tests/runner.py asm1.test_hello_world
+
+There are many options for which tests to run and how to run them. For details,
+see
+
+http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
 # This Python file uses the following encoding: utf-8
@@ -7,6 +15,7 @@
 
 from __future__ import print_function
 from subprocess import Popen, PIPE, STDOUT
+import argparse
 import atexit
 import contextlib
 import difflib
@@ -48,7 +57,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools.line_endings import check_line_endings
 from tools import jsrun, shared
@@ -125,21 +134,6 @@ def env_modify(updates):
     os.environ.clear()
     os.environ.update(old_env)
 
-
-HELP_TEXT = '''
-==============================================================================
-This is the Emscripten test runner. To run some tests, specify which tests you
-want, for example
-
-  python tests/runner.py asm1.test_hello_world
-
-There are many options for which tests to run and how to run them. For details,
-see
-
-http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
-==============================================================================
-
-'''
 
 # Core test runner class, shared between normal tests and benchmarks
 checked_sanity = False
@@ -1179,59 +1173,19 @@ def get_bullet_library(runner_core, use_cmake):
                                  cache_name_extra=configure_commands[0])
 
 
-def main(args):
-  print_help_if_args_empty(args)
-  print_js_engine_message()
-  sanity_checks()
-  args = args_with_extracted_js_engine_override(args)
-  args = args_with_default_suite_prepended(args)
-  modules = get_and_import_modules()
-  all_tests = get_all_tests(modules)
-  args = args_with_expanded_wildcards(args, all_tests)
-  args = skip_requested_tests(args, modules)
-  args = args_for_random_tests(args, modules)
-  suites, unmatched_tests = load_test_suites(args, modules)
-  return run_tests(suites, unmatched_tests)
-
-
-def print_help_if_args_empty(args):
-  if len(args) == 1 or (len(args) == 2 and args[1] in ['--help', '-h']):
-    print(HELP_TEXT)
-    sys.exit(0)
-
-
-def print_js_engine_message():
-  if EMTEST_ALL_ENGINES:
-    print('(using ALL js engines)')
-  else:
-    logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS engines, which is slower but provides more coverage')
-
-
-def sanity_checks():
+def check_js_engines():
   total_engines = len(shared.JS_ENGINES)
   shared.JS_ENGINES = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if len(shared.JS_ENGINES) == 0:
+  if not shared.JS_ENGINES:
     print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
   elif len(shared.JS_ENGINES) < total_engines:
     print('WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.')
 
-
-def args_with_extracted_js_engine_override(args):
-  # used by benchmarks
-  for i, arg in enumerate(args):
-    if arg.isupper():
-      print('Interpreting all capital argument "%s" as JS_ENGINE override' % arg)
-      Building.JS_ENGINE_OVERRIDE = eval(arg)
-      args[i] = None
-  return [a for a in args if a is not None]
-
-
-def args_with_default_suite_prepended(args):
-  def prepend_default(arg):
-    if arg.startswith('test_'):
-      return default_core_test_mode + '.' + arg
-    return arg
-  return list(map(prepend_default, args))
+  if EMTEST_ALL_ENGINES:
+    print('(using ALL js engines)')
+  else:
+    logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS '
+                   'engines, which is slower but provides more coverage')
 
 
 def get_and_import_modules():
@@ -1256,11 +1210,10 @@ def get_all_tests(modules):
   return all_tests
 
 
-def args_with_expanded_wildcards(args, all_tests):
+def tests_with_expanded_wildcards(args, all_tests):
   # Process wildcards, e.g. "browser.test_pthread_*" should expand to list all pthread tests
-  new_args = [args[0]]
-  for i in range(1, len(args)):
-    arg = args[i]
+  new_args = []
+  for i, arg in enumerate(args):
     if '*' in arg:
       if arg.startswith('skip:'):
         arg = arg[5:]
@@ -1270,9 +1223,9 @@ def args_with_expanded_wildcards(args, all_tests):
         new_args += fnmatch.filter(all_tests, arg)
     else:
       new_args += [arg]
-  if len(new_args) == 1 and len(args) > 1:
-    print('No tests found to run in set ' + str(args[1:]))
-    sys.exit(0)
+  if not new_args and args:
+    print('No tests found to run in set: ' + str(args))
+    sys.exit(1)
   return new_args
 
 
@@ -1297,16 +1250,16 @@ def skip_requested_tests(args, modules):
 
 
 def args_for_random_tests(args, modules):
-  if len(args) <= 1:
+  if not args:
     return args
-  first = args[1]
+  first = args[0]
   if first.startswith('random'):
     random_arg = first[6:]
     num_tests, base_module, relevant_modes = get_random_test_parameters(random_arg)
     for m in modules:
       if hasattr(m, base_module):
         base = getattr(m, base_module)
-        new_args = [args[0]] + choose_random_tests(base, num_tests, relevant_modes)
+        new_args = choose_random_tests(base, num_tests, relevant_modes)
         print_random_test_statistics(num_tests)
         return new_args
   return args
@@ -1368,7 +1321,7 @@ def print_random_test_statistics(num_tests):
 
 def load_test_suites(args, modules):
   loader = unittest.TestLoader()
-  unmatched_test_names = set(args[1:])
+  unmatched_test_names = set(args)
   suites = []
   for m in modules:
     names_in_module = []
@@ -1406,15 +1359,9 @@ def suite_for_module(module, tests):
   return unittest.TestSuite()
 
 
-def run_tests(suites, unmatched_test_names):
+def run_tests(options, suites):
   resultMessages = []
   num_failures = 0
-
-  if len(unmatched_test_names):
-    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_test_names))
-    num_failures += len(unmatched_test_names)
-    resultMessages.append('Could not find %s tests' % (len(unmatched_test_names),))
-    return 1
 
   print('Test suites:')
   print([s[0] for s in suites])
@@ -1437,6 +1384,49 @@ def run_tests(suites, unmatched_test_names):
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   return min(num_failures, 255)
+
+
+def parse_args(args):
+  parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
+  parser.add_argument('-j', '--js-engine', help='Set JS_ENGINE_OVERRIDE')
+  parser.add_argument('tests', nargs='*')
+  return parser.parse_args()
+
+
+def main(args):
+  options = parse_args(args)
+  if options.js_engine:
+    if options.js_engine == 'SPIDERMONKEY_ENGINE':
+      Building.JS_ENGINE_OVERRIDE = SPIDERMONKEY_ENGINE
+    elif options.js_engine == 'V8_ENGINE':
+      Building.JS_ENGINE_OVERRIDE = V8_ENGINE
+    elif options.js_engine == 'NODE_JS':
+      Building.JS_ENGINE_OVERRIDE = NODE_JS
+    else:
+      print('Unknown js engine override: ' + options.js_engine)
+      return 1
+    print("Overriding JS engine: " + Building.JS_ENGINE_OVERRIDE[0])
+
+  check_js_engines()
+
+  def prepend_default(arg):
+    if arg.startswith('test_'):
+      return default_core_test_mode + '.' + arg
+    return arg
+
+  tests = [prepend_default(t) for t in options.tests]
+
+  modules = get_and_import_modules()
+  all_tests = get_all_tests(modules)
+  tests = tests_with_expanded_wildcards(tests, all_tests)
+  tests = skip_requested_tests(tests, modules)
+  tests = args_for_random_tests(tests, modules)
+  suites, unmatched_tests = load_test_suites(tests, modules)
+  if unmatched_tests:
+    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
+    return 1
+
+  return run_tests(options, suites)
 
 
 if __name__ == '__main__':
