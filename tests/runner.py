@@ -8,6 +8,7 @@
 from __future__ import print_function
 from subprocess import Popen, PIPE, STDOUT
 import atexit
+import contextlib
 import difflib
 import fnmatch
 import functools
@@ -109,6 +110,20 @@ def no_wasm_backend(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note)
   return decorated
+
+
+@contextlib.contextmanager
+def env_modify(updates):
+  """A context manager that updates os.environ."""
+  # This could also be done with mock.patch.dict() but taking a dependency
+  # on the mock library is probably not worth the benefit.
+  old_env = os.environ.copy()
+  os.environ.update(updates)
+  try:
+    yield
+  finally:
+    os.environ.clear()
+    os.environ.update(old_env)
 
 
 HELP_TEXT = '''
@@ -273,7 +288,7 @@ class RunnerCore(unittest.TestCase):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
             print('leaked file: ' + f, file=sys.stderr)
-          raise Exception('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
+          self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
       # Make sure we don't leave stuff around
       # if not self.has_prev_ll:

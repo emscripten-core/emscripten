@@ -7,7 +7,7 @@ import stat
 import subprocess
 import time
 
-from runner import RunnerCore, path_from_root
+from runner import RunnerCore, path_from_root, env_modify
 from tools.shared import *
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
@@ -52,20 +52,6 @@ def chdir(dir):
     yield
   finally:
     os.chdir(orig_cwd)
-
-
-@contextlib.contextmanager
-def env_modify(updates):
-  """A context manager that updates os.environ."""
-  # This could also be done with mock.patch.dict() but taking a dependency
-  # on the mock library is probably not worth the benefit.
-  old_env = os.environ.copy()
-  os.environ.update(updates)
-  try:
-    yield
-  finally:
-    os.environ.clear()
-    os.environ.update(old_env)
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
