@@ -134,7 +134,7 @@ int main()
   }
 
   FILE *n = fopen("/dev/null", "w");
-  printf("5 bytes to dev/null: %d\n", fwrite(data, 1, 5, n));
+  printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
   fclose(n);
 
   printf("ok.\n");

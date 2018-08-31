@@ -1321,7 +1321,7 @@ def verify_settings():
       # TODO(sbc): Make this into a hard error.  We still have a few places that
       # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
       # generate_struct_info).
-      logging.debug('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+      logging.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
       Settings.WASM = 1
 
     if not BINARYEN_ROOT:
@@ -1897,7 +1897,11 @@ class Building(object):
     return args
 
   @staticmethod
-  def link_lld(files, target, opts=[], lto_level=0):
+  def link_lld(args, target, opts=[], lto_level=0):
+    # lld doesn't currently support --start-group/--end-group since the
+    # semantics are more like the windows linker where there is no need for
+    # grouping.
+    args = [a for a in args if a not in ('--start-group', '--end-group')]
     cmd = [
         WASM_LD,
         '-z',
@@ -1911,8 +1915,10 @@ class Building(object):
         '--import-memory',
         '--export',
         '__wasm_call_ctors',
+        '--export',
+        '__data_end',
         '--lto-O%d' % lto_level,
-    ] + files
+    ] + args
 
     if Settings.WASM_MEM_MAX != -1:
       cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
@@ -1935,7 +1941,7 @@ class Building(object):
       for export in expand_response(Settings.EXPORTED_FUNCTIONS):
         cmd += ['--export', export[1:]] # Strip the leading underscore
 
-    logging.debug('emcc: lld-linking: %s to %s', files, target)
+    logging.debug('emcc: lld-linking: %s to %s', args, target)
     check_call(cmd)
     return target
 
@@ -2837,20 +2843,38 @@ class JS(object):
 
   @staticmethod
   def make_invoke(sig, named=True):
-    legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
-    args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-    args = 'index' + (',' if args else '') + args
+    if sig == 'X':
+      # 'X' means the generic unknown signature, used in wasm dynamic linking
+      # to indicate an invoke that the main JS may not have defined, so we
+      # go through this (which may be slower, as we don't declare the
+      # arguments explicitly). In non-wasm dynamic linking, the other modules
+      # have JS and so can define their own invokes to be linked in.
+      # This only makes sense in function pointer emulation mode, where we
+      # can do a direct table call.
+      assert Settings.WASM
+      assert Settings.EMULATED_FUNCTION_POINTERS
+      args = ''
+      body = '''
+        var args = Array.prototype.slice.call(arguments);
+        return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+      '''
+    else:
+      legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
+      args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
+      args = 'index' + (',' if args else '') + args
+      ret = 'return ' if sig[0] != 'v' else ''
+      body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
   var sp = stackSave();
   try {
-    %sModule["dynCall_%s"](%s);
+    %s
   } catch(e) {
     stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
     Module["setThrew"](1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', sig, args)
+}''' % ((' invoke_' + sig) if named else '', args, body)
     return ret
 
   @staticmethod

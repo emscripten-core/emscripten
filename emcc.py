@@ -431,7 +431,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
-    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION)
+    print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
@@ -1191,6 +1191,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.USE_PTHREADS == 2:
           exit_with_error('USE_PTHREADS=2 is not longer supported')
+        # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
+        shared.Settings.TEXTDECODER = 0
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
@@ -1284,7 +1286,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
-        assert not shared.Settings.SPLIT_MEMORY, 'WebAssembly does not support split memory'
+        if shared.Settings.SPLIT_MEMORY:
+          exit_with_error('WebAssembly does not support split memory')
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1297,15 +1300,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.js_opts and not options.force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
           options.js_opts = None
           logging.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-        assert not options.use_closure_compiler == 2, 'closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm'
+        if options.use_closure_compiler == 2:
+          exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
         # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
         #  * if we also supported js mem inits we'd have 4 modes
         #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
-        if 'MEM_INIT_METHOD' in settings_changes:
+        if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
           exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
         options.memory_init_file = True
-        # async compilation requires wasm-only mode, and also not interpreting (the interpreter needs sync input)
-        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and shared.Building.is_wasm_only() and 'interpret' not in shared.Settings.BINARYEN_METHOD:
+        # async compilation requires not interpreting (the interpreter modes needs sync input)
+        if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and 'interpret' not in shared.Settings.BINARYEN_METHOD:
           # async compilation requires a swappable module - we swap it in when it's ready
           shared.Settings.SWAPPABLE_ASM_MODULE = 1
         else:
@@ -1754,8 +1758,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         assert not isinstance(final, list), 'we must have linked the final files, if linking was deferred, by this point'
 
-    # exit block 'post-link'
-    log_time('post-link')
+      # exit block 'post-link'
+      log_time('post-link')
 
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
@@ -2773,7 +2777,8 @@ def generate_html(target, options, js_target, target_basename,
     # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
     # of the wasm run methods.
     if not options.separate_asm or (shared.Settings.WASM and 'asmjs' not in shared.Settings.BINARYEN_METHOD):
-      assert len(asm_mods) == 0, 'no --separate-asm means no client code mods are possible'
+      if len(asm_mods):
+         exit_with_error('no --separate-asm means no client code mods are possible')
     else:
       script.un_src()
       if len(asm_mods) == 0:

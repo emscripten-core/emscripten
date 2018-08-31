@@ -1701,31 +1701,31 @@ LibraryManager.library = {
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
-  dlopen: function(filename, flag) {
+  dlopen: function(filenameAddr, flag) {
 #if MAIN_MODULE == 0
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
 #endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
-    if (filename === 0) {
+    var filename;
+    if (filenameAddr === 0) {
       filename = '__self__';
     } else {
-      var strfilename = Pointer_stringify(filename);
+      filename = Pointer_stringify(filenameAddr);
+
       var isValidFile = function (filename) {
         var target = FS.findObject(filename);
         return target && !target.isFolder && !target.isDevice;
       };
 
-      if (isValidFile(strfilename)) {
-        filename = strfilename;
-      } else {
+      if (!isValidFile(filename)) {
         if (ENV['LD_LIBRARY_PATH']) {
           searchpaths = ENV['LD_LIBRARY_PATH'].split(':');
         }
 
         for (var ident in searchpaths) {
-          var searchfile = PATH.join2(searchpaths[ident],strfilename);
+          var searchfile = PATH.join2(searchpaths[ident], filename);
           if (isValidFile(searchfile)) {
             filename = searchfile;
             break;

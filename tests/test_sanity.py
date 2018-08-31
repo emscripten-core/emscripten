@@ -7,7 +7,7 @@ import stat
 import subprocess
 import time
 
-from runner import RunnerCore, path_from_root
+from runner import RunnerCore, path_from_root, env_modify
 from tools.shared import *
 
 SANITY_FILE = CONFIG_FILE + '_sanity'
@@ -54,20 +54,6 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-@contextlib.contextmanager
-def env_modify(updates):
-  """A context manager that updates os.environ."""
-  # This could also be done with mock.patch.dict() but taking a dependency
-  # on the mock library is probably not worth the benefit.
-  old_env = os.environ.copy()
-  os.environ.update(updates)
-  try:
-    yield
-  finally:
-    os.environ.clear()
-    os.environ.update(old_env)
-
-
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 EMBUILDER = path_from_root('embuilder.py')
@@ -80,8 +66,8 @@ MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '
 
 class sanity(RunnerCore):
   @classmethod
-  def setUpClass(self):
-    super(RunnerCore, self).setUpClass()
+  def setUpClass(cls):
+    super(sanity, cls).setUpClass()
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
@@ -98,15 +84,17 @@ class sanity(RunnerCore):
     assert 'EMCC_WASM_BACKEND' not in os.environ, 'do not force wasm backend either way in sanity checks!'
 
   @classmethod
-  def tearDownClass(self):
-    super(RunnerCore, self).tearDownClass()
+  def tearDownClass(cls):
+    super(sanity, cls).tearDownClass()
     restore()
 
   def setUp(self):
+    super(sanity, self).setUp()
     wipe()
     self.start_time = time.time()
 
   def tearDown(self):
+    super(sanity, self).tearDown()
     print('time:', time.time() - self.start_time)
 
   def do(self, command):
@@ -131,7 +119,8 @@ class sanity(RunnerCore):
     self.assertContained(expected, output)
     return output
 
-  def test_aaa_normal(self): # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  def test_aaa_normal(self):
     for command in commands:
       # Your existing EM_CONFIG should work!
       restore_and_set_up()
@@ -493,44 +482,32 @@ fi
 
     EMCC_CACHE = Cache.dirname
 
-    for compiler in [EMCC]:
-      print(compiler)
+    restore_and_set_up()
 
-      restore_and_set_up()
+    Cache.erase()
+    assert not os.path.exists(EMCC_CACHE)
 
-      Cache.erase()
-      assert not os.path.exists(EMCC_CACHE)
+    with env_modify({'EMCC_DEBUG': '1'}):
+      # Building a file that *does* need something *should* trigger cache
+      # generation, but only the first time
+      for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
+        for i in range(3):
+          print(filename, libname, i)
+          self.clear()
+          output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+          #print '\n\n\n', output
+          assert INCLUDING_MESSAGE.replace('X', libname) in output
+          if libname == 'libc':
+            assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
+          else:
+            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
+          assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+          self.assertContained('hello, world!', run_js('a.out.js'))
+          assert os.path.exists(EMCC_CACHE)
+          full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
+          assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
 
-      with env_modify({'EMCC_DEBUG': '1'}):
-        self.working_dir = os.path.join(TEMP_DIR, 'emscripten_temp')
-        if not os.path.exists(self.working_dir):
-          os.mkdir(self.working_dir)
-
-        basebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-0-basebc.bc')
-        dcebc_name = os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-1-linktime.bc')
-        ll_names = [os.path.join(TEMP_DIR, 'emscripten_temp', 'emcc-X-ll.ll').replace('X', str(x)) for x in range(2,5)]
-
-        # Building a file that *does* need something *should* trigger cache generation, but only the first time
-        for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
-          for i in range(3):
-            print(filename, libname, i)
-            self.clear()
-            try_delete(basebc_name) # we might need to check this file later
-            try_delete(dcebc_name) # we might need to check this file later
-            for ll_name in ll_names: try_delete(ll_name)
-            output = self.do([compiler, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-            #print '\n\n\n', output
-            assert INCLUDING_MESSAGE.replace('X', libname) in output
-            if libname == 'libc':
-              assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
-            else:
-              assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
-            assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-            self.assertContained('hello, world!', run_js('a.out.js'))
-            assert os.path.exists(EMCC_CACHE)
-            full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
-            assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
-
+    try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
     def ensure_cache():
@@ -551,8 +528,6 @@ fi
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
       self.assertFalse(os.path.exists(EMCC_CACHE))
-
-    try_delete(CANONICAL_TEMP_DIR)
 
   def test_nostdincxx(self):
     restore_and_set_up()
@@ -579,14 +554,13 @@ fi
   def test_emconfig(self):
     restore_and_set_up()
 
-    (fd, custom_config_filename) = tempfile.mkstemp(prefix='.emscripten_config_')
+    fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
 
     orig_config = open(CONFIG_FILE, 'r').read()
 
     # Move the ~/.emscripten to a custom location.
-    tfile = os.fdopen(fd, "w")
-    tfile.write(orig_config)
-    tfile.close()
+    with os.fdopen(fd, "w") as f:
+      f.write(orig_config)
 
     # Make a syntax error in the original config file so that attempting to access it would fail.
     open(CONFIG_FILE, 'w').write('asdfasdfasdfasdf\n\'\'\'' + orig_config)
@@ -597,11 +571,15 @@ fi
       self.do([PYTHON, EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
       result = run_js('a.out.js')
 
+    self.assertContained('hello, world!', result)
+
     # Clean up created temp files.
     os.remove(custom_config_filename)
+    if Settings.WASM_BACKEND:
+      os.remove(custom_config_filename + "_sanity_wasm")
+    else:
+      os.remove(custom_config_filename + "_sanity")
     shutil.rmtree(temp_dir)
-
-    self.assertContained('hello, world!', result)
 
   def test_emcc_ports(self):
     restore_and_set_up()
@@ -749,6 +727,8 @@ fi
           output = build()
           assert 'js optimizer using native' in output
           test() # still works
+
+    try_delete(CANONICAL_TEMP_DIR)
 
   def test_embuilder(self):
     restore_and_set_up()
@@ -972,6 +952,7 @@ fi
       with env_modify({'LLVM': path_from_root('tests', 'fake2', 'bin')}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
 
+    try_delete(CANONICAL_TEMP_DIR)
     return # TODO: the rest of this
 
     # check separate cache dirs are used
@@ -1084,4 +1065,3 @@ BINARYEN_ROOT = ''
           if not side_module:
             assert os.path.exists('a.out.js')
             self.assertContained('hello, world!', run_js('a.out.js'))
-
