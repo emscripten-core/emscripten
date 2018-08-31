@@ -11,6 +11,8 @@ filename =
   */tools/clean_webconsole.py,
   */tools/emconfiguren.py,
   */tools/emdebug_cd_merger.py,
+  */tools/nativize_llvm.py
+  */tools/exec_llvm.py
   */tools/emmakenxx.py,
   */tools/exec_llvm.py,
   */tools/find_bigvars.py,

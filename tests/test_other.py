@@ -2355,21 +2355,20 @@ int f() {
       self.skipTest('test_llvm_nativizer does not work on Windows: https://github.com/kripken/emscripten/issues/702')
     if MACOS:
       self.skipTest('test_llvm_nativizer does not work on macOS: https://github.com/kripken/emscripten/issues/709')
-    try:
-      Popen(['as', '--version'], stdout=PIPE, stderr=PIPE).communicate()
-    except:
+    if Building.which('as') is None:
       self.skipTest('no gnu as, cannot run nativizer')
 
     # avoid impure_ptr problems etc.
-    open('somefile.binary', 'w').write('''waka waka############################''')
-    open('test.file', 'w').write('''ay file..............,,,,,,,,,,,,,,''')
-    open('stdin', 'w').write('''inter-active''')
+    open('somefile.binary', 'w').write('waka waka############################')
+    open('test.file', 'w').write('ay file..............,,,,,,,,,,,,,,')
+    open('stdin', 'w').write('inter-active')
     run_process([PYTHON, EMCC, path_from_root('tests', 'files.cpp'), '-c'])
     run_process([PYTHON, path_from_root('tools', 'nativize_llvm.py'), os.path.join(self.get_dir(), 'files.o')])
     proc = run_process([os.path.join(self.get_dir(), 'files.o.run')], stdin=open('stdin'), stdout=PIPE, stderr=PIPE)
-    self.assertContained('''size: 37
+    self.assertContained('''\
+size: 37
 data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 ''' + '''
+loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 
 input:inter-active
 texto
 $
@@ -7191,27 +7190,24 @@ int main() {
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"], stderr=PIPE, check=False).stderr
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
-  def test_python_2_3(self): # check emcc/em++ can be called by any python
-    # remove .py from EMCC(=emcc.py)
+  def test_python_2_3(self):
+    # check emcc/em++ can be called by any python
     def trim_py_suffix(filename):
+      '''remove .py from EMCC(=emcc.py)'''
       return filename[:-3] if filename.endswith('.py') else filename
 
-    print()
-    for python in ['python', 'python2', 'python3']:
-      try:
-        check_execute([python, '--version'])
-        has = True
-      except:
-        has = False
+    for python in ('python', 'python2', 'python3'):
+      has = Building.which(python) != None
       print(python, has)
       if has:
         print('  checking emcc...')
-        check_execute([python, trim_py_suffix(EMCC), '--version'])
+        run_process([python, trim_py_suffix(EMCC), '--version'], stdout=PIPE)
         print('  checking em++...')
-        check_execute([python, trim_py_suffix(EMXX), '--version'])
-        if python == 'python2':
-          print('  checking emcc.py...')
-          check_execute([python, EMCC, '--version'])
+        run_process([python, trim_py_suffix(EMXX), '--version'], stdout=PIPE)
+        print('  checking emcc.py...')
+        run_process([python, EMCC, '--version'], stdout=PIPE)
+        print('  checking em++.py...')
+        run_process([python, EMXX, '--version'], stdout=PIPE)
 
   def test_zeroinit(self):
     open('src.c', 'w').write(r'''
