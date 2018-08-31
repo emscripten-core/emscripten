@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+
+# This script should work in python 2 *or* 3. It loads the main code using
+# python_selector, which may pick a different version.
+
+import python_selector, sys
+
+if __name__ == '__main__':
+  python_selector.run(__file__)

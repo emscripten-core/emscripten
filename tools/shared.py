@@ -1321,7 +1321,7 @@ def verify_settings():
       # TODO(sbc): Make this into a hard error.  We still have a few places that
       # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
       # generate_struct_info).
-      logging.debug('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+      logging.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
       Settings.WASM = 1
 
     if not BINARYEN_ROOT:
@@ -1897,7 +1897,11 @@ class Building(object):
     return args
 
   @staticmethod
-  def link_lld(files, target, opts=[], lto_level=0):
+  def link_lld(args, target, opts=[], lto_level=0):
+    # lld doesn't currently support --start-group/--end-group since the
+    # semantics are more like the windows linker where there is no need for
+    # grouping.
+    args = [a for a in args if a not in ('--start-group', '--end-group')]
     cmd = [
         WASM_LD,
         '-z',
@@ -1911,8 +1915,10 @@ class Building(object):
         '--import-memory',
         '--export',
         '__wasm_call_ctors',
+        '--export',
+        '__data_end',
         '--lto-O%d' % lto_level,
-    ] + files
+    ] + args
 
     if Settings.WASM_MEM_MAX != -1:
       cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
@@ -1935,7 +1941,7 @@ class Building(object):
       for export in expand_response(Settings.EXPORTED_FUNCTIONS):
         cmd += ['--export', export[1:]] # Strip the leading underscore
 
-    logging.debug('emcc: lld-linking: %s to %s', files, target)
+    logging.debug('emcc: lld-linking: %s to %s', args, target)
     check_call(cmd)
     return target
 
