@@ -514,7 +514,7 @@ var LibraryPThread = {
   _num_logical_cores: '; if (ENVIRONMENT_IS_PTHREAD) __num_logical_cores = PthreadWorkerInit.__num_logical_cores; else { PthreadWorkerInit.__num_logical_cores = __num_logical_cores = allocate(1, "i32*", ALLOC_STATIC); HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}} + '; }',
 
   emscripten_has_threading_support: function() {
-    return true;
+    return typeof SharedArrayBuffer !== 'undefined';
   },
 
   emscripten_num_logical_cores__deps: ['_num_logical_cores'],
