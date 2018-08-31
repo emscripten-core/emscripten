@@ -25,7 +25,7 @@ struct TestBase {
 
 struct TinyStruct {
   short len;
-  char * chars;
+  const char * chars;
 };
 
 struct StructOfStructs {
