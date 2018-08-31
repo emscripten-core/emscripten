@@ -1291,6 +1291,7 @@ int f() {
 
     self.assertContained('result: 1', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
+  @no_wasm_backend('archive contents handling differ with lld')
   def test_dot_a_all_contents_invalid(self):
     # check that we warn if an object file in a .a is not valid bitcode.
     # do not silently ignore native object files, which may have been
@@ -1300,10 +1301,7 @@ int f() {
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
     proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE)
-    if self.is_wasm_backend():
-      self.assertIn('error: unknown file type:', proc.stderr)
-    else:
-      self.assertIn('is not LLVM bitcode, cannot link', proc.stderr)
+    self.assertIn('is not LLVM bitcode, cannot link', proc.stderr)
 
   def test_export_all(self):
     lib = r'''
