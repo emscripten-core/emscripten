@@ -3785,6 +3785,9 @@ window.close = function() {
     for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
       self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL'])
 
+  def test_webgl_offscreen_canvas_only_in_pthread(self):
+    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL'])
+
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
