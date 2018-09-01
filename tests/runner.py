@@ -59,8 +59,7 @@ sys.path.append(__rootpath__)
 
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
-from tools.line_endings import check_line_endings
-from tools import jsrun, shared
+from tools import jsrun, shared, line_endings
 
 
 def path_from_root(*pathelems):
@@ -566,7 +565,7 @@ class RunnerCore(unittest.TestCase):
     except:
       cwd = None
     os.chdir(self.get_dir())
-    assert(check_line_endings(filename) == 0) # Make sure that we produced proper line endings to the .js file we are about to run.
+    self.assertEqual(line_endings.check_line_endings(filename), 0) # Make sure that we produced proper line endings to the .js file we are about to run.
     jsrun.run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
     if cwd is not None:
       os.chdir(cwd)

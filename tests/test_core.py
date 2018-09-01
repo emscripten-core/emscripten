@@ -16,7 +16,6 @@ from textwrap import dedent
 
 import tools.shared
 from tools.shared import *
-from tools.line_endings import check_line_endings
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
 from runner import skip_if, no_wasm_backend, needs_dlfcn
 
