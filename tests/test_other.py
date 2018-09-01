@@ -8660,3 +8660,46 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
     with open(fname, 'wb') as f:
       f.write(b'!<arch>\n')
     self.assertTrue(Building.is_ar(fname))
+
+  def test_emcc_parsing(self):
+    with open('src.c', 'w') as f:
+      f.write(r'''
+        #include <stdio.h>
+        void a() { printf("a\n"); }
+        void b() { printf("b\n"); }
+        void c() { printf("c\n"); }
+        void d() { printf("d\n"); }
+      ''')
+    with open('response', 'w') as f:
+      f.write(r'''[
+"_a",
+"_b",
+"_c",
+"_d"
+]
+''')
+
+    for export_arg, expected in [
+      # extra space at end - should be ignored
+      ("EXPORTED_FUNCTIONS=['_a', '_b', '_c', '_d' ]", ''),
+      # extra newline in response file - should be ignored
+      ("EXPORTED_FUNCTIONS=@response", ''),
+      # stray slash
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''function requested to be exported, but not implemented: "\\\\'_c'"'''),
+      # stray slash
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''function requested to be exported, but not implemented: "\\\\ '_c'"'''),
+      # stray slash
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\"_c""'),
+      # stray slash
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\ "_c"'),
+      # missing comma
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"'),
+    ]:
+      print(export_arg)
+      err = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
+      print(err)
+      if not expected:
+        assert not err
+      else:
+        self.assertContained(expected, err)
+
