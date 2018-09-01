@@ -24,3 +24,7 @@ filename =
   */tests/test_browser.py
   */tests/test_other.py
   */tests/test_core.py
+  */tests/parallel_runner.py
+  */tests/test_sanity.py
+  */tests/test_benchmark.py
+  */tests/test_sockets.py
