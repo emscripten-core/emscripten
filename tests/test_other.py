@@ -7774,12 +7774,16 @@ int main() {
           if '--separate-asm' in params: files += ['a.asm.js']
           if output_suffix == 'html': files += ['a.html']
           cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.' + output_suffix, '--output_eol', eol] + params
-          print(cmd)
           run_process(cmd)
           for f in files:
             print(str(cmd) + ' ' + str(params) + ' ' + eol + ' ' + f)
             assert os.path.isfile(f)
-            ret = tools.line_endings.check_line_endings(f, expect_only_specific_line_endings='\n' if eol == 'linux' else '\r\n')
+            if eol == 'linux':
+              expected_ending = '\n'
+            else:
+              expected_ending = '\r\n'
+
+            ret = tools.line_endings.check_line_endings(f, expect_only=expected_ending)
             assert ret == 0
 
           for f in files:
