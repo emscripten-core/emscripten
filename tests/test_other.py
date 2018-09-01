@@ -513,7 +513,7 @@ f.close()
       else:
         return 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
 
-    def check_makefile(configuration, dirname):
+    def check_makefile(dirname):
       assert os.path.exists(dirname + '/Makefile'), 'CMake call did not produce a Makefile!'
 
     configurations = { 'MinGW Makefiles'     : { 'prebuild': check_makefile,
@@ -543,10 +543,8 @@ f.close()
 
       make = conf['build']
 
-      try:
-        detector = conf['detect']
-      except KeyError:
-        detector = None
+      detector = conf.get('detect')
+      prebuild = conf.get('prebuild')
 
       if detector:
         error = detector(conf)
@@ -559,16 +557,6 @@ f.close()
       if error:
         logging.warning(error)
         continue
-
-      try:
-        prebuild = conf['prebuild']
-      except KeyError:
-        prebuild = None
-
-      try:
-        postbuild = conf['postbuild']
-      except KeyError:
-        postbuild = None
 
       # ('directory to the test', 'output filename', ['extra args to pass to CMake'])
       # Testing all combinations would be too much work and the test would take 10 minutes+ to finish (CMake feature detection is slow),
@@ -602,7 +590,7 @@ f.close()
             raise Exception('cmake call failed!')
 
           if prebuild:
-            prebuild(configuration, tempdirname)
+            prebuild(tempdirname)
 
           # Build
           cmd = make
@@ -616,9 +604,6 @@ f.close()
             logging.error('Result:\n' + ret.stdout)
             raise Exception('make failed!')
           assert os.path.exists(tempdirname + '/' + output_file), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file
-
-          if postbuild:
-            postbuild(configuration, tempdirname)
 
           # Run through node, if CMake produced a .js file.
           if output_file.endswith('.js'):
