@@ -8691,4 +8691,3 @@ T6:(else) !NO_EXIT_RUNTIME""", output)
         assert not err
       else:
         self.assertContained(expected, err)
-
