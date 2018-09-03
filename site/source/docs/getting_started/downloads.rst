@@ -29,8 +29,8 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
 	
 	::
 
-		# Fetch the latest registry of available tools.
-		./emsdk update
+		# Fetch the latest version of the emsdk (not needed the first time you clone)
+		git pull
 		
 		# Download and install the latest SDK tools.
 		./emsdk install latest
@@ -42,6 +42,8 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
 		source ./emsdk_env.sh
 
 	.. note:: On Windows, run ``emsdk`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``. 
+
+	.. note:: ``git pull`` will fetch the current list of tags, but very recent ones may not yet be present there. You can run ``./emsdk update-tags`` to update the list of tags directly.
 
 If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands. 
 		

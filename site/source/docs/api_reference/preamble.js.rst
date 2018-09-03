@@ -53,7 +53,7 @@ Calling compiled C functions from JavaScript
 
 				-s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 
-			Exported functions can be called as normal: ::
+			(Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal: ::
 
 				a_result = Module.ccall('myfunc', 'number', ['number'], [10])
 
