@@ -28,13 +28,15 @@ int main()
 #endif
   };
   attr.onprogress = [](emscripten_fetch_t *fetch) {
-    printf("Downloading.. %.2f%s complete. Received chunk [%llu, %llu[\n", 
+    printf("Downloading.. %.2f%s complete. Received chunk [%llu, %llu]\n", 
       (fetch->totalBytes > 0) ? ((fetch->dataOffset + fetch->numBytes) * 100.0 / fetch->totalBytes) : (double)(fetch->dataOffset + fetch->numBytes),
       (fetch->totalBytes > 0) ? "%" : " bytes",
       fetch->dataOffset,
       fetch->dataOffset + fetch->numBytes);
-    assert(fetch->data != 0);
-    assert(fetch->numBytes > 0);
+    // On browsers that don't support `moz-chunked-arraybuffer` (e.g. chrome)
+    // both data and numBytes will be null until the final progesss callback.
+    if (fetch->numBytes > 0)
+      assert(fetch->data != 0);
     assert(fetch->dataOffset + fetch->numBytes <= fetch->totalBytes);
     assert(fetch->totalBytes <= 134217728);
 

@@ -336,7 +336,8 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
-  xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
+  var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+  xhr.responseType = fetchAttrStreamData && isFirefox ? 'moz-chunked-arraybuffer' : 'arraybuffer';
 
   if (overriddenMimeType) {
 #if FETCH_DEBUG
@@ -430,12 +431,13 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   xhr.onprogress = function(e) {
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
     var ptr = 0;
-    if (fetchAttrLoadToMemory && fetchAttrStreamData) {
+    if (ptrLen) {
 #if FETCH_DEBUG
       console.log('fetch: allocating ' + ptrLen + ' bytes in Emscripten heap for xhr data');
 #endif
-      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
-      // freed when emscripten_fetch_close() is called.
+      // The data pointer malloc()ed here has the same lifetime as the
+      // emscripten_fetch_t structure itself has, and is freed when
+      // emscripten_fetch_close() is called.
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(xhr.response), ptr);
     }
@@ -444,7 +446,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, e.loaded - ptrLen);
     Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, e.total);
     HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
+    // If loading files from a source that does not give HTTP status code,
+    // assume success if we get data bytes
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0)
+      xhr.status = 200;
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
