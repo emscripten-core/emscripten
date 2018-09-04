@@ -213,7 +213,7 @@ mergeInto(LibraryManager.library, {
             if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_NODE
               WebSocketConstructor = require('ws');
-#endif ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE
             } else if (ENVIRONMENT_IS_WEB) {
 #if ENVIRONMENT_MAY_BE_WEB
               WebSocketConstructor = window['WebSocket'];
