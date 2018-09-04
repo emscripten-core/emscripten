@@ -1301,7 +1301,7 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
       } else {
         // default for ES5 platforms
-        random_device = function() { return (Math.random()*256)|0; };
+        random_device = function() { throw "emscripten random_device implementation must be run on a modern browser to support safe random number generation."; };
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
