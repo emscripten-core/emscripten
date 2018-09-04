@@ -308,4 +308,4 @@ Troubleshooting
 
 	.. note:: You can use ``llvm-nm`` to see which symbols are defined in each bitcode file.
 	
-	One solution is to use the :ref:`building-projects-dynamic-linking-workaround` approach described above. This ensures that libraries are linked only once, in the final build stage. 
+	One solution is to use the _`dynamic-linking` approach described above. This ensures that libraries are linked only once, in the final build stage. 

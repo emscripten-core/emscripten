@@ -13,11 +13,11 @@ Presentations
 
 	- `Emscripten & asm.js: C++'s role in the modern web <http://kripken.github.io/mloc_emscripten_talk/cppcon.html>`_ (`kripken <https://github.com/kripken>`_)
 
-		- `Video of talk <https://www.youtube.com/watch?v=JhMlWj4tCDo&list=UUMlGfpWw-RUdWX_JbLCukXg>`_
+		- `Video of talk <https://www.youtube.com/watch?v=JhMlWj4tCDo&list=UUMlGfpWw-RUdWX_JbLCukXg>`__
 
 	- `Connecting C++ and JavaScript on the Web with Embind <http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/>`_ (`chadaustin <https://github.com/chadaustin>`_)
 
-		- `Video of talk <https://www.youtube.com/watch?v=Dsgws5zJiwk&list=UUMlGfpWw-RUdWX_JbLCukXg>`_
+		- `Video of talk <https://www.youtube.com/watch?v=Dsgws5zJiwk&list=UUMlGfpWw-RUdWX_JbLCukXg>`__
 
 - Slides from GDC 2014: `Getting started with asm.js and Emscripten <http://people.mozilla.org/~lwagner/gdc-pres/gdc-2014.html#/>`_ (`kripken <https://github.com/kripken>`_, `lwagner <https://blog.mozilla.org/luke/>`_)
 - Slides from Strange Loop 2013: `Native speed on the web, JavaScript and asm.js <http://kripken.github.io/mloc_emscripten_talk/sloop.html#/>`_ (`kripken <https://github.com/kripken>`_)	
