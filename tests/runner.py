@@ -120,6 +120,12 @@ def no_wasm_backend(note=''):
   return decorated
 
 
+def no_windows(note=''):
+  if WINDOWS:
+    return unittest.skip(note)
+  return lambda f: f
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""

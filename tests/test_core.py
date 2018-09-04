@@ -17,7 +17,7 @@ from textwrap import dedent
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
-from runner import skip_if, no_wasm_backend, needs_dlfcn
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows
 
 # decorators for limiting which modes a test can run in
 
@@ -40,12 +40,6 @@ def no_wasm(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
   return decorated
-
-
-def no_windows(note=''):
-  if WINDOWS:
-    return unittest.skip(note)
-  return lambda f: f
 
 
 # Async wasm compilation can't work in some tests, they are set up synchronously
