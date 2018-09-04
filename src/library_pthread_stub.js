@@ -167,6 +167,8 @@ var LibraryPThreadStub = {
   _pthread_cleanup_push: 'pthread_cleanup_push',
   _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
+  pthread_sigmask: function() { return 0; },
+
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },
   pthread_rwlock_rdlock: function() { return 0; },
