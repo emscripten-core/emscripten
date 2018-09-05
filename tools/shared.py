@@ -1089,16 +1089,6 @@ try:
 except NameError:
   pass
 
-# If we have 'env', we should use that to find python, because |python| may fail while |env python| may work
-# (For example, if system python is 3.x while we need 2.x, and env gives 2.x if told to do so.)
-ENV_PREFIX = []
-if not WINDOWS:
-  try:
-    assert 'Python' in run_process(['env', 'python', '-V'], stdout=PIPE, stderr=STDOUT).stdout
-    ENV_PREFIX = ['env']
-  except:
-    pass
-
 
 # Utilities
 def make_js_command(filename, engine=None, *args):

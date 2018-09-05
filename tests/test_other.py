@@ -61,6 +61,19 @@ def uses_canonical_tmp(func):
   return decorated
 
 
+def check_python3_version():
+  """emscripten requires at least python3.5 since python3.4 and below do not
+  support circular dependencies."""
+  python3 = Building.which('python3')
+  if not python3:
+    return False
+  output = run_process([python3, '--version'], stdout=PIPE).stdout
+  version = [int(x) for x in output.split(' ')[1].split('.')]
+  if version < [3, 5, 0]:
+    return False
+  return True
+
+
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
@@ -7162,8 +7175,11 @@ int main() {
       '''remove .py from EMCC(=emcc.py)'''
       return filename[:-3] if filename.endswith('.py') else filename
 
+    have_python3 = check_python3_version()
     for python in ('python', 'python2', 'python3'):
       has = Building.which(python) is not None
+      if python == 'python3':
+        has = have_python3
       print(python, has)
       if has:
         print('  checking emcc...')
@@ -8534,12 +8550,13 @@ end
     env['LC_ALL'] = 'C'
     expected = ': supported targets:.* elf'
     for python in [PYTHON, 'python', 'python2', 'python3']:
-      try:
-        out = run_process([python, EMCC, '--help'], stdout=PIPE, env=env).stdout
-        assert re.search(expected, out)
-      except OSError:
-        # Ignore missing python aliases.
-        pass
+      if not Building.which(python):
+        continue
+      if python == 'python3' and not check_python3_version():
+        continue
+      print(python)
+      out = run_process([python, EMCC, '--help'], stdout=PIPE, env=env).stdout
+      assert re.search(expected, out)
 
   def test_ioctl_window_size(self):
       self.do_other_test(os.path.join('other', 'ioctl', 'window_size'))
