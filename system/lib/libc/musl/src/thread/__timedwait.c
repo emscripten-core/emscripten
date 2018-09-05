@@ -15,9 +15,7 @@
 int __pthread_setcancelstate(int, int *);
 int __clock_gettime(clockid_t, struct timespec *);
 
-
 #ifdef __EMSCRIPTEN__
-double _pthread_msecs_until(const struct timespec *restrict at);
 int _pthread_isduecanceled(struct pthread *pthread_ptr);
 #endif
 

@@ -15,7 +15,6 @@
          T __wait
          T _pthread_getcanceltype
          T _pthread_isduecanceled
-         T _pthread_msecs_until
          T ___atomic_is_lock_free
          T _llvm_atomic_load_add_i32_p0i32
          T _llvm_memory_barrier
