@@ -61,17 +61,17 @@ def uses_canonical_tmp(func):
   return decorated
 
 
-def check_python3_version():
-  """emscripten requires at least python3.5 since python3.4 and below do not
+def is_python3_version_supported():
+  """Retuns True if the installed python3 version is supported by emscripten.
+
+  Note: Emscripten requires python3.5 or above since python3.4 and below do not
   support circular dependencies."""
   python3 = Building.which('python3')
   if not python3:
     return False
   output = run_process([python3, '--version'], stdout=PIPE).stdout
   version = [int(x) for x in output.split(' ')[1].split('.')]
-  if version < [3, 5, 0]:
-    return False
-  return True
+  return version >= [3, 5, 0]
 
 
 class other(RunnerCore):
@@ -7175,11 +7175,11 @@ int main() {
       '''remove .py from EMCC(=emcc.py)'''
       return filename[:-3] if filename.endswith('.py') else filename
 
-    have_python3 = check_python3_version()
     for python in ('python', 'python2', 'python3'):
-      has = Building.which(python) is not None
       if python == 'python3':
-        has = have_python3
+        has = is_python3_version_supported()
+      else:
+        has = Building.which(python) is not None
       print(python, has)
       if has:
         print('  checking emcc...')
@@ -8552,7 +8552,7 @@ end
     for python in [PYTHON, 'python', 'python2', 'python3']:
       if not Building.which(python):
         continue
-      if python == 'python3' and not check_python3_version():
+      if python == 'python3' and not is_python3_version_supported():
         continue
       print(python)
       out = run_process([python, EMCC, '--help'], stdout=PIPE, env=env).stdout
