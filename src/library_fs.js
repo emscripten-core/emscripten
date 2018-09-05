@@ -1301,7 +1301,7 @@ mergeInto(LibraryManager.library, {
 #endif // ENVIRONMENT_MAY_BE_NODE
       } else {
         // default for ES5 platforms
-        random_device = function() { return (Math.random()*256)|0; };
+        random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see kripken/emscripten/pull/7096 */ };
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);

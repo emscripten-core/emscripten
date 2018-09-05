@@ -435,8 +435,6 @@ function abort(what) {
 }
 Module['abort'] = abort;
 
-// {{PRE_RUN_ADDITIONS}}
-
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
@@ -465,8 +463,6 @@ if (!ENVIRONMENT_IS_PTHREAD) run();
 #else
 run();
 #endif
-
-// {{POST_RUN_ADDITIONS}}
 
 #if BUILD_AS_WORKER
 

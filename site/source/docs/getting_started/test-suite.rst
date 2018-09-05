@@ -112,6 +112,8 @@ When you want to run the entire test suite locally, these are the important comm
 	# Optionally, also run benchmarks to check for regressions
 	python tests/runner.py benchmark
 
+.. _benchmarking:
+
 Benchmarking
 ============
 

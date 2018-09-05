@@ -38,7 +38,7 @@ By default, it will try native support. The full list of methods is
 - ``interpret-asm2wasm``: Load ``.asm.js``, compile to wasm on the fly, and interpret that.
 - ``asmjs``: Load ``.asm.js`` and just run it, no wasm. Useful for comparisons, or as a fallback for browsers without WebAssembly support.
 
-For more details, see the function ``integrateWasmJS`` in :ref:`preamble.js <preamble.js>`, which is where all the integration between JavaScript and WebAssembly happens.
+For more details, see the function ``integrateWasmJS`` in :ref:`preamble-js`, which is where all the integration between JavaScript and WebAssembly happens.
 
 Codegen effects
 ---------------

@@ -18,7 +18,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`Filesystem-API` (**library_fs.js**): 
 	APIs for managing file systems and synchronous file operations.
 
-- :ref:`Fetch API`:
+- :ref:`Fetch-API`:
  	API for managing accesses to network XHR and IndexedDB.
 
 - :ref:`Module`: 

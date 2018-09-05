@@ -8,7 +8,7 @@ var Module = {
 };
 
 Module['runtest'] = function() {
-    var low = _test();
+    var low = _test_return64();
     var high = getTempRet0();
 
     console.log("low = " + low);

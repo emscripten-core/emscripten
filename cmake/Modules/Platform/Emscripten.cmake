@@ -127,7 +127,7 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 
 	# Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 	if (NOT EMSCRIPTEN_VERSION)
-		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result OUTPUT_VARIABLE _cmake_compiler_output ERROR_QUIET)
+		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
 		if (NOT _cmake_compiler_result EQUAL 0)
 			message(FATAL_ERROR "Failed to fetch Emscripten version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
 		endif()

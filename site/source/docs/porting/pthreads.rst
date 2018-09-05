@@ -26,10 +26,18 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- At runtime, you can use the `emscripten_has_threading_support()` function to
-  test whether the current browser does have the capability to launch pthreads
-  with `pthread_create()`. If a browser does not support threads, calls to
-  `pthread_create()` will fail with error code `EAGAIN`.
+- At runtime, you can use the ``emscripten_has_threading_support()`` function to
+  test whether the currently executing code was compiled with pthreads support
+  enabled. If this function returns true, then the currently executing code was
+  compiled with ``-s USE_PTHREADS=1`` (and the current browser supports
+  multithreading).
+
+  If code is compiled with ``-s USE_PTHREADS=1`` and the current browser does
+  not support multithreading, then an exception will be thrown at page load
+  time.  It is not possible to build one binary that would be able to leverage
+  multithreading when available and fall back to single threaded when not. For
+  such backwards compatibility, two separate builds must be done, one with ``-s
+  USE_PTHREADS=1`` and the other with ``-s USE_PTHREADS=0``.
 
 - When the linker flag `-s PTHREAD_POOL_SIZE=<integer>` is not specified and `pthread_create()` is called, the new thread will not actually start to run immediately, but the main JS thread must yield execution back to browser first. This behavior is a result of `#1049079 <https://bugzilla.mozilla.org/show_bug.cgi?id=1049079>`_.
 

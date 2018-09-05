@@ -109,13 +109,6 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 		:returns: **HamishW**-Replace with description.				
 
 		
-	.. cpp:function:: static val module_property(const char* name)
-
-		**HamishW**-Replace with description.
-		
-		:param const char* name: **HamishW**-Replace with description.
-		:returns: **HamishW**-Replace with description.	
-
 	.. cpp:function:: explicit val(T&& value)
 
 		Constructor.
