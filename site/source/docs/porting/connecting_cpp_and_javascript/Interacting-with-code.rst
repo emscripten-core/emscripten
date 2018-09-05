@@ -215,17 +215,17 @@ appears in the generated code. This will be the same as the original C
 function, but with a leading ``_``.
 
 .. note:: If you use :js:func:`ccall` or :js:func:`cwrap`, you do not need
-   to prefix function calls with ``_`` — just use the C name.
+   to prefix function calls with ``_`` -- just use the C name.
 
 The types of the parameters you pass to functions need to make sense.
 Integers and floating point values can be passed as is. Pointers are
 simply integers in the generated code.
 
 Strings in JavaScript must be converted to pointers for compiled
-code — the relevant function is :js:func:`Pointer_stringify`, which
+code -- the relevant function is :js:func:`Pointer_stringify`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
 string ``someString`` to a pointer can be accomplished using ``ptr = ``
-:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>`.
+allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
 
 .. note:: The conversion to a pointer allocates memory, which needs to be
    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
@@ -261,9 +261,7 @@ A faster way to call JavaScript from C is to write "inline JavaScript",
 using :c:func:`EM_JS` or :c:func:`EM_ASM` (and related macros).
 
 EM_JS is used to declare JavaScript functions from inside a C file. The "alert"
-example might be written using EM_JS like:
-
-.. code-block:: c++
+example might be written using EM_JS like::
 
    #include <emscripten.h>
 
@@ -281,9 +279,7 @@ EM_JS's implementation is essentially a shorthand for :ref:`implementing a
 JavaScript library<implement-c-in-javascript>`.
 
 EM_ASM is used in a similar manner to inline assembly code. The "alert" example
-might be written with inline JavaScript as:
-
-.. code-block:: c++
+might be written with inline JavaScript as::
 
    #include <emscripten.h>
 
@@ -302,26 +298,22 @@ Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
 You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
-(note the extra "_" at the end), for example
+(note the extra "_" at the end), for example::
 
-.. code-block:: cpp
-
-      EM_ASM_({
-        console.log('I received: ' + $0);
-      }, 100);
+   EM_ASM_({
+     console.log('I received: ' + $0);
+   }, 100);
 
 This will show ``I received: 100``. 
 
 You can also receive values back, for example the following will print out ``I received: 100``
-and then ``101``.
+and then ``101``::
 
-.. code-block:: cpp
-
-      int x = EM_ASM_INT({
-        console.log('I received: ' + $0);
-        return $0 + 1;
-      }, 100);
-      printf("%d\n", x);
+   int x = EM_ASM_INT({
+     console.log('I received: ' + $0);
+     return $0 + 1;
+   }, 100);
+   printf("%d\n", x);
 
 See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 

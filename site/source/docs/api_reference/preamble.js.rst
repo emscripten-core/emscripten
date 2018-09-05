@@ -47,13 +47,15 @@ Calling compiled C functions from JavaScript
 	.. note::
 		- ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data.
 		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
-		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :
+		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc*:
 
-			::
+			.. code-block:: none
 
 				-s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 
-			(Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal: ::
+			(Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal:
+
+			.. code-block:: javascript
 
 				a_result = Module.ccall('myfunc', 'number', ['number'], [10])
 
@@ -100,11 +102,13 @@ Calling compiled C functions from JavaScript
 		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :
 		- ``cwrap`` does not actually call compiled code (only calling the wrapper it returns does that). That means that it is safe to call ``cwrap`` early, before the runtime is fully initialized (but calling the returned wrapped function must wait for the runtime, of course, like calling compiled code in general).
 
-			::
+			.. code-block:: none
 
 				-s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
 
-			Exported functions can be called as normal: ::
+			Exported functions can be called as normal:
+
+			.. code-block:: javascript
 
 				my_func = Module.cwrap('myfunc', 'number', ['number'])
 				my_func(12)
@@ -114,8 +118,6 @@ Calling compiled C functions from JavaScript
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
 	:param opts: An optional options object, see :js:func:`ccall`.
 	:returns: A JavaScript function that can be used for running the C function.
-
-
 
 
 Accessing memory
@@ -135,7 +137,6 @@ Accessing memory
 	:param type: An LLVM IR type as a string (see "note" above).
 	:param noSafe: Developers should ignore this variable. It is only used in ``SAFE_HEAP`` compilation mode, where it can help avoid infinite recursion in some specialist use cases.
 	:type noSafe: bool
-
 
 
 .. js:function:: getValue(ptr, type[, noSafe])

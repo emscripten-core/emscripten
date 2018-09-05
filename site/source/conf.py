@@ -389,14 +389,6 @@ epub_exclude_files = ['search.html']
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
 
-# HamishW - set highlighting language.
-highlight_language = 'cpp'
+#highlight_language = 'default'
 
-# HamishW - set domain (cpp)
 primary_domain = 'cpp'
-
-# HamishW - tell Breathe about projects. Breathe is tool to convert Doxygen to Python objects, for import into Sphinx.
-#breathe_projects = { "myproject": "/home/me/docproj/doxyxml/", "nutshell":"./headers/xml/", }
-# HamishW - Specify a default project:
-#breathe_default_project = "nutshell"
-

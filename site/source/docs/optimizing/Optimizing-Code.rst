@@ -95,19 +95,18 @@ A workaround is to separate out the asm.js into another file, and to make sure t
 You can also do this manually, as follows:
 
  * Run ``tools/separate_asm.py``. This receives as inputs the filename of the full project, and two filenames to emit: the asm.js file and a file for everything else.
- * Load the asm.js script first, then after a turn of the event loop, the other one, for example using code like this in your HTML file:
-   ::
-      var script = document.createElement('script');
-      script.src = "the_asm.js";
-      script.onload = function() {
-        setTimeout(function() {
-          var script = document.createElement('script');
-          script.src = "the_rest.js";
-          document.body.appendChild(script);
-        }, 1); // delaying even 1ms is enough
-      };
-      document.body.appendChild(script);
+ * Load the asm.js script first, then after a turn of the event loop, the other one, for example using code like this in your HTML file: ::
 
+    var script = document.createElement('script');
+    script.src = "the_asm.js";
+    script.onload = function() {
+      setTimeout(function() {
+        var script = document.createElement('script');
+        script.src = "the_rest.js";
+        document.body.appendChild(script);
+      }, 1); // delaying even 1ms is enough
+    };
+    document.body.appendChild(script);
 
 .. _optimizing-code-outlining:
 
