@@ -199,8 +199,12 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
   for entry in entries:
     line = entry['line']
     column = entry['column']
-    if line == 0 or column == 0:
+    # ignore entries with line 0
+    if line == 0:
       continue
+    # start at least at column 1
+    if column == 0:
+      column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
     if file_name not in sources_map:
