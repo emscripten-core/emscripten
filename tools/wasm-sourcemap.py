@@ -152,7 +152,16 @@ def read_dwarf_entries(wasm, options):
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
       entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
-      entries.append(entry)
+      if not entry['eos']:
+        entries.append(entry)
+      else:
+        # move end of function to the last END operator
+        entry['address'] -= 1
+        if entries[len(entries) - 1]['address'] == entry['address']:
+          # last entry has the same address, reusing
+          entries[len(entries) - 1]['eos'] = True
+        else:
+          entries.append(entry)
 
   # Remove dead functions' data. It is a heuristics to ignore data if the
   # function starting address near to 0 (is equal to its size field length).
@@ -173,7 +182,8 @@ def read_dwarf_entries(wasm, options):
     cur_entry += 1
     block_start = cur_entry
 
-  return entries
+  # return entries sorted by the address field
+  return sorted(entries, key=lambda entry: entry['address'])
 
 
 def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
