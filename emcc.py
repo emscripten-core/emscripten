@@ -2512,6 +2512,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
     if shared.Settings.USE_PTHREADS:
       cmd += ['--enable-threads']
+    if shared.Settings.COMPRESS_FUNCTION_TABLE:
+      cmd += ['--compact-function-tables']
     if debug_info:
       cmd += ['-g']
     if emit_symbol_map:

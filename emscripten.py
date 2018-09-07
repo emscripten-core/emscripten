@@ -1157,8 +1157,22 @@ def create_asm_setup(debug_tables, function_table_data, metadata):
       if len(table_contents) == 0: # empty table
         return 0
       return table_contents.count(',') + 1
+    def is_not_zero(str):
+      if str == "0":
+        return 0
+      return 1
+    def table_size_compress(table):
+      table_contents = table[table.index('[') + 1: table.index(']')]
+      if len(table_contents) == 0: # empty table
+        return 0
+      #table is either 0 or the symbol name
+      return sum (map(is_not_zero, table_contents.split(",")))
 
-    table_total_size = sum(map(table_size, list(function_table_data.values())))
+    if shared.Settings.COMPRESS_FUNCTION_TABLE:
+      table_total_size = sum(map(table_size_compress, list(function_table_data.values()))) + 1
+    else
+      table_total_size = sum(map(table_size, list(function_table_data.values())))
+
     asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
     if not shared.Settings.EMULATED_FUNCTION_POINTERS:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size

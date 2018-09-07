@@ -957,3 +957,5 @@ var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
 var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
+var COMPRESS_FUNCTION_TABLE = 0; //If nonzero, enables table compression of wasm files when ALIASING_FUNCTION_POINTERS=0 is used. Produces the smalest table size.
+
