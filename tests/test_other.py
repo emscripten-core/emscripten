@@ -8158,6 +8158,8 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
+      (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                19, ['abort', 'tempDoublePtr'], ['waka'],                  12598,  16,   15), # noqa; for comparison to without emulated fps
       ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19), # noqa
       (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17), # noqa
       (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17), # noqa
