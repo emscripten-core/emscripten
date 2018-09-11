@@ -5245,7 +5245,9 @@ pass: error == ENOTDIR
 ''', run_js('a.out.js'))
 
   @no_wasm_backend("uses EMTERPRETIFY")
+
   @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'requires SpiderMonkey')
+# fix these sm not in jseng stuffs
   def test_emterpreter(self):
     def do_emcc_test(source, args, output, emcc_args=[]):
       print()
