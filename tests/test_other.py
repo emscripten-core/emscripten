@@ -8156,13 +8156,6 @@ int main() {
         self.assertEqual(imports, expected_wasm_imports)
         self.assertEqual(exports, expected_wasm_exports)
 
-    print('test on libc++: see effects of emulated function pointers')
-    test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  31,   31), # noqa
-      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
-    ]) # noqa
-
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
       ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19), # noqa
@@ -8197,6 +8190,13 @@ int main() {
       (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
       (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
     ])
+
+    print('test on libc++: see effects of emulated function pointers')
+    test(path_from_root('tests', 'hello_libcxx.cpp'), [
+      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
+      (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  31,   31), # noqa
+    ]) # noqa
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
