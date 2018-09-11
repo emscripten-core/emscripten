@@ -7971,7 +7971,8 @@ keys(LibraryGL).forEach(function(x) {
       var orig = dep;
       dep = 'emscripten_' + dep;
       var fixed = LibraryGL[x].toString().replace(new RegExp('_' + orig + '\\(', 'g'), '_' + dep + '(');
-      fixed = fixed.substr(0, 9) + '_' + y + fixed.substr(9);
+      // `function` is 8 characters, add space and an explicit name after
+      fixed = fixed.substr(0, 8) + ' _' + y + fixed.substr(8);
       LibraryGL[x] = eval('(function() { return ' + fixed + ' })()');
     }
     return dep;
