@@ -2282,7 +2282,7 @@ class Building(object):
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
     # compatible with it.
-    return ('asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS) or not Settings.LEGALIZE_JS_FFI
+    return ('asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATE_FUNCTION_POINTER_CASTS) or not Settings.LEGALIZE_JS_FFI
 
   @staticmethod
   def get_safe_internalize():
