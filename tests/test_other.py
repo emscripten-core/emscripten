@@ -8195,7 +8195,7 @@ int main() {
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
       (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  31,   31), # noqa
+                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
