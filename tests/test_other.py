@@ -3869,8 +3869,8 @@ int main() {
                     # informative error message (assertions are enabled in -O0)
                     self.assertContained('Invalid function pointer called', output)
                   else:
-                    # non-informative abort()
-                    self.assertContained('abort(', output)
+                    # non-informative error
+                    self.assertContained(('abort(', 'exception'), output)
 
   @no_wasm_backend()
   def test_aliased_func_pointers(self):
