@@ -308,6 +308,7 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 #endif // RELOCATABLE
 
 #if EMULATED_FUNCTION_POINTERS
+#if WASM == 0
 function getFunctionTables(module) {
   if (!module) module = Module;
   var tables = {};
@@ -333,6 +334,7 @@ function alignFunctionTables(module) {
   }
   return maxx;
 }
+#endif // WASM == 0
 
 #if RELOCATABLE
 // register functions from a new module being loaded
