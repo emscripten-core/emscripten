@@ -10,6 +10,9 @@ import sys
 import os
 import subprocess
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+__rootpath__ = os.path.dirname(script_dir)
+
 cpp_license = '''\
 // Copyright %s The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
@@ -50,6 +53,7 @@ exclude_filenames = [
     'tests/freetype/src/',
     'tests/bullet/src/',
     'tests/poppler/poppler/',
+    'tests/box2d/',
     'tests/glbook/',
     'tests/nbody-java/',
     'tests/cube2hash/',
@@ -67,7 +71,8 @@ def process_file(filename):
     return
   with open(filename) as f:
     contents = f.read()
-  if any(ex in contents for ex in exclude_contents):
+  header = '\n'.join(contents.splitlines()[:30])
+  if any(ex in header for ex in exclude_contents):
     return
   output = subprocess.check_output(['git', 'log', '--pretty=format:%cd', '--date=format:%Y', filename])
   year = output.splitlines()[-1].split()[0]
@@ -99,6 +104,7 @@ def process_file(filename):
 
 
 def main():
+  os.chdir(__rootpath__)
   filenames = sys.argv[1:]
   if not filenames:
     filenames = subprocess.check_output(['git', 'ls-files']).splitlines()

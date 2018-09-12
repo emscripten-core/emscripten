@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # emrun: Implements machinery that allows running a .html page as if it was a standard executable file.
 # Usage: emrun <options> filename.html <args to program>
