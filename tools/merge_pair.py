@@ -1,4 +1,9 @@
 #!/usr/bin/python
+# Copyright 2015 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 """Usage:   left.js right.js n out.js
 
 Given two files with the same function names in them, merges in n functions from the latter from the start,
