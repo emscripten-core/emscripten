@@ -3862,7 +3862,7 @@ int main() {
                   if self.is_wasm_backend() or (wasm and (relocate or emulate_fps)):
                     # wasm trap raised by the vm
                     self.assertContained('function signature mismatch', output)
-                  elif safe and not wasm:
+                  elif opts == 0 and safe and not wasm:
                     # non-wasm safe mode checks asm.js function table masks
                     self.assertContained('Function table mask error', output)
                   elif opts == 0:
