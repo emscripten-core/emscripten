@@ -1064,6 +1064,18 @@ module({
            map.delete();
        });
 
+       test("std::map can get keys", function() {
+           var map = cm.embind_test_get_string_int_map();
+
+           var keys = map.keys();
+           assert.equal(map.size(), keys.size());
+           assert.equal("one", keys.get(0));
+           assert.equal("two", keys.get(1));
+           keys.delete();
+
+           map.delete();
+       });
+
        test("std::map can set keys and values", function() {
            var map = cm.embind_test_get_string_int_map();
 

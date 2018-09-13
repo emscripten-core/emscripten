@@ -885,6 +885,14 @@ The following JavaScript can be used to interact with the above C++.
     // retrieve value from map
     console.log("Map Value: ", retMap.get(10));
 
+    // figure out which map keys are available
+    // NB! You must call `register_vector<key_type>`
+    // to make vectors available
+    var mapKeys = retMap.keys();
+    for (var i = 0; i < mapKeys.size(); i++) {
+        console.log("Map key/value: ", retVector.get(i), retMap.get(retVector.get(i)));
+    }
+
     // reset the value at the given index position
     retMap.set(10, "OtherValue");
 
