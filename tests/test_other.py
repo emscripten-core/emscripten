@@ -8230,7 +8230,7 @@ int main() {
       text = re.sub(r'\$var\$*.', '', text)
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
-      #print("text: %s" % text)
+      # print("text: %s" % text)
       e_add_f32 = re.search('func \$_?add_f \(type \$\d+\) \(param f32\) \(param f32\) \(result f32\)', text)
       i_i64_i32 = re.search('import .*"_?import_ll" .*\(param i32 i32\) \(result i32\)', text)
       i_f32_f64 = re.search('import .*"_?import_f" .*\(param f64\) \(result f64\)', text)
