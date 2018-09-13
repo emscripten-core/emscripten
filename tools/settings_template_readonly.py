@@ -1,8 +1,3 @@
-# Copyright 2012 The Emscripten Authors.  All rights reserved.
-# Emscripten is available under two separate licenses, the MIT license and the
-# University of Illinois/NCSA Open Source License.  Both these licenses can be
-# found in the LICENSE file.
-
 # This file will be edited (the {{{ }}} things), and then ~/.emscripten created with the result, if ~/.emscripten doesn't exist.
 
 # Note: If you put paths relative to the home directory, do not forget os.path.expanduser
