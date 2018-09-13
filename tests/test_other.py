@@ -820,14 +820,14 @@ f.close()
       self.assertContained(expected, run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None))
       # TODO: emulation function support in wasm is imperfect
       print('with emulated function pointers in asm.js')
-      run_process([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-s', 'BINARYEN_ASYNC_COMPILATION=0'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE)
+      run_process([PYTHON, EMCC, '-s', 'WASM=0', 'src.c', '-s', 'ASSERTIONS=1'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE)
       out = run_js(self.in_dir('a.out.js'), stderr=PIPE, full_output=True, assert_returncode=None)
       self.assertContained(expected, out)
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but,
     # ASSERTIONS=2 gives much better info to debug
     # Case 1: No useful info, but does mention ASSERTIONS
-    test(['-O1'], 'Build with -s ASSERTIONS=1 for more info.')
+    test(['-O1'], 'ASSERTIONS')
     # Case 2: Some useful text
     test(['-O1', '-s', 'ASSERTIONS=1'], [
         "Invalid function pointer called with signature 'v'. Perhaps this is an invalid value",
@@ -3862,15 +3862,15 @@ int main() {
                   if self.is_wasm_backend() or (wasm and (relocate or emulate_fps)):
                     # wasm trap raised by the vm
                     self.assertContained('function signature mismatch', output)
-                  elif safe and not wasm:
+                  elif opts == 0 and safe and not wasm:
                     # non-wasm safe mode checks asm.js function table masks
                     self.assertContained('Function table mask error', output)
                   elif opts == 0:
                     # informative error message (assertions are enabled in -O0)
                     self.assertContained('Invalid function pointer called', output)
                   else:
-                    # non-informative abort()
-                    self.assertContained('abort(', output)
+                    # non-informative error
+                    self.assertContained(('abort(', 'exception'), output)
 
   @no_wasm_backend()
   def test_aliased_func_pointers(self):
