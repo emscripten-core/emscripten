@@ -1215,7 +1215,9 @@ function ftCall_%s(%s) {
         if shared.Settings.SIDE_MODULE:
           table_access = 'parentModule["' + table_access + '"]' # side module tables were merged into the parent, we need to access the global one
         table_read = table_access + '[x]'
-      prelude = '''
+      prelude = ''
+      if shared.Settings.ASSERTIONS:
+        prelude = '''
   if (x < 0 || x >= %s.length) { err("Function table mask error (out of range)"); %s ; abort(x) }''' % (table_access, get_function_pointer_error(sig, function_table_sigs))
       asm_setup += '''
 function ftCall_%s(%s) {%s
@@ -1275,7 +1277,10 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   quote = quoter()
   asm_runtime_funcs = create_asm_runtime_funcs()
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data)
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
+  # in a wasm shared library + emulated function pointers, export all the table so that
+  # we can easily find the function pointer for each function
+  if (shared.Settings.RELOCATABLE or not shared.Settings.WASM) and \
+     shared.Settings.EMULATED_FUNCTION_POINTERS:
     all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):
