@@ -4664,12 +4664,12 @@ name: .
   def add_pre_run(self, code):
     with open('pre.js', 'w') as f:
       f.write('Module.preRun = function() { %s }' % code)
-    self.emcc_args = ['--pre-js', 'pre.js']
+    self.emcc_args += ['--pre-js', 'pre.js']
 
   def add_post_run(self, code):
-    with open('post.js', 'w') as f:
+    with open('pre.js', 'w') as f:
       f.write('Module.postRun = function() { %s }' % code)
-    self.emcc_args = ['--post-js', 'post.js']
+    self.emcc_args += ['--pre-js', 'pre.js']
 
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")

@@ -166,9 +166,7 @@ if (ENVIRONMENT_IS_NODE) {
   // deprecated, and in the future it will exit with error status.
   process['on']('unhandledRejection', function(reason, p) {
     err(reason);
-#if ASSERTIONS
     err('node.js exiting due to unhandled promise rejection');
-#endif
     process['exit'](1);
   });
 
