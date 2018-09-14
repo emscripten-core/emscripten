@@ -62,7 +62,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
@@ -250,17 +250,15 @@ class RunnerCore(unittest.TestCase):
     self.banned_js_engines = []
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
-      dirname = CANONICAL_TEMP_DIR
+      self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
+      try_delete(self.working_dir)
+      os.makedirs(self.working_dir)
     else:
-      dirname = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
-    if not os.path.exists(dirname):
-      os.makedirs(dirname)
-    self.working_dir = dirname
-    os.chdir(dirname)
+      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
+    os.chdir(self.working_dir)
 
     # Use emscripten root for node module lookup
-    scriptdir = os.path.dirname(os.path.abspath(__file__))
-    os.environ['NODE_PATH'] = os.path.join(scriptdir, '..', 'node_modules')
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
 
     if not self.save_dir:
       self.has_prev_ll = False
@@ -271,7 +269,7 @@ class RunnerCore(unittest.TestCase):
   def tearDown(self):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
-      os.chdir(os.path.join(self.get_dir(), '..'))
+      os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
       if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
@@ -682,10 +680,10 @@ class RunnerCore(unittest.TestCase):
     return Building.build_library(name, build_dir, output_dir, generated_libs, configure, configure_args, make, make_args, self.library_cache, cache_name,
                                   copy_project=True, env_init=env_init, native=native)
 
-  def clear(self, in_curr=False):
+  def clear(self):
     for name in os.listdir(self.get_dir()):
-      try_delete(os.path.join(self.get_dir(), name) if not in_curr else name)
-    if 'EMCC_DEBUG' in os.environ and not in_curr and EMSCRIPTEN_TEMP_DIR:
+      try_delete(os.path.join(self.get_dir(), name))
+    if EMSCRIPTEN_TEMP_DIR:
       for name in os.listdir(EMSCRIPTEN_TEMP_DIR):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 

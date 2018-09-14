@@ -202,7 +202,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for path in [os.path.abspath(os.path.join('..', 'file1.js')), os.path.join('b_dir', 'file2.js')]:
         print(path)
         os.chdir(self.get_dir())
-        self.clear(in_curr=True)
+        self.clear()
         print(os.listdir(os.getcwd()))
         os.makedirs('a_dir')
         os.chdir('a_dir')
