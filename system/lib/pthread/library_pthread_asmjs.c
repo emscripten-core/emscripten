@@ -1,3 +1,10 @@
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 // This file contains support machinery to implement multithreading support for asm.js specifically.
 // Split out to a separate file so that its contents can be easily left out when only doing Wasm
 // multithreading.

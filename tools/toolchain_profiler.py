@@ -1,3 +1,8 @@
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import subprocess, os, time, sys, tempfile
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

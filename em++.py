@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # This script should work in python 2 *or* 3. It loads the main code using
 # python_selector, which may pick a different version.

@@ -1,3 +1,7 @@
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # given a file of ll and a list of names to retain, makes all other functions into stubs.
 # you can then build with -s LINKABLE=1 and see any compilation errors on the specific functions

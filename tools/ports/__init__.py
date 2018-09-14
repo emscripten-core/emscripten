@@ -1,3 +1,8 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 from . import binaryen, bullet, cocos2d, freetype, harfbuzz, libpng, ogg, sdl, sdl_image, sdl_ttf, sdl_net, vorbis, zlib
 
 # If port A depends on port B, then A should be _after_ B
