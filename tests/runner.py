@@ -258,7 +258,7 @@ class RunnerCore(unittest.TestCase):
     os.chdir(self.working_dir)
 
     # Use emscripten root for node module lookup
-    os.environ['NODE_PATH'] = os.path.join(__rootpath__, 'node_modules')
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
 
     if not self.save_dir:
       self.has_prev_ll = False
