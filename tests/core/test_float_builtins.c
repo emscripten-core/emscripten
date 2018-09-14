@@ -34,7 +34,7 @@ void test_exp_log(double x) {
     double b = log10(x);
     float c = log10f(x);
     double d = acos(x);
-    printf("%f : %f : %f : %f\n", a, b, c, d);
+    printf("%f : %f : %f : %d\n", a, b, c, isnan(d));
 }
 
 int main() {
