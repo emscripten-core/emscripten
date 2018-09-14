@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# Copyright 2018 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 """Utility tools that extracts DWARF information encoded in a wasm output
 produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
 it can collect original sources, change files prefixes, and strip debug

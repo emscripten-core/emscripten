@@ -1,4 +1,11 @@
 /*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
  * SDL OpenGL Tutorial.
  * (c) Michael Vance, 2000
  * briareos@lokigames.com

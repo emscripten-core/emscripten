@@ -1,3 +1,8 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 #
 # This script gets the Emscripten wiki, converts files from markdown to restructure text using pandoc (and also prepends the text with a title/heading based on the filename)
 # It also fixes up inline code items to become links to api-reference

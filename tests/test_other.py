@@ -1,4 +1,9 @@
 # coding=utf-8
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 # noqa: E241
 
 from __future__ import print_function
@@ -8042,7 +8047,7 @@ int main() {
           if expect_emit_text:
             text = open('a.out.wast').read()
             assert ';;' in text, 'must see debug info comment'
-            assert 'hello_world.cpp:6' in text, 'must be file:line info'
+            assert 'hello_world.cpp:12' in text, 'must be file:line info'
         js = open('a.out.js').read()
         assert expect_clean_js == ('// ' not in js), 'cleaned-up js must not have comments'
         assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'

@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // This file tests full SSE1 compatibility.
 // Compile with something like 'clang -msse test_sse1.cpp -o a.out' to build natively, and run './a.out'.
 // To test with Emscripten, compile with 'emcc test_sse1.cpp -o a.js' (or -o a.html) and run in SpiderMonkey/node.js/browser.

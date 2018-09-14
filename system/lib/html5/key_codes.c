@@ -1,3 +1,10 @@
+/*
+ * Copyright 2017 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <emscripten/key_codes.h>
 
 const char *emscripten_dom_vk_to_string(int dom_vk_code)
