@@ -46,6 +46,7 @@ c_license_base = '''\
 '''
 
 exclude_filenames = [
+    'system/include/libc/',
     'system/lib/libc/musl/src',
     'system/lib/html5/dom_pk_codes.c',
     'system/lib/dlmalloc.c',
@@ -67,7 +68,7 @@ def process_file(filename):
   if any(filename.startswith(ex) for ex in exclude_filenames):
     return
   ext = os.path.splitext(filename)[1]
-  if ext not in ['.py', '.c', '.cpp']:
+  if ext not in ['.py', '.c', '.cpp', '.h']:
     return
   with open(filename) as f:
     contents = f.read()
@@ -86,7 +87,7 @@ def process_file(filename):
       f.write(py_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
-    elif ext == '.c':
+    elif ext in ['.c', '.h']:
       f.write(c_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
