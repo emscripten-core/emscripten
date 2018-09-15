@@ -5153,7 +5153,7 @@ main(const int argc, const char * const * const argv)
 
     test(['-s', 'ASSERTIONS=0'], 120000) # we don't care about code size with assertions
     test(['-O1'], 90000)
-    test(['-O2'], 45000)
+    test(['-O2'], 46000)
     test(['-O3', '--closure', '1'], 17000)
     # asm.js too
     if not self.is_wasm_backend():
