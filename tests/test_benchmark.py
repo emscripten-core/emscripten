@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
-import math, os, shutil, subprocess, zlib
+import math, os, shutil, subprocess, zlib, time
 import runner
 from runner import RunnerCore, path_from_root
 from tools.shared import *
