@@ -4558,7 +4558,8 @@ main()
       print(name)
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE)
       if fail:
-        run_js('a.out.js', stderr=PIPE, assert_returncode=1)
+        proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
+        self.assertNotEqual(proc.returncode, 0)
       else:
         self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
 
