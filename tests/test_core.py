@@ -4664,7 +4664,12 @@ name: .
   def add_pre_run(self, code):
     with open('pre.js', 'w') as f:
       f.write('Module.preRun = function() { %s }' % code)
-    self.emcc_args = ['--pre-js', 'pre.js']
+    self.emcc_args += ['--pre-js', 'pre.js']
+
+  def add_post_run(self, code):
+    with open('pre.js', 'w') as f:
+      f.write('Module.postRun = function() { %s }' % code)
+    self.emcc_args += ['--pre-js', 'pre.js']
 
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
@@ -7117,7 +7122,6 @@ err = err = function(){};
     Building.COMPILER_TEST_OPTS.append('-g4')
 
     def build_and_check():
-      import json
       Building.emcc(src_filename, self.serialize_settings() + self.emcc_args +
           Building.COMPILER_TEST_OPTS, out_filename, stderr=PIPE)
       map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
@@ -7821,6 +7825,18 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     self.emcc_args += ['-g2'] # test for issue #6331
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  def test_postrun_exception(self):
+    # verify that an exception thrown in postRun() will not trigger the
+    # compilation failed handler, and will be printed to stderr.
+    self.add_post_run('ThisFunctionDoesNotExist()')
+    src = open(path_from_root('tests', 'core', 'test_hello_world.c')).read()
+    self.build(src, self.get_dir(), 'src.c')
+    output = run_js('src.c.o.js', assert_returncode=None, stderr=STDOUT)
+    self.assertNotContained('failed to asynchronously prepare wasm', output)
+    self.assertContained('hello, world!', output)
+    self.assertContained('ThisFunctionDoesNotExist is not defined', output)
+
 
 # Generate tests for everything
 def make_run(name, emcc_args=None, env=None):
