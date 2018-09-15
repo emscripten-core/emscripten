@@ -15,7 +15,6 @@ see
 http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 """
 
-# This Python file uses the following encoding: utf-8
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
 from __future__ import print_function

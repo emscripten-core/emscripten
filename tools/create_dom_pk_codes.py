@@ -1,9 +1,11 @@
+#!/usr/bin/env python
+# coding=utf-8
 # Copyright 2017 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-﻿# The DOM KeyboardEvent field 'code' contains a locale/language independent
+# The DOM KeyboardEvent field 'code' contains a locale/language independent
 # identifier of a pressed key on the keyboard, i.e. a "physical" keyboard code, which
 # is often useful for games that want to provide a physical keyboard layout that does
 # not get confused by the language setting the user has.
@@ -265,13 +267,21 @@ c_file = open('system/lib/html5/dom_pk_codes.c', 'w')
 
 # Generate the output file:
 
-h_file.write('''/* This file was automatically generated from script
-tools/create_dom_pk_codes.py. Edit that file to make changes here.
-Run
-
-  python tools/create_dom_pk_codes.py
-
-in Emscripten root directory to regenerate this file. */
+h_file.write('''\
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * This file was automatically generated from script
+ * tools/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Run
+ *
+ *   tools/create_dom_pk_codes.py
+ *
+ * in Emscripten root directory to regenerate this file.
+ */
 
 #pragma once
 

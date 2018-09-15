@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# -*- coding: utf-8 -*-
 #
 # Emscripten documentation build configuration file, created by
 # sphinx-quickstart on Tue Jul 01 09:20:29 2014.
