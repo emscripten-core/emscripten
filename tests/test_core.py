@@ -20,7 +20,7 @@ from textwrap import dedent
 import tools.shared
 from tools.shared import *
 from runner import RunnerCore, path_from_root, checked_sanity, core_test_modes, get_zlib_library, get_bullet_library
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
 
 # decorators for limiting which modes a test can run in
 
@@ -6057,7 +6057,8 @@ return malloc(size);
   # to process.
   @no_wasm_backend("uses bitcode compiled with asmjs, and we don't have unified triples")
   def test_cases(self):
-    if Building.LLVM_OPTS: self.skipTest("Our code is not exactly 'normal' llvm assembly")
+    if Building.LLVM_OPTS:
+      self.skipTest("Our code is not exactly 'normal' llvm assembly")
 
     # needs to flush stdio streams
     self.set_setting('NO_EXIT_RUNTIME', 0)
@@ -6065,65 +6066,71 @@ return malloc(size);
     emcc_args = self.emcc_args
 
     # The following tests link to libc, and must be run with EMCC_LEAVE_INPUTS_RAW = 0
-    need_no_leave_inputs_raw = ['muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star', 'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast', 'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2', 'emptystruct', 'entry3', 'atomicrmw_i64', 'atomicrmw_b_i64', 'invoke_byval', 'i24_ce_fastcomp']
+    need_no_leave_inputs_raw = [
+      'muli33_ta2', 'philoop_ta2', 'uadd_overflow_64_ta2', 'i64toi8star',
+      'legalizer_ta2', 'quotedlabel', 'alignedunaligned', 'sillybitcast',
+      'invokeundef', 'loadbitcastgep', 'sillybitcast2', 'legalizer_b_ta2',
+      'emptystruct', 'entry3', 'atomicrmw_i64', 'atomicrmw_b_i64',
+      'invoke_byval', 'i24_ce_fastcomp',
+    ]
 
-    try:
-      import random
-      names = glob.glob(path_from_root('tests', 'cases', '*.ll'))
-      #random.shuffle(names)
-      for name in names:
-        shortname = name.replace('.ll', '')
-        if '' not in shortname: continue
-        # TODO: test only worked in non-fastcomp (well, these cases)
-        if os.path.basename(shortname) in [
-          'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast', # invalid ir
-          'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
-          '2xi40', # pnacl limitations in ExpandGetElementPtr
-          'quoted', # current fastcomp limitations FIXME
-          'atomicrmw_unaligned', # TODO XXX
-        ]: continue
-        if self.is_emterpreter() and os.path.basename(shortname) in [
-          'funcptr', # test writes to memory we store out bytecode! test is invalid
-          'i1282vecnback', # uses simd
-        ]:
-          continue
-        if self.is_wasm() and os.path.basename(shortname) in [
-          'i1282vecnback', # uses simd
-          'call_inttoptr_i64', # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
-        ]:
-          continue
-        if os.path.basename(shortname) in need_no_leave_inputs_raw:
-          if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
-          self.set_setting('NO_FILESYSTEM', 0)
-        else:
-          os.environ['EMCC_LEAVE_INPUTS_RAW'] = '1'
-          # no libc is linked in; with NO_FILESYSTEM we have a chance at printfing anyhow
-          self.set_setting('NO_FILESYSTEM', 1)
+    names = glob.glob(path_from_root('tests', 'cases', '*.ll'))
+    #random.shuffle(names)
 
-        if '_noasm' in shortname and self.get_setting('ASM_JS'):
-          print('case "%s" not relevant for asm.js' % shortname)
-          continue
+    for name in names:
+      shortname = os.path.splitext(name)[0]
+      # TODO: test only worked in non-fastcomp (well, these cases)
+      basename = os.path.basename(shortname)
+      if basename in [
+        'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast', # invalid ir
+        'structphiparam', 'callwithstructural_ta2', 'callwithstructural64_ta2', 'structinparam', # pnacl limitations in ExpandStructRegs
+        '2xi40', # pnacl limitations in ExpandGetElementPtr
+        'quoted', # current fastcomp limitations FIXME
+        'atomicrmw_unaligned', # TODO XXX
+      ]: continue
+      if self.is_emterpreter() and basename in [
+        'funcptr', # test writes to memory we store out bytecode! test is invalid
+        'i1282vecnback', # uses simd
+      ]:
+        continue
+      if self.is_wasm() and basename in [
+        'i1282vecnback', # uses simd
+        'call_inttoptr_i64', # casts a function pointer from (i32, i32)* to (i64)*, which happens to work in asm.js but is a general function pointer undefined behavior
+      ]:
+        continue
+
+      if basename in need_no_leave_inputs_raw:
+        leave_inputs = '0'
+        self.set_setting('NO_FILESYSTEM', 0)
+      else:
+        leave_inputs = '1'
+        # no libc is linked in; with NO_FILESYSTEM we have a chance at printfing anyhow
+        self.set_setting('NO_FILESYSTEM', 1)
+
+      if '_noasm' in shortname and self.get_setting('ASM_JS'):
+        print('case "%s" not relevant for asm.js' % shortname)
+        continue
+
+      print("Testing case '%s'..." % basename)
+      output_file = path_from_root('tests', 'cases', shortname + '.txt')
+      if os.path.exists(output_file):
+        output = open(output_file, 'r').read()
+      else:
+        output = 'hello, world!'
+
+      if output.rstrip() != 'skip':
         self.emcc_args = emcc_args
         if os.path.exists(shortname + '.emcc'):
-          if not self.emcc_args: continue
-          self.emcc_args = self.emcc_args + json.loads(open(shortname + '.emcc').read())
-        print("Testing case '%s'..." % shortname, file=sys.stderr)
-        output_file = path_from_root('tests', 'cases', shortname + '.txt')
-        if os.path.exists(output_file):
-          output = open(output_file, 'r').read()
-        else:
-          output = 'hello, world!'
-        if output.rstrip() != 'skip':
-          self.do_ll_run(path_from_root('tests', 'cases', name), output)
-        # Optional source checking, a python script that gets a global generated with the source
-        src_checker = path_from_root('tests', 'cases', shortname + '.py')
-        if os.path.exists(src_checker):
-          generated = open('src.cpp.o.js').read()
-          exec(open(src_checker).read())
+          self.emcc_args += json.loads(open(shortname + '.emcc').read())
 
-    finally:
-      if 'EMCC_LEAVE_INPUTS_RAW' in os.environ: del os.environ['EMCC_LEAVE_INPUTS_RAW']
-      self.emcc_args = emcc_args
+        with env_modify({'EMCC_LEAVE_INPUTS_RAW': leave_inputs}):
+          self.do_ll_run(path_from_root('tests', 'cases', name), output)
+
+      # Optional source checking, a python script that gets a global generated with the source
+      src_checker = path_from_root('tests', 'cases', shortname + '.py')
+      if os.path.exists(src_checker):
+        generated = open('src.cpp.o.js').read()
+        exec(open(src_checker).read())
 
   def test_fuzz(self):
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
