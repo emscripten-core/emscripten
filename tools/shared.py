@@ -885,10 +885,7 @@ class WarningManager(object):
 
 class Configuration(object):
   def __init__(self, environ=os.environ):
-    self.DEBUG = environ.get('EMCC_DEBUG')
-    if self.DEBUG == "0":
-      self.DEBUG = None
-    self.DEBUG_CACHE = self.DEBUG and "cache" in self.DEBUG
+    self.DEBUG = int(environ.get('EMCC_DEBUG', '0'))
     self.EMSCRIPTEN_TEMP_DIR = None
 
     if "EMCC_TEMP_DIR" in environ:
@@ -920,11 +917,10 @@ class Configuration(object):
 
 
 def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, DEBUG_CACHE, CANONICAL_TEMP_DIR, TEMP_DIR
+  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
   DEBUG = configuration.DEBUG
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
-  DEBUG_CACHE = configuration.DEBUG_CACHE
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
   TEMP_DIR = configuration.TEMP_DIR
 
@@ -932,7 +928,7 @@ def apply_configuration():
 def set_logging():
   logging.basicConfig(format='%(levelname)-8s %(name)s: %(message)s') # can add  %(asctime)s  to see timestamps
   logger = logging.getLogger()
-  logger.setLevel(logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
+  logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 
 apply_configuration()
@@ -2680,13 +2676,13 @@ class Building(object):
 
 
 # compatibility with existing emcc, etc. scripts
-Cache = cache.Cache(debug=DEBUG_CACHE)
+Cache = cache.Cache()
 chunkify = cache.chunkify
 
 
 def reconfigure_cache():
   global Cache
-  Cache = cache.Cache(debug=DEBUG_CACHE)
+  Cache = cache.Cache()
 
 
 # Placeholder strings used for SINGLE_FILE

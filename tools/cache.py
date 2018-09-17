@@ -41,7 +41,7 @@ class Cache(object):
       else:
         dirname = os.path.join(dirname, 'wasm_bc')
     self.dirname = dirname
-    self.debug = debug
+    self.debug = 'EM_CACHE_DEBUG' in os.environ
     self.acquired_count = 0
 
   def acquire_cache_lock(self):
