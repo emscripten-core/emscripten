@@ -387,6 +387,7 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
+    'LZ4',
     'staticAlloc',
     'dynamicAlloc',
     'warnOnce',

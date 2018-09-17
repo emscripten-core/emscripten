@@ -1079,6 +1079,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
+      if shared.Settings.LZ4:
+        # Let the file packager code access LZ4 on Module
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+
       if shared.Settings.LEGACY_VM_SUPPORT:
         # legacy vms don't have wasm
         assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
