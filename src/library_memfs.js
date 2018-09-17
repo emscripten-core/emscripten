@@ -289,6 +289,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
             assert(position === 0, 'canOwn must imply no weird position inside the file');
 #endif
+#if ALLOW_MEMORY_GROWTH
+            abort('WAKA WAKA');
+#endif
             node.contents = buffer.subarray(offset, offset + length);
             node.usedBytes = length;
             return length;
