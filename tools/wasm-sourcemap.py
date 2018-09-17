@@ -102,6 +102,28 @@ def get_code_section_offset(wasm):
     pos = pos + section_size
 
 
+def remove_dead_entries(entries):
+  # Remove entries for dead functions. It is a heuristics to ignore data if the
+  # function starting address near to 0 (is equal to its size field length).
+  block_start = 0
+  cur_entry = 0
+  while cur_entry < len(entries):
+    if not entries[cur_entry]['eos']:
+      cur_entry += 1
+      continue
+    fn_start = entries[block_start]['address']
+    # Calculate the LEB encoded function size (including size field)
+    fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
+    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
+    if fn_start < min_live_offset:
+      # Remove dead code debug info block.
+      del entries[block_start:cur_entry + 1]
+      cur_entry = block_start
+      continue
+    cur_entry += 1
+    block_start = cur_entry
+
+
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = open(options.dwarfdump_output, 'r').read()
@@ -157,30 +179,13 @@ def read_dwarf_entries(wasm, options):
       else:
         # move end of function to the last END operator
         entry['address'] -= 1
-        if entries[len(entries) - 1]['address'] == entry['address']:
+        if entries[-1]['address'] == entry['address']:
           # last entry has the same address, reusing
-          entries[len(entries) - 1]['eos'] = True
+          entries[-1]['eos'] = True
         else:
           entries.append(entry)
 
-  # Remove dead functions' data. It is a heuristics to ignore data if the
-  # function starting address near to 0 (is equal to its size field length).
-  block_start = 0
-  cur_entry = 0
-  while cur_entry < len(entries):
-    if not entries[cur_entry]['eos']:
-      cur_entry += 1
-      continue
-    fn_start = entries[block_start]['address']
-    fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
-    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
-    if fn_start < min_live_offset:
-      # Remove dead code debug info block.
-      del entries[block_start:cur_entry + 1]
-      cur_entry = block_start
-      continue
-    cur_entry += 1
-    block_start = cur_entry
+  remove_dead_entries(entries)
 
   # return entries sorted by the address field
   return sorted(entries, key=lambda entry: entry['address'])

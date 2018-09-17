@@ -8514,7 +8514,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                     path_from_root('tests', 'other', 'wasm_sourcemap_dead', 't.wasm.dump'),
                     '-o', 'a.out.wasm.map',
                     path_from_root('tests', 'other', 'wasm_sourcemap_dead', 't.wasm')]
-    subprocess.check_call(wasm_map_cmd)
+    run_process(wasm_map_cmd, stdout=PIPE, stderr=PIPE)
     output = open('a.out.wasm.map').read()
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
