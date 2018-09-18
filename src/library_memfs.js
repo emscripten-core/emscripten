@@ -284,6 +284,10 @@ mergeInto(LibraryManager.library, {
         // If memory can grow, we don't want to hold on to references of
         // the memory Buffer, as they may get invalidated. That means
         // we need to do a copy here.
+        // FIXME: this is inefficient as the file packager may have
+        //        copied the data into memory already - we may want to
+        //        integrate more there and let the file packager loading
+        //        code be able to query if memory growth is on or off.
         canOwn = false;
 #endif
         if (!length) return 0;
