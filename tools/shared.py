@@ -2283,7 +2283,25 @@ class Building(object):
     # fastcomp can emit wasm-only code.
     # also disable this mode if it depends on special optimizations that are not yet
     # compatible with it.
-    return ('asmjs' not in Settings.BINARYEN_METHOD and 'interpret-asm2wasm' not in Settings.BINARYEN_METHOD and not Settings.RUNNING_JS_OPTS and not Settings.EMULATED_FUNCTION_POINTERS and not Settings.EMULATE_FUNCTION_POINTER_CASTS) or not Settings.LEGALIZE_JS_FFI
+    if not Settings.LEGALIZE_JS_FFI:
+      # the user has requested no legalization for JS, and so we are not
+      # emitting code compatible with JS, and there is no reason not to
+      # be wasm-only, regardless of everything else
+      return True
+    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
+      # code compatible with asm.js cannot be wasm-only
+      return False
+    if Settings.RUNNING_JS_OPTS:
+      # if the JS optimizer runs, it must run on valid asm.js
+      return False
+    if Settings.EMULATE_FUNCTION_POINTER_CASTS:
+      # FIXME this is a current limitation
+      return False
+    if Settings.RELOCATABLE and Settings.EMULATED_FUNCTION_POINTERS:
+      # FIXME emulation function pointers work properly, but calling between
+      #       modules as wasm-only needs more work
+      return False
+    return True
 
   @staticmethod
   def get_safe_internalize():

@@ -8200,7 +8200,7 @@ int main() {
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
       (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  31,   31), # noqa
+                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
@@ -8244,7 +8244,6 @@ int main() {
       e_i64_i32 = re.search('func \$_?add_ll \(type \$\d+\) \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
       e_f32_f64 = re.search('func \$legalstub\$_?add_f \(type \$\d+\) \(param f64\) \(param f64\) \(result f64\)', text)
       e_i64_i64 = re.search('func \$_?add_ll \(type \$\d+\) \(param i64\) \(param i64\) \(result i64\)', text)
-      # print e_add_f32, i_i64_i32, i_f32_f64, i_i64_i64, i_f32_f32, e_i64_i32, e_f32_f64, e_i64_i64
       assert e_add_f32, 'add_f export missing'
       if js_ffi:
         assert i_i64_i32,     'i64 not converted to i32 in imports'
