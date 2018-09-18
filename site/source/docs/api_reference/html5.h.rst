@@ -64,7 +64,7 @@ The ``target`` parameter is the ID of the HTML element to which the callback reg
   - ``#document``: The event listener is applied to the JavaScript ``document`` object.
   - ``#screen``: The event listener is applied to the JavaScript ``window.screen`` object.
   - ``#canvas``: The event listener is applied to the Emscripten default WebGL canvas element.
-  - Any other string without a leading hash "#" sign: The event listener is applied to the element on the page with the given ID.
+  - Any other string **without a leading hash "#"** sign: The event listener is applied to the element on the page with the given ID.
 
 .. _userdata-parameter-html5-api:
 
