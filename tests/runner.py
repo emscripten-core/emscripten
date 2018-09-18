@@ -144,10 +144,6 @@ def env_modify(updates):
     os.environ.update(old_env)
 
 
-# Core test runner class, shared between normal tests and benchmarks
-checked_sanity = False
-
-
 # The core test modes
 core_test_modes = [
   'asm0',
@@ -236,7 +232,14 @@ class RunnerCore(unittest.TestCase):
     # Explicitly set dedicated temporary directory for parallel tests
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
+  @classmethod
+  def setUpClass(cls):
+    super(RunnerCore, cls).setUpClass()
+    print('(checking sanity from test runner)') # do this after we set env stuff
+    shared.check_sanity(force=True)
+
   def setUp(self):
+    super(RunnerCore, self).setUp()
     self.settings_mods = {}
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
@@ -882,11 +885,11 @@ class BrowserCore(RunnerCore):
     super(BrowserCore, self).__init__(*args, **kwargs)
 
   @classmethod
-  def setUpClass(self):
-    super(BrowserCore, self).setUpClass()
-    self.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
-    self.test_port = int(os.getenv('EMTEST_BROWSER_TEST_PORT', '8888'))
-    self.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
+  def setUpClass(cls):
+    super(BrowserCore, cls).setUpClass()
+    cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
+    cls.test_port = int(os.getenv('EMTEST_BROWSER_TEST_PORT', '8888'))
+    cls.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
     if not has_browser():
       return
     if not EMTEST_BROWSER:
@@ -899,19 +902,19 @@ class BrowserCore(RunnerCore):
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
-    self.browser_timeout = 30
-    self.harness_queue = multiprocessing.Queue()
-    self.harness_server = multiprocessing.Process(target=harness_server_func, args=(self.harness_queue, self.harness_port))
-    self.harness_server.start()
-    print('[Browser harness server on process %d]' % self.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % self.harness_port)
+    cls.browser_timeout = 30
+    cls.harness_queue = multiprocessing.Queue()
+    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_queue, cls.harness_port))
+    cls.harness_server.start()
+    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+    webbrowser.open_new('http://localhost:%s/run_harness' % cls.harness_port)
 
   @classmethod
-  def tearDownClass(self):
-    super(BrowserCore, self).tearDownClass()
+  def tearDownClass(cls):
+    super(BrowserCore, cls).tearDownClass()
     if not has_browser():
       return
-    self.harness_server.terminate()
+    cls.harness_server.terminate()
     print('[Browser harness server terminated]')
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:

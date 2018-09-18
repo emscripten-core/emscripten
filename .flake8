@@ -23,3 +23,4 @@ filename =
   */tests/runner.py
   */tests/test_browser.py
   */tests/test_other.py
+  */tests/test_core.py
