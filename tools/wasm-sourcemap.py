@@ -14,6 +14,7 @@ import argparse
 from collections import OrderedDict
 import json
 import logging
+from math import floor, log
 import os
 import re
 from subprocess import Popen, PIPE
@@ -106,6 +107,28 @@ def get_code_section_offset(wasm):
     pos = pos + section_size
 
 
+def remove_dead_entries(entries):
+  # Remove entries for dead functions. It is a heuristics to ignore data if the
+  # function starting address near to 0 (is equal to its size field length).
+  block_start = 0
+  cur_entry = 0
+  while cur_entry < len(entries):
+    if not entries[cur_entry]['eos']:
+      cur_entry += 1
+      continue
+    fn_start = entries[block_start]['address']
+    # Calculate the LEB encoded function size (including size field)
+    fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
+    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
+    if fn_start < min_live_offset:
+      # Remove dead code debug info block.
+      del entries[block_start:cur_entry + 1]
+      cur_entry = block_start
+      continue
+    cur_entry += 1
+    block_start = cur_entry
+
+
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = open(options.dwarfdump_output, 'r').read()
@@ -154,11 +177,23 @@ def read_dwarf_entries(wasm, options):
       file_path = (dir + '/' if dir != '' else '') + file.group(2)
       files[file.group(1)] = file_path
 
-    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)", line_chunk):
-      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)]}
-      entries.append(entry)
+    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
+      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
+      if not entry['eos']:
+        entries.append(entry)
+      else:
+        # move end of function to the last END operator
+        entry['address'] -= 1
+        if entries[-1]['address'] == entry['address']:
+          # last entry has the same address, reusing
+          entries[-1]['eos'] = True
+        else:
+          entries.append(entry)
 
-  return entries
+  remove_dead_entries(entries)
+
+  # return entries sorted by the address field
+  return sorted(entries, key=lambda entry: entry['address'])
 
 
 def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
@@ -174,8 +209,12 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
   for entry in entries:
     line = entry['line']
     column = entry['column']
-    if line == 0 or column == 0:
+    # ignore entries with line 0
+    if line == 0:
       continue
+    # start at least at column 1
+    if column == 0:
+      column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
     if file_name not in sources_map:
