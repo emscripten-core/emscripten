@@ -280,6 +280,12 @@ mergeInto(LibraryManager.library, {
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
+#if ALLOW_MEMORY_GROWTH
+        // If memory can grow, we don't want to hold on to references of
+        // the memory Buffer, as they may get invalidated. That means
+        // we need to do a copy here.
+        canOwn = false;
+#endif
         if (!length) return 0;
         var node = stream.node;
         node.timestamp = Date.now();
@@ -288,9 +294,6 @@ mergeInto(LibraryManager.library, {
           if (canOwn) {
 #if ASSERTIONS
             assert(position === 0, 'canOwn must imply no weird position inside the file');
-#endif
-#if ALLOW_MEMORY_GROWTH
-            abort('WAKA WAKA');
 #endif
             node.contents = buffer.subarray(offset, offset + length);
             node.usedBytes = length;
