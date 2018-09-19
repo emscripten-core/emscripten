@@ -4006,6 +4006,14 @@ window.close = function() {
     run_process([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--preload-file', 'test.txt', '-o', 'page.html'])
     self.run_browser('page.html', 'hello from file', '/report_result?15')
 
+    # with separate file packager invocation, letting us affect heap copying
+    # or lack thereof
+    for file_packager_args in [[], ['--no-heap-copy']]:
+      print(file_packager_args)
+      run_process([PYTHON, FILE_PACKAGER, 'data.js', '--preload', 'test.txt', '--js-output=' + 'data.js'] + file_packager_args)
+      run_process([PYTHON, EMCC, 'page.c', '-s', 'WASM=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1'])
+      self.run_browser('page.html', 'hello from file', '/report_result?15')
+
   def test_unicode_html_shell(self):
     open(self.in_dir('main.cpp'), 'w').write(self.with_report_result(r'''
       int main() {
