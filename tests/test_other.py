@@ -8627,32 +8627,32 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     output_file = path_from_root('tests', 'module', 'test_stdin.html')
     shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) EXIT_RUNTIME != 0
-T2:EXIT_RUNTIME != 0
-T3:EXIT_RUNTIME < 2
-T4:(else) EXIT_RUNTIME <= 0
-T5:(else) EXIT_RUNTIME
-T6:!EXIT_RUNTIME""", output)
+    self.assertContained("""T1:(else) ASSERTIONS != 1
+T2:ASSERTIONS != 1
+T3:ASSERTIONS < 2
+T4:(else) ASSERTIONS <= 1
+T5:(else) ASSERTIONS
+T6:!ASSERTIONS""", output)
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=1'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:EXIT_RUNTIME == 0
-T2:(else) EXIT_RUNTIME == 0
-T3:EXIT_RUNTIME < 2
-T4:(else) EXIT_RUNTIME <= 0
-T5:EXIT_RUNTIME
-T6:(else) !EXIT_RUNTIME""", output)
+    self.assertContained("""T1:ASSERTIONS == 1
+T2:(else) ASSERTIONS == 1
+T3:ASSERTIONS < 2
+T4:(else) ASSERTIONS <= 1
+T5:ASSERTIONS
+T6:(else) !ASSERTIONS""", output)
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=2'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) EXIT_RUNTIME != 0
-T2:EXIT_RUNTIME != 0
-T3:(else) EXIT_RUNTIME >= 2
-T4:EXIT_RUNTIME > 0
-T5:EXIT_RUNTIME
-T6:(else) !EXIT_RUNTIME""", output)
+    self.assertContained("""T1:(else) ASSERTIONS != 1
+T2:ASSERTIONS != 1
+T3:(else) ASSERTIONS >= 2
+T4:ASSERTIONS > 1
+T5:ASSERTIONS
+T6:(else) !ASSERTIONS""", output)
 
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   def test_node_js_run_from_different_directory(self):
