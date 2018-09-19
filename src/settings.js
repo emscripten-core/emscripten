@@ -405,7 +405,7 @@ var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always ut
                                       // for appending data to files. The default behavior is to use typed arrays for files
                                       // when the file size doesn't change after initial creation, and for files that do
                                       // change size, use normal JS arrays instead.
-var FILESYSTEM = 1; // If not set, does not build in any filesystem support. Useful if you are just doing pure
+var FILESYSTEM = 1; // If set to 0, does not build in any filesystem support. Useful if you are just doing pure
                     // computation, but not reading files or using any streams (including fprintf, and other
                     // stdio.h things) or anything related. The one exception is there is partial support for printf,
                     // and puts, hackishly.

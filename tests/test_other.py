@@ -3456,7 +3456,7 @@ int main() {
         print(no_exit, assertions)
         run_process([PYTHON, EMCC, 'code.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions])
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
-        assert (no_exit and assertions) == ('atexit() called, but EXIT_RUNTIME is set, so atexits() will not be called. set EXIT_RUNTIME to 1' in output), 'warning should be shown'
+        assert (no_exit and assertions) == ('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1' in output), 'warning should be shown'
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -3985,9 +3985,9 @@ int main(int argc, char **argv) {
     self.assertContained('DYNAMIC_EXECUTION=0 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
-    # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
-    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=2'])
-    self.assertContained('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
+    # Test that emscripten_run_script() posts a warning when -s DYNAMIC_EXECUTION=2
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'DYNAMIC_EXECUTION=2'])
+    self.assertContained('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     self.assertContained('hello from script', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
@@ -4057,7 +4057,7 @@ int main(int argc, char **argv) {
               assert not process.stdout, process.stdout
               if not call_exit:
                 assert not process.stderr, process.stderr
-              assert ('but EXIT_RUNTIME=0 is set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
+              assert ('but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
 
   def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
     open('src.cpp', 'w').write(r'''
@@ -4073,7 +4073,7 @@ int main(int argc, char **argv) {
         run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit])
         print(no_exit, call_exit)
         out = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True)
-        assert ('emscripten_force_exit cannot actually shut down the runtime, as the build has EXIT_RUNTIME=0 set' in out) == (no_exit and call_exit), out
+        assert ('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set' in out) == (no_exit and call_exit), out
 
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''
