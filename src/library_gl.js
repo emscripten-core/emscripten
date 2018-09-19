@@ -921,15 +921,21 @@ var LibraryGL = {
         ret = allocate(intArrayFromString(GLctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
         break;
       case 0x1F02 /* GL_VERSION */:
-        var glVersion = GLctx.getParameter(GLctx.VERSION);
-        // return GLES version string corresponding to the version of the WebGL context
-#if USE_WEBGL2
-        if (GLctx.canvas.GLctxObject.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
-        else
+        var glVersion;
+#if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
+        glVersion = 1;
+#else
+        glVersion = GLctx.canvas.GLctxObject.version;
 #endif
-        {
-          glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
+        if (glVersion == 2) {
+          glVersion = 'OpenGL ES 3.0 ';
+        } else {
+#if GL_ASSERTIONS
+          assert(glVersion == 1);
+#endif
+          glVersion = 'OpenGL ES 2.0 ';
         }
+        glVersion += '(' + GLctx.getParameter(GLctx.VERSION) + ')';
         ret = allocate(intArrayFromString(glVersion), 'i8', ALLOC_NORMAL);
         break;
       case 0x1F03 /* GL_EXTENSIONS */:
@@ -943,9 +949,14 @@ var LibraryGL = {
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
+        var ver_num;
+#if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
+        ver_num = '1.00'.match(/(.*)/);
+#else
         // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
         var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
-        var ver_num = glslVersion.match(ver_re);
+        ver_num = glslVersion.match(ver_re);
+#endif
         if (ver_num !== null) {
           if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
           glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
