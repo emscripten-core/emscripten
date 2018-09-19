@@ -450,7 +450,7 @@ def create_backend_args(infile, temp_js):
     args += ['-emscripten-asyncify']
     args += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
     args += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
-  if shared.Settings.NO_EXIT_RUNTIME:
+  if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WASM:
     args += ['-emscripten-wasm']
@@ -470,14 +470,15 @@ def optimize_syscalls(declares, DEBUG):
   not including the filesystem would mean not including the full JS libraries, and the same for
   MAIN_MODULE since a side module might need the filesystem.
   """
-  relevant_settings = ['NO_FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
+# XXX
+  relevant_settings = ['FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
   if all([not shared.Settings[s] for s in relevant_settings]):
     syscall_prefix = '__syscall'
     syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
     syscalls = [int(s) for s in syscall_numbers if is_int(s)]
     if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
       if DEBUG: logging.debug('very limited syscalls (%s) so disabling full filesystem support' % ', '.join(map(str, syscalls)))
-      shared.Settings.NO_FILESYSTEM = 1
+      shared.Settings.FILESYSTEM = 0
 
 
 def is_int(x):

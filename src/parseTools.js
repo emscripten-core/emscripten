@@ -1460,14 +1460,14 @@ function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    split
 }
 
 function makeEval(code) {
-  if (NO_DYNAMIC_EXECUTION == 1) {
+  if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
-    return "abort('NO_DYNAMIC_EXECUTION=1 was set, cannot eval');";
+    return "abort('DYNAMIC_EXECUTION=0 was set, cannot eval');";
   }
   var ret = '';
-  if (NO_DYNAMIC_EXECUTION == 2) {
+  if (DYNAMIC_EXECUTION == 2) {
     // Warn on evals, but proceed.
-    ret += "err('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret += "err('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
     ret += "err(stackTrace());\n";
   }
   ret += code;

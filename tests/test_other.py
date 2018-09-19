@@ -1706,7 +1706,7 @@ int f() {
       run_process(compiler + [os.path.join('main.cpp')] + link_cmd + ['-lother', '-c'])
       print('...')
       # The normal build system is over. We need to do an additional step to link in the dynamic libraries, since we ignored them before
-      run_process([PYTHON, EMCC, 'main.o'] + link_cmd + ['-lother', '-s', 'NO_EXIT_RUNTIME=0'])
+      run_process([PYTHON, EMCC, 'main.o'] + link_cmd + ['-lother', '-s', 'EXIT_RUNTIME=1'])
 
       self.assertContained('*hello from lib\n|hello from lib|\n*', run_js('a.out.js'))
 
@@ -2283,8 +2283,8 @@ int f() {
     for args, fail in test_cases:
         test_cases_without_utf8.append((args + without_utf8_args, fail))
     test_cases += test_cases_without_utf8
-    test_cases.extend([(args[:] + ['-s', 'NO_DYNAMIC_EXECUTION=1'], status) for args, status in test_cases])
-    test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with NO_DYNAMIC_EXECUTION=1
+    test_cases.extend([(args[:] + ['-s', 'DYNAMIC_EXECUTION=0'], status) for args, status in test_cases])
+    test_cases.append((['--bind', '-O2', '--closure', '1'], False)) # closure compiler doesn't work with DYNAMIC_EXECUTION=0
     test_cases = [(args + ['-s', 'IN_TEST_HARNESS=1'], status) for args, status in test_cases]
 
     for args, fail in test_cases:
@@ -3382,7 +3382,7 @@ int main(int argc, char **argv) {
           if self.is_wasm_backend() and not wasm:
             continue
           print(wasm, no_exit, opts)
-          cmd = [PYTHON, EMCC] + opts + ['code.cpp', '-s', 'NO_EXIT_RUNTIME=' + str(no_exit), '-s', 'WASM=' + str(wasm)]
+          cmd = [PYTHON, EMCC] + opts + ['code.cpp', '-s', 'EXIT_RUNTIME=' + str(1 - no_exit), '-s', 'WASM=' + str(wasm)]
           if wasm:
             cmd += ['--profiling-funcs'] # for function names
           run_process(cmd)
@@ -3401,7 +3401,7 @@ int main(int argc, char **argv) {
             # The wasm backend uses atexit to register destructors when
             # constructors are called  There is currently no way to exclude
             # these destructors from the wasm binary.
-            assert ('atexit(' in src) == exit, 'atexit should not appear in src when NO_EXIT_RUNTIME'
+            assert ('atexit(' in src) == exit, 'atexit should not appear in src when EXIT_RUNTIME=0'
             assert ('_ZN5WasteILi2EED' in src) == exit, 'destructors should not appear if no exit:\n' + src
 
   def test_no_exit_runtime_warnings_flush(self):
@@ -3431,9 +3431,9 @@ int main() {
       for no_exit in [0, 1]:
         for assertions in [0, 1]:
           for flush in [0, 1]:
-            # TODO: also check NO_FILESYSTEM here. it never worked though, buffered output was not emitted at shutdown
+            # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
             print(src, no_exit, assertions, flush)
-            cmd = [PYTHON, EMCC, src, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions]
+            cmd = [PYTHON, EMCC, src, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions]
             if flush:
               cmd += ['-DFLUSH']
             run_process(cmd)
@@ -3441,7 +3441,7 @@ int main() {
             exit = 1 - no_exit
             assert 'hello' in output, output
             assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
-            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+            assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
 
   def test_no_exit_runtime_warnings_atexit(self):
     open('code.cpp', 'w').write(r'''
@@ -3454,9 +3454,9 @@ int main() {
     for no_exit in [0, 1]:
       for assertions in [0, 1]:
         print(no_exit, assertions)
-        run_process([PYTHON, EMCC, 'code.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-s', 'ASSERTIONS=%d' % assertions])
+        run_process([PYTHON, EMCC, 'code.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions])
         output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True)
-        assert (no_exit and assertions) == ('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0' in output), 'warning should be shown'
+        assert (no_exit and assertions) == ('atexit() called, but EXIT_RUNTIME is set, so atexits() will not be called. set EXIT_RUNTIME to 1' in output), 'warning should be shown'
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -3557,13 +3557,13 @@ Waste<3> *getMore() {
 ''')
 
     for opts, has_global in [
-      (['-O2', '-g', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-O2', '-g', '-s', 'EXIT_RUNTIME=1'], True),
       # no-exit-runtime removes the atexits, and then globalgce can work
       # it's magic to remove the global initializer entirely
       (['-O2', '-g'], False),
-      (['-Os', '-g', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-Os', '-g', '-s', 'EXIT_RUNTIME=1'], True),
       (['-Os', '-g'], False),
-      (['-O2', '-g', '--llvm-lto', '1', '-s', 'NO_EXIT_RUNTIME=0'], True),
+      (['-O2', '-g', '--llvm-lto', '1', '-s', 'EXIT_RUNTIME=1'], True),
       (['-O2', '-g', '--llvm-lto', '1'], False),
     ]:
       print(opts, has_global)
@@ -3939,7 +3939,7 @@ int main(int argc, char **argv) {
         self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_no_dynamic_execution(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '-s', 'DYNAMIC_EXECUTION=0'])
     self.assertContained('hello, world!', run_js('a.out.js'))
     src = open('a.out.js').read()
     assert 'eval(' not in src
@@ -3951,23 +3951,23 @@ int main(int argc, char **argv) {
     with open('temp.txt', 'w') as f:
       f.write("foo\n")
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
-                 '-s', 'NO_DYNAMIC_EXECUTION=1', '--preload-file', 'temp.txt'])
+                 '-s', 'DYNAMIC_EXECUTION=0', '--preload-file', 'temp.txt'])
     src = open('a.out.js').read()
     assert 'eval(' not in src
     assert 'eval.' not in src
     assert 'new Function' not in src
     try_delete('a.out.js')
 
-    # Test that -s NO_DYNAMIC_EXECUTION=1 and --closure 1 are not allowed together.
+    # Test that -s DYNAMIC_EXECUTION=0 and --closure 1 are not allowed together.
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
-                        '-s', 'NO_DYNAMIC_EXECUTION=1', '--closure', '1'],
+                        '-s', 'DYNAMIC_EXECUTION=0', '--closure', '1'],
                        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
 
-    # Test that -s NO_DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
+    # Test that -s DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
-                        '-s', 'NO_DYNAMIC_EXECUTION=1', '-s', 'RELOCATABLE=1'],
+                        '-s', 'DYNAMIC_EXECUTION=0', '-s', 'RELOCATABLE=1'],
                        check=False, stderr=PIPE)
     assert proc.returncode != 0
     try_delete('a.out.js')
@@ -3980,9 +3980,9 @@ int main(int argc, char **argv) {
       }
       ''')
 
-    # Test that emscripten_run_script() aborts when -s NO_DYNAMIC_EXECUTION=1
-    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'NO_DYNAMIC_EXECUTION=1'])
-    self.assertContained('NO_DYNAMIC_EXECUTION=1 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
+    # Test that emscripten_run_script() aborts when -s DYNAMIC_EXECUTION=0
+    run_process([PYTHON, EMCC, 'test.c', '-O1', '-s', 'DYNAMIC_EXECUTION=0'])
+    self.assertContained('DYNAMIC_EXECUTION=0 was set, cannot eval', run_js(os.path.join(self.get_dir(), 'a.out.js'), assert_returncode=None, full_output=True, stderr=PIPE))
     try_delete('a.out.js')
 
     # Test that emscripten_run_script() posts a warning when -s NO_DYNAMIC_EXECUTION=2
@@ -4045,7 +4045,7 @@ int main(int argc, char **argv) {
       for no_exit in [0, 1]:
         for call_exit in [0, 1]:
           for async in [0, 1]:
-            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit, '-s', 'BINARYEN_ASYNC_COMPILATION=%d' % async])
+            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'BINARYEN_ASYNC_COMPILATION=%d' % async])
             for engine in JS_ENGINES:
               # async compilation can't return a code in d8
               if async and engine == V8_ENGINE:
@@ -4057,7 +4057,7 @@ int main(int argc, char **argv) {
               assert not process.stdout, process.stdout
               if not call_exit:
                 assert not process.stderr, process.stderr
-              assert ('but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
+              assert ('but EXIT_RUNTIME=0 is set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)' in process.stderr) == (no_exit and call_exit), process.stderr
 
   def test_emscripten_force_exit_NO_EXIT_RUNTIME(self):
     open('src.cpp', 'w').write(r'''
@@ -4070,10 +4070,10 @@ int main(int argc, char **argv) {
     ''')
     for no_exit in [0, 1]:
       for call_exit in [0, 1]:
-        run_process([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=%d' % no_exit, '-DCALL_EXIT=%d' % call_exit])
+        run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit])
         print(no_exit, call_exit)
         out = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True)
-        assert ('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set' in out) == (no_exit and call_exit), out
+        assert ('emscripten_force_exit cannot actually shut down the runtime, as the build has EXIT_RUNTIME=0 set' in out) == (no_exit and call_exit), out
 
   def test_mkdir_silly(self):
     open('src.cpp', 'w').write(r'''
@@ -5032,7 +5032,7 @@ main(const int argc, const char * const * const argv)
   }
 }
     ''')
-    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
     self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
 
@@ -5125,7 +5125,7 @@ main(const int argc, const char * const * const argv)
     self.assertLess(no_size, 360000)
 
   def test_no_nuthin(self):
-    # check NO_FILESYSTEM is automatically set, and effective
+    # check FILESYSTEM is automatically set, and effective
 
     def test(opts, absolute):
       print('opts, absolute:', opts, absolute)
@@ -5143,8 +5143,8 @@ main(const int argc, const char * const * const argv)
         self.assertContained('hello, world!', run_js(padded_name + '.js'))
 
       do('normal', 'hello_world_fopen.c', [])
-      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do NO_FILESYSTEM
-      do('no_fs_manual', 'hello_world.c', ['-s', 'NO_FILESYSTEM=1'])
+      do('no_fs', 'hello_world.c', []) # without fopen, we should auto-detect we do not need full fs support and can do FILESYSTEM=0
+      do('no_fs_manual', 'hello_world.c', ['-s', 'FILESYSTEM=0'])
       print('  ', sizes)
       self.assertLess(sizes['no_fs'], sizes['normal'])
       self.assertLess(sizes['no_fs'], absolute)
@@ -5649,7 +5649,7 @@ int main(void) {
       run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
       run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
       run_process([PYTHON, EMRANLIB, 'libtest.a'])
-      run_process([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'NO_EXIT_RUNTIME=0'] + args)
+      run_process([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'EXIT_RUNTIME=1'] + args)
       run_js('a.out.js', assert_returncode=161)
 
   def test_link_with_bad_o_in_a(self):
@@ -5906,7 +5906,7 @@ int main() {
 }
 ''')
     try_delete('a.out.js')
-    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'NO_EXIT_RUNTIME=0'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=1'])
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
   def test_underscore_exit(self):
@@ -8627,32 +8627,32 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     output_file = path_from_root('tests', 'module', 'test_stdin.html')
     shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
-T2:NO_EXIT_RUNTIME != 1
-T3:NO_EXIT_RUNTIME < 2
-T4:(else) NO_EXIT_RUNTIME <= 1
-T5:(else) NO_EXIT_RUNTIME
-T6:!NO_EXIT_RUNTIME""", output)
+    self.assertContained("""T1:(else) EXIT_RUNTIME != 0
+T2:EXIT_RUNTIME != 0
+T3:EXIT_RUNTIME < 2
+T4:(else) EXIT_RUNTIME <= 0
+T5:(else) EXIT_RUNTIME
+T6:!EXIT_RUNTIME""", output)
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=1'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:NO_EXIT_RUNTIME == 1
-T2:(else) NO_EXIT_RUNTIME == 1
-T3:NO_EXIT_RUNTIME < 2
-T4:(else) NO_EXIT_RUNTIME <= 1
-T5:NO_EXIT_RUNTIME
-T6:(else) !NO_EXIT_RUNTIME""", output)
+    self.assertContained("""T1:EXIT_RUNTIME == 0
+T2:(else) EXIT_RUNTIME == 0
+T3:EXIT_RUNTIME < 2
+T4:(else) EXIT_RUNTIME <= 0
+T5:EXIT_RUNTIME
+T6:(else) !EXIT_RUNTIME""", output)
 
-    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'NO_EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'EXIT_RUNTIME=2'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) NO_EXIT_RUNTIME != 1
-T2:NO_EXIT_RUNTIME != 1
-T3:(else) NO_EXIT_RUNTIME >= 2
-T4:NO_EXIT_RUNTIME > 1
-T5:NO_EXIT_RUNTIME
-T6:(else) !NO_EXIT_RUNTIME""", output)
+    self.assertContained("""T1:(else) EXIT_RUNTIME != 0
+T2:EXIT_RUNTIME != 0
+T3:(else) EXIT_RUNTIME >= 2
+T4:EXIT_RUNTIME > 0
+T5:EXIT_RUNTIME
+T6:(else) !EXIT_RUNTIME""", output)
 
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   def test_node_js_run_from_different_directory(self):

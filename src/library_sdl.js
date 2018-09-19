@@ -11,7 +11,7 @@
 
 var LibrarySDL = {
   $SDL__deps: [
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     '$FS',
 #endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',

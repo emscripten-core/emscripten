@@ -750,7 +750,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
         options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
         # emrun mode waits on program exit
-        shared.Settings.NO_EXIT_RUNTIME = 0
+        shared.Settings.EXIT_RUNTIME = 1
 
       if options.cpu_profiler:
         options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
@@ -789,19 +789,31 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
-      # Handle aliases in settings flags. These are settings whose name
-      # has changed.
-      settings_aliases = {
+      def standardize_setting_change(key, value):
+        # Handle aliases in settings flags. These are settings whose name
+        # has changed.
+        settings_aliases = {
           'BINARYEN': 'WASM',
           'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
           # TODO: change most (all?) other BINARYEN* names to WASM*
-      }
+        }
+        key = settings_aliases.get(key, key)
+        # boolean NO_X settings are aliases for X
+        # (note that *non*-boolean setting values have special meanings,
+        # and we can't just flip them, so leave them as-is to be
+        # handled in a special way later)
+        if key.startswith('NO_') and value in (0, 1):
+          key = key[3:]
+          value = 1 - value
+        return key, value
+
       settings_key_changes = set()
 
       def setting_sub(s):
         key, value = s.split('=', 1)
+        key, value = standardize_setting_change(key, value)
         settings_key_changes.add(key)
-        return '='.join([settings_aliases.get(key, key), value])
+        return '='.join([key, value])
 
       settings_changes = [setting_sub(c) for c in settings_changes]
 
@@ -1040,7 +1052,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       assert not (shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE), 'cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time'
 
-      assert not (shared.Settings.NO_DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+      assert not (not shared.Settings.DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
 
       if options.emrun:
         shared.Settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
@@ -1120,7 +1132,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
         newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
         next_arg_index += 1
-        shared.Settings.NO_FILESYSTEM = 1
+        shared.Settings.FILESYSTEM = 0
         shared.Settings.FETCH = 1
         if not shared.Settings.USE_PTHREADS:
           exit_with_error('-s ASMFS=1 requires -s USE_PTHREADS=1 to be set!')
@@ -1144,7 +1156,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
 
-      assert not (shared.Settings.NO_DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both NO_DYNAMIC_EXECUTION and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
+      assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
       if shared.Settings.RELOCATABLE:
         assert shared.Settings.GLOBAL_BASE < 1
@@ -1183,13 +1195,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.proxy_to_worker or options.use_preload_plugins:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
-      if not shared.Settings.NO_FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
+      if shared.Settings.FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
         # to flush streams on FS exit, we need to be able to call fflush
         # we only include it if the runtime is exitable, or when ASSERTIONS
         # (ASSERTIONS will check that streams do not need to be flushed,
         # helping people see when they should have disabled NO_EXIT_RUNTIME)
-        if not shared.Settings.NO_EXIT_RUNTIME or shared.Settings.ASSERTIONS:
+        if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
           shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
       if shared.Settings.USE_PTHREADS:

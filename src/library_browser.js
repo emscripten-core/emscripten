@@ -1309,9 +1309,9 @@ var LibraryBrowser = {
   emscripten_force_exit__proxy: 'sync',
   emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
 #if ASSERTIONS
-    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build has NO_EXIT_RUNTIME set');
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #endif
     Module['noExitRuntime'] = false;

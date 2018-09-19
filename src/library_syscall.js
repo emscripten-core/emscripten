@@ -1,6 +1,6 @@
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
                    '$FS', '$ERRNO_CODES', '$PATH',
 #endif
 #if SYSCALL_DEBUG
@@ -8,7 +8,7 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
 
@@ -148,7 +148,7 @@ var SyscallsLibrary = {
       }
       return ret;
     },
-#endif // NO_FILESYSTEM == 0
+#endif // FILESYSTEM
 
     // arguments handling
 
@@ -169,7 +169,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     getStreamFromFD: function() {
       var stream = FS.getStream(SYSCALLS.get());
       if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
@@ -197,7 +197,7 @@ var SyscallsLibrary = {
 #endif
       return info;
     },
-#endif // NO_FILESYSTEM == 0
+#endif // FILESYSTEM
     get64: function() {
       var low = SYSCALLS.get(), high = SYSCALLS.get();
       if (low >= 0) assert(high === 0);
@@ -313,9 +313,9 @@ var SyscallsLibrary = {
     return -ERRNO_CODES.ENOSYS; // unsupported features
   },
   __syscall54: function(which, varargs) { // ioctl
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in ioctl syscall due to NO_FILESYSTEM');
+    err('no-op in ioctl syscall due to FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -367,7 +367,7 @@ var SyscallsLibrary = {
       }
       default: abort('bad ioctl syscall ' + op);
     }
-#endif // NO_FILESYSTEM
+#endif // FILESYSTEM
   },
   __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(which, varargs) { // setpgid
@@ -791,7 +791,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
     var fflush = Module["_fflush"];
@@ -803,16 +803,16 @@ var SyscallsLibrary = {
     if (buffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
   __syscall146__deps: ['$flush_NO_FILESYSTEM'],
-#if NO_EXIT_RUNTIME == 0
+#if EXIT_RUNTIME == 1
   __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
   __syscall146: function(which, varargs) { // writev
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt);
 #else
-    // hack to support printf in NO_FILESYSTEM
+    // hack to support printf in FILESYSTEM=0
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
     if (!___syscall146.buffers) {
@@ -837,7 +837,7 @@ var SyscallsLibrary = {
       ret += len;
     }
     return ret;
-#endif // NO_FILESYSTEM == 0
+#endif // FILESYSTEM
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
@@ -1045,9 +1045,9 @@ var SyscallsLibrary = {
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in fcntl64 syscall due to NO_FILESYSTEM');
+    err('no-op in fcntl64 syscall due to FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -1099,7 +1099,7 @@ var SyscallsLibrary = {
         return -ERRNO_CODES.EINVAL;
       }
     }
-#endif // NO_FILESYSTEM
+#endif // FILESYSTEM
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG

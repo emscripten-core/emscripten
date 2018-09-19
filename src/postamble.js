@@ -304,7 +304,7 @@ function run(args) {
 Module['run'] = run;
 
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
 function checkUnflushedContent() {
   // Compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
@@ -314,7 +314,7 @@ function checkUnflushedContent() {
   // builds we do so just for this check, and here we see if there is any
   // content to flush, that is, we check if there would have been
   // something a non-ASSERTIONS build would have not seen.
-  // How we flush the streams depends on whether we are in NO_FILESYSTEM
+  // How we flush the streams depends on whether we are in FILESYSTEM=0
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
   var print = out;
@@ -324,13 +324,13 @@ function checkUnflushedContent() {
     has = true;
   }
   try { // it doesn't matter if it fails
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
 #else
     var flush = Module['_fflush'];
 #endif
     if (flush) flush(0);
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     // also flush in the JS FS layer
     var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
     if (hasFS) {
@@ -350,17 +350,17 @@ function checkUnflushedContent() {
   out = print;
   err = printErr;
   if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
   }
 }
-#endif // NO_EXIT_RUNTIME
+#endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
 function exit(status, implicit) {
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
   checkUnflushedContent();
-#endif // NO_EXIT_RUNTIME
+#endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
   // if this is just main exit-ing implicitly, and the status is 0, then we
@@ -375,11 +375,11 @@ function exit(status, implicit) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
-#if NO_EXIT_RUNTIME
-      err('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+#if EXIT_RUNTIME == 0
+      err('exit(' + status + ') called, but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)');
 #else
       err('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
-#endif // NO_EXIT_RUNTIME
+#endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
   } else {
@@ -454,7 +454,7 @@ if (Module['noInitialRun']) {
 }
 #endif // HAS_MAIN
 
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
 Module["noExitRuntime"] = true;
 #endif
 

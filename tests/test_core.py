@@ -178,7 +178,7 @@ class TestCoreBase(RunnerCore):
 
   def test_i64_7z(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_7z',
                                  args=['hallo'])
 
@@ -214,7 +214,7 @@ class TestCoreBase(RunnerCore):
 
   def test_i16_emcc_intrinsic(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_i16_emcc_intrinsic')
 
   def test_double_i64_conversion(self):
@@ -537,7 +537,7 @@ int main()
 
   def test_zero_multiplication(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_zero_multiplication')
 
   def test_isnan(self):
@@ -573,7 +573,7 @@ int main()
 
   def test_rounding(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     for precise_f32 in [0, 1]:
       print(precise_f32)
       self.set_setting('PRECISE_F32', precise_f32)
@@ -949,7 +949,7 @@ int main() {
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
@@ -985,7 +985,7 @@ int main() {
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
     src = '''
@@ -1141,7 +1141,7 @@ int main(int argc, char **argv)
   def test_exceptions_uncaught(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
+      self.set_setting('EXIT_RUNTIME', 1)
       src = r'''
         #include <stdio.h>
         #include <exception>
@@ -1179,7 +1179,7 @@ int main(int argc, char **argv)
   def test_exceptions_uncaught_2(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
+      self.set_setting('EXIT_RUNTIME', 1)
       src = r'''
         #include <iostream>
         #include <exception>
@@ -1204,7 +1204,7 @@ int main(int argc, char **argv)
   def test_exceptions_typed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
@@ -1315,12 +1315,12 @@ int main() {
 
   def test_isdigit_l(self):
       # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
+      self.set_setting('EXIT_RUNTIME', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
 
   def test_iswdigit(self):
       # needs to flush stdio streams
-      self.set_setting('NO_EXIT_RUNTIME', 0)
+      self.set_setting('EXIT_RUNTIME', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
 
   def test_polymorph(self):
@@ -1403,7 +1403,7 @@ int main() {
 
   def test_remove(self):
    # needs to flush stdio streams
-   self.set_setting('NO_EXIT_RUNTIME', 0)
+   self.set_setting('EXIT_RUNTIME', 1)
    self.do_run_in_out_file_test('tests', 'cstdio', 'test_remove')
 
   def test_alloca_stack(self):
@@ -1621,7 +1621,7 @@ def process(filename):
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
 
     if self.run_name == 'asm2':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
@@ -2125,7 +2125,7 @@ The current type of b is: 9
     # safe heap prints a warning that messes up our output.
     self.set_setting('SAFE_HEAP', 0)
     # needs atexit
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_stdlibs')
 
   def test_stdbool(self):
@@ -2178,7 +2178,7 @@ The current type of b is: 9
   def test_atexit(self):
     # Confirms they are called in reverse order
     # needs atexits
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
   def test_pthread_specific(self):
@@ -2230,7 +2230,7 @@ The current type of b is: 9
 
   def test_strptime_reentrant(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_strptime_reentrant')
 
   def test_strftime(self):
@@ -4265,7 +4265,7 @@ Have even and odd!
   def test_printf(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     src = open(path_from_root('tests', 'printf', 'test.c'), 'r').read()
     expected = open(path_from_root('tests', 'printf', 'output.txt'), 'r').read()
     self.do_run(src, expected)
@@ -4370,14 +4370,14 @@ Pass: 0.000012 0.000012''')
 
   def test_sscanf_whitespace(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_whitespace')
 
   def test_sscanf_other_whitespace(self):
     # use i16s in printf
     self.set_setting('SAFE_HEAP', 0)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_other_whitespace')
 
   def test_sscanf_3(self):
@@ -4464,7 +4464,7 @@ def process(filename):
   def test_files_m(self):
     # Test for Module.stdin etc.
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
 
     post = '''
 def process(filename):
@@ -4761,7 +4761,7 @@ name: .
 
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_direct_string_constant_usage')
 
   def test_std_cout_new(self):
@@ -4769,7 +4769,7 @@ name: .
 
   def test_istream(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     test_path = path_from_root('tests', 'core', 'test_istream')
     src, output = (test_path + s for s in ('.c', '.out'))
 
@@ -5396,7 +5396,7 @@ return malloc(size);
 
   def test_static_variable(self):
     # needs atexit
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_static_variable')
 
   def test_fakestat(self):
@@ -5405,7 +5405,7 @@ return malloc(size);
   def test_mmap(self):
     self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
 
     test_path = path_from_root('tests', 'core', 'test_mmap')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5599,7 +5599,7 @@ return malloc(size);
     # SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args = self.emcc_args + ['-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd3')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5621,7 +5621,7 @@ return malloc(size);
   @SIMD
   def test_simd6(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     # test_simd6 is to test x86 min and max intrinsics on NaN and -0.0
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd6')
@@ -5685,7 +5685,7 @@ return malloc(size);
   @SIMD
   def test_simd14(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     test_path = path_from_root('tests', 'core', 'test_simd14')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -6089,7 +6089,7 @@ return malloc(size);
       self.skipTest("Our code is not exactly 'normal' llvm assembly")
 
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
 
     emcc_args = self.emcc_args
 
@@ -6140,11 +6140,11 @@ return malloc(size);
 
       if basename in need_no_leave_inputs_raw:
         leave_inputs = '0'
-        self.set_setting('NO_FILESYSTEM', 0)
+        self.set_setting('FILESYSTEM', 1)
       else:
         leave_inputs = '1'
-        # no libc is linked in; with NO_FILESYSTEM we have a chance at printfing anyhow
-        self.set_setting('NO_FILESYSTEM', 1)
+        # no libc is linked in; with FILESYSTEM=0 we have a chance at printfing anyhow
+        self.set_setting('FILESYSTEM', 0)
 
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
@@ -7367,7 +7367,7 @@ Success!
 
   def test_exit_status(self):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -7429,7 +7429,7 @@ Success!
 
   def test_async(self, emterpretify=False):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     if not emterpretify:
@@ -7730,7 +7730,7 @@ extern "C" {
 
   def do_test_coroutine(self, additional_settings):
     # needs to flush stdio streams
-    self.set_setting('NO_EXIT_RUNTIME', 0)
+    self.set_setting('EXIT_RUNTIME', 1)
     src = open(path_from_root('tests', 'test_coroutines.cpp')).read()
     for (k, v) in additional_settings.items():
       self.set_setting(k, v)
