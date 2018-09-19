@@ -470,8 +470,7 @@ def optimize_syscalls(declares, DEBUG):
   not including the filesystem would mean not including the full JS libraries, and the same for
   MAIN_MODULE since a side module might need the filesystem.
   """
-# XXX
-  relevant_settings = ['FILESYSTEM', 'FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
+  relevant_settings = ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY', 'MAIN_MODULE']
   if all([not shared.Settings[s] for s in relevant_settings]):
     syscall_prefix = '__syscall'
     syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
