@@ -809,13 +809,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs = [arg for arg in newargs if arg is not '']
 
       settings_key_changes = set()
-
-      def setting_sub(s):
+      for s in settings_changes:
         key, value = s.split('=', 1)
         settings_key_changes.add(key)
-        return '='.join([key, value])
-
-      settings_changes = [setting_sub(c) for c in settings_changes]
 
       # Find input files
 
