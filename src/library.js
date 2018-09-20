@@ -596,8 +596,8 @@ LibraryManager.library = {
   atexit__sig: 'ii',
   atexit: function(func, arg) {
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME == 1
-    warnOnce('atexit() called, but NO_EXIT_RUNTIME is set, so atexits() will not be called. set NO_EXIT_RUNTIME to 0 (see the FAQ)');
+#if EXIT_RUNTIME == 0
+    warnOnce('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1 (see the FAQ)');
 #endif
 #endif
     __ATEXIT__.unshift({ func: func, arg: arg });

@@ -235,7 +235,7 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -246,7 +246,7 @@ Functions
 
 .. c:function:: int emscripten_run_script_int(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -258,7 +258,7 @@ Functions
 
 .. c:function:: char *emscripten_run_script_string(const char *script)
 
-  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
+  Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If ``-s DYNAMIC_EXECUTION=0`` is set, this function will not be available.
 
   This function can be called from a pthread, and it is executed in the scope of the Web Worker that is hosting the pthread. To evaluate a function in the scope of the main runtime thread, see the function emscripten_sync_run_in_main_runtime_thread().
 
@@ -447,7 +447,7 @@ Functions
 
   The difference is that ``emscripten_force_exit`` will shut down the runtime even if you previously called :c:func:`emscripten_exit_with_live_runtime` or otherwise kept the runtime alive. In other words, this method gives you the option to completely shut down the runtime after it was kept alive beyond the completion of ``main()``.
 
-  Note that if ``NO_EXIT_RUNTIME`` is set (which it is by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-s NO_EXIT_RUNTIME=0`` if you want to be able to exit the runtime.
+  Note that if ``EXIT_RUNTIME`` is not set (which is the case by default) then the runtime cannot be shut down, as we do not include the code to do so. Build with ``-s EXIT_RUNTIME=1`` if you want to be able to exit the runtime.
 
   :param int status: The same as for the *libc* function `exit() <http://linux.die.net/man/3/exit>`_.
 
