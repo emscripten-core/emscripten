@@ -140,7 +140,7 @@ class Py2CompletedProcess:
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
-    if self.returncode is not 0:
+    if self.returncode != 0:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 
@@ -166,17 +166,17 @@ def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
 def check_execute(cmd, *args, **kw):
   try:
     run_process(cmd, stdout=PIPE, *args, **kw)
-    logging.debug("Successfuly executed %s" % " ".join(cmd))
+    logging.debug('Successfuly executed %s' % ' '.join(cmd))
   except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed with output:\n%s" % (" ".join(e.cmd), e.output))
+    exit_with_error("'%s' failed (%d) with output:\n%s", " ".join(e.cmd), e.returncode, e.output)
 
 
 def check_call(cmd, *args, **kw):
   try:
     run_process(cmd, *args, **kw)
-    logging.debug("Successfully executed %s" % " ".join(cmd))
-  except subprocess.CalledProcessError:
-    exit_with_error("'%s' failed" % " ".join(cmd))
+    logging.debug('Successfully executed %s' % ' '.join(cmd))
+  except subprocess.CalledProcessError as e:
+    exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
 
 
 def generate_config(path, first_time=False):
