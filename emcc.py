@@ -336,8 +336,27 @@ def apply_settings(changes):
   Settings object.
   """
 
+  def standardize_setting_change(key, value):
+    # Handle aliases in settings flags. These are settings whose name
+    # has changed.
+    settings_aliases = {
+      'BINARYEN': 'WASM',
+      'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
+      # TODO: change most (all?) other BINARYEN* names to WASM*
+    }
+    key = settings_aliases.get(key, key)
+    # boolean NO_X settings are aliases for X
+    # (note that *non*-boolean setting values have special meanings,
+    # and we can't just flip them, so leave them as-is to be
+    # handled in a special way later)
+    if key.startswith('NO_') and value in ('0', '1'):
+      key = key[3:]
+      value = str(1 - int(value))
+    return key, value
+
   for change in changes:
     key, value = change.split('=', 1)
+    key, value = standardize_setting_change(key, value)
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
@@ -789,29 +808,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
       newargs = [arg for arg in newargs if arg is not '']
 
-      def standardize_setting_change(key, value):
-        # Handle aliases in settings flags. These are settings whose name
-        # has changed.
-        settings_aliases = {
-          'BINARYEN': 'WASM',
-          'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
-          # TODO: change most (all?) other BINARYEN* names to WASM*
-        }
-        key = settings_aliases.get(key, key)
-        # boolean NO_X settings are aliases for X
-        # (note that *non*-boolean setting values have special meanings,
-        # and we can't just flip them, so leave them as-is to be
-        # handled in a special way later)
-        if key.startswith('NO_') and value in (0, 1):
-          key = key[3:]
-          value = 1 - value
-        return key, value
-
       settings_key_changes = set()
 
       def setting_sub(s):
         key, value = s.split('=', 1)
-        key, value = standardize_setting_change(key, value)
         settings_key_changes.add(key)
         return '='.join([key, value])
 

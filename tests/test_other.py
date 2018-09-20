@@ -5909,6 +5909,18 @@ int main() {
     run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=1'])
     self.assertContained('exiting now, status 14', run_js('a.out.js', assert_returncode=14))
 
+  def test_NO_aliasing(self):
+    # the NO_ prefix flips boolean options
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXIT_RUNTIME=1'])
+    exit_1 = open('a.out.js').read()
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NO_EXIT_RUNTIME=0'])
+    no_exit_0 = open('a.out.js').read()
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXIT_RUNTIME=0'])
+    exit_0 = open('a.out.js').read()
+
+    assert exit_1 == no_exit_0
+    assert exit_1 != exit_0
+
   def test_underscore_exit(self):
     open('src.cpp', 'w').write(r'''
 #include <unistd.h>
