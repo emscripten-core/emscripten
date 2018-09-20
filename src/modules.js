@@ -107,8 +107,8 @@ var LibraryManager = {
       'library_html5.js'
     ];
 
-    if (!NO_FILESYSTEM) {
-      // Core filesystem libraries (always linked against, unless -s NO_FILESYSTEM=1 is specified)
+    if (FILESYSTEM) {
+      // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',
         'library_memfs.js',

@@ -74,7 +74,7 @@ In addition to the above, the following tips can help to reduce code size:
 The following compiler settings can help (see ``src/settings.js`` for more details):
 
 - Disable inlining when possible, using ``-s INLINING_LIMIT=1``. Compiling with -Os or -Oz generally avoids inlining too. (Inlining can make code faster, though, so use this carefully.)
-- You can use the ``NO_FILESYSTEM`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
+- You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc., which prevents the compiler from emitting code to support all possible runtime environments. (When you tell emcc to emit an HTML file, it automatically sets the output to web-only.)
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
 

@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM == 1
   $PATH__deps: ['$FS'],
 #endif
   $PATH: {

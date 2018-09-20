@@ -1999,7 +1999,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuff
 #endif
 
 #if ASSERTIONS
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
 var /* show errors on likely calls to FS when it was not included */ FS = {
   error: function() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');

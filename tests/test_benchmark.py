@@ -169,14 +169,14 @@ process(sys.argv[1])
       OPTIMIZATIONS,
       '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
-      '-s', 'NO_FILESYSTEM=1',
+      '-s', 'FILESYSTEM=0',
       #'--profiling',
       '--closure', '1',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
-      cmd = [arg if arg != 'NO_FILESYSTEM=1' else 'NO_FILESYSTEM=0' for arg in cmd]
+      cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
     assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
     if self.binaryen_opts:

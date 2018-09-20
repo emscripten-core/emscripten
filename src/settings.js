@@ -44,12 +44,12 @@ var VERBOSE = 0; // When set to 1, will generate more verbose output during comp
 var INVOKE_RUN = 1; // Whether we will run the main() function. Disable if you embed the generated
                     // code in your own, and will call main() yourself at the right time (which you
                     // can do with Module.callMain(), with an optional parameter of commandline args).
-var NO_EXIT_RUNTIME = 1; // If 1, the runtime is not quit when main() completes (allowing code to
-                         // run afterwards, for example from the browser main event loop). atexit()s
-                         // are also not executed, and we can avoid including code for runtime shutdown,
-                         // like flushing the stdio streams.
-                         // Set this to 0 if you do want atexit()s or stdio streams to be flushed
-                         // on exit.
+var EXIT_RUNTIME = 0; // If 0, the runtime is not quit when main() completes (allowing code to
+                      // run afterwards, for example from the browser main event loop). atexit()s
+                      // are also not executed, and we can avoid including code for runtime shutdown,
+                      // like flushing the stdio streams.
+                      // Set this to 1 if you do want atexit()s or stdio streams to be flushed
+                      // on exit.
 var MEM_INIT_METHOD = 0; // How to represent the initial memory content.
                          // 0: embed a base64 string literal representing the initial memory data
                          // 1: create a *.mem file containing the binary data of the initial memory;
@@ -405,13 +405,13 @@ var MEMFS_APPEND_TO_TYPED_ARRAYS = 0; // If set to nonzero, MEMFS will always ut
                                       // for appending data to files. The default behavior is to use typed arrays for files
                                       // when the file size doesn't change after initial creation, and for files that do
                                       // change size, use normal JS arrays instead.
-var NO_FILESYSTEM = 0; // If set, does not build in any filesystem support. Useful if you are just doing pure
-                       // computation, but not reading files or using any streams (including fprintf, and other
-                       // stdio.h things) or anything related. The one exception is there is partial support for printf,
-                       // and puts, hackishly.
-                       // The compiler will automatically set this if it detects that syscall usage (which is static)
-                       // does not require a full filesystem. If you still want filesystem support, use
-                       // FORCE_FILESYSTEM
+var FILESYSTEM = 1; // If set to 0, does not build in any filesystem support. Useful if you are just doing pure
+                    // computation, but not reading files or using any streams (including fprintf, and other
+                    // stdio.h things) or anything related. The one exception is there is partial support for printf,
+                    // and puts, hackishly.
+                    // The compiler will automatically set this if it detects that syscall usage (which is static)
+                    // does not require a full filesystem. If you still want filesystem support, use
+                    // FORCE_FILESYSTEM
 var FORCE_FILESYSTEM = 0; // Makes full filesystem support be included, even if statically it looks like it is not
                           // used. For example, if your C code uses no files, but you include some JS that does,
                           // you might need this.
@@ -672,27 +672,27 @@ var EXPLICIT_ZEXT = 0; // If 1, generate an explicit conversion of zext i1 to i3
 var EXPORT_NAME = 'Module'; // Global variable to export the module as for environments without a standardized module
                             // loading system (e.g. the browser and SM shell).
 
-var NO_DYNAMIC_EXECUTION = 0; // When set to 1, we do not emit eval() and new Function(), which disables some functionality
-                              // (causing runtime errors if attempted to be used), but allows the emitted code to be
-                              // acceptable in places that disallow dynamic code execution (chrome packaged app,
-                              // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
-                              // that is targeting a privileged or a certified execution environment, see
-                              // Firefox Content Security Policy (CSP) webpage for details:
-                              // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
-                              // When this flag is set, the following features (linker flags) are unavailable:
-                              //  --closure 1: When using closure compiler, eval() would be needed to locate the Module object.
-                              //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
-                              //  --bind: Embind would need to eval().
-                              // Additionally, the following Emscripten runtime functions are unavailable when
-                              // NO_DYNAMIC_EXECUTION=1 is set, and an attempt to call them will throw an exception:
-                              // - emscripten_run_script(),
-                              // - emscripten_run_script_int(),
-                              // - emscripten_run_script_string(),
-                              // - dlopen(),
-                              // - the functions ccall() and cwrap() are still available, but they are restricted to only
-                              //   being able to call functions that have been exported in the Module object in advance.
-                              // When set to -s NO_DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
-                              // to warnings instead of throwing an exception.
+var DYNAMIC_EXECUTION = 1; // When set to 0, we do not emit eval() and new Function(), which disables some functionality
+                           // (causing runtime errors if attempted to be used), but allows the emitted code to be
+                           // acceptable in places that disallow dynamic code execution (chrome packaged app,
+                           // privileged firefox app, etc.). Pass this flag when developing an Emscripten application
+                           // that is targeting a privileged or a certified execution environment, see
+                           // Firefox Content Security Policy (CSP) webpage for details:
+                           // https://developer.mozilla.org/en-US/Apps/Build/Building_apps_for_Firefox_OS/CSP
+                           // When this flag is set, the following features (linker flags) are unavailable:
+                           //  --closure 1: When using closure compiler, eval() would be needed to locate the Module object.
+                           //  -s RELOCATABLE=1: the function Runtime.loadDynamicLibrary would need to eval().
+                           //  --bind: Embind would need to eval().
+                           // Additionally, the following Emscripten runtime functions are unavailable when
+                           // DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
+                           // - emscripten_run_script(),
+                           // - emscripten_run_script_int(),
+                           // - emscripten_run_script_string(),
+                           // - dlopen(),
+                           // - the functions ccall() and cwrap() are still available, but they are restricted to only
+                           //   being able to call functions that have been exported in the Module object in advance.
+                           // When set to -s DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
+                           // to warnings instead of throwing an exception.
 
 var EMTERPRETIFY = 0; // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY_FILE = ''; // If defined, a file to write bytecode to, otherwise the default is to embed it in text JS arrays (which is less efficient).

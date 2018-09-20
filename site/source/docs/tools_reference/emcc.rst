@@ -87,6 +87,8 @@ Options that are modified or new in *emcc* are listed below:
 ``-s OPTION=VALUE``
 	JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. 
 	
+	.. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
+
 	.. note:: For options that are lists, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
 	 
 		::
@@ -407,7 +409,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-emrun:
 	
 ``--emrun``
-	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `NO_EXIT_RUNTIME=0`, allowing normal runtime exiting with return code passing.)
+	Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `EXIT_RUNTIME=1`, allowing normal runtime exiting with return code passing.)
 
 ``--cpuprofiler``
 	Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.

@@ -65,8 +65,8 @@ EMBUILDER = path_from_root('embuilder.py')
 
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;
-#  NO_FILESYSTEM avoids bringing libc for that)
-MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'NO_FILESYSTEM=1']
+#  FILESYSTEM=0 avoids bringing libc for that)
+MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0']
 
 
 class sanity(RunnerCore):
