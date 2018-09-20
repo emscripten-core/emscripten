@@ -827,7 +827,7 @@ function demangleAll(text) {
   return text.replace(regex,
     function(x) {
       var y = demangle(x);
-      return x === y ? x : (x + ' [' + y + ']');
+      return x === y ? x : (y + ' [' + x + ']');
     });
 }
 
