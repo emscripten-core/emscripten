@@ -15,6 +15,23 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Support `-s NO_X=1` as an alias for `-s X=0` and vice versa, which
+   simplifies current settings with `NO_`-prefixed names. See #7151.
+ - Various `EMULATED_FUNCTION_POINTER` improvements. See #7108, #7128.
+
+v1.38.12: 09/03/2018
+--------------------
+ - Update SDL2 to 2.0.7. See #7016.
+ - Optionally build using native object files (wasm backend only).
+   For now this is befind a new option flag: -s WASM_OBJECT_FILES=1.
+   See #6875.
+
+v1.38.11: 08/02/2018
+--------------------
+ - Support for loading wasm files in the same dir as the JS file, using
+   node.js/Web-specific techniques as applicable. See #5368 and followups.
+ - Add an API for async side module compilation in wasm. See #6663.
+ - Remove builtin Crunch support. See #6827.
 
 v1.38.10: 07/23/2018
 --------------------
