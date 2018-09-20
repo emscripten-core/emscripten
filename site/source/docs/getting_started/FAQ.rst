@@ -252,11 +252,11 @@ Another option is to use the ``MODULARIZE`` option, using ``-s MODULARIZE=1``. T
 What does "exiting the runtime" mean? Why don't ``atexit()s`` run?
 ==================================================================
 
-(You may need this answer if you see an error saying something like ``atexit() called, but NO_EXIT_RUNTIME`` or ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.)
+(You may need this answer if you see an error saying something like ``atexit() called, but EXIT_RUNTIME is not set`` or ``stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1``.)
 
-By default Emscripten sets ``NO_EXIT_RUNTIME=1``, which means that we don't include code to shut down the runtime. That means that when ``main()`` exits, we don't flush the stdio streams, or call the destructors of global C++ objects, or call ``atexit`` callbacks. This lets us emit smaller code by default, and is normally what you want on the web: even though ``main()`` exited, you may have something asynchronous happening later that you want to execute.
+By default Emscripten sets ``EXIT_RUNTIME=0``, which means that we don't include code to shut down the runtime. That means that when ``main()`` exits, we don't flush the stdio streams, or call the destructors of global C++ objects, or call ``atexit`` callbacks. This lets us emit smaller code by default, and is normally what you want on the web: even though ``main()`` exited, you may have something asynchronous happening later that you want to execute.
 
-In some cases, though, you may want a more "commandline" experience, where we do shut down the runtime when ``main()`` exits. You can build with ``-s NO_EXIT_RUNTIME=0``, and then we will call ``atexits`` and so forth. When you build with ``ASSERTIONS``, you should get a warning when you need this. For example, if your program prints something without a newline,
+In some cases, though, you may want a more "commandline" experience, where we do shut down the runtime when ``main()`` exits. You can build with ``-s EXIT_RUNTIME=1``, and then we will call ``atexits`` and so forth. When you build with ``ASSERTIONS``, you should get a warning when you need this. For example, if your program prints something without a newline,
 
 ::
 
@@ -266,7 +266,7 @@ In some cases, though, you may want a more "commandline" experience, where we do
     printf("hello"); // note no newline
   }
 
-If we don't shut down the runtime and flush the stdio streams, "hello" won't be printed. In an ``ASSERTIONS`` build you'll get a notification saying ``stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0``.
+If we don't shut down the runtime and flush the stdio streams, "hello" won't be printed. In an ``ASSERTIONS`` build you'll get a notification saying ``stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1``.
 
 .. _faq-dead-code-elimination:
 
