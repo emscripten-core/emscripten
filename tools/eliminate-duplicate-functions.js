@@ -1,21 +1,27 @@
-///////////////////////////////////////////////////////////////////////////////////////////////
-// Eliminate-Duplicate-Functions.js
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 //
-// This is a Javascript file that is used to post-process an Emscripten transpiled JS file.
-// It will remove all the duplicate functions from the generated ASM. In its current form,
-// the input JS file is expected to be a 'chunk' from an Emscripten generated ASM.JS file.
+// Duplicate Function Elimination.
 //
-// An ASM JS chunk consists of a number of ASM.JS function definitions. It can also represent
-// the ASM JS 'shell' which consists of the global variable declarations for the generated ASM JS.
+// This is a Javascript file that is used to post-process an Emscripten
+// transpiled JS file.  It will remove all the duplicate functions from the
+// generated ASM. In its current form, the input JS file is expected to be a
+// 'chunk' from an Emscripten generated ASM.JS file.
 //
-// The file will remove all the generated functions that are deemed to be identical. Currently,
-// the file will only run one pass of the algorithm. The caller of this JS file can run multiple
-// passes to ensure that higher level functions which will become identical after a pass can
-// be further eliminated.
+// An ASM JS chunk consists of a number of ASM.JS function definitions. It can
+// also represent the ASM JS 'shell' which consists of the global variable
+// declarations for the generated ASM JS.
 //
-// Usually, 4 or at most 5 passes will result in an optimal reduction - i.e., in a file that
-// cannot be reduced any further.
-///////////////////////////////////////////////////////////////////////////////////////////////
+// The file will remove all the generated functions that are deemed to be
+// identical. Currently, the file will only run one pass of the algorithm. The
+// caller of this JS file can run multiple passes to ensure that higher level
+// functions which will become identical after a pass can be further eliminated.
+//
+// Usually, 4 or at most 5 passes will result in an optimal reduction - i.e., in
+// a file that cannot be reduced any further.
+
 var crypto = require('crypto');
 var uglify = require('../tools/eliminator/node_modules/uglify-js');
 
