@@ -1,7 +1,8 @@
-// -*- Mode: javascript; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 ; js-indent-level : 2 ; js-curly-indent-offset: 0 -*-
-// vim: set ts=2 et sw=2:
-
-//==============================================================================
+// Copyright 2018 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Preprocessor tool.  This is a wrapper for the 'preprocess' function which
 // allows it to be called as a standalone tool.
 //
@@ -9,7 +10,6 @@
 //    setting file.  Can specify 'settings.js' here, alternatively create a temp
 //                   file with modified settings and supply the filename here.
 //    shell file     This is the file that will be processed by the preprocessor
-//==============================================================================
 
 // *** Environment setup code ***
 var arguments_ = [];

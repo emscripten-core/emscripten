@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // cpuprofiler.js is an interactive CPU execution profiler which measures the time spent in executing code that utilizes requestAnimationFrame(), setTimeout() and/or setInterval() handlers to run.
 // Visit https://github.com/kripken/emscripten for the latest version.
 

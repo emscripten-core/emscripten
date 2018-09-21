@@ -1,11 +1,19 @@
 /*
- The EGL implementation supports only one EGLNativeDisplayType, the EGL_DEFAULT_DISPLAY.
- This native display type returns the only supported EGLDisplay handle with the magic value 62000.
- There is only a single EGLConfig configuration supported, that has the magic value 62002.
- The implementation only allows a single EGLContext to be created, that has the magic value of 62004. (multiple creations silently return this same context)
- The implementation only creates a single EGLSurface, a handle with the magic value of 62006. (multiple creations silently return the same surface)
-*/ 
- 
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * The EGL implementation supports only one EGLNativeDisplayType, the
+ * EGL_DEFAULT_DISPLAY.  This native display type returns the only supported
+ * EGLDisplay handle with the magic value 62000. There is only a single
+ * EGLConfig configuration supported, that has the magic value 62002.  The
+ * implementation only allows a single EGLContext to be created, that has the
+ * magic value of 62004. (multiple creations silently return this same context)
+ * The implementation only creates a single EGLSurface, a handle with the magic
+ * value of 62006. (multiple creations silently return the same surface)
+ */
+
 var LibraryEGL = {
   $EGL__deps: ['$Browser'],
   $EGL: {
