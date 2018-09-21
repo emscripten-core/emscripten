@@ -35,7 +35,7 @@ CORE_BENCHMARKS = True
 if 'benchmark.' in str(sys.argv):
   CORE_BENCHMARKS = False
 
-none_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
+non_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
 
 IGNORE_COMPILATION = 0
 
@@ -184,15 +184,15 @@ process(sys.argv[1])
       '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'FILESYSTEM=0',
-      #'--profiling',
+      # '--profiling',
       '--closure', '1',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
-    output = Popen(cmd, stdout=PIPE, stderr=PIPE, env=self.env).communicate()
-    assert os.path.exists(final), 'Failed to compile file: ' + output[0] + ' (looked for ' + final + ')'
+    output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
+    assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final
@@ -780,11 +780,11 @@ class benchmark(RunnerCore):
   def test_fasta_float(self):
     self.fasta('fasta_float', 'float')
 
-  @none_core
+  @non_core
   def test_fasta_double(self):
     self.fasta('fasta_double', 'double')
 
-  @none_core
+  @non_core
   def test_fasta_double_full(self):
     self.fasta('fasta_double_full', 'double', emcc_args=['-s', 'DOUBLE_MODE=1'])
 
@@ -800,7 +800,7 @@ class benchmark(RunnerCore):
     src = open(path_from_root('tests', 'base64.cpp'), 'r').read()
     self.do_benchmark('base64', src, 'decode')
 
-  @none_core
+  @non_core
   def test_life(self):
     src = open(path_from_root('tests', 'life.c'), 'r').read()
     self.do_benchmark('life', src, '''--------------------------------''', shared_args=['-std=c99'], force_c=True)
@@ -812,81 +812,81 @@ class benchmark(RunnerCore):
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
-  @none_core
+  @non_core
   def test_native_functions(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling function pointers.
-  @none_core
+  @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
-  @none_core
+  @non_core
   def test_foreign_functions(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memcpy_128b(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memcpy_4k(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memcpy_16k(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memcpy_1mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memcpy_16mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memset_128b(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_128b', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memset_4k(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_4k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memset_16k(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memset_1mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_1mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_memset_16mb(self):
     def output_parser(output):
       return float(re.search('Total time: ([\d\.]+)', output).group(1))
@@ -897,7 +897,7 @@ class benchmark(RunnerCore):
       return float(re.search('Total elapsed: ([\d\.]+)', output).group(1))
     self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
 
-  @none_core
+  @non_core
   def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
            ['-I' + path_from_root('tests', 'nbody-java')]
