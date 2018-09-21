@@ -1360,7 +1360,7 @@ keydown(100);keyup(100); // trigger the end
 
     # same as above, but with MODULARIZE=1
     print('modularize')
-    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
+    out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data',  '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4', '--export-name=foo'])
     open('files.js', 'wb').write(out)
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="\'foo\'"'], timeout=60)
 
