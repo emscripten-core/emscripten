@@ -1287,7 +1287,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   # JS to add the side module's functions to the shared table with the parent, so they must 
   # be exported for that JS to access them. In wasm we don't need that, as the wasm can 
   # directly add its functions to the Table. 
-  if (not shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS):
+  if not shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS:
     all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):
