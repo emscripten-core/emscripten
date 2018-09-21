@@ -12,11 +12,10 @@ def get(ports, settings, shared):
     ports.fetch_project('sdl2-ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
     def create():
       sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2-ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
-      build_inc_path = os.path.join(ports.get_build_dir(), 'include')
-      build_inc_sdl2_path = os.path.join(ports.get_build_dir(), 'sdl2', 'include')
 
-      shutil.copy2(sdl_ttf_h, build_inc_path)
-      shutil.copy2(sdl_ttf_h, build_inc_sdl2_path)
+      shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'include'))
+      shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include'))
+      shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2'))
 
       srcs = ['SDL_ttf.c']
       commands = []
