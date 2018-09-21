@@ -979,8 +979,7 @@ class BrowserCore(RunnerCore):
       print('(moving on..)')
 
   def with_report_result(self, code):
-    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.test_port,
-            path_from_root('tests', 'report_result.h')) + code
+    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.test_port, path_from_root('tests', 'report_result.h')) + code
 
   def reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
