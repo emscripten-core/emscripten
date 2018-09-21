@@ -46,19 +46,23 @@ c_license_base = '''\
 '''
 
 exclude_filenames = [
-    'system/include/libc/',
-    'system/lib/libc/musl/src',
+    'system/include/',
+    'system/lib/libc/musl/',
     'system/lib/html5/dom_pk_codes.c',
     'system/lib/dlmalloc.c',
     'third_party/',
+    'tools/eliminator/node_modules/',
     'tests/freetype/src/',
     'tests/bullet/src/',
     'tests/poppler/poppler/',
     'tests/box2d/',
     'tests/glbook/',
+    'tests/lzma/lzma/',
     'tests/nbody-java/',
     'tests/cube2hash/',
+    'tests/optimizer/',
     'tests/sqlite/sqlite3.c',
+    'site/source/_themes/',
 ]
 
 exclude_contents = ['Copyright', 'LICENSE.TXT', 'PUBLIC DOMAIN']
@@ -68,7 +72,7 @@ def process_file(filename):
   if any(filename.startswith(ex) for ex in exclude_filenames):
     return
   ext = os.path.splitext(filename)[1]
-  if ext not in ['.py', '.c', '.cpp', '.h']:
+  if ext not in ('.py', '.c', '.cpp', '.h', '.js'):
     return
   with open(filename) as f:
     contents = f.read()
@@ -87,11 +91,11 @@ def process_file(filename):
       f.write(py_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
-    elif ext in ['.c', '.h']:
+    elif ext in ('.c', '.h'):
       f.write(c_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
-    elif ext == '.cpp':
+    elif ext in ('.cpp', '.js'):
         if contents.startswith('/*\n'):
           contents = contents[3:]
           f.write(c_license_base % year)

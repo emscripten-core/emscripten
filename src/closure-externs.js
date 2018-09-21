@@ -1,4 +1,9 @@
 /**
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
  * This file contains definitions for things that we'd really rather the closure compiler *didn't* minify.
  * See http://code.google.com/p/closure-compiler/wiki/FAQ#How_do_I_write_an_externs_file
  * See also the discussion here: https://github.com/kripken/emscripten/issues/1979
