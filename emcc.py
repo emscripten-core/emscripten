@@ -1940,8 +1940,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
         if shared.Settings.WASM:
-          exit_with_error('FETCH+USE_PTHREADS not yet compatible with wasm (shared.make_fetch_worker is asm.js-specific)')
-        shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
+          # FIXME(https://github.com/kripken/emscripten/issues/7024)
+          logging.warning('Blocking calls the fetch API do not work under WASM')
+        else:
+          shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
 
     # exit block 'memory initializer'
     log_time('memory initializer')
