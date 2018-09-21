@@ -766,6 +766,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'sdl2-image'], ['success'], True, ['sdl2-image.bc']),
       ([PYTHON, EMBUILDER, 'build', 'freetype'], ['building and verifying freetype', 'success'], True, ['freetype.bc']),
       ([PYTHON, EMBUILDER, 'build', 'harfbuzz'], ['building and verifying harfbuzz', 'success'], True, ['harfbuzz.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'icu'], ['building and verifying icu', 'success'], True, ['icu.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, ['sdl2-ttf.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
