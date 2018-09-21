@@ -3565,7 +3565,7 @@ window.close = function() {
 
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
   def test_pthread_global_data_initialization(self):
-    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2']]:
+    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
       for args in [[], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
