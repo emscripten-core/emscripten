@@ -3,15 +3,13 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import subprocess, tempfile, os, sys, shutil, json
-from subprocess import Popen, PIPE, STDOUT
+import tempfile, os, sys, shutil, json, re
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 sys.path += [path_from_root('')]
-import tools.shared
-from tools.shared import *
+from tools.shared import Popen, PYTHON, WINDOWS, CLANG_CPP, EMCC, get_clang_native_args, get_clang_native_env, PIPE
 
 temp_dir = tempfile.mkdtemp()
 

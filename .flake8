@@ -20,6 +20,8 @@ filename =
   */tools/merge_pair.py
   */tools/system_libs.py
   */tools/add_license.py
+  */tools/emmaken.py
+  */tools/duplicate_function_eliminator.py
   */tests/runner.py
   */tests/test_browser.py
   */tests/test_other.py
@@ -27,4 +29,5 @@ filename =
   */tests/parallel_runner.py
   */tests/test_sanity.py
   */tests/test_benchmark.py
+  */tests/test_interactive.py
   */tests/test_sockets.py
