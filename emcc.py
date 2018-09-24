@@ -1134,6 +1134,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
         forced_stdlibs += ['libcxxabi']
+      if shared.Settings.DISABLE_EXCEPTION_CATCHING != 1:
+        shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_is_pointer_type', '___cxa_can_catch']
 
       if not shared.Settings.ONLY_MY_CODE:
         if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
