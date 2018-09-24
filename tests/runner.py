@@ -1072,8 +1072,6 @@ class BrowserCore(RunnerCore):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
-    filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
-    temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
     if 'USE_PTHREADS=1' in args:
       if not EMTEST_WASM_PTHREADS:
@@ -1084,18 +1082,18 @@ class BrowserCore(RunnerCore):
       args = [a for a in args if a != '--separate-asm']
     args += ['-DEMTEST_PORT_NUMBER=%d' % self.test_port, '-include', path_from_root('tests', 'report_result.h')]
     if filename_is_src:
-      with open(temp_filepath, 'w') as f:
+      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
+      with open(filepath, 'w') as f:
        f.write(src)
     else:
-      shutil.copyfile(filepath, temp_filepath)
+      filepath = path_from_root('tests', filename)
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      shutil.copyfile(filepath, temp_filepath)
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
+    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
     run_process(all_args)
