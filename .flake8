@@ -20,6 +20,7 @@ filename =
   */tools/merge_pair.py
   */tools/system_libs.py
   */tools/add_license.py
+  */tools/file_packager.py
   */tests/runner.py
   */tests/test_browser.py
   */tests/test_other.py
