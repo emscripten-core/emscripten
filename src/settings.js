@@ -546,13 +546,10 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined
                                    // disable the warnings if they annoy you.
                                    // See also ERROR_ON_UNDEFINED_SYMBOLS
 
-var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
+var ERROR_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will give a link-time error on any
                                     // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
-
-                                    // The default value for this is currently 0, but will be
-                                    // transitioned to 1 in the future. To keep relying on
-                                    // building with -s ERROR_ON_UNDEFINED_SYMBOLS=0 setting,
-                                    // prefer to set that option explicitly in your build system.
+                                    // The default value 1. To allow undefined symbols at link
+                                    // time set this to 0.
 
 var ERROR_ON_MISSING_LIBRARIES = 0; // If set to 1, any -lfoo directives pointing to nonexisting
                                     // library files will issue a linker error.

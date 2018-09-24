@@ -18,12 +18,13 @@ Current Trunk
  - Support `-s NO_X=1` as an alias for `-s X=0` and vice versa, which
    simplifies current settings with `NO_`-prefixed names. See #7151.
  - Various `EMULATED_FUNCTION_POINTER` improvements. See #7108, #7128.
+ - `ERROR_ON_UNDEFINED_SYMBOLS` is now the default.  See #7196
 
 v1.38.12: 09/03/2018
 --------------------
  - Update SDL2 to 2.0.7. See #7016.
  - Optionally build using native object files (wasm backend only).
-   For now this is befind a new option flag: -s WASM_OBJECT_FILES=1.
+   For now this is befind a new option flag: `-s WASM_OBJECT_FILES=1`.
    See #6875.
 
 v1.38.11: 08/02/2018
@@ -59,7 +60,7 @@ v1.38.8: 07/06/2018
 
 v1.38.7: 07/06/2018
 -------------------
- - Correctness fix for stack handling in invoke_*()s. This may add noticeable
+ - Correctness fix for stack handling in `invoke_*()s`. This may add noticeable
    overhead to programs using C++ exceptions and (less likely) setjmp/longjmp -
    please report any issues. See #6666 #6702
  - Deprecate Module.ENVIRONMENT: Now that we have a compile-time option to set
@@ -95,7 +96,7 @@ v1.38.2: 05/25/2018
 
 v1.38.1: 05/17/2018
 -------------------
- - Remove special-case support for src/struct_info.compiled.json: Make it a
+ - Remove special-case support for `src/struct_info.compiled.json`: Make it a
    normal cached thing like system libraries, not something checked into the
    source tree.
  - Breaking change: Emit WebAssembly by default. Only the default is changed -
@@ -116,8 +117,8 @@ v1.37.40: 05/07/2018
 
 v1.37.39: 05/01/2018
 --------------------
- - Regression: Parsing of -s X=@file  broke if the file contains a newline (see
-   #6436; fixed in 1.37.40)
+ - Regression: Parsing of `-s X=@file`  broke if the file contains a newline
+   (see #6436; fixed in 1.37.40)
 
 v1.37.38: 04/23/2018
 --------------------
@@ -127,7 +128,7 @@ v1.37.38: 04/23/2018
    and only run in -O0 (since if you test in -O1 or above, you'd see you need to
    enable exceptions manually), in which case you will receive an error at
    runtime saying that exceptions are disabled by default and that you should
-   build with -s DISABLE_EXCEPTION_CATCHING=0 to enable them.
+   build with `-s DISABLE_EXCEPTION_CATCHING=0` to enable them.
  - Fix regression in 1.37.37 on configure scripts on MacOS (see #6456)
 
 v1.37.37: 04/13/2018

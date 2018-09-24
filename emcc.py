@@ -989,6 +989,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
         return 0
 
+      # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+      # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+      if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
       # Set ASM_JS default here so that we can override it from the command line.
       shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
 
@@ -1684,6 +1689,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
       else:
+        logging.debug('skipping linking: ' + str(linker_inputs))
         if not LEAVE_INPUTS_RAW:
           _, temp_file = temp_files[0]
           _, input_file = input_files[0]

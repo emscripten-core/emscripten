@@ -245,8 +245,12 @@ function JSify(data, functionsOnly) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
-              if (ERROR_ON_UNDEFINED_SYMBOLS) error('unresolved symbol: ' + ident);
-              else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) warn('unresolved symbol: ' + ident);
+              if (ERROR_ON_UNDEFINED_SYMBOLS) {
+                error('undefined symbol: ' + ident);
+                warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
+              } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+                warn('undefined symbol: ' + ident);
+              }
             }
           }
         }
@@ -570,7 +574,7 @@ function JSify(data, functionsOnly) {
       print(asmLibraryFunctions.map(fix).join('\n'));
     }
 
-    if (abortExecution) throw 'Aborting compilation due to previous errors';
+    if (abortExecution) throw Error('Aborting compilation due to previous errors');
 
     // This is the main 'post' pass. Print out the generated code that we have here, together with the
     // rest of the output that we started to print out earlier (see comment on the

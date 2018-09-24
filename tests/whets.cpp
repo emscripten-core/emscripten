@@ -572,7 +572,7 @@ void p3(SPDP *x, SPDP *y, SPDP *z, SPDP t, SPDP t1, SPDP t2)
 }
 
 
-void pout(char title[18], float ops, int type, SPDP checknum,
+void pout(const char title[18], float ops, int type, SPDP checknum,
 		  SPDP time, int calibrate, int section)
 {
 	SPDP mops,mflops;
