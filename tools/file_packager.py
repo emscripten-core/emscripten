@@ -205,7 +205,7 @@ if not has_preloaded or jsoutput is None:
      'and a specified --js-output')
 
 if not from_emcc:
-  print('Remember to build the main file with  -s FORCE_FILESYSTEM=1 '
+  print('Remember to build the main file with  -s FORCE_FILESYSTEM=1  '
         'so that it includes support for loading this file package',
         file=sys.stderr)
 
