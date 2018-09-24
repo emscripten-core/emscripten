@@ -304,7 +304,7 @@ def run_on_js(filename, gen_hash_info=False):
 
   filename += '.jo.js'
   f = open(filename, 'w')
-  f.write(pre);
+  f.write(pre)
   pre = None
 
   # sort functions by size, to make diffing easier and to improve aot times
