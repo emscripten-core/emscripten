@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2014 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -9,7 +10,9 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 sys.path += [path_from_root('')]
-from tools.shared import Popen, PYTHON, WINDOWS, CLANG_CPP, EMCC, get_clang_native_args, get_clang_native_env, PIPE
+from tools.shared import PYTHON, WINDOWS, CLANG_CPP, EMCC, PIPE
+from tools.shared import Popen, get_clang_native_args, get_clang_native_env
+
 
 temp_dir = tempfile.mkdtemp()
 
