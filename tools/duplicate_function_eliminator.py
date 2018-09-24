@@ -303,8 +303,8 @@ def run_on_js(filename, gen_hash_info=False):
     temp_files.note(filename)
 
   filename += '.jo.js'
-  with open(filename, 'w') as f:
-    f.write(pre)
+  f = open(filename, 'w')
+  f.write(pre);
   pre = None
 
   # sort functions by size, to make diffing easier and to improve aot times

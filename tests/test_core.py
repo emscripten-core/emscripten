@@ -7907,8 +7907,6 @@ extern "C" {
   def test_dfe(self):
     if not self.supports_js_dfe():
       self.skipTest('dfe-only')
-    if not self.supports_js_dfe():
-      return self.skip('dfe-only')
     self.set_setting('ELIMINATE_DUPLICATE_FUNCTIONS', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     self.emcc_args += ['-g2'] # test for issue #6331
