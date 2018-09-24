@@ -809,9 +809,8 @@ ret += '''
   }
 '''
 
-ret += '''%s
-})();
-''' % ('''
+if separate_metadata:
+    _metadata_template = '''
   Module['removeRunDependency']('%(metadata_file)s');
  }
 
@@ -835,11 +834,18 @@ ret += '''%s
   if (!Module['preRun']) Module['preRun'] = [];
   Module["preRun"].push(runMetaWithFS);
  }
-''' % ({'metadata_file': os.path.basename(jsoutput + '.metadata')}
-       if separate_metadata else '''
+''' % {'metadata_file': os.path.basename(jsoutput + '.metadata')}
+
+else:
+    _metadata_template = '''
  }
  loadPackage(%s);
-''' % json.dumps(metadata)))
+''' % json.dumps(metadata)
+
+ret += '''%s
+})();
+''' % _metadata_template
+
 
 if force or len(data_files):
   if jsoutput is None:
