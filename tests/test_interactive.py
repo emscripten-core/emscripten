@@ -4,9 +4,11 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
-import multiprocessing, os, shutil, subprocess, unittest, zlib, time
+import os
+import shutil
 from runner import BrowserCore, path_from_root
-from tools.shared import *
+from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
+
 
 class interactive(BrowserCore):
   @classmethod
@@ -50,14 +52,14 @@ class interactive(BrowserCore):
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
-    #print('SDL2')
+    # print('SDL2')
     # check sdl2 as well
     # FIXME: restore this test once we have proper SDL2 audio (existing test
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    #Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
-    #self.run_browser('page.html', '', '/report_result?1')
+    # Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix_channels(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
