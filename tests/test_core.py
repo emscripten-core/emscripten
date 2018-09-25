@@ -3668,6 +3668,43 @@ Module = {
       #include "header.h"
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
+  
+  @needs_dlfcn
+  def test_dylink_exportjson(self):
+    self.set_setting('EXPORTED_FUNCTIONS', ['__ZTISt13runtime_error'])
+    os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx, libc, libcextra'
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      int main() {
+        printf("main+\n");
+        return 0;
+      }
+    ''', side=r'''
+      #include <emscripten.h>
+      #include <stdexcept>
+      #include <cstdlib>
+      #include <string>
+      #include <locale.h>
+      class A {
+      public:
+        int a;
+      };
+
+      EMSCRIPTEN_KEEPALIVE extern "C" void start() {
+        if (setlocale(LC_ALL, "C") == nullptr) {
+              printf("CLocale::setLocale set to C locale\n");
+              setlocale(LC_ALL, "C");                // set to "C"
+          } else {
+            printf("CLocale::setLocale set to C!!!\n");
+          }
+          try {
+
+          }catch (std::runtime_error &e) {
+            printf("error:%s\n", e.what());
+          }
+      }
+
+    ''', expected=['main+\n'])
 
   @needs_dlfcn
   def test_dylink_global_var(self):
