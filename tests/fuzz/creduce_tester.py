@@ -27,7 +27,7 @@ print 'testing file', filename
 
 try:
   print '2) Compile natively'
-  shared.check_execute([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
+  shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
   print '3) Run natively'
   correct = jsrun.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
 except Exception, e:
@@ -37,7 +37,7 @@ except Exception, e:
 print '4) Compile JS-ly and compare'
 
 def try_js(args):
-  shared.check_execute([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
+  shared.run_process([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
     [filename, '-o', js_filename])
   js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
   assert correct == js
