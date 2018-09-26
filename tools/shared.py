@@ -172,16 +172,6 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
 
 
-def run_process_js(filename, engine, jsargs=[], *args, **kw):
-  """Execute javascript tool using run_process.
-
-  This is used by emcc to run parts of the build process that are written
-  implemented in javascript.
-  """
-  command = jsrun.make_command(filename, engine, jsargs)
-  return check_call(command, *args, **kw).stdout
-
-
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
