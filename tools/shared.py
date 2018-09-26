@@ -165,8 +165,9 @@ def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
 
 def check_call(cmd, *args, **kw):
   try:
-    run_process(cmd, *args, **kw)
+    proc = run_process(cmd, *args, **kw)
     logging.debug('Successfully executed %s' % ' '.join(cmd))
+    return proc
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
 
