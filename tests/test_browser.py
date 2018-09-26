@@ -3233,7 +3233,7 @@ window.close = function() {
     assert os.path.exists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
       print(opts)
-      self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'] + opts)
+      self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
   @no_chrome("required synchronous wasm compilation")
   def test_dynamic_link(self):
