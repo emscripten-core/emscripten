@@ -242,10 +242,10 @@ jobs:
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
-            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
             export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             # Just run a subset of the tests for now.  To be expanded.
-            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_[a-e]* browser.test_pthread_* skip:browser.test_aniso
+            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso
             # Skip browser.test_aniso - see #7117
   test-ab:
     <<: *test-defaults
