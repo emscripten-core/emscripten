@@ -1868,7 +1868,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         final += '.tr.js'
         posix = not shared.WINDOWS
         logging.debug('applying transform: %s', options.js_transform)
-        shared.check_call(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
+        run_process(shared.Building.remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final)]))
         save_intermediate('transformed')
 
       js_transform_tempfiles = [final]
@@ -2445,7 +2445,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
 def separate_asm_js(final, asm_target):
   """Separate out the asm.js code, if asked. Or, if necessary for another option"""
   logging.debug('separating asm')
-  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
+  run_process([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
 
   # extra only-my-code logic
   if shared.Settings.ONLY_MY_CODE:
@@ -2539,7 +2539,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       wrote_wasm_text = True
     logging.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
-    shared.check_call(cmd)
+    run_process(cmd)
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
@@ -2549,8 +2549,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
           cmd += ['--source-map=' + wasm_binary_target + '.map']
           if options.source_map_base:
             cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
-      logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
-      shared.check_call(cmd)
+      logging.debug('wasm-as (text => binary)')
+      run_process(cmd)
     if import_mem_init:
       # remove the mem init file in later processing; it does not need to be prefetched in the html, etc.
       if DEBUG:
@@ -2565,12 +2565,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
     if debug_info:
       cmd += ['-g'] # preserve the debug info
-    logging.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
-    shared.check_call(cmd)
+    logging.debug('wasm-opt on BINARYEN_PASSES')
+    run_process(cmd)
   if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
     cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
-    logging.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
-    shared.check_call(cmd)
+    logging.debug('wasm-dis (binary => text)')
+    run_process(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
     script_env = os.environ.copy()
@@ -2581,7 +2581,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       script_env['PYTHONPATH'] = root_dir
     for script in shared.Settings.BINARYEN_SCRIPTS.split(','):
       logging.debug('running binaryen script: ' + script)
-      shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
+      run_process([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
       save_intermediate('pre-eval-ctors', 'js')

@@ -15,7 +15,7 @@ import zipfile
 
 from . import ports
 from . import shared
-from tools.shared import check_call
+from tools.shared import run_process
 
 stdout = None
 stderr = None
@@ -333,13 +333,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # gl
   def create_gl(libname): # libname is ignored, this is just one .o file
     o = in_temp('gl.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o] + get_cflags())
+    run_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o] + get_cflags())
     return o
 
   # al
   def create_al(libname): # libname is ignored, this is just one .o file
     o = in_temp('al.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'] + get_cflags())
+    run_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'] + get_cflags())
     return o
 
   def create_html5(libname):
@@ -367,7 +367,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # libc_extras
   def create_libc_extras(libname): # libname is ignored, this is just one .o file
     o = in_temp('libc_extras.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'extras.c'), '-o', o] + get_cflags())
+    run_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'extras.c'), '-o', o] + get_cflags())
     return o
 
   # decides which malloc to use, and returns the source for malloc and the full library name
@@ -423,10 +423,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
+    run_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     if shared.Settings.SPLIT_MEMORY:
       split_malloc_o = in_temp('sm' + out_name)
-      check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'] + get_cflags())
+      run_process([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'] + get_cflags())
       lib = in_temp('lib' + out_name)
       create_lib(lib, [o, split_malloc_o])
       shutil.move(lib, o)
@@ -851,7 +851,7 @@ class Ports(object):
       cmake_build_type = 'Release'
 
       # Configure
-      check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+      run_process(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
 
       # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
       generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
@@ -865,7 +865,7 @@ class Ports(object):
         make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
 
       # Kick off the build.
-      check_call(['cmake', '--build', '.'] + make_args)
+      run_process(['cmake', '--build', '.'] + make_args)
     finally:
       os.chdir(old)
 

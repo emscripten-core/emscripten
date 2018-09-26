@@ -144,7 +144,7 @@ class Py2CompletedProcess:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 
-def run_base(cmd, check=False, input=None, *args, **kw):
+def _run_base(cmd, check=False, input=None, *args, **kw):
   if hasattr(subprocess, "run"):
     return subprocess.run(cmd, check=check, input=input, *args, **kw)
 
@@ -160,13 +160,10 @@ def run_base(cmd, check=False, input=None, *args, **kw):
 
 
 def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
-  return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
-
-
-def check_call(cmd, *args, **kw):
   try:
-    run_process(cmd, *args, **kw)
+    proc = _run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
     logging.debug('Successfully executed %s' % ' '.join(cmd))
+    return proc
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
 
@@ -1925,7 +1922,7 @@ class Building(object):
         cmd += ['--export', export[1:]] # Strip the leading underscore
 
     logging.debug('emcc: lld-linking: %s to %s', args, target)
-    check_call(cmd)
+    run_process(cmd)
     return target
 
   @staticmethod
@@ -2357,7 +2354,7 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
@@ -2365,7 +2362,7 @@ class Building(object):
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-    check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
+    run_process([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):
