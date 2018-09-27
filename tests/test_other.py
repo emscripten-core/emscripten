@@ -343,7 +343,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         self.clear()
         expect_error = '-o' in args # specifying -o and -c is an error
         proc = run_process([PYTHON, compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
-                             stderr=PIPE, check=False)
+                           stderr=PIPE, check=False)
         if expect_error:
           self.assertContained('fatal error', proc.stderr)
           self.assertNotEqual(proc.returncode, 0)
@@ -351,7 +351,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         self.assertEqual(proc.returncode, 0)
 
-        assert not os.path.exists(target), 'We should only have created bitcode here: ' + output.stderr
+        assert not os.path.exists(target), 'We should only have created bitcode here: ' + proc.stderr
 
         # Compiling one of them alone is expected to fail
         proc = run_process([PYTHON, compiler, 'twopart_main.o', '-O1', '-g', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'] + args, stdout=PIPE, stderr=PIPE)
@@ -1845,7 +1845,7 @@ int f() {
           print('checking "%s" %s=%s' % (args, action, value))
           extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
           proc = run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE, check=False)
-          if value or action == None:
+          if value or action is None:
             # The default is that we error in undefined symbols
             self.assertContained('error: undefined symbol: something', proc.stderr)
             self.assertContained('error: undefined symbol: elsey', proc.stderr)
