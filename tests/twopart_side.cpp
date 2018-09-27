@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-void theFunc(char *str)
+void theFunc(const char *str)
 {
   printf("side got: %s, over\n", str);
 }

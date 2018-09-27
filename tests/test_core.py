@@ -5918,6 +5918,7 @@ return malloc(size);
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+
     def test():
       Building.COMPILER_TEST_OPTS += [
         '-I' + path_from_root('tests', 'freetype', 'include'),

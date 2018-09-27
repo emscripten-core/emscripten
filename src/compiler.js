@@ -237,7 +237,7 @@ try {
   }
 } catch(err) {
   if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
-    // Compiler failed on user error, don't print the stacktrack in this case.
+    // Compiler failed on user error, don't print the stacktrace in this case.
     printErr(err);
   } else {
     // Compiler failed on internal compiler error!

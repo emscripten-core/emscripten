@@ -135,6 +135,7 @@ def env_modify(updates):
   # This could also be done with mock.patch.dict() but taking a dependency
   # on the mock library is probably not worth the benefit.
   old_env = os.environ.copy()
+  print("env_modify: " + str(updates))
   os.environ.update(updates)
   try:
     yield
