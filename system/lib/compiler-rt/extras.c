@@ -24,6 +24,6 @@ void setTempRet0(int value) {
   __tempRet0 = value;
 }
 
-void getTempRet0(int value) {
-  __tempRet0 = value;
+int getTempRet0() {
+  return __tempRet0;
 }
