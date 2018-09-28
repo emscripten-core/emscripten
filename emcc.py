@@ -1144,13 +1144,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         forced_stdlibs += ['libcxxabi']
 
       if not shared.Settings.ONLY_MY_CODE:
-        if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
-          # always need malloc and free to be kept alive and exported, for internal use and other modules
-          for required_export in ['_malloc', '_free']:
-            if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
-              shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
-        else:
-          logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
+        # always need malloc and free to be kept alive and exported, for internal use and other modules
+        shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
