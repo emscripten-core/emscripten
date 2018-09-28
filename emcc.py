@@ -1639,6 +1639,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # exit block 'calculate system libraries'
     log_time('calculate system libraries')
 
+    def dedup_list(lst):
+      rtn = []
+      for item in lst:
+        if item not in rtn:
+          rtn.append(item)
+      return rtn
+
+    # Make a final pass over shared.Settings.EXPORTED_FUNCTIONS to remove any
+    # duplication between functions added by the driver/libraries and function
+    # specified by the user
+    shared.Settings.EXPORTED_FUNCTIONS = dedup_list(shared.Settings.EXPORTED_FUNCTIONS)
+
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
       if shared.Settings.WASM_BACKEND:
