@@ -1,3 +1,5 @@
-# This file has a 76,000 charactar line which we don't to show up in the
-# output of `git grep`
+# These files are minified JS which treat as binary avoid then showing up in
+# the output of `git grep` or `git diff`
 tools/crunch-worker.js -diff
+third_party/lzma.js/lzma-decoder.js -diff
+third_party/lzma.js/lzma-full.js -diff
