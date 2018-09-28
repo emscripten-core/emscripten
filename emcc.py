@@ -1144,8 +1144,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         forced_stdlibs += ['libcxxabi']
 
       if not shared.Settings.ONLY_MY_CODE:
-        # always need malloc and free to be kept alive and exported, for internal use and other modules
+        # Always need malloc and free to be kept alive and exported, for internal use and other modules
         shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
+        # Needed by setjmp as well as C++ exceptions.
+        shared.Settings.EXPORTED_FUNCTIONS += ['_setTempRet0', '_setThrew']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
