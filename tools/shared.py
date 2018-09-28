@@ -1888,6 +1888,7 @@ class Building(object):
     args = [a for a in args if a not in ('--start-group', '--end-group')]
     cmd = [
         WASM_LD,
+        '--export-dynamic',
         '-z',
         'stack-size=%s' % Settings.TOTAL_STACK,
         '--global-base=%s' % Settings.GLOBAL_BASE,
@@ -1899,8 +1900,6 @@ class Building(object):
         '--import-memory',
         '--export',
         '__wasm_call_ctors',
-        '--export',
-        '__data_end',
         '--lto-O%d' % lto_level,
     ] + args
 
