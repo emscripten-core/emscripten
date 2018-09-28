@@ -3069,7 +3069,7 @@ window.close = function() {
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
-               args=['-s', 'USE_COCOS2D=3', '--std=c++11', '--preload-file', preload_file, '--use-preload-plugins'],
+               args=['-s', 'USE_COCOS2D=3', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '--std=c++11', '--preload-file', preload_file, '--use-preload-plugins'],
                message='You should see Cocos2d logo',
                timeout=30)
 
