@@ -81,7 +81,7 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '0'))
+EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '1'))
 
 # Also suppot the old name: EM_SAVE_DIR
 EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
@@ -1074,9 +1074,10 @@ class BrowserCore(RunnerCore):
     src = filename if filename_is_src else ''
     original_args = args[:]
     if 'USE_PTHREADS=1' in args:
-      if not EMTEST_WASM_PTHREADS:
-        # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
-        args = args + ['-s', 'WASM=0']
+      if EMTEST_WASM_PTHREADS:
+        also_asmjs = True
+      elif 'WASM=0' not in args:
+        args += ['-s', 'WASM=0']
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']

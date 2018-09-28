@@ -127,8 +127,11 @@ jobs:
       - run:
           name: download firefox
           command: |
-            wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/linux-x86_64/en-US/firefox-62.0.2.tar.bz2
-            tar xf firefox-62.0.2.tar.bz2
+            # wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/linux-x86_64/en-US/firefox-62.0.2.tar.bz2
+            # tar xf firefox-62.0.2.tar.bz2
+            # Currently we need firefox nightly to test wasm threads
+            wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-central/firefox-64.0a1.en-US.linux-x86_64.tar.bz2
+            tar xf firefox-64.0a1.en-US.linux-x86_64.tar.bz2
       - run:
           name: configure firefox
           command: |
@@ -242,7 +245,7 @@ jobs:
             # --no-sandbox becasue we are running as root and chrome requires
             # this flag for now: https://crbug.com/638180
             CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
-            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer\""
+            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
             export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             # Just run a subset of the tests for now.  To be expanded.
             EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso

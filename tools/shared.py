@@ -2729,9 +2729,8 @@ class JS(object):
     if data_uri is None:
       data_uri = Settings.SINGLE_FILE
     if data_uri:
-      f = open(path, 'rb')
-      data = base64.b64encode(f.read())
-      f.close()
+      with open(path, 'rb') as f:
+        data = base64.b64encode(f.read())
       return 'data:application/octet-stream;base64,' + asstr(data)
     else:
       return os.path.basename(path)
