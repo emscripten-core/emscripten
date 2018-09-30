@@ -2688,7 +2688,7 @@ var %(EXPORT_NAME)s = (%(src)s)();
 
   # Export using a UMD style export, or ES6 exports if selected
   if shared.Settings.EXPORT_ES6:
-    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+    f.write('''module.exports.default = %s;''' % shared.Settings.EXPORT_NAME)
   else:
     f.write('''if (typeof exports === 'object' && typeof module === 'object')
     module.exports = %(EXPORT_NAME)s;
