@@ -55,7 +55,7 @@ v1.38.8: 07/06/2018
 -------------------
  - Fix a regression in 1.38.7 with binaryen no longer bundling binaryen.js
    (which emscripten doesn't need, that's just for handwritten JS users, but
-   emscripten did check for its prescence).
+   emscripten did check for its presence).
 
 v1.38.7: 07/06/2018
 -------------------

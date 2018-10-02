@@ -530,9 +530,11 @@ def compile_settings(compiler_engine, libraries, temp_files):
       json.dump(shared.Settings.to_dict(), s, sort_keys=True)
 
     # Call js compiler
-    out = jsrun.run_js(path_from_root('src', 'compiler.js'), compiler_engine,
-                       [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
-                       cwd=path_from_root('src'), error_limit=300)
+    env = os.environ.copy()
+    env['EMCC_BUILD_DIR'] = os.getcwd()
+    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), compiler_engine,
+                            [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                            cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
   return glue, forwarded_data
@@ -1282,10 +1284,11 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
   quote = quoter()
   asm_runtime_funcs = create_asm_runtime_funcs()
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data)
-  # in a wasm shared library + emulated function pointers, export all the table so that
-  # we can easily find the function pointer for each function
-  if (shared.Settings.RELOCATABLE or not shared.Settings.WASM) and \
-     shared.Settings.EMULATED_FUNCTION_POINTERS:
+  # In asm.js + emulated function pointers, export all the table because we use
+  # JS to add the asm.js module's functions to the table (which is external
+  # in this mode). In wasm, we don't need that since wasm modules can
+  # directly add functions to the imported Table.
+  if not shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS:
     all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):

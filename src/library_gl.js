@@ -1,4 +1,9 @@
 /*
+ * Copyright 2010 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
  * GL support. See http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
  * for current status.
  */
@@ -7987,4 +7992,4 @@ keys(LibraryGL).forEach(function(x) {
 mergeInto(LibraryManager.library, LibraryGL);
 
 assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
-
+assert(!(FULL_ES3 && LEGACY_GL_EMULATION), 'cannot emulate both ES3 and legacy GL');

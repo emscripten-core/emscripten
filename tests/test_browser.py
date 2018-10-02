@@ -3233,7 +3233,7 @@ window.close = function() {
     assert os.path.exists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
       print(opts)
-      self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I' + path_from_root('tests', 'webidl'), '-DBROWSER'] + opts)
+      self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
   @no_chrome("required synchronous wasm compilation")
   def test_dynamic_link(self):
@@ -3565,7 +3565,7 @@ window.close = function() {
 
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
   def test_pthread_global_data_initialization(self):
-    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2']]:
+    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
       for args in [[], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
@@ -3832,6 +3832,7 @@ window.close = function() {
     self.btest('fetch/response_headers.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'WASM=0'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
+  @no_chrome('depends on moz-chunked-arraybuffer')
   def test_fetch_stream_file(self):
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.

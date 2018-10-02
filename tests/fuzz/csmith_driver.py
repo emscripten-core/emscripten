@@ -11,7 +11,7 @@ CSMITH_PATH should be set to something like /usr/local/include/csmith
 
 import os, sys, difflib, shutil, random
 from distutils.spawn import find_executable
-from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
+from subprocess import check_call, check_execute, Popen, PIPE, STDOUT, CalledProcessError
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
@@ -75,16 +75,16 @@ while 1:
   print '2) Compile natively'
   shared.try_delete(filename)
   try:
-    shared.check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
+    check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
   except CalledProcessError as e:
     print 'Failed to compile natively using clang'
     notes['invalid'] += 1
     continue
 
-  shared.check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS + ['-w'])
-  shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
+  check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS + ['-w'])
+  check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
+  check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
@@ -166,7 +166,7 @@ while 1:
     escaped_short_args = map(lambda x : ("'" + x + "'") if '"' in x else x, short_args)
     open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
-      shared.check_execute(js_args)
+      check_execute(js_args)
       assert os.path.exists(filename + '.js')
       return js_args
     except:

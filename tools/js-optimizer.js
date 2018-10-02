@@ -1,7 +1,8 @@
-// -*- Mode: javascript; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 ; js-indent-level : 2 ; js-curly-indent-offset: 0 -*-
-// vim: set ts=2 et sw=2:
-
-//==============================================================================
+// Copyright 2011 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
 // code to further improve it.
@@ -13,7 +14,6 @@
 // TODO: Optimize traverse to modify a node we want to replace, in-place,
 //       instead of returning it to the previous call frame where we check?
 // TODO: Share EMPTY_NODE instead of emptyNode that constructs?
-//==============================================================================
 
 if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
@@ -8427,4 +8427,3 @@ if (emitAst) {
     print(JSON.stringify(ast));
   }
 }
-

@@ -163,18 +163,11 @@ def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
   return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
 
-def check_execute(cmd, *args, **kw):
-  try:
-    run_process(cmd, stdout=PIPE, *args, **kw)
-    logging.debug('Successfuly executed %s' % ' '.join(cmd))
-  except subprocess.CalledProcessError as e:
-    exit_with_error("'%s' failed (%d) with output:\n%s", " ".join(e.cmd), e.returncode, e.output)
-
-
 def check_call(cmd, *args, **kw):
   try:
-    run_process(cmd, *args, **kw)
+    proc = run_process(cmd, *args, **kw)
     logging.debug('Successfully executed %s' % ' '.join(cmd))
+    return proc
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
 
@@ -1895,6 +1888,7 @@ class Building(object):
     args = [a for a in args if a not in ('--start-group', '--end-group')]
     cmd = [
         WASM_LD,
+        '--export-dynamic',
         '-z',
         'stack-size=%s' % Settings.TOTAL_STACK,
         '--global-base=%s' % Settings.GLOBAL_BASE,
@@ -2736,9 +2730,8 @@ class JS(object):
     if data_uri is None:
       data_uri = Settings.SINGLE_FILE
     if data_uri:
-      f = open(path, 'rb')
-      data = base64.b64encode(f.read())
-      f.close()
+      with open(path, 'rb') as f:
+        data = base64.b64encode(f.read())
       return 'data:application/octet-stream;base64,' + asstr(data)
     else:
       return os.path.basename(path)

@@ -44,8 +44,6 @@ import time
 import unittest
 import webbrowser
 
-import parallel_runner
-
 if sys.version_info.major == 2:
   from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
   from SimpleHTTPServer import SimpleHTTPRequestHandler
@@ -61,6 +59,7 @@ else:
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
+import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
@@ -82,7 +81,7 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '0'))
+EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '1'))
 
 # Also suppot the old name: EM_SAVE_DIR
 EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
@@ -142,6 +141,17 @@ def env_modify(updates):
   finally:
     os.environ.clear()
     os.environ.update(old_env)
+
+
+@contextlib.contextmanager
+def chdir(dir):
+  """A context manager that performs actions in the given directory."""
+  orig_cwd = os.getcwd()
+  os.chdir(dir)
+  try:
+    yield
+  finally:
+    os.chdir(orig_cwd)
 
 
 # The core test modes
@@ -969,37 +979,7 @@ class BrowserCore(RunnerCore):
       print('(moving on..)')
 
   def with_report_result(self, code):
-    return r'''
-#ifdef __EMSCRIPTEN__
-  #ifndef __REPORT_RESULT_DEFINED__
-  #define __REPORT_RESULT_DEFINED__
-  #include <emscripten.h>
-
-  static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
-  {
-    EM_ASM({
-      var xhr = new XMLHttpRequest();
-      var result = $0;
-      if (Module['pageThrewException']) result = 12345;
-      xhr.open('GET', 'http://localhost:%s/report_result?' + result, !$1);
-      xhr.send();
-      if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
-    }, result, sync);
-  }
-
-  #if __EMSCRIPTEN_PTHREADS__
-    #include <emscripten/threading.h>
-    #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
-    #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
-  #else
-    #define REPORT_RESULT(result) _ReportResult((result), 0)
-    #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
-  #endif
-
-  #endif // ~__REPORT_RESULT_DEFINED__
-
-#endif
-''' % self.test_port + code
+    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.test_port, path_from_root('tests', 'report_result.h')) + code
 
   def reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
@@ -1092,33 +1072,29 @@ class BrowserCore(RunnerCore):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
-    filepath = path_from_root('tests', filename) if not filename_is_src else ('main.c' if force_c else 'main.cpp')
-    temp_filepath = os.path.join(self.get_dir(), os.path.basename(filepath))
     original_args = args[:]
     if 'USE_PTHREADS=1' in args:
-      if not EMTEST_WASM_PTHREADS:
-        # Browsers currently have wasm threads off by default, so don't test them unless explicitly enabled.
-        args = args + ['-s', 'WASM=0']
+      if EMTEST_WASM_PTHREADS:
+        also_asmjs = True
+      elif 'WASM=0' not in args:
+        args += ['-s', 'WASM=0']
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.test_port, '-include', path_from_root('tests', 'report_result.h')]
     if filename_is_src:
-      with open(temp_filepath, 'w') as f:
+      filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
+      with open(filepath, 'w') as f:
        f.write(src)
-    if not reference:
-      if not src:
-        with open(filepath) as f:
-          src = f.read()
-      with open(temp_filepath, 'w') as f:
-        f.write(self.with_report_result(src))
     else:
+      filepath = path_from_root('tests', filename)
+    if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      shutil.copyfile(filepath, temp_filepath)
       self.reftest(path_from_root('tests', reference))
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', temp_filepath, '-o', outfile] + args
+    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
     run_process(all_args)

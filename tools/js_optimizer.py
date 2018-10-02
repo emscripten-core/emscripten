@@ -4,9 +4,18 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
-import os, sys, subprocess, multiprocessing, re, string, json, shutil, logging
+import os
+import sys
+import subprocess
+import multiprocessing
+import re
+import string
+import json
+import shutil
+import logging
 
-sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(1, __rootpath__)
 
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
@@ -21,7 +30,6 @@ except ImportError:
 configuration = shared.configuration
 temp_files = configuration.get_temp_files()
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryIDBStore = {
   // A simple IDB-backed storage mechanism. Suitable for saving and loading large files asynchronously. This does
   // *NOT* use the emscripten filesystem, intentionally, to avoid overhead. It lets you application define whatever

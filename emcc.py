@@ -39,7 +39,7 @@ import tempfile
 import time
 from subprocess import PIPE
 
-from tools import shared, jsrun, system_libs, client_mods, js_optimizer
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun
 from tools.shared import suffix, unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -1144,13 +1144,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         forced_stdlibs += ['libcxxabi']
 
       if not shared.Settings.ONLY_MY_CODE:
-        if type(shared.Settings.EXPORTED_FUNCTIONS) in (list, tuple):
-          # always need malloc and free to be kept alive and exported, for internal use and other modules
-          for required_export in ['_malloc', '_free']:
-            if required_export not in shared.Settings.EXPORTED_FUNCTIONS:
-              shared.Settings.EXPORTED_FUNCTIONS.append(required_export)
-        else:
-          logging.debug('using response file for EXPORTED_FUNCTIONS, make sure it includes _malloc and _free')
+        # always need malloc and free to be kept alive and exported, for internal use and other modules
+        shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
@@ -1643,6 +1638,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # exit block 'calculate system libraries'
     log_time('calculate system libraries')
+
+    def dedup_list(lst):
+      rtn = []
+      for item in lst:
+        if item not in rtn:
+          rtn.append(item)
+      return rtn
+
+    # Make a final pass over shared.Settings.EXPORTED_FUNCTIONS to remove any
+    # duplication between functions added by the driver/libraries and function
+    # specified by the user
+    shared.Settings.EXPORTED_FUNCTIONS = dedup_list(shared.Settings.EXPORTED_FUNCTIONS)
 
     with ToolchainProfiler.profile_block('link'):
       # final will be an array if linking is deferred, otherwise a normal string.
@@ -2435,11 +2442,11 @@ def emterpretify(js_target, optimizer, options):
 
 def emit_js_source_maps(target, js_transform_tempfiles):
   logging.debug('generating source maps')
-  jsrun.run_js(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
-               shared.NODE_JS, js_transform_tempfiles +
-               ['--sourceRoot', os.getcwd(),
-                '--mapFileBaseName', target,
-                '--offset', str(0)])
+  jsrun.run_js_tool(shared.path_from_root('tools', 'source-maps', 'sourcemapper.js'),
+                    shared.NODE_JS, js_transform_tempfiles +
+                    ['--sourceRoot', os.getcwd(),
+                     '--mapFileBaseName', target,
+                     '--offset', '0'])
 
 
 def separate_asm_js(final, asm_target):
@@ -2450,7 +2457,7 @@ def separate_asm_js(final, asm_target):
   # extra only-my-code logic
   if shared.Settings.ONLY_MY_CODE:
     temp = asm_target + '.only.js'
-    print(jsrun.run_js(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, args=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w')))
+    jsrun.run_js_tool(shared.path_from_root('tools', 'js-optimizer.js'), shared.NODE_JS, jsargs=[asm_target, 'eliminateDeadGlobals', 'last', 'asm'], stdout=open(temp, 'w'))
     shutil.move(temp, asm_target)
 
 
