@@ -9,9 +9,11 @@
  * See: https://llvm.org/doxygen/WebAssemblyLowerEmscriptenEHSjLj_8cpp.html
  */
 
-int __THREW__;
-int __threwValue;
-int __tempRet0;
+/* References to these globals are generated in the llvm backend so they
+ * cannot be static */
+int __THREW__ = 0;
+int __threwValue = 0;
+int __tempRet0 = 0;
 
 void setThrew(int threw, int value) {
   if (__THREW__ == 0) {
