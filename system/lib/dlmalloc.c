@@ -5259,6 +5259,10 @@ void* dlrealloc(void* oldmem, size_t bytes) {
             if (newp != 0) {
                 check_inuse_chunk(m, newp);
                 mem = chunk2mem(newp);
+#if __EMSCRIPTEN__
+                /* XXX Emscripten Tracing API. */
+                emscripten_trace_record_reallocation(oldmem, mem, bytes);
+#endif
             }
             else {
                 mem = internal_malloc(m, bytes);
@@ -5269,10 +5273,6 @@ void* dlrealloc(void* oldmem, size_t bytes) {
                 }
             }
         }
-#if __EMSCRIPTEN__
-        /* XXX Emscripten Tracing API. */
-        emscripten_trace_record_reallocation(oldmem, mem, bytes);
-#endif
     }
     return mem;
 }
@@ -5305,6 +5305,10 @@ void* dlrealloc_in_place(void* oldmem, size_t bytes) {
             }
         }
     }
+#if __EMSCRIPTEN__
+    /* XXX Emscripten Tracing API. */
+    emscripten_trace_record_reallocation(oldmem, mem, bytes);
+#endif
     return mem;
 }
 
