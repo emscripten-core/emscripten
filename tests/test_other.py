@@ -336,44 +336,41 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Compiling two source files into a final JS.
       for args, target in [([], 'a.out.js'), (['-o', 'combined.js'], 'combined.js')]:
         self.clear()
-        output = run_process([PYTHON, compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args,
-                             stdout=PIPE, stderr=PIPE)
-        assert len(output.stdout) == 0, output.stdout
-        assert os.path.exists(target), output.stdout + '\n' + output.stderr
+        run_process([PYTHON, compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')] + args)
         self.assertContained('side got: hello from main, over', run_js(target))
 
         # Compiling two files with -c will generate separate .bc files
         self.clear()
         expect_error = '-o' in args # specifying -o and -c is an error
-        output = run_process([PYTHON, compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
-                             stdout=PIPE, stderr=PIPE, check=not expect_error)
+        proc = run_process([PYTHON, compiler, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'] + args,
+                           stderr=PIPE, check=False)
         if expect_error:
-          assert 'fatal error' in output.stderr, output.stderr
+          self.assertContained('fatal error', proc.stderr)
+          self.assertNotEqual(proc.returncode, 0)
           continue
 
-        assert os.path.exists('twopart_main.o'), output.stdout + '\n' + output.stderr
-        assert os.path.exists('twopart_side.o'), output.stdout + '\n' + output.stderr
-        assert not os.path.exists(target), 'We should only have created bitcode here: ' + output.stdout + '\n' + output.stderr
+        self.assertEqual(proc.returncode, 0)
+
+        assert not os.path.exists(target), 'We should only have created bitcode here: ' + proc.stderr
 
         # Compiling one of them alone is expected to fail
-        output = run_process([PYTHON, compiler, 'twopart_main.o', '-O1', '-g'] + args, stdout=PIPE, stderr=PIPE)
-        assert os.path.exists(target), output.stdout + '\n' + output.stderr
+        proc = run_process([PYTHON, compiler, 'twopart_main.o', '-O1', '-g', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'] + args, stdout=PIPE, stderr=PIPE)
         self.assertContained('missing function', run_js(target, stderr=STDOUT, assert_returncode=None))
         try_delete(target)
 
         # Combining those bc files into js should work
-        output = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE)
-        assert os.path.exists(target), output.stdout + '\n' + output.stderr
+        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE)
+        assert os.path.exists(target), proc.stdout + '\n' + proc.stderr
         self.assertContained('side got: hello from main, over', run_js(target))
 
         # Combining bc files into another bc should also work
         try_delete(target)
         assert not os.path.exists(target)
-        output = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE)
+        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE)
         syms = Building.llvm_nm('combined.bc')
         assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-        output = run_process([PYTHON, compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout=PIPE, stderr=PIPE)
-        assert len(output.stdout) == 0, output.stdout
+        proc = run_process([PYTHON, compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout=PIPE, stderr=PIPE)
+        assert len(proc.stdout) == 0, proc.stdout
         assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
         self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
 
@@ -1129,7 +1126,7 @@ int main() {
       if err_expected:
         self.assertContained(err_expected, output.stderr)
       else:
-        self.assertNotContained('unresolved symbol', output.stderr)
+        self.assertNotContained('undefined symbol', output.stderr)
         out_js = os.path.join(self.get_dir(), 'a.out.js')
         assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
         self.assertContained('result: 42', run_js(out_js))
@@ -1199,14 +1196,13 @@ int f() {
   @no_wasm_backend('lld resolves circular lib dependencies')
   def test_circular_libs(self):
     def tmp_source(name, code):
-      file_name = os.path.join(self.get_dir(), name)
-      open(file_name, 'w').write(code)
-      return file_name
+      with open(name, 'w') as f:
+        f.write(code)
 
-    a = tmp_source('a.c', 'int z(); int x() { return z(); }')
-    b = tmp_source('b.c', 'int x(); int y() { return x(); } int z() { return 42; }')
-    c = tmp_source('c.c', 'int q() { return 0; }')
-    main = tmp_source('main.c', r'''
+    tmp_source('a.c', 'int z(); int x() { return z(); }')
+    tmp_source('b.c', 'int x(); int y() { return x(); } int z() { return 42; }')
+    tmp_source('c.c', 'int q() { return 0; }')
+    tmp_source('main.c', r'''
       #include <stdio.h>
       int y();
       int main() {
@@ -1215,27 +1211,25 @@ int f() {
       }
     ''')
 
-    Building.emcc(a) # a.c.o
-    Building.emcc(b) # b.c.o
-    Building.emcc(c) # c.c.o
-    lib_a = os.path.join(self.get_dir(), 'libA.a')
-    Building.emar('cr', lib_a, [a + '.o', c + '.o']) # libA.a with a.c.o,c.c.o
-    lib_b = os.path.join(self.get_dir(), 'libB.a')
-    Building.emar('cr', lib_b, [b + '.o', c + '.o']) # libB.a with b.c.o,c.c.o
+    Building.emcc('a.c') # a.c.o
+    Building.emcc('b.c') # b.c.o
+    Building.emcc('c.c')
+    Building.emar('cr', 'libA.a', ['a.c.o', 'c.c.o'])
+    Building.emar('cr', 'libB.a', ['b.c.o', 'c.c.o'])
 
-    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', main, '-o', 'a.out.js']
-    libs_list = [lib_a, lib_b]
+    args = ['main.c', '-o', 'a.out.js']
+    libs_list = ['libA.a', 'libB.a']
 
-    # lib_a does not satisfy any symbols from main, so it will not be included,
-    # and there will be an unresolved symbol.
+    # 'libA.a' does not satisfy any symbols from main, so it will not be included,
+    # and there will be an undefined symbol.
     proc = run_process([PYTHON, EMCC] + args + libs_list, stdout=PIPE, stderr=STDOUT, check=False)
     if proc.returncode == 0:
       print(proc.stdout)
     self.assertNotEqual(proc.returncode, 0)
-    self.assertContained('error: unresolved symbol: x', proc.stdout)
+    self.assertContained('error: undefined symbol: x', proc.stdout)
 
     # -Wl,--start-group and -Wl,--end-group around the libs will cause a rescan
-    # of lib_a after lib_b adds undefined symbol "x", so a.c.o will now be
+    # of 'libA.a' after 'libB.a' adds undefined symbol "x", so a.c.o will now be
     # included (and the link will succeed).
     libs = ['-Wl,--start-group'] + libs_list + ['-Wl,--end-group']
     output = run_process([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE)
@@ -1244,7 +1238,7 @@ int f() {
     self.assertContained('result: 42', run_js(out_js))
 
     # -( and -) should also work.
-    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', main, '-o', 'a2.out.js']
+    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', 'main.c', '-o', 'a2.out.js']
     libs = ['-Wl,-('] + libs_list + ['-Wl,-)']
     output = run_process([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE)
     out_js = os.path.join(self.get_dir(), 'a2.out.js')
@@ -1282,8 +1276,8 @@ int f() {
     open('main.cpp', 'w').write(r'''extern int side(); int main() { return side(); }''')
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
-    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a'], stderr=PIPE)
-    self.assertIn('is not LLVM bitcode, cannot link', proc.stderr)
+    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE)
+    self.assertContained('is not LLVM bitcode, cannot link', proc.stderr)
 
   def test_export_all(self):
     lib = r'''
@@ -1824,8 +1818,9 @@ int f() {
 ''', output)
     self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
 
-  def test_warn_undefined(self):
-    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(r'''
+  def test_undefined_symbols(self):
+    with open('main.cpp', 'w') as f:
+      f.write(r'''
       #include <stdio.h>
       #include <SDL.h>
       #include "SDL/SDL_opengl.h"
@@ -1841,28 +1836,37 @@ int f() {
         elsey();
         return 0;
       }
-    ''')
+      ''')
 
-    for args in [[], ['-O2']]:
-      for action in ['WARN', 'ERROR', None]:
-        for value in ([0, 1] if action else [0]):
+    for args in ([], ['-O2']):
+      for action in ('WARN', 'ERROR', None):
+        for value in ([0, 1]):
           try_delete('a.out.js')
-          print('warn', args, action, value)
+          print('checking "%s" %s=%s' % (args, action, value))
           extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
-          output = run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE, check=False)
-          if action is None or (action == 'WARN' and value):
-            self.assertContained('unresolved symbol: something', output.stderr)
-            self.assertContained('unresolved symbol: elsey', output.stderr)
-            assert os.path.exists('a.out.js')
-            self.assertNotContained('unresolved symbol: emscripten_', output.stderr)
-          elif action == 'ERROR' and value:
-            self.assertContained('unresolved symbol: something', output.stderr)
-            self.assertContained('unresolved symbol: elsey', output.stderr)
-            self.assertNotContained('warning', output.stderr)
-            assert not os.path.exists('a.out.js')
+          proc = run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE, check=False)
+          if value or action is None:
+            # The default is that we error in undefined symbols
+            self.assertContained('error: undefined symbol: something', proc.stderr)
+            self.assertContained('error: undefined symbol: elsey', proc.stderr)
+            check_success = False
+          elif action == 'ERROR' and not value:
+            # Error disables, should only warn
+            self.assertContained('warning: undefined symbol: something', proc.stderr)
+            self.assertContained('warning: undefined symbol: elsey', proc.stderr)
+            self.assertNotContained('undefined symbol: emscripten_', proc.stderr)
+            check_success = True
           elif action == 'WARN' and not value:
-            self.assertNotContained('unresolved symbol', output.stderr)
-            assert os.path.exists('a.out.js')
+            # Disabled warning should imply disabling errors
+            self.assertNotContained('undefined symbol', proc.stderr)
+            check_success = True
+
+          if check_success:
+            self.assertEqual(proc.returncode, 0)
+            self.assertTrue(os.path.exists('a.out.js'))
+          else:
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertFalse(os.path.exists('a.out.js'))
 
   @no_wasm_backend('linker detects out-of-memory')
   def test_toobig(self):
@@ -4556,7 +4560,7 @@ main()
   def test_only_force_stdlibs(self):
     def test(name, fail=False):
       print(name)
-      run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')], stderr=PIPE)
+      run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
         proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
         self.assertNotEqual(proc.returncode, 0)
@@ -6544,10 +6548,11 @@ int main() {
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_no_missing_symbols(self): # simple hello world should not show any missing symbols
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
 
     # main() is implemented in C, and even if requested from JS, we should not warn
-    open('library_foo.js', 'w').write('''
+    with open('library_foo.js', 'w') as f:
+      f.write('''
 mergeInto(LibraryManager.library, {
   my_js__deps: ['main'],
   my_js: (function() {
@@ -6557,7 +6562,8 @@ mergeInto(LibraryManager.library, {
   }()),
 });
 ''')
-    open('test.cpp', 'w').write('''
+    with open('test.cpp', 'w') as f:
+      f.write('''
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -6570,10 +6576,11 @@ int main() {
   return EXIT_SUCCESS;
 }
 ''')
-    run_process([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'])
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'library_foo.js'])
 
     # but we do error on a missing js var
-    open('library_foo.js', 'w').write('''
+    with open('library_foo_missing.js', 'w') as f:
+      f.write('''
 mergeInto(LibraryManager.library, {
   my_js__deps: ['main', 'nonexistingvariable'],
   my_js: (function() {
@@ -6583,12 +6590,12 @@ mergeInto(LibraryManager.library, {
   }()),
 });
 ''')
-    err = run_process([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', '--js-library', 'library_foo.js'], stderr=PIPE, check=False).stderr
-    assert 'unresolved symbol' in err
+    err = run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'library_foo_missing.js'], stderr=PIPE, check=False).stderr
+    self.assertContained('undefined symbol: nonexistingvariable', err)
 
     # and also for missing C code, of course (without the --js-library, it's just a missing C method)
-    err = run_process([PYTHON, EMCC, 'test.cpp', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'], stderr=PIPE, check=False).stderr
-    assert 'unresolved symbol' in err
+    err = run_process([PYTHON, EMCC, 'test.cpp'], stderr=PIPE, check=False).stderr
+    self.assertContained('undefined symbol: my_js', err)
 
   def test_realpath(self):
     open('src.c', 'w').write(r'''
@@ -7285,7 +7292,7 @@ int main() {
 
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
-      run_process([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
+      run_process([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
       module = open('a.out.asm.js').read()
       open('asm.js', 'w').write('var Module = {};\n' + module)
       funcs = module.count('function ')
@@ -8231,7 +8238,7 @@ int main() {
         (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2'], True),
         (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2'], False),
         (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O0'], False),
-        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=0', '-O0'], False),
+        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
       ]:
       if self.is_wasm_backend() and 'SIDE_MODULE=1' in args:
         continue

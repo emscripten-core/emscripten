@@ -285,7 +285,7 @@ def main():
     elif what == 'binaryen':
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
-      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     else:
       logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
