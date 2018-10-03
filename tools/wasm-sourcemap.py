@@ -11,7 +11,7 @@ sections from a wasm file.
 """
 
 import argparse
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 import json
 import logging
 from math import floor, log
@@ -62,6 +62,12 @@ class Prefixes:
         break
     self.cache[name] = result
     return result
+
+
+# SourceMapPrefixes contains resolver for file names that are:
+#  - "sources" is for names that output to source maps JSON
+#  - "load" is for paths that used to load source text
+SourceMapPrefixes = namedtuple('SourceMapPrefixes', 'sources, load')
 
 
 def encode_vlq(n):
@@ -252,13 +258,13 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    source_name = prefixes[0].resolve(file_name)
+    source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
       sources.append(source_name)
       if collect_sources:
-        load_name = prefixes[1].resolve(file_name)
+        load_name = prefixes.load.resolve(file_name)
         try:
           with open(load_name, 'r') as infile:
             source_content = infile.read()
@@ -296,7 +302,7 @@ def main():
 
   code_section_offset = get_code_section_offset(wasm)
 
-  prefixes = (Prefixes(options.prefix), Prefixes(options.load_prefix))
+  prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
 
   logging.debug('Saving to %s' % options.output)
   map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
