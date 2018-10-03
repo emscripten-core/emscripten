@@ -148,10 +148,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # individual files
     blacklist += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c',
-        'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'
+        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
+        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+        'faccessat.c',
     ]
 
     # individual math files
@@ -568,18 +570,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  ('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False), # noqa
                  ('gl',            ext, create_gl,          gl_symbols,          ['libc'],      False), # noqa
                  ('al',            ext, create_al,          al_symbols,          ['libc'],      False), # noqa
-                 ('html5',         ext, create_html5,       html5_symbols,       ['html5'],     False), # noqa
-                 ('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, ['libc'],      False), # noqa
+                 ('html5',         ext, create_html5,       html5_symbols,       [],            False), # noqa
                  (malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',        ext, create_libc,           libc_symbols,     [],       False), # noqa
-                    ('pthreads',       ext, create_pthreads,       pthreads_symbols, ['libc'], False), # noqa
-                    ('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, ['libc'], False)] # noqa
+    system_libs += [('libc-mt',        ext, create_libc,           libc_symbols,           ['compiler-rt'], False), # noqa
+                    ('pthreads',       ext, create_pthreads,       pthreads_symbols,       ['libc-mt'],     False), # noqa
+                    ('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, ['libc-mt'],     False)] # noqa
     force.add('pthreads')
     force.add('pthreads_asmjs')
   else:
-    system_libs += [('libc', ext, create_libc, libc_symbols, [], False)]
+    system_libs += [('libc', ext, create_libc, libc_symbols, ['compiler-rt'], False)]
 
   force.add(malloc_name())
 
@@ -594,8 +595,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     else:
       raise Exception('did not find libc?')
 
-  # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
-  system_libs += [('libc-extras', ext, create_libc_extras, libc_extras_symbols, ['libc_extras'], False)]
+  # Add libc-extras and compiler-rt at the end, as libc may end up requiring
+  # them, and they depend on nothing.
+  system_libs += [('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False)]
+  system_libs += [('compiler-rt', 'a', create_compiler_rt, compiler_rt_symbols, [], False)]
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -605,7 +608,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   ret = []
   has = need = None
 
+  all_names = [s[0] for s in system_libs]
+
   for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
+    assert all(d in all_names for d in deps)
     force_this = force_all or shortname in force
     if can_noexcept:
       shortname = maybe_noexcept(shortname)
