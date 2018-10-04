@@ -8617,7 +8617,8 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     # The no_main.c will be read (from relative location) due to speficied "-s"
     shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
     wasm_map_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
-                    '--sources', '--prefix', '=wasm-src:///',
+                    '--sources', '--prefix', '=wasm-src://',
+                    '--load-prefix', '/emscripten/tests/other/wasm_sourcemap=.',
                     '--dwarfdump-output',
                     path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
                     '-o', 'a.out.wasm.map',
@@ -8625,7 +8626,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     run_process(wasm_map_cmd)
     output = open('a.out.wasm.map').read()
     # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
-    self.assertIn('wasm-src:///no_main.c', output)
+    self.assertIn('wasm-src:///emscripten/tests/other/wasm_sourcemap/no_main.c', output)
     # has "sourcesContent" entry with source code (included with `-s` option)
     self.assertIn('int foo()', output)
     # has some entries
