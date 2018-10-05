@@ -1007,7 +1007,7 @@ def create_mftCall_funcs(function_table_data):
     params = ','.join(['ptr'] + ['p%d' % i for i in range(num_args)])
     coerced_params = ','.join([shared.JS.make_coercion('ptr', 'i')] + [shared.JS.make_coercion('p%d' % i, unfloat(sig_args[i])) for i in range(num_args)])
     coercions = ';'.join(['ptr = ptr | 0'] + ['p%d = %s' % (i, shared.JS.make_coercion('p%d' % i, unfloat(sig_args[i]))) for i in range(num_args)]) + ';'
-    mini_coerced_params = ','.join([shared.JS.make_coercion('p%d' % i , sig_args[i]) for i in range(num_args)])
+    mini_coerced_params = ','.join([shared.JS.make_coercion('p%d' % i, sig_args[i]) for i in range(num_args)])
     maybe_return = '' if return_type == 'v' else 'return'
     final_return = maybe_return + ' ' + shared.JS.make_coercion('ftCall_' + sig + '(' + coerced_params + ')', unfloat(return_type)) + ';'
     if shared.Settings.EMULATED_FUNCTION_POINTERS == 1:
