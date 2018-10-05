@@ -247,8 +247,10 @@ jobs:
             CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
             CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
             export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+            export EMTEST_LACKS_GRAPHICS_HARDWARE=1
+            export EMCC_CORES=4
             # Just run a subset of the tests for now.  To be expanded.
-            EMCC_CORES=4 ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso
+            ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso
             # Skip browser.test_aniso - see #7117
   test-ab:
     <<: *test-defaults
