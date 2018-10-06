@@ -41,10 +41,21 @@ public:
   static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
   virtual void virtualFunc3(int x) { printf("*virtualf3: %d*\n", x); }
   virtual void virtualFunc4(int x) { printf("*virtualf4: %d*\n", x); }
-  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); };
+  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); }
 
 private:
   void doSomethingSecret() { printf("security breached!\n"); }; // we should not be able to do this
+};
+
+// We test compilation here: abstract base classes must be handled properly,
+// and in particular the const property may matter (if not overridden as
+// const, compilation will fail).
+class VirtualBase {
+public:
+  virtual ~VirtualBase() {};
+
+  virtual void func() = 0;
+  virtual void constFunc() const = 0;
 };
 
 // Part 2

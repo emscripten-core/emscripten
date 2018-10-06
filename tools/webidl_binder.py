@@ -529,24 +529,25 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       return_postfix += ', &temp)'
 
     c_return_type = type_to_c(return_type)
+    maybe_const = 'const ' if const else ''
     mid_c += [r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % ('const ' if const else '', type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
         js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
-        js_impl_methods += [r'''  %s %s(%s) {
+        js_impl_methods += [r'''  %s %s(%s) %s {
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (int)this%s);
-  }''' % (c_return_type, func_name, dec_args,
+  }''' % (c_return_type, func_name, dec_args, maybe_const,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           class_name,
           func_name, class_name, func_name,
