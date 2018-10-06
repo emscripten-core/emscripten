@@ -64,4 +64,19 @@ function ___towcase() {
  gb + gb + gb + gb;
  gb + gb + gb + gb;
 }
+function tableMask(x, y, z, a, b, c) {
+ x = x | 0;
+ y = y | 0;
+ z = z | 0;
+ a = a | 0;
+ b = b | 0;
+ c = c | 0;
+ var CSE$0 = 0, CSE$1 = 0;
+ CSE$0 = x & y & z | 0;
+ CSE$0 & 511;
+ FUNCTION_TABLE[CSE$0 & 511]();
+ CSE$1 = a & b & c & 127 | 0;
+ CSE$1 | 0;
+ CSE$1 | 0;
+}
 

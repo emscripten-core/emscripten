@@ -997,6 +997,21 @@ function simplifyExpressions(ast) {
   });
 }
 
+// Checks if a coercion is necessary for asm.js, and cannot be
+// removed. Receives the node, and the expression stack, which
+// includes the node at the end.
+function isNecessaryCoercion(node, stack) {
+  assert(stack[stack.length - 1] === node);
+  var parent = stack[stack.length - 2];
+  if (!parent) return false;
+  if (parent[0] === 'sub') {
+    // We are x & mask in FUNCTION_TABLE[x & mask], and the mask
+    // is necessary.
+    return true;
+  }
+  return false;
+}
+
 function localCSE(ast) {
   // very simple CSE/GVN type optimization, factor out common expressions in a single basic block
   assert(asm);
@@ -1053,7 +1068,10 @@ function localCSE(ast) {
         }
         // next, process the line and try to find useful expressions
         var skips = [];
+
+        var stack = [];
         traverse(curr, function seekExpressions(node, type) {
+          stack.push(node);
           if (type === 'sub' && node[1][0] === 'name' && node[2][0] === 'binary' && node[2][1] === '>>') {
             // skip over the shift, we can't cse that
             skips.push(node[2]);
@@ -1063,6 +1081,8 @@ function localCSE(ast) {
             if (type === 'binary' && skips.indexOf(node) >= 0) return;
             if (measureCost(node) < MIN_COST) return;
             if (detectType(node, asmData) === ASM_NONE) return; // if we can't figure it out locally, forget it
+            // We cannot CSE out a necessary asm.js coercion
+            if (isNecessaryCoercion(node, stack)) return;
             var str = JSON.stringify(node);
             var lookup = exps[str];
             if (!lookup) {
@@ -1117,6 +1137,8 @@ function localCSE(ast) {
               return makeSignedAsmCoercion(['name', lookup[2]], type, sign);
             }
           }
+        }, function(node, type) { // post-traversal
+          stack.pop();
         });
         // finally, repeat invalidation processing, to not be sensitive to inter-line control flow
         doInvalidations(curr);
