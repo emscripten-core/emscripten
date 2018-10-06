@@ -32,6 +32,9 @@ DEBUG = os.environ.get('IDL_VERBOSE') is '1'
 
 if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
+# We need to avoid some closure errors on the constructors we define here.
+CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} */'
+
 class Dummy(object):
   def __init__(self, init):
     for k, v in init.items():
@@ -473,9 +476,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js += [r'''/** @suppress {undefinedVars, duplicate} */function%s(%s) {
+  mid_js += [r'''%sfunction%s(%s) {
 %s
-};''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
+};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
 
   # C
 
@@ -605,7 +608,7 @@ for name in names:
 
   # Ensure a constructor even if one is not specified.
   if not any(m.identifier.name == name for m in interface.members):
-    mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
+    mid_js += ['%sfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     mid_js += build_constructor(name)
 
   for m in interface.members:
