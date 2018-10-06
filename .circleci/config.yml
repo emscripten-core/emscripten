@@ -18,7 +18,7 @@ test-defaults: &test-defaults
         name: install package dependencies
         command: |
           apt-get update -q
-          apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless
+          apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
     - run:
         name: run tests
         command: |
