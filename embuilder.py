@@ -102,7 +102,7 @@ CXX_WITH_STDLIB = '''
       '''
 
 SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger(__file__)
@@ -272,6 +272,8 @@ def main():
       build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
+    elif what == 'sdl2-gfx':
+      build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-net':
