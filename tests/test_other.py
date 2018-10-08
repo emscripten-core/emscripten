@@ -8194,7 +8194,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1533, ['invoke_i'],               ['waka'],                 469663, 163, 1449),
+              1526, ['invoke_i'],               ['waka'],                 469663, 163, 1449),
     ]) # noqa
 
     print('test on a minimal pure computational thing')
