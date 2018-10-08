@@ -749,10 +749,8 @@ for defining the binding:
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
 
+.. _Int64-in-JS:
 Dealing with the fact that Javascript does not represent int64 types.
 =====================================================================
-
-JS can't represent int64s, so what happens is that in exported functions (that you can call from JS) 
-we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), 
-and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
+JS can't represent int64s, so what happens is that in exported functions (that you can call from JS) we "legalize" the types, by turning an i64 argument into two i32s (low and high bits), and an i64 return value becomes an i32, and you can access the high bits by calling a helper function called getTempRet0.
 
