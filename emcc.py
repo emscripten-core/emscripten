@@ -989,6 +989,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
         return 0
 
+      # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+      # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+      if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
       # Set ASM_JS default here so that we can override it from the command line.
       shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
 
@@ -1144,8 +1149,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         forced_stdlibs += ['libcxxabi']
 
       if not shared.Settings.ONLY_MY_CODE:
-        # always need malloc and free to be kept alive and exported, for internal use and other modules
+        # Always need malloc and free to be kept alive and exported, for internal use and other modules
         shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
+        if shared.Settings.WASM_BACKEND:
+          # llvm wasm backend will generate calls to these when using setjmp
+          # and/or C++ exceptions, so we pretty much alwasy need them.  They are
+          # also tiny, and should be elimitated by meta-DCE when not used.
+          shared.Settings.EXPORTED_FUNCTIONS += ['_setTempRet0', '_setThrew']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
@@ -1691,6 +1701,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
       else:
+        logging.debug('skipping linking: ' + str(linker_inputs))
         if not LEAVE_INPUTS_RAW:
           _, temp_file = temp_files[0]
           _, input_file = input_files[0]

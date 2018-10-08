@@ -45,8 +45,6 @@ COMPILER_ENGINE = NODE_JS
 # must exist (if they don't, they will be skipped in the test runner).
 #
 # Recommendation: If you already have node installed, use that. If you can, also build
-#                 spidermonkey from source as well to get more test coverage (node can't
-#                 run all the tests due to node issue 1669). v8 is currently not recommended
-#                 here because of v8 issue 1822.
+#                 spidermonkey from source as well to get more test coverage.
 
 JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]

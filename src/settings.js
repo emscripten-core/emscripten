@@ -546,13 +546,10 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will warn on any undefined
                                    // disable the warnings if they annoy you.
                                    // See also ERROR_ON_UNDEFINED_SYMBOLS
 
-var ERROR_ON_UNDEFINED_SYMBOLS = 0; // If set to 1, we will give a compile-time error on any
+var ERROR_ON_UNDEFINED_SYMBOLS = 1; // If set to 1, we will give a link-time error on any
                                     // undefined symbols (see WARN_ON_UNDEFINED_SYMBOLS).
-
-                                    // The default value for this is currently 0, but will be
-                                    // transitioned to 1 in the future. To keep relying on
-                                    // building with -s ERROR_ON_UNDEFINED_SYMBOLS=0 setting,
-                                    // prefer to set that option explicitly in your build system.
+                                    // The default value 1. To allow undefined symbols at link
+                                    // time set this to 0.
 
 var ERROR_ON_MISSING_LIBRARIES = 0; // If set to 1, any -lfoo directives pointing to nonexisting
                                     // library files will issue a linker error.
@@ -792,9 +789,11 @@ var LEGALIZE_JS_FFI = 1; // Whether to legalize the JS FFI interfaces (imports/e
 var USE_SDL = 1; // Specify the SDL version that is being linked against.
                  // 1, the default, is 1.3, which is implemented in JS
                  // 2 is a port of the SDL C code on emscripten-ports
+var USE_SDL_GFX = 0; // Specify the SDL_gfx version that is being linked against. Must match USE_SDL
 var USE_SDL_IMAGE = 1; // Specify the SDL_image version that is being linked against. Must match USE_SDL
 var USE_SDL_TTF = 1; // Specify the SDL_ttf version that is being linked against. Must match USE_SDL
 var USE_SDL_NET = 1; // Specify the SDL_net version that is being linked against. Must match USE_SDL
+var USE_ICU = 0; // 1 = use icu from emscripten-ports
 var USE_ZLIB = 0; // 1 = use zlib from emscripten-ports
 var USE_LIBPNG = 0; // 1 = use libpng from emscripten-ports
 var USE_BULLET = 0; // 1 = use bullet from emscripten-ports

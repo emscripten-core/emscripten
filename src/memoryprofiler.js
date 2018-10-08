@@ -10,15 +10,10 @@ var emscriptenMemoryProfiler = {
   detailedHeapUsage: true,
 
   // Allocations of memory blocks larger than this threshold will get their detailed callstack captured and logged at runtime.
-  // Warning: This can be extremely slow. Set to a very very large value like 1024*1024*1024*4 to disable.
-  // Disabled if stack information is not available in this browser
-  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? 1024*1024*1024*4 : 16*1024*1024, 
+  trackedCallstackMinSizeBytes: (typeof new Error().stack === 'undefined') ? Infinity : 16*1024*1024,
 
-  // Controls whether all outstanding allocation are printed to html page by callstack.
-  allocateStatistics: false,
-
-  // If allocateStatistics = true, then all callstacks that have recorded more than the following number of allocations will be printed to html page.
-  allocateStatisticsNumcallsMinReported: 100,
+  // Allocations from call sites having more than this many outstanding allocated pointers will get their detailed callstack captured and logged at runtime.
+  trackedCallstackMinAllocCount: (typeof new Error().stack === 'undefined') ? Infinity : 10000,
 
   // If true, we hook into stackAlloc to be able to catch better estimate of the maximum used STACK space.
   // You might only ever want to set this to false for performance reasons. Since stack allocations may occur often, this might impact performance.
@@ -28,28 +23,20 @@ var emscriptenMemoryProfiler = {
   uiUpdateIntervalMsecs: 2000,
 
   // Tracks data for the allocation statistics.
-  allocationSiteStatistics: {},
+  allocationsAtLoc: {},
   allocationSitePtrs: {},
 
   // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to 
   // _free() and decrement the tracked usage accordingly.
-  // E.g. allocatedPtrSizes[address] returns the size of the heap pointer starting at 'address'.
-  allocatedPtrSizes: {},
+  // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer starting at 'address'.
+  sizeOfAllocatedPtr: {},
 
   // Conceptually same as the above array, except this one tracks only pointers that were allocated during the application preRun step, which
   // corresponds to the data added to the VFS with --preload-file.
-  preRunMallocs: {},
+  sizeOfPreRunAllocatedPtr: {},
 
   // Once set to true, preRun is finished and the above array is not touched anymore.
   pagePreRunIsFinished: false,
-
-  // Stores an associative array of records HEAP ptr -> function string name so that we can identify each allocated pointer 
-  // by the location in code the allocation occurred in.
-  callstackOfAllocatedPtr: {},
-
-  // Stores an associative array of accumulated amount of memory allocated per location.
-  // E.g. allocatedBytesPerCallstack[callstack_function_name_string] returns the total number of allocated bytes performed from 'callstack_function_name_string'.
-  allocatedBytesPerCallstack: {},
 
   // Grand total of memory currently allocated via malloc(). Decremented on free()s.
   totalMemoryAllocated: 0,
@@ -70,6 +57,7 @@ var emscriptenMemoryProfiler = {
 
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
   truncDec: function truncDec(f) {
+    f = f || 0;
     var str = f.toFixed(2);
     if (str.indexOf('.00', str.length-3) !== -1) return str.substr(0, str.length-3);
     else if (str.indexOf('0', str.length-1) !== -1) return str.substr(0, str.length-1);
@@ -85,69 +73,61 @@ var emscriptenMemoryProfiler = {
   },
 
   onMalloc: function onMalloc(ptr, size) {
+    if (!ptr) return;
+    if (this.sizeOfAllocatedPtr[ptr])
+    {
+// Uncomment to debug internal workings of tracing:
+//      console.error('Allocation error in onMalloc! Pointer ' + ptr + ' had already been tracked as allocated!');
+//      console.error('Previous site of allocation: ' + this.allocationSitePtrs[ptr]);
+//      console.error('This doubly attempted site of allocation: ' + new Error().stack.toString());
+//      throw 'malloc internal inconsistency!';
+      return;
+    }
     // Gather global stats.
     this.totalMemoryAllocated += size;
     ++this.totalTimesMallocCalled;
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
     
     // Remember the size of the allocated block to know how much will be _free()d later.
-    this.allocatedPtrSizes[ptr] = size;
+    this.sizeOfAllocatedPtr[ptr] = size;
     // Also track if this was a _malloc performed at preRun time.
-    if (!this.pagePreRunIsFinished) this.preRunMallocs[ptr] = size;
+    if (!this.pagePreRunIsFinished) this.sizeOfPreRunAllocatedPtr[ptr] = size;
 
-    if (this.allocateStatistics) {
-      var loc = new Error().stack.toString();
-      var str = loc;
-      if (!this.allocationSiteStatistics[str]) this.allocationSiteStatistics[str] = [0, 0];
-      this.allocationSiteStatistics[str][0] += 1;
-      this.allocationSiteStatistics[str][1] += size;
-      this.allocationSitePtrs[ptr] = loc;
-    }
-
-    // If this is a large enough allocation, track its detailed callstack info.
-    if (size > this.trackedCallstackMinSizeBytes) {
-      // Get the caller function as string.
-      var loc = new Error().stack.toString();
-      var nl = loc.indexOf('\n')+1;
-      loc = loc.substr(nl);
-      loc = loc.replace(/\n/g, '<br />');
-      var caller = loc;
-      this.callstackOfAllocatedPtr[ptr] = caller;
-      if (this.allocatedBytesPerCallstack[caller] > 0) this.allocatedBytesPerCallstack[caller] += size;
-      else this.allocatedBytesPerCallstack[caller] = size;
-    }
+    var loc = new Error().stack.toString();
+    if (!this.allocationsAtLoc[loc]) this.allocationsAtLoc[loc] = [0, 0, this.filterCallstack(loc)];
+    this.allocationsAtLoc[loc][0] += 1;
+    this.allocationsAtLoc[loc][1] += size;
+    this.allocationSitePtrs[ptr] = loc;
   },
 
   onFree: function onFree(ptr) {
     if (!ptr) return;
 
     // Decrement global stats.
-    var sz = this.allocatedPtrSizes[ptr];
-    if (!isNaN(sz)) {
-      this.totalMemoryAllocated -= sz;
+    var sz = this.sizeOfAllocatedPtr[ptr];
+    if (!isNaN(sz)) this.totalMemoryAllocated -= sz;
+    else
+    {
+// Uncomment to debug internal workings of tracing:
+//      console.error('Detected double free of pointer ' + ptr + ' at location:\n'+ new Error().stack.toString());
+//      throw 'double free!';
+      return;
     }
-    
-    delete this.allocatedPtrSizes[ptr];
-    delete this.preRunMallocs[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
+
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
 
-    if (this.allocateStatistics) {
-      var loc = this.allocationSitePtrs[ptr];
-      if (loc) {
-        var str = loc;
-        this.allocationSiteStatistics[str][0] -= 1;
-        this.allocationSiteStatistics[str][1] -= sz;
+    var loc = this.allocationSitePtrs[ptr];
+    if (loc) {
+      var allocsAtThisLoc = this.allocationsAtLoc[loc];
+      if (allocsAtThisLoc) {
+        allocsAtThisLoc[0] -= 1;
+        allocsAtThisLoc[1] -= sz;
+        if (allocsAtThisLoc[0] <= 0) delete this.allocationsAtLoc[loc];
       }
-      this.allocationSitePtrs[ptr] = null;
     }
-
-    // Decrement per-alloc stats if this was a large allocation.
-    if (sz > this.trackedCallstackMinSizeBytes) {
-      var caller = this.callstackOfAllocatedPtr[ptr];
-      delete this.callstackOfAllocatedPtr[ptr];
-      this.allocatedBytesPerCallstack[caller] -= sz;
-      if (this.allocatedBytesPerCallstack[caller] <= 0) delete this.allocatedBytesPerCallstack[caller];
-    }
+    delete this.allocationSitePtrs[ptr];
+    delete this.sizeOfAllocatedPtr[ptr];
+    delete this.sizeOfPreRunAllocatedPtr[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
     ++this.totalTimesFreeCalled;
   },
 
@@ -158,6 +138,8 @@ var emscriptenMemoryProfiler = {
 
   onPreloadComplete: function onPreloadComplete() {
     this.pagePreRunIsFinished = true;
+    // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When MemoryProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
+    document.body.style.overflow = '';
   },
 
   // Installs startup hook and periodic UI update timer.
@@ -180,18 +162,26 @@ var emscriptenMemoryProfiler = {
       stackAlloc = hookedStackAlloc;
     }
 
-    memoryprofiler = document.getElementById('memoryprofiler');
-    if (!memoryprofiler) {
+    if (location.search.toLowerCase().indexOf('trackbytes=') != -1) {
+      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length));
+    }
+    if (location.search.toLowerCase().indexOf('trackcount=') != -1) {
+      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length));
+    }
+
+    this.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
+    if (!this.memoryprofiler_summary) {
       var div = document.createElement("div");
-      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>trackedCallstackMinSizeBytes=<input id='memoryprofiler_min_tracked_alloc_size' type=number value="+this.trackedCallstackMinSizeBytes+"></input><br/><input id='memoryprofiler_enable_allocation_stats' type='checkbox'>Print allocation statistics by callstack to html log (warning: slow!)</input><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><div id='memoryprofiler'></div>";
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+this.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+this.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
       document.body.appendChild(div);
-      memoryprofiler = document.getElementById('memoryprofiler');
+      this.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
+      this.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
 
       var self = this;
 
-      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=this.value;});
-      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationSiteStatistics = {}; self.allocationSitePtrs = {};});
-      document.getElementById('memoryprofiler_enable_allocation_stats').addEventListener("change", function(e){self.allocateStatistics=this.checked;});
+      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=parseInt(this.value);});
+      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e){self.trackedCallstackMinAllocCount=parseInt(this.value);});
+      document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
     }
   
     this.canvas = document.getElementById('memoryprofiler_canvas');
@@ -269,6 +259,18 @@ var emscriptenMemoryProfiler = {
     }
   },
 
+ filterCallstack: function(callstack) {
+   // Do not show Memoryprofiler's own callstacks in the callstack prints.
+   var i = callstack.indexOf('emscripten_trace_record_');
+   if (i != -1) {
+     callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+   }
+   // Hide paths from URLs to make the log more readable
+   callstack = callstack.replace(/@((file)|(http))[\w:\/\.]*\/([\w\.]*)/g, '@$4');
+   callstack = callstack.replace(/\n/g, '<br />');
+   return callstack;
+ },
+
   // Main UI update entry point.
   updateUi: function updateUi() {
     function colorBar(color) {
@@ -310,18 +312,18 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + this.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + this.formatBytes(this.stackTopWatermark - STACK_BASE);
 
     var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
-    html += '<br />' + colorBar('#70FF70') + 'DYNAMIC memory area size: ' + this.formatBytes(DYNAMICTOP-DYNAMIC_BASE);
-    html += '. DYNAMIC_BASE: ' + toHex(DYNAMIC_BASE, width);
-    html += '. DYNAMICTOP: ' + toHex(DYNAMICTOP, width) + '.';
-    html += '<br />' + colorBar('#6699CC') + colorBar('#003366') + colorBar('#0000FF') + 'DYNAMIC memory area used: ' + this.formatBytes(this.totalMemoryAllocated) + ' (' + (this.totalMemoryAllocated * 100.0 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + '% of all free memory)';
+    html += "<br />DYNAMIC memory area size: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
+    html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
+    html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";
+    html += "<br />" + colorBar("#6699CC") + colorBar("#003366") + colorBar("#0000FF") + "DYNAMIC memory area used: " + this.formatBytes(this.totalMemoryAllocated) + " (" + (this.totalMemoryAllocated * 100 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
+    html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE - this.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + this.formatBytes(TOTAL_MEMORY - DYNAMICTOP) + " (" + ((TOTAL_MEMORY - DYNAMIC_BASE - this.totalMemoryAllocated) * 100 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     var preloadedMemoryUsed = 0;
-    for (i in this.preRunMallocs) preloadedMemoryUsed += this.preRunMallocs[i]|0;
+    for (i in this.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += this.sizeOfPreRunAllocatedPtr[i]|0;
     html += '<br />' + colorBar('#FF9900') + colorBar('#FFDD33') + 'Preloaded memory used, most likely memory reserved by files in the virtual filesystem : ' + this.formatBytes(preloadedMemoryUsed);
 
     html += '<br />OpenAL audio data: ' + this.formatBytes(this.countOpenALAudioDataSize()) + ' (outside HEAP)';
-    html += '<br />' + colorBar('#FFFFFF') + 'Unallocated HEAP space: ' + this.formatBytes(TOTAL_MEMORY - DYNAMICTOP);
-    html += '<br /># of total malloc()s/free()s performed in app lifetime: ' + this.totalTimesMallocCalled + '/' + this.totalTimesFreeCalled + ' (delta: ' + (this.totalTimesMallocCalled-this.totalTimesFreeCalled) + ')';
+    html += '<br /># of total malloc()s/free()s performed in app lifetime: ' + this.totalTimesMallocCalled + '/' + this.totalTimesFreeCalled + ' (currently alive pointers: ' + (this.totalTimesMallocCalled-this.totalTimesFreeCalled) + ')';
 
     // Background clear
     this.drawContext.fillStyle = "#FFFFFF";
@@ -343,53 +345,41 @@ var emscriptenMemoryProfiler = {
     this.fillLine(DYNAMIC_BASE, DYNAMICTOP);
 
     if (this.detailedHeapUsage) {
-      this.printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], this.allocatedPtrSizes);
-      this.printAllocsWithCyclingColors(["#FF9900", "#FFDD33"], this.preRunMallocs);
+      this.printAllocsWithCyclingColors(["#6699CC", "#003366", "#0000FF"], this.sizeOfAllocatedPtr);
+      this.printAllocsWithCyclingColors(["#FF9900", "#FFDD33"], this.sizeOfPreRunAllocatedPtr);
     } else {
       // Print only a single naive blob of individual allocations. This will not be accurate, but is constant-time.
       this.drawContext.fillStyle = "#0000FF";
       this.fillLine(DYNAMIC_BASE, DYNAMIC_BASE + this.totalMemoryAllocated);
     }
 
-    function isEmpty(cont) {
-      for (i in cont) return false;
-      return true;
-    }
+    memoryprofiler_summary.innerHTML = html;
 
+    var sort = document.getElementById('memoryProfilerSort');
+    var sortOrder = sort.options[sort.selectedIndex].value;
+
+    var html = '';
     // Print out statistics of individual allocations if they were tracked.
-     if (!isEmpty(this.allocatedBytesPerCallstack)) {
-      html += '<h4>Notable allocation sites<h4>'
-      for (var i in this.allocatedBytesPerCallstack) {
-        html += '<b>'+this.formatBytes(this.allocatedBytesPerCallstack[i]|0)+'</b>: ' + i + '<br />';
-      }
-    }
-
-    if (!isEmpty(this.allocationSiteStatistics)) {
+    if (Object.keys(this.allocationsAtLoc).length > 0) {
       var calls = [];
-      for (var i in this.allocationSiteStatistics) {
-        var numcalls = this.allocationSiteStatistics[i][0];
-        var size = this.allocationSiteStatistics[i][1];
-        if (numcalls >= this.allocateStatisticsNumcallsMinReported ||
-            size >= this.trackedCallstackMinSizeBytes) calls.push(i);
-      }
-
-      var self = this;
-      calls.sort(function(a,b) { return self.allocationSiteStatistics[b][0] - self.allocationSiteStatistics[a][0]; });
-      html += '<h4>Allocated pointers by call stack:<h4>';
-      var ndemangled = 10;
-      for (var i in calls) {
-        var callstack = calls[i];
-        var numcalls = this.allocationSiteStatistics[callstack][0];
-        var size = this.allocationSiteStatistics[callstack][1];
-        if (ndemangled > 0) {
-          callstack = demangleAll(callstack);
-          callstack = callstack.split('\n').join('<br />');
-          --ndemangled;
+      for (var i in this.allocationsAtLoc) {
+        if (this.allocationsAtLoc[i][0] >= this.trackedCallstackMinAllocCount || this.allocationsAtLoc[i][1] >= this.trackedCallstackMinSizeBytes) {
+          calls.push(this.allocationsAtLoc[i]);
         }
-        html += callstack + ': <b> calls ' + numcalls + ', size ' + this.formatBytes(size)  + '</b><br /><br />';
+      }
+      if (calls.length > 0) {
+        if (sortOrder != 'fixed') {
+          var sortIdx = (sortOrder == 'count') ? 0 : 1;
+          calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
+        }
+        html += '<h4>Allocation sites with more than ' + this.formatBytes(this.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + this.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
+        for (var i in calls) {
+          if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangleAll(calls[i][2])];
+          html += "<b>" + this.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
+        }
       }
     }
-    memoryprofiler.innerHTML = html;
+    memoryprofiler_ptrs.innerHTML = html;
   }
 };
 

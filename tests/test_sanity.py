@@ -58,7 +58,9 @@ EMBUILDER = path_from_root('embuilder.py')
 # arguments to build a minimal hello world program, without even libc
 # (-O1 avoids -O0's default assertions which bring in checking code;
 #  FILESYSTEM=0 avoids bringing libc for that)
-MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0']
+# (ERROR_ON_UNDEFINED_SYMBOLS=0 is needed because __errno_location is
+#  not included on the native side but needed by a lot of JS libraries.)
+MINIMAL_HELLO_WORLD = [path_from_root('tests', 'hello_world_em_asm.c'), '-O1', '-s', 'FILESYSTEM=0', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
 
 
 class sanity(RunnerCore):
@@ -95,7 +97,7 @@ class sanity(RunnerCore):
     print('time:', time.time() - self.start_time)
 
   def do(self, command):
-    print(' '.join(command))
+    print('Running: ' + ' '.join(command))
     if type(command) is not list:
       command = [command]
     if command[0] == EMCC:
@@ -758,9 +760,11 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'vorbis'], ['building and verifying vorbis', 'success'], True, ['vorbis.bc']),
       ([PYTHON, EMBUILDER, 'build', 'ogg'], ['building and verifying ogg', 'success'], True, ['ogg.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2'], ['success'], True, ['sdl2.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'sdl2-gfx'], ['success'], True, ['sdl2-gfx.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-image'], ['success'], True, ['sdl2-image.bc']),
       ([PYTHON, EMBUILDER, 'build', 'freetype'], ['building and verifying freetype', 'success'], True, ['freetype.bc']),
       ([PYTHON, EMBUILDER, 'build', 'harfbuzz'], ['building and verifying harfbuzz', 'success'], True, ['harfbuzz.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'icu'], ['building and verifying icu', 'success'], True, ['icu.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, ['sdl2-ttf.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
@@ -782,10 +786,11 @@ fi
         else:
           print('    erase file', lib)
           try_delete(Cache.get_path(lib))
-      output = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
-      out = output.stdout
-      err = output.stderr
-      assert (output.returncode == 0) == success, [out, err]
+      proc = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
+      out = proc.stdout
+      if success and proc.returncode != 0:
+        print(out)
+      assert (proc.returncode == 0) == success
       if not isinstance(expected, list):
         expected = [expected]
       for ex in expected:
