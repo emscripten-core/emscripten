@@ -448,6 +448,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.path_from_root('system', 'lib', src),
         '-O2', '-fno-builtin', '-o', o] +
         musl_internal_includes() +
+        # TODO(sbc): Remove this once we fix https://bugs.llvm.org/show_bug.cgi?id=38711
+        ['-fno-slp-vectorize'] +
         shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
