@@ -148,10 +148,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # individual files
     blacklist += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
-        'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c',
-        'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+        'inet_addr.c', 'res_query.c', 'res_querydomain.c', 'gai_strerror.c',
+        'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
-        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c'
+        'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
+        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+        'faccessat.c',
     ]
 
     # individual math files
@@ -446,6 +448,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.path_from_root('system', 'lib', src),
         '-O2', '-fno-builtin', '-o', o] +
         musl_internal_includes() +
+        # TODO(sbc): Remove this once we fix https://bugs.llvm.org/show_bug.cgi?id=38711
+        ['-fno-slp-vectorize'] +
         shared.EMSDK_OPTS)
       o_s.append(o)
     run_commands(commands)
@@ -463,7 +467,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
                  'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c',
                  'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
-                 'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
+                 'modti3.c', 'multc3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c'])
@@ -564,38 +568,37 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   else:
     ext = 'bc'
 
+  libc_name = 'libc'
+  libc_deps = ['compiler-rt']
+  if shared.Settings.WASM:
+    libc_deps += ['wasm-libc']
+  if shared.Settings.USE_PTHREADS:
+    libc_name = 'libc-mt'
+    force.add('pthreads')
+    force.add('pthreads_asmjs')
+
   system_libs = [('libcxx',        'a', create_libcxx,      libcxx_symbols,      ['libcxxabi'], True), # noqa
-                 ('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False), # noqa
-                 ('gl',            ext, create_gl,          gl_symbols,          ['libc'],      False), # noqa
-                 ('al',            ext, create_al,          al_symbols,          ['libc'],      False), # noqa
-                 ('html5',         ext, create_html5,       html5_symbols,       ['html5'],     False), # noqa
-                 ('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, ['libc'],      False), # noqa
+                 ('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
+                 ('gl',            ext, create_gl,          gl_symbols,          [libc_name],   False), # noqa
+                 ('al',            ext, create_al,          al_symbols,          [libc_name],   False), # noqa
+                 ('html5',         ext, create_html5,       html5_symbols,       [],            False), # noqa
+                 ('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  (malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [('libc-mt',        ext, create_libc,           libc_symbols,     [],       False), # noqa
-                    ('pthreads',       ext, create_pthreads,       pthreads_symbols, ['libc'], False), # noqa
-                    ('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, ['libc'], False)] # noqa
-    force.add('pthreads')
-    force.add('pthreads_asmjs')
-  else:
-    system_libs += [('libc', ext, create_libc, libc_symbols, [], False)]
+    system_libs += [('pthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
+                    ('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
 
-  force.add(malloc_name())
+  system_libs += [(libc_name, ext, create_libc, libc_symbols, libc_deps, False)]
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.WASM:
     system_libs += [('wasm-libc', ext, create_wasm_libc, wasm_libc_symbols, [], False)]
-    # if libc is included, we definitely must be, as it might need us
-    for data in system_libs:
-      if data[3] == libc_symbols:
-        data[4].append('wasm-libc')
-        break
-    else:
-      raise Exception('did not find libc?')
 
   # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
-  system_libs += [('libc-extras', ext, create_libc_extras, libc_extras_symbols, ['libc_extras'], False)]
+  system_libs += [('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False)]
+
+  force.add(malloc_name())
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -605,7 +608,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   ret = []
   has = need = None
 
+  all_names = [s[0] for s in system_libs]
+
   for shortname, suffix, create, library_symbols, deps, can_noexcept in system_libs:
+    assert all(d in all_names for d in deps)
     force_this = force_all or shortname in force
     if can_noexcept:
       shortname = maybe_noexcept(shortname)
