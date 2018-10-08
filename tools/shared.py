@@ -1921,7 +1921,7 @@ class Building(object):
     #   cmd.append('--strip-debug')
 
     if Settings.EXPORT_ALL:
-      cmd += ['--export-all']
+      cmd += ['--no-gc-sections', '--export-all']
     else:
       for export in expand_response(Settings.EXPORTED_FUNCTIONS):
         cmd += ['--export', export[1:]] # Strip the leading underscore
