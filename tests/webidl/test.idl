@@ -45,6 +45,18 @@ interface Child2JS {
   void virtualFunc4(long x);
 };
 
+interface VirtualBase {
+  void func();
+  void constFunc();
+};
+
+[JSImplementation="VirtualBase"]
+interface ConcreteJS {
+  void ConcreteJS();
+  void func();
+  [Const] void constFunc();
+};
+
 // Part 2
 
 interface StringUser {
