@@ -52,7 +52,6 @@ jobs:
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/emscripten/
-            echo EMSCRIPTEN_ROOT="'~/emscripten/'" >> ~/.emscripten
             echo BINARYEN_ROOT="''" >> ~/.emscripten
       - run:
           name: embuilder build ALL
