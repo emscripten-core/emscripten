@@ -36,6 +36,7 @@ import tools.duplicate_function_eliminator
 
 scons_path = Building.which('scons')
 
+
 class temp_directory(object):
   def __enter__(self):
     self.directory = tempfile.mkdtemp(prefix='emtest_temp_', dir=TEMP_DIR)
