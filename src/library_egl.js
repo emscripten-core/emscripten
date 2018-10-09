@@ -24,9 +24,9 @@ var LibraryEGL = {
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
     alpha: false,
-    depth: true,
-    stencil: true,
-    antialias: true,
+    depth:     true, /*not EGL default, compat with earlier emscripten*/
+    stencil:   true, /*not EGL default, compat with earlier emscripten*/
+    antialias: true, /*not EGL default, compat with earlier emscripten*/
 
     stringCache: {},
     
