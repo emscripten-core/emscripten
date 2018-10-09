@@ -8613,8 +8613,8 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
 
-  def test_check_sourcemapurl_base(self):
-    if not self.is_wasm_backend():
+  def test_check_sourcemapurl(self):
+    if not self.is_wasm():
       return
     shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
@@ -8624,7 +8624,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     self.assertContained(source_mapping_url_content, output)
 
   def test_check_sourcemapurl_default(self):
-    if not self.is_wasm_backend():
+    if not self.is_wasm():
       return
     shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'])
