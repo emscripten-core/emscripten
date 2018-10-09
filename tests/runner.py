@@ -144,6 +144,16 @@ def env_modify(updates):
     os.environ.update(old_env)
 
 
+# Decorator version of env_modify
+def with_env_modify(updates):
+  def decorated(f):
+    def modified(self):
+      with env_modify(updates):
+        return f(self)
+    return modified
+  return decorated
+
+
 @contextlib.contextmanager
 def chdir(dir):
   """A context manager that performs actions in the given directory."""

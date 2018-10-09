@@ -27,13 +27,14 @@ from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, TEMP_DIR, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
-from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend, needs_dlfcn, env_modify, no_windows, chdir
+from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend, needs_dlfcn, env_modify, no_windows, chdir, with_env_modify
 from tools import jsrun, shared
 import tools.line_endings
 import tools.js_optimizer
 import tools.tempfiles
 import tools.duplicate_function_eliminator
 
+scons_path = Building.which('scons')
 
 class temp_directory(object):
   def __enter__(self):
@@ -2260,31 +2261,27 @@ int f() {
           else:
             self.assertIn('strip-debug', opts)
 
+  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
-    scons_path = Building.which('scons')
-    if not scons_path:
-      self.skipTest('Skipping other.test_scons: The tool "scons" was not found in PATH!')
     shutil.copytree(path_from_root('tests', 'scons'), 'test')
     shutil.copytree(path_from_root('tools', 'scons', 'site_scons'), os.path.join('test', 'site_scons'))
     with chdir('test'):
-      with env_modify({'EMSCRIPTEN_ROOT': path_from_root()}):
-        run_process(['scons'])
+      run_process(['scons'])
       output = run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
+  @unittest.skipIf(not scons_path, 'scons not found in PATH')
+  @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools', 'scons', 'site_scons'),
+                    'EMSCRIPTEN_ROOT': path_from_root()})
   def test_emscons(self):
-    # uses the emscons wrapper which requires EMSCRIPTEN_TOOLPATH to find 
+    # uses the emscons wrapper which requires EMSCRIPTEN_TOOLPATH to find
     # site_scons
-    scons_path = Building.which('scons')
-    if not scons_path:
-      self.skipTest('Skipping other.test_scons: The tool "scons" was not found in PATH!')
     shutil.copytree(path_from_root('tests', 'scons'), 'test')
     with chdir('test'):
-      with env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools', 'scons', 'site_scons'),
-                       'EMSCRIPTEN_ROOT': path_from_root()}):
-        run_process([path_from_root('emscons'), 'scons'])
-        output = run_js('scons_integration.js', assert_returncode=5)
+      run_process([path_from_root('emscons'), 'scons'])
+      output = run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
 
   def test_embind(self):
