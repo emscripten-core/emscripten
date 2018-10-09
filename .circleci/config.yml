@@ -18,7 +18,8 @@ test-defaults: &test-defaults
         name: install package dependencies
         command: |
           apt-get update -q
-          apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless
+          # openjdk-9 is also available, but hits #7232
+          apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
     - run:
         name: run tests
         command: |
@@ -119,7 +120,7 @@ jobs:
           name: install package dependencies
           command: |
             apt-get update -q
-            apt-get install -q -y python3 cmake build-essential openjdk-9-jre-headless
+            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
             # preseed packages so that apt-get won't prompt for user input
             echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
             echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
@@ -233,7 +234,7 @@ jobs:
             # install chromium-browser in order to ensure we have most of the
             # dependecies for chrome.
             EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
-            apt-get install -q -y unzip xvfb chromium-browser openjdk-9-jre-headless $EXTRA_CHROME_DEPS
+            apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
       - run:
           name: download chrome
           command: |
