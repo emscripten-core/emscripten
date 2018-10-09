@@ -8613,6 +8613,26 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
 
+  def test_check_sourcemapurl_base(self):
+    if not self.is_wasm_backend():
+      return
+    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
+    output = open('a.wasm').read()
+    # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
+    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('dir/a.wasm.map')) + 'dir/a.wasm.map'
+    self.assertContained(source_mapping_url_content, output)
+
+  def test_check_sourcemapurl_default(self):
+    if not self.is_wasm_backend():
+      return
+    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'])
+    output = open('a.wasm').read()
+    # has sourceMappingURL section content and points to 'a.wasm.map' file
+    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('a.wasm.map')) + 'a.wasm.map'
+    self.assertContained(source_mapping_url_content, output)
+
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
     shutil.copyfile(path_from_root('tests', 'other', 'wasm_sourcemap', 'no_main.c'), 'no_main.c')
