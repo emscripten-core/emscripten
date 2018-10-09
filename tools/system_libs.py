@@ -599,6 +599,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs += [('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False)]
 
   force.add(malloc_name())
+  if shared.Settings.WASM_BACKEND:
+    force.add('compiler-rt')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
