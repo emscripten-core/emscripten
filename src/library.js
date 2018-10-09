@@ -4376,8 +4376,21 @@ LibraryManager.library = {
   __unlockfile: function(){},
 
   // ubsan (undefined behavior sanitizer) support
+  // TODO(sbc): Use the actual implementations from clang's compiler-rt
   __ubsan_handle_float_cast_overflow: function(id, post) {
     abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
+  },
+
+  __ubsan_handle_pointer_overflow: function(id, post) {
+    abort('Undefined behavior! ubsan_handle_pointer_overflow: ' + [id, post]);
+  },
+
+  __ubsan_handle_type_mismatch_v1: function(id, post) {
+    abort('Undefined behavior! ubsan_handle_type_mismatch_v1: ' + [id, post]);
+  },
+
+  __ubsan_handle_add_overflow: function(id, post) {
+    abort('Undefined behavior! ubsan_handle_add_overflow: ' + [id, post]);
   },
 
   // USE_FULL_LIBRARY hacks
