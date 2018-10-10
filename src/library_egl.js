@@ -23,6 +23,10 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
+    alpha: false,
+    depth:     true, /*not EGL default, compat with earlier emscripten*/
+    stencil:   true, /*not EGL default, compat with earlier emscripten*/
+    antialias: true, /*not EGL default, compat with earlier emscripten*/
 
     stringCache: {},
     
@@ -35,7 +39,31 @@ var LibraryEGL = {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
         return 0;
       }
-      // TODO: read attribList.
+
+      // read attribList.
+      for(;;) {
+        var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
+        if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
+          var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.alpha = (alphaSize > 0);
+        } else if (param == 0x3025 /*EGL_DEPTH_SIZE*/) {
+          var depthSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.depth = (depthSize > 0);
+        } else if (param == 0x3026 /*EGL_STENCIL_SIZE*/) {
+          var stencilSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.stencil = (stencilSize > 0);
+        } else if (param == 0x3031 /*EGL_SAMPLES*/) {
+          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.antialias = (samples > 0);
+        } else if (param == 0x3032 /*EGL_SAMPLE_BUFFERS*/) {
+          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.antialias = (samples == 1);
+        } else if (param == 0x3038 /*EGL_NONE*/) {
+            break;
+        }
+        attribList += 8;
+      }
+
       if ((!config || !config_size) && !numConfigs) {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
@@ -297,7 +325,15 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
+    // convert configuration to GLUT flags
+    var displayMode = 0x0000; /*GLUT_RGB/GLUT_RGBA*/
+    displayMode |= 0x0002; /*GLUT_DOUBLE*/
+    if (EGL.alpha)     displayMode |= 0x0008; /*GLUT_ALPHA*/
+    if (EGL.depth)     displayMode |= 0x0010; /*GLUT_DEPTH*/
+    if (EGL.stencil)   displayMode |= 0x0020; /*GLUT_STENCIL*/
+    if (EGL.antialias) displayMode |= 0x0080; /*GLUT_MULTISAMPLE*/
+
+    _glutInitDisplayMode(displayMode);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
