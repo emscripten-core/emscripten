@@ -153,6 +153,19 @@ var SyscallsLibrary = {
       }
       return ret;
     },
+#else
+    // MEMFS filesystem disabled lite handling of stdout and stderr:
+    buffers: [null, [], []], // 1 => stdout, 2 => stderr
+    printChar: function(stream, curr) {
+      var buffer = SYSCALLS.buffers[stream];
+      assert(buffer);
+      if (curr === 0 || curr === {{{ charCode('\n') }}}) {
+        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+        buffer.length = 0;
+      } else {
+        buffer.push(curr);
+      }
+    },
 #endif // FILESYSTEM
 
     // arguments handling
@@ -227,8 +240,17 @@ var SyscallsLibrary = {
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
   __syscall4: function(which, varargs) { // write
+#if FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
+#else
+    // hack to support printf in FILESYSTEM=0
+    var stream = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+    for (var i = 0; i < count; i++) {
+      SYSCALLS.printChar(stream, HEAPU8[buf+i]);
+    }
+    return count;
+#endif // FILESYSTEM
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
@@ -801,11 +823,9 @@ var SyscallsLibrary = {
     // flush anything remaining in the buffers during shutdown
     var fflush = Module["_fflush"];
     if (fflush) fflush(0);
-    var printChar = ___syscall146.printChar;
-    if (!printChar) return;
-    var buffers = ___syscall146.buffers;
-    if (buffers[1].length) printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) printChar(2, {{{ charCode("\n") }}});
+    var buffers = SYSCALLS.buffers;
+    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   __syscall146__deps: ['$flush_NO_FILESYSTEM'],
 #if EXIT_RUNTIME == 1
@@ -820,24 +840,11 @@ var SyscallsLibrary = {
     // hack to support printf in FILESYSTEM=0
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffers) {
-      ___syscall146.buffers = [null, [], []]; // 1 => stdout, 2 => stderr
-      ___syscall146.printChar = function(stream, curr) {
-        var buffer = ___syscall146.buffers[stream];
-        assert(buffer);
-        if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-          (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
-          buffer.length = 0;
-        } else {
-          buffer.push(curr);
-        }
-      };
-    }
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
       var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
       for (var j = 0; j < len; j++) {
-        ___syscall146.printChar(stream, HEAPU8[ptr+j]);
+        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
       }
       ret += len;
     }

@@ -4761,6 +4761,14 @@ name: .
       self.emcc_args = orig_args + mode
       self.do_run_from_file(src, output)
 
+  def test_write_stdout_fileno(self):
+    test_path = path_from_root('tests', 'core', 'test_write_stdout_fileno')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'FILESYSTEM=0']]:
+      self.emcc_args = orig_args + mode
+      self.do_run_from_file(src, output)
+
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
