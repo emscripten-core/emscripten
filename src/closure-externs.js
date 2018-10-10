@@ -1294,7 +1294,7 @@ var _glutPostRedisplay = function() {};
 var emscripten_source_map;
 
 /**
- * @typy {Worker}
+ * @type {Worker}
  */
 var worker;
 /**
@@ -1335,3 +1335,9 @@ var __setLetterbox = function(element, topBottom, leftRight) {};
  */
 var onmessage = function(message) {};
 
+// Fetch.js/Fetch Worker
+
+/**
+ * @suppress {undefinedVars}
+ */
+var ENVIRONMENT_IS_FETCH_WORKER;
