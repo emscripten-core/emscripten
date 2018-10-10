@@ -1,5 +1,5 @@
-env = Environment()
+import os
+env = Environment(toolpath=[os.environ.get('EMSCRIPTEN_TOOL_PATH')])
 env.Tool('emscripten')
 env.Append(CXXFLAGS='-std=c++11')
 env.Program('scons_integration', ['integration.cpp', 'other.c'])
-
