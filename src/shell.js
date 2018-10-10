@@ -230,12 +230,10 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  if (ENVIRONMENT_IS_WEB) {
-    if (document.currentScript) {
-      scriptDirectory = document.currentScript.src;
-    }
-  } else { // worker
+  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
     scriptDirectory = self.location.href;
+  } else if (document.currentScript) { // web
+    scriptDirectory = document.currentScript.src;
   }
 #if MODULARIZE
 #if MODULARIZE_INSTANCE == 0
