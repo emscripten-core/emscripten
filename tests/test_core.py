@@ -568,6 +568,13 @@ int main()
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_from_file(src, output)
 
+  # Test that fmodf with -s PRECISE_F32=1 properly validates as asm.js (% operator cannot take in f32, only f64)
+  def test_math_fmodf(self):
+      test_path = path_from_root('tests', 'math', 'fmodf')
+      src, output = (test_path + s for s in ('.c', '.out'))
+
+      self.do_run_from_file(src, output)
+
   def test_frexp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
 
