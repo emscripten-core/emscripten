@@ -326,7 +326,7 @@ var LibraryEGL = {
     }
 
     // convert configuration to GLUT flags
-    displayMode = 0x0000; /*GLUT_RGB/GLUT_RGBA*/
+    var displayMode = 0x0000; /*GLUT_RGB/GLUT_RGBA*/
     displayMode |= 0x0002; /*GLUT_DOUBLE*/
     if (EGL.alpha)     displayMode |= 0x0008; /*GLUT_ALPHA*/
     if (EGL.depth)     displayMode |= 0x0010; /*GLUT_DEPTH*/
