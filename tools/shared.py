@@ -175,8 +175,8 @@ def check_call(cmd, *args, **kw):
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
-  config_file = config_file[1:] # remove "this file will be copied..."
+  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().splitlines()
+  config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
@@ -211,7 +211,7 @@ Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, abspath, llvm_root, node), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option or
