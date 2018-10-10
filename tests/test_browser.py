@@ -3818,6 +3818,13 @@ window.close = function() {
                args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
                also_asmjs=True)
 
+  def test_fetch_to_indexdb(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/to_indexeddb.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               also_asmjs=True)
+
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   def test_fetch_cached_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
@@ -3847,7 +3854,8 @@ window.close = function() {
                args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'TOTAL_MEMORY=536870912'],
                also_asmjs=True)
 
-  # Tests emscripten_fetch() usage in synchronous mode when used from the main thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
+  # Tests emscripten_fetch() usage in synchronous mode when used from the main
+  # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
     self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
@@ -3859,6 +3867,11 @@ window.close = function() {
                expected='1',
                args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'],
                also_asmjs=True)
+
+  # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
+  def test_fetch_sync_fetch_in_main_thread(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
+    self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   def test_fetch_idb_store(self):
     self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
