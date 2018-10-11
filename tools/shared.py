@@ -1818,10 +1818,10 @@ class Building(object):
       pool = Building.get_multiprocessing_pool()
       object_contents = pool.map(g_llvm_nm_uncached, files)
 
-      for i in range(len(files)):
+      for i, file in enumerate(files):
         if object_contents[i].returncode != 0:
-          logging.debug('llvm-nm failed on file ' + files[i] + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
-        Building.uninternal_nm_cache[files[i]] = object_contents[i]
+          logging.debug('llvm-nm failed on file ' + file + ': return code ' + str(object_contents[i].returncode) + ', error: ' + object_contents[i].output)
+        Building.uninternal_nm_cache[file] = object_contents[i]
       return object_contents
 
   @staticmethod
