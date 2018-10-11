@@ -5191,7 +5191,7 @@ main(const int argc, const char * const * const argv)
       self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
 
     test(['-s', 'ASSERTIONS=0'], 120000) # we don't care about code size with assertions
-    test(['-O1'], 90000)
+    test(['-O1'], 91000)
     test(['-O2'], 46000)
     test(['-O3', '--closure', '1'], 17000)
     # asm.js too
