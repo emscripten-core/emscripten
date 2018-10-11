@@ -25,3 +25,7 @@ void setThrew(int threw, int value) {
 void setTempRet0(int value) {
   __tempRet0 = value;
 }
+
+int getTempRet0() {
+  return __tempRet0;
+}
