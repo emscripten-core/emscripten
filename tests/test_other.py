@@ -747,8 +747,9 @@ f.close()
       run_process([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_catch_undef(self):
-    open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+  def test_ubsan(self):
+    with open('test.cpp', 'w') as f:
+      f.write(r'''
       #include <vector>
       #include <stdio.h>
 
@@ -764,8 +765,28 @@ f.close()
         return 0;
       }
     ''')
-    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fsanitize=undefined'])
-    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_ubsan_add_overflow(self):
+    with open('test.cpp', 'w') as f:
+      f.write(r'''
+      #include <stdio.h>
+
+      int main(int argc, char **argv) {
+        printf("hello, world!\n");
+        fflush(stdout);
+        int k = 0x7fffffff;
+        k += argc;
+        return k;
+      }
+    ''')
+
+    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
+    output = run_js('a.out.js', assert_returncode=1, stderr=STDOUT)
+    self.assertContained('hello, world!', output)
+    self.assertContained('Undefined behavior! ubsan_handle_add_overflow:', output)
 
   @no_wasm_backend()
   def test_asm_minify(self):
@@ -8207,7 +8228,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1526, ['invoke_i'],               ['waka'],                 469663, 149, 1439),
+              1529, ['invoke_i'],               ['waka'],                 469663, 149, 1439),
     ]) # noqa
 
     print('test on a minimal pure computational thing')
