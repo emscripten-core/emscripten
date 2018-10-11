@@ -1182,9 +1182,6 @@ var SyscallsLibrary = {
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
   __syscall301: function(which, varargs) { // unlinkat
-#if SYSCALL_DEBUG
-    err('warning: untested syscall');
-#endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), flags = SYSCALLS.get();
     path = SYSCALLS.calculateAt(dirfd, path);
     if (flags === 0) {
