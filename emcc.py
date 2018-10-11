@@ -190,7 +190,7 @@ class EmccOptions(object):
     self.exclude_files = []
     self.ignore_dynamic_linking = False
     self.shell_path = shared.path_from_root('src', 'shell.html')
-    self.source_map_base = None
+    self.source_map_base = ''
     self.js_libraries = []
     self.bind = False
     self.emrun = False
@@ -2565,8 +2565,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         cmd += ['-g']
         if use_source_map(options):
           cmd += ['--source-map=' + wasm_binary_target + '.map']
-          if options.source_map_base:
-            cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
+          cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logging.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       shared.check_call(cmd)
     if import_mem_init:

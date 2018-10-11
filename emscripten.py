@@ -1946,8 +1946,6 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
                      '-o',  base_source_map]
     if not shared.Settings.SOURCE_MAP_BASE:
       logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-    else:
-      sourcemap_cmd += ['--source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
@@ -1962,6 +1960,7 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
   if write_source_map:
     cmd.append('--input-source-map=' + base_source_map)
     cmd.append('--output-source-map=' + wasm + '.map')
+    cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   shared.check_call(cmd, stdout=open(metadata_file, 'w'))
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
