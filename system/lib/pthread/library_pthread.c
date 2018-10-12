@@ -510,7 +510,7 @@ int llvm_memory_barrier()
 
 int llvm_atomic_load_add_i32_p0i32(int *ptr, int delta)
 {
-	return emscripten_atomic_add_u32(ptr, delta) - delta;
+	return emscripten_atomic_add_u32(ptr, delta);
 }
 
 typedef struct main_args
