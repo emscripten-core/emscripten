@@ -1155,7 +1155,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # llvm wasm backend will generate calls to these when using setjmp
           # and/or C++ exceptions, so we pretty much alwasy need them.  They are
           # also tiny, and should be elimitated by meta-DCE when not used.
-          shared.Settings.EXPORTED_FUNCTIONS += ['_setTempRet0', '_setThrew']
+          shared.Settings.EXPORTED_FUNCTIONS += \
+            ['_setTempRet0', '_getTempRet0', '_setThrew']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
 
