@@ -4601,7 +4601,8 @@ main()
       else:
         self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
 
-    test('normal') # normally is ok
+    with env_modify({'EMCC_FORCE_STDLIBS': None}):
+      test('normal') # normally is ok
 
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx'}):
       test('forced libs is ok, they were there anyhow')

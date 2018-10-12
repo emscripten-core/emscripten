@@ -853,12 +853,11 @@ fi
     def test():
       self.assertContained('hello, world!', run_js('a.out.js'))
 
-    assert 'EMCC_FORCE_STDLIBS' not in os.environ
-
     print('normal build')
-    Cache.erase()
-    build()
-    test()
+    with env_modify({'EMCC_FORCE_STDLIBS': None}):
+      Cache.erase()
+      build()
+      test()
 
     print('wacky env vars, these should not mess our bootstrapping')
     with env_modify({'EMCC_FORCE_STDLIBS': '1'}):
