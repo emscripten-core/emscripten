@@ -1494,10 +1494,12 @@ def create_runtime_funcs(exports):
   if shared.Settings.ONLY_MY_CODE:
     return []
 
-  stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
-  enable_stack_check = shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2
+  if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
+    stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
+  else:
+    stack_check = ''
 
-  rtn = ['''
+  funcs = ['''
 function stackAlloc(size) {
   size = size|0;
   var ret = 0;
@@ -1528,24 +1530,24 @@ function setThrew(threw, value) {
     threwValue = value;
   }
 }
-''' % stack_check if enable_stack_check else '']
+''' % stack_check]
 
   if need_asyncify(exports):
-    rtn.append('''
+    funcs.append('''
 function setAsync() {
   ___async = 1;
 }
 ''')
 
   if shared.Settings.EMTERPRETIFY:
-    rtn.append('''
+    funcs.append('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);
 }''')
 
   if shared.Settings.EMTERPRETIFY_ASYNC:
-    rtn.append('''
+    funcs.append('''
 function setAsyncState(x) {
   x = x | 0;
   asyncState = x;
@@ -1567,7 +1569,7 @@ function setEmtStackMax(x) {
 ''')
 
   if shared.Settings.SAFE_HEAP:
-    rtn.append('''
+    funcs.append('''
 function setDynamicTop(value) {
   value = value | 0;
   HEAP32[DYNAMICTOP_PTR>>2] = value;
@@ -1575,7 +1577,7 @@ function setDynamicTop(value) {
 ''')
 
   if asm_safe_heap():
-    rtn.append('''
+    funcs.append('''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
@@ -1649,7 +1651,7 @@ function SAFE_FT_MASK(value, mask) {
 ''')
 
   if not shared.Settings.RELOCATABLE:
-    rtn.append('''
+    funcs.append('''
 function setTempRet0(value) {
   value = value|0;
   tempRet0 = value;
@@ -1659,7 +1661,7 @@ function getTempRet0() {
 }
 ''')
 
-  return rtn
+  return funcs
 
 
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
