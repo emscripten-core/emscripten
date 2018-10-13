@@ -1152,9 +1152,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Always need malloc and free to be kept alive and exported, for internal use and other modules
         shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
         if shared.Settings.WASM_BACKEND:
-          # llvm wasm backend will generate setThrew using setjmp and/or
-          # C++ exceptions, so we pretty much always need it.  Should be
-          # elimiated by meta-DCE if unused.
+          # setjmp/longjmp and exception handling JS code depends on this so we
+          # include it by default.  Should be elimiated by meta-DCE if unused.
           shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
       assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
