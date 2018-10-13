@@ -1046,10 +1046,10 @@ var USE_HARFBUZZ = 0;
 var USE_COCOS2D = 0;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
-
-// Compiler debugging options
 var SDL2_IMAGE_FORMATS = [];
 
+// Compiler debugging options
+//
 // Some useful items:
 //    framework
 //    frameworkLines
@@ -1059,15 +1059,15 @@ var SDL2_IMAGE_FORMATS = [];
 //    unparsedFunctions
 //    metadata
 //    legalizer
+var DEBUG_TAGS_SHOWING = [];
 
 // For internal use only
-var DEBUG_TAGS_SHOWING = [];
+var ORIGINAL_EXPORTED_FUNCTIONS = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should
 // see the new values.
-var ORIGINAL_EXPORTED_FUNCTIONS = [];
 
 // If true, the current build is performed for the Emscripten test harness.
 var IN_TEST_HARNESS = 0;
@@ -1089,11 +1089,11 @@ var PTHREAD_POOL_SIZE = 0;
 // stack, and this stack only contains certain function local variables, such as
 // those that have their addresses taken, or ones that are too large to fit as
 // local vars in asm.js/wasm code.
+var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 
 // Specifies the value returned by the function emscripten_num_logical_cores()
 // if navigator.hardwareConcurrency is not supported. Pass in a negative number
 // to show a popup dialog at startup so the user can configure this dynamically.
-var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 var PTHREAD_HINT_NUM_CORES = 4;
 
 // True when building with --threadprofiler
@@ -1102,16 +1102,10 @@ var PTHREADS_PROFILING = 0;
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
-// received from the backend
-var MAX_GLOBAL_ALIGN = -1;
-
-// received from the backend
-var IMPLEMENTED_FUNCTIONS = [];
-
-// received from the backend
-var JSCALL_START_INDEX = 0;
-
-// received from the backend
+var MAX_GLOBAL_ALIGN = -1; // received from the backend
+var IMPLEMENTED_FUNCTIONS = []; // received from the backend
+var JSCALL_START_INDEX = 0; // received from the backend
+var JSCALL_SIG_ORDER = {}; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++ or LLVM
@@ -1120,10 +1114,7 @@ var JSCALL_START_INDEX = 0;
 //
 // This option is quite slow to run, as it processes and hashes all methods in
 // the codebase in multiple passes.
-var JSCALL_SIG_ORDER = {};
-
-// disabled by default
-var ELIMINATE_DUPLICATE_FUNCTIONS = 0;
+var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 
