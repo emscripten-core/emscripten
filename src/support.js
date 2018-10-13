@@ -10,7 +10,7 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 #if ASSERTIONS
 // stack management, and other functionality that is provided by the compiled code,
 // should not be used before it is ready
-stackSave = stackRestore = stackAlloc = setTempRet0 = getTempRet0 = function() {
+stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
 #endif
@@ -543,10 +543,6 @@ function dynCall(sig, ptr, args) {
   }
 }
 
-#if RELOCATABLE
-// tempRet0 is normally handled in the module. but in relocatable code,
-// we need to share a single one among all the modules, so they all call
-// out.
 var tempRet0 = 0;
 
 var setTempRet0 = function(value) {
@@ -556,7 +552,6 @@ var setTempRet0 = function(value) {
 var getTempRet0 = function() {
   return tempRet0;
 }
-#endif // RELOCATABLE
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
