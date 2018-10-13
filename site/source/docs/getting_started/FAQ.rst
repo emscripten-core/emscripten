@@ -334,16 +334,6 @@ Another alternative is to wrap the generated code (or your other code) in a clos
 		return Module;
 		})();
 
-
-Why do I get ``undefined is not a function`` or ``NAME is not a function``?
-===========================================================================
-
-The likely cause is an undefined function — a function that was referred to, but not implemented or linked in. If you get ``undefined``, look at the line number to see the function name.
-
-Emscripten by default does *not* give fatal errors on undefined symbols, so you can get *runtime* errors like these (because in practice, for many codebases it is easiest to get them working without refactoring them to remove all undefined symbol calls). If you prefer compile-time notifications, run *emcc* with ``-s WARN_ON_UNDEFINED_SYMBOLS=1`` or ``-s ERROR_ON_UNDEFINED_SYMBOLS=1``.
-
-Aside from just forgetting to link in a necessary object file, one possible cause for this error is inline functions in headers. If you have a header with ``inline int my_func() { .. }`` then *Clang* may not actually inline the function (since inline is just a hint), and also not generate code for it (since it's in a header). The result is that the generated bitcode and JavaScript will not have that function implemented. One solution is to add ``static`` to the function declaration, which forces code to be generated in the object file: ``static inline int my_func() { .. }``.
-
 .. _faq-export-stuff:
 
 Why do I get ``TypeError: Module.someThing is not a function``?
