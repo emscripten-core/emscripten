@@ -1231,7 +1231,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_std(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
@@ -1274,7 +1273,6 @@ int main(int argc, char **argv)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
 
   def test_bad_typeid(self):
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run(r'''
@@ -1297,7 +1295,7 @@ int main () {
   }
   return 0;
 }
-    ''', 'exception caught: std::bad_typeid')
+''', 'exception caught: std::bad_typeid')
 
   def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
     self.do_run(r'''

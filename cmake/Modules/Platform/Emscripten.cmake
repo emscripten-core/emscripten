@@ -49,7 +49,7 @@ endif()
 # Disable wasm in cmake checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
 # to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
 # on the side, async startup, etc..
-set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1 -s WASM=0")
+set(CMAKE_REQUIRED_FLAGS "-s WASM=0")
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
