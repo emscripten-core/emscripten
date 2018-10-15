@@ -509,7 +509,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
-  alwasy_include = set()
+  always_include = set()
 
   # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
   # for unresolved symbols in your project files, which can speed up linking, but if you do not have
@@ -579,11 +579,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libc_deps += ['wasm-libc']
   if shared.Settings.USE_PTHREADS:
     libc_name = 'libc-mt'
-    alwasy_include.add('pthreads')
-    alwasy_include.add('pthreads_asmjs')
-  alwasy_include.add(malloc_name())
+    always_include.add('pthreads')
+    always_include.add('pthreads_asmjs')
+  always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
-    alwasy_include.add('compiler-rt')
+    always_include.add('compiler-rt')
 
   Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
 
@@ -648,7 +648,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     force_this = lib.shortname in force_include
     if not force_this and only_forced:
       continue
-    include_this = force_this or lib.shortname in alwasy_include
+    include_this = force_this or lib.shortname in always_include
 
     if not include_this:
       need_syms = set()
