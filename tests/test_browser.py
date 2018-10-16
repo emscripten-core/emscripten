@@ -1082,6 +1082,7 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_wheelevents(self):
     self.btest('glut_wheelevents.c', '1', args=['-lglut'])
 
+  @requires_graphics_hardware
   def test_glut_glutget(self):
     self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL'])
     self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
