@@ -1672,15 +1672,20 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
 
 def create_asm_temp_vars():
   access_quote = access_quoter()
-  return '''
+
+  rtn = '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
   var undef = 0;
   var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
-  var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))
+
+  if not shared.Settings.RELOCATABLE:
+    rtn += 'var tempRet0 = 0;\n'
+
+  return rtn
 
 
 def create_asm_runtime_thread_local_vars():
