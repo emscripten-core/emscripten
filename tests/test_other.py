@@ -8216,7 +8216,8 @@ int main() {
         funcs = wast.count('\n (func ')
         self.assertEqual(imports, expected_wasm_imports)
         self.assertEqual(exports, expected_wasm_exports)
-        self.assertEqual(funcs, expected_wasm_funcs)
+        if expected_wasm_funcs is not None:
+          self.assertEqual(funcs, expected_wasm_funcs)
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
@@ -8231,7 +8232,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1529, ['invoke_i'],               ['waka'],                 469663, 149, 1443, 1372),
+              1529, ['invoke_i'],               ['waka'],                 469663, 149, 1443, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
