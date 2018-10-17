@@ -1082,6 +1082,17 @@ keydown(100);keyup(100); // trigger the end
   def test_glut_wheelevents(self):
     self.btest('glut_wheelevents.c', '1', args=['-lglut'])
 
+  @requires_graphics_hardware
+  def test_glut_glutget_no_antialias(self):
+    self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL'])
+    self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
+
+  # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
+  @requires_graphics_hardware
+  def test_glut_glutget(self):
+    self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL'])
+    self.btest('glut_glutget.c', '1', args=['-lglut', '-lGL', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED'])
+
   def test_sdl_joystick_1(self):
     # Generates events corresponding to the Working Draft of the HTML5 Gamepad API.
     # http://www.w3.org/TR/2012/WD-gamepad-20120529/#gamepad-interface
