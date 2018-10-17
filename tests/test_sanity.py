@@ -169,7 +169,7 @@ class sanity(RunnerCore):
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
       self.assertContained('}}}', template_file)
-      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+      for content in ['LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
         self.assertContained(content, config_file)
 
       # The guessed config should be ok
@@ -257,17 +257,6 @@ class sanity(RunnerCore):
           else:
             output = self.check_working(EMCC)
             assert LLVM_WARNING not in output, output
-
-  def test_emscripten_root(self):
-    # The correct path
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % path_from_root())
-    self.check_working(EMCC)
-
-    # The correct path with extra stuff
-    restore_and_set_up()
-    add_to_config("EMSCRIPTEN_ROOT = '%s'" % (path_from_root() + os.path.sep))
-    self.check_working(EMCC)
 
   def test_llvm_fastcomp(self):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'

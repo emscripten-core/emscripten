@@ -97,7 +97,6 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 	LLVM_ROOT='C:/Program Files/Emscripten/clang/e1.21.0_64bit'
 	NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
 	PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
-	EMSCRIPTEN_ROOT='C:/Program Files/Emscripten/emscripten/1.21.0'
 	JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
 	V8_ENGINE = ''
 	TEMP_DIR = 'c:/users/hamis_~1/appdata/local/temp'
@@ -113,7 +112,6 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 	SPIDERMONKEY_ENGINE = ''
 	NODE_JS = 'nodejs'
 	LLVM_ROOT='/home/ubuntu/emsdk_portable/clang/fastcomp/build_incoming_64/bin'
-	EMSCRIPTEN_ROOT='/home/ubuntu/emsdk_portable/emscripten/incoming'
 	V8_ENGINE = ''
 	TEMP_DIR = '/tmp'
 	COMPILER_ENGINE = NODE_JS
