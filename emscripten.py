@@ -1215,8 +1215,8 @@ def need_asyncify(exported_implemented_functions):
 
 
 def asm_safe_heap():
-  """optimized safe heap in asm, when we can"""
-  return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
+  """ Optimized safe heap in asm, when we can. """
+  return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG
 
 
 def provide_fround():
