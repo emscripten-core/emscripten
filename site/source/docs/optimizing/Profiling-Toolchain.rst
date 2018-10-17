@@ -38,7 +38,7 @@ The command ``tools/emprofile.py --reset`` deletes all previously stored profili
     EM_PROFILE_TOOLCHAIN=1 emcc tests/hello_world.c -o a.bc
     EM_PROFILE_TOOLCHAIN=1 emcc a.bc -O3 -o a.html
     tools/emprofile.py --graph --outfile=myresults.html
-    
+
 Any number of commands can be profiled within one session, and when ``tools/emprofile.py --graph`` is finally called, it will pick up records from all Emscripten tool invocations up to that point. Calling ``--graph`` also clears the recorded profiling data.
 
 The output HTML filename can be chosen with the optional ``--outfile=myresults.html`` parameter.

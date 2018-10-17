@@ -304,7 +304,7 @@ You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
      console.log('I received: ' + $0);
    }, 100);
 
-This will show ``I received: 100``. 
+This will show ``I received: 100``.
 
 You can also receive values back, for example the following will print out ``I received: 100``
 and then ``101``::
@@ -411,7 +411,7 @@ some common JavaScript practices can not be used in certain ways in emscripten
 library files.
 
 To save space, by default, emscripten only includes library properties
-referenced from C/C++. It does this by calling ``toString`` on each 
+referenced from C/C++. It does this by calling ``toString`` on each
 used property on the JavaScript libraries that are linked in. That means
 that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
@@ -439,7 +439,7 @@ initialization.
      good_02: function() {
        _good_02 = document.querySelector.bind(document);
      },
-     
+
      // Solution for closures
      good_03__postset: '_good_03();',
      good_03: function() {
@@ -448,11 +448,11 @@ initialization.
          console.log("times called: ", ++callCount);
        };
      },
-     
+
      // Solution for curry/transform
      good_05__postset: '_good_05();',
      good_05: function() {
-       _good_05 = curry(scrollTo, 0);  
+       _good_05 = curry(scrollTo, 0);
     },
 
    });
@@ -465,24 +465,24 @@ output file. For the example above this code will be emitted.
      function _good_02() {
        _good_o2 = document.querySelector.bind(document);
      }
-     
+
      function _good_03() {
        var callCount = 0;
        _good_03 = function() {
          console.log("times called: ", ++callCount);
        };
      }
-     
+
      function _good_05() {
-       _good_05 = curry(scrollTo, 0);  
+       _good_05 = curry(scrollTo, 0);
     };
-    
+
     // Call each function once so it will replace itself
     _good_02();
     _good_03();
     _good_05();
 
-You can also put most of your code in the ``xxx__postset`` strings. 
+You can also put most of your code in the ``xxx__postset`` strings.
 The example below each method declares a dependency on ``$method_support``
 and are otherwise dummy functions. ``$method_support`` itself has a
 corresponding ``__postset`` property with all the code to set the
@@ -516,7 +516,7 @@ various methods to the functions we actually want.
       '  _method_03 = inst.reset.bind(inst);          ',
       '}());                                          ',
     ].join('\n'),
-    method_01: function() {}, 
+    method_01: function() {},
     method_01__deps: ['$method_support'],
     method_02: function() {},
     method_01__deps: ['$method_support'],
@@ -537,29 +537,29 @@ a function,
     $method_support__postset: 'method_support();',
     $method_support: {
       init: function() {
-        var SomeLib = function() {                   
-          this.callCount = 0;                        
-        };                                           
-                                                     
+        var SomeLib = function() {
+          this.callCount = 0;
+        };
+
         SomeLib.prototype.getCallCount = function() {
-          return this.callCount;                     
-        };                                           
-                                                     
-        SomeLib.prototype.process = function() {     
-          ++this.callCount;                          
-        };                                           
-                                                     
-        SomeLib.prototype.reset = function() {       
-          this.callCount = 0;                        
-        };                                           
-                                                     
-        var inst = new SomeLib();                    
-        _method_01 = inst.getCallCount.bind(inst);   
-        _method_02 = inst.process.bind(inst);        
-        _method_03 = inst.reset.bind(inst);          
-      }                                         
+          return this.callCount;
+        };
+
+        SomeLib.prototype.process = function() {
+          ++this.callCount;
+        };
+
+        SomeLib.prototype.reset = function() {
+          this.callCount = 0;
+        };
+
+        var inst = new SomeLib();
+        _method_01 = inst.getCallCount.bind(inst);
+        _method_02 = inst.process.bind(inst);
+        _method_03 = inst.reset.bind(inst);
+      }
     },
-    method_01: function() {}, 
+    method_01: function() {},
     method_01__deps: ['$method_support'],
     method_02: function() {},
     method_01__deps: ['$method_support'],

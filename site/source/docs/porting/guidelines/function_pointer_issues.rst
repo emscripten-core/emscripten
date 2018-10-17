@@ -7,7 +7,7 @@ Function Pointer Issues
 There are two main issues with function pointers:
 
 
-#. 
+#.
   Function pointer casts can cause function pointer calls to fail.
 
   Function pointers must be called with the correct type: it is undefined behavior in C and C++ to cast a function pointer to another type and call it that way. This does work in most native platforms, however, despite it being UB, but in asm.js and in wasm it can fail. In that case, you may see an ``abort(10)`` or some other number, and if assertions are on you may see a message with details that start with
@@ -15,19 +15,19 @@ There are two main issues with function pointers:
   ::
 
     Invalid function pointer called
-  
+
   Rarely, you may see a compiler warning like this:
 
-  :: 
-  
+  ::
+
     warning: implicit declaration of function
 
   This may be related to a function pointer cast problem as implicit declarations may have a different type than how you call them. However, in general the compiler cannot warn about this, and you will only see a problem at runtime.
 
-#. 
+#.
   Older versions of :term:`clang` can generate different code for C and C++ calls when a structure is passed **by value** (for completeness, one convention is ``struct byval`` and the other is ``field a, field b``). The two formats are incompatible with each other, and you may get a warning.
-  
-  The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**). 
+
+  The workaround is to pass the structure by reference, or simply not mix C and C++ in that location (for example, rename the **.c** file to **.cpp**).
 
   .. _function-pointer-issues-point-asmjs:
 
@@ -54,12 +54,12 @@ For a real-world example, consider the code below:
   #include <stdio.h>
 
   typedef void(*voidReturnType)(const char *);
-  
+
   void voidReturn(const char *message) {
     printf( "voidReturn: %s\n", message );
   }
-    
-    
+
+
   int intReturn(const char *message) {
     printf( "intReturn: %s\n", message );
     return 1;
@@ -83,7 +83,7 @@ For a real-world example, consider the code below:
     functionList[0] = voidReturn;
     functionList[1] = (voidReturnType)intReturn;         // Breaks in Emscripten.
     functionList[2] = (voidReturnType)voidReturnNoParam; // Breaks in Emscripten.
-    
+
     callFunctions(functionList, 3);
   }
 
@@ -134,10 +134,10 @@ The code fragment below shows how to make and use an adapter function that calls
 
   int main() {
     voidReturnType functionList[3];
-    
+
     functionList[0] = voidReturn;
     functionList[1] = (voidReturnType)intReturn; // Fixed in callFunctions
     functionList[2] = voidReturnNoParamAdapter; // Fixed by Adapter
-    
+
     callFunctions(functionList, 3);
   }
