@@ -1493,14 +1493,20 @@ for (var named in NAMED_GLOBALS) {
 def create_runtime_funcs(exports):
   if shared.Settings.ONLY_MY_CODE:
     return []
-  return ['''
+
+  if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
+    stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
+  else:
+    stack_check = ''
+
+  funcs = ['''
 function stackAlloc(size) {
   size = size|0;
   var ret = 0;
   ret = STACKTOP;
   STACKTOP = (STACKTOP + size)|0;
   STACKTOP = (STACKTOP + 15)&-16;
-''' + ('  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n' if (shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2) else '') + '''
+  %s
   return ret|0;
 }
 function stackSave() {
@@ -1516,15 +1522,32 @@ function establishStackSpace(stackBase, stackMax) {
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
 }
-''' + ('''
+function setThrew(threw, value) {
+  threw = threw|0;
+  value = value|0;
+  if ((__THREW__|0) == 0) {
+    __THREW__ = threw;
+    threwValue = value;
+  }
+}
+''' % stack_check]
+
+  if need_asyncify(exports):
+    funcs.append('''
 function setAsync() {
   ___async = 1;
-}''' if need_asyncify(exports) else '') + ('''
+}
+''')
+
+  if shared.Settings.EMTERPRETIFY:
+    funcs.append('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);
-}
-''' if shared.Settings.EMTERPRETIFY else '') + ('''
+}''')
+
+  if shared.Settings.EMTERPRETIFY_ASYNC:
+    funcs.append('''
 function setAsyncState(x) {
   x = x | 0;
   asyncState = x;
@@ -1543,21 +1566,18 @@ function setEmtStackMax(x) {
   x = x | 0;
   EMT_STACK_MAX = x;
 }
-''' if shared.Settings.EMTERPRETIFY_ASYNC else '') + '''
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
-}
-'''] + ['' if not shared.Settings.SAFE_HEAP else '''
+''')
+
+  if shared.Settings.SAFE_HEAP:
+    funcs.append('''
 function setDynamicTop(value) {
   value = value | 0;
   HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
-'''] + ['' if not asm_safe_heap() else '''
+''')
+
+  if asm_safe_heap():
+    funcs.append('''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
@@ -1628,7 +1648,10 @@ function SAFE_FT_MASK(value, mask) {
   if ((ret|0) != (value|0)) ftfault();
   return ret | 0;
 }
-'''] + ['''
+''')
+
+  if not shared.Settings.RELOCATABLE:
+    funcs.append('''
 function setTempRet0(value) {
   value = value|0;
   tempRet0 = value;
@@ -1636,7 +1659,9 @@ function setTempRet0(value) {
 function getTempRet0() {
   return tempRet0|0;
 }
-''' if not shared.Settings.RELOCATABLE else '']
+''')
+
+  return funcs
 
 
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
