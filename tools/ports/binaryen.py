@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'try' # FIXME
+TAG = 'import_get_set' # FIXME
 
 def needed(settings, shared, ports):
   if not settings.WASM: return False
