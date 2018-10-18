@@ -1566,30 +1566,34 @@ LibraryManager.library = {
 
   round__asm: true,
   round__sig: 'dd',
+  round__deps: ['llvm_copysign_f64'],
   round: function(d) {
     d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
   },
 
   roundf__asm: true,
   roundf__sig: 'ff',
+  roundf__deps: ['llvm_copysign_f64'],
   roundf: function(d) {
     d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
   },
 
   llvm_round_f64__asm: true,
   llvm_round_f64__sig: 'dd',
+  llvm_round_f64__deps: ['llvm_copysign_f64'],
   llvm_round_f64: function(d) {
     d = +d;
-    return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
+    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
   },
 
   llvm_round_f32__asm: true,
   llvm_round_f32__sig: 'ff',
+  llvm_round_f32__deps: ['llvm_copysign_f64'],
   llvm_round_f32: function(f) {
     f = +f;
-    return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
+    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
   },
 
   rintf__asm: true,
