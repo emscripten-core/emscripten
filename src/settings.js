@@ -779,6 +779,14 @@ var DETERMINISTIC = 0;
 // to the onRuntimeInitialized callback (i.e., it waits for all
 // necessary async events). It receives the instance as a parameter,
 // for convenience.
+//
+// Note that in MODULARIZE mode we do *not* look at the global `Module`
+// object, so if you define things there they will be ignored. The reason
+// is that you will be constructing the instances manually, and can
+// provide Module there, or something else, as you want. This differs
+// in MODULARIZE_INSTANCE mode, where we *do* look at the global, since
+// as in non-MODULARIZE mode there is just one global instance, and it
+// is constructed by the setup code.
 var MODULARIZE = 0;
 
 // Similar to MODULARIZE, but while that mode exports a function, with which you
