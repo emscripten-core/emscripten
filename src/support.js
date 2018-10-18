@@ -544,10 +544,11 @@ function dynCall(sig, ptr, args) {
   }
 }
 
-#if RELOCATABLE
-// tempRet0 is normally handled in the module. but in relocatable code,
-// we need to share a single one among all the modules, so they all call
-// out.
+// tempRet0 is a temporary value that is used to store the high 32 bits
+// when passing an i64 from JS to compiled code or vice versa. The name
+// comes from "temporary return #0", as if returning an i128 from LLVM
+// IR even more temp values may be needed (however, that has not been the
+// case for some time now, and just one is required).
 var tempRet0 = 0;
 
 var setTempRet0 = function(value) {
@@ -557,7 +558,6 @@ var setTempRet0 = function(value) {
 var getTempRet0 = function() {
   return tempRet0;
 }
-#endif // RELOCATABLE
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;

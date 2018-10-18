@@ -222,8 +222,6 @@ OPCODES = [ # l, lx, ly etc - one of 256 locals
   'CONDD',   # [out, cond, x] [y]   out = cond ? x : y, double
 
   'GETTDP',  # [l, 0, 0]            l = tempDoublePtr
-  'GETTR0',  # [l, 0, 0]            l = tempRet0
-  'SETTR0',  # [l, 0, 0]            tempRet0 = l
   'GETGLBI', # [l, vl, vh]          get global value, int, indexed by v
   'GETGLBD', # [l, vl, vh]          get global value, double, indexed by v
   'SETGLBI', # [vl, vh, l]          set global value, int, indexed by v (v = l)
@@ -457,8 +455,6 @@ CASES[ROPCODES['CONDD']] = 'pc = pc + 4 | 0; ' + get_access('lx', s='d') + ' = (
 
 CASES[ROPCODES['GETTDP']] = get_access('lx') + ' = tempDoublePtr;'
 #CASES[ROPCODES['GETPC']] = get_access('lx') + ' = pc;'
-CASES[ROPCODES['GETTR0']] = get_access('lx') + ' = tempRet0;'
-CASES[ROPCODES['SETTR0']] = 'tempRet0 = ' + get_coerced_access('lx') + ';'
 
 if FROUND:
   CASES[ROPCODES['FROUND']] = get_access('lx', s='d') + ' = Math_fround(' + get_coerced_access('ly', s='d') + ');'

@@ -6236,10 +6236,6 @@ function emterpretify(ast) {
               var x = getFree();
               return [x, ['GETTDP', x, 0, 0]];
             }
-            case 'tempRet0': {
-              var x = getFree();
-              return [x, ['GETTR0', x, 0, 0]];
-            }
             case 'inf': return makeNum(Infinity, ASM_DOUBLE);
             case 'nan': return makeNum(NaN, ASM_DOUBLE);
             case 'debugger': return [-1, []]; // nothing to do here (should we?)
@@ -6295,7 +6291,6 @@ function emterpretify(ast) {
               var opcode;
               switch(name) {
                 case 'STACKTOP': opcode = 'SETST'; break;
-                case 'tempRet0': opcode = 'SETTR0'; break;
                 default: {
                   var type = detectType(value, asmData);
                   assert(type === ASM_INT || type === ASM_DOUBLE);
