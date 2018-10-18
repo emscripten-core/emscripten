@@ -30,72 +30,72 @@ To build the Fastcomp code from source:
 
 -  Create a directory to store the build. It doesn't matter where, because Emscripten gets the information from the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. We show how to update this file later in these instructions:
 
-	::
+  ::
 
-		mkdir myfastcomp
-		cd myfastcomp
+    mkdir myfastcomp
+    cd myfastcomp
 
 
 - Clone the fastcomp LLVM repository (https://github.com/kripken/emscripten-fastcomp):
 
-	::
+  ::
 
-		git clone https://github.com/kripken/emscripten-fastcomp
+    git clone https://github.com/kripken/emscripten-fastcomp
 
 
 
 - Clone the `kripken/emscripten-fastcomp-clang <https://github.com/kripken/emscripten-fastcomp-clang>`_ repository into **emscripten-fastcomp/tools/clang**:
 
-	::
+  ::
 
-		cd emscripten-fastcomp
-		git clone https://github.com/kripken/emscripten-fastcomp-clang tools/clang
+    cd emscripten-fastcomp
+    git clone https://github.com/kripken/emscripten-fastcomp-clang tools/clang
 
-	.. warning:: You **must** clone it into a directory named **clang** as shown, so that :term:`Clang` is present in **tools/clang**!
+  .. warning:: You **must** clone it into a directory named **clang** as shown, so that :term:`Clang` is present in **tools/clang**!
 
 - Create a *build* directory (inside the **emscripten-fastcomp** directory) and then navigate into it:
 
-	::
+  ::
 
-		mkdir build
-		cd build
+    mkdir build
+    cd build
 
 - Configure the build using *cmake*:
 
-	::
+  ::
 
-		cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="host;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD="host;JSBackend" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF -DCLANG_INCLUDE_TESTS=OFF
 
-	.. note:: On Windows you will need Visual Studio 2015 or newer to build.
+  .. note:: On Windows you will need Visual Studio 2015 or newer to build.
 
 - Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
-	- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | More info | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
-	- On Linux you can find the number of cores by entering the following command on the terminal: ``cat /proc/cpuinfo | grep "^cpu cores" | uniq``.
-	- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. You can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
+  - On Mac OS X you can get the number of cores using: **Apple menu | About this mac | More info | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
+  - On Linux you can find the number of cores by entering the following command on the terminal: ``cat /proc/cpuinfo | grep "^cpu cores" | uniq``.
+  - On Windows the number of cores is listed on the **Task Manager | Performance Tab**. You can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
 
 - Call *make* to build the sources, specifying the number of available cores:
 
-	::
+  ::
 
-		make -j4
+    make -j4
 
-	.. note:: If the build completes successfully, *clang*, *clang++*, and a number of other files will be created in the release directory (**<LLVM root>/build/Release/bin**).
+  .. note:: If the build completes successfully, *clang*, *clang++*, and a number of other files will be created in the release directory (**<LLVM root>/build/Release/bin**).
 
 
 .. _llvm-update-compiler-configuration-file:
 
 -
 
-	The final step is to update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in the ``LLVM_ROOT`` variable.
+  The final step is to update the :ref:`~/.emscripten <compiler-configuration-file>` file, specifying the location of *fastcomp* in the ``LLVM_ROOT`` variable.
 
-	.. note:: If you're building the **whole** of Emscripten from source, following the platform-specific instructions in :ref:`installing-from-source`, you won't yet have Emscripten installed. In this case, skip this step and return to those instructions.
+  .. note:: If you're building the **whole** of Emscripten from source, following the platform-specific instructions in :ref:`installing-from-source`, you won't yet have Emscripten installed. In this case, skip this step and return to those instructions.
 
-	If you already have an Emscripten environment (for example if you're building Fastcomp using the SDK), then set ``LLVM_ROOT`` to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**:
+  If you already have an Emscripten environment (for example if you're building Fastcomp using the SDK), then set ``LLVM_ROOT`` to the location of the *clang* binary under the **build** directory. This will be something like **<LLVM root>/build/Release/bin** or **<LLVM root>/build/bin**:
 
-		.. code-block:: none
+    .. code-block:: none
 
-			LLVM_ROOT='/home/ubuntu/yourpath/emscripten-fastcomp/build/bin'
+      LLVM_ROOT='/home/ubuntu/yourpath/emscripten-fastcomp/build/bin'
 
 .. _building-fastcomp-from-source-branches:
 
