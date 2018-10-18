@@ -117,6 +117,10 @@ var ABORTING_MALLOC = 1;
 // eliminator), but in wasm it is efficient and should be used whenever relevant.
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
+// Note that growing memory means we replace the JS typed array views, as
+// once created they cannot be resized. (This happens both in asm.js and in
+// wasm - in wasm we can grow the Memory, but still need to create new
+// views for JS.)
 // Setting this option on will disable ABORTING_MALLOC, in other words,
 // ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
 // returning 0 when it fails, and also of being able to allocate more
