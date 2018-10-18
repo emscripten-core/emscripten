@@ -10,7 +10,7 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 #if ASSERTIONS
 // stack management, and other functionality that is provided by the compiled code,
 // should not be used before it is ready
-stackSave = stackRestore = stackAlloc = setTempRet0 = getTempRet0 = function() {
+stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
 #endif
@@ -551,11 +551,11 @@ function dynCall(sig, ptr, args) {
 // case for some time now, and just one is required).
 var tempRet0 = 0;
 
-var setTempRet0 = function(value) {
+function setTempRet0(value) {
   tempRet0 = value;
 }
 
-var getTempRet0 = function() {
+function getTempRet0() {
   return tempRet0;
 }
 
