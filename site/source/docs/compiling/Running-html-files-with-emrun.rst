@@ -25,21 +25,21 @@ Quick how-to
 
 Using *emrun* is simple:
 
-#. Rebuild your Emscripten application and add the ``--emrun`` :ref:`linker flag <emcc-emrun>`. 
+#. Rebuild your Emscripten application and add the ``--emrun`` :ref:`linker flag <emcc-emrun>`.
 
-	This flag injects code into the generated :ref:`Module` to enable capture of ``stdout``, ``stderr`` and ``exit()``. 
+  This flag injects code into the generated :ref:`Module` to enable capture of ``stdout``, ``stderr`` and ``exit()``.
 
-	.. note:: If you skip this step, you can still run any **.html** file with *emrun*, but the capture will not work.
+  .. note:: If you skip this step, you can still run any **.html** file with *emrun*, but the capture will not work.
 
-#. Open a terminal, navigate to the build output directory, and call ``emrun page.html``. 
+#. Open a terminal, navigate to the build output directory, and call ``emrun page.html``.
 
-	This will spawn a new web server to host the page and launch your default system browser to visit that page. *emrun* will block until the page calls ``exit(returncode)``, after which it will quit back to shell with the given process exit code.
+  This will spawn a new web server to host the page and launch your default system browser to visit that page. *emrun* will block until the page calls ``exit(returncode)``, after which it will quit back to shell with the given process exit code.
 
 
 Choosing the browser to run
 ===========================
 
-The ``--browser <filename-or-browser-alias>`` command line option allows you to launch an HTML file using a particular browser, by specifying either its "browser alias" or the full path to its executable (if the flag is not specified, the default system browser is launched). 
+The ``--browser <filename-or-browser-alias>`` command line option allows you to launch an HTML file using a particular browser, by specifying either its "browser alias" or the full path to its executable (if the flag is not specified, the default system browser is launched).
 
 To enumerate the list of browser aliases on your system, use the ``--list_browsers`` command:
 
@@ -64,13 +64,13 @@ You can pass the ``--browser <alias>`` option to launch with a given browser. Fo
 
 .. code-block:: bash
 
-	emrun --browser firefox_nightly page.html
-	
+  emrun --browser firefox_nightly page.html
+
 To launch using a browser's filename use:
 
 .. code-block:: bash
 
-	--browser /path/to/browser/executable page.html
+  --browser /path/to/browser/executable page.html
 
 If you just want to launch a web server you can pass the ``--no_browser`` command line flag. In this case *emrun* will run the server without spawning the browser (this is similar to using Python's `SimpleHTTPServer <http://www.pythonforbeginners.com/modules-in-python/how-to-use-simplehttpserver/>`_).
 
@@ -87,15 +87,15 @@ Security implications
 Controlling web server operation
 ================================
 
-The following command line flags control how *emrun* spawns the web server: 
+The following command line flags control how *emrun* spawns the web server:
 
-- ``--no_server``: Do not launch a web server. The target file is run via the ``file://`` protocol, if possible. 
-- ``--serve_after_close``: Do not quit *emrun*; continue running the server even after the user closes the web browser. Use this flag when you want to visit the page multiple times or with different browsers during the same run. 
-- ``--serve_after_exit``: Do not quit *emrun*; continue running the server after the page finishes with a call to ``exit(returncode)``. 
-- ``--serve_root <path>``: Specify a custom directory to use as the root directory for the spawned web server. By default, the directory where the **.html** file resides is used. 
-- ``--port <number>``: Specify the web server TCP port. The default port is ``6931``. 
-- ``--silence_timeout <seconds>``: Specify the *emrun* silence timeout. If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
-- ``--timeout <seconds>``: Specify the *emrun* timeout. If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default. 
+- ``--no_server``: Do not launch a web server. The target file is run via the ``file://`` protocol, if possible.
+- ``--serve_after_close``: Do not quit *emrun*; continue running the server even after the user closes the web browser. Use this flag when you want to visit the page multiple times or with different browsers during the same run.
+- ``--serve_after_exit``: Do not quit *emrun*; continue running the server after the page finishes with a call to ``exit(returncode)``.
+- ``--serve_root <path>``: Specify a custom directory to use as the root directory for the spawned web server. By default, the directory where the **.html** file resides is used.
+- ``--port <number>``: Specify the web server TCP port. The default port is ``6931``.
+- ``--silence_timeout <seconds>``: Specify the *emrun* silence timeout. If the application does not print anything to ``stdout`` or ``stderr`` in this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default.
+- ``--timeout <seconds>``: Specify the *emrun* timeout. If the whole page run lasts longer than this many seconds, the page/browser is assumed to be hung, and *emrun* will quit. This is disabled by default.
 - ``--hostname <name>``: Specify the web server TCP hostname. The default hostname is ``localhost``.
 - ``--timeout_returncode <code>``: Specifies the process return code that *emrun* quits with if a page run timeout occurs. By default this is ``99999``.
 
@@ -122,7 +122,7 @@ These command line flags allow you to clean up open browser processes before sta
 -  ``--kill_start``: Terminate all instances of the target browser process before starting the run. Pass this flag to ensure that no old (hung) instances of the target browser process exist that could interfere with the current run. This is disabled by default.
 -  ``--kill_exit``: Terminate all instances of the target browser process when *emrun* quits. Pass this flag to ensure that browser pages closed when the run is over. This is disabled by default. Note that it may be necessary to explicitly use the ``--browser=/path/to/browser`` command line option when using ``--kill_exit``, or otherwise the termination might not function properly.
 
-.. warning:: These operations cause the browser process to be forcibly terminated.  Any windows or tabs you have open will be closed, including any that might contain unsaved data. 
+.. warning:: These operations cause the browser process to be forcibly terminated.  Any windows or tabs you have open will be closed, including any that might contain unsaved data.
 
 
 Running web pages in Firefox
@@ -166,18 +166,18 @@ To set a Firefox browser pref, navigate to the page ``about:config`` in the brow
 Running web pages on an Android device
 ======================================
 
-*emrun* can automate browser-based testing on Android. 
+*emrun* can automate browser-based testing on Android.
 
 For this to work, you need to:
 
-- Connect an Android phone to the local system via USB, with its developer mode enabled. There is no need to root the phone. 
-- Install the *adb* tool on the host system and make sure it is present in the ``PATH`` environment variable. 
-- Check that *adb* is working by calling ``adb devices`` to see that your device is listed. 
+- Connect an Android phone to the local system via USB, with its developer mode enabled. There is no need to root the phone.
+- Install the *adb* tool on the host system and make sure it is present in the ``PATH`` environment variable.
+- Check that *adb* is working by calling ``adb devices`` to see that your device is listed.
 - Install any browser apk to the device that you want to be able to run.
 
-To run on Android, add the ``--android`` command line flag and use the ``--browser <alias>`` command line flag to explicitly choose the correct browser to run. 
+To run on Android, add the ``--android`` command line flag and use the ``--browser <alias>`` command line flag to explicitly choose the correct browser to run.
 
-.. note:: Omitting ``--browser`` (to launch a default Android browser) is not supported. 
+.. note:: Omitting ``--browser`` (to launch a default Android browser) is not supported.
 
 .. note:: Running on Android will omit the ``--hostname`` option
 
@@ -185,7 +185,7 @@ The following browser aliases have been tested and shown to work: ``firefox, fir
 
 The following browser aliases are also supported, but have known issues:
 
-- ``opera_mini``: The browser launches, but for some reason it times out when trying to load any page. 
+- ``opera_mini``: The browser launches, but for some reason it times out when trying to load any page.
 - ``dolphin``: Works, but does not support WebGL.
 
 Otherwise, using *emrun* for browser-based testing on Android is the same as when testing on the host system.

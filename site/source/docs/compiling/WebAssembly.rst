@@ -20,7 +20,7 @@ WebAssembly is emitted by default, without the need for any special flags.
 
 ::
 
-	emcc [..args..] -s WASM=0
+  emcc [..args..] -s WASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which will be automatically fetched and built for you (you may see logging about that, the first time you compile to WebAssembly).
 .. note:: The ``WASM``, ``BINARYEN*``, etc. options only matter when compiling to your final executable. In other words, the same .o files are used for both asm.js and WebAssembly. Only when linking them and compiling to asm.js or WebAssembly do you need to specify WebAssembly if you want that. That means that it is easy to build your project to both asm.js and WebAssembly.
@@ -69,7 +69,7 @@ In general, using ``clamp`` is safest, as whether such a trap occurs depends on 
 
  ::
 
-	-s "BINARYEN_TRAP_MODE='clamp'"
+  -s "BINARYEN_TRAP_MODE='clamp'"
 
 
 However, if the default (to allow traps) works in your codebase, then it may be worth keeping it that way, for the (small) benefits. Note that ``js``, which preserves the exact same behavior as JavaScript does, adds a large amount of overhead, so unless you really need that, use ``clamp`` (``js`` is often useful for debugging, though).
