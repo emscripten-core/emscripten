@@ -15,6 +15,13 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Breaking change: Do not automatically set EXPORT_ALL for MAIN_MODULES. This
+   means that if your side modules want to call something from the main module,
+   the main module must either export it (normally, on EXPORTED_FUNCTIONS), or
+   you can manually enable EXPORT_ALL yourself. See #7312.
+
+v1.38.13: 10/10/2018
+--------------------
  - Support `-s NO_X=1` as an alias for `-s X=0` and vice versa, which
    simplifies current settings with `NO_`-prefixed names. See #7151.
  - Various `EMULATED_FUNCTION_POINTER` improvements. See #7108, #7128.

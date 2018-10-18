@@ -1162,8 +1162,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.EMULATED_FUNCTION_POINTERS == 0:
           shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
         shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
-        if not shared.Settings.SIDE_MODULE:
-          shared.Settings.EXPORT_ALL = 1
 
       if shared.Settings.EMTERPRETIFY:
         shared.Settings.FINALIZE_ASM_JS = 0

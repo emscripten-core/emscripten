@@ -3796,7 +3796,7 @@ Module = {
       void call_side() {
         printf("side: jslib_x is %d.\n", jslib_x);
       }
-    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
+    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslib_x"]'])
 
   @needs_dlfcn
   def test_dylink_many_postSets(self):
