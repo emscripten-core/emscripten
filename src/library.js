@@ -1569,7 +1569,7 @@ LibraryManager.library = {
   round__deps: ['llvm_copysign_f64'],
   round: function(d) {
     d = +d;
-    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
+    return +Math_trunc(d + +_llvm_copysign_f64(+0.49999999999999994, d));
   },
 
   roundf__asm: true,
@@ -1577,7 +1577,7 @@ LibraryManager.library = {
   roundf__deps: ['llvm_copysign_f64'],
   roundf: function(d) {
     d = +d;
-    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
+    return +Math_trunc(d + +_llvm_copysign_f64(+0.49999999999999994, d));
   },
 
   llvm_round_f64__asm: true,
@@ -1585,7 +1585,7 @@ LibraryManager.library = {
   llvm_round_f64__deps: ['llvm_copysign_f64'],
   llvm_round_f64: function(d) {
     d = +d;
-    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
+    return +Math_trunc(d + +_llvm_copysign_f64(+0.49999999999999994, d));
   },
 
   llvm_round_f32__asm: true,
@@ -1593,7 +1593,7 @@ LibraryManager.library = {
   llvm_round_f32__deps: ['llvm_copysign_f64'],
   llvm_round_f32: function(f) {
     f = +f;
-    return +_llvm_copysign_f64(+Math_floor((+Math_abs(d) + +0.2499999999999999) + +0.2500000000000001), d);
+    return +Math_trunc(f + +_llvm_copysign_f64(+0.49999999999999994, f));
   },
 
   rintf__asm: true,
