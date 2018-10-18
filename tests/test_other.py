@@ -8217,9 +8217,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19), # noqa
-      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17), # noqa
-      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17), # noqa
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   17), # noqa
+      (['-O1'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   15), # noqa
+      (['-O2'], 20, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   15), # noqa
       (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2), # noqa; in -O3, -Os and -Oz we metadce
       (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2), # noqa
       (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2), # noqa
@@ -8241,9 +8241,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18), # noqa
-      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15), # noqa
-      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15), # noqa
+      ([],      25, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 16), # noqa
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 13), # noqa
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 13), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
       (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
@@ -8252,9 +8252,9 @@ int main() {
 
     print('test on libc++: see effects of emulated function pointers')
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
+      (['-O2'], 55, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   42), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25), # noqa
+                56, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   23), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
