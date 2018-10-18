@@ -698,8 +698,9 @@ var STRICT = 0;
 var WARN_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, we will give a link-time error on any undefined symbols (see
-// WARN_ON_UNDEFINED_SYMBOLS).  The default value 1. To allow undefined symbols
-// at link time set this to 0.
+// WARN_ON_UNDEFINED_SYMBOLS). The default value is 1. To allow undefined symbols
+// at link time set this to 0, in which case if an undefined function is called
+// a runtime error will occur.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, any -lfoo directives pointing to nonexisting library files will
