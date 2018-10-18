@@ -1584,11 +1584,11 @@ int f() {
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
-    run_process([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '%s']''' % full_export_name])
+    run_process([PYTHON, EMCC, 'main.c', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '-s', "EXPORTED_FUNCTIONS=['_main', '%s']" % full_export_name])
     self.assertFalse(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
     # Actual test: defining symbol in library and exporting it causes it to appear in the output.
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['%s']''' % full_export_name])
+    run_process([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', "EXPORTED_FUNCTIONS=['%s']" % full_export_name])
     self.assertTrue(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
   def test_embed_file(self):
@@ -1839,6 +1839,20 @@ int f() {
 10:-16
 ''', output)
     self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
+
+  def test_undefined_function(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')]
+    run_process(cmd)
+
+    # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
+    cmd += ['-s', "EXPORTED_FUNCTIONS=['foobar']"]
+    proc = run_process(cmd, stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertContained('undefined exported function: "foobar"', proc.stderr)
+
+    # setting ERROR_ON_UNDEFINED_SYMBOLS=0 suppresses error
+    cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
+    proc = run_process(cmd)
 
   def test_undefined_symbols(self):
     with open('main.cpp', 'w') as f:
@@ -3969,9 +3983,9 @@ int main(int argc, char **argv) {
       self.clear()
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=["' + m + '_main"]']
       print(cmd)
-      stderr = run_process(cmd, stderr=PIPE).stderr
+      stderr = run_process(cmd, stderr=PIPE, check=False).stderr
       if m:
-        assert 'function requested to be exported, but not implemented: " _main"' in stderr, stderr
+        self.assertContained('undefined exported function: " _main"', stderr)
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -8792,20 +8806,21 @@ T6:(else) !ASSERTIONS""", output)
       # extra newline in response file - should be ignored
       ("EXPORTED_FUNCTIONS=@response", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''function requested to be exported, but not implemented: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported function: "\\\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''function requested to be exported, but not implemented: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''undefined exported function: "\\\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported function: "\\\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'undefined exported function: "\\\\ "_c"'),
       # missing comma
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported function: "_b" "_c"'),
     ]:
       print(export_arg)
-      err = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
-      print(err)
+      proc = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
+      print(proc.stderr)
       if not expected:
-        assert not err
+        assert not proc.stderr
       else:
-        self.assertContained(expected, err)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertContained(expected, proc.stderr)
