@@ -4,7 +4,7 @@
 Contributing
 ============
 
-Anyone can contribute to Emscripten — if you find it useful and want to help improve the project, follow the suggestions below. 
+Anyone can contribute to Emscripten — if you find it useful and want to help improve the project, follow the suggestions below.
 
 Feel free to file :ref:`bug reports <bug-reports>`, :ref:`join the discussion <contact>` and share your own ideas with the community!
 
@@ -12,7 +12,7 @@ Feel free to file :ref:`bug reports <bug-reports>`, :ref:`join the discussion <c
 Getting started
 ===============
 
-A good starting point is to work on the `open issues on Github <https://github.com/kripken/emscripten/issues?state=open>`_. Many issues can be resolved without an in-depth knowledge of compiler internals, and this is a great way to learn more about the project. 
+A good starting point is to work on the `open issues on Github <https://github.com/kripken/emscripten/issues?state=open>`_. Many issues can be resolved without an in-depth knowledge of compiler internals, and this is a great way to learn more about the project.
 
 .. tip:: We really appreciate your help. Every existing issue closed means more time for the core contributors to work on new features, optimizations and other enhancements.
 
