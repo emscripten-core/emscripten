@@ -171,6 +171,33 @@ If a C++ object does need to be cleaned up, you must explicitly call :js:func:`M
 
 	You will usually need to destroy the objects which you create, but this depends on the library being ported. 
 
+Attributes
+==========
+
+Object attributes are defined in IDL using the ``attribute`` keyword. These can then be accessed in JavaScript using either ``get_foo()``/``set_foo()`` accessor methods, or directly as a property of the object.
+
+.. code-block:: cpp
+	
+	// C++
+	int attr;
+
+.. code-block:: idl
+
+	// WebIDL
+	attribute long attr;
+
+.. code-block:: javascript
+
+	// JavaScript
+	var f = new Module.Foo();
+	f.attr = 7;
+	// Equivalent to:
+	f.set_attr(7);
+
+	console.log(f.attr);
+	console.log(f.get_attr());
+
+For read-only attributes, see :ref:`webidl-binder-const`.
 
 Pointers, References, Value types (Ref and Value)
 ====================================================
@@ -215,7 +242,7 @@ If the C++ returns an object (rather than a reference or a pointer) then the ret
 	// WebIDL
 	[Value] MyClass process([Ref] MyClass input);
 
-
+.. _webidl-binder-const:
 
 Const 
 =====
@@ -246,7 +273,7 @@ Attributes that correspond to const data members must be specified with the ``re
 	// WebIDL
 	readonly attribute long numericalConstant;
 
-This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter.
+This will generate a ``get_numericalConstant()`` method in the bindings, but not a corresponding setter. The attribute will also be defined as read-only in JavaScript, meaning that trying to set it will have no effect on the value, and will throw an error in strict mode.
 
 .. tip:: It is possible for a return type to have multiple specifiers. For example, an method that returns a contant reference would be marked up in the IDL using ``[Ref, Const]``.
 
