@@ -27,7 +27,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun, tempfiles
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
 
 if __name__ == '__main__':
@@ -618,18 +618,19 @@ def get_all_implemented(forwarded_json, metadata):
 # be a response file, in which case, load it
 def get_original_exported_functions():
   ret = shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS
-  if ret[0] == '@':
+  if ret and ret[0] == '@':
     ret = json.loads(open(ret[1:]).read())
   return ret
 
 
 def check_all_implemented(all_implemented, pre):
-  if shared.Settings.ASSERTIONS and shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    original_exports = get_original_exported_functions()
-    for requested in original_exports:
-      if not is_already_implemented(requested, pre, all_implemented):
-        # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+  for requested in get_original_exported_functions():
+    if not is_already_implemented(requested, pre, all_implemented):
+      # could be a js library func
+      if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+        exit_with_error('undefined exported function: "%s"', requested)
+      elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
+        logging.warning('undefined exported function: "%s"', requested)
 
 
 def is_already_implemented(requested, pre, all_implemented):
@@ -694,8 +695,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
   for s in range(len(all_sigs)):
     sig = all_sigs[s]
     if 'j' in sig:
-      logging.error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
-      sys.exit(1)
+      exit_with_error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
     call_type = call_types[s] if s < len(call_types) else ''
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']:
       continue # Only one invoker needs to be emitted for each ASM_CONST (signature x call_type) item
@@ -2020,16 +2020,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
-  if shared.Settings.ASSERTIONS and shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    original_exports = get_original_exported_functions()
-    for requested in original_exports:
-      # check if already implemented
-      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-      if requested not in all_implemented and \
-         requested != '_malloc' and \
-         (('function ' + asstr(requested)) not in pre): # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
+  check_all_implemented(all_implemented, pre)
   return exported_implemented_functions
 
 

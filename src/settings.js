@@ -698,13 +698,15 @@ var STRICT = 0;
 // (and don't want to mess with the existing buildsystem), and functions might
 // be implemented later on, say in --pre-js, so you may want to build with -s
 // WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
-// also ERROR_ON_UNDEFINED_SYMBOLS
+// also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
+// EXPORTED_FUNCTIONS will also be reported.
 var WARN_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, we will give a link-time error on any undefined symbols (see
-// WARN_ON_UNDEFINED_SYMBOLS). The default value is 1. To allow undefined symbols
-// at link time set this to 0, in which case if an undefined function is called
-// a runtime error will occur.
+// WARN_ON_UNDEFINED_SYMBOLS). The default value is 1. To allow undefined
+// symbols at link time set this to 0, in which case if an undefined function is
+// called a runtime error will occur.  Any undefined symbols that are listed in
+// EXPORTED_FUNCTIONS will also be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, any -lfoo directives pointing to nonexisting library files will
