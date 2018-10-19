@@ -1918,11 +1918,10 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
+    for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+      cmd += ['--export', export[1:]] # Strip the leading underscore
     if Settings.EXPORT_ALL:
-      cmd += ['--no-gc-sections', '--export-all']
-    else:
-      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
-        cmd += ['--export', export[1:]] # Strip the leading underscore
+      cmd += ['--export-all']
 
     logging.debug('emcc: lld-linking: %s to %s', args, target)
     check_call(cmd)

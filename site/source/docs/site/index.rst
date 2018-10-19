@@ -1,7 +1,7 @@
 .. _site-links-index:
 
 ==========
-Site Links 
+Site Links
 ==========
 
 This section contains articles that are specific to the site, or which do not belong in any other category.
@@ -11,7 +11,7 @@ This section contains articles that are specific to the site, or which do not be
 
 .. toctree::
    :maxdepth: 1
-   
+
    about
    glossary
 

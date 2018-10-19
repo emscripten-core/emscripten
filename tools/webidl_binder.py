@@ -683,7 +683,10 @@ for name in names:
                     const=m.getExtendedAttribute('Const'),
                     array_attribute=m.type.isArray())
 
-    if not m.readonly:
+    if m.readonly:
+      mid_js += [r'''
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s }) ''' % (name, attr, name, get_name)]
+    else:
       set_name = 'set_' + attr
       mid_js += [r'''
     %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
@@ -697,6 +700,9 @@ for name in names:
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
                       array_attribute=m.type.isArray())
+      mid_js += [r'''
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s }) ''' % (name, attr, name, get_name, name, set_name)]
+
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''

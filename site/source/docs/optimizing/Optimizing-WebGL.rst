@@ -109,7 +109,7 @@ The most important aspect of efficient GPU usage is to make sure that the CPU wi
 
  - Never call ``glGetError()`` or ``glCheckFramebufferStatus()`` at render time. These functions should be restricted to be checked at loading time only, since both of these can do a full pipeline sync.
 
- - Similarly, do not call any of the ``glGet*()`` API functions at render time, but query them at startup and loading time, and refer to cached results at render time. 
+ - Similarly, do not call any of the ``glGet*()`` API functions at render time, but query them at startup and loading time, and refer to cached results at render time.
 
  - Try to avoid compiling shaders at render time, both ``glCompileShader()`` and ``glLinkProgram()`` can be extremely slow.
 
@@ -209,7 +209,7 @@ These extensions were adopted without any functional changes, so when initializi
 
 - In WebGL 2/GLES 3.0, a number of texture format enums changed for texture formats introduced by extensions. It is no longer possible to use so called `unsized` texture formats from WebGL 1/GLES 2 extensions, but instead, the new sized variants of the formats must be used for the ``internalFormat`` field. For example, instead of creating a texture with ``format=GL_DEPTH_COMPONENT, type=GL_UNSIGNED_INT, internalFormat=GL_DEPTH_COMPONENT``, it is required to specify the size in the ``internalFormat`` field, i.e. ``format=GL_DEPTH_COMPONENT, type=GL_UNSIGNED_INT, internalFormat=GL_DEPTH_COMPONENT24``.
 
-- A particular gotcha with WebGL 2/GLES 3.0 texture formats is that the enum value for the half float (float16) texture type changed value when the WebGL 1/GLES 2 extension ``OES_texture_half_float`` was subsumed to the core WebGL 2/GLES 3.0 specification. In WebGL1/GLES 2, half floats were denoted by the value ``GL_HALF_FLOAT_OES=0x8d61``, but in WebGL2/GLES 3.0, the enum value ``GL_HALF_FLOAT=0x140b`` is used, contrast to other texture type extensions where inclusion to the core specification generally preserved the value of the enum that is used. 
+- A particular gotcha with WebGL 2/GLES 3.0 texture formats is that the enum value for the half float (float16) texture type changed value when the WebGL 1/GLES 2 extension ``OES_texture_half_float`` was subsumed to the core WebGL 2/GLES 3.0 specification. In WebGL1/GLES 2, half floats were denoted by the value ``GL_HALF_FLOAT_OES=0x8d61``, but in WebGL2/GLES 3.0, the enum value ``GL_HALF_FLOAT=0x140b`` is used, contrast to other texture type extensions where inclusion to the core specification generally preserved the value of the enum that is used.
 
 Overall, to ease simultaneously targeting both WebGL1/GLES 2 and WebGL2/GLES 3.0 contexts, Emscripten provides a linker flag ``-s WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1``, which hides the above differences behind automatically detected migration, to allow existing WebGL 1 content to transparently also target WebGL 2 for the free speed boost it provides.
 

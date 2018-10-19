@@ -4,6 +4,13 @@ Parent:42
 object
 object
 8
+8
+8
+6
+6
+9
+10
+10
 boolean
 true
 c1

@@ -15,7 +15,7 @@ public:
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
   bool getBoolean() { return true; }
-
+  int attr;
   const int immutableAttr;
 };
 

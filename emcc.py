@@ -2685,8 +2685,12 @@ var %(EXPORT_NAME)s = (function() {
     }
   else:
     # Create the MODULARIZE_INSTANCE instance
+    # Note that we notice the global Module object, just like in normal
+    # non-MODULARIZE mode (while MODULARIZE has the user create the instances,
+    # and the user can decide whether to use Module there or something
+    # else etc.).
     src = '''
-var %(EXPORT_NAME)s = (%(src)s)();
+var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
       'src': src

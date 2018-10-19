@@ -9,6 +9,20 @@ sme.parentFunc(90);
 console.log(typeof sme.getAsConst());
 console.log(typeof sme.voidStar(sme));
 console.log(sme.get_immutableAttr());
+console.log(sme.immutableAttr);
+
+try {
+  sme.immutableAttr = 1;
+} catch(e) {}
+console.log(sme.immutableAttr); // Should be unchanged
+console.log(sme.attr);
+console.log(sme.get_attr());
+sme.attr = 9;
+console.log(sme.attr);
+sme.set_attr(10);
+console.log(sme.attr);
+console.log(sme.get_attr());
+
 console.log(typeof sme.getBoolean());
 console.log(sme.getBoolean());
 

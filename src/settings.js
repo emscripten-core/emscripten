@@ -117,6 +117,10 @@ var ABORTING_MALLOC = 1;
 // eliminator), but in wasm it is efficient and should be used whenever relevant.
 // See https://code.google.com/p/v8/issues/detail?id=3907 regarding
 // memory growth performance in chrome.
+// Note that growing memory means we replace the JS typed array views, as
+// once created they cannot be resized. (This happens both in asm.js and in
+// wasm - in wasm we can grow the Memory, but still need to create new
+// views for JS.)
 // Setting this option on will disable ABORTING_MALLOC, in other words,
 // ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
 // returning 0 when it fails, and also of being able to allocate more
@@ -694,12 +698,15 @@ var STRICT = 0;
 // (and don't want to mess with the existing buildsystem), and functions might
 // be implemented later on, say in --pre-js, so you may want to build with -s
 // WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
-// also ERROR_ON_UNDEFINED_SYMBOLS
+// also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
+// EXPORTED_FUNCTIONS will also be reported.
 var WARN_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, we will give a link-time error on any undefined symbols (see
-// WARN_ON_UNDEFINED_SYMBOLS).  The default value 1. To allow undefined symbols
-// at link time set this to 0.
+// WARN_ON_UNDEFINED_SYMBOLS). The default value is 1. To allow undefined
+// symbols at link time set this to 0, in which case if an undefined function is
+// called a runtime error will occur.  Any undefined symbols that are listed in
+// EXPORTED_FUNCTIONS will also be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, any -lfoo directives pointing to nonexisting library files will
@@ -774,6 +781,14 @@ var DETERMINISTIC = 0;
 // to the onRuntimeInitialized callback (i.e., it waits for all
 // necessary async events). It receives the instance as a parameter,
 // for convenience.
+//
+// Note that in MODULARIZE mode we do *not* look at the global `Module`
+// object, so if you define things there they will be ignored. The reason
+// is that you will be constructing the instances manually, and can
+// provide Module there, or something else, as you want. This differs
+// in MODULARIZE_INSTANCE mode, where we *do* look at the global, since
+// as in non-MODULARIZE mode there is just one global instance, and it
+// is constructed by the setup code.
 var MODULARIZE = 0;
 
 // Similar to MODULARIZE, but while that mode exports a function, with which you
