@@ -8594,16 +8594,17 @@ end
       }
     ''')
 
-    def test(extra=[]):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra)
+    def test(check, extra=[]):
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra
+      proc = run_process(cmd, check=check, stderr=PIPE)
+      if not check:
+        self.assertNotEqual(proc.returncode, 0)
+      return proc
 
-    failed = False
-    try:
-      test()
-    except:
-      failed = True
-    assert failed
-    test(['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
+    proc = test(check=False)
+    self.assertContained('ERROR - Variable dupe declared more than once', proc.stderr)
+    proc = test(check=True, extra=['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
+    self.assertEqual(proc.stderr, '')
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
