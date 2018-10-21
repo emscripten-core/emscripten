@@ -677,11 +677,11 @@ if has_preloaded:
       function fetchCachedPackage(db, packageName, metadata, callback, errback) {
         var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
-      
+
         var chunksDone = 0;
         var totalSize = 0;
         var chunks = new Array(metadata.chunkCount);
-      
+
         for (var chunkId = 0; chunkId < metadata.chunkCount; chunkId++) {
           var getRequest = packages.get('package/' + packageName + '/' + chunkId);
           getRequest.onsuccess = function(event) {

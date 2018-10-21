@@ -29,7 +29,7 @@
 #define _SDL_opengl_h
 
 /* XXX Emscripten */
-#define GL_GLEXT_PROTOTYPES 1
+#define GL_GLEXT_PROTOTYPES
 
 #include "SDL_config.h"
 
