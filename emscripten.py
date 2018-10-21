@@ -27,7 +27,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun, tempfiles
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
 
 if __name__ == '__main__':
@@ -618,18 +618,19 @@ def get_all_implemented(forwarded_json, metadata):
 # be a response file, in which case, load it
 def get_original_exported_functions():
   ret = shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS
-  if ret[0] == '@':
+  if ret and ret[0] == '@':
     ret = json.loads(open(ret[1:]).read())
   return ret
 
 
 def check_all_implemented(all_implemented, pre):
-  if shared.Settings.ASSERTIONS and shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    original_exports = get_original_exported_functions()
-    for requested in original_exports:
-      if not is_already_implemented(requested, pre, all_implemented):
-        # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
+  for requested in get_original_exported_functions():
+    if not is_already_implemented(requested, pre, all_implemented):
+      # could be a js library func
+      if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+        exit_with_error('undefined exported function: "%s"', requested)
+      elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
+        logging.warning('undefined exported function: "%s"', requested)
 
 
 def is_already_implemented(requested, pre, all_implemented):
@@ -694,8 +695,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
   for s in range(len(all_sigs)):
     sig = all_sigs[s]
     if 'j' in sig:
-      logging.error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
-      sys.exit(1)
+      exit_with_error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
     call_type = call_types[s] if s < len(call_types) else ''
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']:
       continue # Only one invoker needs to be emitted for each ASM_CONST (signature x call_type) item
@@ -1493,14 +1493,20 @@ for (var named in NAMED_GLOBALS) {
 def create_runtime_funcs(exports):
   if shared.Settings.ONLY_MY_CODE:
     return []
-  return ['''
+
+  if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
+    stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
+  else:
+    stack_check = ''
+
+  funcs = ['''
 function stackAlloc(size) {
   size = size|0;
   var ret = 0;
   ret = STACKTOP;
   STACKTOP = (STACKTOP + size)|0;
   STACKTOP = (STACKTOP + 15)&-16;
-''' + ('  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n' if (shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2) else '') + '''
+  %s
   return ret|0;
 }
 function stackSave() {
@@ -1516,15 +1522,32 @@ function establishStackSpace(stackBase, stackMax) {
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
 }
-''' + ('''
+function setThrew(threw, value) {
+  threw = threw|0;
+  value = value|0;
+  if ((__THREW__|0) == 0) {
+    __THREW__ = threw;
+    threwValue = value;
+  }
+}
+''' % stack_check]
+
+  if need_asyncify(exports):
+    funcs.append('''
 function setAsync() {
   ___async = 1;
-}''' if need_asyncify(exports) else '') + ('''
+}
+''')
+
+  if shared.Settings.EMTERPRETIFY:
+    funcs.append('''
 function emterpret(pc) { // this will be replaced when the emterpreter code is generated; adding it here allows validation until then
   pc = pc | 0;
   assert(0);
-}
-''' if shared.Settings.EMTERPRETIFY else '') + ('''
+}''')
+
+  if shared.Settings.EMTERPRETIFY_ASYNC:
+    funcs.append('''
 function setAsyncState(x) {
   x = x | 0;
   asyncState = x;
@@ -1543,21 +1566,18 @@ function setEmtStackMax(x) {
   x = x | 0;
   EMT_STACK_MAX = x;
 }
-''' if shared.Settings.EMTERPRETIFY_ASYNC else '') + '''
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
-}
-'''] + ['' if not shared.Settings.SAFE_HEAP else '''
+''')
+
+  if shared.Settings.SAFE_HEAP:
+    funcs.append('''
 function setDynamicTop(value) {
   value = value | 0;
   HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
-'''] + ['' if not asm_safe_heap() else '''
+''')
+
+  if asm_safe_heap():
+    funcs.append('''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
@@ -1628,7 +1648,10 @@ function SAFE_FT_MASK(value, mask) {
   if ((ret|0) != (value|0)) ftfault();
   return ret | 0;
 }
-'''] + ['''
+''')
+
+  if not shared.Settings.RELOCATABLE:
+    funcs.append('''
 function setTempRet0(value) {
   value = value|0;
   tempRet0 = value;
@@ -1636,7 +1659,9 @@ function setTempRet0(value) {
 function getTempRet0() {
   return tempRet0|0;
 }
-''' if not shared.Settings.RELOCATABLE else '']
+''')
+
+  return funcs
 
 
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
@@ -1672,15 +1697,20 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
 
 def create_asm_temp_vars():
   access_quote = access_quoter()
-  return '''
+
+  rtn = '''
   var __THREW__ = 0;
   var threwValue = 0;
   var setjmpId = 0;
   var undef = 0;
   var nan = global%s, inf = global%s;
   var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
-  var tempRet0 = 0;
 ''' % (access_quote('NaN'), access_quote('Infinity'))
+
+  if not shared.Settings.RELOCATABLE:
+    rtn += 'var tempRet0 = 0;\n'
+
+  return rtn
 
 
 def create_asm_runtime_thread_local_vars():
@@ -1946,8 +1976,6 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
                      '-o',  base_source_map]
     if not shared.Settings.SOURCE_MAP_BASE:
       logging.warn("Wasm source map won't be usable in a browser without --source-map-base")
-    else:
-      sourcemap_cmd += ['--source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
@@ -1962,6 +1990,7 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
   if write_source_map:
     cmd.append('--input-source-map=' + base_source_map)
     cmd.append('--output-source-map=' + wasm + '.map')
+    cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   shared.check_call(cmd, stdout=open(metadata_file, 'w'))
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
@@ -1991,16 +2020,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       exported_implemented_functions.add(key)
 
-  if shared.Settings.ASSERTIONS and shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    original_exports = get_original_exported_functions()
-    for requested in original_exports:
-      # check if already implemented
-      # special-case malloc, EXPORTED by default for internal use, but we bake in a trivial allocator and warn at runtime if used in ASSERTIONS \
-      if requested not in all_implemented and \
-         requested != '_malloc' and \
-         (('function ' + asstr(requested)) not in pre): # could be a js library func
-        logging.warning('function requested to be exported, but not implemented: "%s"', requested)
-
+  check_all_implemented(all_implemented, pre)
   return exported_implemented_functions
 
 

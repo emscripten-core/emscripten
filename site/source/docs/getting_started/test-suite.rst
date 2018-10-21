@@ -21,20 +21,20 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
 
 .. code-block:: bash
 
-	# run one test (in the default mode)
-	python tests/runner.py test_loop
+  # run one test (in the default mode)
+  python tests/runner.py test_loop
 
-	# run one test in a specific mode (here, asm.js -O2)
-	python tests/runner.py asm2.test_loop
+  # run one test in a specific mode (here, asm.js -O2)
+  python tests/runner.py asm2.test_loop
 
-	# run a test in a bunch of modes (here, all asm.js modes)
-	python tests/runner.py asm*.test_loop
+  # run a test in a bunch of modes (here, all asm.js modes)
+  python tests/runner.py asm*.test_loop
 
-	# run a bunch of tests in one mode (here, all i64 tests in wasm -O3)
-	python tests/runner.py binaryen3.test_*i64*
+  # run a bunch of tests in one mode (here, all i64 tests in wasm -O3)
+  python tests/runner.py binaryen3.test_*i64*
 
-	# run all tests in a specific mode (here, asm.js -O1)
-	python tests/runner.py asm1
+  # run all tests in a specific mode (here, asm.js -O1)
+  python tests/runner.py asm1
 
 The *core* test modes (``asm*`` and ``binaryen*``, defined in ``tests/test_core.py``) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
 
@@ -49,14 +49,14 @@ The wildcards we mentioned above work for non-core test modes too, for example:
 
 .. code-block:: bash
 
-	# run one browser test
-	python tests/runner.py browser.test_sdl_image
+  # run one browser test
+  python tests/runner.py browser.test_sdl_image
 
-	# run all SDL2 browser tests
-	python tests/runner.py browser.test_sdl2*
+  # run all SDL2 browser tests
+  python tests/runner.py browser.test_sdl2*
 
-	# run all browser tests
-	python tests/runner.py browser
+  # run all browser tests
+  python tests/runner.py browser
 
 Skipping Tests
 ==============
@@ -65,13 +65,13 @@ An individual test can be skipped by passing the "skip:" prefix. E.g.
 
 .. code-block:: bash
 
-	python tests/runner.py other skip:other.test_cmake
+  python tests/runner.py other skip:other.test_cmake
 
 Wildcards can also be passed in skip, so
 
 .. code-block:: bash
 
-	python tests/runner.py browser skip:browser.test_pthread_*
+  python tests/runner.py browser skip:browser.test_pthread_*
 
 will run the whole browser suite except for all the pthread tests in it.
 
@@ -93,24 +93,24 @@ When you want to run the entire test suite locally, these are the important comm
 
 .. code-block:: bash
 
-	# Run all core asm.js and wasm tests
-	python tests/runner.py asm* binaryen*
-	
-	# Run "other" test suite
-	python tests/runner.py other
+  # Run all core asm.js and wasm tests
+  python tests/runner.py asm* binaryen*
 
-	# Run "browser" test suite - this requires a web browser
-	python tests/runner.py browser
+  # Run "other" test suite
+  python tests/runner.py other
 
-	# Run "sockets" test suite - this requires a web browser too
-	python tests/runner.py sockets
+  # Run "browser" test suite - this requires a web browser
+  python tests/runner.py browser
 
-	# Run "sanity" test suite - this tests setting up emscripten during
-	# first run, etc., and so it modifies your .emscripten file temporarily.
-	python tests/runner.py sanity
+  # Run "sockets" test suite - this requires a web browser too
+  python tests/runner.py sockets
 
-	# Optionally, also run benchmarks to check for regressions
-	python tests/runner.py benchmark
+  # Run "sanity" test suite - this tests setting up emscripten during
+  # first run, etc., and so it modifies your .emscripten file temporarily.
+  python tests/runner.py sanity
+
+  # Optionally, also run benchmarks to check for regressions
+  python tests/runner.py benchmark
 
 .. _benchmarking:
 
@@ -121,8 +121,8 @@ Emscripten has a benchmark suite that measures both speed and code size. To run 
 
 .. code-block:: bash
 
-	# Run all benchmarks
-	python tests/runner.py benchmark
+  # Run all benchmarks
+  python tests/runner.py benchmark
 
 Usually you will want to customize the python in `tests/test_benchmark.py` to run the benchmarks you want, see ``benchmarkers`` in the source code.
 
@@ -133,19 +133,19 @@ Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emi
 
 .. code-block:: bash
 
-	# On Windows, use "set" to set and un-set the EMCC_DEBUG environment variable:
-	set EMCC_DEBUG=1 
-	python tests/runner.py test_hello_world
-	set EMCC_DEBUG=0
-	
-	# On Linux, you can do this all in one line
-	EMCC_DEBUG=1 python tests/runner.py test_hello_world
-	
-	# EMCC_DEBUG=2 generates additional debug information.
-	EMCC_DEBUG=2 python tests/runner.py test_hello_world
+  # On Windows, use "set" to set and un-set the EMCC_DEBUG environment variable:
+  set EMCC_DEBUG=1
+  python tests/runner.py test_hello_world
+  set EMCC_DEBUG=0
+
+  # On Linux, you can do this all in one line
+  EMCC_DEBUG=1 python tests/runner.py test_hello_world
+
+  # EMCC_DEBUG=2 generates additional debug information.
+  EMCC_DEBUG=2 python tests/runner.py test_hello_world
 
 
 You can also specify ``EMTEST_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_test/**. This is a test suite-specific feature, and is useful for tests that create temporary files.
 
-The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code. 
+The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code.
 

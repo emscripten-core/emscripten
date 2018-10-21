@@ -108,7 +108,6 @@ class other(RunnerCore):
       run_process([PYTHON, compiler, '--generate-config', config_path])
       assert os.path.exists(config_path), 'A config file should have been created at %s' % config_path
       config_contents = open(config_path).read()
-      self.assertContained('EMSCRIPTEN_ROOT', config_contents)
       self.assertContained('LLVM_ROOT', config_contents)
       os.remove(config_path)
 
@@ -747,8 +746,9 @@ f.close()
       run_process([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
-  def test_catch_undef(self):
-    open(os.path.join(self.get_dir(), 'test.cpp'), 'w').write(r'''
+  def test_ubsan(self):
+    with open('test.cpp', 'w') as f:
+      f.write(r'''
       #include <vector>
       #include <stdio.h>
 
@@ -764,8 +764,28 @@ f.close()
         return 0;
       }
     ''')
-    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'test.cpp'), '-fsanitize=undefined'])
-    self.assertContained('hello, world!', run_js(os.path.join(self.get_dir(), 'a.out.js')))
+
+    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_ubsan_add_overflow(self):
+    with open('test.cpp', 'w') as f:
+      f.write(r'''
+      #include <stdio.h>
+
+      int main(int argc, char **argv) {
+        printf("hello, world!\n");
+        fflush(stdout);
+        int k = 0x7fffffff;
+        k += argc;
+        return k;
+      }
+    ''')
+
+    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
+    output = run_js('a.out.js', assert_returncode=1, stderr=STDOUT)
+    self.assertContained('hello, world!', output)
+    self.assertContained('Undefined behavior! ubsan_handle_add_overflow:', output)
 
   @no_wasm_backend()
   def test_asm_minify(self):
@@ -922,7 +942,7 @@ int main() {
     run_process([PYTHON, EMCC, '-o', 'a.o', 'a.c'])
     run_process([PYTHON, EMAR, 'rv', 'library.a', 'a.o'])
     run_process([PYTHON, EMCC, '-o', 'main.o', 'main.c'])
-    run_process([PYTHON, EMCC, '-o', 'a.js', 'main.o', 'library.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    run_process([PYTHON, EMCC, '-o', 'a.js', 'main.o', 'library.a'])
     self.assertContained('|0|', run_js('a.js'))
 
   @no_wasm_backend('outlining is an asmjs only feature')
@@ -1240,7 +1260,7 @@ int f() {
     self.assertContained('result: 42', run_js(out_js))
 
     # -( and -) should also work.
-    args = ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1', 'main.c', '-o', 'a2.out.js']
+    args = ['main.c', '-o', 'a2.out.js']
     libs = ['-Wl,-('] + libs_list + ['-Wl,-)']
     output = run_process([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE)
     out_js = os.path.join(self.get_dir(), 'a2.out.js')
@@ -1564,11 +1584,11 @@ int f() {
 
     # Sanity check: exporting without a definition does not cause it to appear.
     # Note: exporting main prevents emcc from warning that it generated no code.
-    run_process([PYTHON, EMCC, 'main.c', '-s', '''EXPORTED_FUNCTIONS=['_main', '%s']''' % full_export_name])
+    run_process([PYTHON, EMCC, 'main.c', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '-s', "EXPORTED_FUNCTIONS=['_main', '%s']" % full_export_name])
     self.assertFalse(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
     # Actual test: defining symbol in library and exporting it causes it to appear in the output.
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', '''EXPORTED_FUNCTIONS=['%s']''' % full_export_name])
+    run_process([PYTHON, EMCC, 'main.c', '-L.', '-lexport', '-s', "EXPORTED_FUNCTIONS=['%s']" % full_export_name])
     self.assertTrue(self.is_exported_in_wasm(expect_export, 'a.out.wasm'))
 
   def test_embed_file(self):
@@ -1819,6 +1839,20 @@ int f() {
 10:-16
 ''', output)
     self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
+
+  def test_undefined_function(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')]
+    run_process(cmd)
+
+    # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
+    cmd += ['-s', "EXPORTED_FUNCTIONS=['foobar']"]
+    proc = run_process(cmd, stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertContained('undefined exported function: "foobar"', proc.stderr)
+
+    # setting ERROR_ON_UNDEFINED_SYMBOLS=0 suppresses error
+    cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
+    proc = run_process(cmd)
 
   def test_undefined_symbols(self):
     with open('main.cpp', 'w') as f:
@@ -3949,9 +3983,9 @@ int main(int argc, char **argv) {
       self.clear()
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=["' + m + '_main"]']
       print(cmd)
-      stderr = run_process(cmd, stderr=PIPE).stderr
+      stderr = run_process(cmd, stderr=PIPE, check=False).stderr
       if m:
-        assert 'function requested to be exported, but not implemented: " _main"' in stderr, stderr
+        self.assertContained('undefined exported function: " _main"', stderr)
       else:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -4580,7 +4614,8 @@ main()
       else:
         self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
 
-    test('normal') # normally is ok
+    with env_modify({'EMCC_FORCE_STDLIBS': None}):
+      test('normal') # normally is ok
 
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx'}):
       test('forced libs is ok, they were there anyhow')
@@ -4610,7 +4645,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx,dlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -5129,11 +5164,11 @@ main(const int argc, const char * const * const argv)
   def test_no_filesystem(self):
     FS_MARKER = 'var FS'
     # fopen forces full filesystem support
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c')])
     yes_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained(FS_MARKER, open('a.out.js').read())
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     no_size = os.stat('a.out.js').st_size
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())
@@ -5170,7 +5205,7 @@ main(const int argc, const char * const * const argv)
       self.assertLess(sizes['no_fs_manual'], sizes['no_fs'] + 30)
 
     test(['-s', 'ASSERTIONS=0'], 120000) # we don't care about code size with assertions
-    test(['-O1'], 90000)
+    test(['-O1'], 91000)
     test(['-O2'], 46000)
     test(['-O3', '--closure', '1'], 17000)
     # asm.js too
@@ -8165,8 +8200,8 @@ int main() {
   def test_binaryen_metadce(self):
     def test(filename, expectations):
       # in -Os, -Oz, we remove imports wasm doesn't need
-      for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports in expectations:
-        print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports)
+      for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs in expectations:
+        print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs)
         run_process([PYTHON, EMCC, filename, '-g2'] + args)
         # find the imports we send from JS
         js = open('a.out.js').read()
@@ -8191,23 +8226,26 @@ int main() {
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
         exports = wast.count('(export ')
+        funcs = wast.count('\n (func ')
         self.assertEqual(imports, expected_wasm_imports)
         self.assertEqual(exports, expected_wasm_exports)
+        if expected_wasm_funcs is not None:
+          self.assertEqual(funcs, expected_wasm_funcs)
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19), # noqa
-      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17), # noqa
-      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17), # noqa
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2), # noqa; in -O3, -Os and -Oz we metadce
-      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2), # noqa
-      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19, 62), # noqa
+      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17, 34), # noqa
+      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17, 33), # noqa
+      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2, 21), # noqa
+      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2, 21), # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0), # noqa; totally empty!
+                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1526, ['invoke_i'],               ['waka'],                 469663, 149, 1439),
+              1529, ['invoke_i'],               ['waka'],                 469663, 149, 1443, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -8220,20 +8258,20 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18), # noqa
-      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15), # noqa
-      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18, 31), # noqa
+      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15, 15), # noqa
+      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15, 15), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
-      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1), # noqa
+      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
+      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
+      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
     ])
 
     print('test on libc++: see effects of emulated function pointers')
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44), # noqa
+      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44, 661), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25), # noqa
+                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25, 622), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
@@ -8556,16 +8594,17 @@ end
       }
     ''')
 
-    def test(extra=[]):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra)
+    def test(check, extra=[]):
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '--pre-js', 'pre.js'] + extra
+      proc = run_process(cmd, check=check, stderr=PIPE)
+      if not check:
+        self.assertNotEqual(proc.returncode, 0)
+      return proc
 
-    failed = False
-    try:
-      test()
-    except:
-      failed = True
-    assert failed
-    test(['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
+    proc = test(check=False)
+    self.assertContained('ERROR - Variable dupe declared more than once', proc.stderr)
+    proc = test(check=True, extra=['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
+    self.assertEqual(proc.stderr, '')
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
@@ -8625,6 +8664,26 @@ int main() {
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', output.stderr)
+
+  def test_check_sourcemapurl(self):
+    if not self.is_wasm():
+      return
+    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
+    output = open('a.wasm').read()
+    # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
+    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('dir/a.wasm.map')) + 'dir/a.wasm.map'
+    self.assertContained(source_mapping_url_content, output)
+
+  def test_check_sourcemapurl_default(self):
+    if not self.is_wasm():
+      return
+    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'])
+    output = open('a.wasm').read()
+    # has sourceMappingURL section content and points to 'a.wasm.map' file
+    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('a.wasm.map')) + 'a.wasm.map'
+    self.assertContained(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
@@ -8748,20 +8807,21 @@ T6:(else) !ASSERTIONS""", output)
       # extra newline in response file - should be ignored
       ("EXPORTED_FUNCTIONS=@response", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''function requested to be exported, but not implemented: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported function: "\\\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''function requested to be exported, but not implemented: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''undefined exported function: "\\\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported function: "\\\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'function requested to be exported, but not implemented: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'undefined exported function: "\\\\ "_c"'),
       # missing comma
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'function requested to be exported, but not implemented: "_b" "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported function: "_b" "_c"'),
     ]:
       print(export_arg)
-      err = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE).stderr
-      print(err)
+      proc = run_process([PYTHON, EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
+      print(proc.stderr)
       if not expected:
-        assert not err
+        assert not proc.stderr
       else:
-        self.assertContained(expected, err)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertContained(expected, proc.stderr)

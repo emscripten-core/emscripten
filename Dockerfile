@@ -15,7 +15,6 @@ RUN cd /root/ \
  && ./emsdk install latest \
  && ./emsdk activate latest \
  && popd \
- && echo EMSCRIPTEN_ROOT="'/root/emscripten/'" >> .emscripten \
  && echo BINARYEN_ROOT="''" >> .emscripten
 
 ARG TEST_TARGET

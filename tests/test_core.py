@@ -20,7 +20,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, 
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify
 
 # decorators for limiting which modes a test can run in
 
@@ -1231,7 +1231,6 @@ int main(int argc, char **argv)
 
   def test_exceptions_std(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
@@ -1274,7 +1273,6 @@ int main(int argc, char **argv)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
 
   def test_bad_typeid(self):
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 1)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run(r'''
@@ -1297,7 +1295,7 @@ int main () {
   }
   return 0;
 }
-    ''', 'exception caught: std::bad_typeid')
+''', 'exception caught: std::bad_typeid')
 
   def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
     self.do_run(r'''
@@ -3872,20 +3870,20 @@ Module = {
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
       try:
-        os.environ['EMCC_FORCE_STDLIBS'] = syslibs
-        self.dylink_test(main=r'''
-          void side();
-          int main() {
-            side();
-            return 0;
-          }
-        ''', side=r'''
-          #include <iostream>
-          void side() { std::cout << "cout hello from side\n"; }
-        ''', expected=['cout hello from side\n'], need_reverse=need_reverse)
+        with env_modify({'EMCC_FORCE_STDLIBS': syslibs}):
+          self.dylink_test(main=r'''
+            void side();
+            int main() {
+              side();
+              return 0;
+            }
+          ''', side=r'''
+            #include <iostream>
+            void side() { std::cout << "cout hello from side\n"; }
+          ''', expected=['cout hello from side\n'], need_reverse=need_reverse)
       except Exception as e:
         if expect_pass:
-          raise e
+          raise
         print('(seeing expected fail)')
         passed = False
         assertion = 'build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment'
@@ -3893,8 +3891,6 @@ Module = {
           self.assertContained(assertion, str(e))
         else:
           self.assertNotContained(assertion, str(e))
-      finally:
-        del os.environ['EMCC_FORCE_STDLIBS']
       assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
 
     test('libcxx')
@@ -3908,25 +3904,22 @@ Module = {
     test('', expect_pass=False, need_reverse=False)
 
   @needs_dlfcn
+  @with_env_modify({'EMCC_FORCE_STDLIBS': 'libcxx'})
   def test_dylink_iostream(self):
-    try:
-      os.environ['EMCC_FORCE_STDLIBS'] = 'libcxx'
-      self.dylink_test(header=r'''
-        #include <iostream>
-        #include <string>
-        std::string side();
-      ''', main=r'''
-        #include "header.h"
-        int main() {
-          std::cout << "hello from main " << side() << std::endl;
-          return 0;
-        }
-      ''', side=r'''
-        #include "header.h"
-        std::string side() { return "and hello from side"; }
-      ''', expected=['hello from main and hello from side\n'])
-    finally:
-      del os.environ['EMCC_FORCE_STDLIBS']
+    self.dylink_test(header=r'''
+      #include <iostream>
+      #include <string>
+      std::string side();
+    ''', main=r'''
+      #include "header.h"
+      int main() {
+        std::cout << "hello from main " << side() << std::endl;
+        return 0;
+      }
+    ''', side=r'''
+      #include "header.h"
+      std::string side() { return "and hello from side"; }
+    ''', expected=['hello from main and hello from side\n'])
 
   @needs_dlfcn
   def test_dylink_dynamic_cast(self): # issue 3465
@@ -4763,6 +4756,14 @@ name: .
     src, output = (test_path + s for s in ('.cpp', '.out'))
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
+      self.emcc_args = orig_args + mode
+      self.do_run_from_file(src, output)
+
+  def test_write_stdout_fileno(self):
+    test_path = path_from_root('tests', 'core', 'test_write_stdout_fileno')
+    src, output = (test_path + s for s in ('.c', '.out'))
+    orig_args = self.emcc_args
+    for mode in [[], ['-s', 'FILESYSTEM=0']]:
       self.emcc_args = orig_args + mode
       self.do_run_from_file(src, output)
 
@@ -6341,7 +6342,7 @@ def process(filename):
   open(filename, 'w').write(src)
 '''
 
-    self.set_setting('EXPORTED_FUNCTIONS', self.get_setting('EXPORTED_FUNCTIONS') + ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall', js_transform=post)
 
     if '-O2' in self.emcc_args or self.is_emterpreter():

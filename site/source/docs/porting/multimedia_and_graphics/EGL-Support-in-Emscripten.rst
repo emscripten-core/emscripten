@@ -15,10 +15,10 @@ Emscripten also supplies an implementation of the EGL v1.4 specification. This a
 What EGL is not?
 ================
 
-Somewhat disappointingly, EGL is not a self-sufficient complete solution for initializing GLES2 graphics rendering (on any platform, not just Emscripten) and overseeing various associated tasks. The specification is limited in its scope and lacks some features. In particular, EGL cannot help with the following tasks: 
+Somewhat disappointingly, EGL is not a self-sufficient complete solution for initializing GLES2 graphics rendering (on any platform, not just Emscripten) and overseeing various associated tasks. The specification is limited in its scope and lacks some features. In particular, EGL cannot help with the following tasks:
 
-- Creating a render window. The EGL specification does not specify how a target window is created to which to render to. One must use platform-specific native window system functions (X11, Win32 API, ANativeWindow) to first create a render window. 
-- Specifying render window size in arbitrary pixel increments. EGL does not have any functionality to request a desired size for the main render window, or to resize it. 
+- Creating a render window. The EGL specification does not specify how a target window is created to which to render to. One must use platform-specific native window system functions (X11, Win32 API, ANativeWindow) to first create a render window.
+- Specifying render window size in arbitrary pixel increments. EGL does not have any functionality to request a desired size for the main render window, or to resize it.
 - Specifying a fullscreen video mode/screen resolution. EGL cannot be used to control whether to render in a windowed or fullscreen mode, or to toggle between these at runtime.
 
 Therefore, for each platform, including Emscripten, there exists platform-specific means to perform these tasks.
@@ -73,10 +73,10 @@ Fully implemented
 
 - ``eglGetDisplay``: Implemented according to the specification. Emscripten does not utilize multiple ``EGLNativeDisplayType`` objects, so pass in ``EGL_DEFAULT_DISPLAY`` here. Emscripten currently actually ignores any value passed in here for Linux emulation purposes, but you should not rely on this in the future.
 
-- ``eglGetError``: Implemented according to the specification. 
+- ``eglGetError``: Implemented according to the specification.
 
-	.. important:: According to the specification, ``eglGetError`` reports the single most recent error rather than the list of all previous errors. Don't call this function in a loop in the same way you would call ``glGetError``.
-	
+  .. important:: According to the specification, ``eglGetError`` reports the single most recent error rather than the list of all previous errors. Don't call this function in a loop in the same way you would call ``glGetError``.
+
 
 Partially implemented
 ---------------------

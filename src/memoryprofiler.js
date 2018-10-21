@@ -170,26 +170,32 @@ var emscriptenMemoryProfiler = {
     }
 
     this.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
+    var div;
     if (!this.memoryprofiler_summary) {
-      var div = document.createElement("div");
+      div = document.createElement("div");
       div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+this.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+this.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
-      document.body.appendChild(div);
-      this.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
-      this.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
-
-      var self = this;
+    }
+    var self = this;
+    function populateHtmlBody() {
+      if (div) document.body.appendChild(div);
+      self.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
+      self.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
 
       document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=parseInt(this.value);});
       document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e){self.trackedCallstackMinAllocCount=parseInt(this.value);});
       document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
-    }
-  
-    this.canvas = document.getElementById('memoryprofiler_canvas');
-    this.canvas.width = document.documentElement.clientWidth - 32;
-    this.drawContext = this.canvas.getContext('2d');
+      self.canvas = document.getElementById('memoryprofiler_canvas');
+      self.canvas.width = document.documentElement.clientWidth - 32;
+      self.drawContext = self.canvas.getContext('2d');
 
-    this.updateUi();
-    setInterval(function() { emscriptenMemoryProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
+      self.updateUi();
+      setInterval(function() { emscriptenMemoryProfiler.updateUi() }, self.uiUpdateIntervalMsecs);
+
+    };
+    // User might initialize memoryprofiler in the <head> of a page, when document.body does not yet exist. In that case, delay initialization
+    // of the memoryprofiler UI until page has loaded
+    if (document.body) populateHtmlBody();
+    else setTimeout(populateHtmlBody, 1000);
   },
 
   // Given a pointer 'bytes', compute the linear 1D position on the graph as pixels, rounding down for start address of a block.
@@ -386,4 +392,4 @@ var emscriptenMemoryProfiler = {
 // Backwards compatibility with previously compiled code. Don't call this anymore!
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined') emscriptenMemoryProfiler.initialize();
+if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && typeof process === 'undefined') emscriptenMemoryProfiler.initialize();

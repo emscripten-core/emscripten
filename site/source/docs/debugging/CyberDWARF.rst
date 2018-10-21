@@ -36,10 +36,10 @@ This small example will show how to use CyberDWARF to visualize a simple struct.
     TinyStruct example;
     example.chars = "Hello World";
     example.len = strlen(example.chars);
-    
+
     printf("%p\n", &example);
-    EM_ASM({ debugger });  
-    
+    EM_ASM({ debugger });
+
     return 0;
   }
 
@@ -79,12 +79,12 @@ API
 
 .. js:function:: Module['cyberdwarf'].initialize_debugger
 
-	Called to load the CyberDWARF file for the script.
-	
+  Called to load the CyberDWARF file for the script.
+
 .. js:function:: Module['cyberdwarf'].set_current_function(name)
 
-	Sets the function to lookup variable type by ``name``. Supports either C/mangled name or minified name from symbol file.
-  
+  Sets the function to lookup variable type by ``name``. Supports either C/mangled name or minified name from symbol file.
+
 .. js:function:: Module['cyberdwarf'].decode_var_by_var_name(address, name, depth)
 
   Looks up the type given by variable ``name`` in the current function, then dumps a JSON formatted representation of that type at ``address`` up to ``depth`` *(defaults to 1)*

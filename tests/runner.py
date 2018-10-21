@@ -136,7 +136,13 @@ def env_modify(updates):
   # on the mock library is probably not worth the benefit.
   old_env = os.environ.copy()
   print("env_modify: " + str(updates))
+  # Seting a value to None means clear the environment variable
+  clears = [key for key, value in updates.items() if value is None]
+  updates = {key: value for key, value in updates.items() if value is not None}
   os.environ.update(updates)
+  for key in clears:
+    if key in os.environ:
+      del os.environ[key]
   try:
     yield
   finally:
