@@ -84,7 +84,7 @@ int main() {
 
   SDL_Init(SDL_INIT_VIDEO);
 
-  screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE); //set with the same size with canvas. this used to break full screen mode
+  screen = SDL_SetVideoMode(w, h, 32, SDL_HWSURFACE); //set with the same size with canvas. this used to break full screen
 
   printf("You should see a yellow canvas.\n");
   printf("Click on the canvas to enter full screen, and then click on the canvas again to finish the test.\n");
