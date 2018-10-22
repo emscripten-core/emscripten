@@ -37,6 +37,9 @@ class interactive(BrowserCore):
   def test_sdl_wm_togglefullscreen(self):
     self.btest('sdl_wm_togglefullscreen.c', expected='1')
 
+  def test_sdl_fullscreen_samecanvassize(self):
+    self.btest('sdl_fullscreen_samecanvassize.c', expected='1')
+
   def test_sdl2_togglefullscreen(self):
     self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
 
