@@ -724,6 +724,16 @@ var LibraryGL = {
         GL.initExtensions(context);
       }
 
+#if FULL_ES2
+      context.maxVertexAttribs = context.GLctx.getParameter(context.GLctx.MAX_VERTEX_ATTRIBS);
+      context.clientBuffers = [];
+      for (var i = 0; i < context.maxVertexAttribs; i++) {
+        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
+      }
+
+      GL.generateTempBuffers(false, context);
+#endif
+
 #if OFFSCREEN_FRAMEBUFFER
       if (webGLContextAttributes['renderViaOffscreenBackBuffer']) GL.createOffscreenFramebuffer(context);
 #else
@@ -766,16 +776,6 @@ var LibraryGL = {
       context.initExtensionsDone = true;
 
       var GLctx = context.GLctx;
-
-      context.maxVertexAttribs = GLctx.getParameter(GLctx.MAX_VERTEX_ATTRIBS);
-#if FULL_ES2
-      context.clientBuffers = [];
-      for (var i = 0; i < context.maxVertexAttribs; i++) {
-        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
-      }
-
-      GL.generateTempBuffers(false, context);
-#endif
 
       // Detect the presence of a few extensions manually, this GL interop layer itself will need to know if they exist.
 #if LEGACY_GL_EMULATION
