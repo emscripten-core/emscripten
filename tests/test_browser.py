@@ -816,22 +816,14 @@ window.close = function() {
           open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
             function keydown(c) {
              %s
-              //out('push keydown');
-              var event = document.createEvent("KeyboardEvent");
-              event.initKeyEvent("keydown", true, true, window,
-                                 0, 0, 0, 0,
-                                 c, c);
+              var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
               document.dispatchEvent(event);
              %s
             }
 
             function keyup(c) {
              %s
-              //out('push keyup');
-              var event = document.createEvent("KeyboardEvent");
-              event.initKeyEvent("keyup", true, true, window,
-                                 0, 0, 0, 0,
-                                 c, c);
+              var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c });
               document.dispatchEvent(event);
              %s
             }
