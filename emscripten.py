@@ -2115,7 +2115,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   send_items = (basic_funcs + invoke_funcs + jscall_funcs + global_funcs +
                 basic_vars + global_vars)
 
-  def fixImportName(g):
+  def fix_import_name(g):
     if g.startswith('Math_'):
       return g.split('_')[1]
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
@@ -2128,7 +2128,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
 
   send_items_map = OrderedDict()
   for name in send_items:
-    internal_name = fixImportName(name)
+    internal_name = fix_import_name(name)
     if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
