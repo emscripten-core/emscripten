@@ -362,7 +362,7 @@ def create_module_asmjs(function_table_sigs, metadata,
                         funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                         asm_global_funcs, pre_tables, final_function_tables, exports):
   receiving += create_named_globals(metadata)
-  runtime_funcs = create_runtime_funcs(exports)
+  runtime_funcs = create_runtime_funcs_asmjs(exports)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
   asm_temp_vars = create_asm_temp_vars()
@@ -1485,7 +1485,7 @@ for (var named in NAMED_GLOBALS) {
   return named_globals
 
 
-def create_runtime_funcs(exports):
+def create_runtime_funcs_asmjs(exports):
   if shared.Settings.ONLY_MY_CODE:
     return []
 
@@ -2080,7 +2080,7 @@ def create_em_js(forwarded_json, metadata):
 
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  basic_funcs = ['assert', 'enlargeMemory', 'getTotalMemory']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.SAFE_HEAP:
@@ -2094,17 +2094,33 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
     global_vars = [] # linkable code accesses globals through function calls
 
   implemented_functions = set(metadata['implementedFunctions'])
-  global_funcs = list(set([key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2]).difference(set(global_vars)).difference(implemented_functions))
+  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
+  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
 
   jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
 
   send_items = (basic_funcs + invoke_funcs + jscall_funcs + global_funcs +
                 basic_vars + global_vars)
 
-  def math_fix(g):
-    return g if not g.startswith('Math_') else g.split('_')[1]
+  def fix_import_name(g):
+    if g.startswith('Math_'):
+      return g.split('_')[1]
+    # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
+    # symbols.  Emscripten currently expects symbols to start with '_' so we
+    # artificially add them to the output of emscripten-wasm-finalize and them
+    # strip them again here.
+    if g.startswith('_'):
+      return g[1:]
+    return g
 
-  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in send_items]) + ' }'
+  send_items_map = OrderedDict()
+  for name in send_items:
+    internal_name = fix_import_name(name)
+    if internal_name in send_items_map:
+      exit_with_error('duplicate symbol in exports to wasm: %s', name)
+    send_items_map[internal_name] = name
+
+  return '{ ' + ', '.join('"' + k + '": ' + v for k, v in send_items_map.items()) + ' }'
 
 
 def create_receiving_wasm(exported_implemented_functions):
@@ -2132,18 +2148,16 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
-  the_global = '{}'
-
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
   else:
     shared_array_buffer = ''
 
   module = ['''
-Module%s = %s;
+Module%s = {};
 %s
 Module%s = %s;
-''' % (access_quote('asmGlobalArg'), the_global, shared_array_buffer, access_quote('asmLibraryArg'), sending) + '''
+''' % (access_quote('asmGlobalArg'), shared_array_buffer, access_quote('asmLibraryArg'), sending) + '''
 var asm = Module['asm'](Module%s, Module%s, buffer);
 %s;
 ''' % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg'), receiving)]

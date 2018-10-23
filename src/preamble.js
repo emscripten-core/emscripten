@@ -2115,20 +2115,6 @@ function integrateWasmJS() {
     updateGlobalBufferViews();
   }
 
-  function fixImports(imports) {
-#if WASM_BACKEND
-    var ret = {};
-    for (var i in imports) {
-      var fixed = i;
-      if (fixed[0] == '_') fixed = fixed.substr(1);
-      ret[fixed] = imports[i];
-    }
-    return ret;
-#else
-    return imports;
-#endif // WASM_BACKEND
-  }
-
   function getBinary() {
     try {
       if (Module['wasmBinary']) {
@@ -2447,11 +2433,6 @@ function integrateWasmJS() {
   // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
-#if BINARYEN_METHOD != 'native-wasm'
-    global = fixImports(global);
-#endif
-    env = fixImports(env);
-
     // import table
     if (!env['table']) {
       var TABLE_SIZE = Module['wasmTableSize'];
