@@ -3004,7 +3004,8 @@ myreade(){
                  '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
                  '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
                  '-s', 'BINARYEN_ASYNC_COMPILATION=0',
-                 '-s', 'MAIN_MODULE=1'])
+                 '-s', 'MAIN_MODULE=1',
+                 '-s', 'EXPORT_ALL=1'])
     # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
     shutil.copyfile('proxyfs_test.js', 'proxyfs_test1.js')
@@ -6266,12 +6267,14 @@ int main(int argc, char** argv) {
       full = test()
       # printf is not used in main, but libc was linked in, so it's there
       printf = test(library_args=['-DUSE_PRINTF'])
-      # dce in main, and side happens to be ok since it uses puts as well
-      dce = test(main_args=['-s', 'MAIN_MODULE=2'])
+      # dce in main, and it fails since puts is not exported
+      dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'))
+      # with exporting, it works
+      dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
       # printf is not used in main, and we dce, so we failz
       dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'))
       # exporting printf in main keeps it alive for the library
-      dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf"]'], library_args=['-DUSE_PRINTF'])
+      dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
 
       assert percent_diff(full[0], printf[0]) < 4
       assert percent_diff(dce[0], dce_fail[0]) < 4
