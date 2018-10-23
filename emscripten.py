@@ -444,6 +444,8 @@ def create_backend_args(infile, temp_js):
     args += ['-emscripten-no-aliasing-function-pointers']
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
     args += ['-emscripten-emulated-function-pointers']
+  if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+    args += ['-emscripten-emulate-function-pointer-casts']
   if shared.Settings.RELOCATABLE:
     args += ['-emscripten-relocatable']
     args += ['-emscripten-global-base=0']
