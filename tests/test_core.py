@@ -4948,7 +4948,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
-  @unittest.skipIf(os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
+  @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
     self.emcc_args += ['-s', 'NODERAWFS=1']
     test_path = path_from_root('tests', 'unistd', 'truncate')
