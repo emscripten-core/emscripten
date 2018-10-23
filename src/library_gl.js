@@ -929,7 +929,7 @@ var LibraryGL = {
         var glVersion = GLctx.getParameter(GLctx.VERSION);
         // return GLES version string corresponding to the version of the WebGL context
 #if USE_WEBGL2
-        if (GLctx.canvas.GLctxObject.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
+        if (GL.currentContext.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
         else
 #endif
         {
@@ -1007,7 +1007,7 @@ var LibraryGL = {
         break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
-        if (GLctx.canvas.GLctxObject.version < 2) {
+        if (GL.currentContext.version < 2) {
           GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
           return;
         }
@@ -1016,7 +1016,7 @@ var LibraryGL = {
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
-        if (GLctx.canvas.GLctxObject.version < 2) {
+        if (GL.currentContext.version < 2) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
           return;
         }
@@ -1122,7 +1122,7 @@ var LibraryGL = {
 
 #if USE_WEBGL2
   glGetStringi: function(name, index) {
-    if (GLctx.canvas.GLctxObject.version < 2) {
+    if (GL.currentContext.version < 2) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
@@ -4036,7 +4036,7 @@ var LibraryGL = {
     // defaultFbo may not be present if 'renderViaOffscreenBackBuffer' was not enabled during context creation time,
     // i.e. setting -s OFFSCREEN_FRAMEBUFFER=1 at compilation time does not yet mandate that offscreen back buffer
     // is being used, but that is ultimately decided at context creation time.
-    GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : GLctx.canvas.GLctxObject.defaultFbo);
+    GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : GL.currentContext.defaultFbo);
 #else
     GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
 #endif

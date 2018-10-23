@@ -1477,11 +1477,9 @@ var LibrarySDL = {
       });
     }
 
-    if (width !== canvas.width || height !== canvas.height) {
-      SDL.settingVideoMode = true; // SetVideoMode itself should not trigger resize events
-      Browser.setCanvasSize(width, height);
-      SDL.settingVideoMode = false;
-    }
+    SDL.settingVideoMode = true; // SetVideoMode itself should not trigger resize events
+    Browser.setCanvasSize(width, height);
+    SDL.settingVideoMode = false;
 
     // Free the old surface first if there is one
     if (SDL.screen) {

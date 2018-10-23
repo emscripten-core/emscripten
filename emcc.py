@@ -567,7 +567,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.STRICT:
         cmd += ['-DEMSCRIPTEN']
     if use_js:
-      cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=1'] # configure tests should fail when an undefined symbol exists
       cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
       cmd += ['-s', 'NODERAWFS=1'] # use node.js raw filesystem access, to behave just like a native executable
       # Disable wasm in configuration checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
@@ -953,7 +952,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
 
       if shared.Settings.STRICT:
-        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 1
         shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
 
       error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
@@ -1164,8 +1162,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.EMULATED_FUNCTION_POINTERS == 0:
           shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
         shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
-        if not shared.Settings.SIDE_MODULE:
-          shared.Settings.EXPORT_ALL = 1
+        shared.Settings.EXPORT_ALL = 1
 
       if shared.Settings.EMTERPRETIFY:
         shared.Settings.FINALIZE_ASM_JS = 0
@@ -2687,8 +2684,12 @@ var %(EXPORT_NAME)s = (function() {
     }
   else:
     # Create the MODULARIZE_INSTANCE instance
+    # Note that we notice the global Module object, just like in normal
+    # non-MODULARIZE mode (while MODULARIZE has the user create the instances,
+    # and the user can decide whether to use Module there or something
+    # else etc.).
     src = '''
-var %(EXPORT_NAME)s = (%(src)s)();
+var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
       'src': src

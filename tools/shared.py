@@ -175,11 +175,10 @@ def check_call(cmd, *args, **kw):
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().split('\n')
-  config_file = config_file[1:] # remove "this file will be copied..."
+  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().splitlines()
+  config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
-  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -207,13 +206,12 @@ It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
   NODE_JS         = %s
-  EMSCRIPTEN_ROOT = %s
 
 Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
+''' % (path, abspath, llvm_root, node), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option or
@@ -243,9 +241,9 @@ except:
 
 if EM_CONFIG and not os.path.isfile(EM_CONFIG):
   if EM_CONFIG.startswith('-'):
-    raise Exception('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config EMSCRIPTEN_ROOT=/path/;LLVM_ROOT=/path;...')
+    exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
   if '=' not in EM_CONFIG:
-    raise Exception('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+    exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
   else:
     EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
 
@@ -1920,11 +1918,10 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
+    for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+      cmd += ['--export', export[1:]] # Strip the leading underscore
     if Settings.EXPORT_ALL:
-      cmd += ['--no-gc-sections', '--export-all']
-    else:
-      for export in expand_response(Settings.EXPORTED_FUNCTIONS):
-        cmd += ['--export', export[1:]] # Strip the leading underscore
+      cmd += ['--export-all']
 
     logging.debug('emcc: lld-linking: %s to %s', args, target)
     check_call(cmd)
@@ -2448,6 +2445,7 @@ class Building(object):
 
       # Something like this (adjust memory as needed):
       #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      outfile = filename + '.cc.js'
       args = [JAVA,
               '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
               '-jar', CLOSURE_COMPILER,
@@ -2455,7 +2453,7 @@ class Building(object):
               '--language_in', 'ECMASCRIPT5',
               '--externs', CLOSURE_EXTERNS,
               # '--variable_map_output_file', filename + '.vars',
-              '--js', filename, '--js_output_file', filename + '.cc.js']
+              '--js', filename, '--js_output_file', outfile]
       for extern in NODE_EXTERNS:
         args.append('--externs')
         args.append(extern)
@@ -2469,11 +2467,12 @@ class Building(object):
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
       logging.debug('closure compiler: ' + ' '.join(args))
-      process = run_process(args, stdout=PIPE, stderr=STDOUT, check=False)
-      if process.returncode != 0 or not os.path.exists(filename + '.cc.js'):
-        raise Exception('closure compiler error: ' + process.stdout + ' (rc: %d)' % process.returncode)
+      proc = run_process(args, stderr=PIPE, check=False)
+      if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        exit_with_error('closure compiler failed (rc: %d)', proc.returncode)
 
-      return filename + '.cc.js'
+      return outfile
 
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them

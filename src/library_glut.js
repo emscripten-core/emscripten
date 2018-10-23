@@ -427,6 +427,14 @@ var LibraryGLUT = {
       case 700: /* GLUT_ELAPSED_TIME */
         var now = Date.now();
         return now - GLUT.initTime;
+      case 0x0069: /* GLUT_WINDOW_STENCIL_SIZE */
+        return Module.ctx.getContextAttributes().stencil ? 8 : 0;
+      case 0x006A: /* GLUT_WINDOW_DEPTH_SIZE */
+        return Module.ctx.getContextAttributes().depth ? 8 : 0;
+      case 0x006E: /* GLUT_WINDOW_ALPHA_SIZE */
+        return Module.ctx.getContextAttributes().alpha ? 8 : 0;
+      case 0x0078: /* GLUT_WINDOW_NUM_SAMPLES */
+        return Module.ctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
         throw "glutGet(" + type + ") not implemented yet";
