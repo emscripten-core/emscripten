@@ -2118,10 +2118,10 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   def fixImportName(g):
     if g.startswith('Math_'):
       return g.split('_')[1]
-    # Unlike wasm backend doesn't use the '_' prefix for native symbols.
-    # Emscripten currnetly expects symbols to start with '_' so artificially
-    # add them to the output of emscripten-wasm-finalize and them strip them
-    # again here.
+    # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
+    # symbols.  Emscripten currently expects symbols to start with '_' so we
+    # artificially add them to the output of emscripten-wasm-finalize and them
+    # strip them again here.
     if g.startswith('_'):
       return g[1:]
     return g
