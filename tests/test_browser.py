@@ -850,18 +850,12 @@ window.close = function() {
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
-  var event = document.createEvent("KeyboardEvent");
-  event.initKeyEvent("keydown", true, true, window,
-                     0, 0, 0, 0,
-                     c, c);
+  var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
   document.dispatchEvent(event);
 }
 
 function keyup(c) {
-  var event = document.createEvent("KeyboardEvent");
-  event.initKeyEvent("keyup", true, true, window,
-                     0, 0, 0, 0,
-                     c, c);
+  var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c });
   document.dispatchEvent(event);
 }
 
@@ -885,26 +879,17 @@ keydown(100);keyup(100); // trigger the end
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
-  var event = document.createEvent("KeyboardEvent");
-  event.initKeyEvent("keydown", true, true, window,
-                     0, 0, 0, 0,
-                     c, c);
+  var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
   return document.dispatchEvent(event);
 }
 
 function keypress(c) {
-  var event = document.createEvent("KeyboardEvent");
-  event.initKeyEvent("keypress", true, true, window,
-                     0, 0, 0, 0,
-                     c, c);
+  var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c });
   return document.dispatchEvent(event);
 }
 
 function keyup(c) {
-  var event = document.createEvent("KeyboardEvent");
-  event.initKeyEvent("keyup", true, true, window,
-                     0, 0, 0, 0,
-                     c, c);
+  var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c });
   return document.dispatchEvent(event);
 }
 
@@ -946,9 +931,7 @@ keydown(100);keyup(100); // trigger the end
       }
 
       function simulateKeyEvent(charCode) {
-        var event = document.createEvent("KeyboardEvent");
-        event.initKeyEvent("keypress", true, true, window,
-                           0, 0, 0, 0, 0, charCode);
+        var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c });
         document.body.dispatchEvent(event);
       }
     ''')
@@ -1418,10 +1401,7 @@ keydown(100);keyup(100); // trigger the end
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function keydown(c) {
-        var event = document.createEvent("KeyboardEvent");
-        event.initKeyEvent("keydown", true, true, window,
-                           0, 0, 0, 0,
-                           c, c);
+        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
         document.dispatchEvent(event);
       }
     ''')
@@ -2736,26 +2716,18 @@ Module['onRuntimeInitialized'] = function() {
         }
 
         function keydown(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keydown", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
+          var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
           var prevented = !document.dispatchEvent(event);
 
           //send keypress if not prevented
           if (!prevented) {
-            event = document.createEvent("KeyboardEvent");
-            event.initKeyEvent("keypress", true, true, window,
-                               0, 0, 0, 0, 0, c);
+            var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c });
             document.dispatchEvent(event);
           }
         }
 
         function keyup(c) {
-          var event = document.createEvent("KeyboardEvent");
-          event.initKeyEvent("keyup", true, true, window,
-                             0, 0, 0, 0,
-                             c, c);
+          var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c });
           document.dispatchEvent(event);
         }
       ''')
@@ -2775,9 +2747,7 @@ Module['onRuntimeInitialized'] = function() {
       }
 
       function simulateKeyEvent(charCode) {
-        var event = document.createEvent("KeyboardEvent");
-        event.initKeyEvent("keypress", true, true, window,
-                           0, 0, 0, 0, 0, charCode);
+        var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c });
         document.body.dispatchEvent(event);
       }
     ''')
@@ -2974,10 +2944,7 @@ window.close = function() {
     # key events should be detected using SDL_PumpEvents
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function keydown(c) {
-        var event = document.createEvent("KeyboardEvent");
-        event.initKeyEvent("keydown", true, true, window,
-                           0, 0, 0, 0,
-                           c, c);
+        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c });
         document.dispatchEvent(event);
       }
     ''')
