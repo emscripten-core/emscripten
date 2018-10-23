@@ -249,9 +249,10 @@ jobs:
             export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             export EMTEST_LACKS_GRAPHICS_HARDWARE=1
             export EMCC_CORES=4
-            # TODO: investigate the skips here
-            ./emscripten/tests/runner.py browser skip:browser.test_aniso skip:browser.test_webgl_context_params
+            ./emscripten/tests/runner.py browser skip:browser.test_aniso skip:browser.test_webgl_context_params skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_only_in_pthread
             # Skip browser.test_aniso - see #7117
+            # Skip browser.test_webgl_context_params - see #7373
+            # Skip browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread browser.test_webgl_offscreen_canvas_in_pthread browser.test_webgl_offscreen_canvas_only_in_pthread - see #7374
   test-ab:
     <<: *test-defaults
     environment:
