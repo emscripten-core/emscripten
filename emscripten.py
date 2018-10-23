@@ -2127,10 +2127,9 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
     return g
 
   send_items_map = OrderedDict()
-  seen = set()
   for name in send_items:
     internal_name = fixImportName(name)
-    if internal_name in seen:
+    if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
 
