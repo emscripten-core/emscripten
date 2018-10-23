@@ -15,6 +15,12 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+
+v1.38.14: 10/22/2018
+--------------------
+
+v1.38.13: 10/10/2018
+--------------------
  - Support `-s NO_X=1` as an alias for `-s X=0` and vice versa, which
    simplifies current settings with `NO_`-prefixed names. See #7151.
  - Various `EMULATED_FUNCTION_POINTER` improvements. See #7108, #7128.
