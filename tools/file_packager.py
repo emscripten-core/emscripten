@@ -604,8 +604,11 @@ if has_preloaded:
         };
       };
 
-      // Gives us room for 100 char key names
-      var CHUNK_SIZE = 133169152 - 100;
+      // This is needed as chromium has a limit on per-entry files in IndexedDB
+      // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
+      // https://cs.chromium.org/chromium/src/out/Debug/gen/third_party/blink/public/mojom/indexeddb/indexeddb.mojom.h?type=cs&sq=package:chromium&g=0&l=60
+      // We set the chunk size to 64MB to stay well-below the limit
+      var CHUNK_SIZE = 64 * 1024 * 1024;
 
       function cacheRemotePackage(
         db,
@@ -615,20 +618,18 @@ if has_preloaded:
         callback,
         errback
       ) {
-        var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
-        var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
+        var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
+        var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
         var chunkSliceStart = 0;
-        var chunkCount = Math.floor(packageData.byteLength / CHUNK_SIZE) + 1;
+        var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
         var finishedChunks = 0;
         for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-          Module.print('Iter...', chunkId, chunkCount, chunkSliceStart, packageName);
           var putPackageRequest = packages.put(
             packageData.slice(chunkSliceStart, (chunkSliceStart += CHUNK_SIZE)),
             'package/' + packageName + '/' + chunkId
           );
           putPackageRequest.onsuccess = function(event) {
             finishedChunks++;
-            Module.print('SUCCESS FOR:', chunkId, finishedChunks, chunkCount);
             if (finishedChunks == chunkCount) {
               var transaction_metadata = db.transaction(
                 [METADATA_STORE_NAME],
