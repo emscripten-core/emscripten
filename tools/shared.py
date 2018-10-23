@@ -1154,12 +1154,6 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
-def expand_response(data):
-  if type(data) == str and data[0] == '@':
-    return json.loads(open(data[1:]).read())
-  return data
-
-
 def expand_byte_size_suffixes(value):
   """Given a string with arithmetic and/or KB/MB size suffixes, such as
   "1024*1024" or "32MB", computes how many bytes that is and returns it as an
@@ -1897,7 +1891,7 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+    for export in Settings.EXPORTED_FUNCTIONS:
       cmd += ['--export', export[1:]] # Strip the leading underscore
     if Settings.EXPORT_ALL:
       cmd += ['--export-all']
@@ -2269,7 +2263,7 @@ class Building(object):
     if Settings.LINKABLE:
       return [] # do not internalize anything
 
-    exps = expand_response(Settings.EXPORTED_FUNCTIONS)
+    exps = Settings.EXPORTED_FUNCTIONS
     internalize_public_api = '-internalize-public-api-'
     internalize_list = ','.join([exp[1:] for exp in exps])
 

@@ -361,25 +361,17 @@ def apply_settings(changes):
                'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
-    original_exported_response = False
-
     if value[0] == '@':
-      if key not in DEFERRED_RESPONSE_FILES:
-        if key == 'EXPORTED_FUNCTIONS':
-          original_exported_response = value
-        value = open(value[1:]).read()
-      else:
+      if key in DEFERRED_RESPONSE_FILES:
         value = '"' + value + '"'
+      else:
+        value = open(value[1:]).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
       setattr(shared.Settings, key, parse_value(value))
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
-
-    if key == 'EXPORTED_FUNCTIONS':
-      # used for warnings in emscripten.py
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
 
 
 #
@@ -1009,6 +1001,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
       shared.reconfigure_cache()
+
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
