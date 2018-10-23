@@ -249,8 +249,8 @@ jobs:
             export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
             export EMTEST_LACKS_GRAPHICS_HARDWARE=1
             export EMCC_CORES=4
-            # Just run a subset of the tests for now.  To be expanded.
-            ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso
+            # TODO: investigate the skips here
+            ./emscripten/tests/runner.py browser skip:browser.test_aniso skip:browser.test_webgl_context_params
             # Skip browser.test_aniso - see #7117
   test-ab:
     <<: *test-defaults
