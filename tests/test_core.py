@@ -2422,10 +2422,12 @@ The current type of b is: 9
   def prep_dlfcn_lib(self):
     self.set_setting('MAIN_MODULE', 0)
     self.set_setting('SIDE_MODULE', 1)
+    self.set_setting('EXPORT_ALL', 1)
 
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('EXPORT_ALL', 1)
 
     with open('lib_so_pre.js', 'w') as f:
       f.write('''
@@ -3321,6 +3323,9 @@ ok
 ''')
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+    # shared settings
+    self.set_setting('EXPORT_ALL', 1)
+
     if header:
       open('header.h', 'w').write(header)
 
