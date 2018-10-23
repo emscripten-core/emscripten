@@ -1085,7 +1085,7 @@ var SDL2_IMAGE_FORMATS = [];
 //    legalizer
 var DEBUG_TAGS_SHOWING = [];
 
-// Internal: tracks the list of function signatures that are proxied between threads.
+// Internal: tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
 
 // For internal use only
