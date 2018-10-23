@@ -5845,22 +5845,19 @@ return malloc(size);
       self.skipTest('SM bug 1205121')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
+    self.set_setting('EXPORTED_FUNCTIONS', self.get_setting('EXPORTED_FUNCTIONS') + ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'])
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
 
     # self.set_setting('OUTLINING_LIMIT', 60000)
 
-    src = '''
-       #define SQLITE_DISABLE_LFS
-       #define LONGDOUBLE_TYPE double
-       #define SQLITE_INT64_TYPE long long int
-       #define SQLITE_THREADSAFE 0
-    '''
-    src += open(path_from_root('tests', 'sqlite', 'sqlite3.c')).read()
-    src += open(path_from_root('tests', 'sqlite', 'benchmark.c')).read()
-    self.do_run(src,
+    self.do_run(r'''
+                      #define SQLITE_DISABLE_LFS
+                      #define LONGDOUBLE_TYPE double
+                      #define SQLITE_INT64_TYPE long long int
+                      #define SQLITE_THREADSAFE 0
+                ''' + open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
                 open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                 includes=[path_from_root('tests', 'sqlite')],
                 force_c=True)
