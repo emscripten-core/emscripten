@@ -1061,31 +1061,37 @@ class BrowserCore(RunnerCore):
         img.src = '%s';
       };
 
-      if (typeof WebGLClient !== 'undefined') {
-        // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
-        var realRAF = window.requestAnimationFrame;
-        window.requestAnimationFrame = function(func) {
-          realRAF(function() {
-            func();
-            realRAF(doReftest);
-          });
-        };
+      // Automatically trigger the reftest?
+      if (!%s) {
+        // Yes, automatically
 
-        // trigger reftest from canvas render too, for workers not doing GL
-        var realWOM = worker.onmessage;
-        worker.onmessage = function(event) {
-          realWOM(event);
-          if (event.data.target === 'canvas' && event.data.op === 'render') {
-            realRAF(doReftest);
-          }
-        };
-      }
-
-      if (%s) {
-        // Manually trigger the reftest
         Module['postRun'] = doReftest;
+
+        if (typeof WebGLClient !== 'undefined') {
+          // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
+          var realRAF = window.requestAnimationFrame;
+          window.requestAnimationFrame = function(func) {
+            realRAF(function() {
+              func();
+              realRAF(doReftest);
+            });
+          };
+
+          // trigger reftest from canvas render too, for workers not doing GL
+          var realWOM = worker.onmessage;
+          worker.onmessage = function(event) {
+            realWOM(event);
+            if (event.data.target === 'canvas' && event.data.op === 'render') {
+              realRAF(doReftest);
+            }
+          };
+        }
+
       } else {
-        // The user will trigger it. Add an event loop iteration to ensure rendering, so users don't need to bother.
+        // Manually trigger the reftest.
+
+        // The user will call it.
+        // Add an event loop iteration to ensure rendering, so users don't need to bother.
         var realDoReftest = doReftest;
         doReftest = function() {
           setTimeout(realDoReftest, 1);
