@@ -49,22 +49,18 @@ def get_configuration():
   return configuration
 
 
-def quoter():
-  def quote(prop):
-    if shared.Settings.USE_CLOSURE_COMPILER == 2:
-      return ''.join(["'" + p + "'" for p in prop.split('.')])
-    else:
-      return prop
-  return quote
+def quote(prop):
+  if shared.Settings.USE_CLOSURE_COMPILER == 2:
+    return ''.join(["'" + p + "'" for p in prop.split('.')])
+  else:
+    return prop
 
 
-def access_quoter():
-  def access_quote(prop):
-    if shared.Settings.USE_CLOSURE_COMPILER == 2:
-      return ''.join(["['" + p + "']" for p in prop.split('.')])
-    else:
-      return '.' + prop
-  return access_quote
+def access_quote(prop):
+  if shared.Settings.USE_CLOSURE_COMPILER == 2:
+    return ''.join(["['" + p + "']" for p in prop.split('.')])
+  else:
+    return '.' + prop
 
 
 def emscript(infile, outfile, libraries, compiler_engine, temp_files,
@@ -1064,7 +1060,6 @@ def signature_sort_key(sig):
 
 
 def create_asm_global_funcs(bg_funcs, metadata):
-  access_quote = access_quoter()
   maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
   if provide_fround():
     maths += ['Math.fround']
@@ -1078,7 +1073,6 @@ def create_asm_global_funcs(bg_funcs, metadata):
 
 
 def create_asm_global_vars(bg_vars):
-  access_quote = access_quoter()
   asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # wasm side modules internally define their stack, these are set at module startup time
@@ -1366,7 +1360,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
 
 def create_exports(exported_implemented_functions, in_table, function_table_data, metadata):
-  quote = quoter()
   asm_runtime_funcs = create_asm_runtime_funcs()
   all_exported = exported_implemented_functions + asm_runtime_funcs + function_tables(function_table_data)
   # In asm.js + emulated function pointers, export all the table because we use
@@ -1667,8 +1660,6 @@ function getTempRet0() {
 
 
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
-  access_quote = access_quoter()
-
   shared_array_buffer = ''
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
@@ -1698,8 +1689,6 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
 
 
 def create_asm_temp_vars():
-  access_quote = access_quoter()
-
   rtn = '''
   var __THREW__ = 0;
   var threwValue = 0;
@@ -1748,7 +1737,6 @@ function _emscripten_replace_memory(newBuffer) {
 
 
 def create_asm_end(exports):
-  access_quote = access_quoter()
   return '''
 
   return %s;
@@ -1801,7 +1789,6 @@ def create_memory_views():
     Uint8View   Uint16View  Uint32View
     Float32View Float64View
   """
-  access_quote = access_quoter()
   ret = '\n'
   grow_memory = shared.Settings.ALLOW_MEMORY_GROWTH
   for info in HEAP_TYPE_INFOS:
@@ -2142,7 +2129,6 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 
 def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
                        exported_implemented_functions):
-  access_quote = access_quoter()
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
