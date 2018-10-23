@@ -15,10 +15,13 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
- - Breaking change: Do not automatically set EXPORT_ALL for MAIN_MODULES. This
-   means that if your side modules want to call something from the main module,
-   the main module must either export it (normally, on EXPORTED_FUNCTIONS), or
-   you can manually enable EXPORT_ALL yourself. See #7312.
+ - Breaking change: Do not automatically set EXPORT_ALL for MAIN_MODULES or
+   SIDE_MODULES. This means that you must explicitly export things that will
+   be called from outside (normally, on EXPORTED_FUNCTIONS), or
+   you can manually enable EXPORT_ALL yourself (which returns to the exact
+   same behavior as before). This change brings us in line with more standard
+   dynamic linking, and will match what the LLVM wasm backend will have.
+   See #7312.
 
 v1.38.14: 10/22/2018
 --------------------
