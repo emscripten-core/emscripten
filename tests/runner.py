@@ -998,7 +998,9 @@ class BrowserCore(RunnerCore):
   def with_report_result(self, code):
     return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.test_port, path_from_root('tests', 'report_result.h')) + code
 
-  def reftest(self, expected):
+  # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
+  #                   Instead, call doReftest() in JS yourself at the right time.
+  def reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
@@ -1058,7 +1060,6 @@ class BrowserCore(RunnerCore):
         }
         img.src = '%s';
       };
-      Module['postRun'] = doReftest;
 
       if (typeof WebGLClient !== 'undefined') {
         // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
@@ -1080,12 +1081,23 @@ class BrowserCore(RunnerCore):
         };
       }
 
-''' % (self.test_port, basename))
+      if (%s) {
+        // Manually trigger the reftest
+        Module['postRun'] = doReftest;
+      } else {
+        // The user will trigger it. Add an event loop iteration to ensure rendering, so users don't need to bother.
+        var realDoReftest = doReftest;
+        doReftest = function() {
+          setTimeout(realDoReftest, 1);
+        };
+      }
+''' % (self.test_port, basename, int(manually_trigger)))
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
-            url_suffix='', timeout=None, also_asmjs=False):
+            url_suffix='', timeout=None, also_asmjs=False,
+            manually_trigger_reftest=False):
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -1108,7 +1120,7 @@ class BrowserCore(RunnerCore):
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.reftest(path_from_root('tests', reference))
+      self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
