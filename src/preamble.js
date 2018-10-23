@@ -1199,42 +1199,34 @@ updateGlobalBufferViews();
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
-// Use a provided buffer, if there is one, or else allocate a new one
-if (Module['buffer']) {
-  buffer = Module['buffer'];
-#if ASSERTIONS
-  assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
-#endif
-} else {
-  // Use a WebAssembly memory where available
+// Use a WebAssembly memory where available
 #if WASM
-  if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
+if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
-    assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+  assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 #endif // ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
 #if WASM_MEM_MAX != -1
 #if ASSERTIONS
-    assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
+  assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // BINARYEN_MEM_MAX
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // ALLOW_MEMORY_GROWTH
-    buffer = Module['wasmMemory'].buffer;
-  } else
+  buffer = Module['wasmMemory'].buffer;
+} else
 #endif // WASM
-  {
-    buffer = new ArrayBuffer(TOTAL_MEMORY);
-  }
-#if ASSERTIONS
-  assert(buffer.byteLength === TOTAL_MEMORY);
-#endif // ASSERTIONS
-  Module['buffer'] = buffer;
+{
+  buffer = new ArrayBuffer(TOTAL_MEMORY);
 }
+#if ASSERTIONS
+assert(buffer.byteLength === TOTAL_MEMORY);
+#endif // ASSERTIONS
+Module['buffer'] = buffer;
 updateGlobalBufferViews();
 #else // SPLIT_MEMORY
 // make sure total memory is a multiple of the split memory size
