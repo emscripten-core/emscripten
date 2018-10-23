@@ -20,6 +20,9 @@ Current Trunk
    the main module must either export it (normally, on EXPORTED_FUNCTIONS), or
    you can manually enable EXPORT_ALL yourself. See #7312.
 
+v1.38.14: 10/22/2018
+--------------------
+
 v1.38.13: 10/10/2018
 --------------------
  - Support `-s NO_X=1` as an alias for `-s X=0` and vice versa, which
