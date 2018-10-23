@@ -563,6 +563,9 @@ var LibraryPThread = {
           }
           name = Module['canvas'].id;
         }
+#if ASSERTIONS
+        assert(typeof GL === 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with -s \'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["$GL"]\')');
+#endif
         if (GL.offscreenCanvases[name]) {
           offscreenCanvas = GL.offscreenCanvases[name];
           GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.

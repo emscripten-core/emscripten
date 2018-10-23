@@ -67,16 +67,6 @@ static void inline __pthread_mutex_locked(pthread_mutex_t *mutex)
 	if (_pthread_getcanceltype() == PTHREAD_CANCEL_ASYNCHRONOUS) __pthread_testcancel();
 }
 
-double _pthread_msecs_until(const struct timespec *restrict at)
-{
-	struct timeval t;
-	gettimeofday(&t, NULL);
-	double cur_t = t.tv_sec * 1e3 + t.tv_usec * 1e-3;
-	double at_t = at->tv_sec * 1e3 + at->tv_nsec * 1e-6;
-	double msecs = at_t - cur_t;
-	return msecs;
-}
-
 int sched_get_priority_max(int policy)
 {
 	// Web workers do not actually support prioritizing threads,
