@@ -55,8 +55,8 @@ EM_JS(int, user_comma, (void), {
 });
 
 EM_JS(const char*, return_str, (void), {
-  var jsString = 'hello from js';
-  var lengthBytes = jsString.length+1;
+  var jsString = 'こんにちは';
+  var lengthBytes = lengthBytesUTF8(jsString)+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
   stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
   return stringOnWasmHeap;
