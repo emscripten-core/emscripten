@@ -1,8 +1,3 @@
-// Copyright 2018 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
 #include <emscripten.h>
 #include <stdio.h>
 
@@ -54,9 +49,17 @@ EM_JS(int, user_comma, (void), {
   return x[y][1];
 });
 
+EM_JS(const char*, return_utf8_str, (void), {
+    var jsString = 'こんにちは';
+    var lengthBytes = lengthBytesUTF8(jsString);
+    var stringOnWasmHeap = _malloc(lengthBytes);
+    stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+    return stringOnWasmHeap;
+});
+
 EM_JS(const char*, return_str, (void), {
-  var jsString = 'こんにちは';
-  var lengthBytes = lengthBytesUTF8(jsString)+1;
+  var jsString = 'hello from js';
+  var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
   stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
   return stringOnWasmHeap;
@@ -80,6 +83,7 @@ int main() {
   printf("    user_comma returned: %d\n", user_comma());
 
   printf("    return_str returned: %s\n", return_str());
+  printf("    return_utf8_str returned: %s\n", return_utf8_str());
 
   printf("END\n");
   return 0;
