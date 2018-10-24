@@ -98,6 +98,7 @@ def no_swiftshader(f):
 
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
+requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
 
 
 class browser(BrowserCore):
@@ -1862,7 +1863,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @no_chrome("RELOCATABLE=1 forces synchronous compilation which chrome doesn't support")
+  @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
 
@@ -3112,7 +3113,7 @@ window.close = function() {
   def test_emterpreter_async_iostream(self):
     self.btest('emterpreter_async_iostream.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
 
-  @no_chrome("required synchronous wasm compilation")
+  @requires_sync_compilation
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
       for args, code in [
@@ -3209,7 +3210,7 @@ window.close = function() {
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
-  @no_chrome("required synchronous wasm compilation")
+  @requires_sync_compilation
   def test_dynamic_link(self):
     open('pre.js', 'w').write('''
       Module.dynamicLibraries = ['side.wasm'];
@@ -3268,7 +3269,7 @@ window.close = function() {
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1'])
 
   @requires_graphics_hardware
-  @no_chrome("required synchronous wasm compilation")
+  @requires_sync_compilation
   def test_dynamic_link_glemu(self):
     open('pre.js', 'w').write('''
       Module.dynamicLibraries = ['side.wasm'];
@@ -3683,7 +3684,7 @@ window.close = function() {
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
 
-  @no_chrome("chrome doesn't support synchronous compilation over 4k")
+  @requires_sync_compilation
   def test_binaryen_async(self):
     # notice when we use async compilation
     script = '''
