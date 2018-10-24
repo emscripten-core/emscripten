@@ -280,8 +280,8 @@ class RunnerCore(unittest.TestCase):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      try_delete(self.working_dir)
-      os.makedirs(self.working_dir)
+      if not os.path.exists(self.working_dir):
+        os.makedirs(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
