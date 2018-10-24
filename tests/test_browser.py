@@ -2680,7 +2680,7 @@ Module['onRuntimeInitialized'] = function() {
       run_process([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in'])
       assert os.path.exists('second.js')
 
-      if isinstance(SPIDERMONKEY_ENGINE, list) and len(SPIDERMONKEY_ENGINE[0]) != 0:
+      if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
         self.validate_asmjs(out)
       else:
