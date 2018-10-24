@@ -393,37 +393,34 @@ If manually bisecting:
     run_process([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
+  @no_chrome("idb limit of 128MB, see details below")
   def test_preload_caching(self):
-    open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
+    open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
 
-    def make_main(path):
-      print(path)
-      open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <emscripten.h>
+      extern "C" {
+        extern int checkPreloadResults();
+      }
 
-        extern "C" {
-          extern int checkPreloadResults();
-        }
+      int main(int argc, char** argv) {
+        FILE *f = fopen("%s", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("|%%s|\n", buf);
 
-        int main(int argc, char** argv) {
-          FILE *f = fopen("%s", "r");
-          char buf[100];
-          fread(buf, 1, 20, f);
-          buf[20] = 0;
-          fclose(f);
-          printf("|%%s|\n", buf);
+        int result = 0;
 
-          int result = 0;
+        result += !strcmp("load me right before", buf);
+        result += checkPreloadResults();
 
-          result += !strcmp("load me right before", buf);
-          result += checkPreloadResults();
-
-          REPORT_RESULT(result);
-          return 0;
-        }
-      ''' % path))
+        REPORT_RESULT(result);
+        return 0;
+      }
+    ''' % 'somefile.txt'))
 
     open(os.path.join(self.get_dir(), 'test.js'), 'w').write('''
       mergeInto(LibraryManager.library, {
@@ -440,10 +437,16 @@ If manually bisecting:
       });
     ''')
 
-    make_main('somefile.txt')
-    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--use-preload-cache', '--js-library', os.path.join(self.get_dir(), 'test.js'), '--preload-file', 'somefile.txt', '-o', 'page.html'])
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
-    self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
+    # test caching of various sizes, including sizes higher than 128MB which is
+    # chrome's limit on IndexedDB item sizes, see
+    # https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&q=%22The+serialized+value+is+too+large%22&sq=package:chromium&g=0&l=177
+    # https://cs.chromium.org/chromium/src/out/Debug/gen/third_party/blink/public/mojom/indexeddb/indexeddb.mojom.h?type=cs&sq=package:chromium&g=0&l=60
+    for extra_size in (0, 50 * 1024 * 1024, 100 * 1024 * 1024, 150 * 1024 * 1024):
+      open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''' + ('_' * extra_size))
+      print(os.path.getsize('somefile.txt'))
+      run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--use-preload-cache', '--js-library', os.path.join(self.get_dir(), 'test.js'), '--preload-file', 'somefile.txt', '-o', 'page.html', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?1')
+      self.run_browser('page.html', 'You should see |load me right before|.', '/report_result?2')
 
   def test_preload_caching_indexeddb_name(self):
     open(os.path.join(self.get_dir(), 'somefile.txt'), 'w').write('''load me right before running the code please''')
