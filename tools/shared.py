@@ -1901,6 +1901,7 @@ class Building(object):
         '--export',
         '__data_end',
         '--lto-O%d' % lto_level,
+        '--mllvm', '-disable-lsr', # see binaryen#1054
     ] + args
 
     if Settings.WASM_MEM_MAX != -1:
