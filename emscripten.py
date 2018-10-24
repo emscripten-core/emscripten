@@ -258,7 +258,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   check_all_implemented(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
-  outfile.write(pre)
+  outfile.write(pre.encode("utf8"))
   pre = None
 
   # Move preAsms to their right place
@@ -2072,7 +2072,7 @@ def create_em_js(forwarded_json, metadata):
     else:
       args = args.split(',')
     arg_names = [arg.split()[-1] for arg in args if arg]
-    func = 'function {}({}){}'.format(name, ','.join(arg_names), body)
+    func = 'function {}({}){}'.decode("utf8").format(name, ','.join(arg_names), body)
     em_js_funcs.append(func)
     forwarded_json['Functions']['libraryFunctions'][name] = 1
 
