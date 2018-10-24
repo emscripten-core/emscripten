@@ -23,4 +23,5 @@ no args returning double
   can have commas in user code: 1,2,3
     user_comma returned: 2
     return_str returned: hello from js
+    return_utf8_str returned: こんにちは
 END
