@@ -8150,8 +8150,7 @@ function emitDCEGraph(ast) {
     if (isAsmLibraryArgAssign(node)) {
       var items = node[3][1];
       items.forEach(function(item) {
-        assert(item[1][0] === 'name' && item[1][1] === item[0], item[0]); // must have x: x form, nothing else
-        imports.push(item[0]); // the value doesn't matter, for now
+        imports.push(item[1][1]); // the name doesn't matter, only the value which is that actual thing we are importing
       });
       foundAsmLibraryArgAssign = true;
       return emptyNode(); // ignore this in the second pass; this does not root
