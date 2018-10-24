@@ -6134,6 +6134,10 @@ return malloc(size);
       'invoke_byval', 'i24_ce_fastcomp',
     ]
 
+    need_no_error_on_undefined_symbols = [
+      'unsanitized_declare'
+    ]
+
     skip_tests = [
       # invalid ir
       'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast',
@@ -6181,6 +6185,9 @@ return malloc(size);
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
+
+      if basename in need_no_error_on_undefined_symbols:
+        self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
       print("Testing case '%s'..." % basename)
       output_file = path_from_root('tests', 'cases', shortname + '.txt')
