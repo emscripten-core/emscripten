@@ -582,10 +582,13 @@ def update_settings_glue(metadata):
 
 
 def compile_settings(compiler_engine, libraries, temp_files):
+  settings = shared.Settings.to_dict()
+  settings.update((key, int(value)) for key, value in settings.items() if isinstance(value, bool))
+
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
-      json.dump(shared.Settings.to_dict(), s, sort_keys=True)
+      json.dump(settings, s, sort_keys=True)
 
     # Call js compiler
     env = os.environ.copy()

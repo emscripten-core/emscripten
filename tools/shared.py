@@ -1178,7 +1178,7 @@ class SettingsManager(object):
       ret = []
       for key, value in self.attrs.items():
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
-          jsoned = json.dumps(value, sort_keys=True)
+          jsoned = json.dumps(int(value) if isinstance(value, bool) else value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
       return ret
 
