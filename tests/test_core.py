@@ -4510,12 +4510,14 @@ def process(filename):
     self.do_run(src, '..')
 
   def test_getdents64_special_cases(self):
+    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
     out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_getcwd_with_non_ascii_name(self):
+    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
