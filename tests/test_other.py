@@ -3316,7 +3316,7 @@ int main() {
         self.assertContained(expected, result.stderr)
 
     # when legacy is needed, we show an error indicating so
-    test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
+    test('build with LEGACY_VM_SUPPORT')
     # wasm is on by default, and does not mix with legacy, so we show an error
     test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
     # legacy + disabling wasm works

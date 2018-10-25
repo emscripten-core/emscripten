@@ -461,6 +461,8 @@ def create_backend_args(infile, temp_js):
     args += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
+  if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
+    args += ['-emscripten-asmjs-work-around-ios-9-right-shift-bug']
   if shared.Settings.WASM:
     args += ['-emscripten-wasm']
     if shared.Building.is_wasm_only():
