@@ -10,7 +10,7 @@ var LibraryIDBStore = {
   // just store large files, with almost no extra code; or you could implement a file b-tree using posix-compliant
   // filesystem on top.
   $IDBStore:
-#include IDBStore.js
+#include "IDBStore.js"
   ,
 
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
