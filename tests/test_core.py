@@ -5497,9 +5497,8 @@ return malloc(size);
 
   @SIMD
   def test_sse1(self):
-    if 'SAFE_HEAP=1' in self.emcc_args and SPIDERMONKEY_ENGINE in JS_ENGINES:
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
-      print('Skipping test_sse1 with SAFE_HEAP=1 on SpiderMonkey, since it fails due to NaN canonicalization.')
+    # SM fails here due to NaN canonicalization.
+    self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     # SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
 
