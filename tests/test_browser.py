@@ -393,7 +393,6 @@ If manually bisecting:
     run_process([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
-  @no_chrome("idb limit of 128MB, see details below")
   def test_preload_caching(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
       #include <stdio.h>
