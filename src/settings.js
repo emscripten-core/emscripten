@@ -381,6 +381,15 @@ var GL_UNSAFE_OPTS = 1;
 // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FULL_ES2 = 0;
 
+// If true, glGetString() for GL_VERSION and GL_SHADING_LANGUAGE_VERSION will
+// return strings OpenGL ES format "Open GL ES ... (WebGL ...)" rather than the
+// WebGL format. If false, the direct WebGL format strings are returned. Set
+// this to true to make GL contexts appear like an OpenGL ES context in these
+// version strings (at the expense of a little bit of added code size), and to
+// false to make GL contexts appear like WebGL contexts and to save some bytes
+// from the output.
+var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
+
 // Enables WebGL2 native functions. This mode will also create a WebGL2
 // context by default if no version is specified.
 var USE_WEBGL2 = 0;

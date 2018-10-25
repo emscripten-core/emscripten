@@ -9,8 +9,8 @@ int __lockfile(FILE *f)
 		return 0;
 	while ((owner = a_cas(&f->lock, 0, tid)))
 		__wait(&f->lock, &f->waiters, owner, 1);
-	return 1;
 #endif
+	return 1;
 }
 
 void __unlockfile(FILE *f)

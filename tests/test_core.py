@@ -4948,7 +4948,7 @@ def process(filename):
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
-  @unittest.skipIf(os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
+  @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
     self.emcc_args += ['-s', 'NODERAWFS=1']
     test_path = path_from_root('tests', 'unistd', 'truncate')
@@ -5845,19 +5845,22 @@ return malloc(size);
       self.skipTest('SM bug 1205121')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    self.set_setting('EXPORTED_FUNCTIONS', self.get_setting('EXPORTED_FUNCTIONS') + ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
 
     # self.set_setting('OUTLINING_LIMIT', 60000)
 
-    self.do_run(r'''
-                      #define SQLITE_DISABLE_LFS
-                      #define LONGDOUBLE_TYPE double
-                      #define SQLITE_INT64_TYPE long long int
-                      #define SQLITE_THREADSAFE 0
-                ''' + open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'benchmark.c'), 'r').read(),
+    src = '''
+       #define SQLITE_DISABLE_LFS
+       #define LONGDOUBLE_TYPE double
+       #define SQLITE_INT64_TYPE long long int
+       #define SQLITE_THREADSAFE 0
+    '''
+    src += open(path_from_root('tests', 'sqlite', 'sqlite3.c')).read()
+    src += open(path_from_root('tests', 'sqlite', 'benchmark.c')).read()
+    self.do_run(src,
                 open(path_from_root('tests', 'sqlite', 'benchmark.txt'), 'r').read(),
                 includes=[path_from_root('tests', 'sqlite')],
                 force_c=True)
