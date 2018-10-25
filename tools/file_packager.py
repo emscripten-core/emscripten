@@ -686,6 +686,7 @@ if has_preloaded:
         for (var chunkId = 0; chunkId < metadata.chunkCount; chunkId++) {
           var getRequest = packages.get('package/' + packageName + '/' + chunkId);
           getRequest.onsuccess = function(event) {
+            // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
             if (metadata.chunkCount == 1) {
               callback(event.target.result);
             } else {
