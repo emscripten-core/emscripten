@@ -778,7 +778,7 @@ class RunnerCore(unittest.TestCase):
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) == list
-    js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
+    js_engines = [engine for engine in js_engines if engine and engine[0] not in [banned[0] for banned in self.banned_js_engines if banned]]
     return js_engines
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
