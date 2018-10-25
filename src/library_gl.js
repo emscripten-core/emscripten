@@ -541,7 +541,9 @@ var LibraryGL = {
         }
         if (!ctx) throw ':(';
       } catch (e) {
+#if GL_DEBUG
         out('Could not create canvas: ' + [errorInfo, e, JSON.stringify(webGLContextAttributes)]);
+#endif
         return 0;
       }
 
@@ -919,12 +921,34 @@ var LibraryGL = {
     if (GL.stringCache[name_]) return GL.stringCache[name_];
     var ret;
     switch(name_) {
+      case 0x1F03 /* GL_EXTENSIONS */:
+        var exts = GLctx.getSupportedExtensions();
+        var gl_exts = [];
+        for (var i = 0; i < exts.length; ++i) {
+          gl_exts.push(exts[i]);
+          gl_exts.push("GL_" + exts[i]);
+        }
+        ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
+        break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
       case 0x9245 /* UNMASKED_VENDOR_WEBGL */:
       case 0x9246 /* UNMASKED_RENDERER_WEBGL */:
-        ret = allocate(intArrayFromString(GLctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
+#if !GL_EMULATE_GLES_VERSION_STRING_FORMAT
+      case 0x1F02 /* GL_VERSION */:
+      case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
+#endif
+        var s = GLctx.getParameter(name_);
+        if (!s) {
+          GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+#if GL_ASSERTIONS
+          err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
+#endif
+        }
+        ret = allocate(intArrayFromString(s), 'i8', ALLOC_NORMAL);
         break;
+
+#if GL_EMULATE_GLES_VERSION_STRING_FORMAT
       case 0x1F02 /* GL_VERSION */:
         var glVersion = GLctx.getParameter(GLctx.VERSION);
         // return GLES version string corresponding to the version of the WebGL context
@@ -937,15 +961,6 @@ var LibraryGL = {
         }
         ret = allocate(intArrayFromString(glVersion), 'i8', ALLOC_NORMAL);
         break;
-      case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(exts[i]);
-          gl_exts.push("GL_" + exts[i]);
-        }
-        ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
-        break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
         // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
@@ -957,6 +972,7 @@ var LibraryGL = {
         }
         ret = allocate(intArrayFromString(glslVersion), 'i8', ALLOC_NORMAL);
         break;
+#endif
       default:
         GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
@@ -1003,7 +1019,7 @@ var LibraryGL = {
         // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be queried for length),
         // so implement it ourselves to allow C++ GLES2 code get the length.
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
-        ret = formats.length;
+        ret = formats ? formats.length : 0;
         break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
@@ -1012,7 +1028,7 @@ var LibraryGL = {
           return;
         }
         var exts = GLctx.getSupportedExtensions();
-        ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
@@ -1081,31 +1097,20 @@ var LibraryGL = {
               }
             }
             return;
-          } else if (result instanceof WebGLBuffer ||
-                     result instanceof WebGLProgram ||
-                     result instanceof WebGLFramebuffer ||
-                     result instanceof WebGLRenderbuffer ||
-#if USE_WEBGL2
-                     result instanceof WebGLQuery ||
-                     result instanceof WebGLSampler ||
-                     result instanceof WebGLSync ||
-                     result instanceof WebGLTransformFeedback ||
-                     result instanceof WebGLVertexArrayObject ||
-#endif
-                     result instanceof WebGLTexture) {
-            ret = result.name | 0;
           } else {
-            GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-            err('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')!');
-#endif
-            return;
+            try {
+              ret = result.name | 0;
+            } catch(e) {
+              GL.recordError(0x0500); // GL_INVALID_ENUM
+              err('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')! (error: ' + e + ')');
+              return;
+            }
           }
           break;
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-          err('GL_INVALID_ENUM in glGetIntegerv: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
+          err('GL_INVALID_ENUM in glGet' + type + 'v: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
 #endif
           return;
       }
