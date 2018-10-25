@@ -1188,7 +1188,7 @@ var LibraryBrowser = {
 
       // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
       // VBO double-buffering and reduce GPU stalls.
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
       GL.newRenderingFrameStarted();
 #endif
 
