@@ -3865,12 +3865,6 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
 
-  # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
-  # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
-  # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
-  def test_preallocated_heap(self):
-    self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'WASM=0', '-s', 'TOTAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
-
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
