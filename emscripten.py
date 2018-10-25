@@ -533,6 +533,17 @@ def update_settings_glue(metadata):
     shared.Settings.JSCALL_START_INDEX = start_index
     shared.Settings.JSCALL_SIG_ORDER = sig2order
 
+  # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in the compiled code have, each signature
+  # will need a proxy function invoker generated for it.
+  def read_proxied_function_signatures(asmConsts):
+    proxied_function_signatures = set()
+    for i in asmConsts.values():
+      _, sigs, proxying_types = i
+      for j in range(len(proxying_types)):
+        if proxying_types[j] == 'sync_on_main_thread_': proxied_function_signatures.add(sigs[j] + '_sync')
+        elif proxying_types[j] == 'async_on_main_thread_': proxied_function_signatures.add(sigs[j] + '_async')
+    return list(proxied_function_signatures)
+  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
 def compile_settings(compiler_engine, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579

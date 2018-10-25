@@ -540,6 +540,14 @@ function JSify(data, functionsOnly) {
       if (USE_PTHREADS) {
         print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
         print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
+        // Generate worker->main thread proxy function invokers for MAIN_THREAD_EM_ASM() signatures.
+        for (var i in PROXIED_FUNCTION_SIGNATURES) {
+          var invokerKey = PROXIED_FUNCTION_SIGNATURES[i];
+          if (!proxiedFunctionInvokers[invokerKey]) {
+            var sig_sync = invokerKey.split('_');
+            proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig_sync[0], sig_sync[1] === 'sync');
+          }
+        }
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
         print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
       }
