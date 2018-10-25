@@ -8,6 +8,58 @@
 
 //"use strict";
 
+var makePPEnum = (function() {
+  var i = 0;
+  return function() {
+    return ++i;
+  };
+})();
+var PP_ENUM_POUND   = makePPEnum();
+var PP_ENUM_IF      = makePPEnum();
+var PP_ENUM_ELIF    = makePPEnum();
+var PP_ENUM_ELSE    = makePPEnum();
+var PP_ENUM_ENDIF   = makePPEnum();
+var PP_ENUM_INCLUDE = makePPEnum();
+var PP_ENUM_OR      = makePPEnum();
+var PP_ENUM_AND     = makePPEnum();
+var PP_ENUM_NOT     = makePPEnum();
+var PP_ENUM_GT      = makePPEnum();
+var PP_ENUM_LT      = makePPEnum();
+var PP_ENUM_GE      = makePPEnum();
+var PP_ENUM_LE      = makePPEnum();
+var PP_ENUM_EQ      = makePPEnum();
+var PP_ENUM_NE      = makePPEnum();
+var PP_ENUM_LPAREN  = makePPEnum();
+var PP_ENUM_RPAREN  = makePPEnum();
+var PP_ENUM_ID      = makePPEnum();
+var PP_ENUM_NUM     = makePPEnum();
+var PP_ENUM_STR     = makePPEnum();
+var PP_ENUM_END     = makePPEnum();
+var PP_ENUM_PP_DIRECTIVE        = makePPEnum();
+var PP_ENUM_STMT                = makePPEnum();
+var PP_ENUM_OR_EXPR             = makePPEnum();
+var PP_ENUM_OR_EXPR_OPT         = makePPEnum();
+var PP_ENUM_AND_EXPR            = makePPEnum();
+var PP_ENUM_AND_EXPR_OPT        = makePPEnum();
+var PP_ENUM_RELATIONAL_EXPR     = makePPEnum();
+var PP_ENUM_RELATIONAL_EXPR_OPT = makePPEnum();
+var PP_ENUM_NOT_EXPR            = makePPEnum();
+var PP_ENUM_NOT_EXPR_EXT        = makePPEnum();
+var PP_ENUM_NUM_OR_STR          = makePPEnum();
+var PP_ENUM_ACTION_OR_EXPR_OPT  = makePPEnum();
+var PP_ENUM_ACTION_AND_EXPR_OPT = makePPEnum();
+var PP_ENUM_SYNTHESIZE_PP_DIRECTIVE        = makePPEnum();
+var PP_ENUM_SYNTHESIZE_STMT                = makePPEnum();
+var PP_ENUM_SYNTHESIZE_OR_EXPR             = makePPEnum();
+var PP_ENUM_SYNTHESIZE_OR_EXPR_OPT         = makePPEnum();
+var PP_ENUM_SYNTHESIZE_AND_EXPR            = makePPEnum();
+var PP_ENUM_SYNTHESIZE_AND_EXPR_OPT        = makePPEnum();
+var PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR     = makePPEnum();
+var PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR_OPT = makePPEnum();
+var PP_ENUM_SYNTHESIZE_NOT_EXPR            = makePPEnum();
+var PP_ENUM_SYNTHESIZE_NOT_EXPR_EXT        = makePPEnum();
+var PP_ENUM_SYNTHESIZE_NUM_OR_STR          = makePPEnum();
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -19,93 +71,785 @@ function processMacros(text) {
   });
 }
 
-// Simple #if/else/endif preprocessing for a file. Checks if the
-// ident checked is true in our global.
-// Also handles #include x.js (similar to C #include <file>)
+// Simple #if/elif/else/endif preprocessing for a file. Checks if the
+// expression checked is true in our global.
+// Also handles #include "x.js" (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting.
 function preprocess(text, filenameHint) {
-  var lines = text.split('\n');
+  var lines = text.split(/\r\n|\r|\n/);
   var ret = '';
+
+  // The current line is shown iff all elements in showStackMask and
+  // showStack are true. The mask stack is needed because it's
+  // insufficient to determine the state of the #else block using
+  // showStack alone. The mask is initialized as true, and if any #if or
+  // #elif evaluates to true, it is set to false after that block is
+  // processed.
+  var showStackMask = [];
   var showStack = [];
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
+    var tokens = [];
+    var parseStack = [];
+    var lookahead;
+    var top;
+    var expansion;
+    var error = null;
+
     try {
-      if (line[line.length-1] == '\r') {
-        line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
-      }
-      if (!line[0] || line[0] != '#') {
-        if (showStack.indexOf(false) == -1) {
-          ret += line + '\n';
-        }
-      } else {
-        if (line[1] == 'i') {
-          if (line[2] == 'f') { // if
-            var parts = line.split(' ');
-            var ident = parts[1];
-            var op = parts[2];
-            var value = parts[3];
-            if (typeof value === 'string') {
-              // when writing
-              // #if option == 'stringValue'
-              // we need to get rid of the quotes
-              if (value[0] === '"' || value[0] === "'") {
-                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
-                value = value.substring(1, value.length - 1);
-              }
+      /*
+       * Stage I
+       *
+       * Tokenization
+       */
+      var colStart, colEnd;
+      var ch1, ch2;
+      colStart = 0;
+      while (ch1 = line[colStart]) {
+        if (ch1 == ' ') {
+          colStart++;
+        } else if (ch1 == '#') {
+          tokens.push({
+            type: PP_ENUM_POUND,
+          });
+          colStart++;
+        } else if (ch1 == '(') {
+          tokens.push({
+            type: PP_ENUM_LPAREN,
+          });
+          colStart++;
+        } else if (ch1 == ')') {
+          tokens.push({
+            type: PP_ENUM_RPAREN,
+          });
+          colStart++;
+        } else if (ch1 == '>') {
+          if (line.substring(colStart, colStart + 2) == '>=') {
+            tokens.push({
+              type: PP_ENUM_GE,
+            });
+            colStart += 2;
+          } else {
+            tokens.push({
+              type: PP_ENUM_GT,
+            });
+            colStart++;
+          }
+        } else if (ch1 == '<') {
+          if (line.substring(colStart, colStart + 2) == '<=') {
+            tokens.push({
+              type: PP_ENUM_LE,
+            });
+            colStart += 2;
+          } else {
+            tokens.push({
+              type: PP_ENUM_LT,
+            });
+            colStart++;
+          }
+        } else if (ch1 == '!') {
+          if (line.substring(colStart, colStart + 2) == '!=') {
+            tokens.push({
+              type: PP_ENUM_NE,
+            });
+            colStart += 2;
+          } else {
+            tokens.push({
+              type: PP_ENUM_NOT,
+            });
+            colStart++;
+          }
+        } else if (line.substring(colStart, colStart + 2) == '==') {
+          tokens.push({
+            type: PP_ENUM_EQ,
+          });
+          colStart += 2;
+        } else if (line.substring(colStart, colStart + 2) == '||') {
+          tokens.push({
+            type: PP_ENUM_OR,
+          });
+          colStart += 2;
+        } else if (line.substring(colStart, colStart + 2) == '&&') {
+          tokens.push({
+            type: PP_ENUM_AND,
+          });
+          colStart += 2;
+        } else if (line.substring(colStart, colStart + 2) == '//') {
+          colStart = line.length;
+        } else if (line.substring(colStart, colStart + 2) == '/*') {
+          colEnd = Math.max(colStart + 3, line.length);
+          while (true) {
+            ch2 = line[colEnd++];
+            if (!ch2) {
+              throw 'LexicalError';
+            } else if (line.substring(colEnd - 2, colEnd) == '*/') {
+              break;
             }
-            if (op) {
-              if (op === '==') {
-                showStack.push(ident in this && this[ident] == value);
-              } else if (op === '!=') {
-                showStack.push(!(ident in this && this[ident] == value));
-              } else if (op === '<') {
-                showStack.push(ident in this && this[ident] < value);
-              } else if (op === '<=') {
-                showStack.push(ident in this && this[ident] <= value);
-              } else if (op === '>') {
-                showStack.push(ident in this && this[ident] > value);
-              } else if (op === '>=') {
-                showStack.push(ident in this && this[ident] >= value);
+          }
+          colStart = colEnd;
+        } else if (/[A-Za-z_]/.test(ch1)) {
+          colEnd = colStart;
+          while (ch2 = line[++colEnd]) {
+            if (!/\w/.test(ch2)) break;
+          }
+          var t = line.substring(colStart, colEnd);
+          if (t == 'if') {
+            tokens.push({
+              type: PP_ENUM_IF,
+            });
+          } else if (t == 'elif') {
+            tokens.push({
+              type: PP_ENUM_ELIF,
+            });
+          } else if (t == 'else') {
+            tokens.push({
+              type: PP_ENUM_ELSE,
+            });
+          } else if (t == 'endif') {
+            tokens.push({
+              type: PP_ENUM_ENDIF,
+            });
+          } else if (t == 'include') {
+            tokens.push({
+              type: PP_ENUM_INCLUDE,
+            });
+          } else {
+            tokens.push({
+              type: PP_ENUM_ID,
+              val: t,
+            });
+          }
+          colStart = colEnd;
+        } else if (/[\d-]/.test(ch1)) {
+          colEnd = colStart;
+          while (ch2 = line[++colEnd]) {
+            if (/[A-Za-z_]/.test(ch2)) {
+              throw 'LexicalError';
+            } else if (!/\d/.test(ch2)) {
+              break;
+            }
+          }
+          var num = line.substring(colStart, colEnd);
+          if (parseInt(num).toString() != num) throw 'LexicalError';
+          num = parseInt(num);
+          tokens.push({
+            type: PP_ENUM_NUM,
+            val: num,
+          });
+          colStart = colEnd;
+        } else if (/["']/.test(ch1)) {
+          colEnd = colStart + 1;
+          while (true) {
+            ch2 = line[colEnd++];
+            if (!ch2) {
+              throw 'LexicalError';
+            } else if (ch2 == '\\') {
+              colEnd = Math.max(colEnd + 1, line.length);
+            } else if (ch2 == ch1) {
+              break;
+            }
+          }
+          var str = line.substring(colStart, colEnd);
+          //str = eval(str);
+          str = str.substring(1, str.length - 1);
+          for (var k = 0; k < str.length; k++) {
+            if (str[k] == '\\') {
+              str = str.substring(0, k) +
+                    JSON.parse('"' + '\\' + str[k + 1] + '"') +
+                    str.substring(k + 2);
+            }
+          }
+          tokens.push({
+            type: PP_ENUM_STR,
+            val: str,
+          });
+          colStart = colEnd;
+        } else {
+          throw 'LexicalError';
+        }
+      }
+      /*
+       * End of Tokenization
+       */
+    } catch (e) {
+      if (!error) error = e;
+      if (e != 'LexicalError') {
+        throw typeof error == 'string' ? new Error(error) : error;
+      }
+    }
+
+    tokens.push({
+      type: PP_ENUM_END,
+    });
+
+    try {
+      /*
+       * Stage II: any syntax error diagnosed here causes the line to be
+       *           considered as normal JS
+       */
+
+      /*
+       * Parsing and Syntax-Directed Translation (prologue)
+       *
+       * LL(1) grammar:
+       *
+       *   <pp-directive> ::= "#" <stmt>
+       *   <stmt>         ::= "if" <or-expr>
+       *                    | "elif" <or-expr>
+       *                    | "else"
+       *                    | "endif"
+       *                    | "include" str
+       *   ...
+       */
+      parseStack.push({
+        type: PP_ENUM_SYNTHESIZE_PP_DIRECTIVE,
+        args: [],
+      }, {
+        type: PP_ENUM_PP_DIRECTIVE,
+      });
+      lookahead = 0;
+      while (parseStack.length && lookahead < 2) {
+        top = parseStack.length - 1;
+        switch (parseStack[top].type) {
+        case PP_ENUM_POUND:
+        case PP_ENUM_IF:
+        case PP_ENUM_ELIF:
+        case PP_ENUM_ELSE:
+        case PP_ENUM_ENDIF:
+        case PP_ENUM_INCLUDE:
+          if (tokens[lookahead].type != parseStack[top].type) throw 'SyntaxError';
+          [].pop.apply(parseStack);
+          lookahead++;
+          break;
+        case PP_ENUM_PP_DIRECTIVE:
+          if (tokens[lookahead].type == PP_ENUM_POUND) {
+            expansion = [
+              { type: PP_ENUM_END },
+              { type: PP_ENUM_SYNTHESIZE_STMT, args: [], dstOffset: -2 },
+              { type: PP_ENUM_STMT },
+              { type: PP_ENUM_POUND },
+            ];
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_STMT:
+          if (tokens[lookahead].type == PP_ENUM_IF ||
+              tokens[lookahead].type == PP_ENUM_ELIF) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_OR_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_OR_EXPR },
+              { type: tokens[lookahead].type },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead].type);
+          } else if (tokens[lookahead].type == PP_ENUM_ELSE ||
+                     tokens[lookahead].type == PP_ENUM_ENDIF) {
+            expansion = [
+              { type: tokens[lookahead].type },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead].type);
+          } else if (tokens[lookahead].type == PP_ENUM_INCLUDE) {
+            expansion = [
+              { type: PP_ENUM_STR },
+              { type: PP_ENUM_INCLUDE },
+            ];
+            parseStack[top - 1].args.push(PP_ENUM_INCLUDE);
+            parseStack[top - 1].args.push(lookahead + 1 < tokens.length ? tokens[lookahead + 1] : null);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        default:
+          throw 'UnreachableError';
+        }
+      }
+      /*
+       * End of Parsing and Syntax-Directed Translation (prologue)
+       */
+    } catch (e) {
+      if (!error) error = e;
+      if (e == 'SyntaxError') {
+        if (showStackMask.indexOf(false) == -1 && showStack.indexOf(false) == -1)
+          ret += line + '\n';
+        continue; // proceed to the next line
+      } else {
+        throw typeof error == 'string' ? new Error(error) : error;
+      }
+    }
+
+    try {
+      /*
+       * Stage III: any exception thrown from here causes the line to be
+       *            considered as an erroneous preprocessor directive
+       */
+
+      /*
+       * Parsing and Syntax-Directed Translation (main)
+       *
+       * LL(1) grammar:
+       *
+       *   ...
+       *   <or-expr>             ::= <and-expr> <or-expr-opt>
+       *   <or-expr-opt>         ::= "||" <and-expr> <or-expr-opt>
+       *                           | ""
+       *   <and-expr>            ::= <relational-expr> <and-expr-opt>
+       *   <and-expr-opt>        ::= "&&" <relational-expr> <and-expr-opt>
+       *                           | ""
+       *   <relational-expr>     ::= id <relational-expr-opt>
+       *                           | <not-expr>
+       *   <relational-expr-opt> ::= ">" num
+       *                           | "<" num
+       *                           | ">=" num
+       *                           | "<=" num
+       *                           | "==" <num-or-str>
+       *                           | "!=" <num-or-str>
+       *                           | ""
+       *   <not-expr>            ::= "!" <not-expr-ext>
+       *                           | "(" <or-expr> ")"
+       *   <not-expr-ext>        ::= "!" <not-expr-ext>
+       *                           | "(" <or-expr> ")"
+       *                           | id
+       *   <num-or-str>          ::= num
+       *                           | str
+       */
+      while (parseStack.length > 1) {
+        top = parseStack.length - 1;
+        switch (parseStack[top].type) {
+        // terminals
+        case PP_ENUM_OR:
+        case PP_ENUM_AND:
+        case PP_ENUM_NOT:
+        case PP_ENUM_GT:
+        case PP_ENUM_LT:
+        case PP_ENUM_GE:
+        case PP_ENUM_LE:
+        case PP_ENUM_EQ:
+        case PP_ENUM_NE:
+        case PP_ENUM_LPAREN:
+        case PP_ENUM_RPAREN:
+        case PP_ENUM_ID:
+        case PP_ENUM_NUM:
+        case PP_ENUM_STR:
+        case PP_ENUM_END:
+          if (tokens[lookahead].type != parseStack[top].type) throw 'SyntaxError';
+          [].pop.apply(parseStack);
+          lookahead++;
+          break;
+
+        // nonterminals
+        case PP_ENUM_OR_EXPR:
+          if (tokens[lookahead].type == PP_ENUM_ID ||
+              tokens[lookahead].type == PP_ENUM_NOT ||
+              tokens[lookahead].type == PP_ENUM_LPAREN) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_OR_EXPR_OPT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_OR_EXPR_OPT, lhs: null },
+              { type: PP_ENUM_ACTION_OR_EXPR_OPT, args: [ false ], dstOffset: -1 },
+              { type: PP_ENUM_SYNTHESIZE_AND_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_AND_EXPR },
+            ];
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_OR_EXPR_OPT:
+          if (tokens[lookahead].type == PP_ENUM_OR) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_OR_EXPR_OPT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_OR_EXPR_OPT, lhs: null },
+              { type: PP_ENUM_ACTION_OR_EXPR_OPT, args: [ parseStack[top].lhs ], dstOffset: -1 },
+              { type: PP_ENUM_SYNTHESIZE_AND_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_AND_EXPR },
+              { type: PP_ENUM_OR },
+            ];
+          } else if (tokens[lookahead].type == PP_ENUM_RPAREN ||
+                     tokens[lookahead].type == PP_ENUM_END) {
+            expansion = [];
+            parseStack[top - 1].args.push(parseStack[top].lhs);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_AND_EXPR:
+          if (tokens[lookahead].type == PP_ENUM_ID ||
+              tokens[lookahead].type == PP_ENUM_NOT ||
+              tokens[lookahead].type == PP_ENUM_LPAREN) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_AND_EXPR_OPT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_AND_EXPR_OPT, lhs: null },
+              { type: PP_ENUM_ACTION_AND_EXPR_OPT, args: [ true ], dstOffset: -1 },
+              { type: PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_RELATIONAL_EXPR },
+            ];
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_AND_EXPR_OPT:
+          if (tokens[lookahead].type == PP_ENUM_AND) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_AND_EXPR_OPT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_AND_EXPR_OPT, lhs: null },
+              { type: PP_ENUM_ACTION_AND_EXPR_OPT, args: [ parseStack[top].lhs ], dstOffset: -1 },
+              { type: PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_RELATIONAL_EXPR },
+              { type: PP_ENUM_AND },
+            ];
+          } else if (tokens[lookahead].type == PP_ENUM_OR ||
+                     tokens[lookahead].type == PP_ENUM_RPAREN ||
+                     tokens[lookahead].type == PP_ENUM_END) {
+            expansion = [];
+            parseStack[top - 1].args.push(parseStack[top].lhs);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_RELATIONAL_EXPR:
+          if (tokens[lookahead].type == PP_ENUM_ID) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR_OPT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_RELATIONAL_EXPR_OPT, id: tokens[lookahead] },
+              { type: PP_ENUM_ID },
+            ];
+          } else if (tokens[lookahead].type == PP_ENUM_NOT ||
+                     tokens[lookahead].type == PP_ENUM_LPAREN) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_NOT_EXPR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_NOT_EXPR },
+            ];
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_RELATIONAL_EXPR_OPT:
+          if (tokens[lookahead].type == PP_ENUM_GT ||
+              tokens[lookahead].type == PP_ENUM_LT ||
+              tokens[lookahead].type == PP_ENUM_GE ||
+              tokens[lookahead].type == PP_ENUM_LE) {
+            expansion = [
+              { type: PP_ENUM_NUM },
+              { type: tokens[lookahead].type },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead].type);
+            parseStack[top - 1].args.push(parseStack[top].id);
+            parseStack[top - 1].args.push(lookahead + 1 < tokens.length ? tokens[lookahead + 1] : null);
+          } else if (tokens[lookahead].type == PP_ENUM_EQ ||
+                     tokens[lookahead].type == PP_ENUM_NE) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_NUM_OR_STR, args: [], dstOffset: -1 },
+              { type: PP_ENUM_NUM_OR_STR },
+              { type: tokens[lookahead].type },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead].type);
+            parseStack[top - 1].args.push(parseStack[top].id);
+          } else if (tokens[lookahead].type == PP_ENUM_AND ||
+                     tokens[lookahead].type == PP_ENUM_OR ||
+                     tokens[lookahead].type == PP_ENUM_RPAREN ||
+                     tokens[lookahead].type == PP_ENUM_END) {
+            expansion = [];
+            parseStack[top - 1].args.push(parseStack[top].id);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_NOT_EXPR:
+          if (tokens[lookahead].type == PP_ENUM_NOT) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_NOT_EXPR_EXT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_NOT_EXPR_EXT },
+              { type: PP_ENUM_NOT },
+            ];
+            parseStack[top - 1].args.push(PP_ENUM_NOT);
+          } else if (tokens[lookahead].type == PP_ENUM_LPAREN) {
+            expansion = [
+              { type: PP_ENUM_RPAREN },
+              { type: PP_ENUM_SYNTHESIZE_OR_EXPR, args: [], dstOffset: -2 },
+              { type: PP_ENUM_OR_EXPR },
+              { type: PP_ENUM_LPAREN },
+            ];
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_NOT_EXPR_EXT:
+          if (tokens[lookahead].type == PP_ENUM_NOT) {
+            expansion = [
+              { type: PP_ENUM_SYNTHESIZE_NOT_EXPR_EXT, args: [], dstOffset: -1 },
+              { type: PP_ENUM_NOT_EXPR_EXT },
+              { type: PP_ENUM_NOT },
+            ];
+            parseStack[top - 1].args.push(PP_ENUM_NOT);
+          } else if (tokens[lookahead].type == PP_ENUM_LPAREN) {
+            expansion = [
+              { type: PP_ENUM_RPAREN },
+              { type: PP_ENUM_SYNTHESIZE_OR_EXPR, args: [], dstOffset: -2 },
+              { type: PP_ENUM_OR_EXPR },
+              { type: PP_ENUM_LPAREN },
+            ];
+          } else if (tokens[lookahead].type == PP_ENUM_ID) {
+            expansion = [
+              { type: PP_ENUM_ID },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead]);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+        case PP_ENUM_NUM_OR_STR:
+          if (tokens[lookahead].type == PP_ENUM_NUM ||
+              tokens[lookahead].type == PP_ENUM_STR) {
+            expansion = [
+              { type: tokens[lookahead].type },
+            ];
+            parseStack[top - 1].args.push(tokens[lookahead]);
+          } else {
+            throw 'SyntaxError';
+          }
+          [].pop.apply(parseStack);
+          [].push.apply(parseStack, expansion);
+          break;
+
+        // action-records (evaluate inherited attributes of nonterminals)
+        case PP_ENUM_ACTION_OR_EXPR_OPT:
+          parseStack[top + parseStack[top].dstOffset].lhs = parseStack[top].args[0] || parseStack[top].args[1];
+          [].pop.apply(parseStack);
+          break;
+        case PP_ENUM_ACTION_AND_EXPR_OPT:
+          parseStack[top + parseStack[top].dstOffset].lhs = parseStack[top].args[0] && parseStack[top].args[1];
+          [].pop.apply(parseStack);
+          break;
+
+        // synthesize-records (evaluate synthesized attributes of nonterminals)
+        case PP_ENUM_SYNTHESIZE_STMT:
+          [].push.apply(parseStack[top + parseStack[top].dstOffset].args, parseStack[top].args);
+          [].pop.apply(parseStack);
+          break;
+        case PP_ENUM_SYNTHESIZE_OR_EXPR:
+        case PP_ENUM_SYNTHESIZE_OR_EXPR_OPT:
+        case PP_ENUM_SYNTHESIZE_AND_EXPR:
+        case PP_ENUM_SYNTHESIZE_AND_EXPR_OPT:
+        case PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR:
+        case PP_ENUM_SYNTHESIZE_NUM_OR_STR:
+          parseStack[top + parseStack[top].dstOffset].args.push(parseStack[top].args[0]);
+          [].pop.apply(parseStack);
+          break;
+        case PP_ENUM_SYNTHESIZE_RELATIONAL_EXPR_OPT:
+          if (parseStack[top].args.length == 1) { // args = [ operand ]
+            if (parseStack[top].args[0].val in this) {
+              parseStack[top + parseStack[top].dstOffset].args.push(!!this[parseStack[top].args[0].val]);
+            } else {
+              parseStack[top + parseStack[top].dstOffset].args.push(false);
+            }
+          } else { // args = [ operator, operands... ]
+            var lhs = parseStack[top].args[1];
+            var rhs = parseStack[top].args[2];
+            // Try to 'dereference' the left hand side, and check if the
+            // type is compatible with the right hand side.
+            if (!(lhs.val in this)) {
+              lhs = null;
+            } else if (typeof this[lhs.val] == 'number') {
+              if (isFinite(this[lhs.val]) && Math.floor(this[lhs.val]) == this[lhs.val])
+                lhs = this[lhs.val];
+              else
+                lhs = null;
+              rhs = rhs.type == PP_ENUM_NUM ? rhs.val : null;
+            } else if (typeof this[lhs.val] == 'string') {
+              lhs = this[lhs.val];
+              rhs = rhs.type == PP_ENUM_STR ? rhs.val : null;
+            } else {
+              lhs = null;
+            }
+            // Semantic errors may be caused by invalid identifiers or
+            // inconsistent operand types. The result of the expression
+            // is unspecified then.
+            if (parseStack[top].args[0] == PP_ENUM_GT) {
+              if (lhs === null || rhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
               } else {
-                error('unsupported preprocessor op ' + op);
+                parseStack[top + parseStack[top].dstOffset].args.push(lhs > rhs);
+              }
+            } else if (parseStack[top].args[0] == PP_ENUM_LT) {
+              if (lhs === null || rhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(lhs < rhs);
+              }
+            } else if (parseStack[top].args[0] == PP_ENUM_GE) {
+              if (lhs === null || rhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(lhs >= rhs);
+              }
+            } else if (parseStack[top].args[0] == PP_ENUM_LE) {
+              if (lhs === null || rhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(lhs <= rhs);
+              }
+            } else if (parseStack[top].args[0] == PP_ENUM_EQ) {
+              if (lhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(rhs === null ? false : lhs == rhs);
+              }
+            } else if (parseStack[top].args[0] == PP_ENUM_NE) {
+              if (lhs === null) {
+                if (!error) error = 'SemanticError';
+                parseStack[top + parseStack[top].dstOffset].args.push(!Math.round(Math.random()));
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(rhs === null ? true : lhs != rhs);
               }
             } else {
-              // Check if a value is truthy.
-              var short = ident[0] === '!' ? ident.substr(1) : ident;
-              var truthy = short in this;
-              if (truthy) {
-                truthy = !!this[short];
-              }
-              if (ident[0] === '!') {
-                showStack.push(!truthy);
-              } else {
-                showStack.push(truthy);
-              }
+              throw 'UnreachableError';
             }
-          } else if (line[2] == 'n') { // include
-            var filename = line.substr(line.indexOf(' ')+1);
-            if (filename.indexOf('"') === 0) {
-              filename = filename.substr(1, filename.length - 2);
-            }
-            var included = read(filename);
-            ret += '\n' + preprocess(included, filename) + '\n'
           }
-        } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0);
-          showStack.push(!showStack.pop());
-        } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0);
-          showStack.pop();
-        } else {
-          throw "Unclear preprocessor command: " + line;
+          [].pop.apply(parseStack);
+          break;
+        case PP_ENUM_SYNTHESIZE_NOT_EXPR:
+        case PP_ENUM_SYNTHESIZE_NOT_EXPR_EXT:
+          if (parseStack[top].args.length == 1) { // args = [ operand ]
+            if (typeof parseStack[top].args[0] == 'boolean') {
+              parseStack[top + parseStack[top].dstOffset].args.push(parseStack[top].args[0]);
+            } else if (typeof parseStack[top].args[0] == 'object') {
+              if (parseStack[top].args[0].val in this) {
+                parseStack[top + parseStack[top].dstOffset].args.push(!!this[parseStack[top].args[0].val]);
+              } else {
+                parseStack[top + parseStack[top].dstOffset].args.push(false);
+              }
+            } else {
+              throw 'UnreachableError';
+            }
+          } else { // args = [ operator, operands... ]
+            if (parseStack[top].args[0] == PP_ENUM_NOT) {
+              parseStack[top + parseStack[top].dstOffset].args.push(!parseStack[top].args[1]);
+            } else {
+              throw 'UnreachableError';
+            }
+          }
+          [].pop.apply(parseStack);
+          break;
+
+        default:
+          throw 'UnreachableError';
         }
       }
-    } catch(e) {
-      printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i+1) + ': \"' + line + '\"!');
-      throw e;
+      /*
+       * End of Parsing and Syntax-Directed Translation (main)
+       */
+
+      /*
+       * Parsing and Syntax-Directed Translation (epilogue)
+       */
+      while (parseStack.length) {
+        top = parseStack.length - 1;
+        switch (parseStack[top].type) {
+        case PP_ENUM_SYNTHESIZE_PP_DIRECTIVE:
+          var syntaxOnly; // The syntax is checked for all preprocessor directives, but it makes
+                          // more sense to tolerate some non-critical errors in certain cases, e.g.:
+                          //
+                          //   #if FOOBAR
+                          //   #if FOOBAR > 0 // It's a semantic error if FOOBAR is not defined in
+                          //                  // global, but the error will be ignored.
+                          //   #endif
+                          //   #endif
+                          //
+          if (parseStack[top].args[0] == PP_ENUM_IF) {
+            showStackMask.push(true);
+            showStack.push(parseStack[top].args[1]);
+            if (showStackMask.indexOf(false) == -1 && showStack.indexOf(false) == -1) {
+              syntaxOnly = false;
+            } else {
+              syntaxOnly = true;
+            }
+          } else if (parseStack[top].args[0] == PP_ENUM_ELIF) {
+            if (!showStack.length) throw 'SemanticError';
+            if (showStack[showStack.length - 1])
+              showStackMask[showStackMask.length - 1] = false;
+            showStack[showStack.length - 1] = parseStack[top].args[1];
+            if (showStackMask.indexOf(false) in [ -1, showStackMask.length - 1 ] &&
+                showStack.indexOf(false) in [ -1, showStack.length - 1 ]) {
+              syntaxOnly = false;
+            } else {
+              syntaxOnly = true;
+            }
+          } else if (parseStack[top].args[0] == PP_ENUM_ELSE) {
+            if (!showStack.length) throw 'SemanticError';
+            if (showStack[showStack.length - 1])
+              showStackMask[showStackMask.length - 1] = false;
+            showStack[showStack.length - 1] = true;
+            if (showStackMask.indexOf(false) in [ -1, showStackMask.length - 1 ] &&
+                showStack.indexOf(false) in [ -1, showStack.length - 1 ]) {
+              syntaxOnly = false;
+            } else {
+              syntaxOnly = true;
+            }
+          } else if (parseStack[top].args[0] == PP_ENUM_ENDIF) {
+            if (!showStack.length) throw 'SemanticError';
+            showStackMask.pop();
+            showStack.pop();
+            if (showStackMask.indexOf(false) == -1 && showStack.indexOf(false) == -1) {
+              syntaxOnly = false;
+            } else {
+              syntaxOnly = true;
+            }
+          } else if (parseStack[top].args[0] == PP_ENUM_INCLUDE) {
+            if (showStackMask.indexOf(false) == -1 && showStack.indexOf(false) == -1) {
+              var filename = parseStack[top].args[1].val;
+              var included = read(filename);
+              included = preprocess(included, filename);
+              ret += included;
+              syntaxOnly = false;
+            } else {
+              syntaxOnly = true;
+            }
+          } else {
+            throw 'UnreachableError';
+          }
+          if (error in [ 'LexicalError', 'SyntaxError', 'UnreachableError' ]) throw error;
+          if (error && !syntaxOnly) throw error;
+          [].pop.apply(parseStack);
+          break;
+        default:
+          throw 'UnreachableError';
+        }
+      }
+      /*
+       * End of Parsing and Syntax-Directed Translation (epilogue)
+       */
+    } catch (e) {
+      printErr('parseTools.js preprocessor error in ' + filenameHint + ':' + (i + 1) + ': \"' + line + '\"!');
+      if (!error) error = e;
+      throw typeof error == 'string' ? new Error(error) : error;
     }
   }
+  assert(showStackMask.length == 0);
   assert(showStack.length == 0);
   return ret;
 }
