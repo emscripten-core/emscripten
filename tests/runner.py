@@ -42,6 +42,7 @@ import sys
 import tempfile
 import time
 import unittest
+import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
@@ -893,6 +894,16 @@ def server_func(dir, q, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
+      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+        '''
+          To get logging to the console from browser tests, add this to
+          print/printErr/the exception handler in src/shell.html:
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
+            xhr.send();
+        '''
+        print('[server logging:', urllib.unquote_plus(self.path), ']')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         SimpleHTTPRequestHandler.do_GET(self)
