@@ -96,6 +96,25 @@ def no_swiftshader(f):
   return decorated
 
 
+# used for tests that fail now and then on CI, due to timing or other
+# random causes. this tries the test a few times, looking for at least
+# one pass
+def flaky(f):
+  max_tries = 3
+
+  def decorated(self):
+    for i in range(max_tries - 1):
+      try:
+        f(self)
+        return
+      except Exception:
+        print('flaky...')
+        continue
+    # run the last time normally, to get a simpler stack trace
+    f(self)
+  return decorated
+
+
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 requires_threads = unittest.skipIf(os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'), "This test requires thread support")
@@ -676,12 +695,12 @@ If manually bisecting:
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
-    self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True)
+    self.btest('sdl_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
 
   def test_sdl_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), os.path.join(self.get_dir(), 'screenshot.not'))
-    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
+    self.btest('sdl_image_prepare_data.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
@@ -3548,6 +3567,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
+  @flaky
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
