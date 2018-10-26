@@ -1876,6 +1876,10 @@ class Building(object):
 
     # asm.js-style setjmp/longjmp handling
     args += ['-enable-emscripten-sjlj']
+
+    # better (smaller, sometimes faster) codegen, see binaryen#1054
+    args += ['-disable-lsr']
+
     return args
 
   @staticmethod
@@ -1901,7 +1905,6 @@ class Building(object):
         '--export',
         '__data_end',
         '--lto-O%d' % lto_level,
-        '--mllvm', '-disable-lsr', # see binaryen#1054
     ] + args
 
     if Settings.WASM_MEM_MAX != -1:
