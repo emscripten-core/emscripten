@@ -621,13 +621,16 @@ if has_preloaded:
         var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
         var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
         var chunkSliceStart = 0;
+        var nextChunkSliceStart = 0;
         var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
         var finishedChunks = 0;
         for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+          var nextChunkSliceStart += CHUNK_SIZE;
           var putPackageRequest = packages.put(
-            packageData.slice(chunkSliceStart, (chunkSliceStart += CHUNK_SIZE)),
+            packageData.slice(chunkSliceStart, nextChunkSliceStart),
             'package/' + packageName + '/' + chunkId
           );
+          chunkSliceStart = nextChunkSliceStart;
           putPackageRequest.onsuccess = function(event) {
             finishedChunks++;
             if (finishedChunks == chunkCount) {
