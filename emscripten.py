@@ -522,6 +522,9 @@ def update_settings_glue(metadata):
 
   if metadata['simd']:
     shared.Settings.SIMD = 1
+    if shared.Settings.ASM_JS != 2:
+      logging.warning('disabling asm.js validation due to use of SIMD')
+      shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
