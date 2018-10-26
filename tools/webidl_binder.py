@@ -685,7 +685,7 @@ for name in names:
 
     if m.readonly:
       mid_js += [r'''
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s }) ''' % (name, attr, name, get_name)]
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });''' % (name, attr, name, get_name)]
     else:
       set_name = 'set_' + attr
       mid_js += [r'''
@@ -701,7 +701,7 @@ for name in names:
                       const=m.getExtendedAttribute('Const'),
                       array_attribute=m.type.isArray())
       mid_js += [r'''
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s }) ''' % (name, attr, name, get_name, name, set_name)]
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
 
 
   if not interface.getExtendedAttribute('NoDelete'):
