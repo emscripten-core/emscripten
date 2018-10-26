@@ -347,17 +347,17 @@ try:
     NativeBenchmarker('clang', CLANG_CC, CLANG),
     # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
-  if SPIDERMONKEY_ENGINE and Building.which(SPIDERMONKEY_ENGINE[0]):
+  if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'WASM=0']),
       EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
       # EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
-      # EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], [env={
+      # EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
       #   'LLVM': '/home/alon/Dev/llvm/build/bin',
       #   'EMCC_WASM_BACKEND': '1',
       # }),
     ]
-  if V8_ENGINE and Building.which(V8_ENGINE[0]):
+  if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker('v8-wasm',  V8_ENGINE),
     ]
