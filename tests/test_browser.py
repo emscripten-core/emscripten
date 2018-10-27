@@ -2787,6 +2787,7 @@ Module['onRuntimeInitialized'] = function() {
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'sdl2_text.c'), '-o', 'page.html', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
+  @flaky
   def test_sdl2_mouse(self):
     open(os.path.join(self.get_dir(), 'pre.js'), 'w').write('''
       function simulateMouseEvent(x, y, button) {
