@@ -625,7 +625,7 @@ if has_preloaded:
         var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
         var finishedChunks = 0;
         for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-          var nextChunkSliceStart += CHUNK_SIZE;
+          nextChunkSliceStart += CHUNK_SIZE;
           var putPackageRequest = packages.put(
             packageData.slice(chunkSliceStart, nextChunkSliceStart),
             'package/' + packageName + '/' + chunkId
