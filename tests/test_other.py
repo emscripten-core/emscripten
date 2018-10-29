@@ -90,7 +90,7 @@ class other(RunnerCore):
     shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
     run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
-    seen = run_js('a.out.js', args=run_args) + '\n'
+    seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
 
   def test_emcc_v(self):
@@ -8647,6 +8647,14 @@ end
 
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
+
+  def test_fflush(self):
+    # fflush without the full filesystem won't quite work
+    self.do_other_test(os.path.join('other', 'fflush'))
+
+  def test_fflush_fs(self):
+    # fflush with the full filesystem will
+    self.do_other_test(os.path.join('other', 'fflush_fs'), emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
 
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
