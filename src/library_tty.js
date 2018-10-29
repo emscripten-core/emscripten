@@ -82,7 +82,7 @@ mergeInto(LibraryManager.library, {
         try {
           if (offset === 0 && length === 0) {
             // musl implements an fflush using a write of a NULL buffer of size 0
-            stream.tty.ops.put_char(stream.tty, {{{ charCode('\n') }}});
+            stream.tty.ops.flush(stream.tty);
           } else {
             while (i < length) {
               stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
