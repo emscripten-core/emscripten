@@ -461,6 +461,8 @@ def create_backend_args(infile, temp_js):
     args += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
+  if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
+    args += ['-emscripten-asmjs-work-around-ios-9-right-shift-bug']
   if shared.Settings.WASM:
     args += ['-emscripten-wasm']
     if shared.Building.is_wasm_only():
@@ -520,6 +522,9 @@ def update_settings_glue(metadata):
 
   if metadata['simd']:
     shared.Settings.SIMD = 1
+    if shared.Settings.ASM_JS != 2:
+      logging.warning('disabling asm.js validation due to use of SIMD')
+      shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
@@ -532,6 +537,23 @@ def update_settings_glue(metadata):
     # Index in the Wasm function table in which jsCall thunk function starts
     shared.Settings.JSCALL_START_INDEX = start_index
     shared.Settings.JSCALL_SIG_ORDER = sig2order
+
+  # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
+  # the compiled code have, each signature will need a proxy function invoker
+  # generated for it.
+  def read_proxied_function_signatures(asmConsts):
+    proxied_function_signatures = set()
+    for _, sigs, proxying_types in asmConsts.values():
+      for sig, proxying_type in zip(sigs, proxying_types):
+        if proxying_type == 'sync_on_main_thread_':
+          proxied_function_signatures.add(sig + '_sync')
+        elif proxying_type == 'async_on_main_thread_':
+          proxied_function_signatures.add(sig + '_async')
+    return list(proxied_function_signatures)
+
+  # Proxying EM_ASM calls is not yet implemented in Wasm backend
+  if not shared.Settings.WASM_BACKEND:
+    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
 
 def compile_settings(compiler_engine, libraries, temp_files):
@@ -774,7 +796,7 @@ def all_asm_consts(metadata):
   for k, v in metadata['asmConsts'].items():
     const = asstr(v[0])
     sigs = v[1]
-    call_types = v[2] if len(v) >= 3 else None
+    call_types = v[2]
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []

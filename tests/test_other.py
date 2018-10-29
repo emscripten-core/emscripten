@@ -3316,7 +3316,7 @@ int main() {
         self.assertContained(expected, result.stderr)
 
     # when legacy is needed, we show an error indicating so
-    test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
+    test('build with LEGACY_VM_SUPPORT')
     # wasm is on by default, and does not mix with legacy, so we show an error
     test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
     # legacy + disabling wasm works
@@ -8245,7 +8245,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1488, ['invoke_v'],               ['waka'],                 469663, 149, 1443, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1489, ['invoke_v'],               ['waka'],                 469663, 149, 1443, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')

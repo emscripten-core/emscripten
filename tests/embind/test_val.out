@@ -190,6 +190,13 @@ pass
 pass
 pass
 pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
 test:
 bool instanceof(const val& v)
 pass

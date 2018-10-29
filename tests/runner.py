@@ -280,8 +280,8 @@ class RunnerCore(unittest.TestCase):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      try_delete(self.working_dir)
-      os.makedirs(self.working_dir)
+      if not os.path.exists(self.working_dir):
+        os.makedirs(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
@@ -778,7 +778,7 @@ class RunnerCore(unittest.TestCase):
       assert type(engine) == list
     for engine in self.banned_js_engines:
       assert type(engine) == list
-    js_engines = [engine for engine in js_engines if engine[0] not in [banned[0] for banned in self.banned_js_engines]]
+    js_engines = [engine for engine in js_engines if engine and engine[0] not in [banned[0] for banned in self.banned_js_engines if banned]]
     return js_engines
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
