@@ -240,13 +240,12 @@ class TestCoreBase(RunnerCore):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
-  @no_wasm
   def test_lower_intrinsics(self):
     self.emcc_args += ['-g1']
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
     js = open('src.cpp.o.js').read()
-    assert 'llvm_' not in js
+    assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
