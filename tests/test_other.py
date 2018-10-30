@@ -90,7 +90,7 @@ class other(RunnerCore):
     shutil.copyfile(path_from_root('tests', dirname, 'test.cpp'), 'test.cpp')
     run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
-    seen = run_js('a.out.js', args=run_args) + '\n'
+    seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
 
   def test_emcc_v(self):
@@ -3317,7 +3317,7 @@ int main() {
         self.assertContained(expected, result.stderr)
 
     # when legacy is needed, we show an error indicating so
-    test('this is a legacy browser, build with LEGACY_VM_SUPPORT')
+    test('build with LEGACY_VM_SUPPORT')
     # wasm is on by default, and does not mix with legacy, so we show an error
     test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
     # legacy + disabling wasm works
@@ -8248,7 +8248,7 @@ int main() {
                  0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1488, ['invoke_v'],               ['waka'],                 226057,  30,   74, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1489, ['invoke_v'],               ['waka'],                 226057,  30,   74, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -8650,6 +8650,14 @@ end
 
   def test_fd_closed(self):
     self.do_other_test(os.path.join('other', 'fd_closed'))
+
+  def test_fflush(self):
+    # fflush without the full filesystem won't quite work
+    self.do_other_test(os.path.join('other', 'fflush'))
+
+  def test_fflush_fs(self):
+    # fflush with the full filesystem will
+    self.do_other_test(os.path.join('other', 'fflush_fs'), emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
 
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):

@@ -1708,7 +1708,6 @@ int main(int argc, char **argv) {
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
   @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm(self):
-    self.skipTest('TODO: Enable me when we have tagged new compiler build')
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
     test_file = 'src.cpp'
     open(test_file, 'w').write(src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
@@ -1724,6 +1723,11 @@ int main(int argc, char **argv) {
   def test_main_thread_async_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
+
+  # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
+  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
+  def test_main_thread_em_asm_signatures(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_signatures')
 
   def test_em_asm_unicode(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
@@ -4511,12 +4515,14 @@ def process(filename):
     self.do_run(src, '..')
 
   def test_getdents64_special_cases(self):
+    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
     out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_getcwd_with_non_ascii_name(self):
+    self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
@@ -5498,9 +5504,8 @@ return malloc(size);
 
   @SIMD
   def test_sse1(self):
-    if 'SAFE_HEAP=1' in self.emcc_args and SPIDERMONKEY_ENGINE in JS_ENGINES:
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE]
-      print('Skipping test_sse1 with SAFE_HEAP=1 on SpiderMonkey, since it fails due to NaN canonicalization.')
+    # SM fails here due to NaN canonicalization.
+    self.banned_js_engines += [SPIDERMONKEY_ENGINE]
     # SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
 

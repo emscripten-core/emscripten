@@ -604,59 +604,122 @@ if has_preloaded:
         };
       };
 
+      // This is needed as chromium has a limit on per-entry files in IndexedDB
+      // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
+      // https://cs.chromium.org/chromium/src/out/Debug/gen/third_party/blink/public/mojom/indexeddb/indexeddb.mojom.h?type=cs&sq=package:chromium&g=0&l=60
+      // We set the chunk size to 64MB to stay well-below the limit
+      var CHUNK_SIZE = 64 * 1024 * 1024;
+
+      function cacheRemotePackage(
+        db,
+        packageName,
+        packageData,
+        packageMeta,
+        callback,
+        errback
+      ) {
+        var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
+        var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
+        var chunkSliceStart = 0;
+        var nextChunkSliceStart = 0;
+        var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
+        var finishedChunks = 0;
+        for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+          nextChunkSliceStart += CHUNK_SIZE;
+          var putPackageRequest = packages.put(
+            packageData.slice(chunkSliceStart, nextChunkSliceStart),
+            'package/' + packageName + '/' + chunkId
+          );
+          chunkSliceStart = nextChunkSliceStart;
+          putPackageRequest.onsuccess = function(event) {
+            finishedChunks++;
+            if (finishedChunks == chunkCount) {
+              var transaction_metadata = db.transaction(
+                [METADATA_STORE_NAME],
+                IDB_RW
+              );
+              var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
+              var putMetadataRequest = metadata.put(
+                {
+                  uuid: packageMeta.uuid,
+                  chunkCount: chunkCount
+                },
+                'metadata/' + packageName
+              );
+              putMetadataRequest.onsuccess = function(event) {
+                callback(packageData);
+              };
+              putMetadataRequest.onerror = function(error) {
+                errback(error);
+              };
+            }
+          };
+          putPackageRequest.onerror = function(error) {
+            errback(error);
+          };
+        }
+      }
+
       /* Check if there's a cached package, and if so whether it's the latest available */
       function checkCachedPackage(db, packageName, callback, errback) {
         var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
         var metadata = transaction.objectStore(METADATA_STORE_NAME);
-
-        var getRequest = metadata.get("metadata/" + packageName);
+        var getRequest = metadata.get('metadata/' + packageName);
         getRequest.onsuccess = function(event) {
           var result = event.target.result;
           if (!result) {
-            return callback(false);
+            return callback(false, null);
           } else {
-            return callback(PACKAGE_UUID === result.uuid);
+            return callback(PACKAGE_UUID === result.uuid, result);
           }
         };
         getRequest.onerror = function(error) {
           errback(error);
         };
-      };
+      }
 
-      function fetchCachedPackage(db, packageName, callback, errback) {
+      function fetchCachedPackage(db, packageName, metadata, callback, errback) {
         var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
         var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
-        var getRequest = packages.get("package/" + packageName);
-        getRequest.onsuccess = function(event) {
-          var result = event.target.result;
-          callback(result);
-        };
-        getRequest.onerror = function(error) {
-          errback(error);
-        };
-      };
+        var chunksDone = 0;
+        var totalSize = 0;
+        var chunks = new Array(metadata.chunkCount);
 
-      function cacheRemotePackage(db, packageName, packageData, packageMeta, callback, errback) {
-        var transaction_packages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
-        var packages = transaction_packages.objectStore(PACKAGE_STORE_NAME);
-
-        var putPackageRequest = packages.put(packageData, "package/" + packageName);
-        putPackageRequest.onsuccess = function(event) {
-          var transaction_metadata = db.transaction([METADATA_STORE_NAME], IDB_RW);
-          var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
-          var putMetadataRequest = metadata.put(packageMeta, "metadata/" + packageName);
-          putMetadataRequest.onsuccess = function(event) {
-            callback(packageData);
+        for (var chunkId = 0; chunkId < metadata.chunkCount; chunkId++) {
+          var getRequest = packages.get('package/' + packageName + '/' + chunkId);
+          getRequest.onsuccess = function(event) {
+            // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
+            if (metadata.chunkCount == 1) {
+              callback(event.target.result);
+            } else {
+              chunksDone++;
+              totalSize += event.target.result.byteLength;
+              chunks.push(event.target.result);
+              if (chunksDone == metadata.chunkCount) {
+                if (chunksDone == 1) {
+                  callback(event.target.result);
+                } else {
+                  var tempTyped = new Uint8Array(totalSize);
+                  var byteOffset = 0;
+                  for (var chunkId in chunks) {
+                    var buffer = chunks[chunkId];
+                    tempTyped.set(new Uint8Array(buffer), byteOffset);
+                    byteOffset += buffer.byteLength;
+                    buffer = undefined;
+                  }
+                  chunks = undefined;
+                  callback(tempTyped.buffer);
+                  tempTyped = undefined;
+                }
+              }
+            }
           };
-          putMetadataRequest.onerror = function(error) {
+          getRequest.onerror = function(error) {
             errback(error);
           };
-        };
-        putPackageRequest.onerror = function(error) {
-          errback(error);
-        };
-      };
+        }
+      }
     '''
 
   ret += r'''
@@ -742,11 +805,11 @@ if has_preloaded:
       openDatabase(
         function(db) {
           checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-            function(useCached) {
+            function(useCached, metadata) {
               Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
               if (useCached) {
                 console.info('loading ' + PACKAGE_NAME + ' from cache');
-                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, processPackageData, preloadFallback);
+                fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
               } else {
                 console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,

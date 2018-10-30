@@ -544,7 +544,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onload_func)(void*, void *, unsigned*)
+    typedef void (*em_async_wget2_data_onload_func)(unsigned, void*, void *, unsigned)
 
 
 
@@ -554,7 +554,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onerror_func)(void*, int, const char*)
+    typedef void (*em_async_wget2_data_onerror_func)(unsigned, void*, int, const char*)
 
 
 .. c:type:: em_async_wget2_data_onprogress_func
@@ -563,7 +563,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onprogress_func)(void*, int, int)
+    typedef void (*em_async_wget2_data_onprogress_func)(unsigned void*, int, int)
 
 
 .. c:type:: em_run_preload_plugins_data_onload_func
@@ -697,18 +697,21 @@ Functions
   :type free: int
   :param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(void*)* : A pointer to the buffer in memory.
     - *(unsigned)* : The size of the buffer (in bytes).
 
   :param em_async_wget2_data_onerror_func onerror: Callback in the event of failure. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(int)* : The HTTP error code.
     - *(const char*)* : A string with the status description.
 
   :param em_async_wget2_data_onprogress_func onprogress: Callback called (regularly) during load of the file to update progress. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(int)* : The number of bytes loaded.
     - *(int)* : The total size of the data in bytes, or zero if the size is unavailable.
