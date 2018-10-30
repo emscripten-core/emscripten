@@ -19,7 +19,7 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_wasm_backend
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
@@ -393,7 +393,6 @@ If manually bisecting:
     run_process([PYTHON, EMCC, cpp, '--pre-js', data_js_file, '-o', abs_page_file, '-s', 'FORCE_FILESYSTEM=1'])
     self.run_browser(page_file, '|load me right before|.', '/report_result?0')
 
-  @no_chrome("idb limit of 128MB, see details below")
   def test_preload_caching(self):
     open(os.path.join(self.get_dir(), 'main.cpp'), 'w').write(self.with_report_result(r'''
       #include <stdio.h>
@@ -3639,6 +3638,12 @@ window.close = function() {
   def test_pthread_utf8_funcs(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
+  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
+  def test_main_thread_em_asm_signatures(self):
+    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])
+    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
   # test atomicrmw i64
   @requires_threads
   def test_atomicrmw_i64(self):
@@ -4018,6 +4023,11 @@ window.close = function() {
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and emscripten_get_canvas_element_size() functionality in singlethreaded programs.
   def test_emscripten_set_canvas_element_size(self):
     self.btest('emscripten_set_canvas_element_size.c', expected='1')
+
+  # Tests that emscripten_run_script() variants of functions work in pthreads.
+  def test_pthread_run_script(self):
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm'] + args, timeout=30)
 
   # Tests the absolute minimum pthread-enabled application.
   @requires_threads

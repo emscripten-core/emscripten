@@ -1236,7 +1236,10 @@
 
             "EM_HTML5_SHORT_STRING_LEN_BYTES",
             "EM_HTML5_MEDIUM_STRING_LEN_BYTES",
-            "EM_HTML5_LONG_STRING_LEN_BYTES"
+            "EM_HTML5_LONG_STRING_LEN_BYTES",
+
+            "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
+            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1491,7 +1494,15 @@
             "EM_THREAD_STATUS_SLEEPING",
             "EM_THREAD_STATUS_WAITFUTEX",
             "EM_THREAD_STATUS_WAITPROXY",
-            "EM_THREAD_STATUS_FINISHED"
+            "EM_THREAD_STATUS_FINISHED",
+            "EM_FUNC_SIG_V",
+            "EM_FUNC_SIG_VI",
+            "EM_FUNC_SIG_VII",
+            "EM_FUNC_SIG_VIII",
+            "EM_FUNC_SIG_I",
+            "EM_FUNC_SIG_II",
+            "EM_FUNC_SIG_III",
+            "EM_FUNC_SIG_IIII"
             ]
     },
     {

@@ -40,28 +40,30 @@ var LibraryEGL = {
         return 0;
       }
 
-      // read attribList.
-      for(;;) {
-        var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
-        if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
-          var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          EGL.alpha = (alphaSize > 0);
-        } else if (param == 0x3025 /*EGL_DEPTH_SIZE*/) {
-          var depthSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          EGL.depth = (depthSize > 0);
-        } else if (param == 0x3026 /*EGL_STENCIL_SIZE*/) {
-          var stencilSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          EGL.stencil = (stencilSize > 0);
-        } else if (param == 0x3031 /*EGL_SAMPLES*/) {
-          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          EGL.antialias = (samples > 0);
-        } else if (param == 0x3032 /*EGL_SAMPLE_BUFFERS*/) {
-          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
-          EGL.antialias = (samples == 1);
-        } else if (param == 0x3038 /*EGL_NONE*/) {
-            break;
+      if (attribList) {
+        // read attribList if it is non-null
+        for(;;) {
+          var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
+          if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
+            var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+            EGL.alpha = (alphaSize > 0);
+          } else if (param == 0x3025 /*EGL_DEPTH_SIZE*/) {
+            var depthSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+            EGL.depth = (depthSize > 0);
+          } else if (param == 0x3026 /*EGL_STENCIL_SIZE*/) {
+            var stencilSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+            EGL.stencil = (stencilSize > 0);
+          } else if (param == 0x3031 /*EGL_SAMPLES*/) {
+            var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+            EGL.antialias = (samples > 0);
+          } else if (param == 0x3032 /*EGL_SAMPLE_BUFFERS*/) {
+            var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+            EGL.antialias = (samples == 1);
+          } else if (param == 0x3038 /*EGL_NONE*/) {
+              break;
+          }
+          attribList += 8;
         }
-        attribList += 8;
       }
 
       if ((!config || !config_size) && !numConfigs) {
