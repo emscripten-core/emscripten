@@ -2426,10 +2426,12 @@ The current type of b is: 9
   def prep_dlfcn_lib(self):
     self.set_setting('MAIN_MODULE', 0)
     self.set_setting('SIDE_MODULE', 1)
+    self.set_setting('EXPORT_ALL', 1)
 
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('EXPORT_ALL', 1)
 
     with open('lib_so_pre.js', 'w') as f:
       f.write('''
@@ -3325,6 +3327,9 @@ ok
 ''')
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+    # shared settings
+    self.set_setting('EXPORT_ALL', 1)
+
     if header:
       open('header.h', 'w').write(header)
 
@@ -3800,7 +3805,7 @@ Module = {
       void call_side() {
         printf("side: jslib_x is %d.\n", jslib_x);
       }
-    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js'])
+    ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslib_x"]'])
 
   @needs_dlfcn
   def test_dylink_many_postSets(self):
@@ -4034,7 +4039,7 @@ Module = {
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
