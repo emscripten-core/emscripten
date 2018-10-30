@@ -1881,6 +1881,7 @@ int f() {
           print('checking "%s" %s=%s' % (args, action, value))
           extra = ['-s', action + '_ON_UNDEFINED_SYMBOLS=%d' % value] if action else []
           proc = run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp')] + extra + args, stderr=PIPE, check=False)
+          print(proc.stderr)
           if value or action is None:
             # The default is that we error in undefined symbols
             self.assertContained('error: undefined symbol: something', proc.stderr)
