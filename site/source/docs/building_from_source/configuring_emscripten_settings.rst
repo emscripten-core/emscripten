@@ -70,7 +70,7 @@ The compiler configuration file can be edited with the text editor of your choic
    
 	::
    
-		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))'
+		LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))
 
 	.. note:: Use forward slashes!
 

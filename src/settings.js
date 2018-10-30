@@ -381,6 +381,15 @@ var GL_UNSAFE_OPTS = 1;
 // Forces support for all GLES2 features, not just the WebGL-friendly subset.
 var FULL_ES2 = 0;
 
+// If true, glGetString() for GL_VERSION and GL_SHADING_LANGUAGE_VERSION will
+// return strings OpenGL ES format "Open GL ES ... (WebGL ...)" rather than the
+// WebGL format. If false, the direct WebGL format strings are returned. Set
+// this to true to make GL contexts appear like an OpenGL ES context in these
+// version strings (at the expense of a little bit of added code size), and to
+// false to make GL contexts appear like WebGL contexts and to save some bytes
+// from the output.
+var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
+
 // Enables WebGL2 native functions. This mode will also create a WebGL2
 // context by default if no version is specified.
 var USE_WEBGL2 = 0;
@@ -421,11 +430,26 @@ var GL_PREINITIALIZED_CONTEXT = 0;
 // stbi_* functions directly yourself.
 var STB_IMAGE = 0;
 
-// Enable this to get support for non-modern browsers, node.js, etc. This gives you
+// If WORKAROUND_IOS_9_RIGHT_SHIFT_BUG==1, work around Safari/WebKit bug in iOS 9.3.5: https://bugs.webkit.org/show_bug.cgi?id=151514 where computing "a >> b" or "a >>> b" in
+// JavaScript would erroneously output 0 when a!=0 and b==0, after suitable JIT compiler optimizations have been applied to a function at runtime (bug does not
+// occur in debug builds). Fix was landed in https://trac.webkit.org/changeset/196591/webkit on Feb 15th 2016. iOS 9.3.5 was released on August 25 2016, but
+// oddly did not have the fix. iOS Safari 10.3.3 was released on July 19 2017, that no longer has the issue. Unknown which released version between these was the
+// first to contain the fix, though notable is that iOS 9.3.5 and iOS 10.3.3 are the two consecutive "end-of-life" versions of iOS that users are likely
+// to be on, e.g. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 all had end-of-life at iOS 9.3.5 (tested to be affected),
+// and iPad 4, iPhone 5 and iPhone 5c all had end-of-life at iOS 10.3.3 (confirmed not affected).
+// If you do not care about old iOS 9 support, keep this disabled.
+var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
+
+// If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
+var POLYFILL_OLD_MATH_FUNCTIONS = 0;
+
+// Set this to enable compatibility emulations for old JavaScript engines. This gives you
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
-//  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-//  * Disable WebAssembly.
+//  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
+//  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
+//  * Disable WebAssembly. (Must be paired with -s WASM=0)
+// You can also configure the above options individually.
 var LEGACY_VM_SUPPORT = 0;
 
 // By default, emscripten output will run on the web, in a web worker,
@@ -1075,6 +1099,9 @@ var SDL2_IMAGE_FORMATS = [];
 //    metadata
 //    legalizer
 var DEBUG_TAGS_SHOWING = [];
+
+// Internal: tracks the list of EM_ASM signatures that are proxied between threads.
+var PROXIED_FUNCTION_SIGNATURES = [];
 
 // For internal use only
 var ORIGINAL_EXPORTED_FUNCTIONS = [];

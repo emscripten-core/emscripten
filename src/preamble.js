@@ -1600,6 +1600,7 @@ function ensureInitRuntime() {
 #if USE_PTHREADS
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+  _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
   callRuntimeCallbacks(__ATINIT__);
 }
@@ -1703,7 +1704,7 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 {{{ unSign }}}
 {{{ reSign }}}
 
-#if LEGACY_VM_SUPPORT
+#if POLYFILL_OLD_MATH_FUNCTIONS
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
@@ -1745,9 +1746,12 @@ if (!Math['trunc']) Math['trunc'] = function(x) {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 Math.trunc = Math['trunc'];
-#else // LEGACY_VM_SUPPORT
+#else // POLYFILL_OLD_MATH_FUNCTIONS
 #if ASSERTIONS
-assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+assert(Math['imul'], 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math['fround'], 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math['clz32'], 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math['trunc'], 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 #endif
 #endif // LEGACY_VM_SUPPORT
 

@@ -457,6 +457,13 @@ int main()
   ensure(val::global("f").typeOf().as<string>() == "symbol");
   ensure(val::global("g").typeOf().as<string>() == "function");
   ensure(val::global("h").typeOf().as<string>() == "object");
+  ensure(val::undefined().typeOf().as<string>() == "undefined");
+  ensure(val::null().typeOf().as<string>() == "object");
+  ensure(val(true).typeOf().as<string>() == "boolean");
+  ensure(val(2).typeOf().as<string>() == "number");
+  ensure(val("2").typeOf().as<string>() == "string");
+  ensure(val::global().call<val>("Symbol").typeOf().as<string>() == "symbol");
+  ensure(val::object().typeOf().as<string>() == "object");
   
   test("bool instanceof(const val& v)");
   EM_ASM(

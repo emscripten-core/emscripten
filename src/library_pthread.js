@@ -171,7 +171,7 @@ var LibraryPThread = {
           }
           if (transferList.length > 0) {
             postMessage({
-                targetThread: parentThreadId,
+                targetThread: _emscripten_main_browser_thread_id(),
                 cmd: 'objectTransfer',
                 offscreenCanvases: offscreenCanvases,
                 moduleCanvasId: Module['canvas'].id, // moduleCanvasId specifies which canvas is denoted via the "#canvas" shorthand.
@@ -269,12 +269,13 @@ var LibraryPThread = {
         (function(worker) {
           worker.onmessage = function(e) {
             var d = e.data;
+            // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+            if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
             // TODO: Move the proxied call mechanism into a queue inside heap.
             if (d.proxiedCall) {
               var returnValue;
               var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
               var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
-              PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct; // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
               switch(d.proxiedCall & 31) {
                 case 1: returnValue = funcTable[funcIdx](); break;
                 case 2: returnValue = funcTable[funcIdx](d.p0); break;
@@ -302,6 +303,7 @@ var LibraryPThread = {
                 Atomics.store(HEAP32, waitAddress >> 2, 1);
                 Atomics.wake(HEAP32, waitAddress >> 2, 1);
               }
+              PThread.currentProxiedOperationCallerThread = undefined;
               return;
             }
 
@@ -313,6 +315,7 @@ var LibraryPThread = {
               } else {
                 console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
               }
+              PThread.currentProxiedOperationCallerThread = undefined;
               return;
             }
 
@@ -345,7 +348,11 @@ var LibraryPThread = {
             } else if (d.cmd === 'alert') {
               alert('Thread ' + d.threadId + ': ' + d.text);
             } else if (d.cmd === 'exit') {
-              // currently no-op
+              // Thread is exiting, no-op here
+            } else if (d.cmd === 'exitProcess') {
+              // A pthread has requested to exit the whole application process (runtime).
+              Module['noExitRuntime'] = false;
+              exit(d.returnCode);
             } else if (d.cmd === 'cancelDone') {
               PThread.freeThreadData(worker.pthread);
               worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
@@ -359,6 +366,7 @@ var LibraryPThread = {
             } else {
               err("worker sent an unknown command " + d.cmd);
             }
+            PThread.currentProxiedOperationCallerThread = undefined;
           };
 
           worker.onerror = function(e) {
@@ -621,7 +629,10 @@ var LibraryPThread = {
       if (inheritSched) {
         var prevSchedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
         var prevSchedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
-        _pthread_getschedparam(_pthread_self(), attr + 20, attr + 24);
+        // If we are inheriting the scheduling properties from the parent thread, we need to identify the parent thread properly - this function call may
+        // be getting proxied, in which case _pthread_self() will point to the thread performing the proxying, not the thread that initiated the call.
+        var parentThreadPtr = PThread.currentProxiedOperationCallerThread ? PThread.currentProxiedOperationCallerThread : _pthread_self();
+        _pthread_getschedparam(parentThreadPtr, attr + 20, attr + 24);
         schedPolicy = {{{ makeGetValue('attr', 20/*_a_policy*/, 'i32') }}};
         schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
         {{{ makeSetValue('attr', 20/*_a_policy*/, 'prevSchedPolicy', 'i32') }}};
