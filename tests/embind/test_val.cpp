@@ -57,6 +57,16 @@ void ensure_js_not(string js_code)
   ensure_js(js_code);
 }
 
+void throw_js_error(val js_error)
+{
+  js_error.throw_();
+}
+
+EMSCRIPTEN_BINDINGS(test_bindings)
+{
+  emscripten::function("throw_js_error", &throw_js_error);
+}
+
 int main()
 {
   printf("start\n");
@@ -511,6 +521,29 @@ int main()
   ensure_js_not("0 in a");
   ensure_js_not("1 in a");
   ensure_js_not("'c' in a");
+  
+  test("void throw_() const");
+  EM_ASM(
+    test_val_throw_ = function(error)
+    {
+      try
+      {
+        Module.throw_js_error(error);
+        return false;
+      }
+      catch(error_thrown)
+      {
+        if (error_thrown != error)
+          throw error_thrown;
+      }
+      return true;
+    }
+  );
+  ensure_js("test_val_throw_(new Error)");
+  ensure_js("test_val_throw_(Error)");
+  ensure_js("test_val_throw_(2)");
+  ensure_js("test_val_throw_('message')");
+  ensure_js("test_val_throw_(new TypeError('message'))");
   
   // this test should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(val v)");
