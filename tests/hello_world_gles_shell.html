@@ -27,9 +27,9 @@
 
       // Test code
       function simulateKeyEvent(keyCode) {
-        var event = document.createEvent("KeyboardEvent");
-        event.initKeyEvent("keydown", true, true, window,
-                           0, 0, 0, 0, keyCode, 0);
+        var event = new KeyboardEvent("KeyboardEvent", {
+          code: keyCode
+        });
         document.body.dispatchEvent(event);
       }
       function reportResult(result) {
