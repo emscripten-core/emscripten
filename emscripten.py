@@ -708,15 +708,14 @@ def proxy_debug_print(call_type):
 
 def include_asm_consts(pre, forwarded_json, metadata):
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
-    assert len(metadata['asmConsts']) == 0, 'EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)'
+    if metadata['asmConsts']:
+      exit_with_error('EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)')
 
   asm_consts, all_sigs, call_types = all_asm_consts(metadata)
   asm_const_funcs = []
-  for s in range(len(all_sigs)):
-    sig = all_sigs[s]
+  for sig, call_type in zip(all_sigs, call_types):
     if 'j' in sig:
       exit_with_error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
-    call_type = call_types[s] if s < len(call_types) else ''
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']:
       continue # Only one invoker needs to be emitted for each ASM_CONST (signature x call_type) item
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + call_type + sig] = 1
@@ -806,8 +805,7 @@ def all_asm_consts(metadata):
     const = 'function(' + ', '.join(args) + ') ' + const
     asm_consts[int(k)] = const
     all_sigs += sigs
-    if call_types:
-      all_call_types += call_types
+    all_call_types += call_types
   return asm_consts, all_sigs, all_call_types
 
 
