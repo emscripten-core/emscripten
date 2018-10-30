@@ -224,6 +224,13 @@ pass
 pass
 pass
 test:
+void throw_() const
+pass
+pass
+pass
+pass
+pass
+test:
 template<typename T> std::vector<T> vecFromJSArray(val v)
 pass
 pass
