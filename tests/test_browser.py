@@ -3567,7 +3567,6 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
-  @flaky
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
