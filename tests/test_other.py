@@ -8837,3 +8837,25 @@ T6:(else) !ASSERTIONS""", output)
       else:
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
+
+  # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
+  # are minified when -O3 is used
+  def test_js_function_imports_are_minified(self):
+    def check_size(f, expected_size):
+      if not os.path.isfile(f): return # Nonexistent file passes in this check
+      obtained_size = os.path.getsize(f)
+      print('size of generated ' + f + ': ' + str(obtained_size))
+      try_delete(f)
+      assert obtained_size < expected_size
+
+    run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
+    for wasm in [['-s', 'WASM=0', '--separate-asm'], ['-s', 'WASM=1']]:
+      for closure in [[], ['--closure', '1']]:
+        args = [PYTHON, EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
+        print(' '.join(args))
+        run_process(args)
+        check_size('a.js', 80000)
+        check_size('a.wasm', 80000)
+        check_size('a.asm.js', 80000)
+    try_delete('library_long.js')
+    try_delete('main_long.c')
