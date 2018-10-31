@@ -1298,7 +1298,8 @@ class SettingsManager(object):
         if suggestions:
           logging.error(' - did you mean one of %s?' % suggestions)
         logging.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
-        exit_with_error(' - (see src/settings.js for valid values)')
+        logging.error(' - (see src/settings.js for valid values)')
+        sys.exit(1)
       self.attrs[attr] = value
 
     @classmethod
