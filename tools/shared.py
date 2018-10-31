@@ -262,6 +262,7 @@ else:
     sys.exit(0)
 
 # The following globals can be overridden by the config file.
+# See parse_config_file below.
 NODE_JS = None
 BINARYEN_ROOT = None
 EM_POPEN_WORKAROUND = None
@@ -272,17 +273,46 @@ COMPILER_ENGINE = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
+EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 PYTHON = None
 JS_ENGINE = None
+JS_ENGINES = []
 COMPILER_OPTS = []
 
-try:
+
+def parse_config_file():
+  """Parse the emscripten config file using python's exec"""
+  config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
-  exec(config_text)
-except Exception as e:
-  logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
-  sys.exit(1)
+  try:
+    exec(config_text, config)
+  except Exception as e:
+    exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, CONFIG_FILE, str(e), config_text)
+
+  CONFIG_KEYS = (
+    'NODE_JS',
+    'BINARYEN_ROOT',
+    'EM_POPEN_WORKAROUND',
+    'SPIDERMONKEY_ENGINE',
+    'EMSCRIPTEN_NATIVE_OPTIMIZER',
+    'V8_ENGINE',
+    'LLVM_ROOT',
+    'COMPILER_ENGINE',
+    'LLVM_ADD_VERSION',
+    'CLANG_ADD_VERSION',
+    'CLOSURE_COMPILER',
+    'JAVA',
+    'PYTHON',
+    'JS_ENGINE',
+    'JS_ENGINES',
+    'COMPILER_OPTS',
+  )
+
+  # Only popogate certain settings from the config file.
+  for key in CONFIG_KEYS:
+    if key in config:
+      globals()[key] = config[key]
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -309,6 +339,7 @@ def fix_js_engine(old, new):
   return new
 
 
+parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))

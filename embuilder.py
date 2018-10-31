@@ -148,9 +148,9 @@ def main():
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
       if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
-        print('Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.')
-      elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
-        print('Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.')
+        print('Skipping building of native-optimizer; EMSCRIPTEN_NATIVE_OPTIMIZER is environment.')
+      elif shared.EMSCRIPTEN_NATIVE_OPTIMIZER:
+        print('Skipping building of native-optimizer; EMSCRIPTEN_NATIVE_OPTIMIZER set in .emscripten config.')
       else:
         tasks += ['native_optimizer']
     print('Building targets: %s' % ' '.join(tasks))
