@@ -520,7 +520,7 @@ class RunnerCore(unittest.TestCase):
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
       args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
-          self.emcc_args + \
+          (self.emcc_args or []) + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + self.get_emcc_transform_args(js_transform) + \
