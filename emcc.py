@@ -486,7 +486,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
     assert args[i] == '-s'
-    if len(args) > i:
+    if len(args) > i + 1:
       arg = args[i + 1]
       if arg.split('=')[0].isupper():
         return True
@@ -917,6 +917,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           for flag_index, flag in enumerate(link_flags_to_add):
             link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
 
+          newargs[i] = ''
+        elif arg == '-s':
+          # -s and some other compiler flags are normally passed onto the linker
+          # TODO(sbc): Pass this and other flags through when using lld
+          # link_flags.append((i, arg))
           newargs[i] = ''
 
       original_input_files = input_files[:]
