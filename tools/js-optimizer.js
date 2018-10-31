@@ -8056,6 +8056,12 @@ function getModuleUseName(node) {
   return node[2][1];
 }
 
+function isModuleAsmUse(node) { // Module["asm"][..string..]
+  return node[0] === 'sub' &&
+         node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm' &&
+         node[2][0] === 'string';
+}
+
 // A static dyncall is dynCall('vii', ..), which is actually static even
 // though we call dynCall() - we see the string signature statically.
 function isStaticDynCall(node) {
@@ -8328,6 +8334,34 @@ function applyDCEGraphRemovals(ast) {
   });
 }
 
+// Apply import/export name changes (after minifying them)
+function applyImportAndExportNameChanges(ast) {
+  var mapping = extraInfo.mapping;
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      node[3][1] = node[3][1].map(function(item) {
+        var name = item[0];
+        var value = item[1];
+        assert(mapping[name]);
+        return [mapping[name], value];
+      });
+    } else if (type === 'assign') {
+      var target = node[2];
+      var value = node[3];
+      if (isAsmUse(value)) {
+        var name = value[2][1];
+        assert(mapping[name]);
+        value[2][1] = mapping[name];
+      }
+    } else if (isModuleAsmUse(node)) {
+      var prop = node[2];
+      var name = prop[1];
+      assert(mapping[name]);
+      prop[1] = mapping[name];
+    }
+  });
+}
+
 function removeFuncs(ast) {
   assert(ast[0] === 'toplevel');
   var keep = set(extraInfo.keep);
@@ -8379,6 +8413,7 @@ var passes = {
   AJSDCE: AJSDCE,
   emitDCEGraph: emitDCEGraph,
   applyDCEGraphRemovals: applyDCEGraphRemovals,
+  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
   removeFuncs: removeFuncs,
   noop: function() {},
 
