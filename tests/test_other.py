@@ -6226,7 +6226,7 @@ int main(int argc, char** argv) {
           #include <stdio.h>
           void library_func() {
           #ifdef USE_PRINTF
-            printf("hello from library: %p\n", (int)&library_func);
+            printf("hello from library: %p\n", &library_func);
           #else
             puts("hello from library");
           #endif
