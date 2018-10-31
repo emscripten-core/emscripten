@@ -482,13 +482,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
-  def is_minus_s_for_emcc(newargs, i):
-    assert newargs[i] == '-s'
-    if i + 1 < len(newargs) and '=' in newargs[i + 1] and not newargs[i + 1].startswith('-'): # -s OPT=VALUE is for us, -s by itself is a linker option
-      return True
-    else:
-      logging.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
-      return False
+  def is_minus_s_for_emcc(args, i):
+    # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
+    # -s by itself is a linker option (alias for --strip-all)
+    assert args[i] == '-s'
+    if len(args) > i:
+      arg = args[i + 1]
+      if arg.split('=')[0].isupper():
+        return True
+
+    logging.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
+    return False
+
+
 
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
@@ -802,9 +808,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if newargs[i] == '-s':
           if is_minus_s_for_emcc(newargs, i):
             key = newargs[i + 1]
+            # If not = is specified default to 1
+            if '=' not in key:
+              key += '=1'
             settings_changes.append(key)
             newargs[i] = newargs[i + 1] = ''
-            assert key != 'WASM_BACKEND', 'do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment'
+            if key == 'WASM_BACKEND=1':
+              exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
       newargs = [arg for arg in newargs if arg is not '']
 
       settings_key_changes = set()
@@ -2386,7 +2396,7 @@ def parse_args(newargs):
   if should_exit:
     sys.exit(0)
 
-  newargs = [arg for arg in newargs if arg is not '']
+  newargs = [arg for arg in newargs if arg]
   return options, settings_changes, newargs
 
 
