@@ -130,6 +130,25 @@ def no_windows(note=''):
   return lambda f: f
 
 
+# used for tests that fail now and then on CI, due to timing or other
+# random causes. this tries the test a few times, looking for at least
+# one pass
+def flaky(f):
+  max_tries = 3
+
+  def decorated(self):
+    for i in range(max_tries - 1):
+      try:
+        f(self)
+        return
+      except Exception:
+        print('flaky...')
+        continue
+    # run the last time normally, to get a simpler stack trace
+    f(self)
+  return decorated
+
+
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
