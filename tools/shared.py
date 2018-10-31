@@ -250,7 +250,7 @@ if EM_CONFIG and not os.path.isfile(EM_CONFIG):
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
-  ONFIG_FILE = None
+  CONFIG_FILE = None
   logging.debug('EM_CONFIG is specified inline without a file')
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
