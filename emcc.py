@@ -494,8 +494,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logging.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
     return False
 
-
-
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
