@@ -222,7 +222,7 @@ class JSOptimizer(object):
     self.queue = []
     self.extra_info = {}
     self.queue_history = []
-    self.blacklist = (os.environ.get('EMCC_JSOPT_BLACKLIST') or '').split(',')
+    self.blacklist = os.environ.get('EMCC_JSOPT_BLACKLIST', '').split(',')
     self.minify_whitespace = False
     self.cleanup_shell = False
 

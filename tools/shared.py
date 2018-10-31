@@ -250,7 +250,7 @@ if EM_CONFIG and not os.path.isfile(EM_CONFIG):
 if not EM_CONFIG:
   EM_CONFIG = '~/.emscripten'
 if '\n' in EM_CONFIG:
-  CONFIG_FILE = None
+  ONFIG_FILE = None
   logging.debug('EM_CONFIG is specified inline without a file')
 else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
@@ -271,6 +271,7 @@ COMPILER_ENGINE = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
+EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 PYTHON = None
 JS_ENGINE = None
@@ -285,14 +286,14 @@ def parse_config_file():
   try:
     exec(config_text, config)
   except Exception as e:
-    logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
-    sys.exit(1)
+    exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, CONFIG_FILE, str(e), config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
     'EM_POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
+    'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
     'LLVM_ROOT',
     'COMPILER_ENGINE',

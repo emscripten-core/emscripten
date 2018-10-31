@@ -72,14 +72,16 @@ def get_native_optimizer():
     logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
     sys.exit(1)
 
-  # Allow users to override the location of the optimizer executable by setting an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
-  opt = os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER', '')
-  if len(opt):
+  # Allow users to override the location of the optimizer executable by setting
+  # an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
+  opt = os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')
+  if opt:
     logging.debug('env forcing native optimizer at ' + opt)
     return opt
-  # Also, allow specifying the location of the optimizer in .emscripten configuration file under EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/optimizer'
-  opt = getattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER', '')
-  if len(opt):
+  # Also, allow specifying the location of the optimizer in .emscripten
+  # configuration file under EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/optimizer'
+  opt = shared.EMSCRIPTEN_NATIVE_OPTIMIZER
+  if opt:
     logging.debug('config forcing native optimizer at ' + opt)
     return opt
 
