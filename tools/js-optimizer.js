@@ -8342,22 +8342,33 @@ function applyImportAndExportNameChanges(ast) {
       node[3][1] = node[3][1].map(function(item) {
         var name = item[0];
         var value = item[1];
-        assert(mapping[name]);
-        return [mapping[name], value];
+        if (mapping[name]) {
+          var ret = [mapping[name], value];
+          // Uglify uses this property to tell it to emit
+          // { "quotedname": .. }
+          // as opposed to
+          // { quotedname: }
+          // We need quoting for closure compiler to work
+          // TODO: disable otherwise
+          ret.quoted = true;
+          return ret;
+        }
       });
     } else if (type === 'assign') {
       var target = node[2];
       var value = node[3];
       if (isAsmUse(value)) {
         var name = value[2][1];
-        assert(mapping[name]);
-        value[2][1] = mapping[name];
+        if (mapping[name]) {
+          value[2][1] = mapping[name];
+        }
       }
     } else if (isModuleAsmUse(node)) {
       var prop = node[2];
       var name = prop[1];
-      assert(mapping[name]);
-      prop[1] = mapping[name];
+      if (mapping[name]) {
+        prop[1] = mapping[name];
+      }
     }
   });
 }

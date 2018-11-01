@@ -2597,7 +2597,7 @@ class Building(object):
 
   @staticmethod
   def minify_wasm_imports_and_exports(js_file, wasm_file):
-    logging.debug('minifying wasm imports and exports meta-DCE')
+    logging.debug('minifying wasm imports and exports')
     temp_files = configuration.get_temp_files()
     # run the pass
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
