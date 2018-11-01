@@ -84,10 +84,12 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-s-option-value:
 
-``-s OPTION=VALUE``
+``-s OPTION[=VALUE]``
   JavaScript code generation option passed into the Emscripten compiler. For the available options, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 
   .. note:: You can prefix boolean options with ``NO_`` to reverse them. For example, ``-s EXIT_RUNTIME=1`` is the same as ``-s NO_EXIT_RUNTIME=0``.
+
+  .. note:: If no value is specifed it will default to ``1``.
 
   .. note:: For options that are lists, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
 
@@ -480,7 +482,7 @@ Environment variables
   - ``EMMAKEN_COMPILER``
   - ``EMMAKEN_CFLAGS``
   - ``EMCC_DEBUG``
-        - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
+  - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
 
 Search for 'os.environ' in `emcc.py <https://github.com/kripken/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 

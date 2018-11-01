@@ -5,9 +5,13 @@
 
 //
 // Various compiling-to-JS parameters. These are simply variables present when the
-// JS compiler runs. To set them, do something like
+// JS compiler runs. To set them, do something like:
 //
 //   emcc -s OPTION1=VALUE1 -s OPTION2=VALUE2 [..other stuff..]
+//
+// For convenience and readability `-s OPTION` expands to `-s OPTION=1`
+// and `-s NO_OPTION` expands to `-s OPTION=0` (assuming OPTION is a valid
+// option).
 //
 // See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
 //
