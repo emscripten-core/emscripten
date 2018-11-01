@@ -9059,4 +9059,3 @@ int main () {
     rval = send (0, thing, 0, 0);
     return 0;
 }''', '', force_c=True)
-
