@@ -8244,15 +8244,15 @@ int main() {
       ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19, 62), # noqa
       (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17, 34), # noqa
       (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17, 33), # noqa
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2, 21), # noqa
-      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2, 21), # noqa
+      (['-O3'],  7, [],                         [],  2345,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, [],                         [],  2345,  10,    2, 21), # noqa
+      (['-Oz'],  7, [],                         [],  2345,  10,    2, 21), # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
+                 0, [],                         [],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1489, ['invoke_v'],               ['waka'],                 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1489, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -8269,9 +8269,9 @@ int main() {
       (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15, 15), # noqa
       (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15, 15), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
-      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
+      (['-O3'],  0, [],                         [],                           39,  0,  1, 1), # noqa
+      (['-Os'],  0, [],                         [],                           39,  0,  1, 1), # noqa
+      (['-Oz'],  0, [],                         [],                           39,  0,  1, 1), # noqa
     ])
 
     print('test on libc++: see effects of emulated function pointers')
