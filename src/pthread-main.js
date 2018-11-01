@@ -72,7 +72,7 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   delete Module['wasmModule'];
-  receiveInstance(instance);
+  receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 }
 //#endif
