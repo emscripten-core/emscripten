@@ -711,9 +711,9 @@ def include_asm_consts(pre, forwarded_json, metadata):
     if metadata['asmConsts']:
       exit_with_error('EM_ASM is not yet supported in shared wasm module (it cannot be stored in the wasm itself, need some solution)')
 
-  asm_consts, all_sigs, call_types = all_asm_consts(metadata)
+  asm_consts, all_sigs = all_asm_consts(metadata)
   asm_const_funcs = []
-  for sig, call_type in zip(all_sigs, call_types):
+  for sig, call_type in all_sigs:
     if 'j' in sig:
       exit_with_error('emscript: EM_ASM should not receive i64s as inputs, they are not valid in JS')
     if '_emscripten_asm_const_' + call_type + sig in forwarded_json['Functions']['libraryFunctions']:
@@ -791,11 +791,9 @@ def trim_asm_const_body(body):
 def all_asm_consts(metadata):
   asm_consts = [0] * len(metadata['asmConsts'])
   all_sigs = []
-  all_call_types = []
   for k, v in metadata['asmConsts'].items():
-    const = asstr(v[0])
-    sigs = v[1]
-    call_types = v[2]
+    const, sigs, call_types = v
+    const = asstr(const)
     const = trim_asm_const_body(const)
     const = '{ ' + const + ' }'
     args = []
@@ -804,9 +802,10 @@ def all_asm_consts(metadata):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') ' + const
     asm_consts[int(k)] = const
-    all_sigs += sigs
-    all_call_types += call_types
-  return asm_consts, all_sigs, all_call_types
+    assert(len(sigs) == len(call_types))
+    for sig, call_type in zip(sigs, call_types):
+      all_sigs.append((sig, call_type))
+  return asm_consts, all_sigs
 
 
 def unfloat(s):
