@@ -1592,21 +1592,14 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_set_align')
 
   def test_emscripten_api(self):
-      check = '''
-def process(filename):
-  src = open(filename, 'r').read()
-  # TODO: restore this (see comment in emscripten.h) assert '// hello from the source' in src
-'''
-      self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
-                                   js_transform=check)
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
-      # test EXPORT_ALL
-      self.set_setting('EXPORTED_FUNCTIONS', [])
-      self.set_setting('EXPORT_ALL', 1)
-      self.set_setting('LINKABLE', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api',
-                                   js_transform=check)
+    # test EXPORT_ALL
+    self.set_setting('EXPORTED_FUNCTIONS', [])
+    self.set_setting('EXPORT_ALL', 1)
+    self.set_setting('LINKABLE', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
   def test_emscripten_run_script_string_utf8(self):
     src = r'''
@@ -3359,7 +3352,8 @@ ok
       self.set_setting('MAIN_MODULE', 1)
       self.set_setting('SIDE_MODULE', 0)
       if auto_load:
-        open('pre.js', 'w').write('''
+        with open('pre.js', 'w') as f:
+          f.write('''
 Module = {
   dynamicLibraries: ['liblib.so'],
 };
@@ -4426,32 +4420,29 @@ Pass: 0.000012 0.000012''')
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
 
-    self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1']
+    self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
 
     print('base', self.emcc_args)
 
-    post = '''
-def process(filename):
-  src = \'\'\'
-    Module = {
-      'noFSInit': true,
-      'preRun': function() {
-        FS.createLazyFile('/', 'test.file', 'test.file', true, false);
-        // Test FS_* exporting
-        Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false, false);  // 200 becomes -56, since signed chars are used in memory
-        var test_files_input = 'hi there!';
-        var test_files_input_index = 0;
-        FS.init(function() {
-          return test_files_input.charCodeAt(test_files_input_index++) || null;
-        });
-      }
-    };
-  \'\'\' + open(filename, 'r').read()
-  open(filename, 'w').write(src)
-'''
-    other = open(os.path.join(self.get_dir(), 'test.file'), 'w')
-    other.write('some data')
-    other.close()
+    with open('pre.js', 'w') as f:
+      f.write('''
+Module = {
+  'noFSInit': true,
+  'preRun': function() {
+    FS.createLazyFile('/', 'test.file', 'test.file', true, false);
+    // Test FS_* exporting
+    Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false, false);  // 200 becomes -56, since signed chars are used in memory
+    var test_files_input = 'hi there!';
+    var test_files_input_index = 0;
+    FS.init(function() {
+      return test_files_input.charCodeAt(test_files_input_index++) || null;
+    });
+  }
+};
+''')
+
+    with open('test.file', 'w') as f:
+      f.write('some data')
 
     src = open(path_from_root('tests', 'files.cpp'), 'r').read()
 
@@ -4466,7 +4457,7 @@ def process(filename):
         return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
       self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
-                  js_transform=post, output_nicerizer=clean)
+                  output_nicerizer=clean)
       if self.uses_memory_init_file():
         assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
 
@@ -4475,17 +4466,16 @@ def process(filename):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
-    post = '''
-def process(filename):
-  src = \'\'\'
+    with open('pre.js', 'w') as f:
+      f.write('''
     Module = {
       data: [10, 20, 40, 30],
       stdin: function() { return Module.data.pop() || null },
       stdout: function(x) { out('got: ' + x) }
     };
-  \'\'\' + open(filename, 'r').read()
-  open(filename, 'w').write(src)
-'''
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+
     src = r'''
       #include <stdio.h>
       #include <unistd.h>
@@ -4501,9 +4491,9 @@ def process(filename):
       '''
 
     def clean(out, err):
-      return '\n'.join([line for line in (out + err).split('\n') if 'warning' not in line and 'binaryen' not in line])
+      return '\n'.join(l for l in (out + err).splitlines() if 'warning' not in l and 'binaryen' not in l)
 
-    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\n \nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15\n'), js_transform=post, output_nicerizer=clean)
+    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15'), output_nicerizer=clean)
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
@@ -4869,11 +4859,9 @@ name: .
   def test_fs_errorstack(self, js_engines=[NODE_JS]):
     # Enables strict mode, which may catch some strict-mode-only errors
     # so that users can safely work with strict JavaScript if enabled.
-    post = '''
-def process(filename):
-  src = open(filename, 'r').read()
-  open(filename, 'w').write('"use strict";\\n' + src)
-'''
+    with open('pre.js', 'w') as f:
+      f.write('"use strict";')
+    self.emcc_args += ['--pre-js', 'pre.js']
 
     self.set_setting('FORCE_FILESYSTEM', 1)
     self.do_run(r'''
@@ -4891,7 +4879,7 @@ def process(filename):
         );
         return 0;
       }
-    ''', 'at Object.readFile', js_engines=js_engines, js_transform=post) # engines has different error stack format
+    ''', 'at Object.readFile', js_engines=js_engines) # engines has different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self, js_engines=None):
@@ -5320,12 +5308,12 @@ int main(void) {
       self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=i > 1)
 
   def test_raytrace(self):
-      # TODO: Should we remove this test?
-      self.skipTest('Relies on double value rounding, extremely sensitive')
+    # TODO: Should we remove this test?
+    self.skipTest('Relies on double value rounding, extremely sensitive')
 
-      src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
-      output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
-      self.do_run(src, output, ['3', '16']) # , build_ll_hook=self.do_autodebug)
+    src = open(path_from_root('tests', 'raytrace.cpp'), 'r').read().replace('double', 'float')
+    output = open(path_from_root('tests', 'raytrace.ppm'), 'r').read()
+    self.do_run(src, output, ['3', '16']) # , build_ll_hook=self.do_autodebug)
 
   def test_fasta(self):
       results = [(1, '''GG*ctt**tgagc*'''),
@@ -6318,9 +6306,8 @@ return malloc(size);
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
-    post = '''
-def process(filename):
-  src = open(filename, 'r').read() + \'\'\'
+    with open('post.js', 'w') as f:
+      f.write('''
       out('*');
       var ret;
       ret = Module['ccall']('get_int', 'number'); out([typeof ret, ret].join(','));
@@ -6351,17 +6338,16 @@ def process(filename):
       }
       out('stack is ok.');
       ccall('call_ccall_again', null);
-  \'\'\'
-  open(filename, 'w').write(src)
-'''
+      ''')
+    self.emcc_args += ['--post-js', 'post.js']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
-    self.do_run_in_out_file_test('tests', 'core', 'test_ccall', js_transform=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
     if '-O2' in self.emcc_args or self.is_emterpreter():
       print('with closure')
       self.emcc_args += ['--closure', '1']
-      self.do_run_in_out_file_test('tests', 'core', 'test_ccall', js_transform=post)
+      self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
   def test_dyncall(self):
     self.do_run_in_out_file_test('tests', 'core', 'dyncall')
