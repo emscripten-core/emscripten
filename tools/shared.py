@@ -9,6 +9,7 @@ from distutils.spawn import find_executable
 from subprocess import PIPE, STDOUT
 import atexit
 import base64
+import difflib
 import json
 import logging
 import math
@@ -1292,13 +1293,13 @@ class SettingsManager(object):
 
     def __setattr__(self, attr, value):
       if attr not in self.attrs:
-        import difflib
-        logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
+        logging.error('Assigning a non-existent settings attribute "%s"' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logging.warning(''' - did you mean one of %s?''' % suggestions)
-        logging.warning(''' - perhaps a typo in emcc's  -s X=Y  notation?''')
-        logging.warning(''' - (see src/settings.js for valid values)''')
+          logging.error(' - did you mean one of %s?' % suggestions)
+        logging.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
+        logging.error(' - (see src/settings.js for valid values)')
+        sys.exit(1)
       self.attrs[attr] = value
 
     @classmethod
