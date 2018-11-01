@@ -3326,49 +3326,45 @@ ok
     if header:
       open('header.h', 'w').write(header)
 
-    emcc_args = self.emcc_args[:]
-    try:
-      # side settings
-      self.set_setting('MAIN_MODULE', 0)
-      self.set_setting('SIDE_MODULE', 1)
-      side_suffix = 'js' if not self.is_wasm() else 'wasm'
-      if isinstance(side, list):
-        # side is just a library
-        try_delete('liblib.cpp.o.' + side_suffix)
-        run_process([PYTHON, EMCC] + side + self.emcc_args + self.serialize_settings() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
-      else:
-        base = 'liblib.cpp' if not force_c else 'liblib.c'
-        try_delete(base + '.o.' + side_suffix)
-        self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
-        if force_c:
-          shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
-      if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
-        out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
-        if 'asm' in out:
-          self.validate_asmjs(out)
-      shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
+    old_args = self.emcc_args[:]
 
-      # main settings
-      self.set_setting('MAIN_MODULE', 1)
-      self.set_setting('SIDE_MODULE', 0)
-      if auto_load:
-        with open('pre.js', 'w') as f:
-          f.write('''
-Module = {
-  dynamicLibraries: ['liblib.so'],
-};
-  ''')
-        self.emcc_args += ['--pre-js', 'pre.js'] + main_emcc_args
+    # side settings
+    self.set_setting('MAIN_MODULE', 0)
+    self.set_setting('SIDE_MODULE', 1)
+    print(self.is_wasm())
+    side_suffix = 'wasm' if self.is_wasm() else 'js'
+    if isinstance(side, list):
+      # side is just a library
+      try_delete('liblib.cpp.o.' + side_suffix)
+      run_process([PYTHON, EMCC] + side + self.emcc_args + self.serialize_settings() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
+    else:
+      base = 'liblib.cpp' if not force_c else 'liblib.c'
+      try_delete(base + '.o.' + side_suffix)
+      self.build(side, self.get_dir(), base, js_outfile=(side_suffix == 'js'))
+      if force_c:
+        shutil.move(base + '.o.' + side_suffix, 'liblib.cpp.o.' + side_suffix)
+    if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]) and not self.is_wasm():
+      out = run_js('liblib.cpp.o.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=STDOUT)
+      if 'asm' in out:
+        self.validate_asmjs(out)
+    shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
-      if isinstance(main, list):
-        # main is just a library
-        try_delete('src.cpp.o.js')
-        run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')])
-        self.do_run(None, expected, no_build=True)
-      else:
-        self.do_run(main, expected, force_c=force_c)
-    finally:
-      self.emcc_args = emcc_args[:]
+    # main settings
+    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('SIDE_MODULE', 0)
+    if auto_load:
+      self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
+      self.emcc_args += main_emcc_args
+
+    if isinstance(main, list):
+      # main is just a library
+      try_delete('src.cpp.o.js')
+      run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', os.path.join(self.get_dir(), 'src.cpp.o.js')])
+      self.do_run(None, expected, no_build=True)
+    else:
+      self.do_run(main, expected, force_c=force_c)
+
+    self.emcc_args = old_args
 
     if need_reverse:
       # test the reverse as well

@@ -447,6 +447,7 @@ class RunnerCore(unittest.TestCase):
       additional_files = [os.path.join(dirname, f) for f in additional_files]
       os.chdir(self.get_dir())
 
+    suffix = '.o.js' if js_outfile else '.o.wasm'
     if build_ll_hook:
       # "slow", old path: build to bc, then build to JS
 
@@ -491,19 +492,16 @@ class RunnerCore(unittest.TestCase):
           self.emcc_args + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
-          all_files + ['-o', filename + '.o.js']
+          all_files + ['-o', filename + suffix]
 
       run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-      if js_outfile:
-        assert os.path.exists(filename + '.o.js')
-      else:
-        assert os.path.exists(filename + '.o.wasm')
+      assert os.path.exists(filename + suffix)
 
     if post_build:
-      post_build(filename + '.o.js')
+      post_build(filename + suffix)
 
     if self.emcc_args is not None and js_outfile:
-      src = open(filename + '.o.js').read()
+      src = open(filename + suffix).read()
       if self.uses_memory_init_file():
         # side memory init file, or an empty one in the js
         assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
