@@ -5363,7 +5363,6 @@ pass: error == ENOTDIR
       self.assertTextDataContained(output, run_js('em.out.js', args=args))
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertTextDataContained(output, out)
-      self.validate_asmjs(out)
 
     # generate default shell for js test
     def make_default(args=[]):
