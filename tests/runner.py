@@ -653,7 +653,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         except:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-               ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+               ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
@@ -682,7 +682,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
       args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-          ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+          ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
 
@@ -885,8 +885,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     emcc_args = self.get_emcc_args()
 
-    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
-    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
+    digest = hashlib.md5(str(emcc_args).encode('utf-8')).hexdigest()
+    cache_name = name + ','.join(o for o in self.emcc_args if len(o) < 7) + '_' + digest + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])

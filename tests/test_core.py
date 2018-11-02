@@ -7972,7 +7972,7 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    self.emcc_args = emcc_args[:]
+    self.emcc_args = emcc_args
     for k, v in settings.items():
       self.set_setting(k, v)
 
