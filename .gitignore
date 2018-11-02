@@ -6,7 +6,7 @@
 *.pyc
 *.bc
 
-node_modules/
+./node_modules/
 
 # Ignore generated files
 
