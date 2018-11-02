@@ -52,7 +52,7 @@ function JSify(data, functionsOnly) {
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
+    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
 
     // We will start to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
@@ -76,7 +76,7 @@ function JSify(data, functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[0], shellFile)));
     var pre;
-    if (BUILD_AS_SHARED_LIB || SIDE_MODULE) {
+    if (SIDE_MODULE) {
       pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
     } else {
       pre = processMacros(preprocess(read('support.js'), 'support.js')) +
@@ -93,7 +93,7 @@ function JSify(data, functionsOnly) {
 
     var libFuncsToInclude;
     if (INCLUDE_FULL_LIBRARY) {
-      assert(!(BUILD_AS_SHARED_LIB || SIDE_MODULE), 'Cannot have both INCLUDE_FULL_LIBRARY and BUILD_AS_SHARED_LIB/SIDE_MODULE set.')
+      assert(!SIDE_MODULE, 'Cannot have both INCLUDE_FULL_LIBRARY and SIDE_MODULE set.')
       libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
@@ -390,22 +390,17 @@ function JSify(data, functionsOnly) {
 
     itemsDict.functionStub.push(item);
     var shortident = item.ident.substr(1);
-    if (BUILD_AS_SHARED_LIB) {
-      // Shared libraries reuse the runtime of their parents.
-      item.JS = '';
-    } else {
-      // If this is not linkable, anything not in the library is definitely missing
-      if (item.ident in DEAD_FUNCTIONS) {
-        if (LibraryManager.library[shortident + '__asm']) {
-          warn('cannot kill asm library function ' + item.ident);
-        } else {
-          LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-          delete LibraryManager.library[shortident + '__inline'];
-          delete LibraryManager.library[shortident + '__deps'];
-        }
+    // If this is not linkable, anything not in the library is definitely missing
+    if (item.ident in DEAD_FUNCTIONS) {
+      if (LibraryManager.library[shortident + '__asm']) {
+        warn('cannot kill asm library function ' + item.ident);
+      } else {
+        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
+        delete LibraryManager.library[shortident + '__inline'];
+        delete LibraryManager.library[shortident + '__deps'];
       }
-      item.JS = addFromLibrary(shortident);
     }
+    item.JS = addFromLibrary(shortident);
   }
 
   // Final combiner
@@ -435,7 +430,7 @@ function JSify(data, functionsOnly) {
     //
 
     if (!mainPass) {
-      if (!Variables.generatedGlobalBase && !BUILD_AS_SHARED_LIB) {
+      if (!Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
@@ -493,7 +488,7 @@ function JSify(data, functionsOnly) {
         print('/* no memory initializer */'); // test purposes
       }
 
-      if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+      if (!SIDE_MODULE) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;\n');
           print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
@@ -536,7 +531,7 @@ function JSify(data, functionsOnly) {
 
     legalizedI64s = legalizedI64sDefault;
 
-    if (!BUILD_AS_SHARED_LIB && !SIDE_MODULE) {
+    if (!SIDE_MODULE) {
       if (USE_PTHREADS) {
         print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
         print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
@@ -607,7 +602,7 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
 
-    var postFile = BUILD_AS_SHARED_LIB || SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
+    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
     var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 

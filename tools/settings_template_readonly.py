@@ -10,6 +10,10 @@
 
 import os
 
+# This is used by external projects in order to find emscripten.  It is not used
+# by emscripten itself.
+EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN', '{{{ EMSCRIPTEN_ROOT }}}')) # directory
+
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '{{{ LLVM_ROOT }}}')) # directory
 BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # if not set, we will use it from ports
 

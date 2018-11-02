@@ -9,6 +9,7 @@ from distutils.spawn import find_executable
 from subprocess import PIPE, STDOUT
 import atexit
 import base64
+import difflib
 import json
 import logging
 import math
@@ -179,6 +180,7 @@ def generate_config(path, first_time=False):
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
+  config_file = config_file.replace('\'{{{ EMSCRIPTEN_ROOT }}}\'', repr(__rootpath__))
   llvm_root = os.path.dirname(find_executable('llvm-dis') or '/usr/bin/llvm-dis')
   config_file = config_file.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
 
@@ -206,12 +208,13 @@ It contains our best guesses for the important paths, which are:
 
   LLVM_ROOT       = %s
   NODE_JS         = %s
+  EMSCRIPTEN_ROOT = %s
 
 Please edit the file if any of those are incorrect.
 
 This command will now exit. When you are done editing those paths, re-run it.
 ==============================================================================
-''' % (path, abspath, llvm_root, node), file=sys.stderr)
+''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
 
 
 # Emscripten configuration is done through the --em-config command line option or
@@ -260,6 +263,7 @@ else:
     sys.exit(0)
 
 # The following globals can be overridden by the config file.
+# See parse_config_file below.
 NODE_JS = None
 BINARYEN_ROOT = None
 EM_POPEN_WORKAROUND = None
@@ -270,17 +274,46 @@ COMPILER_ENGINE = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
+EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 PYTHON = None
 JS_ENGINE = None
+JS_ENGINES = []
 COMPILER_OPTS = []
 
-try:
+
+def parse_config_file():
+  """Parse the emscripten config file using python's exec"""
+  config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
-  exec(config_text)
-except Exception as e:
-  logging.error('Error in evaluating %s (at %s): %s, text: %s' % (EM_CONFIG, CONFIG_FILE, str(e), config_text))
-  sys.exit(1)
+  try:
+    exec(config_text, config)
+  except Exception as e:
+    exit_with_error('Error in evaluating %s (at %s): %s, text: %s', EM_CONFIG, CONFIG_FILE, str(e), config_text)
+
+  CONFIG_KEYS = (
+    'NODE_JS',
+    'BINARYEN_ROOT',
+    'EM_POPEN_WORKAROUND',
+    'SPIDERMONKEY_ENGINE',
+    'EMSCRIPTEN_NATIVE_OPTIMIZER',
+    'V8_ENGINE',
+    'LLVM_ROOT',
+    'COMPILER_ENGINE',
+    'LLVM_ADD_VERSION',
+    'CLANG_ADD_VERSION',
+    'CLOSURE_COMPILER',
+    'JAVA',
+    'PYTHON',
+    'JS_ENGINE',
+    'JS_ENGINES',
+    'COMPILER_OPTS',
+  )
+
+  # Only popogate certain settings from the config file.
+  for key in CONFIG_KEYS:
+    if key in config:
+      globals()[key] = config[key]
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -307,6 +340,7 @@ def fix_js_engine(old, new):
   return new
 
 
+parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
@@ -1259,13 +1293,13 @@ class SettingsManager(object):
 
     def __setattr__(self, attr, value):
       if attr not in self.attrs:
-        import difflib
-        logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
+        logging.error('Assigning a non-existent settings attribute "%s"' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logging.warning(''' - did you mean one of %s?''' % suggestions)
-        logging.warning(''' - perhaps a typo in emcc's  -s X=Y  notation?''')
-        logging.warning(''' - (see src/settings.js for valid values)''')
+          logging.error(' - did you mean one of %s?' % suggestions)
+        logging.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
+        logging.error(' - (see src/settings.js for valid values)')
+        sys.exit(1)
       self.attrs[attr] = value
 
     @classmethod
@@ -1876,6 +1910,11 @@ class Building(object):
 
     # asm.js-style setjmp/longjmp handling
     args += ['-enable-emscripten-sjlj']
+
+    # better (smaller, sometimes faster) codegen, see binaryen#1054
+    # and https://bugs.llvm.org/show_bug.cgi?id=39488
+    args += ['-disable-lsr']
+
     return args
 
   @staticmethod
@@ -2254,11 +2293,6 @@ class Building(object):
 
     return filename + '.o.js'
 
-  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
-  @staticmethod
-  def can_build_standalone():
-    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
-
   @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
@@ -2293,7 +2327,7 @@ class Building(object):
 
   @staticmethod
   def get_safe_internalize():
-    if not Building.can_build_standalone():
+    if Settings.LINKABLE:
       return [] # do not internalize anything
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)

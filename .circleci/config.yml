@@ -130,8 +130,8 @@ jobs:
             # wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/linux-x86_64/en-US/firefox-62.0.2.tar.bz2
             # tar xf firefox-62.0.2.tar.bz2
             # Currently we need firefox nightly to test wasm threads
-            wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-central/firefox-64.0a1.en-US.linux-x86_64.tar.bz2
-            tar xf firefox-64.0a1.en-US.linux-x86_64.tar.bz2
+            wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+            tar xf nightly.tar.bz2
       - run:
           name: configure firefox
           command: |
@@ -211,7 +211,8 @@ jobs:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
-            EMCC_CORES=4 ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            export EMCC_CORES=4
+            ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             openbox --exit
             wait # wait for startx to shutdown cleanly
   test-browser-chrome:
