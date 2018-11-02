@@ -130,8 +130,8 @@ jobs:
             # wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/linux-x86_64/en-US/firefox-62.0.2.tar.bz2
             # tar xf firefox-62.0.2.tar.bz2
             # Currently we need firefox nightly to test wasm threads
-            wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-central/firefox-64.0a1.en-US.linux-x86_64.tar.bz2
-            tar xf firefox-64.0a1.en-US.linux-x86_64.tar.bz2
+            wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+            tar xf nightly.tar.bz2
       - run:
           name: configure firefox
           command: |
