@@ -274,6 +274,18 @@ pthread_t emscripten_main_browser_thread_id(void);
 // Direct syscall access, second argument is a varargs pointer. used in proxying
 int emscripten_syscall(int, void*);
 
+// Synchronously sleeps the calling thread for the given number of milliseconds.
+// Note: Calling this on the main browser thread is _very_ _very_ bad for application logic throttling,
+// because it does not save any battery, it will spin up the CPU at 100%, lock up the UI, printfs will not come
+// through on web page or the console, and eventually it will show up the slow script dialog.
+// Calling this function in a pthread (Web Worker) is fine, and a good way to go if you need to synchronously
+// sleep for a specific amount of time while saving power.
+// Note 2: This function will process the pthread-specific event queue for the calling thread while sleeping,
+//         and this function also acts as a cancellation point.
+// Note 3: This function is enabled when targeting pthreads (SharedArrayBuffer), not to be confused with
+//         similarly named function emscripten_sleep(), which is intended for Asyncify and Emterpreter builds.
+void emscripten_thread_sleep(double msecs);
+
 #define EM_THREAD_STATUS int
 #define EM_THREAD_STATUS_NOTSTARTED 0
 #define EM_THREAD_STATUS_RUNNING    1
