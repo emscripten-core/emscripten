@@ -103,6 +103,11 @@ namespace Space {
       printf("Inner::+= => %d\n", value);
     }
   };
+
+  class InnerUserBase {
+  public:
+      virtual void Callback(Inner * inner) = 0;
+  }
 }
 
 enum AnEnum {

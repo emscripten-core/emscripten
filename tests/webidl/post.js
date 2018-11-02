@@ -140,6 +140,14 @@ console.log('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 new TheModule.Inner().incInPlace(new TheModule.Inner());
 
+// extend a namespaced class from JS
+var iu = new TheModule.InnerUser();
+
+iu.Callback = function (inner) {
+	console.log('*js virtual namespaced replacement*');
+};
+console.log(iu.Callback(new TheModule.Inner()));
+
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
 
