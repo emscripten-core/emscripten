@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'min-imp-exp' # XXX testing FIXME
+TAG = 'version_52'
 
 def needed(settings, shared, ports):
   if not settings.WASM: return False
