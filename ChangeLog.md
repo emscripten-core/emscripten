@@ -22,6 +22,8 @@ Current Trunk
    same behavior as before). This change brings us in line with more standard
    dynamic linking, and will match what the LLVM wasm backend will have.
    See #7312.
+ - Invalid -s flags on the command line are now treated as errors.
+ - Remove BUILD_AS_SHARED_LIBRARY setting.
 
 v1.38.14: 10/22/2018
 --------------------

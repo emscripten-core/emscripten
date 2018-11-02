@@ -4853,13 +4853,15 @@ Size of file is: 32
 
   def test_emcc_s_typo(self):
     # with suggestions
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'], stderr=PIPE).stderr
-    self.assertContained(r'''Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"''', err)
-    self.assertContained(r'''did you mean one of DISABLE_EXCEPTION_CATCHING?''', err)
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'], stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', proc.stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING?', proc.stderr)
     # no suggestions
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE).stderr
-    self.assertContained(r'''perhaps a typo in emcc's  -s X=Y  notation?''', err)
-    self.assertContained(r'''(see src/settings.js for valid values)''', err)
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'], stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", proc.stderr)
+    self.assertContained('(see src/settings.js for valid values)', proc.stderr)
 
   def test_create_readonly(self):
     open('src.cpp', 'w').write(r'''
@@ -8251,7 +8253,7 @@ int main() {
                  0, [],                         [],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1489, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1493, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -8839,3 +8841,225 @@ T6:(else) !ASSERTIONS""", output)
       else:
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
+
+  # Sockets and networking
+
+  def test_inet(self):
+    self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+
+      int main() {
+        printf("*%x,%x,%x,%x,%x,%x*\n", htonl(0xa1b2c3d4), htonl(0xfe3572e0), htonl(0x07abcdf0), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
+        in_addr_t i = inet_addr("190.180.10.78");
+        printf("%x\n", i);
+        return 0;
+      }
+    '''
+    self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
+
+  def test_inet2(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+
+      int main() {
+        struct in_addr x, x2;
+        int *y = (int*)&x;
+        *y = 0x12345678;
+        printf("%s\n", inet_ntoa(x));
+        int r = inet_aton(inet_ntoa(x), &x2);
+        printf("%s\n", inet_ntoa(x2));
+        return 0;
+      }
+    '''
+    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
+
+  def test_inet3(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+      #include <sys/socket.h>
+      int main() {
+        char dst[64];
+        struct in_addr x, x2;
+        int *y = (int*)&x;
+        *y = 0x12345678;
+        printf("%s\n", inet_ntop(AF_INET,&x,dst,sizeof dst));
+        int r = inet_aton(inet_ntoa(x), &x2);
+        printf("%s\n", inet_ntop(AF_INET,&x2,dst,sizeof dst));
+        return 0;
+      }
+    '''
+    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
+
+  def test_inet4(self):
+    src = r'''
+      #include <stdio.h>
+      #include <arpa/inet.h>
+      #include <sys/socket.h>
+
+      void test(const char *test_addr, bool first=true){
+          char str[40];
+          struct in6_addr addr;
+          unsigned char *p = (unsigned char*)&addr;
+          int ret;
+          ret = inet_pton(AF_INET6,test_addr,&addr);
+          if(ret == -1) return;
+          if(ret == 0) return;
+          if(inet_ntop(AF_INET6,&addr,str,sizeof(str)) == NULL ) return;
+          printf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x - %s\n",
+               p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],str);
+          if (first) test(str, false); // check again, on our output
+      }
+      int main(){
+          test("::");
+          test("::1");
+          test("::1.2.3.4");
+          test("::17.18.19.20");
+          test("::ffff:1.2.3.4");
+          test("1::ffff");
+          test("::255.255.255.255");
+          test("0:ff00:1::");
+          test("0:ff::");
+          test("abcd::");
+          test("ffff::a");
+          test("ffff::a:b");
+          test("ffff::a:b:c");
+          test("ffff::a:b:c:d");
+          test("ffff::a:b:c:d:e");
+          test("::1:2:0:0:0");
+          test("0:0:1:2:3::");
+          test("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+          test("1::255.255.255.255");
+
+          //below should fail and not produce results..
+          test("1.2.3.4");
+          test("");
+          test("-");
+
+          printf("ok.\n");
+      }
+    '''
+    self.do_run(src, r'''0000:0000:0000:0000:0000:0000:0000:0000 - ::
+0000:0000:0000:0000:0000:0000:0000:0000 - ::
+0000:0000:0000:0000:0000:0000:0000:0001 - ::1
+0000:0000:0000:0000:0000:0000:0000:0001 - ::1
+0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
+0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
+0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
+0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
+0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
+0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
+0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
+0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
+0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
+0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
+0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
+0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
+0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
+0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
+abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
+abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
+ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
+ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
+ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
+ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
+ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
+ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
+ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
+ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
+ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
+ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
+0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
+0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
+0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
+0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
+ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
+0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
+ok.
+''')
+
+  def test_getsockname_unconnected_socket(self):
+    self.do_run(r'''
+      #include <sys/socket.h>
+      #include <stdio.h>
+      #include <assert.h>
+      #include <sys/socket.h>
+      #include <netinet/in.h>
+      #include <arpa/inet.h>
+      #include <string.h>
+      int main() {
+        int fd;
+        int z;
+        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+        struct sockaddr_in adr_inet;
+        socklen_t len_inet = sizeof adr_inet;
+        z = getsockname(fd, (struct sockaddr *)&adr_inet, &len_inet);
+        if (z != 0) {
+          perror("getsockname error");
+          return 1;
+        }
+        char buffer[1000];
+        sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
+        const char *correct = "0.0.0.0:0";
+        printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+        assert(strlen(buffer) == strlen(correct));
+        assert(strcmp(buffer, correct) == 0);
+        puts("success.");
+      }
+    ''', 'success.')
+
+  def test_getpeername_unconnected_socket(self):
+    self.do_run(r'''
+      #include <sys/socket.h>
+      #include <stdio.h>
+      #include <assert.h>
+      #include <sys/socket.h>
+      #include <netinet/in.h>
+      #include <arpa/inet.h>
+      #include <string.h>
+      int main() {
+        int fd;
+        int z;
+        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+        struct sockaddr_in adr_inet;
+        socklen_t len_inet = sizeof adr_inet;
+        z = getpeername(fd, (struct sockaddr *)&adr_inet, &len_inet);
+        if (z != 0) {
+          perror("getpeername error");
+          return 1;
+        }
+        puts("unexpected success.");
+      }
+    ''', 'getpeername error: Socket not connected')
+
+  def test_getaddrinfo(self):
+    self.emcc_args = []
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
+
+  def test_getnameinfo(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
+
+  def test_gethostbyname(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
+
+  def test_getprotobyname(self):
+    self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
+
+  def test_link(self):
+    self.do_run(r'''
+#include <netdb.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int main () {
+    void* thing = gethostbyname("bing.com");
+    ssize_t rval = recv (0, thing, 0, 0);
+    rval = send (0, thing, 0, 0);
+    return 0;
+}''', '', force_c=True)
