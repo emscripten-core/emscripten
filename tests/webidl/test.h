@@ -106,8 +106,10 @@ namespace Space {
 
   class InnerUserBase {
   public:
-      virtual void Callback(Inner * inner) = 0;
-  }
+    virtual ~InnerUserBase() = {};
+
+    virtual void Callback(Inner *inner) = 0;
+  };
 }
 
 enum AnEnum {
