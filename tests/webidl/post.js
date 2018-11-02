@@ -146,7 +146,7 @@ var iu = new TheModule.InnerUser();
 iu.Callback = function (inner) {
 	console.log('*js virtual namespaced replacement*');
 };
-console.log(iu.Callback(new TheModule.Inner()));
+iu.Callback(new TheModule.Inner());
 
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
