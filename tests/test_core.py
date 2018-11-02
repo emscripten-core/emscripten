@@ -2396,26 +2396,6 @@ The current type of b is: 9
       # Bloated memory; same layout as C/C++
       self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
-  @unittest.skip('BUILD_AS_SHARED_LIB=2 is deprecated')
-  def test_runtimelink(self):
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM opts will optimize printf into puts in the parent, and the child will still look for puts')
-    if self.get_setting('ASM_JS'):
-      self.skipTest('asm does not support runtime linking')
-
-    main, supp = self.setup_runtimelink_test()
-
-    self.banned_js_engines = [NODE_JS] # node's global scope behaves differently than everything else, needs investigation FIXME
-    self.set_setting('LINKABLE', 1)
-    self.set_setting('BUILD_AS_SHARED_LIB', 2)
-
-    self.build(supp, self.get_dir(), self.in_dir('supp.cpp'))
-    shutil.move(self.in_dir('supp.cpp.o.js'), self.in_dir('liblib.so'))
-    self.set_setting('BUILD_AS_SHARED_LIB', 0)
-
-    self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
-    self.do_run(main, 'supp: 54,2\nmain: 56\nsupp see: 543\nmain see: 76\nok.')
-
   def prep_dlfcn_lib(self):
     self.set_setting('MAIN_MODULE', 0)
     self.set_setting('SIDE_MODULE', 1)
@@ -2699,7 +2679,6 @@ The current type of b is: 9
     self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
-    self.set_setting('LINKABLE', 1)
     src = '''
       #include <stdio.h>
       #include <dlfcn.h>
@@ -2759,8 +2738,8 @@ The current type of b is: 9
 
   @needs_dlfcn
   def test_dlfcn_varargs(self):
-    # this test is not actually valid - it fails natively. the child should fail to be loaded, not load and successfully see the parent print_ints func
-    self.set_setting('LINKABLE', 1)
+    # this test is not actually valid - it fails natively. the child should fail
+    # to be loaded, not load and successfully see the parent print_ints func
 
     self.prep_dlfcn_lib()
     lib_src = r'''

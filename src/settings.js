@@ -662,6 +662,7 @@ var SHELL_FILE = 0;
 
 // If set to 1, we emit relocatable code from the LLVM backend; both
 // globals and function pointers are all offset (by gb and fp, respectively)
+// Automatically set for SIDE_MODULE or MAIN_MODULE.
 var RELOCATABLE = 0;
 
 // A main module is a file compiled in a way that allows us to link it to
@@ -679,9 +680,6 @@ var SIDE_MODULE = 0;
 // we will link these at runtime. They must have been built with
 // SIDE_MODULE == 1.
 var RUNTIME_LINKED_LIBS = [];
-
-// (deprecated option TODO: remove)
-var BUILD_AS_SHARED_LIB = 0;
 
 // If set to 1, this is a worker library, a special kind of library that is run
 // in a worker. See emscripten.h
@@ -708,11 +706,8 @@ var PROXY_TO_PTHREAD = 0;
 // remove unused functions and globals, which might be used by another module we
 // are linked with.
 //
-// BUILD_AS_SHARED_LIB > 0 implies this, so it is only important to set this to
-// 1 when building the main file, and *if* that main file has symbols that the
-// library it will open will then access through an extern.  LINKABLE of 0 is
-// very useful in that we can reduce the size of the generated code very
-// significantly, by removing everything not actually used.
+// MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
+// to set this explicitly.
 var LINKABLE = 0;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
