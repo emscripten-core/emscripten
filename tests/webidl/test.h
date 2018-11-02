@@ -106,7 +106,7 @@ namespace Space {
 
   class InnerUserBase {
   public:
-    virtual ~InnerUserBase() = {};
+    virtual ~InnerUserBase() {};
 
     virtual void Callback(Inner *inner) = 0;
   };
