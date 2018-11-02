@@ -7787,20 +7787,17 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    self.emcc_args = emcc_args[:]
+    self.emcc_args = emcc_args
     for k, v in settings.items():
       self.set_setting(k, v)
-    Building.COMPILER_TEST_OPTS += [
+
+    Building.COMPILER_TEST_OPTS = [
         '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
         '-Wno-format-extra-args', '-Wno-format-security',
         '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
         '-Wno-c++11-compat-deprecated-writable-strings',
         '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
     ]
-
-    for arg in self.emcc_args:
-      if arg.startswith('-O'):
-        Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
 
   TT.setUp = setUp
 
