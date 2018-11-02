@@ -2537,6 +2537,8 @@ class Building(object):
           passes.append('minifyWhitespace')
         logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+        # also minify the names used between js and wasm
+        js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
         logging.debug('running closure on shell code')
@@ -2578,7 +2580,7 @@ class Building(object):
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split('\n'):
+    for line in out.splitlines():
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
@@ -2587,6 +2589,28 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = {'unused': unused}
+    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+
+  @staticmethod
+  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, debug_info):
+    logging.debug('minifying wasm imports and exports')
+    # run the pass
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    if debug_info:
+      cmd.append('-g')
+    out = run_process(cmd, stdout=PIPE).stdout
+    # get the mapping
+    SEP = ' => '
+    mapping = {}
+    for line in out.split('\n'):
+      if SEP in line:
+        old, new = line.strip().split(SEP)
+        mapping[old] = new
+    # apply them
+    passes = ['applyImportAndExportNameChanges']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    extra_info = {'mapping': mapping}
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested

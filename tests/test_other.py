@@ -2148,6 +2148,8 @@ int f() {
        ['emitDCEGraph', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
+      (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
+       ['applyImportAndExportNameChanges']),
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
     ]:
@@ -5363,7 +5365,6 @@ pass: error == ENOTDIR
       self.assertTextDataContained(output, run_js('em.out.js', args=args))
       out = run_js('em.out.js', engine=SPIDERMONKEY_ENGINE, args=args, stderr=PIPE, full_output=True)
       self.assertTextDataContained(output, out)
-      self.validate_asmjs(out)
 
     # generate default shell for js test
     def make_default(args=[]):
@@ -8244,15 +8245,15 @@ int main() {
       ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19, 62), # noqa
       (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17, 34), # noqa
       (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17, 33), # noqa
-      (['-O3'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2818,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-      (['-Os'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2771,  10,    2, 21), # noqa
-      (['-Oz'],  7, ['abort'],                  ['tempDoublePtr', 'waka'],  2765,  10,    2, 21), # noqa
+      (['-O3'],  7, [],                         [],  2690,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
+      (['-Os'],  7, [],                         [],  2690,  10,    2, 21), # noqa
+      (['-Oz'],  7, [],                         [],  2690,  10,    2, 21), # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                 0, [],                         ['tempDoublePtr', 'waka'],     8,   0,    0, 0), # noqa; totally empty!
+                 0, [],                         [],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1493, ['invoke_v'],               ['waka'],                 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1493, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -8269,9 +8270,9 @@ int main() {
       (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15, 15), # noqa
       (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15, 15), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-O3'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
-      (['-Os'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
-      (['-Oz'],  0, [],                         ['tempDoublePtr', 'waka'],    58,  0,  1, 1), # noqa
+      (['-O3'],  0, [],                         [],                           55,  0,  1, 1), # noqa
+      (['-Os'],  0, [],                         [],                           55,  0,  1, 1), # noqa
+      (['-Oz'],  0, [],                         [],                           55,  0,  1, 1), # noqa
     ])
 
     print('test on libc++: see effects of emulated function pointers')

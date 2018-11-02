@@ -1378,6 +1378,10 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
   # We might not need them even if ASYNCIFY is enabled
   if need_asyncify(exported_implemented_functions):
     basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
+
+  if shared.Settings.EMTERPRETIFY:
+    basic_vars += ['EMTSTACKTOP', 'EMT_STACK_MAX', 'eb']
+
   return basic_vars
 
 
