@@ -156,15 +156,33 @@ function JSify(data, functionsOnly) {
             }
           }
         }
-        if (!(MAIN_MODULE || SIDE_MODULE)) {
+        if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + ident + "']";
+          var isGlobalAccessor = ident.startsWith('g$');
+          var realIdent = ident;
+          if (isGlobalAccessor) {
+            realIdent = realIdent.substr(2);
+          }
+
+          var target = (SIDE_MODULE ? 'parent' : '') + "Module['_" + realIdent + "']";
           var assertion = '';
-          if (ASSERTIONS)
-            assertion = 'if (!' + target + ') abort("external function \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
-          LibraryManager.library[ident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
+          if (ASSERTIONS) {
+            var what = 'function';
+            if (isGlobalAccessor) {
+              what = 'global';
+            }
+            assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+
+          }
+          var functionBody;
+          if (isGlobalAccessor) {
+            functionBody = assertion + "return " + target + ";"
+          } else {
+            functionBody = assertion + "return " + target + ".apply(null, arguments);";
+          }
+          LibraryManager.library[ident] = new Function(functionBody);
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;

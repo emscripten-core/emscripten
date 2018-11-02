@@ -1274,12 +1274,6 @@ def verify_settings():
     if Settings.EMULATED_FUNCTION_POINTERS:
       exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
-    if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
-      exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
-
-    if Settings.EMULATED_FUNCTION_POINTERS:
-      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend')
-
 
 Settings = SettingsManager()
 verify_settings()
@@ -1811,29 +1805,23 @@ class Building(object):
     # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
+    # include all archive contents.
+    if Settings.LINKABLE:
+      args.insert(0, '--whole-archive')
+      args.append('--no-whole-archive')
+
     cmd = [
         WASM_LD,
-        '-z',
-        'stack-size=%s' % Settings.TOTAL_STACK,
-        '--global-base=%s' % Settings.GLOBAL_BASE,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
         '-o',
         target,
-        '--no-entry',
         '--allow-undefined',
         '--import-memory',
         '--import-table',
-        '--export',
-        '__wasm_call_ctors',
-        '--export',
-        '__data_end',
         '--lto-O%d' % lto_level,
     ] + args
 
-    if Settings.WASM_MEM_MAX != -1:
-      cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
-    elif not Settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
@@ -1847,10 +1835,49 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
-    if Settings.EXPORT_ALL:
-      cmd += ['--export-all']
+    export_all = False
+    if Settings.MAIN_MODULE:
+      export_all = True
+    elif Settings.EXPORT_ALL:
+      export_all = True
+
+    if Settings.RELOCATABLE:
+      if Settings.MAIN_MODULE == 2:
+        cmd.append('--no-export-dynamic')
+      else:
+        cmd.append('--no-gc-sections')
+        cmd.append('--export-dynamic')
+
+    if export_all:
+      cmd.append('--export-all')
+    else:
+      cmd += [
+        '--export',
+        '__wasm_call_ctors',
+        '--export',
+        '__data_end'
+      ]
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    if Settings.RELOCATABLE:
+      if Settings.SIDE_MODULE:
+        cmd.append('-shared')
+      else:
+        cmd.append('-pie')
+
+    if not Settings.SIDE_MODULE:
+      cmd += [
+        '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
+        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--no-entry'
+      ]
+      if Settings.WASM_MEM_MAX != -1:
+        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      elif not Settings.ALLOW_MEMORY_GROWTH:
+        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+      if not Settings.RELOCATABLE:
+        cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
     cmd += opts
 
@@ -1991,7 +2018,8 @@ class Building(object):
     try_delete(target)
 
     # Finish link
-    actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
+    # tolerate people trying to link a.so a.so etc.
+    actual_files = unique_ordered(actual_files)
 
     # check for too-long command line
     link_args = actual_files
@@ -2846,7 +2874,7 @@ function jsCall_%s(index%s) {
       # This only makes sense in function pointer emulation mode, where we
       # can do a direct table call.
       assert Settings.WASM
-      assert Settings.EMULATED_FUNCTION_POINTERS
+      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);

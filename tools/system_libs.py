@@ -47,10 +47,14 @@ def files_in_path(path_components, filenames):
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def get_cflags():
+def get_cflags(force_object_files=False):
   flags = []
-  if not shared.Settings.WASM_OBJECT_FILES:
+  if force_object_files:
+    flags += ['-s', 'WASM_OBJECT_FILES=1']
+  elif not shared.Settings.WASM_OBJECT_FILES:
     flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    flags += ['-s', 'RELOCATABLE']
   return flags
 
 
@@ -521,8 +525,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
                        '-c', shared.path_from_root('system', 'lib', src),
-                       '-s', 'WASM_OBJECT_FILES=1',
-                       '-o', o] + musl_internal_includes())
+                       '-o', o] +
+                      musl_internal_includes() +
+                      get_cflags(force_object_files=True))
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)

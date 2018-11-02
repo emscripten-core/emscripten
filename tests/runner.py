@@ -299,8 +299,6 @@ class RunnerCore(unittest.TestCase):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
-    if self.is_wasm_backend():
-      self.skipTest('no shared modules in wasm backend')
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
