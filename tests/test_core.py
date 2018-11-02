@@ -91,82 +91,82 @@ class TestCoreBase(RunnerCore):
     return False
 
   def do_run_in_out_file_test(self, *path, **kwargs):
-      test_path = path_from_root(*path)
+    test_path = path_from_root(*path)
 
-      def find_files(*ext_list):
-        ret = None
-        count = 0
-        for ext in ext_list:
-          if os.path.isfile(test_path + ext):
-            ret = test_path + ext
-            count += 1
-        assert count > 0, ("No file found at {} with extension {}"
-                           .format(test_path, ext_list))
-        assert count <= 1, ("Test file {} found with multiple valid extensions {}"
-                            .format(test_path, ext_list))
-        return ret
+    def find_files(*ext_list):
+      ret = None
+      count = 0
+      for ext in ext_list:
+        if os.path.isfile(test_path + ext):
+          ret = test_path + ext
+          count += 1
+      assert count > 0, ("No file found at {} with extension {}"
+                         .format(test_path, ext_list))
+      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                          .format(test_path, ext_list))
+      return ret
 
-      src = find_files('.c', '.cpp', '.cc')
-      output = find_files('.out', '.txt')
-      self.do_run_from_file(src, output, **kwargs)
+    src = find_files('.c', '.cpp', '.cc')
+    output = find_files('.out', '.txt')
+    self.do_run_from_file(src, output, **kwargs)
 
   def test_hello_world(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
-      src = open(self.in_dir('src.cpp.o.js')).read()
-      assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
+    src = open(self.in_dir('src.cpp.o.js')).read()
+    assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
 
   def test_intvars(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
+    self.do_run_in_out_file_test('tests', 'core', 'test_intvars')
 
   def test_sintvars(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
-                                   force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
+                                 force_c=True)
 
   def test_i64(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
   def test_i64_2(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_2')
 
   def test_i64_3(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_3')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_3')
 
   def test_i64_4(self):
-      # stuff that also needs sign corrections
+    # stuff that also needs sign corrections
 
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_4')
 
   def test_i64_b(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_b')
 
   def test_i64_cmp(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp')
 
   def test_i64_cmp2(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_cmp2')
 
   def test_i64_double(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_double')
 
   def test_i64_umul(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
   def test_i64_precise(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
   def test_i64_precise_unneeded(self):
-      # Verify that even if we ask for precision, if it is not needed it is not included
-      self.set_setting('PRECISE_I64_MATH', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_unneeded')
+    # Verify that even if we ask for precision, if it is not needed it is not included
+    self.set_setting('PRECISE_I64_MATH', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_unneeded')
 
-      code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
-      assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
+    code = open(os.path.join(self.get_dir(), 'src.cpp.o.js')).read()
+    assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
 
   def test_i64_precise_needed(self):
-      # and now one where we do
-      self.set_setting('PRECISE_I64_MATH', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
+    # and now one where we do
+    self.set_setting('PRECISE_I64_MATH', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
   def test_i64_llabs(self):
     self.set_setting('PRECISE_I64_MATH', 2)
@@ -284,69 +284,69 @@ class TestCoreBase(RunnerCore):
       self.do_run('', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
-      self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
-      src = r'''
-        #include <stdio.h>
+    self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
+    src = r'''
+      #include <stdio.h>
 
-        struct S {
-          double x;
-          int y;
-        };
+      struct S {
+        double x;
+        int y;
+      };
 
-        int main() {
-          // the 64-bit value here will not be 8-byte aligned
-          S s0[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
-          char buffer[10*sizeof(S)];
-          int b = int(buffer);
-          S *s = (S*)(b + 4-b%8);
-          s[0] = s0[0];
-          s[1] = s0[1];
-          s[2] = s0[2];
+      int main() {
+        // the 64-bit value here will not be 8-byte aligned
+        S s0[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
+        char buffer[10*sizeof(S)];
+        int b = int(buffer);
+        S *s = (S*)(b + 4-b%8);
+        s[0] = s0[0];
+        s[1] = s0[1];
+        s[2] = s0[2];
 
-          printf("*%d : %d : %d\n", sizeof(S), ((unsigned int)&s[0]) % 8 != ((unsigned int)&s[1]) % 8,
-                                               ((unsigned int)&s[1]) - ((unsigned int)&s[0]));
-          s[0].x++;
-          s[0].y++;
-          s[1].x++;
-          s[1].y++;
-          printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
-          return 0;
-        }
-        '''
-
-      # TODO: A version of this with int64s as well
-
-      self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
-
-      return # TODO: continue to the next part here
-
-      # Test for undefined behavior in C. This is not legitimate code, but does exist
-
-      src = r'''
-        #include <stdio.h>
-
-        int main()
-        {
-          int x[10];
-          char *p = (char*)&x[0];
-          p++;
-          short *q = (short*)p;
-          *q = 300;
-          printf("*%d:%d*\n", *q, ((int)q)%2);
-          int *r = (int*)p;
-          *r = 515559;
-          printf("*%d*\n", *r);
-          long long *t = (long long*)p;
-          *t = 42949672960;
-          printf("*%lld*\n", *t);
-          return 0;
-        }
+        printf("*%d : %d : %d\n", sizeof(S), ((unsigned int)&s[0]) % 8 != ((unsigned int)&s[1]) % 8,
+                                             ((unsigned int)&s[1]) - ((unsigned int)&s[0]));
+        s[0].x++;
+        s[0].y++;
+        s[1].x++;
+        s[1].y++;
+        printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
+        return 0;
+      }
       '''
 
-      try:
-        self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
-      except Exception as e:
-        assert 'must be aligned' in str(e), e # expected to fail without emulation
+    # TODO: A version of this with int64s as well
+
+    self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
+
+    return # TODO: continue to the next part here
+
+    # Test for undefined behavior in C. This is not legitimate code, but does exist
+
+    src = r'''
+      #include <stdio.h>
+
+      int main()
+      {
+        int x[10];
+        char *p = (char*)&x[0];
+        p++;
+        short *q = (short*)p;
+        *q = 300;
+        printf("*%d:%d*\n", *q, ((int)q)%2);
+        int *r = (int*)p;
+        *r = 515559;
+        printf("*%d*\n", *r);
+        long long *t = (long long*)p;
+        *t = 42949672960;
+        printf("*%lld*\n", *t);
+        return 0;
+      }
+    '''
+
+    try:
+      self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
+    except Exception as e:
+      assert 'must be aligned' in str(e), e # expected to fail without emulation
 
   def test_align64(self):
     src = r'''
@@ -433,92 +433,92 @@ int main()
     self.do_run(open(path_from_root('tests', 'test_aligned_alloc.c')).read(), '', assert_returncode=0)
 
   def test_unsigned(self):
-      src = '''
-        #include <stdio.h>
-        const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
-        int main()
+    src = '''
+      #include <stdio.h>
+      const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
+      int main()
+      {
         {
-          {
-            unsigned char x = 200;
-            printf("*%d*\\n", x);
-            unsigned char y = -22;
-            printf("*%d*\\n", y);
-          }
-
-          int varey = 100;
-          unsigned int MAXEY = -1, MAXEY2 = -77;
-          printf("*%u,%d,%u*\\n", MAXEY, varey >= MAXEY, MAXEY2); // 100 >= -1? not in unsigned!
-
-          int y = cvals[0];
-          printf("*%d,%d,%d,%d*\\n", cvals[0], cvals[0] < 0, y, y < 0);
-          y = cvals[1];
-          printf("*%d,%d,%d,%d*\\n", cvals[1], cvals[1] < 0, y, y < 0);
-
-          // zext issue - see mathop in jsifier
-          unsigned char x8 = -10;
-          unsigned long hold = 0;
-          hold += x8;
-          int y32 = hold+50;
-          printf("*%u,%u*\\n", hold, y32);
-
-          // Comparisons
-          x8 = 0;
-          for (int i = 0; i < 254; i++) x8++; // make it an actual 254 in JS - not a -2
-          printf("*%d,%d*\\n", x8+1 == 0xff, x8+1 != 0xff); // 0xff may be '-1' in the bitcode
-
-          return 0;
+          unsigned char x = 200;
+          printf("*%d*\\n", x);
+          unsigned char y = -22;
+          printf("*%d*\\n", y);
         }
-      '''
-      self.do_run(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
 
-      self.emcc_args.append('-Wno-constant-conversion')
-      src = '''
-        #include <stdio.h>
-        int main()
+        int varey = 100;
+        unsigned int MAXEY = -1, MAXEY2 = -77;
+        printf("*%u,%d,%u*\\n", MAXEY, varey >= MAXEY, MAXEY2); // 100 >= -1? not in unsigned!
+
+        int y = cvals[0];
+        printf("*%d,%d,%d,%d*\\n", cvals[0], cvals[0] < 0, y, y < 0);
+        y = cvals[1];
+        printf("*%d,%d,%d,%d*\\n", cvals[1], cvals[1] < 0, y, y < 0);
+
+        // zext issue - see mathop in jsifier
+        unsigned char x8 = -10;
+        unsigned long hold = 0;
+        hold += x8;
+        int y32 = hold+50;
+        printf("*%u,%u*\\n", hold, y32);
+
+        // Comparisons
+        x8 = 0;
+        for (int i = 0; i < 254; i++) x8++; // make it an actual 254 in JS - not a -2
+        printf("*%d,%d*\\n", x8+1 == 0xff, x8+1 != 0xff); // 0xff may be '-1' in the bitcode
+
+        return 0;
+      }
+    '''
+    self.do_run(src, '*4294967295,0,4294967219*\n*-1,1,-1,1*\n*-2,1,-2,1*\n*246,296*\n*1,0*')
+
+    self.emcc_args.append('-Wno-constant-conversion')
+    src = '''
+      #include <stdio.h>
+      int main()
+      {
         {
-          {
-            unsigned char x;
-            unsigned char *y = &x;
-            *y = -1;
-            printf("*%d*\\n", x);
-          }
-          {
-            unsigned short x;
-            unsigned short *y = &x;
-            *y = -1;
-            printf("*%d*\\n", x);
-          }
-          /*{ // This case is not checked. The hint for unsignedness is just the %u in printf, and we do not analyze that
-            unsigned int x;
-            unsigned int *y = &x;
-            *y = -1;
-            printf("*%u*\\n", x);
-          }*/
-          {
-            char x;
-            char *y = &x;
-            *y = 255;
-            printf("*%d*\\n", x);
-          }
-          {
-            char x;
-            char *y = &x;
-            *y = 65535;
-            printf("*%d*\\n", x);
-          }
-          {
-            char x;
-            char *y = &x;
-            *y = 0xffffffff;
-            printf("*%d*\\n", x);
-          }
-          return 0;
+          unsigned char x;
+          unsigned char *y = &x;
+          *y = -1;
+          printf("*%d*\\n", x);
         }
-      '''
-      self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
+        {
+          unsigned short x;
+          unsigned short *y = &x;
+          *y = -1;
+          printf("*%d*\\n", x);
+        }
+        /*{ // This case is not checked. The hint for unsignedness is just the %u in printf, and we do not analyze that
+          unsigned int x;
+          unsigned int *y = &x;
+          *y = -1;
+          printf("*%u*\\n", x);
+        }*/
+        {
+          char x;
+          char *y = &x;
+          *y = 255;
+          printf("*%d*\\n", x);
+        }
+        {
+          char x;
+          char *y = &x;
+          *y = 65535;
+          printf("*%d*\\n", x);
+        }
+        {
+          char x;
+          char *y = &x;
+          *y = 0xffffffff;
+          printf("*%d*\\n", x);
+        }
+        return 0;
+      }
+    '''
+    self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
   def test_bitfields(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
+    self.do_run_in_out_file_test('tests', 'core', 'test_bitfields')
 
   def test_floatvars(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_floatvars')
@@ -570,10 +570,10 @@ int main()
 
   # Test that fmodf with -s PRECISE_F32=1 properly validates as asm.js (% operator cannot take in f32, only f64)
   def test_math_fmodf(self):
-      test_path = path_from_root('tests', 'math', 'fmodf')
-      src, output = (test_path + s for s in ('.c', '.out'))
+    test_path = path_from_root('tests', 'math', 'fmodf')
+    src, output = (test_path + s for s in ('.c', '.out'))
 
-      self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output)
 
   def test_frexp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
@@ -820,10 +820,10 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_assert')
 
   def test_libcextra(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
+    self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
 
   def test_regex(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_regex')
+    self.do_run_in_out_file_test('tests', 'core', 'test_regex')
 
   def test_longjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
