@@ -2584,7 +2584,7 @@ class Building(object):
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split('\n'):
+    for line in out.splitlines():
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
