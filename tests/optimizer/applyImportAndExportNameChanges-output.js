@@ -10,7 +10,7 @@ Module.asmLibraryArg = {
  "emscripten_memcpy_big": _emscripten_memcpy_big,
  "c": ___syscall54,
  "d": ___syscall140,
- "a": ___syscall146
+ "q": ___syscall146
 };
 var expD1 = Module["expD1"] = asm["c"];
 var expI1 = Module["expI1"] = (function() {
