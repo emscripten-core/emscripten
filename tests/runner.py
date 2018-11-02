@@ -62,7 +62,7 @@ sys.path.append(__rootpath__)
 
 import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
+from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
 
@@ -191,6 +191,12 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+def limit_size(string, MAX=800 * 20):
+  if len(string) < MAX:
+    return string
+  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+
+
 # The core test modes
 core_test_modes = [
   'asm0',
@@ -250,7 +256,7 @@ class RunnerCore(unittest.TestCase):
     return self.emcc_args and 'SPLIT_MEMORY=' in str(self.emcc_args)
 
   def is_wasm(self):
-    return (self.emcc_args and 'WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
+    return (not self.emcc_args or 'WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')

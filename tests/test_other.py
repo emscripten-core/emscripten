@@ -17,6 +17,7 @@ import pipes
 import re
 import shlex
 import shutil
+import struct
 import sys
 import time
 import tempfile
@@ -79,6 +80,13 @@ def is_python3_version_supported():
   output = run_process([python3, '--version'], stdout=PIPE).stdout
   version = [int(x) for x in output.split(' ')[1].split('.')]
   return version >= [3, 5, 0]
+
+
+def encode_leb(number):
+  # TODO(sbc): handle larger numbers
+  assert(number < 255)
+  # pack the integer then take only the first (little end) byte
+  return struct.pack('<i', number)[:1]
 
 
 class other(RunnerCore):
@@ -8682,23 +8690,21 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
-      return
-    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+      self.skipTest('only supported with wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js', '--source-map-base', 'dir/'])
-    output = open('a.wasm').read()
+    output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'dir/a.wasm.map' file
-    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('dir/a.wasm.map')) + 'dir/a.wasm.map'
-    self.assertContained(source_mapping_url_content, output)
+    source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
+    self.assertIn(source_mapping_url_content, output)
 
   def test_check_sourcemapurl_default(self):
     if not self.is_wasm():
-      return
-    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'hello_123.c')
+      self.skipTest('only supported with wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'])
-    output = open('a.wasm').read()
+    output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'a.wasm.map' file
-    source_mapping_url_content = chr(len('sourceMappingURL')) + 'sourceMappingURL' + chr(len('a.wasm.map')) + 'a.wasm.map'
-    self.assertContained(source_mapping_url_content, output)
+    source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('a.wasm.map')) + b'a.wasm.map'
+    self.assertIn(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
