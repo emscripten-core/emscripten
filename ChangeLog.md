@@ -15,6 +15,13 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Minify wasm import and export names. This decreases JS and wasm size by
+   minifying the identifiers where JS calls into wasm or vice versa, which
+   are not minifiable by closure or other JS-only tools. This happens in
+   -O3, -Os and above. See #7431
+
+v1.38.15: 11/02/2018
+--------------------
  - Breaking change: Do not automatically set EXPORT_ALL for MAIN_MODULES or
    SIDE_MODULES. This means that you must explicitly export things that will
    be called from outside (normally, on EXPORTED_FUNCTIONS), or
