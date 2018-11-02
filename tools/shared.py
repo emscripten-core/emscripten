@@ -2293,11 +2293,6 @@ class Building(object):
 
     return filename + '.o.js'
 
-  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
-  @staticmethod
-  def can_build_standalone():
-    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
-
   @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
@@ -2332,7 +2327,7 @@ class Building(object):
 
   @staticmethod
   def get_safe_internalize():
-    if not Building.can_build_standalone():
+    if Settings.LINKABLE:
       return [] # do not internalize anything
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
