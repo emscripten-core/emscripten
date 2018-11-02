@@ -8353,6 +8353,7 @@ function applyImportAndExportNameChanges(ast) {
           ret.quoted = true;
           return ret;
         }
+        return item;
       });
     } else if (type === 'assign') {
       var target = node[2];
