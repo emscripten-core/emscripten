@@ -945,6 +945,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
       wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
 
+      if final_suffix == 'html' and shared.Settings.ENVIRONMENT == '':
+        shared.Settings.ENVIRONMENT = 'web'
       if final_suffix == 'html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
         options.separate_asm = True
         logging.warning('forcing separate asm output (--separate-asm), because -s PRECISE_F32=2 was passed.')
