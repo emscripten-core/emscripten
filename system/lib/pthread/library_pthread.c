@@ -194,6 +194,8 @@ void emscripten_async_waitable_close(em_queued_call *call)
 
 static void _do_call(em_queued_call *q)
 {
+	assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
+
 	switch(q->functionEnum)
 	{
 		case EM_PROXIED_PTHREAD_CREATE: q->returnValue.i = pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp); break;
@@ -209,6 +211,7 @@ static void _do_call(em_queued_call *q)
 		case EM_FUNC_SIG_VIFF: ((em_func_viff)q->functionPtr)(q->args[0].i, q->args[1].f, q->args[2].f); break;
 		case EM_FUNC_SIG_VFFF: ((em_func_vfff)q->functionPtr)(q->args[0].f, q->args[1].f, q->args[2].f); break;
 		case EM_FUNC_SIG_VIIII: ((em_func_viiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+		case EM_FUNC_SIG_VIIFI: ((em_func_viifi)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].i); break;
 		case EM_FUNC_SIG_VIFFF: ((em_func_vifff)q->functionPtr)(q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
 		case EM_FUNC_SIG_VFFFF: ((em_func_vffff)q->functionPtr)(q->args[0].f, q->args[1].f, q->args[2].f, q->args[3].f); break;
 		case EM_FUNC_SIG_VIIIII: ((em_func_viiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
@@ -217,10 +220,18 @@ static void _do_call(em_queued_call *q)
 		case EM_FUNC_SIG_VIIIIIII: ((em_func_viiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i); break;
 		case EM_FUNC_SIG_VIIIIIIII: ((em_func_viiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
 		case EM_FUNC_SIG_VIIIIIIIII: ((em_func_viiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
+		case EM_FUNC_SIG_VIIIIIIIIII: ((em_func_viiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i, q->args[9].i); break;
+		case EM_FUNC_SIG_VIIIIIIIIIII: ((em_func_viiiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i, q->args[9].i, q->args[10].i); break;
 		case EM_FUNC_SIG_I: q->returnValue.i = ((em_func_i)q->functionPtr)(); break;
 		case EM_FUNC_SIG_II: q->returnValue.i = ((em_func_ii)q->functionPtr)(q->args[0].i); break;
 		case EM_FUNC_SIG_III: q->returnValue.i = ((em_func_iii)q->functionPtr)(q->args[0].i, q->args[1].i); break;
 		case EM_FUNC_SIG_IIII: q->returnValue.i = ((em_func_iiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i); break;
+		case EM_FUNC_SIG_IIIII: q->returnValue.i = ((em_func_iiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+		case EM_FUNC_SIG_IIIIII: q->returnValue.i = ((em_func_iiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
+		case EM_FUNC_SIG_IIIIIII: q->returnValue.i = ((em_func_iiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+		case EM_FUNC_SIG_IIIIIIII: q->returnValue.i = ((em_func_iiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i); break;
+		case EM_FUNC_SIG_IIIIIIIII: q->returnValue.i = ((em_func_iiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
+		case EM_FUNC_SIG_IIIIIIIIII: q->returnValue.i = ((em_func_iiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
 		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 	}
 

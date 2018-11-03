@@ -100,7 +100,7 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
-#define EM_QUEUED_CALL_MAX_ARGS 8
+#define EM_QUEUED_CALL_MAX_ARGS 11
 typedef struct em_queued_call
 {
   int functionEnum;
@@ -137,6 +137,7 @@ typedef void (*em_func_viif)(int, int, float);
 typedef void (*em_func_viff)(int, float, float);
 typedef void (*em_func_vfff)(float, float, float);
 typedef void (*em_func_viiii)(int, int, int, int);
+typedef void (*em_func_viifi)(int, int, float, int);
 typedef void (*em_func_vifff)(int, float, float, float);
 typedef void (*em_func_vffff)(float, float, float, float);
 typedef void (*em_func_viiiii)(int, int, int, int, int);
@@ -145,10 +146,18 @@ typedef void (*em_func_viiiiii)(int, int, int, int, int, int);
 typedef void (*em_func_viiiiiii)(int, int, int, int, int, int, int);
 typedef void (*em_func_viiiiiiii)(int, int, int, int, int, int, int, int);
 typedef void (*em_func_viiiiiiiii)(int, int, int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiiiii)(int, int, int, int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int, int, int);
 typedef int (*em_func_i)(void);
 typedef int (*em_func_ii)(int);
 typedef int (*em_func_iii)(int, int);
 typedef int (*em_func_iiii)(int, int, int);
+typedef int (*em_func_iiiii)(int, int, int, int);
+typedef int (*em_func_iiiiii)(int, int, int, int, int);
+typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
 // Encode function signatures into a single uint32_t integer.
 // N.B. This encoding scheme is internal to the implementation, and can change in the future. Do not depend on the
