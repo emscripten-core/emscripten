@@ -1151,12 +1151,6 @@ def line_splitter(data):
   return out
 
 
-def limit_size(string, MAX=800 * 20):
-  if len(string) < MAX:
-    return string
-  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
-
-
 def read_pgo_data(filename):
   '''
     Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
