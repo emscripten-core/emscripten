@@ -100,7 +100,7 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
-#define EM_QUEUED_CALL_MAX_ARGS 8
+#define EM_QUEUED_CALL_MAX_ARGS 9
 typedef struct em_queued_call
 {
   int functionEnum;
