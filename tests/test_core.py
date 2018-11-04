@@ -245,7 +245,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
     js = open('src.cpp.o.js').read()
-    assert ('llvm_' not in js) == is_optimizing(self.emcc_args), 'intrinsics must be lowered when optimizing'
+    assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
@@ -6107,6 +6107,10 @@ return malloc(size);
       'invoke_byval', 'i24_ce_fastcomp',
     ]
 
+    need_no_error_on_undefined_symbols = [
+      'unsanitized_declare'
+    ]
+
     skip_tests = [
       # invalid ir
       'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast',
@@ -6154,6 +6158,9 @@ return malloc(size);
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
+
+      if basename in need_no_error_on_undefined_symbols:
+        self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
       print("Testing case '%s'..." % basename)
       output_file = path_from_root('tests', 'cases', shortname + '.txt')
