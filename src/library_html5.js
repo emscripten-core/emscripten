@@ -40,10 +40,13 @@ var LibraryJSEvents = {
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
 
+    _onGamepadConnected: function() { ++JSEvents.numGamepadsConnected; },
+    _onGamepadDisconnected: function() { --JSEvents.numGamepadsConnected; },
+
     staticInit: function() {
       if (typeof window !== 'undefined') {
-        window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
-        window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        window.addEventListener("gamepadconnected", JSEvents._onGamepadConnected);
+        window.addEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
         
         // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
         // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
@@ -54,13 +57,19 @@ var LibraryJSEvents = {
       }
     },
 
+    removeAllEventListeners: function() {
+      for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
+        JSEvents._removeHandler(i);
+      }
+      JSEvents.eventHandlers = [];
+      JSEvents.deferredCalls = [];
+      window.removeEventListener("gamepadconnected", JSEvents._onGamepadConnected);
+      window.removeEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
+    },
+
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
-      __ATEXIT__.push(function() {
-          for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
-            JSEvents._removeHandler(i);
-          }
-         });
+        __ATEXIT__.push(JSEvents.removeAllEventListeners);
         JSEvents.removeEventListenersRegistered = true;
       }
     },
@@ -2022,6 +2031,10 @@ var LibraryJSEvents = {
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_html5_remove_all_event_listeners: function() {
+    JSEvents.removeAllEventListeners();
   }
 };
 
