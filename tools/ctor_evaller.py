@@ -50,6 +50,9 @@ def find_ctors_data(js, num):
   ctors_text = js[ctors_start:ctors_end]
   all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
   all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
+  if shared.Settings.WASM_BACKEND:
+    assert all(ctor.startswith('_') for ctor in all_ctors)
+    all_ctors = [ctor[1:] for ctor in all_ctors]
   assert len(all_ctors)
   ctors = all_ctors[:num]
   return ctors_start, ctors_end, all_ctors, ctors

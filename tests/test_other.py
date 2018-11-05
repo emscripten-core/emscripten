@@ -7428,12 +7428,11 @@ int main() {
     if not self.is_wasm_backend():
       self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', proc.stderr)
 
-  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
-  @uses_canonical_tmp
-  def test_eval_ctors(self):
+  def test_eval_ctors_non_terminating(self):
     for wasm in (1, 0):
+      if self.is_wasm_backend() and not wasm:
+        continue
       print('wasm', wasm)
-      print('non-terminating ctor')
       src = r'''
         struct C {
           C() {
@@ -7446,9 +7445,14 @@ int main() {
       '''
       open('src.cpp', 'w').write(src)
       run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EVAL_CTORS=1', '-profiling-funcs', '-s', 'WASM=%d' % wasm])
+
+  @no_wasm_backend('EVAL_CTORS is monolithic with the wasm backend')
+  def test_eval_ctors(self):
+    for wasm in (1, 0):
+      if self.is_wasm_backend() and not wasm:
+        continue
+      print('wasm', wasm)
       print('check no ctors is ok')
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Oz', '-s', 'WASM=%d' % wasm])
-      self.assertContained('hello, world!', run_js('a.out.js'))
 
       # on by default in -Oz, but user-overridable
 
@@ -7485,6 +7489,7 @@ int main() {
       linkable_size = get_size(['-Oz', '-s', 'EVAL_CTORS=1', '-s', 'LINKABLE=1'])
       assert check_size(get_size(['-Oz', '-s', 'EVAL_CTORS=0', '-s', 'LINKABLE=1']), linkable_size) == 1, 'noticeable difference in linkable too'
 
+    def test_eval_ctor_ordering(self):
       # ensure order of execution remains correct, even with a bad ctor
       def test(p1, p2, p3, last, expected):
         src = r'''
@@ -7533,21 +7538,26 @@ int main() {
       print(first, second, third)
       assert first < second and second < third, [first, second, third]
 
-      print('helpful output')
-      with env_modify({'EMCC_DEBUG': '1'}):
-        open('src.cpp', 'w').write(r'''
+  @uses_canonical_tmp
+  @with_env_modify({'EMCC_DEBUG': '1'})
+  def test_eval_ctors_debug_output(self):
+    for wasm in (1, 0):
+      if self.is_wasm_backend() and not wasm:
+        continue
+      print('wasm', wasm)
+      open('src.cpp', 'w').write(r'''
   #include <stdio.h>
   struct C {
     C() { printf("constructing!\n"); } // don't remove this!
   };
   C c;
   int main() {}
-        ''')
-        err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-        self.assertContained('___syscall54', err) # the failing call should be mentioned
-        if not wasm: # js will show a stack trace
-          self.assertContained('ctorEval.js', err) # with a stack trace
-        self.assertContained('ctor_evaller: not successful', err) # with logging
+      ''')
+      err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
+      self.assertContained('__syscall54', err) # the failing call should be mentioned
+      if not wasm: # js will show a stack trace
+        self.assertContained('ctorEval.js', err) # with a stack trace
+      self.assertContained('ctor_evaller: not successful', err) # with logging
 
   def test_override_environment(self):
     open('main.cpp', 'w').write(r'''
