@@ -6,6 +6,10 @@
 from __future__ import print_function
 import os
 import shutil
+
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
+
 from runner import BrowserCore, path_from_root
 from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
 

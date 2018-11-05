@@ -16,6 +16,9 @@ import time
 import unittest
 from textwrap import dedent
 
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py')
+
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
