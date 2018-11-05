@@ -1221,6 +1221,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('USE_PTHREADS=2 is not longer supported')
         if shared.Settings.ALLOW_MEMORY_GROWTH:
           exit_with_error('Memory growth is not yet supported with pthreads')
+        if shared.Settings.MODULARIZE:
+          # currently pthread-main.js uses the global namespace, so it's setting of
+          # ENVIRONMENT_IS_PTHREAD is not picked up, in addition to all the other
+          # modifications it performs.
+          exit_with_error('MODULARIZE is not yet supported with pthreads')
         # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
         shared.Settings.TEXTDECODER = 0
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
