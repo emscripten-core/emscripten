@@ -5,7 +5,8 @@ Landing PRs
 ===========
 
  * Even after the code of a PR is approved, it should only be landed if the
-   CI on github is green, or the failures are known intermittent things.
+   CI on github is green, or the failures are known intermittent things
+   (with very strong reason to think they unrelated to the current PR).
  * If you see an approved PR of someone without commit access (that either
    you or someone else approved), land it for them (after checking CI as
    mentioned earlier).
@@ -14,8 +15,8 @@ Landing PRs
    it, etc.)
  * It is strongly recommended to land PRs with github's "squash" option, which
    turns the PR into a single commit. This makes sense if the PR is small,
-   which is also strongly recommended. However, sometimes a merge may make
-   more sense, *if and only if*:
+   which is also strongly recommended. However, sometimes separate commits may
+   make more sense, *if and only if*:
     * The PR is not easily separable into a series of small PRs (e.g., review
       must consider all the commits, either because the commits are hard to
       understand by themselves, or because review of a later PR may influence
@@ -24,6 +25,8 @@ Landing PRs
       one by one).
     * The individual commits are compatible with bisection (i.e., all tests
       should pass after each commit).
+   When landing multiple commits in such a scenario, use the "rebase" option,
+   to avoid a merge commit.
 
 
 Release Processes
