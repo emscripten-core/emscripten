@@ -150,9 +150,10 @@ var emscriptenMemoryProfiler = {
     Module['onFree'] = function onFree(ptr) { emscriptenMemoryProfiler.onFree(ptr); };
 
     // Add a tracking mechanism to detect when VFS loading is complete.
+    if (!Module['preRun']) Module['preRun'] = [];
     Module['preRun'].push(function() { emscriptenMemoryProfiler.onPreloadComplete(); });
 
-    if (this.hookStackAlloc) {
+    if (this.hookStackAlloc && typeof stackAlloc === 'function') {
       // Inject stack allocator.
       var prevStackAlloc = stackAlloc;
       function hookedStackAlloc(size) {
