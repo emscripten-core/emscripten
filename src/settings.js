@@ -1271,3 +1271,8 @@ var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
 var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
+
+// Internal: passes information to emscripten.py about whether to minify
+// JS -> asm.js import names. Controlled by optimization level, enabled
+// at -O1 and higher, but disabled at -g2 and higher.
+var MINIFY_ASMJS_IMPORT_NAMES = 0;

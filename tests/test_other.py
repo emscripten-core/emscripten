@@ -8741,3 +8741,30 @@ int main () {
     rval = send (0, thing, 0, 0);
     return 0;
 }''', '', force_c=True)
+
+  # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
+  # are minified when -O3 is used
+  def test_js_function_names_are_minified(self):
+    def check_size(f, expected_size):
+      if not os.path.isfile(f):
+        return # Nonexistent file passes in this check
+      obtained_size = os.path.getsize(f)
+      print('size of generated ' + f + ': ' + str(obtained_size))
+      try_delete(f)
+      assert obtained_size < expected_size
+
+    run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
+    # TODO: Add support to Wasm to minify imports, and then add Wasm testing ['-s', 'WASM=1'] to this list
+    for wasm in [['-s', 'WASM=1'], ['-s', 'WASM=0']]:
+      # Currently we rely on Closure for full minification of every appearance of JS function names.
+      # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
+      for closure in [['--closure', '1']]:
+        args = [PYTHON, EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
+        print(' '.join(args))
+        run_process(args)
+
+        ret = run_process(NODE_JS + ['a.js'], stdout=PIPE).stdout
+        self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
+
+        check_size('a.js', 150000)
+        check_size('a.wasm', 80000)
