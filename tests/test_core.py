@@ -57,11 +57,9 @@ def sync(f):
 
 def also_with_noderawfs(func):
   def decorated(self):
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     orig_args = self.emcc_args[:]
     func(self)
-    Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
-    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
+    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
     func(self, js_engines=[NODE_JS])
   return decorated
 
@@ -7935,7 +7933,7 @@ extern "C" {
 
 
 # Generate tests for everything
-def make_run(name, emcc_args=None, env=None):
+def make_run(name, emcc_args, env=None):
   if env is None:
     env = {}
 
@@ -7962,7 +7960,6 @@ def make_run(name, emcc_args=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    assert emcc_args is not None
     self.emcc_args = emcc_args[:]
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0
