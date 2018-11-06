@@ -144,7 +144,7 @@ new TheModule.Inner().incInPlace(new TheModule.Inner());
 var iu = new TheModule.InnerUser();
 
 iu.Callback = function (inner) {
-	console.log('*js virtual namespaced replacement*');
+  console.log('*js virtual namespaced replacement*');
 };
 iu.Callback(new TheModule.Inner());
 

@@ -93,15 +93,13 @@ interface Inner {
 };
 
 [Prefix = "Space::"]
-interface InnerUserBase
-{
+interface InnerUserBase {
 };
 
 [JSImplementation = "InnerUserBase"]
-interface InnerUser
-{
-	void InnerUser();
-	void Callback(Inner inner);
+interface InnerUser {
+  void InnerUser();
+  void Callback(Inner inner);
 };
 
 enum AnEnum {
