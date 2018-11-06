@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -42,7 +49,7 @@ void iter() {
        0 == strncmp((char*)hdr.msg_iov[0].iov_base, expected, strlen(expected))) {
       result = 1;
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     exit(EXIT_SUCCESS);
     emscripten_cancel_main_loop();
 #endif

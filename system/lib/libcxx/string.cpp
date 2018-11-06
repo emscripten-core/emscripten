@@ -13,17 +13,17 @@
 #include "cerrno"
 #include "limits"
 #include "stdexcept"
-#ifdef _LIBCPP_MSVCRT
-#include "support/win32/support.h"
-#endif // _LIBCPP_MSVCRT
 #include <stdio.h>
+
+// XXX EMSCRIPTEN: Recent versions of clang generates warning in as_integer.
+#pragma clang diagnostic ignored "-Wtautological-compare"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template class __basic_string_common<true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __basic_string_common<true>;
 
-template class basic_string<char>;
-template class basic_string<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS basic_string<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS basic_string<wchar_t>;
 
 template
     string
@@ -40,7 +40,7 @@ void throw_helper( const string& msg )
     throw T( msg );
 #else
     fprintf(stderr, "%s\n", msg.c_str());
-    abort();
+    _VSTD::abort();
 #endif
 }
 
@@ -430,7 +430,7 @@ get_swprintf()
 #ifndef _LIBCPP_MSVCRT
     return swprintf;
 #else
-    return static_cast<int (__cdecl*)(wchar_t* __restrict, size_t, const wchar_t*__restrict, ...)>(swprintf);
+    return static_cast<int (__cdecl*)(wchar_t* __restrict, size_t, const wchar_t*__restrict, ...)>(_snwprintf);
 #endif
 }
 

@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -11,7 +16,6 @@ int main()
 	printf("ptr2: %p\n", ptr2);
 	assert(ptr2 == 0);
 #ifdef REPORT_RESULT
-	int result = 1;
-	REPORT_RESULT();
+	REPORT_RESULT(1);
 #endif
 }

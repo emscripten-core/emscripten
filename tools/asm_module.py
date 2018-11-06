@@ -1,7 +1,12 @@
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
+from __future__ import print_function
 import sys, re, itertools
 
-import shared, js_optimizer
+from . import shared, js_optimizer
 
 
 class AsmModule():
@@ -33,7 +38,7 @@ class AsmModule():
     global_inits = re.search(shared.JS.global_initializers_pattern, self.pre_js)
     if global_inits:
       self.global_inits_js = global_inits.group(0)
-      self.global_inits = map(lambda init: init.split('{')[2][1:].split('(')[0], global_inits.groups(0)[0].split(','))
+      self.global_inits = [init.split('{')[2][1:].split('(')[0] for init in global_inits.groups(0)[0].split(',')]
     else:
       self.global_inits_js = ''
       self.global_inits = []
@@ -52,14 +57,14 @@ class AsmModule():
         for part in imp.split(','):
           assert part.count('(') == part.count(')') # we must not break ',' in func(x, y)!
           assert part.count('=') == 1
-          key, value = part.split('=')
+          key, value = part.split('=', 1)
           self.imports[key.strip()] = value.strip()
 
     #print >> sys.stderr, 'imports', self.imports
 
     # funcs
     self.funcs_js = self.js[self.start_funcs:self.end_funcs]
-    self.funcs = set([m.group(1) for m in js_optimizer.func_sig.finditer(self.funcs_js)])
+    self.funcs = sorted(set([m.group(1) for m in js_optimizer.func_sig.finditer(self.funcs_js)]))
     #print 'funcs', self.funcs
 
     # tables and exports
@@ -88,7 +93,7 @@ class AsmModule():
   def relocate_into(self, main):
     # heap initializer
     if self.staticbump > 0:
-      new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', Runtime.GLOBAL_BASE+%d)' % main.staticbump
+      new_mem_init = self.mem_init_js[:self.mem_init_js.rfind(', ')] + ', GLOBAL_BASE+%d)' % main.staticbump
       main.set_pre_js(main.staticbump + self.staticbump, new_mem_init)
 
     # Find function name replacements TODO: do not rename duplicate names with duplicate contents, just merge them
@@ -113,7 +118,7 @@ class AsmModule():
 
     # imports
     all_imports = main.imports
-    for key, value in self.imports.iteritems():
+    for key, value in self.imports.items():
       if key in self.funcs or key in main.funcs: continue # external function in one module, implemented in the other
       value_concrete = '.' not in value # env.key means it is an import, an external value, and not a concrete one
       main_value = main.imports.get(key)
@@ -132,18 +137,18 @@ class AsmModule():
     for key in all_imports.keys():
       if key in self.funcs:
         del all_imports[key] # import in main, provided in side
-    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.iteritems()]) + '\n'
+    main.imports_js = '\n'.join(['var %s = %s;' % (key, value) for key, value in all_imports.items()]) + '\n'
 
     # check for undefined references to global variables
     def check_import(key, value):
       if value.startswith('+') or value.endswith('|0'): # ignore functions
         if key not in all_sendings:
-          print >> sys.stderr, 'warning: external variable %s is still not defined after linking' % key
+          print('warning: external variable %s is still not defined after linking' % key, file=sys.stderr)
           all_sendings[key] = '0'
-    for key, value in all_imports.iteritems(): check_import(key, value)
+    for key, value in all_imports.items(): check_import(key, value)
 
     if added_sending:
-      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.iteritems()])
+      sendings_js = ', '.join(['%s: %s' % (key, value) for key, value in all_sendings.items()])
       sendings_start = main.post_js.find('}, { ')+5
       sendings_end = main.post_js.find(' }, buffer);')
       main.post_js = main.post_js[:sendings_start] + sendings_js + main.post_js[sendings_end:]
@@ -151,7 +156,7 @@ class AsmModule():
     # tables
     f_bases = {}
     f_sizes = {}
-    for table, data in self.tables.iteritems():
+    for table, data in self.tables.items():
       main.tables[table] = self.merge_tables(table, main.tables.get(table), data, replacements, f_bases, f_sizes)
     main.combine_tables()
     #print >> sys.stderr, 'f bases', f_bases
@@ -212,8 +217,8 @@ class AsmModule():
 
     # global initializers
     if self.global_inits:
-      my_global_inits = map(lambda init: replacements[init] if init in replacements else init, self.global_inits)
-      all_global_inits = map(lambda init: 'function() { %s() }' % init, main.global_inits + my_global_inits)
+      my_global_inits = [replacements[init] if init in replacements else init for init in self.global_inits]
+      all_global_inits = ['function() { %s() }' % init for init in main.global_inits + my_global_inits]
       all_global_inits_js = '/* global initializers */ __ATINIT__.push(' + ','.join(all_global_inits) + ');'
       if main.global_inits:
         target = main.global_inits_js
@@ -229,7 +234,7 @@ class AsmModule():
         repped = replacements[key]
         return repped + ': ' + repped
       return export
-    my_exports = map(rep_exp, self.exports)
+    my_exports = list(map(rep_exp, self.exports))
     exports = main.exports.union(my_exports)
     main.exports_js = 'return {' + ','.join(list(exports)) + '};\n})\n'
 
@@ -240,9 +245,9 @@ class AsmModule():
         rep = replacements[key]
         return 'var %s = Module["%s"] = asm["%s"];\n' % (rep, rep, rep)
       return deff
-    my_module_defs = map(rep_def, self.module_defs)
+    my_module_defs = [rep_def(x) for x in self.module_defs]
     new_module_defs = set(my_module_defs).difference(main.module_defs)
-    if len(new_module_defs) > 0:
+    if len(new_module_defs):
       position = main.post_js.find('Runtime.') # Runtime is the start of the hardcoded ones
       main.post_js = main.post_js[:position] + ''.join(list(new_module_defs)) + '\n' + main.post_js[position:]
 
@@ -266,21 +271,21 @@ class AsmModule():
     for part in parts:
       if '=' not in part: continue
       part = part.split('var ')[1]
-      name, data = part.split('=')
+      name, data = part.split('=', 1)
       tables[name.strip()] = data.strip()
     return tables
 
   def merge_tables(self, table, main, side, replacements, f_bases, f_sizes):
     sig = table.split('_')[-1]
     side = side[1:-1].split(',')
-    side = map(lambda s: s.strip(), side)
-    side = map(lambda f: replacements[f] if f in replacements else f, side)
+    side = [s.strip() for s in side]
+    side = [replacements[f] if f in replacements else f for f in side]
     if not main:
       f_bases[sig] = 0
       f_sizes[table] = len(side)
       return '[' + ','.join(side) + ']'
     main = main[1:-1].split(',')
-    main = map(lambda m: m.strip(), main)
+    main = [m.strip() for m in main]
     # TODO: handle non-aliasing case too
     assert len(main) % 2 == 0
     f_bases[sig] = len(main)
@@ -295,11 +300,11 @@ class AsmModule():
 
   def combine_tables(self):
     self.tables_js = '// EMSCRIPTEN_END_FUNCS\n'
-    for table, data in self.tables.iteritems():
+    for table, data in self.tables.items():
       self.tables_js += 'var %s = %s;\n' % (table, data)
 
   def get_table_funcs(self):
-    return set(itertools.chain.from_iterable(map(lambda x: map(lambda y: y.strip(), x[1:-1].split(',')), self.tables.values())))
+    return set(itertools.chain.from_iterable([[y.strip() for y in x[1:-1].split(',')] for x in self.tables.values()]))
 
   def get_funcs_map(self):
     funcs = js_optimizer.split_funcs(self.funcs_js)

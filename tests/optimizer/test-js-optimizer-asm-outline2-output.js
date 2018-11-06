@@ -47,6 +47,7 @@ function _free($mem) {
    if (($10 & 1 | 0) == 0) {
     $21 = HEAP32[($mem - 8 | 0) >> 2] | 0;
     if (($10 & 3 | 0) == 0) {
+     STACKTOP = sp;
      return;
     }
     $25 = $mem + (-8 - $21 | 0) | 0;
@@ -64,6 +65,7 @@ function _free($mem) {
      HEAP32[($mem + (($10 & -8) - 4) | 0) >> 2] = HEAP32[($mem + (($10 & -8) - 4) | 0) >> 2] & -2;
      HEAP32[$mem + ((-8 - $21 | 0) + 4) >> 2] = $26 | 1;
      HEAP32[($mem + (($10 & -8) - 8) | 0) >> 2] = $26;
+     STACKTOP = sp;
      return;
     }
     HEAP32[sp + 16 >> 2] = $mem;
@@ -134,8 +136,10 @@ function _free($mem) {
  HEAP32[sp + 712 >> 2] = 0;
  HEAP32[sp + 716 >> 2] = 0;
  if ((tempValue | 0) == 5) {
+  STACKTOP = sp;
   return;
  }
+ STACKTOP = sp;
 }
 function linear$0(sp) {
  sp = sp | 0;
@@ -790,10 +794,11 @@ function _free$2(sp) {
    }
   }
   HEAP32[28] = -1;
-  STACKTOP = sp;
   HEAP32[sp + 712 >> 2] = 5;
   break OL;
  } while (0);
  HEAP32[sp + 640 >> 2] = fakeLabel;
 }
+
+
 

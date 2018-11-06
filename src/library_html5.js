@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryJSEvents = {
   $JSEvents__postset: 'JSEvents.staticInit();',
   $JSEvents: {
@@ -35,20 +40,36 @@ var LibraryJSEvents = {
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
 
+    _onGamepadConnected: function() { ++JSEvents.numGamepadsConnected; },
+    _onGamepadDisconnected: function() { --JSEvents.numGamepadsConnected; },
+
     staticInit: function() {
       if (typeof window !== 'undefined') {
-        window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
-        window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        window.addEventListener("gamepadconnected", JSEvents._onGamepadConnected);
+        window.addEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
+        
+        // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
+        // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
+        var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
+        if (firstState) {
+          JSEvents.numGamepadsConnected = firstState.length;
+        }
       }
+    },
+
+    removeAllEventListeners: function() {
+      for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
+        JSEvents._removeHandler(i);
+      }
+      JSEvents.eventHandlers = [];
+      JSEvents.deferredCalls = [];
+      window.removeEventListener("gamepadconnected", JSEvents._onGamepadConnected);
+      window.removeEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
     },
 
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
-      __ATEXIT__.push(function() {
-          for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
-            JSEvents._removeHandler(i);
-          }
-         });
+        __ATEXIT__.push(JSEvents.removeAllEventListeners);
         JSEvents.removeEventListenersRegistered = true;
       }
     },
@@ -262,8 +283,13 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
       }
-      JSEvents.previousScreenX = e.screenX;
-      JSEvents.previousScreenY = e.screenY;
+      // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
+      // https://github.com/kripken/emscripten/pull/4997
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
+      if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+        JSEvents.previousScreenX = e.screenX;
+        JSEvents.previousScreenY = e.screenY;
+      }
     },
     
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -470,7 +496,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
@@ -901,9 +927,7 @@ var LibraryJSEvents = {
 
       var eventHandler = {
         target: target,
-        allowsDeferredCalls: false, // XXX Currently disabled, see bug https://bugzilla.mozilla.org/show_bug.cgi?id=966493
-        // Once the above bug is resolved, enable the following condition if possible:
-        // allowsDeferredCalls: eventTypeString == 'touchstart',
+        allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
@@ -1119,7 +1143,7 @@ var LibraryJSEvents = {
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP32.set(HEAP32.subarray(JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    HEAP8.set(HEAP8.subarray(JSEvents.mouseEvent, JSEvents.mouseEvent + {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1787,6 +1811,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 0, 'i32') }}};
   },
 
   emscripten_webgl_create_context__deps: ['$GL'],
@@ -1802,8 +1827,9 @@ var LibraryJSEvents = {
     contextAttributes['failIfMajorPerformanceCaveat'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 'i32') }}};
     contextAttributes['majorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'i32') }}};
     contextAttributes['minorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
-    var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
+    contextAttributes['enableExtensionsByDefault'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
     contextAttributes['explicitSwapControl'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
+    contextAttributes['renderViaOffscreenBackBuffer'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 'i32') }}};
 
     target = Pointer_stringify(target);
     var canvas;
@@ -1821,24 +1847,47 @@ var LibraryJSEvents = {
 #if OFFSCREENCANVAS_SUPPORT
     if (contextAttributes['explicitSwapControl']) {
       var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
+
       if (!supportsOffscreenCanvas) {
+#if OFFSCREEN_FRAMEBUFFER
+        if (!contextAttributes['renderViaOffscreenBackBuffer']) {
+          contextAttributes['renderViaOffscreenBackBuffer'] = true;
 #if GL_DEBUG
-        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported!');
+          console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
+        }
+#else
+#if GL_DEBUG
+        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
         return 0;
+#endif
       }
+
       if (canvas.transferControlToOffscreen) {
         GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
         GL.offscreenCanvases[canvas.id].id = canvas.id;
         canvas = GL.offscreenCanvases[canvas.id];
       }
     }
+#else // !OFFSCREENCANVAS_SUPPORT
+#if OFFSCREEN_FRAMEBUFFER
+    if (contextAttributes['explicitSwapControl'] && !contextAttributes['renderViaOffscreenBackBuffer']) {
+      contextAttributes['renderViaOffscreenBackBuffer'] = true;
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
+    }
 #else
     if (contextAttributes['explicitSwapControl']) {
-      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification!');
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
+#endif
       return 0;
     }
-#endif
+#endif // ~!OFFSCREEN_FRAMEBUFFER
+
+#endif // ~!OFFSCREENCANVAS_SUPPORT
 
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
@@ -1853,6 +1902,17 @@ var LibraryJSEvents = {
     return GL.currentContext ? GL.currentContext.handle : 0;
   },
 
+  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
+    var GLContext = GL.getContext(contextHandle);
+
+    if (!GLContext || !GLContext.GLctx || !width || !height) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    }
+    {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
   emscripten_webgl_commit_frame: function() {
     if (!GL.currentContext || !GL.currentContext.GLctx) {
 #if GL_DEBUG
@@ -1860,6 +1920,16 @@ var LibraryJSEvents = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+
+#if OFFSCREEN_FRAMEBUFFER
+    if (GL.currentContext.defaultFbo) {
+      GL.blitOffscreenFramebuffer(GL.currentContext);
+#if GL_DEBUG
+      if (GL.currentContext.GLctx.commit) console.error('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    }
+#endif
     if (!GL.currentContext.GLctx.commit) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
@@ -1900,8 +1970,31 @@ var LibraryJSEvents = {
 
   emscripten_is_webgl_context_lost: function(target) {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
-    if (!Module['ctx']) return true; // No context ~> lost context.
-    return Module['ctx'].isContextLost();
+    if (!Module.ctx) return true; // No context ~> lost context.
+    return Module.ctx.isContextLost();
+  },
+
+  emscripten_set_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.width = width;
+    target.height = height;
+#if OFFSCREEN_FRAMEBUFFER
+    if (canvas.GLctxObject) GL.resizeOffscreenFramebuffer(canvas.GLctxObject);
+#endif
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    {{{ makeSetValue('width', '0', 'target.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'target.height', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_set_element_css_size: function(target, width, height) {
@@ -1938,6 +2031,10 @@ var LibraryJSEvents = {
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_html5_remove_all_event_listeners: function() {
+    JSEvents.removeAllEventListeners();
   }
 };
 

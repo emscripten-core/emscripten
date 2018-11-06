@@ -1,3 +1,8 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 '''
 Gets the core asm module out of an emscripten output file.
 
@@ -11,7 +16,10 @@ XXX this probably doesn't work with closure compiler advanced yet XXX
 '''
 
 import os, sys
-import asm_module
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import asm_module
 
 infile = sys.argv[1]
 outfile = sys.argv[2]

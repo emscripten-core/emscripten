@@ -4,6 +4,10 @@ no args returning int
   EM_ASM_INT_V returned: 12
 no args returning double
   EM_ASM_DOUBLE_V returned: 12.250000
+no args returning int
+  EM_ASM_INT returned: 12
+no args returning double
+  EM_ASM_DOUBLE returned: 12.250000
 EM_ASM_ :
   takes ints: 5
     returned: 0

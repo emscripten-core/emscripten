@@ -634,14 +634,14 @@ gears_idle(void)
       tRate0 = t;
       frames = 0;
 #ifdef LONGTEST
-      static runs = 0;
+      static int runs = 0;
       runs++;
       if (runs == 4) {
         int result = fps;
 #ifdef TEST_MEMORYPROFILER_ALLOCATIONS_MAP
         result = 0;
 #endif
-        REPORT_RESULT();
+        REPORT_RESULT(result);
       }
 #endif
    }

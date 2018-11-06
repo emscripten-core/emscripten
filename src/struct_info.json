@@ -135,7 +135,8 @@
             "F_SETLK", 
             "O_WRONLY",
             "AT_FDCWD",
-            "AT_SYMLINK_NOFOLLOW"
+            "AT_SYMLINK_NOFOLLOW",
+            "AT_REMOVEDIR"
         ],
         "structs": {
             "flock": [
@@ -153,6 +154,7 @@
             "POLLHUP", 
             "POLLERR", 
             "POLLRDNORM", 
+            "POLLWRNORM", 
             "POLLPRI", 
             "POLLIN", 
             "POLLOUT", 
@@ -206,6 +208,7 @@
         "file": "libc/time.h", 
         "defines": [
             ["li", "CLOCKS_PER_SEC"],
+            "TIME_UTC",
             "CLOCK_REALTIME",
             "CLOCK_MONOTONIC"
         ],
@@ -456,6 +459,7 @@
         "defines": [
             "O_CREAT", 
             "O_SYNC", 
+            "O_DSYNC",
             "F_GETFD", 
             "F_SETFL", 
             "O_NOFOLLOW", 
@@ -489,11 +493,18 @@
         "file": "bits/ioctl.h", 
         "defines": [
             "FIONREAD",
+            "TCGETA",
             "TCGETS",
+            "TCSETA",
+            "TCSETAW",
+            "TCSETAF",
             "TCSETS",
+            "TCSETSW",
+            "TCSETSF",
             "TIOCGPGRP",
             "TIOCSPGRP",
-            "TIOCGWINSZ"
+            "TIOCGWINSZ",
+            "TIOCSWINSZ"
         ],
         "structs": {}
     }, 
@@ -1225,7 +1236,10 @@
 
             "EM_HTML5_SHORT_STRING_LEN_BYTES",
             "EM_HTML5_MEDIUM_STRING_LEN_BYTES",
-            "EM_HTML5_LONG_STRING_LEN_BYTES"
+            "EM_HTML5_LONG_STRING_LEN_BYTES",
+
+            "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
+            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1379,7 +1393,8 @@
               "majorVersion",
               "minorVersion",
               "enableExtensionsByDefault",
-              "explicitSwapControl"
+              "explicitSwapControl",
+              "renderViaOffscreenBackBuffer"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",
@@ -1391,49 +1406,74 @@
         }
     },
     // ===========================================
-    // emscripten WebVR library
+    // emscripten VR library
     // ===========================================
     {
         "file": "emscripten/vr.h",
-        "defines": [],
+        "defines": [
+            "VR_EYE_LEFT",
+            "VR_EYE_RIGHT",
+
+            "VR_POSE_POSITION",
+            "VR_POSE_LINEAR_VELOCITY",
+            "VR_POSE_LINEAR_ACCELERATION",
+            "VR_POSE_ORIENTATION",
+            "VR_POSE_ANGULAR_VELOCITY",
+            "VR_POSE_ANGULAR_ACCELERATION"
+        ],
         "structs": {
-            "WebVRFieldOfView": [
-              "upDegrees",
-              "rightDegrees",
-              "downDegrees",
-              "leftDegrees"
+            "VRVector3": [
+              "x",
+              "y",
+              "z"
             ],
-            "WebVRPoint": [
+            "VRQuaternion": [
               "x",
               "y",
               "z",
               "w"
-	    ],
-            "WebVRIntRect": [
-              "x",
-              "y",
-              "width",
-              "height"
             ],
-	    "WebVRPositionState": [
-	      "timeStamp",
-	      "hasPosition",
-	      { "position": [ "x", "y", "z", "w" ] },
-	      { "linearVelocity": [ "x", "y", "z", "w" ] },
-	      { "linearAcceleration": [ "x", "y", "z", "w" ] },
-	      "hasOrientation",
-	      { "orientation": [ "x", "y", "z", "w" ] },
-	      { "angularVelocity": [ "x", "y", "z", "w" ] },
-	      { "angularAcceleration": [ "x", "y", "z", "w" ] }
-	    ],
-        "WebVREyeParameters": [
-          { "minimumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "maximumFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "recommendedFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "eyeTranslation": [ "x", "y", "z", "w" ] },
-          { "currentFieldOfView": [ "upDegrees", "rightDegrees", "downDegrees", "leftDegrees" ] },
-          { "renderRect": [ "x", "y", "width", "height"] }
-	    ]
+            "VRPose": [
+                { "position": [ "x", "y", "z" ] },
+                { "linearVelocity": [ "x", "y", "z" ] },
+                { "linearAcceleration": [ "x", "y", "z" ] },
+                { "orientation": [ "x", "y", "z", "w" ] },
+                { "angularVelocity": [ "x", "y", "z" ] },
+                { "angularAcceleration": [ "x", "y", "z" ] },
+                "poseFlags"
+            ],
+            "VRFrameData": [
+                "leftProjectionMatrix",
+                "leftViewMatrix",
+                "rightProjectionMatrix",
+                "rightViewMatrix",
+                { "pose": [
+                    { "position": [ "x", "y", "z" ] },
+                    { "linearVelocity": [ "x", "y", "z" ] },
+                    { "linearAcceleration": [ "x", "y", "z" ] },
+                    { "orientation": [ "x", "y", "z", "w" ] },
+                    { "angularVelocity": [ "x", "y", "z" ] },
+                    { "angularAcceleration": [ "x", "y", "z" ] },
+                    "poseFlags"
+                ] },
+                "timestamp"
+            ],
+            "VREyeParameters": [
+                { "offset": [ "x", "y", "z" ] },
+                "renderWidth",
+                "renderHeight"
+            ],
+            "VRDisplayCapabilities": [
+                "hasPosition",
+                "hasExternalDisplay",
+                "canPresent",
+                "maxLayers"
+            ],
+            "VRLayerInit": [
+                "source",
+                "leftBounds",
+                "rightBounds"
+            ]
         }
     },
     {
@@ -1447,19 +1487,6 @@
             ]
         },
         "defines": [
-            "EM_PROXIED_UTIME",
-            "EM_PROXIED_UTIMES",
-            "EM_PROXIED_CHROOT",
-            "EM_PROXIED_FPATHCONF",
-            "EM_PROXIED_CONFSTR",
-            "EM_PROXIED_SYSCONF",
-            "EM_PROXIED_ATEXIT",
-            "EM_PROXIED_GETENV",
-            "EM_PROXIED_CLEARENV",
-            "EM_PROXIED_SETENV",
-            "EM_PROXIED_UNSETENV",
-            "EM_PROXIED_PUTENV",
-            "EM_PROXIED_TZSET",
             "EM_PROXIED_PTHREAD_CREATE",
             "EM_PROXIED_SYSCALL",
             "EM_THREAD_STATUS_NOTSTARTED",
@@ -1467,7 +1494,15 @@
             "EM_THREAD_STATUS_SLEEPING",
             "EM_THREAD_STATUS_WAITFUTEX",
             "EM_THREAD_STATUS_WAITPROXY",
-            "EM_THREAD_STATUS_FINISHED"
+            "EM_THREAD_STATUS_FINISHED",
+            "EM_FUNC_SIG_V",
+            "EM_FUNC_SIG_VI",
+            "EM_FUNC_SIG_VII",
+            "EM_FUNC_SIG_VIII",
+            "EM_FUNC_SIG_I",
+            "EM_FUNC_SIG_II",
+            "EM_FUNC_SIG_III",
+            "EM_FUNC_SIG_IIII"
             ]
     },
     {
@@ -1484,6 +1519,7 @@
               "stack",
               "stack_size",
               "attr",
+              "robust_list",
               "tid",
               "pid",
               "canceldisable",

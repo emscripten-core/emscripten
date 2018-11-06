@@ -1,5 +1,5 @@
 ; ModuleID = 'emcc-0-basebc.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target datalayout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
 target triple = "asmjs-unknown-emscripten"
 
 ; Tests i24 constantExprs nested heavily
@@ -8215,7 +8215,7 @@ declare i32 @sysconf(i32) #5
 
 declare i32 @time(i32*) #5
 
-define weak i8* @_Znwj(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define weak i8* @_Znwm(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %cmp = icmp eq i32 %size, 0
   %.size = select i1 %cmp, i32 1, i32 %size
@@ -8282,9 +8282,9 @@ declare void @__cxa_throw(i8*, i8*, i8*)
 declare void @__cxa_call_unexpected(i8*)
 
 ; Function Attrs: nounwind
-define weak noalias i8* @_ZnwjRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define weak noalias i8* @_ZnwmRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
-  %call = invoke noalias i8* @_Znwj(i32 %size)
+  %call = invoke noalias i8* @_Znwm(i32 %size)
           to label %try.cont unwind label %lpad
 
 lpad:                                             ; preds = %entry
@@ -8311,9 +8311,9 @@ declare i8* @__cxa_begin_catch(i8*)
 
 declare void @__cxa_end_catch()
 
-define weak noalias i8* @_Znaj(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define weak noalias i8* @_Znam(i32 %size) #5 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
-  %call = invoke noalias i8* @_Znwj(i32 %size)
+  %call = invoke noalias i8* @_Znwm(i32 %size)
           to label %invoke.cont unwind label %lpad
 
 invoke.cont:                                      ; preds = %entry
@@ -8336,9 +8336,9 @@ eh.resume:                                        ; preds = %lpad
 }
 
 ; Function Attrs: nounwind
-define weak noalias i8* @_ZnajRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+define weak noalias i8* @_ZnamRKSt9nothrow_t(i32 %size, %"struct.std::nothrow_t"*) #0 personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
-  %call = invoke noalias i8* @_Znaj(i32 %size)
+  %call = invoke noalias i8* @_Znam(i32 %size)
           to label %try.cont unwind label %lpad
 
 lpad:                                             ; preds = %entry

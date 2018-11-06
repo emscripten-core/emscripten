@@ -9,7 +9,8 @@
 int main()
 {
     EM_ASM(
-        FS.writeFile("testfile", "a=1\nb=2\nc=3");
+        FS.writeFile("testfile", "a=1\nb=2\n");
+        FS.writeFile("testfile", new Uint8Array([99, 61, 51]) /* c=3 */, { flags: "a" });
     );
 
     std::ifstream file("testfile");

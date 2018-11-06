@@ -1,3 +1,10 @@
+/*
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_threading_h__
 #define __emscripten_threading_h__
 
@@ -11,10 +18,10 @@ extern "C" {
 
 // Returns true if the current browser is able to spawn threads with pthread_create(), and the compiled page was built with
 // threading support enabled. If this returns 0, calls to pthread_create() will fail with return code EAGAIN.
-int emscripten_has_threading_support();
+int emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
-int emscripten_num_logical_cores();
+int emscripten_num_logical_cores(void);
 
 // Configures the number of logical cores on the system. This can be called at startup
 // to specify the number of cores emscripten_num_logical_cores() reports. The
@@ -27,7 +34,7 @@ void emscripten_force_num_logical_cores(int cores);
 uint8_t emscripten_atomic_exchange_u8(void/*uint8_t*/ *addr, uint8_t newVal);
 uint16_t emscripten_atomic_exchange_u16(void/*uint16_t*/ *addr, uint16_t newVal);
 uint32_t emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal);
-uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 // CAS returns the *old* value that was in the memory location before the operation took place.
 // That is, if the return value when calling this function equals to 'oldVal', then the operation succeeded,
@@ -35,65 +42,65 @@ uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal)
 uint8_t emscripten_atomic_cas_u8(void/*uint8_t*/ *addr, uint8_t oldVal, uint8_t newVal);
 uint16_t emscripten_atomic_cas_u16(void/*uint16_t*/ *addr, uint16_t oldVal, uint16_t newVal);
 uint32_t emscripten_atomic_cas_u32(void/*uint32_t*/ *addr, uint32_t oldVal, uint32_t newVal);
-uint64_t emscripten_atomic_cas_u64(void/*uint64_t*/ *addr, uint64_t oldVal, uint64_t newVal); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_cas_u64(void/*uint64_t*/ *addr, uint64_t oldVal, uint64_t newVal); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 uint8_t emscripten_atomic_load_u8(const void/*uint8_t*/ *addr);
 uint16_t emscripten_atomic_load_u16(const void/*uint16_t*/ *addr);
 uint32_t emscripten_atomic_load_u32(const void/*uint32_t*/ *addr);
 float emscripten_atomic_load_f32(const void/*float*/ *addr);
-uint64_t emscripten_atomic_load_u64(const void/*uint64_t*/ *addr); // Emulated with locks, very slow!!
-double emscripten_atomic_load_f64(const void/*double*/ *addr); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_load_u64(const void/*uint64_t*/ *addr); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
+double emscripten_atomic_load_f64(const void/*double*/ *addr); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 // Returns the value that was stored (i.e. 'val')
 uint8_t emscripten_atomic_store_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_store_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_store_u32(void/*uint32_t*/ *addr, uint32_t val);
 float emscripten_atomic_store_f32(void/*float*/ *addr, float val);
-uint64_t emscripten_atomic_store_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
-double emscripten_atomic_store_f64(void/*double*/ *addr, double val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_store_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
+double emscripten_atomic_store_f64(void/*double*/ *addr, double val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
-void emscripten_atomic_fence();
+void emscripten_atomic_fence(void);
 
-// Each of the functions below (add, sub, and, or, xor) returns the value that was stored to memory after the operation occurred.
+// Each of the functions below (add, sub, and, or, xor) return the value that was in the memory location before the operation occurred.
 uint8_t emscripten_atomic_add_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_add_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_add_u32(void/*uint32_t*/ *addr, uint32_t val);
-uint64_t emscripten_atomic_add_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_add_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 uint8_t emscripten_atomic_sub_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_sub_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_sub_u32(void/*uint32_t*/ *addr, uint32_t val);
-uint64_t emscripten_atomic_sub_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_sub_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 uint8_t emscripten_atomic_and_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_and_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_and_u32(void/*uint32_t*/ *addr, uint32_t val);
-uint64_t emscripten_atomic_and_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_and_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 uint8_t emscripten_atomic_or_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_or_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_or_u32(void/*uint32_t*/ *addr, uint32_t val);
-uint64_t emscripten_atomic_or_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_or_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 uint8_t emscripten_atomic_xor_u8(void/*uint8_t*/ *addr, uint8_t val);
 uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
-uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // Emulated with locks, very slow!!
+uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
-int emscripten_futex_wake_or_requeue(volatile void/*uint32_t*/ *addr, int count, volatile void/*uint32_t*/ *addr2, int cmpValue);
 
 typedef union em_variant_val
 {
   int i;
+  int64_t i64;
   float f;
   double d;
   void *vp;
   char *cp;
 } em_variant_val;
 
-#define EM_QUEUED_CALL_MAX_ARGS 8
+#define EM_QUEUED_CALL_MAX_ARGS 11
 typedef struct em_queued_call
 {
   int functionEnum;
@@ -101,6 +108,9 @@ typedef struct em_queued_call
   int operationDone;
   em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
   em_variant_val returnValue;
+
+  // An optional pointer to a secondary data block that should be free()d when this queued call is freed.
+  void *satelliteData;
 
   // If true, the caller has "detached" itself from this call
   // object and the Emscripten main runtime thread should free up
@@ -118,25 +128,103 @@ void *emscripten_sync_run_in_main_thread_7(int function, void *arg1, void *arg2,
 
 typedef void (*em_func_v)(void);
 typedef void (*em_func_vi)(int);
+typedef void (*em_func_vf)(float);
 typedef void (*em_func_vii)(int, int);
+typedef void (*em_func_vif)(int, float);
+typedef void (*em_func_vff)(float, float);
 typedef void (*em_func_viii)(int, int, int);
+typedef void (*em_func_viif)(int, int, float);
+typedef void (*em_func_viff)(int, float, float);
+typedef void (*em_func_vfff)(float, float, float);
+typedef void (*em_func_viiii)(int, int, int, int);
+typedef void (*em_func_viifi)(int, int, float, int);
+typedef void (*em_func_vifff)(int, float, float, float);
+typedef void (*em_func_vffff)(float, float, float, float);
+typedef void (*em_func_viiiii)(int, int, int, int, int);
+typedef void (*em_func_viffff)(int, float, float, float, float);
+typedef void (*em_func_viiiiii)(int, int, int, int, int, int);
+typedef void (*em_func_viiiiiii)(int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiii)(int, int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiiii)(int, int, int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiiiii)(int, int, int, int, int, int, int, int, int, int);
+typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int, int, int);
 typedef int (*em_func_i)(void);
 typedef int (*em_func_ii)(int);
 typedef int (*em_func_iii)(int, int);
 typedef int (*em_func_iiii)(int, int, int);
+typedef int (*em_func_iiiii)(int, int, int, int);
+typedef int (*em_func_iiiiii)(int, int, int, int, int);
+typedef int (*em_func_iiiiiii)(int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiii)(int, int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiiii)(int, int, int, int, int, int, int, int);
+typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 
-#define EM_FUNC_SIGNATURE int
+// Encode function signatures into a single uint32_t integer.
+// N.B. This encoding scheme is internal to the implementation, and can change in the future. Do not depend on the
+// exact numbers in this scheme.
+#define EM_FUNC_SIGNATURE unsigned int
 
-#define EM_FUNC_SIG_V 1024
-#define EM_FUNC_SIG_VI (1024 + 1)
-#define EM_FUNC_SIG_VII (1024 + 2)
-#define EM_FUNC_SIG_VIII (1024 + 3)
-#define EM_FUNC_SIG_I 2048
-#define EM_FUNC_SIG_II (2048 + 1)
-#define EM_FUNC_SIG_III (2048 + 2)
-#define EM_FUNC_SIG_IIII (2048 + 3)
+// The encoding scheme is as follows:
+// - highest three bits identify the type of the return value
+#define EM_FUNC_SIG_RETURN_VALUE_MASK (0x7U << 29)
 
-#define EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(x) ((x) & 1023)
+#define EM_FUNC_SIG_RETURN_VALUE_V   0
+#define EM_FUNC_SIG_RETURN_VALUE_I   (0x1U << 29)
+#define EM_FUNC_SIG_RETURN_VALUE_I64 (0x2U << 29)
+#define EM_FUNC_SIG_RETURN_VALUE_F   (0x3U << 29)
+#define EM_FUNC_SIG_RETURN_VALUE_D   (0x4U << 29)
+
+// - next highest four bits specify the number of input parameters to the function (allowed values are 0-12, inclusively)
+#define EM_FUNC_SIG_NUM_PARAMETERS_SHIFT 25
+#define EM_FUNC_SIG_NUM_PARAMETERS_MASK (0xFU << EM_FUNC_SIG_NUM_PARAMETERS_SHIFT)
+#define EM_FUNC_SIG_WITH_N_PARAMETERS(x) (((EM_FUNC_SIGNATURE)(x)) << EM_FUNC_SIG_NUM_PARAMETERS_SHIFT)
+
+// - starting from the lowest bits upwards, each pair of two subsequent bits specifies the type of an input parameter.
+//   That is, bits 1:0 encode the type of the first input, bits 3:2 encode the type of the second input, and so on.
+#define EM_FUNC_SIG_ARGUMENTS_TYPE_MASK (~(EM_FUNC_SIG_RETURN_VALUE_MASK | EM_FUNC_SIG_NUM_PARAMETERS_MASK))
+#define EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_MASK 0x3U
+#define EM_FUNC_SIG_ARGUMENT_TYPE_SIZE_SHIFT 2
+
+#define EM_FUNC_SIG_PARAM_I   0
+#define EM_FUNC_SIG_PARAM_I64 0x1U
+#define EM_FUNC_SIG_PARAM_F   0x2U
+#define EM_FUNC_SIG_PARAM_D   0x3U
+#define EM_FUNC_SIG_SET_PARAM(i, type) ((EM_FUNC_SIGNATURE)(type) << (2*i))
+
+#define EM_FUNC_SIG_V     (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
+#define EM_FUNC_SIG_VI    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VF    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VII   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIF   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VFF   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VIII  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIF  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VIFF  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VFFF  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIFI (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VFFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(5) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIFFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(5) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_VIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(6) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(7) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(8) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(9) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(8, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(10) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(8, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(9, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_VIIIIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(11) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(8, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(9, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(10, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_I     (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
+#define EM_FUNC_SIG_II    (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_III   (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIII  (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(5) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(6) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(7) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(8) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIIIIIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(9) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(6, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(7, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(8, EM_FUNC_SIG_PARAM_I))
+
+#define EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(x) ((((EM_FUNC_SIGNATURE)x) & EM_FUNC_SIG_NUM_PARAMETERS_MASK) >> EM_FUNC_SIG_NUM_PARAMETERS_SHIFT)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed, and the result is returned.
@@ -171,6 +259,11 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call, double timeou
 
 void emscripten_async_waitable_close(em_queued_call *call);
 
+// Queues the given function call to be performed on the specified thread.
+void emscripten_async_queue_on_thread_(pthread_t target_thread, EM_FUNC_SIGNATURE sig, void *func_ptr, void *satellite, ...);
+
+#define emscripten_async_queue_on_thread(target_thread, sig, func_ptr, satellite, ...) emscripten_async_queue_on_thread_((target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
 
@@ -181,10 +274,26 @@ int emscripten_is_main_browser_thread(void);
 // Call this in the body of all lock-free atomic (cas) loops that the main thread might enter
 // which don't otherwise call to any pthread api calls (mutexes) or C runtime functions
 // that are considered cancellation points.
-void emscripten_main_thread_process_queued_calls();
+void emscripten_main_thread_process_queued_calls(void);
+
+void emscripten_current_thread_process_queued_calls(void);
+
+pthread_t emscripten_main_browser_thread_id(void);
 
 // Direct syscall access, second argument is a varargs pointer. used in proxying
 int emscripten_syscall(int, void*);
+
+// Synchronously sleeps the calling thread for the given number of milliseconds.
+// Note: Calling this on the main browser thread is _very_ _very_ bad for application logic throttling,
+// because it does not save any battery, it will spin up the CPU at 100%, lock up the UI, printfs will not come
+// through on web page or the console, and eventually it will show up the slow script dialog.
+// Calling this function in a pthread (Web Worker) is fine, and a good way to go if you need to synchronously
+// sleep for a specific amount of time while saving power.
+// Note 2: This function will process the pthread-specific event queue for the calling thread while sleeping,
+//         and this function also acts as a cancellation point.
+// Note 3: This function is enabled when targeting pthreads (SharedArrayBuffer), not to be confused with
+//         similarly named function emscripten_sleep(), which is intended for Asyncify and Emterpreter builds.
+void emscripten_thread_sleep(double msecs);
 
 #define EM_THREAD_STATUS int
 #define EM_THREAD_STATUS_NOTSTARTED 0
@@ -232,19 +341,6 @@ struct thread_profiler_block
 	char name[32];
 };
 
-#define EM_PROXIED_UTIME 12
-#define EM_PROXIED_UTIMES 13
-#define EM_PROXIED_CHROOT 37
-#define EM_PROXIED_FPATHCONF 46
-#define EM_PROXIED_CONFSTR 68
-#define EM_PROXIED_SYSCONF 72
-#define EM_PROXIED_ATEXIT 110
-#define EM_PROXIED_GETENV 111
-#define EM_PROXIED_CLEARENV 112
-#define EM_PROXIED_SETENV 113
-#define EM_PROXIED_UNSETENV 114
-#define EM_PROXIED_PUTENV 115
-#define EM_PROXIED_TZSET 119
 #define EM_PROXIED_PTHREAD_CREATE 137
 #define EM_PROXIED_SYSCALL 138
 

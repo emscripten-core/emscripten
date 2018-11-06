@@ -57,7 +57,7 @@ Module["asm"] =  (function(global,env,buffer) {
   var assert=env.assert;
   var _atoi=env._atoi;
   var _strlen=env._strlen;
-  var __Znaj=env.__Znaj;
+  var __Znam=env.__Znam;
   var _puts=env._puts;
   var _memcpy=env._memcpy;
   var ___gxx_personality_v0=env.___gxx_personality_v0;
@@ -89,7 +89,7 @@ function _main(i1, i2) {
  i9 = i12 + 2120 | 0;
  i11 = i12;
  if ((i1 | 0) > 1) i10 = _atoi(HEAP32[i2 + 4 >> 2] | 0) | 0; else i10 = 512;
- i8 = __Znaj(347) | 0;
+ i8 = __Znam(347) | 0;
  _memcpy(i8 | 0, 520, 287) | 0;
  i1 = i8 + 287 | 0;
  i2 = 520;
@@ -104,7 +104,7 @@ function _main(i1, i2) {
   i2 = 0;
   while (1) {
    i7 = i1 >>> 0 < 60 ? i1 : 60;
-   i4 = __Znaj(i7 + 2 | 0) | 0;
+   i4 = __Znam(i7 + 2 | 0) | 0;
    _memcpy(i4 | 0, i8 + i2 | 0, i7 | 0) | 0;
    HEAP8[i4 + i7 >> 0] = 0;
    i5 = _strlen(i4 | 0) | 0;

@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <assert.h>
 #include <emscripten.h>
@@ -34,8 +39,7 @@ void c3(char *data, int size, void *arg) { // tests calls different in different
   }
   if (c3_7 && c3_7) { // note: racey, responses from 2 workers here
     emscripten_destroy_worker(w1);
-    int result = 11;
-    REPORT_RESULT();
+    REPORT_RESULT(11);
     emscripten_force_exit(0);
   }
 }

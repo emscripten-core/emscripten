@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -18,7 +23,7 @@ void looper() {
     printf("Avg. msecs/frame: %f\n", msecsPerFrame);
 #ifdef REPORT_RESULT
     int result = (msecsPerFrame > 350 && msecsPerFrame < 650); // Expecting 500msecs/frame, but allow a lot of leeway. Bad value would be 900msecs/frame (400msecs of processing below and 500msecs of delay)
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     emscripten_cancel_main_loop();
   }

@@ -1,3 +1,8 @@
+// Copyright 2011 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,7 +139,7 @@ int main()
   }
 
   FILE *n = fopen("/dev/null", "w");
-  printf("5 bytes to dev/null: %d\n", fwrite(data, 1, 5, n));
+  printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
   fclose(n);
 
   printf("ok.\n");

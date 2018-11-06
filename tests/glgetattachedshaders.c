@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
 #include <stdio.h>
@@ -45,6 +52,14 @@ static void create_context(void)
    g_egl_ctx = eglCreateContext(g_egl_dpy, g_config, EGL_NO_CONTEXT, context_attributes);
    if (!g_egl_ctx)
       die("failed to create context");
+
+    EGLNativeWindowType dummyWindow;
+    EGLSurface surface = eglCreateWindowSurface(g_egl_dpy, g_config, dummyWindow, NULL);
+    if (!surface)
+      die("failed to create window surface");
+
+   if (!eglMakeCurrent(g_egl_dpy, surface, surface, g_egl_ctx))
+      die("failed to activate context");
 }
 
 int main(int argc, char *argv[])
@@ -86,8 +101,7 @@ int main(int argc, char *argv[])
          die("unknown shader returned");
    }
 
-   int result = 1;
-   REPORT_RESULT();
+   REPORT_RESULT(1);
 
    return 0;
 }

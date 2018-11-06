@@ -9,26 +9,20 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
-// This test never frees, so we can be carefree and just round up to be aligned.
-#define aligned_alloc(align, size) (void*)(((uintptr_t)malloc((size) + ((align)-1)) + ((align)-1)) & (~((align)-1)))
 #endif
 
 #if defined(__unix__) && !defined(__EMSCRIPTEN__) // Native build without Emscripten.
 #include <time.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/time.h>
-#define tick_t unsigned long long
 #endif
 
 #ifdef __APPLE__
-#include <mach/mach_time.h>
 #define aligned_alloc(align, size) malloc((size))
 #endif
 
 #ifdef WIN32
 #include <Windows.h>
-#define tick_t unsigned long long
 #define aligned_alloc(align, size) _aligned_malloc((size), (align))
 #endif
 
@@ -40,57 +34,7 @@ float hmax(__m128 m)
 	return fmax(fmax(f[0], f[1]), fmax(f[2], f[3]));
 }
 
-#ifdef __EMSCRIPTEN__
-#define tick emscripten_get_now
-#define tick_t double
-tick_t ticks_per_sec() { return 1000.0; }
-#elif defined(__APPLE__)
-#define tick_t unsigned long long
-#define tick mach_absolute_time
-tick_t ticks_per_sec()
-{
-	mach_timebase_info_data_t timeBaseInfo;
-	mach_timebase_info(&timeBaseInfo);
-	return 1000000000ULL * (uint64_t)timeBaseInfo.denom / (uint64_t)timeBaseInfo.numer;
-}
-#elif defined(_POSIX_MONOTONIC_CLOCK)
-inline tick_t tick()
-{
-	timespec t;
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	return (tick_t)t.tv_sec * 1000 * 1000 * 1000 + (tick_t)t.tv_nsec;
-}
-tick_t ticks_per_sec()
-{
-	return 1000 * 1000 * 1000;
-}
-#elif defined(_POSIX_C_SOURCE)
-inline tick_t tick()
-{
-	timeval t;
-	gettimeofday(&t, NULL);
-	return (tick_t)t.tv_sec * 1000 * 1000 + (tick_t)t.tv_usec;
-}
-tick_t ticks_per_sec()
-{
-	return 1000 * 1000;
-}
-#elif defined(WIN32)
-inline tick_t tick()
-{
-	LARGE_INTEGER ddwTimer;
-	QueryPerformanceCounter(&ddwTimer);
-	return ddwTimer.QuadPart;
-}
-tick_t ticks_per_sec()
-{
-	LARGE_INTEGER ddwTimerFrequency;
-	QueryPerformanceFrequency(&ddwTimerFrequency);
-	return ddwTimerFrequency.QuadPart;
-}
-#else
-#error No tick_t
-#endif
+#include "tick.h"
 
 const int N = 2*1024*1024;
 

@@ -1,3 +1,8 @@
+// Copyright 2017 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <GLES3/gl3.h>
 #include <GLES2/gl2ext.h>
 
@@ -31,7 +36,7 @@ int main()
   emscripten_webgl_destroy_context(context);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
   return 0;
 }

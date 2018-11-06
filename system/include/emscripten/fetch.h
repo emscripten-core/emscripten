@@ -1,8 +1,16 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_fetch_h__
 #define __emscripten_fetch_h__
 
 #include <limits.h>
-#include <inttypes.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <emscripten/html5.h>
 
 #ifdef __cplusplus
@@ -45,7 +53,7 @@ extern "C" {
 struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
-struct emscripten_fetch_attr_t
+typedef struct emscripten_fetch_attr_t
 {
 	// 'POST', 'GET', etc.
 	char requestMethod[32];
@@ -53,9 +61,9 @@ struct emscripten_fetch_attr_t
 	// Custom data that can be tagged along the process.
 	void *userData;
 
-	void (*onsuccess)(emscripten_fetch_t *fetch);
-	void (*onerror)(emscripten_fetch_t *fetch);
-	void (*onprogress)(emscripten_fetch_t *fetch);
+	void (*onsuccess)(struct emscripten_fetch_t *fetch);
+	void (*onerror)(struct emscripten_fetch_t *fetch);
+	void (*onprogress)(struct emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
@@ -90,17 +98,19 @@ struct emscripten_fetch_attr_t
 	// Pass a custom MIME type here to force the browser to treat the received data with the given type.
 	const char *overriddenMimeType;
 
-	// If non-zero, specified a pointer to the data that is to be passed as the body (payload) of the request
+	// If non-zero, specifies a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
-	// The memory pointed to by this field is provided by the user, and needs to be valid only until the call to
-	// emscripten_fetch() returns.
+	// The memory pointed to by this field is provided by the user, and needs to be valid throughout the
+	// duration of the fetch operation. If passing a non-zero pointer into this field, make sure to implement
+	// *both* the onsuccess and onerror handlers to be notified when the fetch finishes to know when this memory
+	// block can be freed. Do not pass a pointer to memory on the stack or other temporary area here.
 	const char *requestData;
 
 	// Specifies the length of the buffer pointed by 'requestData'. Leave as 0 if no request body needs to be sent.
 	size_t requestDataSize;
-};
+} emscripten_fetch_attr_t;
 
-struct emscripten_fetch_t
+typedef struct emscripten_fetch_t
 {
 	// Unique identifier for this fetch in progress.
 	unsigned int id;
@@ -152,7 +162,7 @@ struct emscripten_fetch_t
 
 	// For internal use only.
 	emscripten_fetch_attr_t __attributes;
-};
+} emscripten_fetch_t;
 
 // Clears the fields of an emscripten_fetch_attr_t structure to their default values in a future-compatible manner.
 void emscripten_fetch_attr_init(emscripten_fetch_attr_t *fetch_attr);

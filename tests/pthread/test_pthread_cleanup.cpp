@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -15,7 +20,7 @@ static void cleanup_handler1(void *arg)
 {
    cleanupState <<= 2;
    cleanupState *= (int)arg; // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
-   EM_ASM_INT( { console.log('Called clean-up handler 1 with arg ' + $0); }, arg);
+   EM_ASM(console.log('Called clean-up handler 1 with arg ' + $0), arg);
 //   printf("Called clean-up handler 1 with arg %d\n", (int)arg);
 }
 
@@ -23,7 +28,7 @@ static void cleanup_handler2(void *arg)
 {
    cleanupState <<= 3;
    cleanupState *= (int)arg; // Perform non-commutative arithmetic to a global var that encodes the cleanup stack order ops.
-   EM_ASM_INT( { console.log('Called clean-up handler 2 with arg ' + $0); }, arg);
+   EM_ASM(console.log('Called clean-up handler 2 with arg ' + $0), arg);
 //   printf("Called clean-up handler 2 with arg %d\n", (int)arg);
 }
 
@@ -69,8 +74,7 @@ int main()
    if (!emscripten_has_threading_support())
    {
 #ifdef REPORT_RESULT
-      result = 907640832;
-      REPORT_RESULT();
+      REPORT_RESULT(907640832);
 #endif
       printf("Skipped: Threading is not supported.\n");
       return 0;
@@ -94,11 +98,10 @@ int main()
 //   s = pthread_cancel(thr[3]);
 //   assert(s == 0);
    pthread_cleanup_pop(1);
-   EM_ASM_INT( { console.log('Cleanup state variable: ' + $0); }, cleanupState);
+   EM_ASM(console.log('Cleanup state variable: ' + $0), cleanupState);
 
 #ifdef REPORT_RESULT
-   result = cleanupState;
-   REPORT_RESULT();
+   REPORT_RESULT(cleanupState);
 #endif
 
    exit(EXIT_SUCCESS);

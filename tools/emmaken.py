@@ -1,7 +1,14 @@
 #!/usr/bin/env python2
+# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
+from __future__ import print_function
+import shutil
 import sys
-print >> sys.stderr, '\n\nemmaken.py is deprecated! use "emcc"\n\n'
+
+print('\n\nemmaken.py is deprecated! use "emcc"\n\n', file=sys.stderr)
 
 '''
 emmaken - the emscripten make proxy tool
@@ -30,7 +37,7 @@ Example uses:
    with that command as an argument, for example
 
     emconfiguren.py ./configure [options]
-  
+
    emconfiguren.py is a tiny script that just sets some environment vars
    as a convenience. The command just shown is equivalent to
 
@@ -60,8 +67,8 @@ Example uses:
     def path_from_root(*pathelems):
       return os.path.join(__rootpath__, *pathelems)
     sys.path += [path_from_root('')]
-    from tools.shared import *
-    
+    from tools import shared
+
    For using the Emscripten compilers/linkers/etc. you can do:
     env = Environment()
     ...
@@ -91,20 +98,18 @@ emmaken can be influenced by a few environment variables:
                    your system headers will be used.
 
   EMMAKEN_COMPILER - The compiler to be used, if you don't want the default clang.
-
 '''
 
 import sys
 import os
 import subprocess
 
-print >> sys.stderr, 'emmaken.py: ', ' '.join(sys.argv)
+print('emmaken.py: ', ' '.join(sys.argv), file=sys.stderr)
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-sys.path += [path_from_root('')]
-from tools.shared import *
+sys.path.append(__rootpath__)
+
+from tools.shared import EMSDK_OPTS, EM_CONFIG, CLANG, COMPILER_OPTS, LLVM_LD, to_cc
 
 # If this is a configure-type thing, just do that
 CONFIGURE_CONFIG = os.environ.get('EMMAKEN_JUST_CONFIGURE')
@@ -112,13 +117,13 @@ CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMak
 if CONFIGURE_CONFIG or CMAKE_CONFIG:
   compiler = 'g++' if 'CXXCompiler' in ' '.join(sys.argv) or os.environ.get('EMMAKEN_CXX') else 'gcc'
   cmd = [compiler] + EMSDK_OPTS + sys.argv[1:]
-  print >> sys.stderr, 'emmaken.py, just configuring: ', cmd
+  print('emmaken.py, just configuring: ', cmd, file=sys.stderr)
   exit(subprocess.call(cmd))
 
 try:
-  #f=open('/dev/shm/tmp/waka.txt', 'a')
-  #f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
-  #f.close()
+  # f=open('/dev/shm/tmp/waka.txt', 'a')
+  # f.write('Args: ' + ' '.join(sys.argv) + '\nCMake? ' + str(CMAKE_CONFIG) + '\n')
+  # f.close()
 
   if os.environ.get('EMMAKEN_COMPILER'):
     CXX = os.environ['EMMAKEN_COMPILER']
@@ -133,11 +138,12 @@ try:
 
   CC_ADDITIONAL_ARGS = COMPILER_OPTS # + ['-g']?
   ALLOWED_LINK_ARGS = ['-f', '-help', '-o', '-print-after', '-print-after-all', '-print-before',
-                       '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version' ]
+                       '-print-before-all', '-time-passes', '-v', '-verify-dom-info', '-version']
   TWO_PART_DISALLOWED_LINK_ARGS = ['-L'] # Ignore thingsl like |-L .|
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
-  if EMMAKEN_CFLAGS: CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
+  if EMMAKEN_CFLAGS:
+    CC_ADDITIONAL_ARGS += EMMAKEN_CFLAGS.split(' ')
 
   # ----------------  End configs -------------
 
@@ -164,7 +170,7 @@ try:
         use_cxx = False
       if arg.endswith(('.c', '.cc', '.cpp', '.dT')):
         use_linker = False
-      if arg.endswith('.h') and sys.argv[i-1] != '-include':
+      if arg.endswith('.h') and sys.argv[i - 1] != '-include':
         header = True
         use_linker = False
 
@@ -172,7 +178,7 @@ try:
     use_linker = False
 
   if set(sys.argv[1]).issubset(set('-cruqs')): # ar
-    sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o='+sys.argv[2]]
+    sys.argv = sys.argv[:1] + sys.argv[3:] + ['-o=' + sys.argv[2]]
     assert use_linker, 'Linker should be used in this case'
 
   if use_linker:
@@ -180,7 +186,7 @@ try:
     newargs = ['-disable-opt']
     found_o = False
     i = 0
-    while i < len(sys.argv)-1:
+    while i < len(sys.argv) - 1:
       i += 1
       arg = sys.argv[i]
       if found_o:
@@ -191,7 +197,7 @@ try:
         if arg == '-o':
           found_o = True
           continue
-        prefix = arg.split('=')[0]
+        prefix = arg.split('=', 1)[0]
         if prefix in ALLOWED_LINK_ARGS:
           newargs.append(arg)
         if arg in TWO_PART_DISALLOWED_LINK_ARGS:
@@ -206,25 +212,24 @@ try:
     newargs = sys.argv[1:]
     for i in range(len(newargs)):
       if newargs[i].startswith('-O'):
-        print >> sys.stderr, 'emmaken.py: WARNING: Optimization flags (-Ox) are ignored in emmaken. Tell emscripten.py to do that, or run LLVM opt.'
+        print('emmaken.py: WARNING: Optimization flags (-Ox) are ignored in emmaken. Tell emscripten.py to do that, or run LLVM opt.', file=sys.stderr)
         newargs[i] = ''
-    newargs = [ arg for arg in newargs if arg is not '' ] + CC_ADDITIONAL_ARGS
+    newargs = [arg for arg in newargs if arg is not ''] + CC_ADDITIONAL_ARGS
     newargs.append('-emit-llvm')
     if not use_linker:
-      newargs.append('-c') 
+      newargs.append('-c')
   else:
-    print >> sys.stderr, 'Just copy.'
+    print('Just copy.', file=sys.stderr)
     shutil.copy(sys.argv[-1], sys.argv[-2])
     exit(0)
 
-  #f=open('/dev/shm/tmp/waka.txt', 'a')
-  #f.write('Calling: ' + ' '.join(newargs) + '\n\n')
-  #f.close()
+  # f=open('/dev/shm/tmp/waka.txt', 'a')
+  # f.write('Calling: ' + ' '.join(newargs) + '\n\n')
+  # f.close()
 
-  print >> sys.stderr, "Running:", call, ' '.join(newargs)
+  print("Running:", call, ' '.join(newargs), file=sys.stderr)
 
   subprocess.call([call] + newargs)
-except Exception, e:
-  print 'Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e
+except Exception as e:
+  print('Error in emmaken.py. (Is the config file %s set up properly?) Error:' % EM_CONFIG, e)
   raise
-

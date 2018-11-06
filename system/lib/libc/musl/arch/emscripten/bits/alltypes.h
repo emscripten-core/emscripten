@@ -1,6 +1,6 @@
-#define _Addr int
-#define _Int64 long long
-#define _Reg int
+#define _Addr __PTRDIFF_TYPE__
+#define _Int64 __INT64_TYPE__
+#define _Reg __PTRDIFF_TYPE__
 
 #if __GNUC__ >= 3
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
@@ -94,13 +94,7 @@ typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; }
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-#ifdef __EMSCRIPTEN__
-// For mutex implementation in Emscripten, need to use an extra eighth control field
-// to hold a temporary futex wait & wake location, designated as mutex->_m_addr.
-typedef struct { union { int __i[8]; volatile int __vi[8]; volatile void *__p[8]; } __u; } pthread_mutex_t;
-#else
 typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
-#endif
 typedef pthread_mutex_t mtx_t;
 #define __DEFINED_pthread_mutex_t
 #endif

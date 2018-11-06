@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var Fetch = {
   attr_t_offset_requestMethod: 0,
   attr_t_offset_userData: 32,
@@ -81,14 +86,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = db;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#else
-      if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) removeRunDependency('library_fetch_init');
-#endif
     };
     var onerror = function() {
 #if FETCH_DEBUG
@@ -96,12 +99,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = false;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#endif
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 
@@ -111,16 +114,15 @@ var Fetch = {
 
       var fetchJs = 'fetch-worker.js';
       // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-      // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
-      // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
-      if (typeof Module['locateFile'] === 'function') fetchJs = Module['locateFile'](fetchJs);
-      else if (Module['pthreadMainPrefixURL']) fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
+      // via Module.locateFile() function. If not specified, then the default URL 'pthread-main.js' relative
+      // to the main html file is loaded.
+      fetchJs = locateFile(fetchJs);
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
-        Module['print']('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
       Fetch.worker.onerror = function(e) {
-        Module['printErr']('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
     }
 #else
@@ -158,7 +160,7 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
       Fetch.setu64(fetch + Fetch.fetch_t_offset_dataOffset, 0);
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
-
+      stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
       onsuccess(fetch, 0, value);
     };
     request.onerror = function(error) {
@@ -167,6 +169,7 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -213,7 +216,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
         Fetch.setu64(fetch + Fetch.fetch_t_offset_totalBytes, len);
         HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
         HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
-
+        stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
         onsuccess(fetch, 0, value);
       } else {
         // Succeeded to load, but the load came back with the value of undefined, treat that as an error since we never store undefined in db.
@@ -222,6 +225,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #endif
         HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
         HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+        stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
         onerror(fetch, 0, 'no data');
       }
     };
@@ -231,6 +235,7 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      stringToUTF8("Not Found", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -265,6 +270,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 #endif
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      stringToUTF8("OK", fetch + Fetch.fetch_t_offset_statusText, 64);
       onsuccess(fetch, 0, destinationPathStr);
     };
     putRequest.onerror = function(error) {
@@ -276,6 +282,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
       // to more HTTP status codes for more information?
       HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
       HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
+      stringToUTF8("Payload Too Large", fetch + Fetch.fetch_t_offset_statusText, 64);
       onerror(fetch, 0, error);
     };
   } catch(e) {
@@ -309,6 +316,8 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   var password = HEAPU32[fetch_attr + Fetch.attr_t_offset_password >> 2];
   var requestHeaders = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestHeaders >> 2];
   var overriddenMimeType = HEAPU32[fetch_attr + Fetch.attr_t_offset_overriddenMimeType >> 2];
+  var dataPtr = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestData >> 2];
+  var dataLength = HEAPU32[fetch_attr + Fetch.attr_t_offset_requestDataSize >> 2];
 
   var fetchAttrLoadToMemory = !!(fetchAttributes & 1/*EMSCRIPTEN_FETCH_LOAD_TO_MEMORY*/);
   var fetchAttrStreamData = !!(fetchAttributes & 2/*EMSCRIPTEN_FETCH_STREAM_DATA*/);
@@ -358,7 +367,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
   Fetch.xhrs.push(xhr);
   var id = Fetch.xhrs.length;
   HEAPU32[fetch + Fetch.fetch_t_offset_id >> 2] = id;
-  var data = null; // TODO: Support user to pass data to request.
+  var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
   xhr.onload = function(e) {
@@ -390,7 +399,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
       else xhr.status = 404; // Conversely, no data bytes is 404.
     }
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
-//    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
+    if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
     if (xhr.status == 200) {
 #if FETCH_DEBUG
       console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
@@ -442,7 +451,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     HEAPU16[fetch + Fetch.fetch_t_offset_readyState >> 1] = xhr.readyState;
     if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200; // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
-    if (xhr.statusText) stringToUTF8(fetch + Fetch.fetch_t_offset_statusText, xhr.statusText, 64);
+    if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
     if (onprogress) onprogress(fetch, xhr, e);
   }
 #if FETCH_DEBUG
@@ -478,7 +487,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
-    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
+    if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
     else if (successcb) successcb(fetch);
   };
 
@@ -486,23 +495,25 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. Caching result.. e: ' + e);
 #endif
-    var storeSuccess = function() {
+    var storeSuccess = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
+      if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
-    var storeError = function() {
+    var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
+      if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
+      else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
-    if (onsuccess && Runtime.dynCall) Module['dynCall_vi'](onsuccess, fetch);
-    else if (successcb) successcb(fetch);
   };
 
   var reportProgress = function(fetch, xhr, e) {
-    if (onprogress && Runtime.dynCall) Module['dynCall_vi'](onprogress, fetch);
+    if (onprogress && typeof dynCall === 'function') Module['dynCall_vi'](onprogress, fetch);
     else if (progresscb) progresscb(fetch);
   };
 
@@ -510,7 +521,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
-    if (onerror && Runtime.dynCall) Module['dynCall_vi'](onerror, fetch);
+    if (onerror && typeof dynCall === 'function') Module['dynCall_vi'](onerror, fetch);
     else if (errorcb) errorcb(fetch);
   };
 
@@ -548,15 +559,15 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
     } else if (fetchAttrNoDownload) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
     } else if (fetchAttrPersistFile) {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);
     } else {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);
     }
   } else if (!fetchAttrNoDownload) {
     if (fetchAttrPersistFile) {
       __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress);
     } else {
-      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);        
+      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);
     }
   } else {
 #if FETCH_DEBUG

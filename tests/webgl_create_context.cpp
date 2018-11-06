@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -36,10 +41,9 @@ GLint GetInt(GLenum param)
 }
 
 void final(void*) {
-  #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
-  #endif
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
@@ -77,9 +81,18 @@ int main()
 {
   bool first = true;
   EmscriptenWebGLContextAttributes attrs;
-  for(int depth = 0; depth <= 1; ++depth)
-  for(int stencil = 0; stencil <= 1; ++stencil)
-  for(int antialias = 0; antialias <= 1; ++antialias)
+  int depth = 0;
+  int stencil = 0;
+  int antialias = 0;
+#ifndef NO_DEPTH
+  for(depth = 0; depth <= 1; ++depth)
+#endif
+#ifndef NO_STENCIL
+  for(stencil = 0; stencil <= 1; ++stencil)
+#endif
+#ifndef NO_ANTIALIAS
+  for(antialias = 0; antialias <= 1; ++antialias)
+#endif
   {
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.depth = depth;
@@ -109,6 +122,14 @@ int main()
       assert(supported);
     }
 
+    int drawingBufferWidth = -1;
+    int drawingBufferHeight = -1;
+    res = emscripten_webgl_get_drawing_buffer_size(context, &drawingBufferWidth, &drawingBufferHeight);
+    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    printf("drawingBufferWidth x Height: %dx%d\n", drawingBufferWidth, drawingBufferHeight);
+    assert(drawingBufferWidth == 300);
+    assert(drawingBufferHeight == 150);
+
     // Try with a simple glClear() that we got a context.
     glClearColor(1.f, 0.f, 0.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -126,7 +147,7 @@ int main()
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
     
-    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT_V(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
+    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
       printf("Applying workaround to ignore Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=982477\n");

@@ -264,7 +264,7 @@ int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *parameters,i
 			return 1;
 		}
 	}else{
-		if((parameters->infile[0] == 0) ) {
+		if(parameters->infile[0] == 0) {
 			fprintf(stderr, "Example: %s -i image.j2k\n",argv[0]);
 			fprintf(stderr, "    Try: %s -h\n",argv[0]);
 			return 1;

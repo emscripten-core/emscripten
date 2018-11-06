@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glut.h>
@@ -47,8 +54,8 @@ int main(int argc, char *argv[])
             // so we fake them by creating a plain-vanilla UIEvent and then
             // filling in the fields that we look for with appropriate values.
             var rect = Module["canvas"].getBoundingClientRect();
-            Module['print']('rect corner: ' + rect.left + ',' + rect.top);
-            Module['print']('wanted: ' + wantedX + ',' + wantedY);
+            out('rect corner: ' + rect.left + ',' + rect.top);
+            out('wanted: ' + wantedX + ',' + wantedY);
             var x = wantedX + rect.left;
             var y = wantedY + rect.top;
             var touch = {
@@ -86,7 +93,7 @@ int main(int argc, char *argv[])
     printf("touchstarted: button:%d x:%d y:%d\n", touch_started_button, touch_started_x, touch_started_y);
     printf("touchended:   button:%d x:%d y:%d\n", touch_ended_button, touch_ended_x, touch_ended_y);
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     return 0;
 }

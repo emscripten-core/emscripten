@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -29,8 +34,7 @@ int main()
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		result = 0;
-		REPORT_RESULT();
+		REPORT_RESULT(0);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -48,7 +52,7 @@ int main()
 		printf("ERROR! futex wait timed out!\n");
 		result = 2;
 #ifdef REPORT_RESULT
-		REPORT_RESULT();
+		REPORT_RESULT(result);
 #endif
 		exit(1);
 	}
@@ -56,6 +60,6 @@ int main()
 	pthread_join(thread, 0);		
 
 #ifdef REPORT_RESULT
-	REPORT_RESULT();
+	REPORT_RESULT(result);
 #endif
 }

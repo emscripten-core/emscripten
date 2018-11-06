@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -43,7 +50,9 @@ void finish(int result) {
     server.fd = 0;
   }
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT();
+#ifdef REPORT_RESULT
+  REPORT_RESULT(result);
+#endif
   emscripten_force_exit(result);
 #else
   exit(result);

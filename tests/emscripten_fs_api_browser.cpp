@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <assert.h>
@@ -60,7 +65,7 @@ void wait_wgets() {
     assert(IMG_Load("/tmp/screen_shot.png"));
     assert(data_ok == 1 && data_bad == 1);
     emscripten_cancel_main_loop();
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   }
   assert(get_count <= 8);
 }

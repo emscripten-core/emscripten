@@ -14,25 +14,25 @@
 #include "condition_variable"
 #include "thread"
 #include "system_error"
-#include "cassert"
+#include "__undef_macros"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 condition_variable::~condition_variable()
 {
-    pthread_cond_destroy(&__cv_);
+    __libcpp_condvar_destroy(&__cv_);
 }
 
 void
 condition_variable::notify_one() _NOEXCEPT
 {
-    pthread_cond_signal(&__cv_);
+    __libcpp_condvar_signal(&__cv_);
 }
 
 void
 condition_variable::notify_all() _NOEXCEPT
 {
-    pthread_cond_broadcast(&__cv_);
+    __libcpp_condvar_broadcast(&__cv_);
 }
 
 void
@@ -41,7 +41,7 @@ condition_variable::wait(unique_lock<mutex>& lk) _NOEXCEPT
     if (!lk.owns_lock())
         __throw_system_error(EPERM,
                                   "condition_variable::wait: mutex not locked");
-    int ec = pthread_cond_wait(&__cv_, lk.mutex()->native_handle());
+    int ec = __libcpp_condvar_wait(&__cv_, lk.mutex()->native_handle());
     if (ec)
         __throw_system_error(ec, "condition_variable wait failed");
 }
@@ -71,7 +71,7 @@ condition_variable::__do_timed_wait(unique_lock<mutex>& lk,
         ts.tv_sec = ts_sec_max;
         ts.tv_nsec = giga::num - 1;
     }
-    int ec = pthread_cond_timedwait(&__cv_, lk.mutex()->native_handle(), &ts);
+    int ec = __libcpp_condvar_timedwait(&__cv_, lk.mutex()->native_handle(), &ts);
     if (ec != 0 && ec != ETIMEDOUT)
         __throw_system_error(ec, "condition_variable timed_wait failed");
 }
@@ -79,6 +79,12 @@ condition_variable::__do_timed_wait(unique_lock<mutex>& lk,
 void
 notify_all_at_thread_exit(condition_variable& cond, unique_lock<mutex> lk)
 {
+    auto& tl_ptr = __thread_local_data();
+    // If this thread was not created using std::thread then it will not have
+    // previously allocated.
+    if (tl_ptr.get() == nullptr) {
+        tl_ptr.set_pointer(new __thread_struct);
+    }
     __thread_local_data()->notify_all_at_thread_exit(&cond, lk.release());
 }
 

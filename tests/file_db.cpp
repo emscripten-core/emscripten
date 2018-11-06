@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -12,7 +17,7 @@ int main() {
 
   EM_ASM(
     FS.saveFilesToDB(['waka.txt', 'moar.txt'], function() {
-      Module.print('save ok');
+      out('save ok');
       var xhr = new XMLHttpRequest();
       xhr.open('GET', 'http://localhost:8888/report_result?1');
       xhr.send();
@@ -29,7 +34,7 @@ int main() {
       }
       assert(stringy(FS.analyzePath('waka.txt').object.contents) == 'az');
       var secret = stringy(FS.analyzePath('moar.txt').object.contents);
-      Module.print('load: ' + secret);
+      out('load: ' + secret);
       var xhr = new XMLHttpRequest();
       xhr.open('GET', 'http://localhost:8888/report_result?' + secret);
       xhr.send();

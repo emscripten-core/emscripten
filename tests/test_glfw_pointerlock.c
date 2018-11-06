@@ -1,3 +1,10 @@
+/*
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <emscripten.h>
@@ -23,7 +30,7 @@ void OnMouseClick(GLFWwindow *window, int button, int action, int mods) {
   printf("mouse actions: %d / 4\n", actions);
   if (actions >= 4) {
     printf("done.\n");
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     emscripten_cancel_main_loop();
   }
 }
@@ -33,10 +40,9 @@ int main() {
   glfwSetErrorCallback(error_callback);
   if (!glfwInit())
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     return -1;
   }
@@ -44,10 +50,9 @@ int main() {
   g_window = glfwCreateWindow(600, 450, "GLFW pointerlock test", NULL, NULL);
   if (!g_window)
   {
-    result = 0;
     printf("Could not create window. Test failed.\n");      
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
     glfwTerminate();
     return -1;

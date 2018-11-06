@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 #include <cassert>
@@ -92,13 +97,17 @@ static void glut_draw_callback(void) {
     glutSwapBuffers();
 }
 GLuint createShader(const char source[], int type) {
+    GLint status;
     char msg[512];
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, (const GLchar**)(&source), NULL);
     glCompileShader(shader);
-    glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
-    std::cout << "Shader info: " << msg << std::endl;
-    assert(msg[0] == '\0');
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE) {
+        glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
+        std::cout << "Shader info: \"" << msg << "\"" << std::endl;
+    }
+    assert(status == GL_TRUE);
     return shader;
 }
 static void gl_init(void) {
@@ -106,10 +115,14 @@ static void gl_init(void) {
     glAttachShader(program, createShader(vertex_shader  , GL_VERTEX_SHADER));
     glAttachShader(program, createShader(fragment_shader, GL_FRAGMENT_SHADER));
     glLinkProgram(program);
+    GLint status;
     char msg[512];
-    glGetProgramInfoLog(program, sizeof msg, NULL, msg);
-    std::cout << "info: " <<  msg << std::endl;
-    assert(msg[0] == '\0');
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE) {
+        glGetProgramInfoLog(program, sizeof msg, NULL, msg);
+        std::cout << "info: \"" <<  msg << "\"" << std::endl;
+    }
+    assert(status == GL_TRUE);
     glUseProgram(program);
     std::vector<float> elements(nbNodes);
     int count = 0;

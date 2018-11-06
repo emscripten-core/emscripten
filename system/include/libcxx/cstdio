@@ -118,11 +118,9 @@ using ::fscanf;
 using ::snprintf;
 using ::sprintf;
 using ::sscanf;
-#ifndef _LIBCPP_MSVCRT
 using ::vfprintf;
 using ::vfscanf;
 using ::vsscanf;
-#endif // _LIBCPP_MSVCRT
 using ::vsnprintf;
 using ::vsprintf;
 using ::fgetc;
@@ -155,7 +153,7 @@ using ::tmpnam;
 
 #ifndef _LIBCPP_HAS_NO_STDIN
 using ::getchar;
-#if _LIBCPP_STD_VER <= 11
+#if _LIBCPP_STD_VER <= 11 && !defined(_LIBCPP_MSVCRT)
 using ::gets;
 #endif
 using ::scanf;

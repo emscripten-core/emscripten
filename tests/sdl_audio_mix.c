@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
@@ -57,9 +64,8 @@ void one_iter() {
     case 120:
       Mix_HaltChannel(soundChannel);
       Mix_HaltMusic();
-      int result = 1;
 #ifdef REPORT_RESULT
-      REPORT_RESULT();
+      REPORT_RESULT(1);
 #endif
       break;
   };

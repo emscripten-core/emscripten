@@ -1,7 +1,12 @@
-//"use strict";
-
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
+
+//"use strict";
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
@@ -40,6 +45,15 @@ function preprocess(text, filenameHint) {
             var ident = parts[1];
             var op = parts[2];
             var value = parts[3];
+            if (typeof value === 'string') {
+              // when writing
+              // #if option == 'stringValue'
+              // we need to get rid of the quotes
+              if (value[0] === '"' || value[0] === "'") {
+                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
+                value = value.substring(1, value.length - 1);
+              }
+            }
             if (op) {
               if (op === '==') {
                 showStack.push(ident in this && this[ident] == value);
@@ -47,16 +61,26 @@ function preprocess(text, filenameHint) {
                 showStack.push(!(ident in this && this[ident] == value));
               } else if (op === '<') {
                 showStack.push(ident in this && this[ident] < value);
+              } else if (op === '<=') {
+                showStack.push(ident in this && this[ident] <= value);
               } else if (op === '>') {
                 showStack.push(ident in this && this[ident] > value);
+              } else if (op === '>=') {
+                showStack.push(ident in this && this[ident] >= value);
               } else {
                 error('unsupported preprocessor op ' + op);
               }
             } else {
+              // Check if a value is truthy.
+              var short = ident[0] === '!' ? ident.substr(1) : ident;
+              var truthy = short in this;
+              if (truthy) {
+                truthy = !!this[short];
+              }
               if (ident[0] === '!') {
-                showStack.push(!(this[ident.substr(1)] > 0));
+                showStack.push(!truthy);
               } else {
-                showStack.push(ident in this && this[ident] > 0);
+                showStack.push(truthy);
               }
             }
           } else if (line[2] == 'n') { // include
@@ -1293,7 +1317,7 @@ function makeGetTempRet0() {
 
 function makeSetTempRet0(value) {
   if (WASM_BACKEND == 1) {
-    return 'asm["setTempRet0"](' + value + ')';
+    return 'Module["asm"]["setTempRet0"](' + value + ')';
   } else {
     return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
   }
@@ -1304,7 +1328,7 @@ function makeStructuralReturn(values, inAsm) {
   return 'return ' + asmCoercion(values.slice(1).map(function(value) {
     i++;
     if (!inAsm) {
-      return 'Runtime.setTempRet' + i + '(' + value + ')';
+      return 'setTempRet' + i + '(' + value + ')';
     }
     if (i === 0) {
       return makeSetTempRet0(value)
@@ -1445,15 +1469,15 @@ function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    split
 }
 
 function makeEval(code) {
-  if (NO_DYNAMIC_EXECUTION == 1) {
+  if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
-    return "abort('NO_DYNAMIC_EXECUTION=1 was set, cannot eval');";
+    return "abort('DYNAMIC_EXECUTION=0 was set, cannot eval');";
   }
   var ret = '';
-  if (NO_DYNAMIC_EXECUTION == 2) {
+  if (DYNAMIC_EXECUTION == 2) {
     // Warn on evals, but proceed.
-    ret += "Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
-    ret += "Module.printErr(stackTrace());\n";
+    ret += "err('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret += "err(stackTrace());\n";
   }
   ret += code;
   return ret;
@@ -1462,5 +1486,16 @@ function makeEval(code) {
 function makeStaticAlloc(size) {
   size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
   return 'STATICTOP; STATICTOP += ' + size + ';';
+}
+
+function makeRetainedCompilerSettings() {
+  var blacklist = set('STRUCT_INFO');
+  var ret = {};
+  for (var x in this) {
+    try {
+      if (x[0] !== '_' && !(x in blacklist) && x == x.toUpperCase() && (typeof this[x] === 'number' || typeof this[x] === 'string' || this.isArray())) ret[x] = this[x];
+    } catch(e){}
+  }
+  return ret;
 }
 

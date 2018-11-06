@@ -84,9 +84,6 @@ struct __timer {
 #define _m_prev __u.__p[3]
 #define _m_next __u.__p[4]
 #define _m_count __u.__i[5]
-#ifdef __EMSCRIPTEN__
-#define _m_addr __u.__i[7]
-#endif
 #define _c_shared __u.__p[0]
 #define _c_seq __u.__vi[2]
 #define _c_waiters __u.__vi[3]

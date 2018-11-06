@@ -1,15 +1,25 @@
+// Copyright 2017 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
+
+#include <emscripten.h>
 
 namespace NameSpace {
 class Class {
  public:
   __attribute__((noinline))
   void Aborter(double x, char y, int *z) {
-    int addr = x + y + (int)z;
-    void *p = (void *)addr;
-    for (int i = 0; i < 100; i++)
-      free(p);  // will abort, should show proper stack trace
+    volatile int w = 1;
+    if (w) {
+      EM_ASM({
+        out(stackTrace());
+      });
+      abort();
+    }
   }
 };
 }

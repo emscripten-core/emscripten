@@ -101,23 +101,24 @@ template<> class numeric_limits<cv long double>;
 }  // std
 
 */
-
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
-#endif
-
 #include <__config>
 #include <type_traits>
 
-#include <__undef_min_max>
-
-#if defined(_LIBCPP_MSVCRT)
-#include "support/win32/limits_win32.h"
+#if defined(_LIBCPP_COMPILER_MSVC)
+#include "support/win32/limits_msvc_win32.h"
 #endif // _LIBCPP_MSVCRT
 
 #if defined(__IBMCPP__)
 #include "support/ibm/limits.h"
 #endif // __IBMCPP__
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
+#endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -182,14 +183,14 @@ protected:
     static _LIBCPP_CONSTEXPR const float_round_style round_style = round_toward_zero;
 };
 
-template <class _Tp, int digits, bool is_signed>
+template <class _Tp, int __digits, bool _IsSigned>
 struct __libcpp_compute_min
 {
-    static _LIBCPP_CONSTEXPR const _Tp value = _Tp(_Tp(1) << digits);
+    static _LIBCPP_CONSTEXPR const _Tp value = _Tp(_Tp(1) << __digits);
 };
 
-template <class _Tp, int digits>
-struct __libcpp_compute_min<_Tp, digits, false>
+template <class _Tp, int __digits>
+struct __libcpp_compute_min<_Tp, __digits, false>
 {
     static _LIBCPP_CONSTEXPR const _Tp value = _Tp(0);
 };
@@ -306,7 +307,7 @@ protected:
     static _LIBCPP_CONSTEXPR const bool is_signed = true;
     static _LIBCPP_CONSTEXPR const int  digits = __FLT_MANT_DIG__;
     static _LIBCPP_CONSTEXPR const int  digits10 = __FLT_DIG__;
-    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103)/100000;
+    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103l)/100000l;
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type min() _NOEXCEPT {return __FLT_MIN__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type max() _NOEXCEPT {return __FLT_MAX__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type lowest() _NOEXCEPT {return -max();}
@@ -352,7 +353,7 @@ protected:
     static _LIBCPP_CONSTEXPR const bool is_signed = true;
     static _LIBCPP_CONSTEXPR const int  digits = __DBL_MANT_DIG__;
     static _LIBCPP_CONSTEXPR const int  digits10 = __DBL_DIG__;
-    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103)/100000;
+    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103l)/100000l;
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type min() _NOEXCEPT {return __DBL_MIN__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type max() _NOEXCEPT {return __DBL_MAX__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type lowest() _NOEXCEPT {return -max();}
@@ -398,7 +399,7 @@ protected:
     static _LIBCPP_CONSTEXPR const bool is_signed = true;
     static _LIBCPP_CONSTEXPR const int  digits = __LDBL_MANT_DIG__;
     static _LIBCPP_CONSTEXPR const int  digits10 = __LDBL_DIG__;
-    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103)/100000;
+    static _LIBCPP_CONSTEXPR const int  max_digits10 = 2+(digits * 30103l)/100000l;
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type min() _NOEXCEPT {return __LDBL_MIN__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type max() _NOEXCEPT {return __LDBL_MAX__;}
     _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR type lowest() _NOEXCEPT {return -max();}
@@ -438,7 +439,7 @@ protected:
 };
 
 template <class _Tp>
-class _LIBCPP_TYPE_VIS_ONLY numeric_limits
+class _LIBCPP_TEMPLATE_VIS numeric_limits
     : private __libcpp_numeric_limits<typename remove_cv<_Tp>::type>
 {
     typedef __libcpp_numeric_limits<typename remove_cv<_Tp>::type> __base;
@@ -531,7 +532,7 @@ template <class _Tp>
     _LIBCPP_CONSTEXPR const float_round_style numeric_limits<_Tp>::round_style;
 
 template <class _Tp>
-class _LIBCPP_TYPE_VIS_ONLY numeric_limits<const _Tp>
+class _LIBCPP_TEMPLATE_VIS numeric_limits<const _Tp>
     : private numeric_limits<_Tp>
 {
     typedef numeric_limits<_Tp> __base;
@@ -624,7 +625,7 @@ template <class _Tp>
     _LIBCPP_CONSTEXPR const float_round_style numeric_limits<const _Tp>::round_style;
 
 template <class _Tp>
-class _LIBCPP_TYPE_VIS_ONLY numeric_limits<volatile _Tp>
+class _LIBCPP_TEMPLATE_VIS numeric_limits<volatile _Tp>
     : private numeric_limits<_Tp>
 {
     typedef numeric_limits<_Tp> __base;
@@ -717,7 +718,7 @@ template <class _Tp>
     _LIBCPP_CONSTEXPR const float_round_style numeric_limits<volatile _Tp>::round_style;
 
 template <class _Tp>
-class _LIBCPP_TYPE_VIS_ONLY numeric_limits<const volatile _Tp>
+class _LIBCPP_TEMPLATE_VIS numeric_limits<const volatile _Tp>
     : private numeric_limits<_Tp>
 {
     typedef numeric_limits<_Tp> __base;
@@ -810,5 +811,7 @@ template <class _Tp>
     _LIBCPP_CONSTEXPR const float_round_style numeric_limits<const volatile _Tp>::round_style;
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP_LIMITS

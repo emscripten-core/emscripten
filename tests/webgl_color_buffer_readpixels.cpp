@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -69,7 +74,6 @@ int main()
   assert(glGetError() == 0 && "glReadPixels of FBO with floating point color renderbuffer in GL_RGBA+GL_FLOAT format failed");
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

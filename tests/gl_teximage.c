@@ -1,4 +1,11 @@
 /*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
  * GLES2 test for glTexImage2D parameters
  *
  * Original author: Jason Green <jason@transgaming.com>
@@ -23,7 +30,7 @@ static void exit_with_status(TestStatus code)
 {
 #ifdef REPORT_RESULT
     int result = (code == TEST_STATUS_SUCCESS) ? 1 : 0;
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 
     exit(code);

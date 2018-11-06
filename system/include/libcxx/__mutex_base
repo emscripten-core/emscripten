@@ -14,13 +14,16 @@
 #include <__config>
 #include <chrono>
 #include <system_error>
-#ifndef _LIBCPP_HAS_NO_THREADS
-#include <pthread.h>
-#endif
+#include <__threading_support>
+
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -36,16 +39,20 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 class _LIBCPP_TYPE_VIS _LIBCPP_THREAD_SAFETY_ANNOTATION(capability("mutex")) mutex
 {
-    pthread_mutex_t __m_;
+#ifndef _LIBCPP_CXX03_LANG
+    __libcpp_mutex_t __m_ = _LIBCPP_MUTEX_INITIALIZER;
+#else
+    __libcpp_mutex_t __m_;
+#endif
 
 public:
     _LIBCPP_INLINE_VISIBILITY
-#ifndef _LIBCPP_HAS_NO_CONSTEXPR
-     constexpr mutex() _NOEXCEPT : __m_(PTHREAD_MUTEX_INITIALIZER) {}
+#ifndef _LIBCPP_CXX03_LANG
+    constexpr mutex() = default;
 #else
-     mutex() _NOEXCEPT {__m_ = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;}
+    mutex() _NOEXCEPT {__m_ = (__libcpp_mutex_t)_LIBCPP_MUTEX_INITIALIZER;}
 #endif
-     ~mutex();
+    ~mutex();
 
 private:
     mutex(const mutex&);// = delete;
@@ -56,15 +63,18 @@ public:
     bool try_lock() _NOEXCEPT _LIBCPP_THREAD_SAFETY_ANNOTATION(try_acquire_capability(true));
     void unlock() _NOEXCEPT _LIBCPP_THREAD_SAFETY_ANNOTATION(release_capability());
 
-    typedef pthread_mutex_t* native_handle_type;
+    typedef __libcpp_mutex_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY native_handle_type native_handle() {return &__m_;}
 };
+
+static_assert(is_nothrow_default_constructible<mutex>::value,
+              "the default constructor for std::mutex must be nothrow");
 
 struct _LIBCPP_TYPE_VIS defer_lock_t {};
 struct _LIBCPP_TYPE_VIS try_to_lock_t {};
 struct _LIBCPP_TYPE_VIS adopt_lock_t {};
 
-#if defined(_LIBCPP_HAS_NO_CONSTEXPR) || defined(_LIBCPP_BUILDING_MUTEX)
+#if defined(_LIBCPP_CXX03_LANG) || defined(_LIBCPP_BUILDING_MUTEX)
 
 extern const defer_lock_t  defer_lock;
 extern const try_to_lock_t try_to_lock;
@@ -72,14 +82,15 @@ extern const adopt_lock_t  adopt_lock;
 
 #else
 
-constexpr defer_lock_t  defer_lock  = defer_lock_t();
-constexpr try_to_lock_t try_to_lock = try_to_lock_t();
-constexpr adopt_lock_t  adopt_lock  = adopt_lock_t();
+/* _LIBCPP_INLINE_VAR */ constexpr defer_lock_t  defer_lock  = defer_lock_t();
+/* _LIBCPP_INLINE_VAR */ constexpr try_to_lock_t try_to_lock = try_to_lock_t();
+/* _LIBCPP_INLINE_VAR */ constexpr adopt_lock_t  adopt_lock  = adopt_lock_t();
 
 #endif
 
 template <class _Mutex>
-class _LIBCPP_TYPE_VIS_ONLY _LIBCPP_THREAD_SAFETY_ANNOTATION(scoped_lockable) lock_guard
+class _LIBCPP_TEMPLATE_VIS _LIBCPP_THREAD_SAFETY_ANNOTATION(scoped_lockable)
+lock_guard
 {
 public:
     typedef _Mutex mutex_type;
@@ -98,12 +109,12 @@ public:
     ~lock_guard() _LIBCPP_THREAD_SAFETY_ANNOTATION(release_capability()) {__m_.unlock();}
 
 private:
-    lock_guard(lock_guard const&);// = delete;
-    lock_guard& operator=(lock_guard const&);// = delete;
+    lock_guard(lock_guard const&) _LIBCPP_EQUAL_DELETE;
+    lock_guard& operator=(lock_guard const&) _LIBCPP_EQUAL_DELETE;
 };
 
 template <class _Mutex>
-class _LIBCPP_TYPE_VIS_ONLY unique_lock
+class _LIBCPP_TEMPLATE_VIS unique_lock
 {
 public:
     typedef _Mutex mutex_type;
@@ -147,7 +158,7 @@ private:
     unique_lock& operator=(unique_lock const&); // = delete;
 
 public:
-#ifndef _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#ifndef _LIBCPP_CXX03_LANG
     _LIBCPP_INLINE_VISIBILITY
     unique_lock(unique_lock&& __u) _NOEXCEPT
         : __m_(__u.__m_), __owns_(__u.__owns_)
@@ -164,7 +175,7 @@ public:
             return *this;
         }
 
-#endif  // _LIBCPP_HAS_NO_RVALUE_REFERENCES
+#endif  // _LIBCPP_CXX03_LANG
 
     void lock();
     bool try_lock();
@@ -276,13 +287,18 @@ _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(cv_status)
 
 class _LIBCPP_TYPE_VIS condition_variable
 {
-    pthread_cond_t __cv_;
+#ifndef _LIBCPP_CXX03_LANG
+    __libcpp_condvar_t __cv_ = _LIBCPP_CONDVAR_INITIALIZER;
+#else
+    __libcpp_condvar_t __cv_;
+#endif
+
 public:
     _LIBCPP_INLINE_VISIBILITY
-#ifndef _LIBCPP_HAS_NO_CONSTEXPR
-    constexpr condition_variable() : __cv_(PTHREAD_COND_INITIALIZER) {}
+#ifndef _LIBCPP_CXX03_LANG
+    constexpr condition_variable() _NOEXCEPT = default;
 #else
-    condition_variable() {__cv_ = (pthread_cond_t)PTHREAD_COND_INITIALIZER;}
+    condition_variable() _NOEXCEPT {__cv_ = (__libcpp_condvar_t)_LIBCPP_CONDVAR_INITIALIZER;}
 #endif
     ~condition_variable();
 
@@ -296,20 +312,24 @@ public:
 
     void wait(unique_lock<mutex>& __lk) _NOEXCEPT;
     template <class _Predicate>
+        _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
         void wait(unique_lock<mutex>& __lk, _Predicate __pred);
 
     template <class _Clock, class _Duration>
+        _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
         cv_status
         wait_until(unique_lock<mutex>& __lk,
                    const chrono::time_point<_Clock, _Duration>& __t);
 
     template <class _Clock, class _Duration, class _Predicate>
+        _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
         bool
         wait_until(unique_lock<mutex>& __lk,
                    const chrono::time_point<_Clock, _Duration>& __t,
                    _Predicate __pred);
 
     template <class _Rep, class _Period>
+        _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
         cv_status
         wait_for(unique_lock<mutex>& __lk,
                  const chrono::duration<_Rep, _Period>& __d);
@@ -321,7 +341,7 @@ public:
                  const chrono::duration<_Rep, _Period>& __d,
                  _Predicate __pred);
 
-    typedef pthread_cond_t* native_handle_type;
+    typedef __libcpp_condvar_t* native_handle_type;
     _LIBCPP_INLINE_VISIBILITY native_handle_type native_handle() {return &__cv_;}
 
 private:
@@ -390,8 +410,8 @@ condition_variable::wait_for(unique_lock<mutex>& __lk,
     typedef time_point<system_clock, duration<long double, nano> > __sys_tpf;
     typedef time_point<system_clock, nanoseconds> __sys_tpi;
     __sys_tpf _Max = __sys_tpi::max();
-    system_clock::time_point __s_now = system_clock::now();
     steady_clock::time_point __c_now = steady_clock::now();
+    system_clock::time_point __s_now = system_clock::now();
     if (_Max - __d > __s_now)
         __do_timed_wait(__lk, __s_now + __ceil<nanoseconds>(__d));
     else
@@ -414,5 +434,7 @@ condition_variable::wait_for(unique_lock<mutex>& __lk,
 #endif // !_LIBCPP_HAS_NO_THREADS
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP___MUTEX_BASE

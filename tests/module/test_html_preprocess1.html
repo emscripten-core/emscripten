@@ -1,0 +1,30 @@
+#if ASSERTIONS == 1
+T1:ASSERTIONS == 1
+#else
+T1:(else) ASSERTIONS != 1
+#endif 
+#if ASSERTIONS != 1
+T2:ASSERTIONS != 1
+#else
+T2:(else) ASSERTIONS == 1
+#endif
+#if ASSERTIONS < 2
+T3:ASSERTIONS < 2
+#else
+T3:(else) ASSERTIONS >= 2
+#endif
+#if ASSERTIONS > 1
+T4:ASSERTIONS > 1
+#else
+T4:(else) ASSERTIONS <= 1
+#endif
+#if ASSERTIONS
+T5:ASSERTIONS
+#else
+T5:(else) ASSERTIONS
+#endif
+#if !ASSERTIONS
+T6:!ASSERTIONS
+#else
+T6:(else) !ASSERTIONS
+#endif

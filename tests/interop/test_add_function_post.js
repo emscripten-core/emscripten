@@ -1,4 +1,4 @@
-var newFuncPtr = Runtime.addFunction(function(num) {
-    Module.print('Hello ' + num + ' from JS!');
-});
-Module.callMain([newFuncPtr.toString()]);
+var newFuncPtr = addFunction(function(num) {
+    out('Hello ' + num + ' from JS!');
+}, 'vi');
+Module['callMain']([newFuncPtr.toString()]);

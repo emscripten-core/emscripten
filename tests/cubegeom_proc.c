@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
     // Create a texture
 
-    GLuint boundTex = 123;
+    GLint boundTex = 123;
     assert(!glGetError());
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
     assert(!glGetError());

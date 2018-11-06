@@ -1,3 +1,8 @@
+// Copyright 2017 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
@@ -175,7 +180,6 @@ int main() {
   test(!cmp(s, "12 01 PM"), "strftime test #35", s);
 
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
 }

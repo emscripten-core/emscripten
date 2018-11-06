@@ -1,10 +1,15 @@
-import subprocess, os, time, sys, tempfile
-if sys.version_info.major == 2:
-  import response_file
-else:
-  from tools import response_file
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
-EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN')) if os.getenv('EM_PROFILE_TOOLCHAIN') != None else 0
+import subprocess, os, time, sys, tempfile
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import response_file
+
+EM_PROFILE_TOOLCHAIN = int(os.getenv('EM_PROFILE_TOOLCHAIN', '0'))
 
 if EM_PROFILE_TOOLCHAIN:
   original_sys_exit = sys.exit
@@ -50,36 +55,24 @@ if EM_PROFILE_TOOLCHAIN:
     ToolchainProfiler.record_subprocess_finish(pid, 0)
     return ret
 
-  class ProfiledPopen:
-    def __init__(self, args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=False,
-                 shell=False, cwd=None, env=None, universal_newlines=False, startupinfo=None, creationflags=0):
-      self.process = original_Popen(args, bufsize, executable, stdin, stdout, stderr, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
-      self.pid = self.process.pid
+  class ProfiledPopen(original_Popen):
+    def __init__(self, args, *otherargs, **kwargs):
+      super(ProfiledPopen, self).__init__(args, *otherargs, **kwargs)
       ToolchainProfiler.record_subprocess_spawn(self.pid, args)
 
-    def communicate(self, input=None):
+    def communicate(self, *args, **kwargs):
       ToolchainProfiler.record_subprocess_wait(self.pid)
-      output = self.process.communicate(input)
-      self.returncode = self.process.returncode
+      output = super(ProfiledPopen, self).communicate(*args, **kwargs)
       ToolchainProfiler.record_subprocess_finish(self.pid, self.returncode)
       return output
 
-    def wait(self):
-      return self.process.wait()
-
-    def poll(self):
-      return self.process.poll()
-
-    def kill(self):
-      return self.process.kill()
-
-  exit = sys.exit = profiled_sys_exit
+  sys.exit = profiled_sys_exit
   subprocess.call = profiled_call
   subprocess.check_call = profiled_check_call
   subprocess.check_output = profiled_check_output
   subprocess.Popen = ProfiledPopen
 
-  class ToolchainProfiler:
+  class ToolchainProfiler(object):
     # Provide a running counter towards negative numbers for PIDs for which we don't know what the actual process ID is
     imaginary_pid_ = 0
     profiler_logs_path = None # Log file not opened yet
@@ -109,6 +102,10 @@ if EM_PROFILE_TOOLCHAIN:
       return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
 
     @staticmethod
+    def escape_args(args):
+      return map(lambda arg: arg.replace('\\', '\\\\').replace('"', '\\"'), args)
+
+    @staticmethod
     def record_process_start(write_log_entry=True):
       # For subprocessing.Pool.map() child processes, this points to the PID of the parent process that spawned
       # the subprocesses. This makes the subprocesses look as if the parent had called the functions.
@@ -125,7 +122,7 @@ if EM_PROFILE_TOOLCHAIN:
 
       if write_log_entry:
         with ToolchainProfiler.log_access() as f:
-          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(sys.argv).replace('\\', '\\\\') + '"]}')
+          f.write('[\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"start","time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(sys.argv)) + '"]}')
 
     @staticmethod
     def record_process_exit(returncode):
@@ -144,7 +141,7 @@ if EM_PROFILE_TOOLCHAIN:
           response_cmdline += response_file.read_response_file(item)
 
       with ToolchainProfiler.log_access() as f:
-        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(process_cmdline + response_cmdline).replace('\\', '\\\\') + '"]}')
+        f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(process_cmdline + response_cmdline)) + '"]}')
 
     @staticmethod
     def record_subprocess_wait(process_pid):
@@ -165,7 +162,7 @@ if EM_PROFILE_TOOLCHAIN:
 
     @staticmethod
     def remove_last_occurrence_if_exists(lst, item):
-      for i in xrange(len(lst)):
+      for i in range(len(lst)):
         if lst[i] == item:
           lst.pop(i)
           return True
@@ -182,7 +179,7 @@ if EM_PROFILE_TOOLCHAIN:
       for b in ToolchainProfiler.block_stack[::-1]:
         ToolchainProfiler.exit_block(b)
 
-    class ProfileBlock:
+    class ProfileBlock(object):
       def __init__(self, block_name):
         self.block_name = block_name
 
@@ -202,9 +199,7 @@ if EM_PROFILE_TOOLCHAIN:
       return ToolchainProfiler.imaginary_pid_
 
 else:
-  exit = sys.exit
-
-  class ToolchainProfiler:
+  class ToolchainProfiler(object):
     @staticmethod
     def record_process_start():
       pass
@@ -233,7 +228,7 @@ else:
     def exit_block(block_name):
       pass
 
-    class ProfileBlock:
+    class ProfileBlock(object):
       def __init__(self, block_name):
         pass
       def __enter__(self):

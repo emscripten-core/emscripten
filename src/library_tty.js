@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
   $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
@@ -73,12 +78,19 @@ mergeInto(LibraryManager.library, {
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
         }
-        for (var i = 0; i < length; i++) {
-          try {
-            stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
-          } catch (e) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
+        var i = 0;
+        try {
+          if (offset === 0 && length === 0) {
+            // musl implements an fflush using a write of a NULL buffer of size 0
+            stream.tty.ops.flush(stream.tty);
+          } else {
+            while (i < length) {
+              stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
+              i++;
+            }
           }
+        } catch (e) {
+          throw new FS.ErrnoError(ERRNO_CODES.EIO);
         }
         if (length) {
           stream.node.timestamp = Date.now();
@@ -151,7 +163,7 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
@@ -159,7 +171,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }
@@ -167,7 +179,7 @@ mergeInto(LibraryManager.library, {
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val);
@@ -175,7 +187,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }

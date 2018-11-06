@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // WebGLWorker client code
 
 function assert(x) {
@@ -316,7 +321,11 @@ WebGLClient.prefetch = function() {
   // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
-  if (!ctx) return;
+  if (!ctx) {
+    // If we have no webGL support, we still notify that prefetching is done, as the app blocks on that
+    worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
+    return;
+  } 
 
   // Fetch the parameters and proxy them
   var parameters = {};

@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <cctype>
 #include <locale.h>
-#if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
+#if defined(_LIBCPP_MSVCRT_LIKE)
 # include <support/win32/locale_win32.h>
 #elif defined(_AIX)
 # include <support/ibm/xlocale.h>
@@ -34,18 +34,65 @@
 # include <support/solaris/xlocale.h>
 #elif defined(_NEWLIB_VERSION)
 # include <support/newlib/xlocale.h>
-#elif (defined(__GLIBC__) || defined(__APPLE__)      || defined(__FreeBSD__) \
+#elif (defined(__APPLE__)      || defined(__FreeBSD__) \
     || defined(__EMSCRIPTEN__) || defined(__IBMCPP__))
 # include <xlocale.h>
+#elif defined(__Fuchsia__)
+# include <support/fuchsia/xlocale.h>
 #elif defined(_LIBCPP_HAS_MUSL_LIBC)
 # include <support/musl/xlocale.h>
-#endif // __GLIBC__ || __APPLE__ || __FreeBSD__ || __sun__ || __EMSCRIPTEN__ || __IBMCPP__
+#endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
+
+#if !defined(_LIBCPP_LOCALE__L_EXTENSIONS)
+struct __libcpp_locale_guard {
+  _LIBCPP_INLINE_VISIBILITY
+  __libcpp_locale_guard(locale_t& __loc) : __old_loc_(uselocale(__loc)) {}
+
+  _LIBCPP_INLINE_VISIBILITY
+  ~__libcpp_locale_guard() {
+    if (__old_loc_)
+      uselocale(__old_loc_);
+  }
+
+  locale_t __old_loc_;
+private:
+  __libcpp_locale_guard(__libcpp_locale_guard const&);
+  __libcpp_locale_guard& operator=(__libcpp_locale_guard const&);
+};
+#elif defined(_LIBCPP_MSVCRT_LIKE)
+struct __libcpp_locale_guard {
+    __libcpp_locale_guard(locale_t __l) :
+        __status(_configthreadlocale(_ENABLE_PER_THREAD_LOCALE)),
+        __locale_collate(setlocale(LC_COLLATE, __l.__get_locale())),
+        __locale_ctype(setlocale(LC_CTYPE, __l.__get_locale())),
+        __locale_monetary(setlocale(LC_MONETARY, __l.__get_locale())),
+        __locale_numeric(setlocale(LC_NUMERIC, __l.__get_locale())),
+        __locale_time(setlocale(LC_TIME, __l.__get_locale()))
+        // LC_MESSAGES is not supported on Windows.
+    {}
+    ~__libcpp_locale_guard() {
+        setlocale(LC_COLLATE, __locale_collate);
+        setlocale(LC_CTYPE, __locale_ctype);
+        setlocale(LC_MONETARY, __locale_monetary);
+        setlocale(LC_NUMERIC, __locale_numeric);
+        setlocale(LC_TIME, __locale_time);
+        _configthreadlocale(__status);
+    }
+    int __status;
+    char* __locale_collate;
+    char* __locale_ctype;
+    char* __locale_monetary;
+    char* __locale_numeric;
+    char* __locale_time;
+};
+#endif
+
 
 class _LIBCPP_TYPE_VIS locale;
 
@@ -67,6 +114,7 @@ public:
     class _LIBCPP_TYPE_VIS id;
 
     typedef int category;
+    _LIBCPP_AVAILABILITY_LOCALE_CATEGORY
     static const category // values assigned here are for exposition only
         none     = 0,
         collate  = LC_COLLATE_MASK,
@@ -92,13 +140,16 @@ public:
 
     const locale& operator=(const locale&)  _NOEXCEPT;
 
-    template <class _Facet> locale combine(const locale&) const;
+    template <class _Facet>
+      _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
+      locale combine(const locale&) const;
 
     // locale operations:
     string name() const;
     bool operator==(const locale&) const;
     bool operator!=(const locale& __y) const {return !(*this == __y);}
     template <class _CharT, class _Traits, class _Allocator>
+      _LIBCPP_METHOD_TEMPLATE_IMPLICIT_INSTANTIATION_VIS
       bool operator()(const basic_string<_CharT, _Traits, _Allocator>&,
                       const basic_string<_CharT, _Traits, _Allocator>&) const;
 
@@ -165,10 +216,9 @@ template <class _Facet>
 locale
 locale::combine(const locale& __other) const
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (!_VSTD::has_facet<_Facet>(__other))
-        throw runtime_error("locale::combine: locale missing facet");
-#endif  // _LIBCPP_NO_EXCEPTIONS
+        __throw_runtime_error("locale::combine: locale missing facet");
+
     return locale(*this, &const_cast<_Facet&>(_VSTD::use_facet<_Facet>(__other)));
 }
 
@@ -191,7 +241,7 @@ use_facet(const locale& __l)
 // template <class _CharT> class collate;
 
 template <class _CharT>
-class _LIBCPP_TYPE_VIS_ONLY collate
+class _LIBCPP_TEMPLATE_VIS collate
     : public locale::facet
 {
 public:
@@ -270,12 +320,12 @@ collate<_CharT>::do_hash(const char_type* __lo, const char_type* __hi) const
     return static_cast<long>(__h);
 }
 
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS collate<char>)
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS collate<wchar_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS collate<char>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS collate<wchar_t>)
 
 // template <class CharT> class collate_byname;
 
-template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY collate_byname;
+template <class _CharT> class _LIBCPP_TEMPLATE_VIS collate_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS collate_byname<char>
@@ -343,7 +393,7 @@ public:
     static const mask punct  = _ISpunct;
     static const mask xdigit = _ISxdigit;
     static const mask blank  = _ISblank;
-#elif defined(_WIN32)
+#elif defined(_LIBCPP_MSVCRT_LIKE)
     typedef unsigned short mask;
     static const mask space  = _SPACE;
     static const mask print  = _BLANK|_PUNCT|_ALPHA|_DIGIT;
@@ -426,7 +476,7 @@ public:
     _LIBCPP_ALWAYS_INLINE ctype_base() {}
 };
 
-template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY ctype;
+template <class _CharT> class _LIBCPP_TEMPLATE_VIS ctype;
 
 template <>
 class _LIBCPP_TYPE_VIS ctype<wchar_t>
@@ -653,7 +703,7 @@ protected:
 
 // template <class CharT> class ctype_byname;
 
-template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY ctype_byname;
+template <class _CharT> class _LIBCPP_TEMPLATE_VIS ctype_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS ctype_byname<char>
@@ -814,7 +864,7 @@ public:
 
 // template <class internT, class externT, class stateT> class codecvt;
 
-template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_TYPE_VIS_ONLY codecvt;
+template <class _InternT, class _ExternT, class _StateT> class _LIBCPP_TEMPLATE_VIS codecvt;
 
 // template <> class codecvt<char, char, mbstate_t>
 
@@ -1160,7 +1210,7 @@ protected:
 // template <class _InternT, class _ExternT, class _StateT> class codecvt_byname
 
 template <class _InternT, class _ExternT, class _StateT>
-class _LIBCPP_TYPE_VIS_ONLY codecvt_byname
+class _LIBCPP_TEMPLATE_VIS codecvt_byname
     : public codecvt<_InternT, _ExternT, _StateT>
 {
 public:
@@ -1179,12 +1229,12 @@ codecvt_byname<_InternT, _ExternT, _StateT>::~codecvt_byname()
 {
 }
 
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<wchar_t, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char16_t, char, mbstate_t>)
-_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_TYPE_VIS codecvt_byname<char32_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS codecvt_byname<char, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS codecvt_byname<wchar_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS codecvt_byname<char16_t, char, mbstate_t>)
+_LIBCPP_EXTERN_TEMPLATE2(class _LIBCPP_EXTERN_TEMPLATE_TYPE_VIS codecvt_byname<char32_t, char, mbstate_t>)
 
-_LIBCPP_FUNC_VIS void __throw_runtime_error(const char*);
+_LIBCPP_NORETURN _LIBCPP_FUNC_VIS void __throw_runtime_error(const char*);
 
 template <size_t _Np>
 struct __narrow_to_utf8
@@ -1368,7 +1418,7 @@ struct __widen_from_utf8<32>
 
 // template <class charT> class numpunct
 
-template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY numpunct;
+template <class _CharT> class _LIBCPP_TEMPLATE_VIS numpunct;
 
 template <>
 class _LIBCPP_TYPE_VIS numpunct<char>
@@ -1434,7 +1484,7 @@ protected:
 
 // template <class charT> class numpunct_byname
 
-template <class _CharT> class _LIBCPP_TYPE_VIS_ONLY numpunct_byname;
+template <class _CharT> class _LIBCPP_TEMPLATE_VIS numpunct_byname;
 
 template <>
 class _LIBCPP_TYPE_VIS numpunct_byname<char>

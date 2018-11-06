@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -34,7 +39,7 @@ void *ThreadMain(void *arg)
 	assert(globalDouble == 5.0);
 	assert(globalU64 == 5);
 	struct Test *t = (struct Test*)arg;
-	EM_ASM_INT( { Module['print']('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'); }, t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
 
 	for(int i = 0; i < 99999; ++i)
 		for(int j = 0; j < N; ++j)
@@ -75,7 +80,7 @@ void *ThreadMain(void *arg)
 				break;
 			}
 		}
-	EM_ASM_INT( { Module['print']('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'); }, t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
 	pthread_exit(0);
 }
 
@@ -99,7 +104,7 @@ void RunTest(int test)
 		default: memset(sharedData, 0, sizeof(sharedData)); break;
 	}
 
-	EM_ASM_INT( { Module['print']('Main: Starting test ' + $0); }, test);
+	EM_ASM(out('Main: Starting test ' + $0), test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -120,7 +125,7 @@ void RunTest(int test)
 	}
 
 	int val = sharedData[0];
-	EM_ASM_INT( { Module['print']('Main: Test ' + $0 + ' finished. Result: ' + $1); }, test, val);
+	EM_ASM(out('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
 	if (test != 6)
 	{
 		for(int i = 1; i < N; ++i)
@@ -131,13 +136,14 @@ void RunTest(int test)
 int main()
 {
 	globalDouble = 5.0;
-	globalU64 = 5;
+	globalU64 = 4;
 
-	int result = 0;
+	uint64_t prevU64 = emscripten_atomic_add_u64((void*)&globalU64, 1); assert(prevU64 == 4);
+
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		REPORT_RESULT();
+		REPORT_RESULT(0);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -160,9 +166,9 @@ int main()
 	else
 		printf("64-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
 #ifdef REPORT_RESULT
-	if (totalRead != totalWritten) result = 1;
-	REPORT_RESULT();
+	int result = (totalRead != totalWritten) ? 1 : 0;
+	REPORT_RESULT(result);
 #else
-	EM_ASM(Module['print']('Main: Test successfully finished.'));
+	EM_ASM(out('Main: Test successfully finished.'));
 #endif
 }

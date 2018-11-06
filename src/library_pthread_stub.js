@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryPThreadStub = {
   // ===================================================================================
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
@@ -27,6 +32,9 @@ var LibraryPThreadStub = {
     // We will never have any queued calls to process, so no-op.
   },
 
+  pthread_barrier_init: function() {},
+  pthread_barrier_wait: function() {},
+  pthread_barrier_destroy: function() {},
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -104,6 +112,8 @@ var LibraryPThreadStub = {
     return 0;
   },
 
+  pthread_setcancelstate: function() { return 0; },
+
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
@@ -159,6 +169,11 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
+  _pthread_cleanup_push: 'pthread_cleanup_push',
+  _pthread_cleanup_pop: 'pthread_cleanup_pop',
+
+  pthread_sigmask: function() { return 0; },
+
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },
   pthread_rwlock_rdlock: function() { return 0; },
@@ -193,7 +208,7 @@ var LibraryPThreadStub = {
     _exit(status);
   },
 
-  pthread_equal: function() {},
+  pthread_equal: function(x, y) { return x == y },
   pthread_join: function() {},
   pthread_detach: function() {},
 
@@ -202,6 +217,9 @@ var LibraryPThreadStub = {
   sem_wait: function() {},
   sem_trywait: function() {},
   sem_destroy: function() {},
+
+  emscripten_main_browser_thread_id__deps: ['pthread_self'],
+  emscripten_main_browser_thread_id: function() { return _pthread_self(); },
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
   usleep: function(useconds) {
@@ -287,7 +305,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Add(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -296,7 +314,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -335,6 +353,8 @@ var LibraryPThreadStub = {
   _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
   _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
   _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
+
+  __wait: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);

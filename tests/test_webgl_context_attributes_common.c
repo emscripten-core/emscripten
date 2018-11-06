@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -282,19 +289,19 @@ extern int webglAlphaSupported(void);
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = 1;
-    EM_ASM(Module['print']('warning: no antialiasing\n'));
+    EM_ASM(out('warning: no antialiasing\n'));
   }
   if (!webglDepthSupported()) {
     resultDepth = 1;
-    EM_ASM(Module['print']('warning: no depth\n'));
+    EM_ASM(out('warning: no depth\n'));
   }
   if (!webglStencilSupported()) {
     resultStencil = 1;
-    EM_ASM(Module['print']('warning: no stencil\n'));
+    EM_ASM(out('warning: no stencil\n'));
   }
   if (!webglAlphaSupported()) {
     resultAlpha = 1;
-    EM_ASM(Module['print']('warning: no alpha\n'));
+    EM_ASM(out('warning: no alpha\n'));
   }
 }
 

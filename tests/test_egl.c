@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <EGL/egl.h>
 
@@ -104,6 +111,9 @@ int main(int argc, char *argv[])
     assert(eglGetCurrentSurface(EGL_READ) == surface);
     assert(eglGetCurrentSurface(EGL_DRAW) == surface);
 
+    glClearColor(1.0,0.0,0.0,0.5);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     ret = eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
@@ -122,13 +132,15 @@ int main(int argc, char *argv[])
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
 
+    // eglGetProcAddress() without active GL context and/or connected EGL display (after eglTerminate) is required to work, even though the returned function
+    // pointers cannot be called unless an active context is available:
+    // "return value of NULL indicates that the specified function does not exist for the implementation."
+    // "Client API function pointers returned by eglGetProcAddress are independent of the display and the currently bound client API context, and may be used by any client API context which supports the function."
+    // At https://www.khronos.org/registry/EGL/specs/eglspec.1.5.pdf, pages 82-32.
     assert(eglGetProcAddress("glClear") != 0);
     assert(eglGetProcAddress("glWakaWaka") == 0);
 
-    glClearColor(1.0,0.0,0.0,0.5);
-    glClear(GL_COLOR_BUFFER_BIT);
-
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

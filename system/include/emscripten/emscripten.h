@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_h__
 #define __emscripten_h__
 
@@ -15,6 +22,7 @@
  */
 
 #include "em_asm.h"
+#include "em_js.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,8 +61,7 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
-
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used)) __attribute__ ((visibility ("default")))
 
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
@@ -132,8 +139,8 @@ extern void emscripten_force_exit(int status);
 double emscripten_get_device_pixel_ratio(void);
 
 void emscripten_hide_mouse(void);
-void emscripten_set_canvas_size(int width, int height);
-void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen);
+void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
+void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
 #if __EMSCRIPTEN__
 double emscripten_get_now(void);
@@ -223,7 +230,7 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 
 int emscripten_get_compiler_setting(const char *name);
 
-void emscripten_debugger();
+void emscripten_debugger(void);
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
