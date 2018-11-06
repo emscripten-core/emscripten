@@ -391,6 +391,10 @@ var LibraryGL = {
         case 0x1404 /* GL_INT */:
         case 0x1405 /* GL_UNSIGNED_INT */:
         case 0x1406 /* GL_FLOAT */:
+#if USE_WEBGL2
+		case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+		case 0x8D9F /* GL_INT_2_10_10_10_REV */:
+#endif
           sizeBytes = 4;
           break;
         case 0x140A /* GL_DOUBLE */:
