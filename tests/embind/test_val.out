@@ -143,6 +143,19 @@ pass
 pass
 pass
 test:
+bool operator!()
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
 template<typename... Args> val new_(Args&&... args)
 pass
 pass
