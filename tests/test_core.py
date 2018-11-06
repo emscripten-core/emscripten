@@ -6775,12 +6775,11 @@ return malloc(size);
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
-  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
 
-    orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
+    orig_args = self.emcc_args
 
     print('leave printf in ctor')
     self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
@@ -6815,7 +6814,7 @@ return malloc(size);
       test()
       ec_code_size = get_code_size()
       ec_mem_size = get_mem_size()
-      self.emcc_args = orig_args[:]
+      self.emcc_args = orig_args
       test()
       code_size = get_code_size()
       mem_size = get_mem_size()
@@ -6846,8 +6845,15 @@ return malloc(size);
 
     do_test(test1)
 
-    print('libcxx - remove 2 ctors from iostream code')
+    if self.is_wasm_backend():
+      # The wasm backend currently exports a single initalizer so the ctor
+      # evaluation is all or nothing.  As well as that it doesn't currently
+      # do DCE of libcxx symbols (because the are marked as visibility(defaault)
+      # and because of that we end up not being able to eval ctors unless all
+      # libcxx constrcutors can be eval'd
+      return
 
+    print('libcxx - remove 2 ctors from iostream code')
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
 
