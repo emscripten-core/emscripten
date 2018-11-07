@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import re
-import shutil
 import sys
 import tarfile
 import zipfile
