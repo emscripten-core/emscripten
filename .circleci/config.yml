@@ -368,10 +368,8 @@ workflows:
 
   build-test:
     jobs:
-      - flake8
-      - build-docs
-      - build
-      - test-waterfall-binaryen2
+      - build-waterfall
+      - test-waterfall-binaryen2:
           requires:
             - build-waterfall
 
