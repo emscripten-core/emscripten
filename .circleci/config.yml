@@ -88,19 +88,26 @@ jobs:
             ./emsdk update-tags
             ./emsdk list # for debugging
             export WATERFALL_LKGR=`python -c "print [x.split('\"')[3] for x in open('upstream/lkgr.json').readlines() if '\"build\"' in x][0]"`
+            echo "LKGR is $WATERFALL_LKGR"
             ./emsdk install clang-upstream-$WATERFALL_LKGR-64bit
+            echo "installed :)"
             ./emsdk activate clang-upstream-$WATERFALL_LKGR-64bit
+            echo "activated :)"
             cd -
             # Use LLVM, clang, lld binaries from the emsdk
             export LLVM="$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin
+            echo "LLVM: $LLVM"
             # Remove the emsdk version of emscripten save space in the
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/emscripten/
+            echo "remove1"
             # Do the same for the upstream/waterfall emscripten
             rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
+            echo "remove2"
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
+            echo "remove3"
       - run:
           name: embuilder build ALL
           command: |
