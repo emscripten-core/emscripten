@@ -104,6 +104,7 @@ namespace Space {
     }
   };
 
+  // We test compilation of abstract base classes in a namespace here.
   class InnerUserBase {
   public:
     virtual ~InnerUserBase() {};
