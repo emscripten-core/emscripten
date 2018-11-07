@@ -94,12 +94,13 @@ jobs:
             # Use LLVM, clang, lld binaries from the emsdk
             export LLVM="$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin"
             echo "LLVM: $LLVM"
+            # Also Binaryen (LLVM wasm backend requires it, cannot use ports).
+            export BINARYEN="$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin"
+            echo "BINARYEN: $BINARYEN"
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
-            # Use Binaryen from the ports version.
-            echo BINARYEN_ROOT="''" >> ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
