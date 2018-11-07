@@ -2626,19 +2626,23 @@ class Building(object):
 
   @staticmethod
   def is_bitcode(filename):
-    # look for magic signature
-    b = open(filename, 'rb').read(4)
-    if b[:2] == b'BC':
-      return True
-    # look for ar signature
-    elif Building.is_ar(filename):
-      return True
-    # on macOS, there is a 20-byte prefix which starts with little endian
-    # encoding of 0x0B17C0DE
-    elif b == b'\xDE\xC0\x17\x0B':
-      b = bytearray(open(filename, 'rb').read(22))
-      return b[20:] == b'BC'
-
+    try:
+      # look for magic signature
+      b = open(filename, 'rb').read(4)
+      if b[:2] == b'BC':
+        return True
+      # look for ar signature
+      elif Building.is_ar(filename):
+        return True
+      # on macOS, there is a 20-byte prefix which starts with little endian
+      # encoding of 0x0B17C0DE
+      elif b == b'\xDE\xC0\x17\x0B':
+        b = bytearray(open(filename, 'rb').read(22))
+        return b[20:] == b'BC'
+    except IndexError:
+      # not enough characters in the input
+      # note that logging will be done on the caller function
+      pass
     return False
 
   @staticmethod
