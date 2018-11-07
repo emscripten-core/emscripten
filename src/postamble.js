@@ -458,7 +458,10 @@ if (Module['noInitialRun']) {
 #endif // HAS_MAIN
 
 #if EXIT_RUNTIME == 0
-Module["noExitRuntime"] = true;
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
+#endif
+  Module["noExitRuntime"] = true;
 #endif
 
 #if USE_PTHREADS
