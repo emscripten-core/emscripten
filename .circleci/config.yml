@@ -52,6 +52,52 @@ jobs:
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/emscripten/
+            # Use Binaryen from the ports version.
+            echo BINARYEN_ROOT="''" >> ~/.emscripten
+      - run:
+          name: embuilder build ALL
+          command: |
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
+            python3 ~/emscripten/tests/runner.py test_hello_world
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory
+          root: ~/
+          # Must be relative path from root
+          paths:
+            - emsdk-master/
+            - .emscripten_cache/
+            - .emscripten_ports/
+            - .emscripten
+  build-waterfall:
+    <<: *defaults
+    working_directory: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            apt-get install -q -y python3 cmake
+      - run:
+          name: install emsdk
+          command: |
+            wget https://github.com/juj/emsdk/archive/master.tar.gz
+            tar -xf master.tar.gz
+            cd emsdk-master
+            ./emsdk --notty update-tags
+            ./emsdk --notty install clang-upstream-37040-64bit
+            ./emsdk --notty activate clang-upstream-37040-64bit
+            cd -
+            # Use LLVM, clang, lld binaries from the emsdk
+            export LLVM="$HOME/emsdk-master/upstream/37040/bin
+            # Remove the emsdk version of emscripten save space in the
+            # persistent workspace and to avoid any confusion with that version
+            # we are trying to test.
+            rm -r ~/emsdk-master/emscripten/
+            # Do the same for the upstream/waterfall emscripten
+            rm -r ~/emsdk-master/upstream/37040/emscripten/
+            # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
       - run:
           name: embuilder build ALL
@@ -312,6 +358,10 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=sanity
+  test-waterfall-binaryen2:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen2
 
 workflows:
   version: 2
@@ -321,57 +371,7 @@ workflows:
       - flake8
       - build-docs
       - build
-      - test-other:
+      - test-waterfall-binaryen2
           requires:
-            - build
-      - test-browser-firefox:
-          requires:
-            - build
-      - test-browser-chrome:
-          requires:
-            - build
-      - test-ab:
-          requires:
-            - build
-      - test-c:
-          requires:
-            - build
-      - test-d:
-          requires:
-            - build
-      - test-e:
-          requires:
-            - build
-      - test-f:
-          requires:
-            - build
-      - test-ghi:
-          requires:
-            - build
-      - test-jklmno:
-          requires:
-            - build
-      - test-p:
-          requires:
-            - build
-      - test-qrst:
-          requires:
-            - build
-      - test-uvwxyz:
-          requires:
-            - build
-      - test-binaryen0:
-          requires:
-            - build
-      - test-binaryen1:
-          requires:
-            - build
-      - test-binaryen2:
-          requires:
-            - build
-      - test-binaryen3:
-          requires:
-            - build
-      - test-sanity:
-          requires:
-            - build
+            - build-waterfall
+
