@@ -85,9 +85,10 @@ jobs:
             wget https://github.com/juj/emsdk/archive/master.tar.gz
             tar -xf master.tar.gz
             cd emsdk-master
-            ./emsdk --notty update-tags
-            ./emsdk --notty install clang-upstream-37040-64bit
-            ./emsdk --notty activate clang-upstream-37040-64bit
+            ./emsdk update-tags
+            ./emsdk list
+            ./emsdk install clang-upstream-37040-64bit
+            ./emsdk activate clang-upstream-37040-64bit
             cd -
             # Use LLVM, clang, lld binaries from the emsdk
             export LLVM="$HOME/emsdk-master/upstream/37040/bin
