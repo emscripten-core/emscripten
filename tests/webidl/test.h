@@ -103,6 +103,14 @@ namespace Space {
       printf("Inner::+= => %d\n", value);
     }
   };
+
+  // We test compilation of abstract base classes in a namespace here.
+  class InnerUserBase {
+  public:
+    virtual ~InnerUserBase() {};
+
+    virtual void Callback(Inner *inner) = 0;
+  };
 }
 
 enum AnEnum {
