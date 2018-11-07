@@ -48,7 +48,7 @@ jobs:
             ./emsdk --notty install latest
             ./emsdk --notty activate latest
             cd -
-            # Remove the emsdk version of emscripten save space in the
+            # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/emscripten/
@@ -94,11 +94,9 @@ jobs:
             # Use LLVM, clang, lld binaries from the emsdk
             export LLVM="$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin"
             echo "LLVM: $LLVM"
-            # Remove the emsdk version of emscripten save space in the
+            # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
-            rm -r ~/emsdk-master/emscripten/
-            # Do the same for the upstream/waterfall emscripten
             rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
