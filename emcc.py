@@ -1219,6 +1219,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         if shared.Settings.USE_PTHREADS == 2:
           exit_with_error('USE_PTHREADS=2 is not longer supported')
+        if shared.Settings.ALLOW_MEMORY_GROWTH:
+          exit_with_error('Memory growth is not yet supported with pthreads')
+        if shared.Settings.MODULARIZE:
+          # currently pthread-main.js uses the global namespace, so it's setting of
+          # ENVIRONMENT_IS_PTHREAD is not picked up, in addition to all the other
+          # modifications it performs.
+          exit_with_error('MODULARIZE is not yet supported with pthreads')
         # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
         shared.Settings.TEXTDECODER = 0
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
@@ -1650,7 +1657,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # link in ports and system libraries, if necessary
       if not LEAVE_INPUTS_RAW and \
-         not shared.Settings.BUILD_AS_SHARED_LIB and \
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
          not shared.Settings.ONLY_MY_CODE and \
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
@@ -1696,7 +1702,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if perform_link:
         logging.debug('linking: ' + str(linker_inputs))
         # force archive contents to all be included, if just archives, or if linking shared modules
-        force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or not shared.Building.can_build_standalone()
+        force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
 
         # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
         # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
@@ -1754,7 +1760,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             save_intermediate('opt', 'bc')
 
           # If we can LTO, do it before dce, since it opens up dce opportunities
-          if shared.Building.can_build_standalone() and options.llvm_lto and options.llvm_lto != 2:
+          if (not shared.Settings.LINKABLE) and options.llvm_lto and options.llvm_lto != 2:
             if not shared.Building.can_inline():
               link_opts.append('-disable-inlining')
             # add a manual internalize with the proper things we need to be kept alive during lto

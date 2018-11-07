@@ -9,6 +9,7 @@ from distutils.spawn import find_executable
 from subprocess import PIPE, STDOUT
 import atexit
 import base64
+import difflib
 import json
 import logging
 import math
@@ -1150,12 +1151,6 @@ def line_splitter(data):
   return out
 
 
-def limit_size(string, MAX=800 * 20):
-  if len(string) < MAX:
-    return string
-  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
-
-
 def read_pgo_data(filename):
   '''
     Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
@@ -1292,13 +1287,13 @@ class SettingsManager(object):
 
     def __setattr__(self, attr, value):
       if attr not in self.attrs:
-        import difflib
-        logging.warning('''Assigning a non-existent settings attribute "%s"''' % attr)
+        logging.error('Assigning a non-existent settings attribute "%s"' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logging.warning(''' - did you mean one of %s?''' % suggestions)
-        logging.warning(''' - perhaps a typo in emcc's  -s X=Y  notation?''')
-        logging.warning(''' - (see src/settings.js for valid values)''')
+          logging.error(' - did you mean one of %s?' % suggestions)
+        logging.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
+        logging.error(' - (see src/settings.js for valid values)')
+        sys.exit(1)
       self.attrs[attr] = value
 
     @classmethod
@@ -2292,11 +2287,6 @@ class Building(object):
 
     return filename + '.o.js'
 
-  # TODO: deprecate this method, we should just need Settings.LINKABLE anyhow
-  @staticmethod
-  def can_build_standalone():
-    return not Settings.BUILD_AS_SHARED_LIB and not Settings.LINKABLE
-
   @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
@@ -2331,7 +2321,7 @@ class Building(object):
 
   @staticmethod
   def get_safe_internalize():
-    if not Building.can_build_standalone():
+    if Settings.LINKABLE:
       return [] # do not internalize anything
 
     exps = expand_response(Settings.EXPORTED_FUNCTIONS)
@@ -2541,6 +2531,8 @@ class Building(object):
           passes.append('minifyWhitespace')
         logging.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+        # also minify the names used between js and wasm
+        js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
         logging.debug('running closure on shell code')
@@ -2582,7 +2574,7 @@ class Building(object):
     # find the unused things in js
     unused = []
     PREFIX = 'unused: '
-    for line in out.split('\n'):
+    for line in out.splitlines():
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
         unused.append(name)
@@ -2591,6 +2583,28 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = {'unused': unused}
+    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+
+  @staticmethod
+  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, debug_info):
+    logging.debug('minifying wasm imports and exports')
+    # run the pass
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    if debug_info:
+      cmd.append('-g')
+    out = run_process(cmd, stdout=PIPE).stdout
+    # get the mapping
+    SEP = ' => '
+    mapping = {}
+    for line in out.split('\n'):
+      if SEP in line:
+        old, new = line.strip().split(SEP)
+        mapping[old] = new
+    # apply them
+    passes = ['applyImportAndExportNameChanges']
+    if minify_whitespace:
+      passes.append('minifyWhitespace')
+    extra_info = {'mapping': mapping}
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested
@@ -2612,19 +2626,23 @@ class Building(object):
 
   @staticmethod
   def is_bitcode(filename):
-    # look for magic signature
-    b = open(filename, 'rb').read(4)
-    if b[:2] == b'BC':
-      return True
-    # look for ar signature
-    elif Building.is_ar(filename):
-      return True
-    # on macOS, there is a 20-byte prefix which starts with little endian
-    # encoding of 0x0B17C0DE
-    elif b == b'\xDE\xC0\x17\x0B':
-      b = bytearray(open(filename, 'rb').read(22))
-      return b[20:] == b'BC'
-
+    try:
+      # look for magic signature
+      b = open(filename, 'rb').read(4)
+      if b[:2] == b'BC':
+        return True
+      # look for ar signature
+      elif Building.is_ar(filename):
+        return True
+      # on macOS, there is a 20-byte prefix which starts with little endian
+      # encoding of 0x0B17C0DE
+      elif b == b'\xDE\xC0\x17\x0B':
+        b = bytearray(open(filename, 'rb').read(22))
+        return b[20:] == b'BC'
+    except IndexError:
+      # not enough characters in the input
+      # note that logging will be done on the caller function
+      pass
     return False
 
   @staticmethod

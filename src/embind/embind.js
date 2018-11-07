@@ -1081,13 +1081,13 @@ var LibraryEmbind = {
         // This has three main penalties:
         // - dynCall is another function call in the path from JavaScript to C++.
         // - JITs may not predict through the function table indirection at runtime.
-        var dc = Module["asm"]['dynCall_' + signature];
+        var dc = Module['dynCall_' + signature];
         if (dc === undefined) {
             // We will always enter this branch if the signature
             // contains 'f' and PRECISE_F32 is not enabled.
             //
             // Try again, replacing 'f' with 'd'.
-            dc = Module["asm"]['dynCall_' + signature.replace(/f/g, 'd')];
+            dc = Module['dynCall_' + signature.replace(/f/g, 'd')];
             if (dc === undefined) {
                 throwBindingError("No dynCall invoker for signature: " + signature);
             }

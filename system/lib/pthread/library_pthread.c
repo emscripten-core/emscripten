@@ -123,40 +123,48 @@ int pthread_getattr_np(pthread_t t, pthread_attr_t *a)
 
 static uint32_t dummyZeroAddress = 0;
 
-static void do_sleep(double msecs)
+void emscripten_thread_sleep(double msecs)
 {
-	int is_main_thread = emscripten_is_main_runtime_thread();
 	double now = emscripten_get_now();
 	double target = now + msecs;
-#ifdef __EMSCRIPTEN__
+
+	__pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this thread is cancelled during the sleep.
+	emscripten_current_thread_process_queued_calls();
+
+	// If we have less than this many msecs left to wait, busy spin that instead.
+	const double minimumTimeSliceToSleep = 0.1;
+
+	// main thread may need to run proxied calls, so sleep in very small slices to be responsive.
+	const double maxMsecsSliceToSleep = emscripten_is_main_browser_thread() ? 1 : 100;
+
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
-#endif
-	while(now < target) {
-		if (is_main_thread) emscripten_main_thread_process_queued_calls(); // Assist other threads by executing proxied operations that are effectively singlethreaded.
-		__pthread_testcancel(); // pthreads spec: usleep is a cancellation point, so it must test if this thread is cancelled during the sleep.
+	now = emscripten_get_now();
+	while(now < target)
+	{
+		// Keep processing the main loop of the calling thread.
+		__pthread_testcancel(); // pthreads spec: sleep is a cancellation point, so must test if this thread is cancelled during the sleep.
+		emscripten_current_thread_process_queued_calls();
+
 		now = emscripten_get_now();
 		double msecsToSleep = target - now;
-		if (msecsToSleep > 1.0) {
-			if (msecsToSleep > 100.0) msecsToSleep = 100.0;
-			if (is_main_thread && msecsToSleep > 1) msecsToSleep = 1; // main thread may need to run proxied calls, so sleep in very small slices to be responsive.
-			emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
-		}
-	}
-#ifdef __EMSCRIPTEN__
+		if (msecsToSleep > maxMsecsSliceToSleep) msecsToSleep = maxMsecsSliceToSleep;
+		if (msecsToSleep >= minimumTimeSliceToSleep) emscripten_futex_wait(&dummyZeroAddress, 0, msecsToSleep);
+		now = emscripten_get_now();
+	};
+
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING, EM_THREAD_STATUS_RUNNING);
-#endif	
 }
 
 int nanosleep(const struct timespec *req, struct timespec *rem)
 {
 	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) return EINVAL;
-	do_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
+	emscripten_thread_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
 	return 0;
 }
 
 int usleep(unsigned usec)
 {
-	do_sleep(usec / 1e3);
+	emscripten_thread_sleep(usec / 1e3);
 	return 0;
 }
 
@@ -186,6 +194,8 @@ void emscripten_async_waitable_close(em_queued_call *call)
 
 static void _do_call(em_queued_call *q)
 {
+	assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
+
 	switch(q->functionEnum)
 	{
 		case EM_PROXIED_PTHREAD_CREATE: q->returnValue.i = pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp); break;
@@ -201,6 +211,7 @@ static void _do_call(em_queued_call *q)
 		case EM_FUNC_SIG_VIFF: ((em_func_viff)q->functionPtr)(q->args[0].i, q->args[1].f, q->args[2].f); break;
 		case EM_FUNC_SIG_VFFF: ((em_func_vfff)q->functionPtr)(q->args[0].f, q->args[1].f, q->args[2].f); break;
 		case EM_FUNC_SIG_VIIII: ((em_func_viiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+		case EM_FUNC_SIG_VIIFI: ((em_func_viifi)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].i); break;
 		case EM_FUNC_SIG_VIFFF: ((em_func_vifff)q->functionPtr)(q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
 		case EM_FUNC_SIG_VFFFF: ((em_func_vffff)q->functionPtr)(q->args[0].f, q->args[1].f, q->args[2].f, q->args[3].f); break;
 		case EM_FUNC_SIG_VIIIII: ((em_func_viiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
@@ -209,10 +220,18 @@ static void _do_call(em_queued_call *q)
 		case EM_FUNC_SIG_VIIIIIII: ((em_func_viiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i); break;
 		case EM_FUNC_SIG_VIIIIIIII: ((em_func_viiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
 		case EM_FUNC_SIG_VIIIIIIIII: ((em_func_viiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
+		case EM_FUNC_SIG_VIIIIIIIIII: ((em_func_viiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i, q->args[9].i); break;
+		case EM_FUNC_SIG_VIIIIIIIIIII: ((em_func_viiiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i, q->args[9].i, q->args[10].i); break;
 		case EM_FUNC_SIG_I: q->returnValue.i = ((em_func_i)q->functionPtr)(); break;
 		case EM_FUNC_SIG_II: q->returnValue.i = ((em_func_ii)q->functionPtr)(q->args[0].i); break;
 		case EM_FUNC_SIG_III: q->returnValue.i = ((em_func_iii)q->functionPtr)(q->args[0].i, q->args[1].i); break;
 		case EM_FUNC_SIG_IIII: q->returnValue.i = ((em_func_iiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i); break;
+		case EM_FUNC_SIG_IIIII: q->returnValue.i = ((em_func_iiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+		case EM_FUNC_SIG_IIIIII: q->returnValue.i = ((em_func_iiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
+		case EM_FUNC_SIG_IIIIIII: q->returnValue.i = ((em_func_iiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+		case EM_FUNC_SIG_IIIIIIII: q->returnValue.i = ((em_func_iiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i); break;
+		case EM_FUNC_SIG_IIIIIIIII: q->returnValue.i = ((em_func_iiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
+		case EM_FUNC_SIG_IIIIIIIIII: q->returnValue.i = ((em_func_iiiiiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
 		default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 	}
 
