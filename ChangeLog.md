@@ -15,6 +15,7 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Remove SPLIT_MEMORY option.
  - Minify wasm import and export names. This decreases JS and wasm size by
    minifying the identifiers where JS calls into wasm or vice versa, which
    are not minifiable by closure or other JS-only tools. This happens in

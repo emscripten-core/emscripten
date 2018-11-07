@@ -1464,8 +1464,7 @@ function makeDynCall(sig) {
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  if (!SPLIT_MEMORY) return heap + ',' + ptr;
-  return heap + 's[(' + ptr + ') >> SPLIT_MEMORY_BITS], (' + ptr + ') & SPLIT_MEMORY_MASK'; 
+  return heap + ',' + ptr;
 }
 
 function makeEval(code) {

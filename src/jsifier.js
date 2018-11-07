@@ -556,9 +556,6 @@ function JSify(data, functionsOnly) {
       if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       if (USE_PTHREADS) print('}\n');
     }
-    if (SPLIT_MEMORY) {
-      print('assert(STACK_MAX < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory + stack can fit in one chunk, need " + STACK_MAX);\n');
-    }
 
     print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
 
