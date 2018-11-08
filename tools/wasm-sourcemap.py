@@ -20,6 +20,10 @@ import re
 from subprocess import Popen, PIPE
 import sys
 
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.shared import asstr
+
 
 def parse_args():
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
@@ -183,7 +187,7 @@ def read_dwarf_entries(wasm, options):
     sys.exit(1)
 
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
+  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", asstr(output))
   maybe_debug_info_content = debug_line_chunks[0]
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
