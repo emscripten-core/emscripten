@@ -1172,11 +1172,12 @@ var LibraryGLFW = {
       GLFW.extensions = Pointer_stringify(_glGetString(0x1F03)).split(' ');
     }
 
-    if (GLFW.extensions.indexOf(extension) != -1) return 1;
+    var strExt = Pointer_stringify(extension);
+    if (GLFW.extensions.indexOf(strExt) != -1) return 1;
 
     // extensions from GLEmulations do not come unprefixed
     // so, try with prefix
-    return (GLFW.extensions.indexOf("GL_" + extension) != -1);
+    return (GLFW.extensions.indexOf("GL_" + strExt) != -1);
   },
 
   glfwGetProcAddress__deps: ['emscripten_GetProcAddress'],
