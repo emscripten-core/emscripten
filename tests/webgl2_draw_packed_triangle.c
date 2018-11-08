@@ -10,16 +10,7 @@
 #include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <GLES2/gl2.h>
-
-/**
- * \def GL_INT_2_10_10_10_REV
- * Packed signed 2.10.10.10 data format (present in ES3, missing in ES2 but
- * may still work, depending on the browser).
- */
-#ifndef GL_INT_2_10_10_10_REV
-#define GL_INT_2_10_10_10_REV 0x8D9F
-#endif
+#include <GLES3/gl3.h>
 
 GLuint compile_shader(GLenum shaderType, const char *src)
 {
@@ -62,12 +53,12 @@ int main()
   attr.explicitSwapControl = 1;
 #endif
   attr.majorVersion = 2;
-  int result = 0;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx && "Failed to create WebGL2 context");
   emscripten_webgl_make_context_current(ctx);
 
   static const char vertex_shader[] =
+    "#version 100\n"
     "attribute vec4 apos;"
     "attribute vec4 acolor;"
     "varying vec4 color;"
@@ -78,6 +69,7 @@ int main()
   GLuint vs = compile_shader(GL_VERTEX_SHADER, vertex_shader);
 
   static const char fragment_shader[] =
+    "#version 100\n"
     "precision lowp float;"
     "varying vec4 color;"
     "void main() {"
@@ -90,9 +82,9 @@ int main()
 
   static const uint32_t pos_and_color[] = {
   //  1,0,y,x,    a,b,g,r
-    0x400b36cd, 0xffff0000,
-    0x400b3533, 0xff00ff00,
-    0x4004cc00, 0xff0000ff,
+    0x400b36cd, 0xc00003ff,
+    0x400b3533, 0xc00ffc00,
+    0x4004cc00, 0xfff00000,
   };
 
   GLuint vbo;
@@ -100,8 +92,9 @@ int main()
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(pos_and_color), pos_and_color, GL_STATIC_DRAW);
   glVertexAttribPointer(0, 4, GL_INT_2_10_10_10_REV, GL_TRUE, 8, 0);
-  assert(glGetError() == GL_NO_ERROR && "GL_INT_2_10_10_10_REV failed");
-  glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, 8, (void*)4);
+  assert(glGetError() == GL_NO_ERROR && "glVertexAttribPointer with GL_INT_2_10_10_10_REV failed");
+  glVertexAttribPointer(1, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, 8, (void*)4);
+  assert(glGetError() == GL_NO_ERROR && "glVertexAttribPointer with GL_UNSIGNED_INT_2_10_10_10_REV failed");
 
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
