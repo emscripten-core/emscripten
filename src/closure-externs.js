@@ -94,6 +94,35 @@ flags.binary;
 Document.prototype.currentScript;
 
 /**
+ * Don't minify Math.*
+ */
+/**
+ * @suppress {duplicate}
+ */
+var Math = {};
+Math.abs = function() {};
+Math.cos = function() {};
+Math.sin = function() {};
+Math.tan = function() {};
+Math.acos = function() {};
+Math.asin = function() {};
+Math.atan = function() {};
+Math.atan2 = function() {};
+Math.exp = function() {};
+Math.log = function() {};
+Math.sqrt = function() {};
+Math.ceil = function() {};
+Math.floor = function() {};
+Math.pow = function() {};
+Math.imul = function() {};
+Math.fround = function() {};
+Math.round = function() {};
+Math.min = function() {};
+Math.max = function() {};
+Math.clz32 = function() {};
+Math.trunc = function() {};
+
+/**
  * SIMD.js support (not in upstream closure yet).
  */
 var SIMD;
