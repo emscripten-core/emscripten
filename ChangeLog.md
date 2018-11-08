@@ -37,11 +37,11 @@ v1.38.16: 11/02/2018
 
 v1.38.15: 10/25/2018
 --------------------
- - Errors are now reported when functions listed in EXPORTED_FUNCTIONS are not
-   defined. This can be disabled via ERROR_ON_UNDEFINED_SYMBOLS=0. See #7311.
 
 v1.38.14: 10/22/2018
 --------------------
+ - Errors are now reported when functions listed in EXPORTED_FUNCTIONS are not
+   defined. This can be disabled via ERROR_ON_UNDEFINED_SYMBOLS=0. See #7311.
 
 v1.38.13: 10/10/2018
 --------------------
