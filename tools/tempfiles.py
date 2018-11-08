@@ -9,6 +9,8 @@ import shutil
 import tempfile
 import atexit
 import stat
+import sys
+
 
 # Attempts to delete given possibly nonexisting or read-only directory tree or filename.
 # If any failures occur, the function silently returns without throwing an error.
@@ -75,7 +77,8 @@ class TempFiles(object):
         return self_.file.name
 
       def __exit__(self_, type, value, traceback):
-        try_delete(self_.file.name)
+        if not self.save_debug_files:
+          try_delete(self_.file.name)
     return TempFileObject()
 
   def get_dir(self):
@@ -86,7 +89,6 @@ class TempFiles(object):
 
   def clean(self):
     if self.save_debug_files:
-      import sys
       print('not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,), file=sys.stderr)
       return
     for filename in self.to_clean:
