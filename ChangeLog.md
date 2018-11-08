@@ -16,6 +16,10 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+v1.38.17: 11/08/2018
+--------------------
+ - Bumped version to pull in new version of fastcomp
+
 v1.38.17: 11/07/2018
 --------------------
  - Minify wasm import and export names. This decreases JS and wasm size by

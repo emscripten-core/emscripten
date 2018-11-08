@@ -2456,11 +2456,11 @@ function integrateWasmJS() {
       Module['wasmTable'] = env['table'];
     }
 
-    if (!env['memoryBase']) {
-      env['memoryBase'] = Module['STATIC_BASE']; // tell the memory segments where to place themselves
+    if (!env['__memory_base']) {
+      env['__memory_base'] = Module['STATIC_BASE']; // tell the memory segments where to place themselves
     }
-    if (!env['tableBase']) {
-      env['tableBase'] = 0; // table starts at 0 by default, in dynamic linking this will change
+    if (!env['__table_base']) {
+      env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
     }
 
     // try the methods. each should return the exports if it succeeded
