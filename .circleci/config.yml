@@ -99,7 +99,7 @@ jobs:
             # we are trying to test.
             rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
             # Use Binaryen from the emsdk's waterfall (wasm backend can't use ports)
-            echo BINARYEN_ROOT="'$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin'" >> ~/.emscripten
+            echo BINARYEN_ROOT="'$HOME/emsdk-master/upstream/$WATERFALL_LKGR/'" >> ~/.emscripten
             # FIXME fix node
             echo NODE_JS="'$HOME/emsdk-master/node/8.9.1_64bit/bin/node'" >> ~/.emscripten
             echo "COMPILER_ENGINE = [NODE_JS]" >> ~/.emscripten
