@@ -111,7 +111,7 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build all
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
