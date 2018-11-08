@@ -388,6 +388,63 @@ workflows:
 
   build-test:
     jobs:
+      - flake8
+      - build-docs
+      - build
+      - test-other:
+          requires:
+            - build
+      - test-browser-firefox:
+          requires:
+            - build
+      - test-browser-chrome:
+           requires:
+            - build
+      - test-ab:
+           requires:
+            - build
+      - test-c:
+           requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
+      - test-binaryen0:
+          requires:
+            - build
+      - test-binaryen1:
+          requires:
+            - build
+      - test-binaryen2:
+          requires:
+            - build
+      - test-binaryen3:
+          requires:
+            - build
+      - test-sanity:
+          requires:
+            - build
       - build-waterfall
       - test-waterfall-binaryen2:
           requires:
