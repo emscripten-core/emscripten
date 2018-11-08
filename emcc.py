@@ -1837,7 +1837,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         temp_basename = unsuffixed(final)
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
-        open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
         if use_source_map(options):
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
