@@ -1369,7 +1369,8 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
     else:
-      basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+      # wasm side modules have a specific convention for these
+      basic_vars += ['__memory_base', '__table_base']
 
   # See if we need ASYNCIFY functions
   # We might not need them even if ASYNCIFY is enabled
