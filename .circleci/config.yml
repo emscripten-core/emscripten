@@ -333,7 +333,7 @@ jobs:
             ./emsdk --notty update-tags
             export WATERFALL_LKGR=`python -c "print [x.split('\"')[3] for x in open('upstream/lkgr.json').readlines() if '\"build\"' in x][0]"`
             echo "LKGR: $WATERFALL_LKGR"
-            ./emsdk --notty install node-8.9.1-64bit # FIXME
+            ./emsdk --notty install node-8.9.1-64bit # TODO: should emsdk install this automatically?
             ./emsdk --notty install clang-upstream-$WATERFALL_LKGR-64bit
             ./emsdk --notty activate clang-upstream-$WATERFALL_LKGR-64bit
             cd -
@@ -357,8 +357,8 @@ jobs:
           name: embuilder build ALL
           command: |
             # FIXME not all stuff builds in wb:
-            #  al: see https://bugs.llvm.org/show_bug.cgi?id=39591
-            #  cocos2d: source code error, cannot detect platform
+            #   - al: see https://bugs.llvm.org/show_bug.cgi?id=39591
+            #   - cocos2d: source code error, cannot detect platform
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc libc-mt libc-extras struct_info emmalloc dlmalloc dlmalloc_threadsafe pthreads libcxx libcxx_noexcept libcxxabi gl bullet freetype libpng ogg sdl2 sdl2-image sdl2-ttf sdl2-net vorbis zlib wasm-libc wasm_compiler_rt emmalloc_debug dlmalloc_debug dlmalloc_threadsafe_debug
             python3 ~/emscripten/tests/runner.py test_hello_world
       - persist_to_workspace:
