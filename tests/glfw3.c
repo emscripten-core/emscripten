@@ -187,6 +187,8 @@ int main()
     {
         assert(glfwExtensionSupported("nonexistant") == 0);
         assert(glfwGetProcAddress("nonexistant") == NULL);
+        // 100% support since mid 2017
+        assert(glfwExtensionSupported("WEBGL_debug_renderer_info") == 1);
     }
 
     glfwTerminate();
