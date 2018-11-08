@@ -322,6 +322,30 @@ int main()
   ensure(val::global("a") <= val::global("d"));
   ensure_not(val::global("c") <= val::global("a"));
   ensure_not(val::global("d") <= val::global("a"));
+
+  test("bool operator!()");
+  EM_ASM(
+    a = true;
+    b = false;
+    c = null;
+    d = undefined;
+    e = 0;
+    f = 1;
+    g = '';
+    h = '0';
+    i = 'false';
+  );
+  ensure(!val::global("a") == false);
+  ensure(!val::global("b") == true);
+  ensure(!val::global("c") == true);
+  ensure(!val::global("d") == true);
+  ensure(!val::global("e") == true);
+  ensure(!val::global("f") == false);
+  ensure(!val::global("g") == true);
+  ensure(!val::global("h") == false);
+  ensure(!val::global("i") == false);
+  ensure(!!val::global("a") == true);
+  ensure(!!val::global("b") == false);
   
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(

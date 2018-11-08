@@ -719,6 +719,29 @@ var LibraryGL = {
       context.supportsWebGL2EntryPoints = (context.version >= 2) && (getChromeVersion() === false || getChromeVersion() >= 58);
 #endif
 
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
+        try {
+          var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
+          function b(c, t) {
+            var s = g.createShader(t);
+            g.shaderSource(s, c);
+            g.compileShader(s);
+            return s;
+          }
+          g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", g.VERTEX_SHADER));
+          g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", g.FRAGMENT_SHADER));
+          g.linkProgram(p);
+          var h = new Float32Array(8);
+          h[4] = 1;
+          g.useProgram(p);
+          var l = g.getUniformLocation(p, "u");
+          g.uniform4fv(l, h.subarray(4, 8)); // Uploading a 4-vector GL uniform from last four elements of array [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
+          return !g.getUniform(p, l)[0]; // in proper WebGL we expect to read back the vector we just uploaded: (1,0,0,0). On buggy browser would instead have uploaded offset=0 of above array, i.e. vec4=(0,0,0,0)
+        } catch(e) { return false; } // If we get an exception, we assume we got some other error, and do not trigger this workaround.
+      })();
+#endif
+
       // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
@@ -3191,6 +3214,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniform1fv(GL.uniforms[location], view);
   },
@@ -3219,6 +3245,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniform2fv(GL.uniforms[location], view);
   },
@@ -3248,6 +3277,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniform3fv(GL.uniforms[location], view);
   },
@@ -3278,6 +3310,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniform4fv(GL.uniforms[location], view);
   },
@@ -3394,6 +3429,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, view);
   },
@@ -3429,6 +3467,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, view);
   },
@@ -3471,6 +3512,9 @@ var LibraryGL = {
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
+#endif
     }
     GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, view);
   },

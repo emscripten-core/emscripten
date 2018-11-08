@@ -164,8 +164,9 @@ std::wstring get_literal_wstring() {
 }
 
 void force_memory_growth() {
-    auto heapu8 = val::global("Module")["HEAPU8"];
-    delete [] new char[heapu8["byteLength"].as<size_t>() + 1];
+    val module = val::global("Module");
+    std::size_t heap_size = module["HEAPU8"]["byteLength"].as<size_t>();
+    module.call<void>("_free", module.call<val>("_malloc", heap_size + 1));
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {
@@ -2726,10 +2727,21 @@ val construct_with_ints_and_float(val factory) {
     return factory.new_(65537, 4.0f, 65538);
 }
 
+val construct_with_arguments_before_and_after_memory_growth() {
+    auto out = val::array();
+    out.set(0, val::global("Uint8Array").new_(5));
+    force_memory_growth();
+    out.set(1, val::global("Uint8Array").new_(5));
+    return out;
+}
+
 EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_6_arguments", &construct_with_6);
     function("construct_with_memory_view", &construct_with_memory_view);
     function("construct_with_ints_and_float", &construct_with_ints_and_float);
+    function(
+            "construct_with_arguments_before_and_after_memory_growth",
+            &construct_with_arguments_before_and_after_memory_growth);
 }
 
 template <typename T>

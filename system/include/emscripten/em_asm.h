@@ -131,6 +131,17 @@ int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
 __attribute__((nothrow))
 double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
 
+__attribute__((nothrow))
+int emscripten_asm_const_int_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+double emscripten_asm_const_double_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
+__attribute__((nothrow))
+void emscripten_asm_const_async_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

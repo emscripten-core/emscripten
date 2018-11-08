@@ -62,7 +62,7 @@ sys.path.append(__rootpath__)
 
 import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, limit_size, try_delete, to_cc, asbytes, safe_copy, Settings
+from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
 
@@ -191,6 +191,12 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+def limit_size(string, MAX=800 * 20):
+  if len(string) < MAX:
+    return string
+  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+
+
 # The core test modes
 core_test_modes = [
   'asm0',
@@ -225,7 +231,7 @@ test_index = 0
 
 
 class RunnerCore(unittest.TestCase):
-  emcc_args = None
+  emcc_args = []
 
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
@@ -244,13 +250,13 @@ class RunnerCore(unittest.TestCase):
   temp_files_before_run = []
 
   def is_emterpreter(self):
-    return self.emcc_args and 'EMTERPRETIFY=1' in self.emcc_args
+    return 'EMTERPRETIFY=1' in str(self.emcc_args)
 
   def is_split_memory(self):
-    return self.emcc_args and 'SPLIT_MEMORY=' in str(self.emcc_args)
+    return 'SPLIT_MEMORY=' in str(self.emcc_args)
 
   def is_wasm(self):
-    return (self.emcc_args and 'WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
+    return ('WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
@@ -263,8 +269,6 @@ class RunnerCore(unittest.TestCase):
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
-      return False
-    if self.emcc_args is None:
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
@@ -378,7 +382,9 @@ class RunnerCore(unittest.TestCase):
     open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    # force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000 # if the file is big, recompile just to get ll_opts # Recompiling just for dfe in ll_opts is too costly
+    # force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000
+    # If the file is big, recompile just to get ll_opts
+    # Recompiling just for dfe in ll_opts is too costly
 
     def fix_target(ll_filename):
       if LLVM_TARGET == ASM_JS_TARGET:
@@ -427,15 +433,13 @@ class RunnerCore(unittest.TestCase):
       else:
         safe_copy(ll_file, filename + '.o')
 
-  # Generate JS from ll, and optionally modify the generated JS with a post_build function. Note
-  # that post_build is called on unoptimized JS, so we send it to emcc (otherwise, if run after
-  # emcc, it would not apply on the optimized/minified JS)
-  def ll_to_js(self, filename):
-    emcc_args = self.emcc_args
-    if emcc_args is None:
-      emcc_args = []
+  def get_emcc_args(self):
+    # TODO(sbc): We should probably unify Building.COMPILER_TEST_OPTS and self.emcc_args
+    return self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS
 
-    Building.emcc(filename + '.o', self.serialize_settings() + emcc_args + Building.COMPILER_TEST_OPTS, filename + '.o.js')
+  # Generate JS from ll
+  def ll_to_js(self, filename):
+    Building.emcc(filename + '.o', self.get_emcc_args(), filename + '.o.js')
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -478,7 +482,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
+        args = [PYTHON, EMCC] + self.get_emcc_args() + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -507,8 +511,7 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + Building.COMPILER_TEST_OPTS + self.serialize_settings() + \
-          (self.emcc_args or []) + \
+      args = [PYTHON, EMCC] + self.get_emcc_args() + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -519,11 +522,10 @@ class RunnerCore(unittest.TestCase):
     if post_build:
       post_build(filename + suffix)
 
-    if self.emcc_args is not None and js_outfile:
+    if js_outfile and self.uses_memory_init_file():
       src = open(filename + suffix).read()
-      if self.uses_memory_init_file():
-        # side memory init file, or an empty one in the js
-        assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
+      # side memory init file, or an empty one in the js
+      assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
     m = re.search("asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
@@ -854,7 +856,7 @@ class RunnerCore(unittest.TestCase):
                 no_build=True,
                 js_engines=js_engines,
                 output_nicerizer=output_nicerizer,
-                assert_returncode=assert_returncode) # post_build was already done in ll_to_js, this do_run call is just to test the output
+                assert_returncode=assert_returncode)
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,

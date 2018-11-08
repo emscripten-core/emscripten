@@ -57,11 +57,9 @@ def sync(f):
 
 def also_with_noderawfs(func):
   def decorated(self):
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     orig_args = self.emcc_args[:]
     func(self)
-    Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
-    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1']
+    self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
     func(self, js_engines=[NODE_JS])
   return decorated
 
@@ -245,7 +243,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
     js = open('src.cpp.o.js').read()
-    assert ('llvm_' not in js) == is_optimizing(self.emcc_args), 'intrinsics must be lowered when optimizing'
+    assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
     test_path = path_from_root('tests', 'core', 'test_bswap64')
@@ -1699,7 +1697,6 @@ int main(int argc, char **argv) {
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
   # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm(self):
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
     test_file = 'src.cpp'
@@ -1712,13 +1709,11 @@ int main(int argc, char **argv) {
     self.do_run_from_file(test_file, expected_result_file)
     self.do_run_from_file(test_file, expected_result_file, force_c=True)
 
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_async_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_signatures')
 
@@ -6107,6 +6102,10 @@ return malloc(size);
       'invoke_byval', 'i24_ce_fastcomp',
     ]
 
+    need_no_error_on_undefined_symbols = [
+      'unsanitized_declare'
+    ]
+
     skip_tests = [
       # invalid ir
       'aliasbitcast', 'structparam', 'issue_39', 'phinonexist', 'oob_ta2', 'phiself', 'invokebitcast',
@@ -6154,6 +6153,9 @@ return malloc(size);
       if '_noasm' in shortname and self.get_setting('ASM_JS'):
         print('case "%s" not relevant for asm.js' % shortname)
         continue
+
+      if basename in need_no_error_on_undefined_symbols:
+        self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
       print("Testing case '%s'..." % basename)
       output_file = path_from_root('tests', 'cases', shortname + '.txt')
@@ -6770,12 +6772,11 @@ return malloc(size);
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
-  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
 
-    orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
+    orig_args = self.emcc_args
 
     print('leave printf in ctor')
     self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
@@ -6810,7 +6811,7 @@ return malloc(size);
       test()
       ec_code_size = get_code_size()
       ec_mem_size = get_mem_size()
-      self.emcc_args = orig_args[:]
+      self.emcc_args = orig_args
       test()
       code_size = get_code_size()
       mem_size = get_mem_size()
@@ -6841,8 +6842,15 @@ return malloc(size);
 
     do_test(test1)
 
-    print('libcxx - remove 2 ctors from iostream code')
+    if self.is_wasm_backend():
+      # The wasm backend currently exports a single initalizer so the ctor
+      # evaluation is all or nothing.  As well as that it doesn't currently
+      # do DCE of libcxx symbols (because the are marked as visibility(defaault)
+      # and because of that we end up not being able to eval ctors unless all
+      # libcxx constrcutors can be eval'd
+      return
 
+    print('libcxx - remove 2 ctors from iostream code')
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
 
@@ -7928,7 +7936,7 @@ extern "C" {
 
 
 # Generate tests for everything
-def make_run(name, emcc_args=None, env=None):
+def make_run(name, emcc_args, env=None):
   if env is None:
     env = {}
 
@@ -7955,7 +7963,6 @@ def make_run(name, emcc_args=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    assert emcc_args is not None
     self.emcc_args = emcc_args[:]
     Settings.load(self.emcc_args)
     Building.LLVM_OPTS = 0

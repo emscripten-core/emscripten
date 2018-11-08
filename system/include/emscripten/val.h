@@ -70,6 +70,7 @@ namespace emscripten {
             bool _emval_strictly_equals(EM_VAL first, EM_VAL second);
             bool _emval_greater_than(EM_VAL first, EM_VAL second);
             bool _emval_less_than(EM_VAL first, EM_VAL second);
+            bool _emval_not(EM_VAL object);
 
             EM_VAL _emval_call(
                 EM_VAL value,
@@ -283,7 +284,7 @@ namespace emscripten {
     class val {
     public:
         // missing operators:
-        // * ! ~ - + ++ --
+        // * ~ - + ++ --
         // * * / %
         // * + -
         // * << >> >>>
@@ -427,16 +428,20 @@ namespace emscripten {
             return internal::_emval_greater_than(handle, v.handle);
         }
 
-        bool operator>= (const val& v) const {
+        bool operator>=(const val& v) const {
             return (*this > v) || (*this == v);
         }
 
-        bool operator< (const val& v) const {
+        bool operator<(const val& v) const {
             return internal::_emval_less_than(handle, v.handle);
         }
 
-        bool operator<= (const val& v) const {
+        bool operator<=(const val& v) const {
             return (*this < v) || (*this == v);
+        }
+
+        bool operator!() const {
+            return internal::_emval_not(handle);
         }
 
         template<typename... Args>

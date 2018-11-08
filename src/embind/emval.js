@@ -174,7 +174,7 @@ var LibraryEmVal = {
 
     for(var i = 0; i < argCount; ++i) {
         functionBody +=
-            "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
+            "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
             "args += argType"+i+"['argPackAdvance'];\n";
     }
@@ -184,8 +184,8 @@ var LibraryEmVal = {
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "HEAP32", "__emval_register", functionBody))(
-        requireRegisteredType, HEAP32, __emval_register);
+    return (new Function("requireRegisteredType", "Module", "__emval_register", functionBody))(
+        requireRegisteredType, Module, __emval_register);
 #endif
   },
 
@@ -271,31 +271,37 @@ var LibraryEmVal = {
   },
 
   _emval_equals__deps: ['$requireHandle'],
-  _emval_equals: function(first, second ) {
+  _emval_equals: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
     return first == second;
   },
 
   _emval_strictly_equals__deps: ['$requireHandle'],
-  _emval_strictly_equals: function(first, second ) {
+  _emval_strictly_equals: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
     return first === second;
   },
 
   _emval_greater_than__deps: ['$requireHandle'],
-  _emval_greater_than: function(first, second ) {
+  _emval_greater_than: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
     return first > second;
   },
 
   _emval_less_than__deps: ['$requireHandle'],
-  _emval_less_than: function(first, second ) {
+  _emval_less_than: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
     return first < second;
+  },
+
+  _emval_not__deps: ['$requireHandle'],
+  _emval_not: function(object) {
+    object = requireHandle(object);
+    return !object;
   },
 
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
