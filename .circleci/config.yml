@@ -313,7 +313,7 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=sanity
-  build-waterfall:
+  build-upstream:
     <<: *defaults
     working_directory: ~/
     steps:
@@ -370,15 +370,15 @@ jobs:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
-  test-waterfall-binaryen2:
+  test-upstream-binaryen2:
     <<: *test-defaults
     environment:
       - TEST_TARGET=binaryen2
-  test-waterfall-wasmobj2:
+  test-upstream-wasmobj2:
     <<: *test-defaults
     environment:
       - TEST_TARGET=wasmobj2
-  test-waterfall-other:
+  test-upstream-other:
     <<: *test-defaults
     environment:
       - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v
@@ -446,14 +446,14 @@ workflows:
       - test-sanity:
           requires:
             - build
-      - build-waterfall
-      - test-waterfall-binaryen2:
+      - build-upstream
+      - test-upstream-binaryen2:
           requires:
-            - build-waterfall
-      - test-waterfall-wasmobj2:
+            - build-upstream
+      - test-upstream-wasmobj2:
           requires:
-            - build-waterfall
-      - test-waterfall-other:
+            - build-upstream
+      - test-upstream-other:
           requires:
-            - build-waterfall
+            - build-upstream
 
