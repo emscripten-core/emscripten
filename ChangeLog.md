@@ -17,6 +17,11 @@ Current Trunk
 -------------
  - Remove SPLIT_MEMORY option.
 
+v1.38.18: 11/08/2018
+--------------------
+ - Wasm dynamic linking: Rename `tableBase/memoryBase` to
+   `__table_base/__memory_base` (#7467)
+
 v1.38.17: 11/08/2018
 --------------------
  - Bumped version to pull in new version of fastcomp
