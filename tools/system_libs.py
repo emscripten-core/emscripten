@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import re
-import shutil
 import sys
 import tarfile
 import zipfile
@@ -395,9 +394,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
       require_dlmalloc('tracing')
-    if shared.Settings.SPLIT_MEMORY:
-      extra += '_split'
-      require_dlmalloc('split memory')
     if shared.Settings.DEBUG_LEVEL >= 3:
       extra += '_debug'
     if base == 'dlmalloc':
@@ -419,20 +415,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       cflags += ['-s', 'USE_PTHREADS=1']
     if shared.Settings.EMSCRIPTEN_TRACING:
       cflags += ['--tracing']
-    if shared.Settings.SPLIT_MEMORY:
-      cflags += ['-DMSPACES', '-DONLY_MSPACES']
     if shared.Settings.DEBUG_LEVEL >= 3:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
-    if shared.Settings.SPLIT_MEMORY:
-      split_malloc_o = in_temp('sm' + out_name)
-      check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'split_malloc.cpp'), '-o', split_malloc_o, '-O2'] + get_cflags())
-      lib = in_temp('lib' + out_name)
-      create_lib(lib, [o, split_malloc_o])
-      shutil.move(lib, o)
     return o
 
   def create_wasm_rt_lib(libname, files):

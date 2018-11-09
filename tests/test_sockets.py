@@ -11,6 +11,9 @@ import shutil
 import sys
 import time
 
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
+
 import websockify
 from runner import BrowserCore, no_windows, chdir, flaky
 from tools import shared
