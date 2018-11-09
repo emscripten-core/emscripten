@@ -494,7 +494,7 @@ class RunnerCore(unittest.TestCase):
         Building.link(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
-          raise Exception("Linkage error")
+          self.fail("Linkage error")
 
       # Finalize
       self.prep_ll_run(filename, object_file, build_ll_hook=build_ll_hook)
@@ -547,7 +547,7 @@ class RunnerCore(unittest.TestCase):
       print("[was asm.js'ified]", file=sys.stderr)
     # check for an asm.js validation error, if we expect one
     elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
-      raise Exception("did NOT asm.js'ify: " + err)
+      self.fail("did NOT asm.js'ify: " + err)
     err = '\n'.join([line for line in err.split('\n') if 'uccessfully compiled asm.js code' not in line])
     return err
 
@@ -589,7 +589,7 @@ class RunnerCore(unittest.TestCase):
       if '[' + what + ']' in line:
         ret = line.split(':')[1].strip()
         return int(ret)
-    raise Exception('Failed to find [%s] in wasm-opt output' % what)
+    self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
     return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout
@@ -639,7 +639,7 @@ class RunnerCore(unittest.TestCase):
     for x in values:
       if x == y:
         return # success
-    raise Exception("Expected to have '%s' == '%s', diff:\n\n%s" % (
+    self.fail("Expected to have '%s' == '%s', diff:\n\n%s" % (
       limit_size(values[0]), limit_size(y),
       limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
     ))
@@ -658,7 +658,7 @@ class RunnerCore(unittest.TestCase):
     for value in values:
       if value in string:
         return # success
-    raise Exception("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
+    self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
       limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
       additional_info
@@ -670,7 +670,7 @@ class RunnerCore(unittest.TestCase):
     if callable(string):
       string = string()
     if value in string:
-      raise Exception("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
+      self.fail("Expected to NOT find '%s' in '%s', diff:\n\n%s" % (
         limit_size(value), limit_size(string),
         limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
       ))
@@ -827,7 +827,7 @@ class RunnerCore(unittest.TestCase):
           self.assertNotContained('ERROR', js_output)
       except Exception as e:
         print('(test did not pass in JS engine: %s)' % engine)
-        raise e
+        raise
 
     # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 

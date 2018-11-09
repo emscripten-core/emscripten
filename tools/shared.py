@@ -81,7 +81,7 @@ class WindowsPopen(object):
       self.pid = self.process.pid
     except Exception as e:
       logging.error('\nsubprocess.Popen(args=%s) failed! Exception %s\n' % (' '.join(args), str(e)))
-      raise e
+      raise
 
   def communicate(self, input=None):
     output = self.process.communicate(input)
@@ -835,7 +835,7 @@ def safe_ensure_dirs(dirname):
     # Python 2 compatibility: makedirs does not support exist_ok parameter
     # Ignore error for already existing dirname as exist_ok does
     if not os.path.isdir(dirname):
-      raise e
+      raise
 
 
 # Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.

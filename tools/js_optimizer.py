@@ -593,5 +593,5 @@ if __name__ == '__main__':
     shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   except Exception as e:
     ToolchainProfiler.record_process_exit(1)
-    raise e
+    raise
   ToolchainProfiler.record_process_exit(0)

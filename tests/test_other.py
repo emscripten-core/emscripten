@@ -606,7 +606,7 @@ f.close()
           if ret.stderr is not None and 'error' in ret.stderr.lower():
             print('Failed command: ' + ' '.join(cmd))
             print('Result:\n' + ret.stderr)
-            raise Exception('cmake call failed!')
+            self.fail('cmake call failed!')
 
           if prebuild:
             prebuild(tempdirname)
@@ -621,7 +621,7 @@ f.close()
           if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
             print('Failed command: ' + ' '.join(cmd))
             print('Result:\n' + ret.stdout)
-            raise Exception('make failed!')
+            self.fail('make failed!')
           assert os.path.exists(tempdirname + '/' + output_file), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file
 
           # Run through node, if CMake produced a .js file.
@@ -3700,8 +3700,7 @@ int main()
     LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
     if not os.path.exists(LLVM_LIT):
       LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
-      if not os.path.exists(LLVM_LIT):
-        raise Exception('cannot find llvm-lit tool')
+      self.assertTrue(os.path.exists(LLVM_LIT))
     cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print(cmd)
     run_process(cmd)
