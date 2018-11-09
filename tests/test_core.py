@@ -1808,12 +1808,6 @@ int main(int argc, char **argv) {
 
     test()
 
-    if not self.is_wasm():
-      print('split memory')
-      self.set_setting('SPLIT_MEMORY', 16 * 1024 * 1024)
-      test()
-      self.set_setting('SPLIT_MEMORY', 0)
-
   def test_memorygrowth_3(self):
     # checks handling of malloc failure properly
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP']
@@ -5445,12 +5439,6 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
 
-    if not self.is_wasm():
-      print('split memory')
-      self.set_setting('SPLIT_MEMORY', 8 * 1024 * 1024)
-      test()
-      self.set_setting('SPLIT_MEMORY', 0)
-
     if self.is_emterpreter():
       print('emterpreter/async/assertions') # extra coverage
       self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
@@ -5812,8 +5800,6 @@ return malloc(size);
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
-    if self.is_split_memory():
-      self.skipTest('SM bug 1205121')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])

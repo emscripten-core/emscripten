@@ -15,6 +15,7 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Remove SPLIT_MEMORY option.
 
 v1.38.17: 11/08/2018
 --------------------
