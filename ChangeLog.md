@@ -15,12 +15,19 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+
+v1.38.17: 11/08/2018
+--------------------
+ - Bumped version to pull in new version of fastcomp
+
+v1.38.17: 11/07/2018
+--------------------
  - Minify wasm import and export names. This decreases JS and wasm size by
    minifying the identifiers where JS calls into wasm or vice versa, which
    are not minifiable by closure or other JS-only tools. This happens in
    -O3, -Os and above. See #7431
 
-v1.38.15: 11/02/2018
+v1.38.16: 11/02/2018
 --------------------
  - Breaking change: Do not automatically set EXPORT_ALL for MAIN_MODULES or
    SIDE_MODULES. This means that you must explicitly export things that will
@@ -31,6 +38,9 @@ v1.38.15: 11/02/2018
    See #7312.
  - Invalid -s flags on the command line are now treated as errors.
  - Remove BUILD_AS_SHARED_LIBRARY setting.
+
+v1.38.15: 10/25/2018
+--------------------
 
 v1.38.14: 10/22/2018
 --------------------
