@@ -831,7 +831,7 @@ FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
-  except OSError as e:
+  except OSError:
     # Python 2 compatibility: makedirs does not support exist_ok parameter
     # Ignore error for already existing dirname as exist_ok does
     if not os.path.isdir(dirname):
