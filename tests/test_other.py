@@ -92,6 +92,24 @@ def encode_leb(number):
   return struct.pack('<i', number)[:1]
 
 
+# look for emscripten-version.txt files under or alongside the llvm source dir
+def get_fastcomp_src_dir():
+  d = LLVM_ROOT
+  emroot = path_from_root() # already abspath
+  # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
+  while d != os.path.dirname(d):
+    d = os.path.abspath(d)
+    # when the build directory lives below the source directory
+    if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not d == emroot:
+      return d
+    # when the build directory lives alongside the source directory
+    elif os.path.exists(os.path.join(d, 'src', 'emscripten-version.txt')) and not os.path.join(d, 'src') == emroot:
+      return os.path.join(d, 'src')
+    else:
+      d = os.path.dirname(d)
+  return None
+
+
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
@@ -3696,7 +3714,7 @@ int main()
     grep_path = Building.which('grep')
     if not grep_path:
       self.skipTest('Skipping other.test_llvm_lit: This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
-    llvm_src = shared.get_fastcomp_src_dir()
+    llvm_src = get_fastcomp_src_dir()
     LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
     if not os.path.exists(LLVM_LIT):
       LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
