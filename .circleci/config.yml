@@ -343,7 +343,7 @@ jobs:
             # persistent workspace and to avoid any confusion with that version
             # we are trying to test.
             rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
-            # Use Binaryen from the emsdk's waterfall (wasm backend can't use ports)
+            # Use Binaryen from the emsdk's waterfall (wasm backend can't use binaryen from ports)
             echo BINARYEN_ROOT="'$HOME/emsdk-master/upstream/$WATERFALL_LKGR/'" >> ~/.emscripten
             # FIXME fix node
             echo NODE_JS="'$HOME/emsdk-master/node/8.9.1_64bit/bin/node'" >> ~/.emscripten
@@ -382,7 +382,7 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v
-      # see explanations in the fastcomp skips for these
+      # see explanations in the fastcomp skips for these, earlier
 
 workflows:
   version: 2
