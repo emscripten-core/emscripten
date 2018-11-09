@@ -349,10 +349,6 @@ jobs:
             echo NODE_JS="'$HOME/emsdk-master/node/8.9.1_64bit/bin/node'" >> ~/.emscripten
             echo "COMPILER_ENGINE = NODE_JS" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
-            echo "==="
-            cat ~/.emscripten
-            echo "==="
-            python3 ~/emscripten/emcc.py -v
       - run:
           name: embuilder build ALL
           command: |
