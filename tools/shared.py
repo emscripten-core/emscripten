@@ -2592,7 +2592,7 @@ class Building(object):
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
     if debug_info:
       cmd.append('-g')
-    out = run_process(cmd, stdout=PIPE).stdout
+    out = check_call(cmd, stdout=PIPE).stdout
     # get the mapping
     SEP = ' => '
     mapping = {}
@@ -2647,7 +2647,7 @@ class Building(object):
 
   @staticmethod
   def is_wasm(filename):
-    magic = bytearray(open(filename, 'rb').read(4))
+    magic = asstr(open(filename, 'rb').read(4))
     return magic == '\0asm'
 
   @staticmethod

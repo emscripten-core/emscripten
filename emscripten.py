@@ -222,7 +222,6 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
 
   optimize_syscalls(metadata['declares'], DEBUG)
   update_settings_glue(metadata)
-  assert not (metadata['simd'] and shared.Settings.SPLIT_MEMORY), 'SIMD is used, but not supported in SPLIT_MEMORY'
 
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
@@ -582,18 +581,13 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0:
     staticbump += 1
-  split_memory = ''
-  if shared.Settings.SPLIT_MEMORY:
-    split_memory = ('assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the '
-                    'entire static memory, need " + STATICTOP);')
   pthread = ''
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''\
-STATICTOP = STATIC_BASE + {staticbump};{split_memory}
+STATICTOP = STATIC_BASE + {staticbump};
 /* global initializers */ {pthread} __ATINIT__.push({global_initializers});
 {mem_init}'''.format(staticbump=staticbump,
-                     split_memory=split_memory,
                      pthread=pthread,
                      global_initializers=global_initializers,
                      mem_init=mem_init))
@@ -1369,7 +1363,8 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
     else:
-      basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+      # wasm side modules have a specific convention for these
+      basic_vars += ['__memory_base', '__table_base']
 
   # See if we need ASYNCIFY functions
   # We might not need them even if ASYNCIFY is enabled
@@ -1770,38 +1765,7 @@ def create_asm_end(exports):
 
 
 def create_first_in_asm():
-  first_in_asm = ''
-  if shared.Settings.SPLIT_MEMORY:
-    if not shared.Settings.SAFE_SPLIT_MEMORY:
-      first_in_asm += ''.join([make_get_set(info) for info in HEAP_TYPE_INFOS]) + '\n'
-    first_in_asm += 'buffer = new ArrayBuffer(32); // fake\n'
-  return first_in_asm
-
-
-def make_get_set(info):
-  """Generates get*/set* functions for the different heap types.
-
-  Generated symbols:
-    get8 get16 get32 getU8 getU16 getU32 getF32 getF64
-    set8 set16 set32 setU8 setU16 setU32 setF32 setF64
-  """
-  access = ('{name}s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> {shift}]'
-            .format(name=info.heap_name, shift=info.shift_amount))
-  # TODO: fround when present for Float32
-  return '''
-function get{short}(ptr) {{
-  ptr = ptr | 0;
-  return {coerced_access};
-}}
-function set{short}(ptr, value) {{
-  ptr = ptr | 0;
-  value = {coerced_value};
-  {access} = value;
-}}'''.format(
-    short=info.short_name(),
-    coerced_value=info.coerce('value'),
-    access=access,
-    coerced_access=info.coerce(access))
+  return ''
 
 
 def create_memory_views():
@@ -1912,10 +1876,9 @@ def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
   staticbump = metadata['staticBump']
   while staticbump % 16 != 0:
     staticbump += 1
-  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;%s
+  pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
 /* global initializers */ %s __ATINIT__.push(%s);
 ''' % (staticbump,
-       'assert(STATICTOP < SPLIT_MEMORY, "SPLIT_MEMORY size must be big enough so the entire static memory, need " + STATICTOP);' if shared.Settings.SPLIT_MEMORY else '',
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
@@ -2033,6 +1996,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
       exported_implemented_functions.add(key)
 
   check_all_implemented(all_implemented, pre)
+  exported_implemented_functions = sorted(exported_implemented_functions)
   return exported_implemented_functions
 
 
@@ -2143,7 +2107,8 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
 
-  return '{ ' + ', '.join('"' + k + '": ' + v for k, v in send_items_map.items()) + ' }'
+  sorted_keys = sorted(send_items_map.keys())
+  return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
 def create_receiving_wasm(exported_implemented_functions):

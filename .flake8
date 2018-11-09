@@ -24,6 +24,7 @@ filename =
   */tools/add_license.py
   */tools/file_packager.py
   */tools/emmaken.py
+  */tools/ctor_evaller.py
   */tools/duplicate_function_eliminator.py
   */tests/runner.py
   */tests/test_browser.py
