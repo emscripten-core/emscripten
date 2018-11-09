@@ -877,6 +877,9 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-lSDL', '-lGL'], manual_reference=True, post_build=post)
 
+  def test_canvas_focus(self):
+    self.btest('canvas_focus.c', '1')
+
   def test_keydown_preventdefault_proxy(self):
     def post():
       html = open('test.html').read()
