@@ -1363,7 +1363,8 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
     else:
-      basic_vars += ['memoryBase', 'tableBase'] # wasm side modules have a specific convention for these
+      # wasm side modules have a specific convention for these
+      basic_vars += ['__memory_base', '__table_base']
 
   # See if we need ASYNCIFY functions
   # We might not need them even if ASYNCIFY is enabled
@@ -1995,6 +1996,7 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
       exported_implemented_functions.add(key)
 
   check_all_implemented(all_implemented, pre)
+  exported_implemented_functions = sorted(exported_implemented_functions)
   return exported_implemented_functions
 
 
@@ -2105,7 +2107,8 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
 
-  return '{ ' + ', '.join('"' + k + '": ' + v for k, v in send_items_map.items()) + ' }'
+  sorted_keys = sorted(send_items_map.keys())
+  return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
 def create_receiving_wasm(exported_implemented_functions):

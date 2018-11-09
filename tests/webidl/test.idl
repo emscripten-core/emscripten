@@ -92,6 +92,16 @@ interface Inner {
   [Operator="+="] void incInPlace([Const, Ref] Inner i);
 };
 
+[Prefix = "Space::"]
+interface InnerUserBase {
+};
+
+[JSImplementation = "InnerUserBase"]
+interface InnerUser {
+  void InnerUser();
+  void Callback(Inner inner);
+};
+
 enum AnEnum {
   "enum_value1",
   "enum_value2"

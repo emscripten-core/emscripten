@@ -1108,6 +1108,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
         shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
         shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
+        shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+
+      # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
+      if shared.Settings.WASM:
+        shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
+        shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
+        shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
       if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
@@ -1802,7 +1809,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         temp_basename = unsuffixed(final)
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
-        open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
         if use_source_map(options):
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 

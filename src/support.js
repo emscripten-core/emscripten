@@ -170,19 +170,20 @@ function loadWebAssemblyModule(binary, loadAsync) {
   for (var i = memoryStart; i < memoryStart + memorySize; ++i) HEAP8[i] = 0;
   // prepare env imports
   var env = Module['asmLibraryArg'];
-  // TODO: use only memoryBase and tableBase, need to update asm.js backend
+  // TODO: use only __memory_base and __table_base, need to update asm.js backend
   var table = Module['wasmTable'];
   var oldTableSize = table.length;
-  env['memoryBase'] = env['gb'] = memoryStart;
-  env['tableBase'] = env['fb'] = oldTableSize;
+  env['__memory_base'] = env['gb'] = memoryStart;
+  env['__table_base'] = env['fb'] = oldTableSize;
   var originalTable = table;
   table.grow(tableSize);
   assert(table === originalTable);
-  // zero-initialize memory and table TODO: in some cases we can tell it is already zero initialized
-  for (var i = env['memoryBase']; i < env['memoryBase'] + memorySize; i++) {
+  // zero-initialize memory and table
+  // TODO: in some cases we can tell it is already zero initialized
+  for (var i = env['__memory_base']; i < env['__memory_base'] + memorySize; i++) {
     HEAP8[i] = 0;
   }
-  for (var i = env['tableBase']; i < env['tableBase'] + tableSize; i++) {
+  for (var i = env['__table_base']; i < env['__table_base'] + tableSize; i++) {
     table.set(i, null);
   }
   // copy currently exported symbols so the new module can import them
@@ -275,10 +276,10 @@ function loadWebAssemblyModule(binary, loadAsync) {
 #if EMULATE_FUNCTION_POINTER_CASTS
         // it may be a function pointer
         if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
-          value = value + env['tableBase'];
+          value = value + env['__table_base'];
         } else {
 #endif
-          value = value + env['memoryBase'];
+          value = value + env['__memory_base'];
 #if EMULATE_FUNCTION_POINTER_CASTS
         }
 #endif

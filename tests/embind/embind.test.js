@@ -2615,6 +2615,14 @@ module({
             assert.equal(4.0, instance.b);
             assert.equal(65538, instance.c);
         });
+
+        if (cm.isMemoryGrowthEnabled) {
+            test("before and after memory growth", function() {
+                var array = cm.construct_with_arguments_before_and_after_memory_growth();
+                assert.equal(array[0].byteLength, 5);
+                assert.equal(array[0].byteLength, array[1].byteLength);
+            });
+        }
     });
 
     BaseFixture.extend("intrusive pointers", function() {

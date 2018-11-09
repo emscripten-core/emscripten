@@ -2592,7 +2592,7 @@ class Building(object):
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
     if debug_info:
       cmd.append('-g')
-    out = run_process(cmd, stdout=PIPE).stdout
+    out = check_call(cmd, stdout=PIPE).stdout
     # get the mapping
     SEP = ' => '
     mapping = {}
@@ -2626,24 +2626,28 @@ class Building(object):
 
   @staticmethod
   def is_bitcode(filename):
-    # look for magic signature
-    b = open(filename, 'rb').read(4)
-    if b[:2] == b'BC':
-      return True
-    # look for ar signature
-    elif Building.is_ar(filename):
-      return True
-    # on macOS, there is a 20-byte prefix which starts with little endian
-    # encoding of 0x0B17C0DE
-    elif b == b'\xDE\xC0\x17\x0B':
-      b = bytearray(open(filename, 'rb').read(22))
-      return b[20:] == b'BC'
-
+    try:
+      # look for magic signature
+      b = open(filename, 'rb').read(4)
+      if b[:2] == b'BC':
+        return True
+      # look for ar signature
+      elif Building.is_ar(filename):
+        return True
+      # on macOS, there is a 20-byte prefix which starts with little endian
+      # encoding of 0x0B17C0DE
+      elif b == b'\xDE\xC0\x17\x0B':
+        b = bytearray(open(filename, 'rb').read(22))
+        return b[20:] == b'BC'
+    except IndexError:
+      # not enough characters in the input
+      # note that logging will be done on the caller function
+      pass
     return False
 
   @staticmethod
   def is_wasm(filename):
-    magic = bytearray(open(filename, 'rb').read(4))
+    magic = asstr(open(filename, 'rb').read(4))
     return magic == '\0asm'
 
   @staticmethod

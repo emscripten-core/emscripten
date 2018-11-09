@@ -16,6 +16,9 @@ import time
 import unittest
 from textwrap import dedent
 
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py')
+
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
@@ -1697,7 +1700,6 @@ int main(int argc, char **argv) {
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
   # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm(self):
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp'), 'r').read()
     test_file = 'src.cpp'
@@ -1710,13 +1712,11 @@ int main(int argc, char **argv) {
     self.do_run_from_file(test_file, expected_result_file)
     self.do_run_from_file(test_file, expected_result_file, force_c=True)
 
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_async_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
-  @no_wasm_backend('Proxying EM_ASM calls is not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_signatures')
 
@@ -6761,12 +6761,11 @@ return malloc(size);
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
-  @no_wasm_backend('EVAL_CTORS does not work with wasm backend')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
 
-    orig_args = self.emcc_args[:] + ['-s', 'EVAL_CTORS=0']
+    orig_args = self.emcc_args
 
     print('leave printf in ctor')
     self.emcc_args = orig_args + ['-s', 'EVAL_CTORS=1']
@@ -6801,7 +6800,7 @@ return malloc(size);
       test()
       ec_code_size = get_code_size()
       ec_mem_size = get_mem_size()
-      self.emcc_args = orig_args[:]
+      self.emcc_args = orig_args
       test()
       code_size = get_code_size()
       mem_size = get_mem_size()
@@ -6832,8 +6831,15 @@ return malloc(size);
 
     do_test(test1)
 
-    print('libcxx - remove 2 ctors from iostream code')
+    if self.is_wasm_backend():
+      # The wasm backend currently exports a single initalizer so the ctor
+      # evaluation is all or nothing.  As well as that it doesn't currently
+      # do DCE of libcxx symbols (because the are marked as visibility(defaault)
+      # and because of that we end up not being able to eval ctors unless all
+      # libcxx constrcutors can be eval'd
+      return
 
+    print('libcxx - remove 2 ctors from iostream code')
     src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
     output = 'hello, world!'
 

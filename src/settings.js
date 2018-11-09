@@ -394,6 +394,12 @@ var FULL_ES2 = 0;
 // from the output.
 var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
 
+// Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
+// the offset of a typed array view pointing to an ArrayBuffer. Set this to 
+// 1 to enable a polyfill that works around the issue when it appears. This
+// bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
+var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
+
 // Enables WebGL2 native functions. This mode will also create a WebGL2
 // context by default if no version is specified.
 var USE_WEBGL2 = 0;
@@ -452,6 +458,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-s POLYFILL_OLD_MATH_FUNCTIONS=1)
 //  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
+//  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
 // You can also configure the above options individually.
 var LEGACY_VM_SUPPORT = 0;
