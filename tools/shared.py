@@ -594,10 +594,6 @@ def check_sanity(force=False):
     check_llvm_version()
     check_node_version()
 
-    if os.environ.get('EMCC_FAST_COMPILER') == '0':
-      logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-      sys.exit(1)
-
     fastcomp_ok = check_fastcomp()
 
     if os.environ.get('EM_IGNORE_SANITY'):

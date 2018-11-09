@@ -992,10 +992,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Apply optimization level settings
       shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
 
-      if os.environ.get('EMCC_FAST_COMPILER') == '0':
-        logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-        return 0
-
       # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
       # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
       if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
