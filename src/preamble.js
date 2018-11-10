@@ -1422,32 +1422,30 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 
 #if POLYFILL_OLD_MATH_FUNCTIONS
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
-if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
+if (!Math.imul || Math.imul(0xffffffff, 5) !== -5) Math.imul = function imul(a, b) {
   var ah  = a >>> 16;
   var al = a & 0xffff;
   var bh  = b >>> 16;
   var bl = b & 0xffff;
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
-Math.imul = Math['imul'];
 
 #if PRECISE_F32
 #if PRECISE_F32 == 1
-if (!Math['fround']) {
+if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
-  Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+  Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
 }
 #else // 2
-if (!Math['fround']) Math['fround'] = function(x) { return x };
+if (!Math.fround) Math.fround = function(x) { return x };
 #endif
-Math.fround = Math['fround'];
 #else
 #if SIMD
-if (!Math['fround']) Math['fround'] = function(x) { return x };
+if (!Math.fround) Math.fround = function(x) { return x };
 #endif
 #endif
 
-if (!Math['clz32']) Math['clz32'] = function(x) {
+if (!Math.clz32) Math.clz32 = function(x) {
   var n = 32;
   var y = x >> 16; if (y) { n -= 16; x = y; }
   y = x >> 8; if (y) { n -= 8; x = y; }
@@ -1456,18 +1454,16 @@ if (!Math['clz32']) Math['clz32'] = function(x) {
   y = x >> 1; if (y) return n - 2;
   return n - x;
 };
-Math.clz32 = Math['clz32']
 
-if (!Math['trunc']) Math['trunc'] = function(x) {
+if (!Math.trunc) Math.trunc = function(x) {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
-Math.trunc = Math['trunc'];
 #else // POLYFILL_OLD_MATH_FUNCTIONS
 #if ASSERTIONS
-assert(Math['imul'], 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['fround'], 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['clz32'], 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['trunc'], 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.imul, 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.fround, 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.clz32, 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.trunc, 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 #endif
 #endif // LEGACY_VM_SUPPORT
 
