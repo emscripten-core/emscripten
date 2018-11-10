@@ -16,6 +16,9 @@ import time
 import unittest
 from textwrap import dedent
 
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py')
+
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
@@ -1804,12 +1807,6 @@ int main(int argc, char **argv) {
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()
-
-    if not self.is_wasm():
-      print('split memory')
-      self.set_setting('SPLIT_MEMORY', 16 * 1024 * 1024)
-      test()
-      self.set_setting('SPLIT_MEMORY', 0)
 
   def test_memorygrowth_3(self):
     # checks handling of malloc failure properly
@@ -5442,12 +5439,6 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
 
-    if not self.is_wasm():
-      print('split memory')
-      self.set_setting('SPLIT_MEMORY', 8 * 1024 * 1024)
-      test()
-      self.set_setting('SPLIT_MEMORY', 0)
-
     if self.is_emterpreter():
       print('emterpreter/async/assertions') # extra coverage
       self.emcc_args += ['-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1']
@@ -5809,8 +5800,6 @@ return malloc(size);
     self.banned_js_engines = [NODE_JS] # OOM in older node
     if '-O' not in str(self.emcc_args):
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
-    if self.is_split_memory():
-      self.skipTest('SM bug 1205121')
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])

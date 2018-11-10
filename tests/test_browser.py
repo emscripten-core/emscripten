@@ -1980,7 +1980,6 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
     self.btest('cubegeom_u4fv_2.c', reference='cubegeom_u4fv_2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
-    self.btest('cubegeom_u4fv_2.c', reference='cubegeom_u4fv_2.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'SPLIT_MEMORY=16777216', '-s', 'WASM=0']) # check for uniform4fv slice being valid in split memory
 
   @requires_graphics_hardware
   def test_cube_explosion(self):
@@ -3756,11 +3755,6 @@ window.close = function() {
 
       print('default html')
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
-
-  def test_split_memory_large_file(self):
-    size = 2 * 1024 * 1024
-    open('huge.dat', 'wb').write(bytearray((x * x) & 255 for x in range(size * 2))) # larger than a memory chunk
-    self.btest('split_memory_large_file.cpp', expected='1', args=['-s', 'WASM=0', '-s', 'SPLIT_MEMORY=' + str(size), '-s', 'TOTAL_MEMORY=128MB', '-s', 'TOTAL_STACK=10240', '--preload-file', 'huge.dat'], timeout=60)
 
   def test_binaryen_interpreter(self):
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])

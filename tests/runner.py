@@ -252,9 +252,6 @@ class RunnerCore(unittest.TestCase):
   def is_emterpreter(self):
     return 'EMTERPRETIFY=1' in str(self.emcc_args)
 
-  def is_split_memory(self):
-    return 'SPLIT_MEMORY=' in str(self.emcc_args)
-
   def is_wasm(self):
     return ('WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
 

@@ -2647,7 +2647,7 @@ class Building(object):
 
   @staticmethod
   def is_wasm(filename):
-    magic = bytearray(open(filename, 'rb').read(4))
+    magic = asstr(open(filename, 'rb').read(4))
     return magic == '\0asm'
 
   @staticmethod

@@ -311,10 +311,6 @@ class JSOptimizer(object):
 
     this is also when we do certain optimizations that must be done right before or after minification
     """
-    if shared.Settings.SPLIT_MEMORY:
-      # must be done before minification
-      self.queue += ['splitMemory', 'simplifyExpressions']
-
     if self.opt_level >= 2:
       if self.debug_level < 2 and not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
@@ -360,7 +356,7 @@ def apply_settings(changes):
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
-               'SPLIT_MEMORY', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
+               'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
     original_exported_response = False
@@ -1120,28 +1116,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
         shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
-      if shared.Settings.SPLIT_MEMORY:
-        if shared.Settings.WASM:
-          logging.error('WASM is not compatible with SPLIT_MEMORY')
-          return 1
-        assert shared.Settings.SPLIT_MEMORY > shared.Settings.TOTAL_STACK, 'SPLIT_MEMORY must be at least TOTAL_STACK (stack must fit in first chunk)'
-        assert shared.Settings.SPLIT_MEMORY & (shared.Settings.SPLIT_MEMORY - 1) == 0, 'SPLIT_MEMORY must be a power of 2'
-        if shared.Settings.ASM_JS == 1:
-          shared.WarningManager.warn('ALMOST_ASM', "not all asm.js optimizations are possible with SPLIT_MEMORY, disabling those.")
-          shared.Settings.ASM_JS = 2
-        if shared.Settings.SAFE_HEAP:
-          shared.Settings.SAFE_HEAP = 0
-          shared.Settings.SAFE_SPLIT_MEMORY = 1 # we use our own infrastructure
-        assert not shared.Settings.RELOCATABLE, 'no SPLIT_MEMORY with RELOCATABLE'
-        assert not shared.Settings.USE_PTHREADS, 'no SPLIT_MEMORY with pthreads'
-        if not options.js_opts:
-          options.js_opts = True
-          logging.debug('enabling js opts for SPLIT_MEMORY')
-        options.force_js_opts = True
-        if options.use_closure_compiler:
-          options.use_closure_compiler = False
-          logging.warning('cannot use closure compiler on split memory, for now, disabling')
-
       if shared.Settings.STB_IMAGE and final_suffix in JS_CONTAINING_SUFFIXES:
         input_files.append((next_arg_index, shared.path_from_root('third_party', 'stb_image.c')))
         next_arg_index += 1
@@ -1328,8 +1302,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
         shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
-        if shared.Settings.SPLIT_MEMORY:
-          exit_with_error('WebAssembly does not support split memory')
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
           logging.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
           shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1837,7 +1809,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         temp_basename = unsuffixed(final)
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
-        open(wasm_text_target + '.mappedGlobals', 'w').write('{}') # no need for mapped globals for now, but perhaps some day
         if use_source_map(options):
           shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
 
@@ -1851,11 +1822,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('source transforms'):
       # Embed and preload files
       if len(options.preload_files) or len(options.embed_files):
-
-        # copying into the heap is risky when split - the chunks might be too small for the file package!
-        if shared.Settings.SPLIT_MEMORY and not options.no_heap_copy:
-          logging.info('Enabling --no-heap-copy because -s SPLIT_MEMORY=1 is being used with file_packager.py (pass --no-heap-copy to suppress this notification)')
-          options.no_heap_copy = True
 
         # Also, MEMFS is not aware of heap resizing feature in wasm, so if MEMFS and memory growth are used together, force
         # no_heap_copy to be enabled.
