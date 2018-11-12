@@ -330,6 +330,8 @@ Functions
     - https://developer.mozilla.org/en/DOM/Event/UIEvent/KeyEvent
     - http://www.javascriptkit.com/jsref/eventkeyboardmouse.shtml
 
+    .. note:: To receive events, the element must be focusable, see https://github.com/kripken/emscripten/pull/7484#issuecomment-437887001
+
 Mouse
 =====
 
