@@ -1255,6 +1255,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.js_opts = True
         options.force_js_opts = True
 
+      # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
+      if options.opt_level >= 1 and options.debug_level < 2 and not shared.Settings.WASM:
+        shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
+
       if shared.Settings.WASM:
         # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
         if shared.Building.is_wasm_only():

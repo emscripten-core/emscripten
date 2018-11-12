@@ -29,6 +29,7 @@ from tools import jsrun, tempfiles
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
+from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
@@ -305,14 +306,31 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   if shared.Settings.RELOCATABLE:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
 
+  # Tracks the set of used (minified) function names in
+  # JS symbols imported to asm.js module.
+  minified_js_names = MinifiedJsNameGenerator()
+
+  # Converts list of imports ['foo', 'bar', ...] to a dictionary of
+  # name mappings in form { 'minified': 'unminified', ... }
+  def define_asmjs_import_names(imports):
+    if shared.Settings.MINIFY_ASMJS_IMPORT_NAMES:
+      return [(minified_js_names.generate(), i) for i in imports]
+    else:
+      return [(i, i) for i in imports]
+
+  basic_funcs = define_asmjs_import_names(basic_funcs)
+  global_funcs = define_asmjs_import_names(global_funcs)
+  basic_vars = define_asmjs_import_names(basic_vars)
+  global_vars = define_asmjs_import_names(global_vars)
+
   bg_funcs = basic_funcs + global_funcs
   bg_vars = basic_vars + global_vars
   asm_global_funcs = create_asm_global_funcs(bg_funcs, metadata)
   asm_global_vars = create_asm_global_vars(bg_vars)
 
   the_global = create_the_global(metadata)
-  sending_vars = basic_funcs + global_funcs + basic_vars + global_vars
-  sending = '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in sending_vars]) + ' }'
+  sending_vars = bg_funcs + bg_vars
+  sending = '{ ' + ', '.join(['"' + math_fix(minified) + '": ' + unminified for (minified, unminified) in sending_vars]) + ' }'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions)
@@ -1078,7 +1096,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
     maths += ['Math.fround']
 
   asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
-  asm_global_funcs += ''.join(['  var ' + g + '=env' + access_quote(math_fix(g)) + ';\n' for g in bg_funcs])
+  asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
   asm_global_funcs += global_simd_funcs(access_quote, metadata)
   if shared.Settings.USE_PTHREADS:
     asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
@@ -1086,7 +1104,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
 
 
 def create_asm_global_vars(bg_vars):
-  asm_global_vars = ''.join(['  var ' + g + '=env' + access_quote(g) + '|0;\n' for g in bg_vars])
+  asm_global_vars = ''.join(['  var ' + unminified + '=env' + access_quote(minified) + '|0;\n' for (minified, unminified) in bg_vars])
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # wasm side modules internally define their stack, these are set at module startup time
     asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
