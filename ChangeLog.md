@@ -16,6 +16,8 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
  - Remove SPLIT_MEMORY option.
+ - Change `strptime()`'s handling of the "%c" to match that of `strftime()`. This is a breaking
+ change for code which depends on the old definition of "%c".
 
 v1.38.18: 11/08/2018
 --------------------
