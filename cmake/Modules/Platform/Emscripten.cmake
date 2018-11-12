@@ -106,7 +106,10 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 	# Detect version of the 'emcc' executable. Note that for CMake, we tell it the version of the Clang compiler and not the version of Emscripten,
 	# because CMake understands Clang better.
 	if (NOT CMAKE_C_COMPILER_VERSION) # Toolchain script is interpreted multiple times, so don't rerun the check if already done before.
+		set(STASHED_EMCC_CFLAGS "$ENV{EMCC_CFLAGS}")
+	        set(ENV{EMCC_CFLAGS} "") # clear EMCC_CFLAGS to avoid "no input files error"
 		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		set(ENV{EMCC_CFLAGS} "${STASHED_EMCC_CFLAGS}")
 		if (NOT _cmake_compiler_result EQUAL 0)
 			message(FATAL_ERROR "Failed to fetch compiler version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
 		endif()
@@ -127,7 +130,10 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 
 	# Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 	if (NOT EMSCRIPTEN_VERSION)
+		set(STASHED_EMCC_CFLAGS "$ENV{EMCC_CFLAGS}")
+	        set(ENV{EMCC_CFLAGS} "") # clear EMCC_CFLAGS to avoid "no input files error"
 		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		set(ENV{EMCC_CFLAGS} "${STASHED_EMCC_CFLAGS}")
 		if (NOT _cmake_compiler_result EQUAL 0)
 			message(FATAL_ERROR "Failed to fetch Emscripten version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
 		endif()
