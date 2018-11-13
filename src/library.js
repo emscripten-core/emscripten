@@ -2551,7 +2551,7 @@ LibraryManager.library = {
     var EQUIVALENT_MATCHERS = {
       '%A':  '%a',
       '%B':  '%b',
-      '%c':  '%x\\s+%X',
+      '%c':  '%a %b %d %H:%M:%S %Y',
       '%D':  '%m\\/%d\\/%y',
       '%e':  '%d',
       '%F':  '%Y-%m-%d',
