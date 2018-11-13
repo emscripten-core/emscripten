@@ -29,7 +29,7 @@ if EM_PROFILE_TOOLCHAIN:
       returncode = original_subprocess_call(cmd, *args, **kw)
     except Exception as e:
       ToolchainProfiler.record_subprocess_finish(pid, 1)
-      raise e
+      raise
     ToolchainProfiler.record_subprocess_finish(pid, returncode)
     return returncode
 
@@ -40,7 +40,7 @@ if EM_PROFILE_TOOLCHAIN:
       ret = original_subprocess_check_call(cmd, *args, **kw)
     except Exception as e:
       ToolchainProfiler.record_subprocess_finish(pid, e.returncode)
-      raise e
+      raise
     ToolchainProfiler.record_subprocess_finish(pid, 0)
     return ret
 
@@ -51,7 +51,7 @@ if EM_PROFILE_TOOLCHAIN:
       ret = original_subprocess_check_output(cmd, *args, **kw)
     except Exception as e:
       ToolchainProfiler.record_subprocess_finish(pid, e.returncode)
-      raise e
+      raise
     ToolchainProfiler.record_subprocess_finish(pid, 0)
     return ret
 

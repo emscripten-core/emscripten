@@ -917,7 +917,7 @@ if __name__ == '__main__':
         func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
       except Exception as e:
         print('failed to parse code from', line, file=sys.stderr)
-        raise e
+        raise
       assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
       if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)//4, file=sys.stderr)
