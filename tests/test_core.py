@@ -19,7 +19,7 @@ from textwrap import dedent
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
-from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
+from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
@@ -6483,9 +6483,10 @@ return malloc(size);
 
     # Sanity check that it works and the dead function is emitted
     js = test('*1*', ['x'])
-    test('*2*', no_build=True)
     if self.run_name in ['default', 'asm1', 'asm2g']:
       assert 'function _unused($' in js
+    return
+    test('*2*', no_build=True)
 
     # Kill off the dead function, and check a code path using it aborts
     self.set_setting('DEAD_FUNCTIONS', ['_unused'])
@@ -7982,9 +7983,11 @@ extern "C" {
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, env=None):
+def make_run(name, emcc_args, settings=None, env=None):
   if env is None:
     env = {}
+  if settings is None:
+    settings = {}
 
   TT = type(name, (TestCoreBase,), dict(run_name=name, env=env))  # noqa
 
@@ -8010,9 +8013,9 @@ def make_run(name, emcc_args, env=None):
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
     self.emcc_args = emcc_args[:]
-    Settings.load(self.emcc_args)
+    for k, v in settings.items():
+      self.set_setting(k, v)
     Building.LLVM_OPTS = 0
-
     Building.COMPILER_TEST_OPTS += [
         '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
         '-Wno-format-extra-args', '-Wno-format-security',
@@ -8031,11 +8034,11 @@ def make_run(name, emcc_args, env=None):
 
 
 # Main asm.js test modes
-asm0 = make_run('asm0', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
-asm1 = make_run('asm1', emcc_args=['-O1', '-s', 'WASM=0'])
-asm2 = make_run('asm2', emcc_args=['-O2', '-s', 'WASM=0'])
-asm3 = make_run('asm3', emcc_args=['-O3', '-s', 'WASM=0'])
-asm2g = make_run('asm2g', emcc_args=['-O2', '-s', 'WASM=0', '-g', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'])
+asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
+asm1 = make_run('asm1', emcc_args=['-O1'], settings={'WASM': 0})
+asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
+asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
+asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
 
 # Main wasm test modes
 binaryen0 = make_run('binaryen0', emcc_args=['-O0'])
@@ -8045,29 +8048,29 @@ binaryen3 = make_run('binaryen3', emcc_args=['-O3'])
 binaryens = make_run('binaryens', emcc_args=['-Os'])
 binaryenz = make_run('binaryenz', emcc_args=['-Oz'])
 
-wasmobj0 = make_run('wasmobj0', emcc_args=['-O0', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj1 = make_run('wasmobj1', emcc_args=['-O1', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj2 = make_run('wasmobj2', emcc_args=['-O2', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj3 = make_run('wasmobj3', emcc_args=['-O3', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobjs = make_run('wasmobjs', emcc_args=['-Os', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobjz = make_run('wasmobjz', emcc_args=['-Oz', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj0 = make_run('wasmobj0', emcc_args=['-O0'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj1 = make_run('wasmobj1', emcc_args=['-O1'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj2 = make_run('wasmobj2', emcc_args=['-O2'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj3 = make_run('wasmobj3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES': 1})
+wasmobjs = make_run('wasmobjs', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 1})
+wasmobjz = make_run('wasmobjz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 1})
 
 
 # Secondary test modes - run directly when there is a specific need
 
 # asm.js
-asm2f = make_run('asm2f', emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
-asm2nn = make_run('asm2nn', emcc_args=['-O2', '-s', 'WASM=0'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
+asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
+asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen2s = make_run('binaryen2s', emcc_args=['-O2', '-s', 'SAFE_HEAP=1'])
-binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
+binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
+binaryen2s = make_run('binaryen2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2'], settings={'BINARYEN_METHOD', 'interpret-binary'})
 
 # emterpreter
-asmi = make_run('asmi', emcc_args=['-s', 'ASM_JS=2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
-asm2i = make_run('asm2i', emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
+asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})
+asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

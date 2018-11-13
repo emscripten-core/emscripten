@@ -1183,30 +1183,11 @@ class SettingsManager(object):
     @classmethod
     def reset(self):
       self.attrs = {}
-      self.load()
 
-    # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
-    @classmethod
-    def load(self, args=[]):
       # Load the JS defaults into python
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
-      exec(settings)
-
-      # Apply additional settings. First -O, then -s
-      for arg in args:
-        if arg.startswith('-O'):
-          v = arg[2]
-          shrink = 0
-          if v in ['s', 'z']:
-            shrink = 1 if v == 's' else 2
-            v = '2'
-          level = int(v)
-          self.apply_opt_level(level, shrink)
-      for i in range(len(args)):
-        if args[i] == '-s':
-          declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i + 1])
-          exec(declare)
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      exec(settings, {'attrs': self.attrs})
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1

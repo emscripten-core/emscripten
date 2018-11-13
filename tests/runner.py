@@ -250,10 +250,10 @@ class RunnerCore(unittest.TestCase):
   temp_files_before_run = []
 
   def is_emterpreter(self):
-    return 'EMTERPRETIFY=1' in str(self.emcc_args)
+    return self.get_setting('EMTERPRETIFY')
 
   def is_wasm(self):
-    return ('WASM=0' not in str(self.emcc_args)) or self.is_wasm_backend()
+    return not self.get_setting('WASM') or self.is_wasm_backend()
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
