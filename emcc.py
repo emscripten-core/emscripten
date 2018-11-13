@@ -1151,13 +1151,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # also tiny, and should be elimitated by meta-DCE when not used.
           shared.Settings.EXPORTED_FUNCTIONS += ['_setTempRet0', '_setThrew']
 
-      assert not (not shared.Settings.DYNAMIC_EXECUTION and shared.Settings.RELOCATABLE), 'cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()'
+      if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
+        exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
       if shared.Settings.RELOCATABLE:
         assert shared.Settings.GLOBAL_BASE < 1
-        if shared.Settings.EMULATED_FUNCTION_POINTERS == 0:
+        if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes:
           shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
-        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+        shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+        shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
 
       if shared.Settings.EMTERPRETIFY:
         shared.Settings.FINALIZE_ASM_JS = 0
@@ -1168,7 +1170,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.debug('enabling js opts for EMTERPRETIFY')
           options.js_opts = True
         options.force_js_opts = True
-        assert options.use_closure_compiler is not 2, 'EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that'
+        if options.use_closure_compiler == 2:
+           exit_with_error('EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that')
         assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
 
       if shared.Settings.DEAD_FUNCTIONS:
@@ -1181,7 +1184,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.PROXY_TO_WORKER = 1
 
       if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
-        assert not shared.Settings.NODERAWFS, '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
+        if shared.Settings.NODERAWFS:
+          exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
         # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
         shared.Settings.FORCE_FILESYSTEM = 1
 

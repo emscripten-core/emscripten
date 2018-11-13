@@ -2314,8 +2314,9 @@ class Building(object):
       # if the JS optimizer runs, it must run on valid asm.js
       return False
     if Settings.RELOCATABLE and Settings.EMULATED_FUNCTION_POINTERS:
-      # FIXME emulation function pointers work properly, but calling between
-      #       modules as wasm-only needs more work
+      # FIXME(https://github.com/kripken/emscripten/issues/5370)
+      # emulation function pointers work properly, but calling between
+      # modules as wasm-only needs more work
       return False
     return True
 
