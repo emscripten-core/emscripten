@@ -920,6 +920,14 @@ def server_func(dir, q, port):
 
 
 class BrowserCore(RunnerCore):
+  # note how many tests hang / do not send an output. if many of these
+  # happen, likely something is broken and it is best to abort the test
+  # suite early, as otherwise we will wait for the timeout on every
+  # single test (hundreds of minutes)
+  MAX_UNRESPONSIVE_TESTS = 10
+
+  unresponsive_tests = 0
+
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
 
@@ -963,6 +971,8 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     if not has_browser():
       return
+    if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
+      self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
     print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
@@ -983,6 +993,7 @@ class BrowserCore(RunnerCore):
         else:
           raise Exception('[Test harness server failed to start up in a timely manner]')
         self.harness_queue.put(asbytes('http://localhost:%s/%s' % (self.test_port, html_file)))
+        received_output = False
         output = '[no http server activity]'
         start = time.time()
         if timeout is None:
@@ -990,8 +1001,12 @@ class BrowserCore(RunnerCore):
         while time.time() - start < timeout:
           if not queue.empty():
             output = queue.get()
+            received_output = True
             break
           time.sleep(0.1)
+        if not received_output:
+          BrowserCore.unresponsive_tests += 1
+          print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
