@@ -1099,66 +1099,66 @@ class SettingsManager(object):
       self.reset()
 
     @classmethod
-    def reset(self):
-      self.attrs = {}
+    def reset(cls):
+      cls.attrs = {}
 
       # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      exec(settings, {'attrs': self.attrs})
+      exec(settings, {'attrs': cls.attrs})
 
       if 'EMCC_STRICT' in os.environ:
-        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+        cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
       # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
       # details
-      self.legacy_settings = {}
-      self.alt_names = {}
-      for legacy in self.attrs['LEGACY_SETTINGS']:
+      cls.legacy_settings = {}
+      cls.alt_names = {}
+      for legacy in cls.attrs['LEGACY_SETTINGS']:
         if len(legacy) == 2:
           name, new_name = legacy
-          self.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
-          self.alt_names[name] = new_name
-          self.alt_names[new_name] = name
-          default_value = self.attrs[new_name]
+          cls.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
+          cls.alt_names[name] = new_name
+          cls.alt_names[new_name] = name
+          default_value = cls.attrs[new_name]
         else:
           name, fixed_values, err = legacy
-          self.legacy_settings[name] = (fixed_values, err)
+          cls.legacy_settings[name] = (fixed_values, err)
           default_value = fixed_values[0]
-        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-        if not self.attrs['STRICT']:
-          self.attrs[name] = default_value
+        assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not cls.attrs['STRICT']:
+          cls.attrs[name] = default_value
 
       if get_llvm_target() == WASM_TARGET:
-        self.attrs['WASM_BACKEND'] = 1
+        cls.attrs['WASM_BACKEND'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
     @classmethod
-    def serialize(self):
+    def serialize(cls):
       ret = []
-      for key, value in self.attrs.items():
+      for key, value in cls.attrs.items():
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
       return ret
 
     @classmethod
-    def to_dict(self):
-      return self.attrs.copy()
+    def to_dict(cls):
+      return cls.attrs.copy()
 
     @classmethod
-    def copy(self, values):
-      self.attrs = values
+    def copy(cls, values):
+      cls.attrs = values
 
     @classmethod
-    def apply_opt_level(self, opt_level, shrink_level=0, noisy=False):
+    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        self.attrs['ASM_JS'] = 1
-        self.attrs['ASSERTIONS'] = 0
-        self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+        cls.attrs['ASM_JS'] = 1
+        cls.attrs['ASSERTIONS'] = 0
+        cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        self.attrs['EVAL_CTORS'] = 1
+        cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()
@@ -1199,12 +1199,12 @@ class SettingsManager(object):
       self.attrs[attr] = value
 
     @classmethod
-    def get(self, key):
-      return self.attrs.get(key)
+    def get(cls, key):
+      return cls.attrs.get(key)
 
     @classmethod
-    def __getitem__(self, key):
-      return self.attrs[key]
+    def __getitem__(cls, key):
+      return cls.attrs[key]
 
     @classmethod
     def target_environment_may_be(self, environment):
