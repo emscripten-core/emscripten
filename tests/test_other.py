@@ -8767,3 +8767,22 @@ int main () {
 
         check_size('a.js', 150000)
         check_size('a.wasm', 80000)
+
+  # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
+  def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
+    self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
+    for args in [[], ['-s', 'WASM=0']]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-o', 'a.html'] + args)
+      output = open('a.js', 'r').read()
+      self.assertContained('_main', output) # Smoke test that we actually compiled
+      self.assertNotContained('invoke_', output)
+
+  # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
+  def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
+    self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
+    for args in [[], ['-s', 'WASM=0']]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'invoke_i.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
+      output = open('a.js', 'r').read()
+      self.assertContained('invoke_i', output)
+      self.assertNotContained('invoke_ii', output)
+      self.assertNotContained('invoke_v', output)

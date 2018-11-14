@@ -284,8 +284,13 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   exported_implemented_functions = get_exported_implemented_functions(
     all_exported_functions, all_implemented, metadata)
 
-  asm_setup = create_asm_setup(debug_tables, function_table_data, metadata)
-  basic_funcs = create_basic_funcs(function_table_sigs)
+  # List of function signatures of used 'invoke_xxx()' functions in the application
+  # For backwards compatibility if one might be using a mismatching Emscripten compiler version, if 'invokeFuncs' is not present in metadata,
+  # use the full list of signatures in function table and generate invoke_() functions for all signatures in the program (producing excessive code size)
+  invoke_function_names = metadata['invokeFuncs'] if 'invokeFuncs' in metadata else ['invoke_' + x for x in function_table_sigs]
+
+  asm_setup = create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata)
+  basic_funcs = create_basic_funcs(function_table_sigs, invoke_function_names)
   basic_vars = create_basic_vars(exported_implemented_functions, forwarded_json, metadata)
 
   funcs_js += create_mftCall_funcs(function_table_data)
@@ -1250,7 +1255,7 @@ def provide_fround():
   return shared.Settings.PRECISE_F32 or shared.Settings.SIMD
 
 
-def create_asm_setup(debug_tables, function_table_data, metadata):
+def create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata):
   function_table_sigs = function_table_data.keys()
 
   asm_setup = ''
@@ -1291,6 +1296,7 @@ def create_asm_setup(debug_tables, function_table_data, metadata):
     for extern in metadata['externs']:
       asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
 
+  asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
 
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
@@ -1303,7 +1309,6 @@ def create_asm_setup(debug_tables, function_table_data, metadata):
 def setup_function_pointers(function_table_sigs):
   asm_setup = ''
   for sig in function_table_sigs:
-    asm_setup += '\n' + shared.JS.make_invoke(sig) + '\n'
     if shared.Settings.RESERVED_FUNCTION_POINTERS:
       asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
     if shared.Settings.EMULATED_FUNCTION_POINTERS:
@@ -1343,7 +1348,7 @@ function ftCall_%s(%s) {%s
   return asm_setup
 
 
-def create_basic_funcs(function_table_sigs):
+def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
@@ -1362,8 +1367,9 @@ def create_basic_funcs(function_table_sigs):
   if shared.Settings.RELOCATABLE:
     basic_funcs += ['setTempRet0', 'getTempRet0']
 
+  basic_funcs += invoke_function_names
+
   for sig in function_table_sigs:
-    basic_funcs.append('invoke_%s' % sig)
     if shared.Settings.RESERVED_FUNCTION_POINTERS:
       basic_funcs.append('jsCall_%s' % sig)
     if shared.Settings.EMULATED_FUNCTION_POINTERS:
