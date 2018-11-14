@@ -287,7 +287,11 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   # List of function signatures of used 'invoke_xxx()' functions in the application
   # For backwards compatibility if one might be using a mismatching Emscripten compiler version, if 'invokeFuncs' is not present in metadata,
   # use the full list of signatures in function table and generate invoke_() functions for all signatures in the program (producing excessive code size)
-  invoke_function_names = metadata['invokeFuncs'] if 'invokeFuncs' in metadata else ['invoke_' + x for x in function_table_sigs]
+  # we must also emit the full list if we are emitting code that can be linked later
+  if 'invokeFuncs' in metadata and not shared.Settings.LINKABLE:
+    invoke_function_names = metadata['invokeFuncs']
+  else:
+    invoke_function_names = ['invoke_' + x for x in function_table_sigs]
 
   asm_setup = create_asm_setup(debug_tables, function_table_data, invoke_function_names, metadata)
   basic_funcs = create_basic_funcs(function_table_sigs, invoke_function_names)
