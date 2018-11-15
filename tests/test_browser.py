@@ -3579,6 +3579,14 @@ window.close = function() {
       for args in [[], ['-s', 'USE_PTHREADS=1']]:
         self.btest(path_from_root('tests', 'gauge_available_memory.cpp'), expected='1', args=['-s', 'ABORTING_MALLOC=0'] + args + opts)
 
+  # Test PTHREAD_WORKER_PRE_JS
+  @requires_threads
+  def test_pthread_PTHREAD_WORKER_PRE_JS(self):
+    with open('pre.js', 'w') as f:
+      f.write('var Module = { something: 1 }\n')
+    for opts in [[], ['-O2']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_PTHREAD_WORKER_PRE_JS.cpp'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'PTHREAD_WORKER_PRE_JS="pre.js"'] + opts)
+
   # Test that the proxying operations of user code from pthreads to main thread work
   @requires_threads
   def test_pthread_run_on_main_thread(self):

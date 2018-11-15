@@ -1136,6 +1136,11 @@ var PTHREADS_PROFILING = 0;
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
+// Optional code that is prepended before pthread-main.js. This is JS that will
+// be executed in each worker thread before anything else (even before Module
+// etc. are defined - define it yourself if necessary, it will be detected).
+var PTHREAD_WORKER_PRE_JS = '';
+
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
 var JSCALL_START_INDEX = 0; // received from the backend

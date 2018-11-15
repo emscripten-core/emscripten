@@ -1932,8 +1932,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
-        shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'),
-                        os.path.join(target_dir, 'pthread-main.js'))
+        with open(os.path.join(target_dir, 'pthread-main.js'), 'w') as pthread_main:
+          if shared.Settings.PTHREAD_WORKER_PRE_JS:
+            with open(shared.Settings.PTHREAD_WORKER_PRE_JS) as custom_pre_contents:
+              pthread_main.write(custom_pre_contents.read())
+          with open(shared.path_from_root('src', 'pthread-main.js')) as base_contents:
+            pthread_main.write(base_contents.read())
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:

@@ -34,9 +34,9 @@ var ENVIRONMENT_IS_PTHREAD = true;
 // coherent clock across each of them (+/- 0.1msecs in testing)
 var __performance_now_clock_drift = 0;
 
-// Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
-// Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
-var Module = {};
+// Prepended JS code may have defined Module.
+var Module;
+if (!Module) Module = {};
 
 // When error objects propagate from Web Worker to main thread, they lose helpful call stack and thread ID information, so print out errors early here,
 // before that happens.
