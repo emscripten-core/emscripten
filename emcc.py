@@ -1939,7 +1939,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
         if shared.Settings.WASM:
           # FIXME(https://github.com/kripken/emscripten/issues/7024)
-          logging.warning('Blocking calls the fetch API do not work under WASM')
+          logger.warning('Blocking calls the fetch API do not work under WASM')
         else:
           shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
 
