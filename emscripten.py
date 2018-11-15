@@ -1865,10 +1865,9 @@ HEAP_TYPE_INFOS = [
 def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
                           temp_files, DEBUG):
   # Overview:
-  #   * Run LLVM backend to emit a wasm object file (.o)
-  #   * Run lld to turn this into a wasm binary (.wasm)
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
-  #   * We may also run some Binaryen passes here.
+  #     to use emscripten's wasm<->JS ABI
+  #   * Use the metadata to generate the JS glue that goes with the wasm
 
   metadata = finalize_wasm(temp_files, infile, outfile, DEBUG)
   if shared.Settings.SIDE_MODULE:
@@ -1937,12 +1936,11 @@ def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
   except:
     pass
 
-  # sent data
+
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
   receiving = create_receiving_wasm(exported_implemented_functions)
 
-  # finalize
   module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
                               exported_implemented_functions)
 
@@ -1993,10 +1991,13 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
     cmd.append('--input-source-map=' + base_source_map)
     cmd.append('--output-source-map=' + wasm + '.map')
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
+  if not shared.Settings.MEM_INIT_IN_WASM:
+    memory_init_file = wasm + '.mem'
+    cmd.append('--separate-data-segments=' + memory_init_file)
   shared.check_call(cmd, stdout=open(metadata_file, 'w'))
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
-  debug_copy(wasm, 'post_finalize.wasm')
+    debug_copy(wasm, 'post_finalize.wasm')
 
   return create_metadata_wasm(open(metadata_file).read(), DEBUG)
 

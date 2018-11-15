@@ -1900,6 +1900,8 @@ class Building(object):
       cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
     elif not Settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+    if Settings.USE_PTHREADS:
+      cmd.append('--shared-memory')
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
