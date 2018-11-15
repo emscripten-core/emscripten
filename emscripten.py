@@ -70,7 +70,7 @@ def emscript(infile, outfile, libraries, compiler_engine, temp_files,
 
   Args:
     infile: The path to the input LLVM assembly file.
-    outfile: The file where the output is written.
+    outfile: An open file object where the output is written.
   """
 
   assert shared.Settings.ASM_JS, 'fastcomp is asm.js-only (mode 1 or 2)'
@@ -2275,8 +2275,11 @@ def normalize_line_endings(text):
   return text
 
 
-def main(args, compiler_engine, cache, temp_files, DEBUG):
-  # libraries
+def main(infile, outfile):
+  cache = tools.Cache.Cache()
+  temp_files = get_configuration().get_temp_files()
+  infile, outfile = substitute_response_files([infile, outfile])
+
   libraries = args.libraries[0].split(',') if len(args.libraries) else []
 
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
@@ -2291,82 +2294,10 @@ def main(args, compiler_engine, cache, temp_files, DEBUG):
     shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info, extension='json')
   # do we need an else, to define it for the bootstrap case?
 
+
+  outfile_obj = open(outfile, 'w')
+
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript
-
-  emscripter(args.infile, args.outfile, libraries, compiler_engine=compiler_engine,
-             temp_files=temp_files, DEBUG=DEBUG)
-
-
-def _main(args):
-  args = substitute_response_files(args)
-
-  parser = argparse.ArgumentParser(
-    usage='%(prog)s [-h] [-H HEADERS] [-o OUTFILE] [-c COMPILER_ENGINE] [-s FOO=BAR]* infile',
-    description=('You should normally never use this! Use emcc instead. '
-                 'This is a wrapper around the JS compiler, converting .ll to .js.'))
-  parser.add_argument('-H', '--headers',
-                      default=[],
-                      action='append',
-                      help='System headers (comma separated) whose #defines should be exposed to the compiled code.')
-  parser.add_argument('-L', '--libraries',
-                      default=[],
-                      action='append',
-                      help='Library files (comma separated) to use in addition to those in emscripten src/library_*.')
-  parser.add_argument('-o', '--outfile',
-                      default=sys.stdout,
-                      help='Where to write the output; defaults to stdout.')
-  parser.add_argument('-c', '--compiler',
-                      default=None,
-                      help='Which JS engine to use to run the compiler; defaults to the one in ~/.emscripten.')
-  parser.add_argument('-T', '--temp-dir',
-                      default=None,
-                      help=('Where to create temporary files.'))
-  parser.add_argument('-v', '--verbose',
-                      default=None,
-                      action='store_true',
-                      dest='verbose',
-                      help='Displays debug output')
-  parser.add_argument('-q', '--quiet',
-                      default=None,
-                      action='store_false',
-                      dest='verbose',
-                      help='Hides debug output')
-  parser.add_argument('infile', nargs='*')
-
-  # Convert to the same format that argparse would have produced.
-  keywords = parser.parse_args(args)
-  positional = keywords.infile
-
-  if len(positional) != 1:
-    logging.error('Must provide exactly one positional argument. Got ' + str(len(positional)) + ': "' + '", "'.join(positional) + '"')
-    return 1
-
-  keywords.infile = os.path.abspath(positional[0])
-  if isinstance(keywords.outfile, (type(u''), bytes)):
-    keywords.outfile = open(keywords.outfile, 'w')
-
-  if keywords.temp_dir is None:
-    temp_files = get_configuration().get_temp_files()
-    temp_dir = get_configuration().TEMP_DIR
-  else:
-    temp_dir = os.path.abspath(keywords.temp_dir)
-    if not os.path.exists(temp_dir):
-      os.makedirs(temp_dir)
-    temp_files = tempfiles.TempFiles(temp_dir)
-
-  if keywords.compiler is None:
-    keywords.compiler = shared.COMPILER_ENGINE
-
-  if keywords.verbose is None:
-    DEBUG = get_configuration().DEBUG
-  else:
-    DEBUG = keywords.verbose
-
-  cache = tools.cache.Cache()
-  return temp_files.run_and_clean(lambda: main(
-    keywords,
-    compiler_engine=keywords.compiler,
-    cache=cache,
-    temp_files=temp_files,
-    DEBUG=DEBUG,
-  ))
+  return temp_files.run_and_clean(lambda: emscripter(
+      infile, outfile_obj, libraries, shared.COMPILER_ENGINE, temp_files, get_configuration().DEBUG)
+  )

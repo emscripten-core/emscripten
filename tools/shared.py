@@ -2267,16 +2267,18 @@ class Building(object):
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
-  def emscripten(filename, append_ext=True, extra_args=[]):
+  def emscripten(filename, js_libraries=None):
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
     import emscripten
     # Run Emscripten
-    cmdline = [filename + ('.o.ll' if append_ext else ''), '-o', filename + '.o.js'] + extra_args
+    infile = filename
+    outfile = filename + '.o.js'
     if jsrun.TRACK_PROCESS_SPAWNS:
-      logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join(cmdline) + '"')
+      logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join([infile, outfile]) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten._main(cmdline)
+      emscripten.main(infile, outfile)
+
 
     # Detect compilation crashes and errors
     assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'

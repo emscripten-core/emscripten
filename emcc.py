@@ -1795,8 +1795,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Emscripten
       logging.debug('LLVM => JS')
       extra_args = []
+      js_libraries = None
       if options.js_libraries:
-        extra_args = ['--libraries', ','.join(map(os.path.abspath, options.js_libraries))]
+        js_libraries = map(os.path.abspath, options.js_libraries)
       if options.memory_init_file:
         shared.Settings.MEM_INIT_METHOD = 1
       else:
