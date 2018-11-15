@@ -62,7 +62,7 @@ v1.38.12: 09/03/2018
 --------------------
  - Update SDL2 to 2.0.7. See #7016.
  - Optionally build using native object files (wasm backend only).
-   For now this is befind a new option flag: `-s WASM_OBJECT_FILES=1`.
+   For now this is behind a new option flag: `-s WASM_OBJECT_FILES=1`.
    See #6875.
 
 v1.38.11: 08/02/2018
