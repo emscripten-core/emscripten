@@ -1807,7 +1807,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = shared.Building.emscripten(final, js_libraries)
+      final = shared.Building.emscripten(final, target + '.mem', js_libraries)
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
@@ -1892,9 +1892,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-
       if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
         memfile = target + '.mem'
+
+      if memfile and not shared.Settings.WASM_BACKEND:
+        # Strip the memory initializer out of the asmjs file
         shared.try_delete(memfile)
 
         def repl(m):
