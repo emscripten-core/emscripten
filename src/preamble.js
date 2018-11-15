@@ -304,6 +304,9 @@ var ALLOC_NONE = 4; // Do not allocate
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
+#if DECLARE_ASM_MODULE_EXPORTS == 0
+var stackAlloc; // Statically reference stackAlloc function that will be exported later from asm.js/wasm so that allocate() function below will see it.
+#endif
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
