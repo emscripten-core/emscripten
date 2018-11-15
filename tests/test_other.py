@@ -92,7 +92,6 @@ def encode_leb(number):
   return struct.pack('<i', number)[:1]
 
 
-# look for emscripten-version.txt files under or alongside the llvm source dir
 def get_fastcomp_src_dir():
   """Locate fastcomp source tree by searching realtive to LLVM_ROOT."""
   d = LLVM_ROOT
