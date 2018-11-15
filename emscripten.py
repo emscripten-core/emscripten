@@ -2279,11 +2279,6 @@ def main(infile, outfile, libraries):
   cache = tools.cache.Cache()
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
-  #assert len(libraries) <= 1
-  # TODO: why do we take 'libraries' as a list and then throw away all but the first?
-  if len(libraries):
-    assert not ',' in libraries[0]
-  libraries = libraries[0].split(',') if len(libraries) else []
 
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
     generated_struct_info_name = 'generated_struct_info.json'
