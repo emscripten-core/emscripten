@@ -387,7 +387,7 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    response = run_process([CLANG, '-v'], stderr=PIPE).stderr
+    response = run_process([CLANG, '--version'], stdout=PIPE).stdout
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
     actual_clang_version = m and m.group(1)
   return actual_clang_version
@@ -409,24 +409,6 @@ def check_llvm_version():
     logger.critical('Could not verify LLVM version: %s' % str(e))
 
 
-# look for emscripten-version.txt files under or alongside the llvm source dir
-def get_fastcomp_src_dir():
-  d = LLVM_ROOT
-  emroot = path_from_root() # already abspath
-  # look for version file in llvm repo, making sure not to mistake the emscripten repo for it
-  while d != os.path.dirname(d):
-    d = os.path.abspath(d)
-    # when the build directory lives below the source directory
-    if os.path.exists(os.path.join(d, 'emscripten-version.txt')) and not d == emroot:
-      return d
-    # when the build directory lives alongside the source directory
-    elif os.path.exists(os.path.join(d, 'src', 'emscripten-version.txt')) and not os.path.join(d, 'src') == emroot:
-      return os.path.join(d, 'src')
-    else:
-      d = os.path.dirname(d)
-  return None
-
-
 def get_llc_targets():
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
@@ -444,56 +426,36 @@ def has_wasm_target(targets):
   return 'wasm32' in targets and 'WebAssembly 32-bit' in targets
 
 
-def check_fastcomp():
-  try:
-    targets = get_llc_targets()
-    if not Settings.WASM_BACKEND:
-      if not has_asm_js_target(targets):
-        logger.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
-        print('===========================================================================', file=sys.stderr)
-        print(targets, file=sys.stderr)
-        print('===========================================================================', file=sys.stderr)
-        logger.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-        return False
-    else:
-      if not has_wasm_target(targets):
-        logger.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
-        print('===========================================================================', file=sys.stderr)
-        print(targets, file=sys.stderr)
-        print('===========================================================================', file=sys.stderr)
-        return False
+def check_llvm():
+  targets = get_llc_targets()
+  if not Settings.WASM_BACKEND:
+    if not has_asm_js_target(targets):
+      logger.critical('fastcomp in use, but LLVM has not been built with the JavaScript backend as a target, llc reports:')
+      print('===========================================================================', file=sys.stderr)
+      print(targets, file=sys.stderr)
+      print('===========================================================================', file=sys.stderr)
+      logger.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+      return False
+  else:
+    if not has_wasm_target(targets):
+      logger.critical('WebAssembly set as target, but LLVM has not been built with the WebAssembly backend, llc reports:')
+      print('===========================================================================', file=sys.stderr)
+      print(targets, file=sys.stderr)
+      print('===========================================================================', file=sys.stderr)
+      return False
 
-    if not Settings.WASM_BACKEND:
-      # check repo versions
-      d = get_fastcomp_src_dir()
-      shown_repo_version_error = False
-      if d is not None:
-        llvm_version = get_emscripten_version(os.path.join(d, 'emscripten-version.txt'))
-        if os.path.exists(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt')):
-          clang_version = get_emscripten_version(os.path.join(d, 'tools', 'clang', 'emscripten-version.txt'))
-        elif os.path.exists(os.path.join(d, 'tools', 'clang')):
-          clang_version = '?' # Looks like the LLVM compiler tree has an old checkout from the time before it contained a version.txt: Should update!
-        else:
-          clang_version = llvm_version # This LLVM compiler tree does not have a tools/clang, so it's probably an out-of-source build directory. No need for separate versioning.
-        if EMSCRIPTEN_VERSION != llvm_version or EMSCRIPTEN_VERSION != clang_version:
-          logger.error('Emscripten, llvm and clang repo versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_version, clang_version)
-          logger.error('Make sure to use the same branch in each repo, and to be up-to-date on each. See http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
-          shown_repo_version_error = True
-      else:
-        logger.warning('did not see a source tree above or next to the LLVM root directory (guessing based on directory of %s), could not verify version numbers match' % LLVM_COMPILER)
+  if not Settings.WASM_BACKEND:
+    clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
+    clang_v = clang_v.splitlines()[0]
+    if '(emscripten ' not in clang_v:
+      logger.error('clang version does not appear to include fastcomp (%s)', str(clang_v))
+      return False
+    llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
+    if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
+      logger.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
+      logger.error('Make sure to rebuild llvm and clang after updating repos')
 
-      # check build versions. don't show it if the repos are wrong, user should fix that first
-      if not shown_repo_version_error:
-        clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
-        llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
-        if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
-          logger.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
-          logger.error('Make sure to rebuild llvm and clang after updating repos')
-
-    return True
-  except Exception as e:
-    logger.warning('could not check fastcomp: %s' % str(e))
-    return True
+  return True
 
 
 EXPECTED_NODE_VERSION = (4, 1, 1)
@@ -596,7 +558,7 @@ def check_sanity(force=False):
     check_llvm_version()
     check_node_version()
 
-    fastcomp_ok = check_fastcomp()
+    llvm_ok = check_llvm()
 
     if os.environ.get('EM_IGNORE_SANITY'):
       logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
@@ -619,8 +581,8 @@ def check_sanity(force=False):
       except:
         exit_with_error('Cannot find %s, check the paths in %s', PYTHON, EM_CONFIG)
 
-    if not fastcomp_ok:
-      exit_with_error('failing sanity checks due to previous fastcomp failure')
+    if not llvm_ok:
+      exit_with_error('failing sanity checks due to previous llvm failure')
 
     # Sanity check passed!
     with ToolchainProfiler.profile_block('sanity closure compiler'):
