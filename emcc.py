@@ -1806,7 +1806,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
+      final = shared.Building.emscripten(final, js_libraries)
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:

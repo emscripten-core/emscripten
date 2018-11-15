@@ -2267,7 +2267,7 @@ class Building(object):
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
-  def emscripten(filename, js_libraries=None):
+  def emscripten(filename, js_libraries):
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
     import emscripten
@@ -2277,7 +2277,7 @@ class Building(object):
     if jsrun.TRACK_PROCESS_SPAWNS:
       logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join([infile, outfile]) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.main(infile, outfile)
+      emscripten.main(infile, outfile, js_libraries)
 
 
     # Detect compilation crashes and errors
