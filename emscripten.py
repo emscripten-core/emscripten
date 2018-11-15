@@ -11,9 +11,7 @@ headers, for the libc implementation in JS).
 
 import difflib
 import os
-import sys
 import json
-import argparse
 import subprocess
 import re
 import time
@@ -25,7 +23,7 @@ from collections import OrderedDict
 import tools
 from tools import shared
 from tools import gen_struct_info
-from tools import jsrun, tempfiles
+from tools import jsrun
 from tools.response_file import substitute_response_files
 from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
@@ -2276,7 +2274,6 @@ def normalize_line_endings(text):
 
 
 def main(infile, outfile, libraries):
-  cache = tools.cache.Cache()
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
@@ -2291,7 +2288,6 @@ def main(infile, outfile, libraries):
 
     shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info, extension='json')
   # do we need an else, to define it for the bootstrap case?
-
 
   outfile_obj = open(outfile, 'w')
 

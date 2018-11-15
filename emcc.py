@@ -1794,10 +1794,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
       logging.debug('LLVM => JS')
-      extra_args = []
       js_libraries = None
       if options.js_libraries:
-        js_libraries = map(os.path.abspath, options.js_libraries)
+        js_libraries = [os.path.abspath(lib) for lib in options.js_libraries]
       if options.memory_init_file:
         shared.Settings.MEM_INIT_METHOD = 1
       else:
