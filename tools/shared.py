@@ -2274,8 +2274,6 @@ class Building(object):
     # Run Emscripten
     infile = filename
     outfile = filename + '.o.js'
-    if jsrun.TRACK_PROCESS_SPAWNS:
-      logging.info('Executing emscripten.py compiler with cmdline "' + ' '.join([infile, outfile]) + '"')
     with ToolchainProfiler.profile_block('emscripten.py'):
       emscripten.main(infile, outfile, js_libraries)
 
