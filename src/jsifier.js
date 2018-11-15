@@ -490,27 +490,27 @@ function JSify(data, functionsOnly) {
 
       if (!SIDE_MODULE) {
         if (USE_PTHREADS) {
-          print('var tempDoublePtr;\n');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);\n');
+          print('var tempDoublePtr;');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);');
         } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '\n');
+          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
         }
-        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);\n');
-        print('function copyTempFloat(ptr) { // functions, because inlining this code increases code size too much\n');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
+        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);');
+        print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
+        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
+        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
+        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
+        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
         print('}\n');
-        print('function copyTempDouble(ptr) {\n');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];\n');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];\n');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];\n');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];\n');
-        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];\n');
-        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];\n');
-        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];\n');
-        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];\n');
+        print('function copyTempDouble(ptr) {');
+        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
+        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
+        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
+        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
+        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];');
+        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];');
+        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];');
+        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];');
         print('}\n');
       }
       print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates

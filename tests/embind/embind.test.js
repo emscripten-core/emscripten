@@ -2,6 +2,7 @@ module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
     /*jshint sub:true */
+    /* global console */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
@@ -378,13 +379,14 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] == true);
+        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
 
         test("non-ascii strings", function() {
 
+            var expected = '';
             if(stdStringIsUTF8) {
                 //ASCII
-                var expected = 'aei';
+                expected = 'aei';
                 //Latin-1 Supplement
                 expected += '\u00E1\u00E9\u00ED';
                 //Greek
@@ -396,7 +398,6 @@ module({
                 //Euro sign
                 expected += '\u20AC';
             } else {
-                var expected = '';
                 for (var i = 0; i < 128; ++i) {
                     expected += String.fromCharCode(128 + i);
                 }

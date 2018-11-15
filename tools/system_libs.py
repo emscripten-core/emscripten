@@ -120,6 +120,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o_s = []
     commands = []
     opts = default_opts + lib_opts
+    # Make sure we don't mark symbols as default visibility.  This works around
+    # an issue with the wasm backend where all default visibility symbols are
+    # exported (and therefore can't be GC'd).
+    # FIXME(https://github.com/kripken/emscripten/issues/7383)
+    opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
     if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
       opts += ['-fno-exceptions']
     for src in files:
