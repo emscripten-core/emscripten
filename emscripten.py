@@ -20,7 +20,6 @@ import shutil
 import pprint
 from collections import OrderedDict
 
-import tools
 from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
