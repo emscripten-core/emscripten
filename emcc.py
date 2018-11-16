@@ -1796,9 +1796,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
       logger.debug('LLVM => JS')
-      extra_args = []
+      js_libraries = None
       if options.js_libraries:
-        extra_args = ['--libraries', ','.join(map(os.path.abspath, options.js_libraries))]
+        js_libraries = [os.path.abspath(lib) for lib in options.js_libraries]
       if options.memory_init_file:
         shared.Settings.MEM_INIT_METHOD = 1
       else:
@@ -1807,7 +1807,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = shared.Building.emscripten(final, append_ext=False, extra_args=extra_args)
+      final = shared.Building.emscripten(final, js_libraries)
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
