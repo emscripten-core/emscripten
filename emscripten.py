@@ -1936,7 +1936,6 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   except:
     pass
 
-
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
   receiving = create_receiving_wasm(exported_implemented_functions)
