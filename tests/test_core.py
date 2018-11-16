@@ -4106,6 +4106,12 @@ ok
       self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third%s') that already exists" % dylib_suffix, full)
 
   @needs_dlfcn
+  def test_dylink_dso_needed(self):
+    def do_run(src, expected_output):
+      self.do_run(src + 'int main() { return _main(); }', expected_output)
+    self._test_dylink_dso_needed(do_run)
+
+  @needs_dlfcn
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
     open('third.cpp', 'w').write(r'''
