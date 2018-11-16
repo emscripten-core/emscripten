@@ -84,41 +84,99 @@ var asm2wasmImports = { // special asm2wasm imports
 };
 
 #if RELOCATABLE
+// fetchBinary fetches binaray data @ url. (async)
+function fetchBinary(url) {
+  return fetch(url, { credentials: 'same-origin' }).then(function(response) {
+    if (!response['ok']) {
+      throw "failed to load binary file at '" + url + "'";
+    }
+    return response['arrayBuffer']();
+  }).then(function(buffer) {
+    return new Uint8Array(buffer);
+  });
+}
 
-function loadDynamicLibrary(lib) {
-  var libModule;
+// loadDynamicLibrary loads dynamic library @ lib URL / path.
+//
+// Several flags affect the loading:
+//
+// - if flags.loadAsync=true, the loading is performed asynchronously and
+//   loadDynamicLibrary returns corresponding promise.
+function loadDynamicLibrary(lib, flags) {
+  flags = flags || {};
+
+  // libData <- lib
+  function loadLibData() {
 #if WASM
-  var bin;
-  if (lib.buffer) {
-    // we were provided the binary, in a typed array
-    bin = lib;
-  } else {
+    // for wasm, we can use fetch for async
+    if (flags.loadAsync) {
+      return fetchBinary(lib);
+    }
     // load the binary synchronously
-    bin = Module['readBinary'](lib);
-  }
-  libModule = loadWebAssemblyModule(bin);
+    return Module['readBinary'](lib);
 #else
-  var src = Module['read'](lib);
-  libModule = eval(src)(
-    alignFunctionTables(),
-    Module
-  );
-#endif
-  // add symbols into global namespace TODO: weak linking etc.
-  for (var sym in libModule) {
-    if (!Module.hasOwnProperty(sym)) {
-      Module[sym] = libModule[sym];
-    }
-#if ASSERTIONS == 2
-    else if (sym[0] === '_') {
-      var curr = Module[sym], next = libModule[sym];
-      // don't warn on functions - might be odr, linkonce_odr, etc.
-      if (!(typeof curr === 'function' && typeof next === 'function')) {
-        err("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
-      }
-    }
+    // for js we only imitate async
+    var libData;
+    libData = Module['read'](lib);
+    return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
   }
+
+  // libModule <- libData
+  function createLibModule(libData) {
+#if WASM
+    return loadWebAssemblyModule(libData, flags.loadAsync)
+#else
+    var libModule = eval(libData)(
+      alignFunctionTables(),
+      Module
+    );
+    return libModule;
+#endif
+  }
+
+  // libModule <- lib
+  function getLibModule() {
+    if (flags.loadAsync) {
+      return loadLibData(lib).then(function(libData) {
+        return createLibModule(libData);
+      });
+    }
+
+    return createLibModule(loadLibData(lib));
+  }
+
+  // Module.symbols <- libModule.symbols (flags.global handler)
+  function mergeLibSymbols(libModule) {
+    // add symbols into global namespace TODO: weak linking etc.
+    for (var sym in libModule) {
+      if (!Module.hasOwnProperty(sym)) {
+        Module[sym] = libModule[sym];
+      }
+#if ASSERTIONS == 2
+      else if (sym[0] === '_') {
+        var curr = Module[sym], next = libModule[sym];
+        // don't warn on functions - might be odr, linkonce_odr, etc.
+        if (!(typeof curr === 'function' && typeof next === 'function')) {
+          err("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+        }
+      }
+#endif
+    }
+  }
+
+  // module for lib is loaded - update the global namespace
+  function moduleLoaded(libModule) {
+    mergeLibSymbols(libModule);
+  }
+
+  if (flags.loadAsync) {
+    return getLibModule().then(function(libModule) {
+      moduleLoaded(libModule);
+    })
+  }
+
+  moduleLoaded(getLibModule());
 }
 
 #if WASM
