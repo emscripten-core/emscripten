@@ -63,7 +63,7 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript(infile, outfile, libraries, compiler_engine, temp_files,
+def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
              DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
@@ -1862,15 +1862,14 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
+def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
                           temp_files, DEBUG):
   # Overview:
-  #   * Run LLVM backend to emit a wasm object file (.o)
-  #   * Run lld to turn this into a wasm binary (.wasm)
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
-  #   * We may also run some Binaryen passes here.
+  #     to use emscripten's wasm<->JS ABI
+  #   * Use the metadata to generate the JS glue that goes with the wasm
 
-  metadata = finalize_wasm(temp_files, infile, outfile, DEBUG)
+  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
   if shared.Settings.SIDE_MODULE:
     return
 
@@ -1937,12 +1936,10 @@ def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
   except:
     pass
 
-  # sent data
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
   receiving = create_receiving_wasm(exported_implemented_functions)
 
-  # finalize
   module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
                               exported_implemented_functions)
 
@@ -1952,7 +1949,7 @@ def emscript_wasm_backend(infile, outfile, libraries, compiler_engine,
   outfile.close()
 
 
-def finalize_wasm(temp_files, infile, outfile, DEBUG):
+def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
   wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
 
@@ -1993,6 +1990,8 @@ def finalize_wasm(temp_files, infile, outfile, DEBUG):
     cmd.append('--input-source-map=' + base_source_map)
     cmd.append('--output-source-map=' + wasm + '.map')
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
+  if not shared.Settings.MEM_INIT_IN_WASM:
+    cmd.append('--separate-data-segments=' + memfile)
   shared.check_call(cmd, stdout=open(metadata_file, 'w'))
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
@@ -2274,7 +2273,7 @@ def normalize_line_endings(text):
   return text
 
 
-def main(infile, outfile, libraries):
+def main(infile, outfile, memfile, libraries):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
@@ -2294,5 +2293,5 @@ def main(infile, outfile, libraries):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, libraries, shared.COMPILER_ENGINE, temp_files, get_configuration().DEBUG)
+      infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, get_configuration().DEBUG)
   )

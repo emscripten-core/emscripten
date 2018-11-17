@@ -1900,6 +1900,8 @@ class Building(object):
       cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
     elif not Settings.ALLOW_MEMORY_GROWTH:
       cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+    if Settings.USE_PTHREADS:
+      cmd.append('--shared-memory')
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
@@ -2231,20 +2233,19 @@ class Building(object):
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
-  def emscripten(filename, js_libraries):
+  def emscripten(infile, memfile, js_libraries):
     if path_from_root() not in sys.path:
       sys.path += [path_from_root()]
     import emscripten
     # Run Emscripten
-    infile = filename
-    outfile = filename + '.o.js'
+    outfile = infile + '.o.js'
     with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.main(infile, outfile, js_libraries)
+      emscripten.main(infile, outfile, memfile, js_libraries)
 
     # Detect compilation crashes and errors
-    assert os.path.exists(filename + '.o.js'), 'Emscripten failed to generate .js'
+    assert os.path.exists(outfile), 'Emscripten failed to generate .js'
 
-    return filename + '.o.js'
+    return outfile
 
   @staticmethod
   def can_inline():
