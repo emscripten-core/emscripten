@@ -3290,6 +3290,63 @@ int 123
 ok
 ''')
 
+  @needs_dlfcn
+  def test_dlfcn_handle_alloc(self):
+    # verify that dlopen does not allocate already used handles
+    dirname = self.get_dir()
+
+    def indir(name):
+      return os.path.join(dirname, name)
+
+    libecho = r'''
+      #include <stdio.h>
+
+      static struct %(libname)s {
+        %(libname)s() {
+          puts("%(libname)s: loaded");
+        }
+      } _;
+    '''
+
+    self.prep_dlfcn_lib()
+    self.build_dlfcn_lib(libecho % {'libname': 'a'}, dirname, indir('a.cpp'))
+    shutil.move(indir('liblib.so'), indir('liba.so'))
+    self.build_dlfcn_lib(libecho % {'libname': 'b'}, dirname, indir('b.cpp'))
+    shutil.move(indir('liblib.so'), indir('libb.so'))
+
+    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('EXPORT_ALL', 1)
+    self.emcc_args += ['--embed-file', '.@/']
+
+    # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
+    self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
+
+    src = r'''
+      #include <dlfcn.h>
+      #include <assert.h>
+      #include <stddef.h>
+
+      int main() {
+        void *liba, *libb, *liba2;
+        int err;
+
+        liba = dlopen("liba.so", RTLD_NOW);
+        assert(liba != NULL);
+        libb = dlopen("libb.so", RTLD_NOW);
+        assert(liba != NULL);
+
+        err = dlclose(liba);
+        assert(!err);
+
+        liba2 = dlopen("liba.so", RTLD_NOW);
+        assert(liba2 != libb);
+
+        return 0;
+      }
+      '''
+    self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
+
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)

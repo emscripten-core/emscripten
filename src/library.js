@@ -1699,6 +1699,11 @@ LibraryManager.library = {
   $DLFCN: {
     error: null,
     errorMsg: null,
+
+    // next free handle to use for a loaded dso.
+    // (handle=0 is avoided as it means "error" in dlopen)
+    nextHandle: 1,
+
     loadedLibs: {}, // handle -> [refcount, name, lib_object]
     loadedLibNames: {}, // name -> handle
   },
@@ -1786,11 +1791,7 @@ LibraryManager.library = {
         }
       }
 
-      // Not all browsers support Object.keys().
-      var handle = 1;
-      for (var key in DLFCN.loadedLibs) {
-        if (DLFCN.loadedLibs.hasOwnProperty(key)) handle++;
-      }
+      var handle = DLFCN.nextHandle++;
 
       // We don't care about RTLD_NOW and RTLD_LAZY.
       if (flag & 256) { // RTLD_GLOBAL
