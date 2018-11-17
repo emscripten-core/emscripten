@@ -22,10 +22,12 @@ class Cache(object):
   EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS') or 0)
 
   def __init__(self, dirname=None, debug=False, use_subdir=True):
+    # figure out the root directory for all caching
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    self.root_dirname = dirname
 
     def try_remove_ending(thestring, ending):
       if thestring.endswith(ending):
@@ -35,6 +37,7 @@ class Cache(object):
     self.filelock_name = try_remove_ending(try_remove_ending(dirname, '/'), '\\') + '.lock'
     self.filelock = filelock.FileLock(self.filelock_name)
 
+    # if relevant, use a subdir of the cache
     if use_subdir:
       if not shared.Settings.WASM_BACKEND:
         dirname = os.path.join(dirname, 'asmjs')
@@ -79,7 +82,7 @@ class Cache(object):
       self.release_cache_lock()
 
   def erase(self):
-    tempfiles.try_delete(self.dirname)
+    tempfiles.try_delete(self.root_dirname)
     try:
       open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
     except Exception as e:

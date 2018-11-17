@@ -493,9 +493,11 @@ fi
     # Manual cache clearing
     ensure_cache()
     self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
     self.assertFalse(os.path.exists(EMCC_CACHE))
+    self.assertFalse(os.path.exists(Cache.root_dirname))
     self.assertIn(SANITY_MESSAGE, output)
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
