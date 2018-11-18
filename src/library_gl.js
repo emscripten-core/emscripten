@@ -1361,88 +1361,55 @@ var LibraryGL = {
              ((height - 1) * alignedRowSize + plainRowSize);
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize'],
+  _colorChannelsInGlTextureFormat: {
+    0x1906 /* GL_ALPHA */: 1,
+    0x1909 /* GL_LUMINANCE */: 1,
+    0x1902 /* GL_DEPTH_COMPONENT */: 1,
+    0x190A /* GL_LUMINANCE_ALPHA */: 2,
+    0x1907 /* GL_RGB */: 3,
+    0x8C40 /* GL_SRGB_EXT */: 3,
+    0x1908 /* GL_RGBA */: 4,
+    0x8C42 /* GL_SRGB_ALPHA_EXT */: 4,
+#if USE_WEBGL2
+    0x1903 /* GL_RED */: 1,
+    0x8D94 /* GL_RED_INTEGER */: 1,
+    0x8227 /* GL_RG */: 2,
+    0x8228 /* GL_RG_INTEGER*/: 2,
+    0x8D98 /* GL_RGB_INTEGER */: 3,
+    0x8D99 /* GL_RGBA_INTEGER */: 4
+#endif
+  },
+
+  _sizeOfGlTextureElementType: {
+    0x1401 /* GL_UNSIGNED_BYTE */: 1,
+    0x1403 /* GL_UNSIGNED_SHORT */: 2,
+    0x8D61 /* GL_HALF_FLOAT_OES */: 2,
+    0x1405 /* GL_UNSIGNED_INT */: 4,
+    0x1406 /* GL_FLOAT */: 4,
+    0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 4,
+    0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 2,
+    0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 2,
+    0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 2,
+#if USE_WEBGL2
+    0x1400 /* GL_BYTE */: 1,
+    0x140B /* GL_HALF_FLOAT */: 2,
+    0x1402 /* GL_SHORT */: 2,
+    0x1404 /* GL_INT */: 4,
+    0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 4,
+    0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 4,
+    0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 4,
+    0x84FA /* GL_UNSIGNED_INT_24_8 */: 4,
+#endif
+  },
+
+  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize', '_colorChannelsInGlTextureFormat', '_sizeOfGlTextureElementType'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
-    var sizePerPixel;
-    var numChannels;
-    switch(format) {
-      case 0x1906 /* GL_ALPHA */:
-      case 0x1909 /* GL_LUMINANCE */:
-      case 0x1902 /* GL_DEPTH_COMPONENT */:
-#if USE_WEBGL2
-      case 0x1903 /* GL_RED */:
-      case 0x8D94 /* GL_RED_INTEGER */:
-#endif
-        numChannels = 1;
-        break;
-      case 0x190A /* GL_LUMINANCE_ALPHA */:
-#if USE_WEBGL2
-      case 0x8227 /* GL_RG */:
-      case 0x8228 /* GL_RG_INTEGER*/:
-#endif
-        numChannels = 2;
-        break;
-      case 0x1907 /* GL_RGB */:
-      case 0x8C40 /* GL_SRGB_EXT */:
-#if USE_WEBGL2
-      case 0x8D98 /* GL_RGB_INTEGER */:
-#endif
-        numChannels = 3;
-        break;
-      case 0x1908 /* GL_RGBA */:
-      case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
-#if USE_WEBGL2
-      case 0x8D99 /* GL_RGBA_INTEGER */:
-#endif
-        numChannels = 4;
-        break;
-      default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
+    var sizePerPixel = __colorChannelsInGlTextureFormat[format] * __sizeOfGlTextureElementType[type];
+    if (!sizePerPixel) {
+      GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-        err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
-#endif
-        return null;
-    }
-    switch (type) {
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-#if USE_WEBGL2
-      case 0x1400 /* GL_BYTE */:
-#endif
-        sizePerPixel = numChannels*1;
-        break;
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-#if USE_WEBGL2
-      case 0x140B /* GL_HALF_FLOAT */:
-      case 0x1402 /* GL_SHORT */:
-#endif
-        sizePerPixel = numChannels*2;
-        break;
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x1406 /* GL_FLOAT */:
-#if USE_WEBGL2
-      case 0x1404 /* GL_INT */:
-#endif
-        sizePerPixel = numChannels*4;
-        break;
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-#if USE_WEBGL2
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-#endif
-        sizePerPixel = 4;
-        break;
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-        sizePerPixel = 2;
-        break;
-      default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
+      if (!__colorChannelsInGlTextureFormat[format]) err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
+      else err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
         return null;
     }
