@@ -279,18 +279,8 @@ var LibraryGL = {
     getSource: function(shader, count, string, length) {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var frag;
-        if (length) {
-          var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
-          if (len < 0) {
-            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-          } else {
-            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
-          }
-        } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-        }
-        source += frag;
+        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : undefined;
+        source += Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
