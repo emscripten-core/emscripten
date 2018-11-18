@@ -1411,7 +1411,7 @@ var LibraryGL = {
       if (!__colorChannelsInGlTextureFormat[format]) err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
       else err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return null;
+      return;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
     switch(type) {
@@ -1467,7 +1467,6 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
 #endif
-        return null;
     }
   },
 
@@ -1498,8 +1497,6 @@ var LibraryGL = {
         return HEAPU32;
       case 0x1406 /* GL_FLOAT */:
         return HEAPF32;
-      default:
-        return null;
     }
   },
 
