@@ -2593,8 +2593,8 @@ var LibraryJSEvents = {
     else target = Module['canvas'];
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    target.style.setProperty("width", width + "px");
-    target.style.setProperty("height", height + "px");
+    target.style.width = width + "px";
+    target.style.height = height + "px";
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
