@@ -1282,25 +1282,6 @@ var LibraryGL = {
   },
 #endif
 
-  glGenTextures__sig: 'vii',
-  glGenTextures: function(n, textures) {
-    for (var i = 0; i < n; i++) {
-      var texture = GLctx.createTexture();
-      if (!texture) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // GLES + EGL specs don't specify what should happen here, so best to issue an error and create IDs with 0.
-#if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenTextures: GLctx.createTexture returned null - most likely GL context is lost!');
-#endif
-        while(i < n) {{{ makeSetValue('textures', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.textures);
-      texture.name = id;
-      GL.textures[id] = texture;
-      {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
-    }
-  },
-
   glDeleteTextures__sig: 'vii',
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
@@ -1746,23 +1727,51 @@ var LibraryGL = {
     return GLctx.isTexture(texture);
   },
 
-  glGenBuffers__sig: 'vii',
-  glGenBuffers: function(n, buffers) {
+  // The code path for creating textures, buffers, framebuffers and other objects is so identical to each other (and not in fast path), that
+  // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
+  // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
+  // the name of the caller for debug information.
+  _glGenObject__sig: 'vii',
+  _glGenObject: function(n, buffers, createFunction, objectTable
+#if GL_ASSERTIONS
+    , functionName
+#endif
+    ) {
     for (var i = 0; i < n; i++) {
-      var buffer = GLctx.createBuffer();
+      var buffer = GLctx[createFunction]();
       if (!buffer) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenBuffers: GLctx.createBuffer returned null - most likely GL context is lost!');
+        err('GL_INVALID_OPERATION in ' + functionName + ': GLctx.' + createFunction + ' returned null - most likely GL context is lost!');
 #endif
         while(i < n) {{{ makeSetValue('buffers', 'i++*4', 0, 'i32') }}};
         return;
       }
-      var id = GL.getNewId(GL.buffers);
+      var id = GL.getNewId(objectTable);
       buffer.name = id;
-      GL.buffers[id] = buffer;
+      objectTable[id] = buffer;
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
+  },
+
+  glGenBuffers__deps: ['_glGenObject'],
+  glGenBuffers__sig: 'vii',
+  glGenBuffers: function(n, buffers) {
+    __glGenObject(n, buffers, 'createBuffer', GL.buffers
+#if GL_ASSERTIONS
+    , 'glGenBuffers'
+#endif
+      );
+  },
+
+  glGenTextures__deps: ['_glGenObject'],
+  glGenTextures__sig: 'vii',
+  glGenTextures: function(n, textures) {
+    __glGenObject(n, textures, 'createTexture', GL.textures
+#if GL_ASSERTIONS
+    , 'glGenTextures'
+#endif
+      );
   },
 
   glDeleteBuffers__sig: 'vii',
@@ -2177,22 +2186,13 @@ var LibraryGL = {
 
   // Queries
   glGenQueries__sig: 'vii',
+  glGenQueries__deps: ['_glGenObject'],
   glGenQueries: function(n, ids) {
-    for (var i = 0; i < n; i++) {
-      var query = GLctx['createQuery']();
-      if (!query) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenQueries: GLctx.createQuery returned null - most likely GL context is lost!');
+    , 'glGenQueries'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.queries);
-      query.name = id;
-      GL.queries[id] = query;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteQueries__sig: 'vii',
@@ -2262,22 +2262,13 @@ var LibraryGL = {
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
+  glGenSamplers__deps: ['_glGenObject'],
   glGenSamplers: function(n, samplers) {
-    for (var i = 0; i < n; i++) {
-      var sampler = GLctx['createSampler']();
-      if (!sampler) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenSamplers: GLctx.createSampler returned null - most likely GL context is lost!');
+    , 'glGenSamplers'
 #endif
-        while(i < n) {{{ makeSetValue('samplers', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.samplers);
-      sampler.name = id;
-      GL.samplers[id] = sampler;
-      {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteSamplers__sig: 'vii',
@@ -2373,22 +2364,13 @@ var LibraryGL = {
 
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
+  glGenTransformFeedbacks__deps: ['_glGenObject'],
   glGenTransformFeedbacks: function(n, ids) {
-    for (var i = 0; i < n; i++) {
-      var transformFeedback = GLctx['createTransformFeedback']();
-      if (!transformFeedback) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenTransformFeedbacks: GLctx.createTransformFeedback returned null - most likely GL context is lost!');
+    , 'glGenTransformFeedbacks'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.transformFeedbacks);
-      transformFeedback.name = id;
-      GL.transformFeedbacks[id] = transformFeedback;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteTransformFeedbacks__sig: 'vii',
@@ -2826,22 +2808,13 @@ var LibraryGL = {
   },
 
   glGenRenderbuffers__sig: 'vii',
+  glGenRenderbuffers__deps: ['_glGenObject'],
   glGenRenderbuffers: function(n, renderbuffers) {
-    for (var i = 0; i < n; i++) {
-      var renderbuffer = GLctx.createRenderbuffer();
-      if (!renderbuffer) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenRenderbuffers: GLctx.createRenderbuffer returned null - most likely GL context is lost!');
+    , 'glGenRenderbuffers'
 #endif
-        while(i < n) {{{ makeSetValue('renderbuffers', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.renderbuffers);
-      renderbuffer.name = id;
-      GL.renderbuffers[id] = renderbuffer;
-      {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteRenderbuffers__sig: 'vii',
@@ -4137,22 +4110,13 @@ var LibraryGL = {
   },
 
   glGenFramebuffers__sig: 'vii',
+  glGenFramebuffers__deps: ['_glGenObject'],
   glGenFramebuffers: function(n, ids) {
-    for (var i = 0; i < n; ++i) {
-      var framebuffer = GLctx.createFramebuffer();
-      if (!framebuffer) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenFramebuffers: GLctx.createFramebuffer returned null - most likely GL context is lost!');
+    , 'glGenFramebuffers'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.framebuffers);
-      framebuffer.name = id;
-      GL.framebuffers[id] = framebuffer;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteFramebuffers__sig: 'vii',
@@ -4212,9 +4176,11 @@ var LibraryGL = {
     return GLctx.isFramebuffer(fb);
   },
 
+  glGenVertexArrays__deps: ['_glGenObject'
 #if LEGACY_GL_EMULATION
-  glGenVertexArrays__deps: ['emulGlGenVertexArrays'],
+  , 'emulGlGenVertexArrays'
 #endif
+  ],
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
@@ -4223,22 +4189,11 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-
-    for (var i = 0; i < n; i++) {
-      var vao = GLctx['createVertexArray']();
-      if (!vao) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenVertexArrays: GLctx.vao.createVertexArrayOES returned null - most likely GL context is lost!');
+    , 'glGenVertexArrays'
 #endif
-        while(i < n) {{{ makeSetValue('arrays', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.vaos);
-      vao.name = id;
-      GL.vaos[id] = vao;
-      {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
-    }
+      );
 #endif
   },
 
