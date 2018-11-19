@@ -7903,7 +7903,7 @@ extern "C" {
     if not self.is_wasm():
       self.skipTest('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')
-    default = self.get_setting('BINARYEN_TRAP_MODE')
+    default = 'allow'
     print('default is', default)
     for mode in ['js', 'clamp', 'allow', '']:
       if mode == 'js' and self.is_wasm_backend():
