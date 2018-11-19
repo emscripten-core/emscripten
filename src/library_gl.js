@@ -915,7 +915,7 @@ var LibraryGL = {
       var utable = ptable.uniforms;
       // A program's uniform table maps the string name of an uniform to an integer location of that uniform.
       // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
-      var numUniforms = GLctx.getProgramParameter(p, GLctx.ACTIVE_UNIFORMS);
+      var numUniforms = GLctx.getProgramParameter(p, 0x8B86/*GL_ACTIVE_UNIFORMS*/);
       for (var i = 0; i < numUniforms; ++i) {
         var u = GLctx.getActiveUniform(p, i);
 
