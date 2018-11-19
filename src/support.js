@@ -86,7 +86,7 @@ var asm2wasmImports = { // special asm2wasm imports
 #if RELOCATABLE
 var loadedDynamicLibraries = [];
 
-function loadDynamicLibrary(lib) {
+function loadDynamicLibrary(lib,loadAsync) {
   var libModule;
 #if WASM
   var bin;
@@ -97,7 +97,9 @@ function loadDynamicLibrary(lib) {
     // load the binary synchronously
     bin = Module['readBinary'](lib);
   }
-  libModule = loadWebAssemblyModule(bin);
+  libModule = loadWebAssemblyModule(bin,loadAsync);
+  if (loadAsync) {
+    return libModule.then(function (libModule) {
 #else
   var src = Module['read'](lib);
   libModule = eval(src)(
@@ -121,6 +123,9 @@ function loadDynamicLibrary(lib) {
 #endif
   }
   loadedDynamicLibraries.push(libModule);
+#if WASM
+    });}
+#endif
 }
 
 #if WASM
