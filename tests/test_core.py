@@ -1209,6 +1209,35 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'OK\n')
 
+  def test_exceptions_i64_emulated_function_pointers(self):
+      self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      # needs to flush stdio streams
+      self.set_setting('EXIT_RUNTIME', 1)
+      src = r'''
+        #include <iostream>
+        #include <exception>
+
+        int64_t long_func(int64_t l) {
+          return l + 1;
+        }
+
+        int main() {
+          int64_t res;
+
+          try {
+              res = long_func(0x121212123434);
+              if (res == 0x121212123435)
+                std::cout << "OK";
+          } catch(std::exception) {
+            try {
+              throw;
+            } catch(std::exception) {}
+          }
+        }
+      '''
+      self.do_run(src, 'OK\n')
+
   def test_exceptions_typed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     # needs to flush stdio streams

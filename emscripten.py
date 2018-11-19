@@ -345,6 +345,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
+
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
     final_function_tables = (
       final_function_tables
@@ -1332,8 +1333,21 @@ function ftCall_%s(%s) {
         else:
           # otherwise, wasm emulated function pointers *without* emulated casts can just all
           # into the table
-          table_access = "Module['wasmTable']"
-          table_read = table_access + '.get(x)'
+          if not shared.Settings.WASM_BACKEND and 'j' in sig:
+            legal_sig = shared.JS.legalize_sig(sig)
+            args = ['a%d' % i for i in range(len(legal_sig) - 1)]
+            full_args = ['x'] + args
+            call = "Module['asm']['ftCall_helper_%s'](%s)" % (sig, ', '.join (full_args));
+            asm_setup += '''
+function ftCall_%s(%s) {
+  return %s;
+}
+''' % (sig, ', '.join(full_args), call);
+            # and we are done with this signature, continue
+            continue
+          else:
+            table_access = "Module['wasmTable']"
+            table_read = table_access + '.get(x)'
       else:
         table_access = 'FUNCTION_TABLE_' + sig
         if shared.Settings.SIDE_MODULE:
