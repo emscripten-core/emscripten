@@ -379,7 +379,7 @@ class RunnerCore(unittest.TestCase):
     open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    # force_recompile = force_recompile or os.stat(filename + '.o.ll').st_size > 50000
+    # force_recompile = force_recompile or os.path.getsize(filename + '.o.ll') > 50000
     # If the file is big, recompile just to get ll_opts
     # Recompiling just for dfe in ll_opts is too costly
 

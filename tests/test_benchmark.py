@@ -92,8 +92,8 @@ class Benchmarker(object):
 
     # size
 
-    size = sum([os.stat(f).st_size for f in self.get_output_files()])
-    gzip_size = sum([len(zlib.compress(open(f).read())) for f in self.get_output_files()])
+    size = sum(os.path.getsize(f) for f in self.get_output_files())
+    gzip_size = sum(len(zlib.compress(open(f).read())) for f in self.get_output_files())
 
     print('        size: %8s, compressed: %8s' % (size, gzip_size), end=' ')
     if self.get_size_text():
