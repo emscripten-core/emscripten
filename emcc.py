@@ -392,7 +392,7 @@ def run():
   if DEBUG:
     logger.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
   # Not doing a compilation if we have '-v', so don't use extra flags
-  if EMCC_CFLAGS and '-v; not in sys.argv:
+  if EMCC_CFLAGS and '-v' not in sys.argv:
     sys.argv.extend(shlex.split(EMCC_CFLAGS))
 
   if DEBUG and LEAVE_INPUTS_RAW:
