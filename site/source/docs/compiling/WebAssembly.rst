@@ -151,6 +151,16 @@ Also make sure that gzip is enabled:
 
     AddOutputFilterByType DEFLATE application/wasm
 
+If you serve large ``.wasm`` files, the webserver will consume CPU compressing them on the fly at each request.
+Instead you can pre-compress them to ``.wasm.gz`` and use content negotiation:
+
+.. code-block:: none
+
+    Options Multiviews
+    RemoveType .gz
+    AddEncoding x-gzip .gz
+    AddType application/wasm .wasm
+
 LLVM WebAssembly backend
 ========================
 
