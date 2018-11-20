@@ -262,7 +262,7 @@ var LibraryPThread = {
       out('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
 
       var numWorkersLoaded = 0;
-      var pthreadMainJs = 'pthread-main.js';
+      var pthreadMainJs = "{{{ PTHREAD_MAIN_FILE }}}";
       // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'pthread-main.js' relative
       // to the main html file is loaded.

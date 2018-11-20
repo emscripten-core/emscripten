@@ -1214,6 +1214,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
+        # set location of pthread-main.js
+        shared.Settings.PTHREAD_MAIN_FILE = unsuffixed(os.path.basename(target)) + '.pthread-main.js'
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
@@ -1935,7 +1937,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
         shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'),
-                        os.path.join(target_dir, 'pthread-main.js'))
+                        os.path.join(target_dir, shared.Settings.PTHREAD_MAIN_FILE))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
