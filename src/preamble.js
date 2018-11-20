@@ -2148,7 +2148,7 @@ function integrateWasmJS() {
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
-  // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
+  // doesn't need to care that it is wasm or polyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
     // import table
