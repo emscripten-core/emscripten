@@ -537,18 +537,32 @@ def perform_sanify_checks():
       logger.warning('closure compiler will not be available')
 
 
+def run_npm_install():
+  """Run `npm install` command to update node_modules based on package.json.
+  For normally node projects developers are expected to run this when they
+  fetch from git, but emscripten it not a normal node project so for now
+  at least we hide this extra step and do it for them.
+  """
+  npm = os.path.join(os.path.dirname(NODE_JS[0]), 'npm')
+  if not os.path.exists(npm):
+    exit_with_error('npm not found at: %s', npm)
+  logger.info('running `npm install` to update node_modules')
+  jsrun.run_js_tool(npm, NODE_JS, jsargs=['install'], cwd=__rootpath__)
+
+
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
 
   The test runner always does this check (through |force|). emcc does this less
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
-  EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
+  EM_CONFIG (i.e., we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
+
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
       return
     reason = None
@@ -590,6 +604,8 @@ def check_sanity(force=False):
       exit_with_error('failing sanity checks due to previous llvm failure')
 
     perform_sanify_checks()
+
+    run_npm_install()
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here

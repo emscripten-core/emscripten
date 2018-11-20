@@ -385,7 +385,7 @@ fi
     self.assertContained(SANITY_MESSAGE, output)
     assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
     assert mtime(SANITY_FILE) > mtime(CONFIG_FILE)
-    assert generate_sanity() == open(SANITY_FILE).read()
+    assert generate_sanity() == open(SANITY_FILE).read().strip()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # emcc run again should not sanity check, because the sanity file is newer
@@ -394,7 +394,7 @@ fi
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
 
     # correct sanity contents mean we need not check
-    open(SANITY_FILE, 'w').write(generate_sanity())
+    open(SANITY_FILE, 'w').write(generate_sanity() + '\n')
     output = self.check_working(EMCC)
     self.assertNotContained(SANITY_MESSAGE, output)
 
