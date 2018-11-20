@@ -4057,7 +4057,7 @@ ok
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + self.get_emcc_args() + ['-o', 'third' + dylib_suffix])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
