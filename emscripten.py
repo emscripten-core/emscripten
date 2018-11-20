@@ -1031,7 +1031,7 @@ function jsCall_%s_%s(%s) {
 def create_mftCall_funcs(function_table_data):
   if not shared.Settings.EMULATED_FUNCTION_POINTERS:
     return []
-  if (not shared.Settings.RELOCATABLE) or shared.Settings.WASM:
+  if shared.Settings.WASM or not shared.Settings.RELOCATABLE:
     return []
 
   mftCall_funcs = []
@@ -1350,7 +1350,7 @@ function ftCall_%s(%s) {%s
 
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory']
+  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory', 'setTempRet0', 'getTempRet0']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -2229,7 +2229,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setThrew',)
+  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
   if name.startswith('dynCall_'):
     return name
   if name in library_functions_in_module:
