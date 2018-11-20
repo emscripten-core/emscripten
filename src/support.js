@@ -84,7 +84,6 @@ var asm2wasmImports = { // special asm2wasm imports
 };
 
 #if RELOCATABLE
-var loadedDynamicLibraries = [];
 
 function loadDynamicLibrary(lib) {
   var libModule;
@@ -120,7 +119,6 @@ function loadDynamicLibrary(lib) {
     }
 #endif
   }
-  loadedDynamicLibraries.push(libModule);
 }
 
 #if WASM
