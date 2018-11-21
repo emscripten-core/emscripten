@@ -7941,9 +7941,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      21, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19, 62), # noqa
-      (['-O1'], 16, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17, 34), # noqa
-      (['-O2'], 16, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17, 33), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   17, 60), # noqa
+      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   15, 32), # noqa
+      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   15, 31), # noqa
       (['-O3'],  7, [],                         [],  2690,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
       (['-Os'],  7, [],                         [],  2690,  10,    2, 21), # noqa
       (['-Oz'],  7, [],                         [],  2690,  10,    2, 21), # noqa
@@ -7952,7 +7952,7 @@ int main() {
                  0, [],                         [],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1503, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1505, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -7965,9 +7965,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      21, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18, 31), # noqa
-      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15, 15), # noqa
-      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15, 15), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 16, 29), # noqa
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 13, 13), # noqa
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 13, 13), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         [],                           55,  0,  1, 1), # noqa
       (['-Os'],  0, [],                         [],                           55,  0,  1, 1), # noqa
@@ -7976,9 +7976,9 @@ int main() {
 
     print('test on libc++: see effects of emulated function pointers')
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2'], 34, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44, 661), # noqa
+      (['-O2'], 36, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   42, 659), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                34, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25, 622), # noqa
+                36, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   23, 620), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
