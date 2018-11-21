@@ -78,16 +78,9 @@ mergeInto(LibraryManager.library, {
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
         }
-        var i = 0;
         try {
-          if (offset === 0 && length === 0) {
-            // musl implements an fflush using a write of a NULL buffer of size 0
-            stream.tty.ops.flush(stream.tty);
-          } else {
-            while (i < length) {
-              stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
-              i++;
-            }
+          for (var i = 0; i < length; i++) {
+            stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
           }
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES.EIO);
