@@ -611,7 +611,9 @@ function lengthBytesUTF8(str) {
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
+#if TEXTDECODER
 var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
+#endif
 function UTF16ToString(ptr) {
 #if ASSERTIONS
   assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
