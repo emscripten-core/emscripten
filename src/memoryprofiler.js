@@ -26,7 +26,7 @@ var emscriptenMemoryProfiler = {
   allocationsAtLoc: {},
   allocationSitePtrs: {},
 
-  // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to 
+  // Stores an associative array of records HEAP ptr -> size so that we can retrieve how much memory was freed in calls to
   // _free() and decrement the tracked usage accordingly.
   // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer starting at 'address'.
   sizeOfAllocatedPtr: {},
@@ -87,7 +87,7 @@ var emscriptenMemoryProfiler = {
     this.totalMemoryAllocated += size;
     ++this.totalTimesMallocCalled;
     this.stackTopWatermark = Math.max(this.stackTopWatermark, STACKTOP);
-    
+
     // Remember the size of the allocated block to know how much will be _free()d later.
     this.sizeOfAllocatedPtr[ptr] = size;
     // Also track if this was a _malloc performed at preRun time.
@@ -393,4 +393,4 @@ var emscriptenMemoryProfiler = {
 // Backwards compatibility with previously compiled code. Don't call this anymore!
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
-if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && typeof process === 'undefined') emscriptenMemoryProfiler.initialize();
+if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && (typeof process === 'undefined' || process.browser)) emscriptenMemoryProfiler.initialize();
