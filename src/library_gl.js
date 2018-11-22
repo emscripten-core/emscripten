@@ -1471,7 +1471,7 @@ var LibraryGL = {
   },
 
 #if USE_WEBGL2
-  $emscriptenWebGLGetHeapForType: function(type) {
+  _heapObjectForWebGLType: function(type) {
     switch(type) {
       case 0x1400 /* GL_BYTE */:
         return HEAP8;
@@ -1500,38 +1500,29 @@ var LibraryGL = {
     }
   },
 
-  $emscriptenWebGLGetShiftForType: function(type) {
-    switch(type) {
-      case 0x1400 /* GL_BYTE */:
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-        return 0;
-      case 0x1402 /* GL_SHORT */:
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-      case 0x140B /* GL_HALF_FLOAT */:
-        return 1;
-      case 0x1404 /* GL_INT */:
-      case 0x1406 /* GL_FLOAT */:
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-        return 2;
-      default:
-        return 0;
-    }
+  _heapAccessShiftForWebGLType: {
+      0x1402 /* GL_SHORT */: 1,
+      0x1403 /* GL_UNSIGNED_SHORT */: 1,
+      0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 1,
+      0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 1,
+      0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 1,
+      0x8D61 /* GL_HALF_FLOAT_OES */: 1,
+      0x140B /* GL_HALF_FLOAT */: 1,
+      0x1404 /* GL_INT */: 2,
+      0x1406 /* GL_FLOAT */: 2,
+      0x1405 /* GL_UNSIGNED_INT */: 2,
+      0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 2,
+      0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 2,
+      0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 2,
+      0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 2,
+      0x84FA /* GL_UNSIGNED_INT_24_8 */: 2
   },
 #endif
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
@@ -1559,7 +1550,7 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels != 0) {
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1575,7 +1566,7 @@ var LibraryGL = {
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                          , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                          , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
@@ -1593,7 +1584,7 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels != 0) {
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1608,7 +1599,7 @@ var LibraryGL = {
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
@@ -1617,7 +1608,7 @@ var LibraryGL = {
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
-        GLctx.readPixels(x, y, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.readPixels(x, y, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       }
       return;
     }
@@ -2122,24 +2113,24 @@ var LibraryGL = {
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
-  glTexImage3D__deps: ['$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels != 0) {
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
     } else {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
-  glTexSubImage3D__deps: ['$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexSubImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels != 0) {
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
     } else {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
