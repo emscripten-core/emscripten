@@ -7729,7 +7729,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
-    GLctx.vertexAttribIPointer(index, size, type, stride, ptr);
+    GLctx['vertexAttribIPointer'](index, size, type, stride, ptr);
   },
 // ~USE_WEBGL2
 #endif
