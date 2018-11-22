@@ -3883,7 +3883,7 @@ var LibraryGL = {
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
       if (ptable.maxAttributeLength == -1) {
         program = GL.programs[program];
-        var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
+        var numAttribs = GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/);
         ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
         for (var i = 0; i < numAttribs; ++i) {
           var activeAttrib = GLctx.getActiveAttrib(program, i);
@@ -3894,7 +3894,7 @@ var LibraryGL = {
     } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
       if (ptable.maxUniformBlockNameLength == -1) {
         program = GL.programs[program];
-        var numBlocks = GLctx.getProgramParameter(program, GLctx.ACTIVE_UNIFORM_BLOCKS);
+        var numBlocks = GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/);
         ptable.maxUniformBlockNameLength = 0;
         for (var i = 0; i < numBlocks; ++i) {
           var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
