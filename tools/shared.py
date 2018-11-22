@@ -1286,6 +1286,9 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
+      exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
+
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
       # TODO(sbc): Make this into a hard error.  We still have a few places that
