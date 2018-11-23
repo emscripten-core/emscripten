@@ -3103,7 +3103,7 @@ var LibraryOpenAL = {
       break;
     case 0xB004 /* AL_EXTENSIONS */:
       ret = '';
-      for (ext in AL.AL_EXTENSIONS) {
+      for (var ext in AL.AL_EXTENSIONS) {
         ret = ret.concat(ext);
         ret = ret.concat(' ');
       }
