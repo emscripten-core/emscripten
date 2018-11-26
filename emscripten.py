@@ -2064,7 +2064,7 @@ def create_em_js(forwarded_json, metadata):
       args = []
     else:
       args = args.split(',')
-    arg_names = [arg.split()[-1] for arg in args if arg]
+    arg_names = [arg.split()[-1].replace("*", "") for arg in args if arg]
     func = 'function {}({}){}'.format(name, ','.join(arg_names), asstr(body))
     em_js_funcs.append(func)
     forwarded_json['Functions']['libraryFunctions'][name] = 1
