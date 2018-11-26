@@ -59,7 +59,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: This is a reasonable setting for a release build.
 
-  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
+  .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`pre-js <emcc-pre-js>` and :ref:`post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 
 .. _emcc-O3:
 
@@ -91,7 +91,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: If no value is specifed it will default to ``1``.
 
-  .. note:: For options that are lists, you need quotation marks (") around the list in most shells (to avoid errors being raised). Two examples are shown below:
+  .. note:: For options that are lists, you need quotation marks (``"`` or ``'``) around the list in most shells (to avoid errors being raised). Two examples are shown below:
 
     ::
 
@@ -261,12 +261,12 @@ Options that are modified or new in *emcc* are listed below:
 ``--pre-js <file>``
   Specify a file whose contents are added before the emitted code and optimized together with it. Note that this might not literally be the very first thing in the JS output, for example if ``MODULARIZE`` is used (see ``src/settings.js``). If you want that, you can just prepend to the output from emscripten; the benefit of ``--pre-js`` is that it optimizes the code with the rest of the emscripten output, which allows better dead code elimination and minification, and it should only be used for that purpose. In particular, ``--pre-js`` code should not alter the main output from emscripten in ways that could confuse the optimizer, such as using ``--pre-js`` + ``--post-js`` to put all the output in an inner function scope (see ``MODULARIZE`` for that).
 
-  `--pre-js` (but not `--post-js`) is also useful for specifying things on the ``Module`` object, as it appears before the JS looks at ``Module`` (for example, you can define ``Module['print']`` there).
+  ``--pre-js`` (but not ``--post-js``) is also useful for specifying things on the ``Module`` object, as it appears before the JS looks at ``Module`` (for example, you can define ``Module['print']`` there).
 
 .. _emcc-post-js:
 
 ``--post-js <file>``
-  Like `--pre-js``, but emits a file *after* the emitted code.
+  Like ``--pre-js``, but emits a file *after* the emitted code.
 
 .. _emcc-embed-file:
 
@@ -286,7 +286,7 @@ Options that are modified or new in *emcc* are listed below:
 
   Preloaded files are stored in **filename.data**, where **filename.html** is the main file you are compiling to. To run your code, you will need both the **.html** and the **.data**.
 
-  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
+  .. note:: This option is similar to :ref:`embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
   *emcc* runs `tools/file_packager.py <https://github.com/kripken/emscripten/blob/master/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
 
@@ -296,7 +296,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-exclude-file:
 
 ``--exclude-file <name>``
-  Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards (*) are supported.
+  Files and directories to be excluded from :ref:`embed-file <emcc-embed-file>` and :ref:`preload-file <emcc-preload-file>`. Wildcards (*) are supported.
 
 ``--use-preload-plugins``
   Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images and audio using the browser's codecs.
@@ -392,7 +392,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-memory-init-file:
 
 ``--memory-init-file <on>``
-  Specifies whether to emit a separate memory initialization file. Possible ``on`` values are:
+  Specifies whether to emit a separate memory initialization file for asm.js (this flag is irrelevant for wasm, where the memory initialization is done in the wasm binary). Possible ``on`` values are:
 
     - ``0``: Do not emit a separate memory initialization file. Instead keep the static initialization inside the generated JavaScript as text. This is the default setting if compiling with -O0 or -O1 link-time optimization flags.
     - ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. This is the default setting when compiling with -O2 or higher.
@@ -461,7 +461,7 @@ Options that are modified or new in *emcc* are listed below:
   Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
 ``--output_eol windows|linux``
-  Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+  Specifies the line ending to generate for the text files that are outputted. If ``--output_eol windows`` is passed, the final output files will have Windows \r\n line endings in them. With ``--output_eol linux``, the final generated files will be written with Unix \n line endings.
 
 ``--cflags``
   Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
