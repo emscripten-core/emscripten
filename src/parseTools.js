@@ -1312,15 +1312,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
 }
 
 function makeGetTempRet0() {
-  return RELOCATABLE ? "(getTempRet0() | 0)" : "tempRet0";
+  return "(getTempRet0() | 0)";
 }
 
 function makeSetTempRet0(value) {
-  if (WASM_BACKEND == 1) {
-    return 'Module["asm"]["setTempRet0"](' + value + ')';
-  } else {
-    return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
-  }
+  return "setTempRet0((" + value + ") | 0)";
 }
 
 function makeStructuralReturn(values, inAsm) {
