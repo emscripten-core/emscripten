@@ -8360,8 +8360,12 @@ end
     self.do_other_test(os.path.join('other', 'fflush'))
 
   def test_fflush_fs(self):
-    # fflush with the full filesystem will
+    # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test(os.path.join('other', 'fflush_fs'), emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
+
+  def test_fflush_fs_exit(self):
+    # on exit, we can send out a newline as no more code will run
+    self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
