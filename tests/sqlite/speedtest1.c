@@ -358,7 +358,7 @@ void speedtest1_prepare(const char *zFormat, ...){
 }
 
 /* Run an SQL statement previously prepared */
-void speedtest1_run(void){
+void speedtest1_execute(void){
   int i, n, len;
   if( g.bSqlOnly ) return;
   assert( g.pStmt );
@@ -395,7 +395,7 @@ static void traceCallback(void *NotUsed, const char *zSql){
 
 /* Substitute random() function that gives the same random
 ** sequence on each run, for repeatability. */
-static void randomFunc(
+static void randomFunc1(
   sqlite3_context *context,
   int NotUsed,
   sqlite3_value **NotUsed2
@@ -441,7 +441,7 @@ void testset_main(void){
     sqlite3_bind_int64(g.pStmt, 1, (sqlite3_int64)x1);
     sqlite3_bind_int(g.pStmt, 2, i);
     sqlite3_bind_text(g.pStmt, 3, zNum, -1, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -459,7 +459,7 @@ void testset_main(void){
     sqlite3_bind_int(g.pStmt, 1, i);
     sqlite3_bind_int64(g.pStmt, 2, (sqlite3_int64)x1);
     sqlite3_bind_text(g.pStmt, 3, zNum, -1, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -477,7 +477,7 @@ void testset_main(void){
     sqlite3_bind_int(g.pStmt, 2, i);
     sqlite3_bind_int64(g.pStmt, 1, (sqlite3_int64)x1);
     sqlite3_bind_text(g.pStmt, 3, zNum, -1, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -495,7 +495,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + sz/5000 + x1;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -515,7 +515,7 @@ void testset_main(void){
     zNum[len] = '%';
     zNum[len+1] = 0;
     sqlite3_bind_text(g.pStmt, 1, zNum, len, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -535,7 +535,7 @@ void testset_main(void){
     zNum[len] = '%';
     zNum[len+1] = 0;
     sqlite3_bind_text(g.pStmt, 1, zNum, len, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -554,7 +554,7 @@ void testset_main(void){
     zNum[len] = '%';
     zNum[len+1] = 0;
     sqlite3_bind_text(g.pStmt, 1, zNum, len, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -583,7 +583,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + sz/5000 + x1;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -601,7 +601,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + sz/5000 + x1;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -618,7 +618,7 @@ void testset_main(void){
     x1 = swizzle(i, maxb);
     len = speedtest1_numbername(x1, zNum, sizeof(zNum)-1);
     sqlite3_bind_text(g.pStmt, 1, zNum, len, SQLITE_STATIC);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -670,7 +670,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + sz/5000 + x1;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -685,7 +685,7 @@ void testset_main(void){
   for(i=1; i<=n; i++){
     x1 = speedtest1_random()%sz + 1;
     sqlite3_bind_int(g.pStmt, 1, x1);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -712,7 +712,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + sz/5000 + x1;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -727,7 +727,7 @@ void testset_main(void){
   for(i=1; i<=n; i++){
     x1 = speedtest1_random()%sz + 1;
     sqlite3_bind_int(g.pStmt, 1, x1);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -762,7 +762,7 @@ void testset_main(void){
     x2 = speedtest1_random()%10 + x1 + 4;
     sqlite3_bind_int(g.pStmt, 1, x1);
     sqlite3_bind_int(g.pStmt, 2, x2);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -774,7 +774,7 @@ void testset_main(void){
     " FROM t1 WHERE rowid<?1;"
   );
   sqlite3_bind_int(g.pStmt, 1, est_square_root(g.szTest)*50);
-  speedtest1_run();
+  speedtest1_execute();
   speedtest1_end_test();
 
   speedtest1_begin_test(980, "PRAGMA integrity_check");
@@ -867,7 +867,7 @@ void testset_cte(void){
     "SELECT s FROM x WHERE ind=0;"
   );
   sqlite3_bind_text(g.pStmt, 1, zPuz, -1, SQLITE_STATIC);
-  speedtest1_run();
+  speedtest1_execute();
   speedtest1_end_test();
 
   speedtest1_begin_test(200, "Sudoku with VALUES 'digits'");
@@ -897,7 +897,7 @@ void testset_cte(void){
     "SELECT s FROM x WHERE ind=0;"
   );
   sqlite3_bind_text(g.pStmt, 1, zPuz, -1, SQLITE_STATIC);
-  speedtest1_run();
+  speedtest1_execute();
   speedtest1_end_test();
 
   rSpacing = 5.0/g.szTest;
@@ -923,7 +923,7 @@ void testset_cte(void){
   );
   sqlite3_bind_double(g.pStmt, 1, rSpacing*.05);
   sqlite3_bind_double(g.pStmt, 2, rSpacing);
-  speedtest1_run();
+  speedtest1_execute();
   speedtest1_end_test();
 
   nElem = 10000*g.szTest;
@@ -937,7 +937,7 @@ void testset_cte(void){
     ");",
     nElem, nElem
   );
-  speedtest1_run();
+  speedtest1_execute();
   speedtest1_end_test();
 
 }
@@ -1011,7 +1011,7 @@ void testset_rtree(int p1, int p2){
     sqlite3_bind_int(g.pStmt, 5, y1);
     sqlite3_bind_int(g.pStmt, 6, z0);
     sqlite3_bind_int(g.pStmt, 7, z1);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_exec("COMMIT");
   speedtest1_end_test();
@@ -1028,7 +1028,7 @@ void testset_rtree(int p1, int p2){
   for(i=0; i<n; i++){
     sqlite3_bind_int(g.pStmt, 1, i*iStep);
     sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-    speedtest1_run();
+    speedtest1_execute();
     aCheck[i] = atoi(g.zResult);
   }
   speedtest1_end_test();
@@ -1041,7 +1041,7 @@ void testset_rtree(int p1, int p2){
     for(i=0; i<n; i++){
       sqlite3_bind_int(g.pStmt, 1, i*iStep);
       sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-      speedtest1_run();
+      speedtest1_execute();
       if( aCheck[i]!=atoi(g.zResult) ){
         fatal_error("Count disagree step %d: %d..%d.  %d vs %d",
                     i, i*iStep, (i+1)*iStep, aCheck[i], atoi(g.zResult));
@@ -1057,7 +1057,7 @@ void testset_rtree(int p1, int p2){
   for(i=0; i<n; i++){
     sqlite3_bind_int(g.pStmt, 1, i*iStep);
     sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-    speedtest1_run();
+    speedtest1_execute();
     aCheck[i] = atoi(g.zResult);
   }
   speedtest1_end_test();
@@ -1070,7 +1070,7 @@ void testset_rtree(int p1, int p2){
     for(i=0; i<n; i++){
       sqlite3_bind_int(g.pStmt, 1, i*iStep);
       sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-      speedtest1_run();
+      speedtest1_execute();
       if( aCheck[i]!=atoi(g.zResult) ){
         fatal_error("Count disagree step %d: %d..%d.  %d vs %d",
                     i, i*iStep, (i+1)*iStep, aCheck[i], atoi(g.zResult));
@@ -1088,7 +1088,7 @@ void testset_rtree(int p1, int p2){
   for(i=0; i<n; i++){
     sqlite3_bind_int(g.pStmt, 1, i*iStep);
     sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-    speedtest1_run();
+    speedtest1_execute();
     if( aCheck[i]!=atoi(g.zResult) ){
       fatal_error("Count disagree step %d: %d..%d.  %d vs %d",
                   i, i*iStep, (i+1)*iStep, aCheck[i], atoi(g.zResult));
@@ -1104,7 +1104,7 @@ void testset_rtree(int p1, int p2){
   for(i=0; i<n; i++){
     sqlite3_bind_int(g.pStmt, 1, i*iStep);
     sqlite3_bind_int(g.pStmt, 2, (i+1)*iStep);
-    speedtest1_run();
+    speedtest1_execute();
     aCheck[i] = atoi(g.zResult);
   }
   speedtest1_end_test();
@@ -1114,7 +1114,7 @@ void testset_rtree(int p1, int p2){
   speedtest1_prepare("SELECT * FROM rt1 WHERE id=?1");
   for(i=1; i<=n; i++){
     sqlite3_bind_int(g.pStmt, 1, i);
-    speedtest1_run();
+    speedtest1_execute();
   }
   speedtest1_end_test();
 }
@@ -1168,7 +1168,24 @@ int main(int argc, char **argv){
   g.zNN = "";
   g.zPK = "UNIQUE";
   g.szTest = 100;
-  for(i=1; i<argc; i++){
+
+  /* Emscripten commandline argument processing - first arg is ours */
+  int arg = argc > 1 ? argv[1][0] - '0' : 3;
+  switch(arg) {
+    case 0: return 0; break;
+    case 1: arg = 5; break;
+    case 2: arg = 10; break;
+    case 3: arg = 20; break;
+    case 4: arg = 40; break;
+    case 5: arg = 80; break;
+    default:
+      printf("error: %d\\n", arg);
+      return -1;
+  }
+  g.szTest = arg;
+
+  /* Back to sqlite - after the first is theirs*/
+  for(i=2; i<argc; i++){
     const char *z = argv[i];
     if( z[0]=='-' ){
       do{ z++; }while( z[0]=='-' );
@@ -1297,7 +1314,7 @@ int main(int argc, char **argv){
   }
 
   /* Set database connection options */
-  sqlite3_create_function(g.db, "random", 0, SQLITE_UTF8, 0, randomFunc, 0, 0);
+  sqlite3_create_function(g.db, "random", 0, SQLITE_UTF8, 0, randomFunc1, 0, 0);
   if( doTrace ) sqlite3_trace(g.db, traceCallback, 0);
   if( zKey ){
     speedtest1_exec("PRAGMA key('%s')", zKey);
