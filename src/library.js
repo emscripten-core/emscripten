@@ -1732,7 +1732,7 @@ LibraryManager.library = {
   dlopen: function(filenameAddr, flag) {
 #if MAIN_MODULE == 0
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
-#endif
+#else
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
@@ -1843,6 +1843,7 @@ LibraryManager.library = {
     DLFCN.loadedLibNames[filename] = handle;
 
     return handle;
+#endif
   },
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
