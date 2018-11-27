@@ -1273,6 +1273,10 @@ int main(int argc, char **argv)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
 
+  def test_exceptions_multiple_inherit_rethrow(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
+
   def test_bad_typeid(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
