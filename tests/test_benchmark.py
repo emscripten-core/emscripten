@@ -347,18 +347,18 @@ class CheerpBenchmarker(Benchmarker):
 try:
   benchmarkers_error = ''
   benchmarkers = [
-    #NativeBenchmarker('clang', CLANG_CC, CLANG),
-    #NativeBenchmarker('gcc',   'gcc',    'g++')
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
+    # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
   if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
-      #EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'WASM=0']),
-      #EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
-      #EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
-      #EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
+      # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'WASM=0']),
+      # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
+      # EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
+      # EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
       #  'LLVM': '/home/alon/Dev/llvm/build/bin',
       #  'EMCC_WASM_BACKEND': '1',
-      #}),
+      # }),
     ]
   if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
@@ -366,7 +366,7 @@ try:
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
-      #CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
     ]
 except Exception as e:
   benchmarkers_error = str(e)
@@ -977,4 +977,3 @@ class benchmark(RunnerCore):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
     self.do_benchmark('sqlite', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1', '-g1'], force_c=True)
-
