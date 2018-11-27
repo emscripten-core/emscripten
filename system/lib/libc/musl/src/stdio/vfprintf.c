@@ -13,8 +13,6 @@
 
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
-#define CONCAT2(x,y) x ## y
-#define CONCAT(x,y) CONCAT2(x,y)
 
 /* Convenient bit representation for modifier flags, which all fall
  * within 31 codepoints of the space character. */
@@ -227,7 +225,7 @@ static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
 
 	if (!isfinite(y)) {
 		char *s = (t&32)?"inf":"INF";
-		if (y!=y) s=(t&32)?"nan":"NAN", pl=0;
+		if (y!=y) s=(t&32)?"nan":"NAN";
 		pad(f, ' ', w, 3+pl, fl&~ZERO_PAD);
 		out(f, prefix, pl);
 		out(f, s, 3);
@@ -343,7 +341,7 @@ static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
 		x = *d % i;
 		/* Are there any significant digits past j? */
 		if (x || d+1!=z) {
-			long double round = CONCAT(0x1p,LDBL_MANT_DIG);
+			long double round = 2/LDBL_EPSILON;
 			long double small;
 			if (*d/i & 1) round += 2;
 			if (x<i/2) small=0x0.8p0;

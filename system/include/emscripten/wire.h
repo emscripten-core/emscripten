@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #pragma once
 
 #if __cplusplus < 201103L
@@ -57,18 +64,39 @@ namespace emscripten {
         struct LightTypeID {
             static constexpr TYPEID get() {
                 typedef typename Canonicalized<T>::type C;
-                return (has_unbound_type_names || std::is_polymorphic<C>::value)
-                    ? &typeid(C)
-                    : CanonicalizedID<C>::get();
+                if(has_unbound_type_names || std::is_polymorphic<C>::value) {
+#if __has_feature(cxx_rtti)
+                    return &typeid(T);
+#else
+                    static_assert(!has_unbound_type_names,
+                        "Unbound type names are illegal with RTTI disabled. "
+                        "Either add -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 to or remove -fno-rtti "
+                        "from the compiler arguments");
+                    static_assert(!std::is_polymorphic<C>::value,
+                        "Canonicalized<T>::type being polymorphic is illegal with RTTI disabled");
+#endif
+                }
+
+                return CanonicalizedID<C>::get();
             }
         };
 
         template<typename T>
         constexpr TYPEID getLightTypeID(const T& value) {
             typedef typename Canonicalized<T>::type C;
-            return (has_unbound_type_names || std::is_polymorphic<C>::value)
-                ? &typeid(value)
-                : LightTypeID<T>::get();
+            if(has_unbound_type_names || std::is_polymorphic<C>::value) {
+#if __has_feature(cxx_rtti)
+                return &typeid(value);
+#else
+                static_assert(!has_unbound_type_names,
+                    "Unbound type names are illegal with RTTI disabled. "
+                    "Either add -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 to or remove -fno-rtti "
+                    "from the compiler arguments");
+                static_assert(!std::is_polymorphic<C>::value,
+                    "Canonicalized<T>::type being polymorphic is illegal with RTTI disabled");
+#endif
+            }
+            return LightTypeID<T>::get();
         }
 
         template<typename T>

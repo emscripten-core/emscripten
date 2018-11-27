@@ -1,31 +1,29 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <time.h>
-#include "libc.h"
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <string.h>
 #include "syscall.h"
-#include "atomic.h"
 
 #define MAXTRIES 100
 
-char *tmpnam(char *s)
+char *__randname(char *);
+
+char *tmpnam(char *buf)
 {
-	static int index;
-	static char s2[L_tmpnam];
-	struct timespec ts;
-	int try = 0;
-	unsigned n;
-
-	if (!s) s = s2;
-
-	if (__syscall(SYS_access, P_tmpdir, R_OK|W_OK|X_OK) != 0)
-		return NULL;
-
-	do {
-		__syscall(SYS_clock_gettime, CLOCK_REALTIME, &ts, 0);
-		n = ts.tv_nsec ^ (uintptr_t)&s ^ (uintptr_t)s;
-		snprintf(s, L_tmpnam, "/tmp/t%x-%x", a_fetch_add(&index, 1), n);
-	} while (!__syscall(SYS_access, s, F_OK) && try++<MAXTRIES);
-	return try>=MAXTRIES ? 0 : s;
+	static char internal[L_tmpnam];
+	char s[] = "/tmp/tmpnam_XXXXXX";
+	int try;
+	int r;
+	for (try=0; try<MAXTRIES; try++) {
+		__randname(s+12);
+#ifdef SYS_lstat
+		r = __syscall(SYS_lstat, s, &(struct stat){0});
+#else
+		r = __syscall(SYS_fstatat, AT_FDCWD, s,
+			&(struct stat){0}, AT_SYMLINK_NOFOLLOW);
+#endif
+		if (r == -ENOENT) return strcpy(buf ? buf : internal, s);
+	}
+	return 0;
 }

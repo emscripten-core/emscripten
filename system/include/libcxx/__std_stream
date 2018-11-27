@@ -17,11 +17,13 @@
 #include <__locale>
 #include <cstdio>
 
-#include <__undef_min_max>
-
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -297,7 +299,7 @@ __stdoutbuf<_CharT>::overflow(int_type __c)
                         return traits_type::eof();
                     if (__r == codecvt_base::partial)
                     {
-                        pbase = (char_type*)__e;
+                        pbase = const_cast<char_type*>(__e);
                     }
                 }
                 else
@@ -354,5 +356,7 @@ __stdoutbuf<_CharT>::imbue(const locale& __loc)
 }
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP___STD_STREAM

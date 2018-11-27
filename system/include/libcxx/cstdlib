@@ -89,6 +89,12 @@ void *aligned_alloc(size_t alignment, size_t size);                       // C11
 #pragma GCC system_header
 #endif
 
+#ifdef __GNUC__
+#define _LIBCPP_UNREACHABLE() __builtin_unreachable()
+#else
+#define _LIBCPP_UNREACHABLE() _VSTD::abort()
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 using ::size_t;
@@ -124,8 +130,10 @@ using ::abort;
 using ::atexit;
 using ::exit;
 using ::_Exit;
+#ifndef _LIBCPP_WINDOWS_STORE_APP
 using ::getenv;
 using ::system;
+#endif
 using ::bsearch;
 using ::qsort;
 using ::abs;
@@ -138,11 +146,9 @@ using ::ldiv;
 #ifndef _LIBCPP_HAS_NO_LONG_LONG
 using ::lldiv;
 #endif // _LIBCPP_HAS_NO_LONG_LONG
-#ifndef _LIBCPP_HAS_NO_THREAD_UNSAFE_C_FUNCTIONS
 using ::mblen;
 using ::mbtowc;
 using ::wctomb;
-#endif
 using ::mbstowcs;
 using ::wcstombs;
 #ifdef _LIBCPP_HAS_QUICK_EXIT

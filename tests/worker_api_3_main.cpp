@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <assert.h>
 #include <emscripten.h>
@@ -29,7 +34,7 @@ void c1(char *data, int size, void *arg) {
     int result = 1;  // Final call occurred.
     for (int i = 0; i < 4; ++i)
       if (sawCalls[i]) result++;
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   }
 }
 

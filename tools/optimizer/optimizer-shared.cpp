@@ -1,3 +1,7 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 #include "optimizer.h"
 
@@ -58,6 +62,7 @@ AsmType detectType(Ref node, AsmData *asmData, bool inVarDef) {
           if (ret != ASM_NONE) return ret;
         }
         if (!inVarDef) {
+          if (!ASM_FLOAT_ZERO.isNull() && node[1] == ASM_FLOAT_ZERO) return ASM_FLOAT;
           if (node[1] == INF || node[1] == NaN) return ASM_DOUBLE;
           if (node[1] == TEMP_RET0) return ASM_INT;
           return ASM_NONE;

@@ -8,14 +8,16 @@ static unsigned atou(char **s)
 	return x;
 }
 
-struct passwd *__getpwent_a(FILE *f, struct passwd *pw, char **line, size_t *size)
+int __getpwent_a(FILE *f, struct passwd *pw, char **line, size_t *size, struct passwd **res)
 {
 	ssize_t l;
 	char *s;
+	int rv = 0;
 	int cs;
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 	for (;;) {
 		if ((l=getline(line, size, f)) < 0) {
+			rv = ferror(f) ? errno : 0;
 			free(*line);
 			*line = 0;
 			pw = 0;
@@ -46,5 +48,7 @@ struct passwd *__getpwent_a(FILE *f, struct passwd *pw, char **line, size_t *siz
 		break;
 	}
 	pthread_setcancelstate(cs, 0);
-	return pw;
+	*res = pw;
+	if (rv) errno = rv;
+	return rv;
 }

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -13,14 +20,13 @@ int result;
 void ok(void* arg)
 {
   assert(expected == (int)arg);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void onerror(void* arg)
 {
   assert(expected == (int)arg);
-  result = 999;
-  REPORT_RESULT();
+  REPORT_RESULT(999);
 }
 
 void onload(void* arg, void* ptr, int num)
@@ -29,15 +35,13 @@ void onload(void* arg, void* ptr, int num)
   printf("loaded %s\n", ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
-  result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 void onbadload(void* arg, void* ptr, int num)
 {
   printf("load failed, surprising\n");
-  result = 999;
-  REPORT_RESULT();
+  REPORT_RESULT(999);
 }
 
 void oncheck(void* arg, int exists)
@@ -45,7 +49,7 @@ void oncheck(void* arg, int exists)
   assert(expected == (int)arg);
   printf("exists? %d\n", exists);
   assert(exists);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void onchecknope(void* arg, int exists)
@@ -53,7 +57,7 @@ void onchecknope(void* arg, int exists)
   assert(expected == (int)arg);
   printf("exists (hopefully not)? %d\n", exists);
   assert(!exists);
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void test() {

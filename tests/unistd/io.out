@@ -66,7 +66,15 @@ seek: 23
 write after end of file: 8
 errno: 0
 
-seek: 0
-read after write: 31
+pwrite to the middle of file: 3
 errno: 0
-final: wri4567890wri\0\0\0\0\0\0\0\0\0\0writeme\0
+seek: 31
+
+pwrite past end of file: 5
+errno: 0
+seek: 31
+
+seek: 0
+read after write: 37
+errno: 0
+final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -11,7 +16,7 @@
 volatile int res = 43;
 static void cleanup_handler(void *arg)
 {
-  EM_ASM_INT( { Module['print']('Called clean-up handler with arg ' + $0); }, arg);
+  EM_ASM(out('Called clean-up handler with arg ' + $0), arg);
   int a = (int)arg;
   res -= a;
 }
@@ -19,7 +24,7 @@ static void cleanup_handler(void *arg)
 static void *thread_start(void *arg)
 {
   pthread_cleanup_push(cleanup_handler, (void*)42);
-  EM_ASM(Module['print']('Thread started!'););
+  EM_ASM(out('Thread started!'));
   for(;;)
   {
     pthread_testcancel();
@@ -32,12 +37,10 @@ pthread_t thr;
 
 int main()
 {
-  int result;
   if (!emscripten_has_threading_support())
   {
 #ifdef REPORT_RESULT
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
@@ -45,18 +48,18 @@ int main()
 
   int s = pthread_create(&thr, NULL, thread_start, (void*)0);
   assert(s == 0);
-  EM_ASM(Module['print']('Canceling thread..'););
+  EM_ASM(out('Canceling thread..'););
   s = pthread_cancel(thr);
   assert(s == 0);
 
   for(;;)
   {
-    result = emscripten_atomic_load_u32((const void*)&res);
+    int result = emscripten_atomic_load_u32((const void*)&res);
     if (result == 1)
     {
-      EM_ASM_INT( { Module['print']('After canceling, shared variable = ' + $0 + '.'); }, result);
+      EM_ASM_INT( { out('After canceling, shared variable = ' + $0 + '.'); }, result);
 #ifdef REPORT_RESULT
-      REPORT_RESULT();
+      REPORT_RESULT(1);
 #endif
       return 0;
     }

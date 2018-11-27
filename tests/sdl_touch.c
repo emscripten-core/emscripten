@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
@@ -23,9 +30,8 @@ void progress() {
   else if (!got_up) printf("Release a finger to generate a touch up event.\n");
   else
   {
-    int result = 0;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
   }
 }
@@ -69,6 +75,10 @@ int main() {
     // Pass test coordinates in canvas element coordinate frame.
     var x = Module['canvas'].getBoundingClientRect().left;
     var y = Module['canvas'].getBoundingClientRect().top;
+
+    // Test #5258: browser passing a touch event that does not contain any touches should not throw an exception from within SDL.
+    sendEvent('touchstart', { touches: [ ] });
+
     sendEvent('touchstart', { touches: [ { pageX: x+300, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
     sendEvent('touchmove', { touches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });
     sendEvent('touchend', { changedTouches: [ { pageX: x+400, pageY: y+225, deviceID: 1, identifier: 1, force: 1 } ] });

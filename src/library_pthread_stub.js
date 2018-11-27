@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryPThreadStub = {
   // ===================================================================================
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
@@ -27,6 +32,9 @@ var LibraryPThreadStub = {
     // We will never have any queued calls to process, so no-op.
   },
 
+  pthread_barrier_init: function() {},
+  pthread_barrier_wait: function() {},
+  pthread_barrier_destroy: function() {},
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
@@ -79,12 +87,6 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  pthread_self__asm: true,
-  pthread_self__sig: 'i',
-  pthread_self: function() {
-    return 0;
-  },
-
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
@@ -110,10 +112,12 @@ var LibraryPThreadStub = {
     return 0;
   },
 
+  pthread_setcancelstate: function() { return 0; },
+
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
-    Runtime.dynCall('v', func);
+    Module['dynCall_v'](func);
     _pthread_once.seen[ptr] = 1;
   },
 
@@ -155,7 +159,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { Runtime.dynCall('vi', routine, [arg]) })
+    __ATEXIT__.push(function() { Module['dynCall_vi'](routine, arg) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
@@ -164,6 +168,11 @@ var LibraryPThreadStub = {
     __ATEXIT__.pop();
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
+
+  _pthread_cleanup_push: 'pthread_cleanup_push',
+  _pthread_cleanup_pop: 'pthread_cleanup_pop',
+
+  pthread_sigmask: function() { return 0; },
 
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },
@@ -194,9 +203,12 @@ var LibraryPThreadStub = {
     return {{{ cDefine('EAGAIN') }}};
   },
   pthread_cancel: function() {},
-  pthread_exit: function() {},
+  pthread_exit__deps: ['exit'],
+  pthread_exit: function(status) {
+    _exit(status);
+  },
 
-  pthread_equal: function() {},
+  pthread_equal: function(x, y) { return x == y },
   pthread_join: function() {},
   pthread_detach: function() {},
 
@@ -290,7 +302,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Add(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -299,7 +311,7 @@ var LibraryPThreadStub = {
     var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
     var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
     {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
-    {{{ makeSetValue('ptr', 4, 'Runtime["getTempRet0"]()', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
@@ -338,6 +350,8 @@ var LibraryPThreadStub = {
   _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
   _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
   _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
+
+  __wait: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);

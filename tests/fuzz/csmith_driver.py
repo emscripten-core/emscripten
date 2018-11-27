@@ -1,29 +1,35 @@
 #!/usr/bin/python
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
-'''
-Runs csmith, a C fuzzer, and looks for bugs.
+"""Runs csmith, a C fuzzer, and looks for bugs.
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
-'''
+"""
 
 import os, sys, difflib, shutil, random
 from distutils.spawn import find_executable
-from subprocess import check_call, Popen, PIPE, STDOUT, CalledProcessError
+from subprocess import check_call, check_execute, Popen, PIPE, STDOUT, CalledProcessError
 
-sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tools')]
-import shared
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(script_dir))))
+
+from tools import shared
 
 # can add flags like --no-threads --ion-offthread-compile=off
-engine1 = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
-engine2 = shared.SPIDERMONKEY_ENGINE if os.path.exists(shared.SPIDERMONKEY_ENGINE[0]) else None
+engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
 
-print 'testing js engines', engine1, engine2
+print 'testing js engine', engine
 
-CSMITH = os.environ.get('CSMITH') or find_executable('csmith')
+TEST_BINARYEN = 1
+
+CSMITH = os.environ.get('CSMITH', find_executable('csmith'))
 assert CSMITH, 'Could not find CSmith on your PATH. Please set the environment variable CSMITH.'
-CSMITH_PATH = os.environ.get('CSMITH_PATH')
-assert CSMITH_PATH, 'Please set the environment variable CSMITH_PATH.'
-CSMITH_CFLAGS = ['-I', os.path.join(CSMITH_PATH, 'runtime')]
+CSMITH_PATH = os.environ.get('CSMITH_PATH', '/usr/include/csmith')
+assert os.path.exists(CSMITH_PATH), 'Please set the environment variable CSMITH_PATH.'
+CSMITH_CFLAGS = ['-I', CSMITH_PATH]
 
 filename = os.path.join(os.getcwd(), 'temp_fuzzcode' + str(os.getpid()) + '_')
 
@@ -58,11 +64,6 @@ while 1:
   if random.random() < 0.5: extra_args += ['--max-funcs', str(random.randint(10, 30))]
   suffix = '.c'
   COMP = shared.CLANG_CC
-  if random.random() < 0.5:
-    extra_args += ['--lang-cpp']
-    suffix += 'pp'
-    COMP = shared.CLANG
-  print COMP, extra_args
   fullname = filename + suffix
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
                  #['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
@@ -74,16 +75,16 @@ while 1:
   print '2) Compile natively'
   shared.try_delete(filename)
   try:
-    shared.check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
-  except Exception, e:
+    check_execute([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) #  + shared.EMSDK_OPTS
+  except CalledProcessError as e:
     print 'Failed to compile natively using clang'
     notes['invalid'] += 1
     continue
 
-  shared.check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS + ['-w'])
-  shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
+  check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS + ['-w'])
+  check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
+  check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
@@ -105,19 +106,11 @@ while 1:
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
     js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
-    if 0: # binaryen testing, off by default for now
-      js_args += ['-s', 'BINARYEN=1']
-      r = random.random()
-      if r < 0.45:
-        js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr"']
-      elif r < 0.90:
-        js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
-      else:
-        if random.random() < 0.5:
-          js_args += ['-s', 'BINARYEN_METHOD="interpret-binary,asmjs"']
-        else:
-          js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr,asmjs"']
+    if TEST_BINARYEN:
+      js_args += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_TRAP_MODE="js"']
       if random.random() < 0.5:
+        js_args += ['-g']
+      if random.random() < 0.1:
         if random.random() < 0.5:
           js_args += ['--js-opts', '0']
         else:
@@ -125,18 +118,23 @@ while 1:
       if random.random() < 0.5:
         # pick random passes
         BINARYEN_PASSES = [
+          "code-pushing",
           "duplicate-function-elimination",
           "dce",
           "remove-unused-brs",
           "remove-unused-names",
+          "local-cse",
           "optimize-instructions",
+          "post-emscripten",
           "precompute",
           "simplify-locals",
+          "simplify-locals-nostructure",
           "vacuum",
           "coalesce-locals",
           "reorder-locals",
           "merge-blocks",
-          "remove-unused-functions",
+          "remove-unused-module-elements",
+          "memory-packing",
         ]
         passes = []
         while 1:
@@ -150,7 +148,7 @@ while 1:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
-    if random.random() < 0.333:
+    if random.random() < 0.01:
       js_args += ['-s', 'EMTERPRETIFY=1']
       if random.random() < 0.5:
         if random.random() < 0.5:
@@ -168,7 +166,7 @@ while 1:
     escaped_short_args = map(lambda x : ("'" + x + "'") if '"' in x else x, short_args)
     open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
-      shared.check_execute(js_args)
+      check_execute(js_args)
       assert os.path.exists(filename + '.js')
       return js_args
     except:
@@ -177,8 +175,8 @@ while 1:
   def execute_js(engine):
     print '(run in %s)' % engine
     try:
-      js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
-    except:
+      js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+    except CalledProcessError as e:
       print 'failed to run in primary'
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
@@ -195,26 +193,6 @@ while 1:
   if not js_args:
     fail()
     continue
-  if not execute_js(engine1):
+  if not execute_js(engine):
     fail()
     continue
-  if engine2 and not execute_js(engine2):
-    fail()
-    continue
-
-  # This is ok. Try validation in secondary JS engine
-  if opts != '-O0' and 'ALLOW_MEMORY_GROWTH=1' not in js_args and engine2 and 'BINARYEN=1' not in js_args:
-    try:
-      js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
-    except:
-      print 'failed to run in secondary'
-      break
-
-    # asm.js testing
-    if 'warning: Successfully compiled asm.js code' not in js2:
-      print "ODIN VALIDATION BUG"
-      notes['embug'] += 1
-      fail()
-      continue
-    print '[asm.js validation ok in %s]' % str(engine2)
-

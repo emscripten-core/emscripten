@@ -1,9 +1,14 @@
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os, shutil, logging
 
-TAG = 'version_21'
+TAG = 'version_51'
 
 def needed(settings, shared, ports):
-  if not settings.BINARYEN: return False
+  if not settings.WASM: return False
   try:
     if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
       logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)
@@ -29,9 +34,6 @@ def get(ports, settings, shared):
   return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
 
 def process_args(ports, args, settings, shared):
-  if not needed(settings, shared, ports):
-    return args
-  get(ports, settings, shared)
   return args
 
 def show():

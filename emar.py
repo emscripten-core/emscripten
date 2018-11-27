@@ -1,4 +1,8 @@
 #!/usr/bin/env python2
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 emar - ar helper script
@@ -7,7 +11,10 @@ emar - ar helper script
 This script acts as a frontend replacement for ar. See emcc.
 '''
 
+from __future__ import print_function
 from tools.toolchain_profiler import ToolchainProfiler
+if __name__ == '__main__':
+  ToolchainProfiler.record_process_start()
 
 import os, subprocess, sys
 from tools import shared
@@ -23,10 +30,10 @@ def run():
   newargs = [shared.LLVM_AR] + sys.argv[1:]
 
   if DEBUG:
-    print >> sys.stderr, 'emar:', sys.argv, '  ==>  ', newargs
+    print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
+  to_delete = []
   if len(newargs) > 2:
-    to_delete = []
     if 'r' in newargs[1]:
       # we are adding files to the archive.
       # find the .a; everything after it is an input file.
@@ -42,7 +49,7 @@ def run():
             full_name = os.path.abspath(orig_name)
             dir_name = os.path.dirname(full_name)
             base_name = os.path.basename(full_name)
-            h = hashlib.md5(full_name).hexdigest()[:8]
+            h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
             parts = base_name.split('.')
             parts[0] += '_' + h
             newname = '.'.join(parts)
@@ -56,11 +63,14 @@ def run():
                 pass
           break
         i += 1
-    subprocess.call(newargs)
+
+  if DEBUG:
+    print('Invoking ' + str(newargs), file=sys.stderr)
+  try:
+    return subprocess.call(newargs, stdin=sys.stdin)
+  finally:
     for d in to_delete:
       shared.try_delete(d)
 
 if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-  run()
-  sys.exit(0)
+  sys.exit(run())

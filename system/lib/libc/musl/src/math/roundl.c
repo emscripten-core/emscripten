@@ -6,11 +6,9 @@ long double roundl(long double x)
 	return round(x);
 }
 #elif (LDBL_MANT_DIG == 64 || LDBL_MANT_DIG == 113) && LDBL_MAX_EXP == 16384
-#if LDBL_MANT_DIG == 64
-#define TOINT 0x1p63
-#elif LDBL_MANT_DIG == 113
-#define TOINT 0x1p112
-#endif
+
+static const long double toint = 1/LDBL_EPSILON;
+
 long double roundl(long double x)
 {
 	union ldshape u = {x};
@@ -22,10 +20,10 @@ long double roundl(long double x)
 	if (u.i.se >> 15)
 		x = -x;
 	if (e < 0x3fff-1) {
-		FORCE_EVAL(x + TOINT);
+		FORCE_EVAL(x + toint);
 		return 0*u.f;
 	}
-	y = x + TOINT - TOINT - x;
+	y = x + toint - toint - x;
 	if (y > 0.5)
 		y = y + x - 1;
 	else if (y <= -0.5)

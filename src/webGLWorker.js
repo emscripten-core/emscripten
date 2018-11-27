@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // WebGLWorker worker code
 
 function WebGLBuffer(id) {
@@ -372,6 +377,7 @@ function WebGLWorker() {
   this.FLOAT_MAT3                     = 0x8B5B;
   this.FLOAT_MAT4                     = 0x8B5C;
   this.SAMPLER_2D                     = 0x8B5E;
+  this.SAMPLER_3D                     = 0x8B5F;
   this.SAMPLER_CUBE                   = 0x8B60;
   
   /* Vertex Arrays */
@@ -706,6 +712,7 @@ function WebGLWorker() {
         case 'mat3': return that.FLOAT_MAT3;
         case 'mat4': return that.FLOAT_MAT4;
         case 'sampler2D': return that.SAMPLER_2D;
+        case 'sampler3D': return that.SAMPLER_3D;
         case 'samplerCube': return that.SAMPLER_CUBE;
         default: throw 'not yet recognized type text: ' + text;
       }
@@ -1107,6 +1114,14 @@ function WebGLWorker() {
   };
   this.drawBuffersWEBGL = function(buffers) {
     commandBuffer.push(80, buffers);
+  };
+  this.uniform1iv = function(location, data) {
+    if (!location) return;
+    commandBuffer.push(81, location.id, new Int32Array(data));
+  };
+  this.uniform1fv = function(location, data) {
+    if (!location) return;
+    commandBuffer.push(82, location.id, new Float32Array(data));
   };
 
   // Setup

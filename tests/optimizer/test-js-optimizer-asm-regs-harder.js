@@ -159,5 +159,19 @@ function b1() {
  abort(1);
  return SIMD_Float32x4_check(SIMD_Float32x4(0, 0, 0, 0));
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "labelledJump", "linkedVars", "deadCondExpr", "b1"]
+// this should be kept alive at all costs
+function __emscripten_dceable_type_decls() {
+ ___cxa_throw(0, 0, 0);
+ ___cxa_rethrow();
+ ___cxa_end_catch();
+ ___cxa_pure_virtual();
+ _getenv(0) | 0;
+ _pthread_mutex_lock(0) | 0;
+ _pthread_cond_broadcast(0) | 0;
+ _pthread_mutex_unlock(0) | 0;
+ _pthread_cond_wait(0, 0) | 0;
+ _strftime(0, 0, 0, 0) | 0;
+ +_fabs(+0);
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["asm", "_doit", "stackRestore", "switchey", "switchey2", "iffey", "labelledJump", "linkedVars", "deadCondExpr", "b1", "__emscripten_dceable_type_decls"]
 

@@ -1898,7 +1898,7 @@ _mm_loadl_epi64(__m128i const *__p)
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_set_epi64x(long long q1, long long q0)
 {
-  return (__m128i){ q0, q1 };
+  return (__m128i){ (unsigned long long)q0, (unsigned long long)q0 >> 32, (unsigned long long)q1, (unsigned long long)q1 >> 32 };
 }
 
 #ifndef __EMSCRIPTEN__ // MMX support is not available in Emscripten/SIMD.js.

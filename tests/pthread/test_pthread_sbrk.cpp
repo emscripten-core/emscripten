@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>
@@ -49,7 +54,7 @@ static void *thread_start(void *arg)
       {
         ++return_code; // Failed! (but run to completion so that the barriers will all properly proceed without hanging)
         if (!reported_once) {
-          EM_ASM_INT( { console.error('Memory corrupted! mem[i]: ' + $0 + ' != ' + $1 + ', i: ' + $2 + ', j: ' + $3); }, allocated_buffers[i][j], id, i, j);
+          EM_ASM(console.error('Memory corrupted! mem[i]: ' + $0 + ' != ' + $1 + ', i: ' + $2 + ', j: ' + $3), allocated_buffers[i][j], id, i, j);
           reported_once = 1; // Avoid print flood that makes debugging hard.
         }
       }
@@ -74,7 +79,7 @@ int main()
   int result = 0;
   if (!emscripten_has_threading_support()) {
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     printf("Skipped: threading support is not available!\n");
     return 0;
@@ -107,6 +112,6 @@ int main()
   printf("Test finished with result %d\n", result);
 
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }

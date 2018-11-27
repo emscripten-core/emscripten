@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <assert.h>
@@ -34,7 +39,7 @@ void onLoaded(const char* file) {
 
   if (get_count == 2) {
     emscripten_cancel_main_loop();
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   }
 }
 

@@ -9,8 +9,7 @@ int getopt(int, char * const [], const char *);
 extern char *optarg;
 extern int optind, opterr, optopt, optreset;
 
-struct option
-{
+struct option {
 	const char *name;
 	int has_arg;
 	int *flag;

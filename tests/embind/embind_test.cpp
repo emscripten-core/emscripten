@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <string>
 #include <malloc.h>
 #include <functional>
@@ -37,6 +42,23 @@ val emval_test_new_object() {
     rv.set("foo", val("bar"));
     rv.set("baz", val(1));
     return rv;
+}
+
+struct DummyForPointer {
+    int value;
+    DummyForPointer(const int v) : value(v) {}
+};
+
+static DummyForPointer emval_pointer_dummy(42);
+
+val emval_test_instance_pointer() {
+    DummyForPointer* p = &emval_pointer_dummy;
+    return val(p);
+}
+
+int emval_test_value_from_instance_pointer(val v) {
+    DummyForPointer * p = v.as<DummyForPointer *>(allow_raw_pointers());
+    return p->value;
 }
 
 unsigned emval_test_passthrough_unsigned(unsigned v) {
@@ -103,13 +125,29 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
-std::string get_non_ascii_string() {
-    char c[128 + 1];
-    c[128] = 0;
-    for (int i = 0; i < 128; ++i) {
-        c[i] = 128 + i;
+std::string get_non_ascii_string(bool embindStdStringUTF8Support) {
+    if(embindStdStringUTF8Support) {
+        //ASCII
+        std::string testString{"aei"};
+        //Latin-1 Supplement
+        testString += "\u00E1\u00E9\u00ED";
+        //Greek
+        testString += "\u03B1\u03B5\u03B9";
+        //Cyrillic
+        testString += "\u0416\u041B\u0424";
+        //CJK
+        testString += "\u5F9E\u7345\u5B50";
+        //Euro sign
+        testString += "\u20AC";
+        return testString;
+    } else {
+        char c[128 + 1];
+        c[128] = 0;
+        for (int i = 0; i < 128; ++i) {
+            c[i] = 128 + i;
+        }
+        return c;
     }
-    return c;
 }
 
 std::wstring get_non_ascii_wstring() {
@@ -1653,11 +1691,15 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
 
+    class_<DummyForPointer>("DummyForPointer");
+
     function("mallinfo", &emval_test_mallinfo);
     function("emval_test_new_integer", &emval_test_new_integer);
     function("emval_test_new_string", &emval_test_new_string);
     function("emval_test_get_string_from_val", &emval_test_get_string_from_val);
     function("emval_test_new_object", &emval_test_new_object);
+    function("emval_test_instance_pointer", &emval_test_instance_pointer);
+    function("emval_test_value_from_instance_pointer", &emval_test_value_from_instance_pointer);
     function("emval_test_passthrough_unsigned", &emval_test_passthrough_unsigned);
     function("emval_test_passthrough", &emval_test_passthrough);
     function("emval_test_return_void", &emval_test_return_void);
@@ -2305,6 +2347,15 @@ public:
     DummyForOverloads dummy(DummyForOverloads d) {
         return d;
     }
+
+    static DummyForOverloads staticDummy() {
+        return DummyForOverloads();
+    }
+
+    static DummyForOverloads staticDummy(DummyForOverloads d) {
+        return d;
+    }
+
 };
 
 DummyForOverloads getDummy() {
@@ -2365,6 +2416,8 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .constructor()
         .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
         .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::staticDummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::staticDummy))
         ;
 
     function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));

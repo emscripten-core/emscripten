@@ -1,7 +1,8 @@
-// -*- Mode: javascript; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 ; js-indent-level : 2 ; js-curly-indent-offset: 0 -*-
-// vim: set ts=2 et sw=2:
-
-//==============================================================================
+// Copyright 2011 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
 // code to further improve it.
@@ -13,7 +14,6 @@
 // TODO: Optimize traverse to modify a node we want to replace, in-place,
 //       instead of returning it to the previous call frame where we check?
 // TODO: Share EMPTY_NODE instead of emptyNode that constructs?
-//==============================================================================
 
 if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
@@ -188,12 +188,43 @@ function srcToExp(src) {
 // Traverses the children of a node. If the traverse function returns an object,
 // replaces the child. If it returns true, stop the traversal and return true.
 function traverseChildren(node, traverse, pre, post) {
-  for (var i = 0; i < node.length; i++) {
-    var subnode = node[i];
-    if (Array.isArray(subnode)) {
-      var subresult = traverse(subnode, pre, post);
-      if (subresult === true) return true;
-      if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+  if (node[0] === 'var') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      if (subnode.length === 2) {
+        var value = subnode[1];
+        if (Array.isArray(value)) {
+          var subresult = traverse(value, pre, post);
+          if (subresult === true) return true;
+          if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+        }
+      }
+    }
+  } else if (node[0] === 'object') {
+    // don't traverse the names, just the values
+    var children = node[1];
+    if (!Array.isArray(children)) return;
+    for (var i = 0; i < children.length; i++) {
+      var subnode = children[i];
+      var value = subnode[1];
+      if (Array.isArray(value)) {
+        var subresult = traverse(value, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') subnode[1] = subresult;
+      }
+    }
+  } else {
+    // generic traversal
+    for (var i = 0; i < node.length; i++) {
+      var subnode = node[i];
+      if (Array.isArray(subnode)) {
+        var subresult = traverse(subnode, pre, post);
+        if (subresult === true) return true;
+        if (subresult !== null && typeof subresult === 'object') node[i] = subresult;
+      }
     }
   }
 }
@@ -966,6 +997,21 @@ function simplifyExpressions(ast) {
   });
 }
 
+// Checks if a coercion is necessary for asm.js, and cannot be
+// removed. Receives the node, and the expression stack, which
+// includes the node at the end.
+function isNecessaryCoercion(node, stack) {
+  assert(stack[stack.length - 1] === node);
+  var parent = stack[stack.length - 2];
+  if (!parent) return false;
+  if (parent[0] === 'sub') {
+    // We are x & mask in FUNCTION_TABLE[x & mask], and the mask
+    // is necessary.
+    return true;
+  }
+  return false;
+}
+
 function localCSE(ast) {
   // very simple CSE/GVN type optimization, factor out common expressions in a single basic block
   assert(asm);
@@ -1022,7 +1068,10 @@ function localCSE(ast) {
         }
         // next, process the line and try to find useful expressions
         var skips = [];
+
+        var stack = [];
         traverse(curr, function seekExpressions(node, type) {
+          stack.push(node);
           if (type === 'sub' && node[1][0] === 'name' && node[2][0] === 'binary' && node[2][1] === '>>') {
             // skip over the shift, we can't cse that
             skips.push(node[2]);
@@ -1032,6 +1081,8 @@ function localCSE(ast) {
             if (type === 'binary' && skips.indexOf(node) >= 0) return;
             if (measureCost(node) < MIN_COST) return;
             if (detectType(node, asmData) === ASM_NONE) return; // if we can't figure it out locally, forget it
+            // We cannot CSE out a necessary asm.js coercion
+            if (isNecessaryCoercion(node, stack)) return;
             var str = JSON.stringify(node);
             var lookup = exps[str];
             if (!lookup) {
@@ -1086,6 +1137,8 @@ function localCSE(ast) {
               return makeSignedAsmCoercion(['name', lookup[2]], type, sign);
             }
           }
+        }, function(node, type) { // post-traversal
+          stack.pop();
         });
         // finally, repeat invalidation processing, to not be sensitive to inter-line control flow
         doInvalidations(curr);
@@ -1377,7 +1430,33 @@ function hasSideEffects(node) { // this is 99% incomplete!
       }
       return false;
     }
-    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]); 
+    case 'conditional': return hasSideEffects(node[1]) || hasSideEffects(node[2]) || hasSideEffects(node[3]);
+    case 'function': case 'defun': return false;
+    case 'object': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i][1])) return true;
+      }
+      return false;
+    }
+    case 'array': {
+      var children = node[1];
+      if (!Array.isArray(children)) return false;
+      for (var i = 0; i < children.length; i++) {
+        if (hasSideEffects(children[i])) return true;
+      }
+      return false;
+    }
+    case 'dot': {
+      // In theory any property access in JS can have side effects, but not in
+      // objects we assume are static.
+      if (node[1][0] === 'name') {
+        var name = node[1][1];
+        if (name === 'Math') return false;
+      }
+      return true;
+    }
     default: return true;
   }
 }
@@ -1398,7 +1477,7 @@ function triviallySafeToMove(node, asmData) {
         break;
       default:
         ok = false;
-    }  
+    }
   });
   return ok;
 }
@@ -1848,6 +1927,7 @@ function detectType(node, asmInfo, inVarDef) {
         if (ret !== ASM_NONE) return ret;
       }
       if (!inVarDef) {
+        if (ASM_FLOAT_ZERO && ASM_FLOAT_ZERO === node[1]) return ASM_FLOAT;
         switch (node[1]) {
           case 'inf': case 'nan': return ASM_DOUBLE; // TODO: when minified
           case 'tempRet0': return ASM_INT;
@@ -1882,6 +1962,7 @@ function detectType(node, asmInfo, inVarDef) {
       if (!parseHeap(node[1][1])) return ASM_NONE;
       return parseHeapTemp.float ? ASM_DOUBLE : ASM_INT; // XXX ASM_FLOAT?
     }
+    case 'stat': return ASM_NONE;
   }
   assert(0 , 'horrible ' + JSON.stringify(node));
 }
@@ -2010,7 +2091,7 @@ function detectSign(node) {
           if (node[2][0] === 'num' || node[3][0] === 'num') return ASM_FLEXIBLE;
           return ASM_NONSIGNED;
         }
-        case '/': return ASM_NONSIGNED; // without a coercion, this is double
+        case '/': case '%': return ASM_NONSIGNED; // without a coercion, this is double
         case '==': case '!=': case '<': case '<=': case '>': case '>=': return ASM_SIGNED;
         default: throw 'yikes ' + node[1];
       }
@@ -2021,7 +2102,8 @@ function detectSign(node) {
         case '-': return ASM_FLEXIBLE;
         case '+': return ASM_NONSIGNED; // XXX double
         case '~': return ASM_SIGNED;
-        default: throw 'yikes';
+        case '!': return ASM_FLEXIBLE;
+        default: throw 'yikes ' + node[1];
       }
       break;
     }
@@ -2605,6 +2687,10 @@ function registerizeHarder(ast) {
     });
     if (abort) return;
 
+    // Do not process the dceable helper function for wasm, which declares
+    // types, we need to alive for asm2wasm
+    if (fun[1] == '__emscripten_dceable_type_decls') return;
+
     var asmData = normalizeAsm(fun);
 
     var localVars = asmData.vars;
@@ -2696,7 +2782,7 @@ function registerizeHarder(ast) {
         junctions[currEntryJunction].outblocks[nextBasicBlock.id] = 1;
         junctions[id].inblocks[nextBasicBlock.id] = 1;
         blocks.push(nextBasicBlock);
-      } 
+      }
       nextBasicBlock = { id: null, entry: null, exit: null, labels: {}, nodes: [], isexpr: [], use: {}, kill: {} };
       setJunction(id, force);
       return id;
@@ -2821,14 +2907,14 @@ function registerizeHarder(ast) {
       // It walks the tree in execution order, calling the above state-management
       // functions at appropriate points in the traversal.
       var type = node[0];
-  
+
       // Any code traversed without an active entry junction must be dead,
       // as the resulting block could never be entered. Let's remove it.
       if (currEntryJunction === null && junctions.length > 0) {
         morphNode(node, ['block', []]);
         return;
       }
- 
+
       // Traverse each node type according to its particular control-flow semantics.
       switch (type) {
         case 'defun':
@@ -3152,7 +3238,7 @@ function registerizeHarder(ast) {
             break FINDLABELLEDBLOCKS;
           }
           labelledJumps.push([finalNode[3][1], block]);
-        } else { 
+        } else {
           // If label is assigned a non-zero value elsewhere in the block
           // then all bets are off.  This can happen e.g. due to outlining
           // saving/restoring label to the stack.
@@ -3626,7 +3712,7 @@ function registerizeHarder(ast) {
 
     // That's it!
     // Re-construct the function with appropriate variable definitions.
- 
+
     var finalAsmData = {
       params: {},
       vars: {},
@@ -3856,7 +3942,7 @@ function eliminate(ast, memSafe) {
         } else if (type === 'call') {
           usesGlobals = true;
           usesMemory = true;
-          doesCall = true;        
+          doesCall = true;
           ignoreName = true;
         } else {
           ignoreName = false;
@@ -4367,7 +4453,7 @@ function eliminate(ast, memSafe) {
                   // they overlap, we can still proceed with the loop optimization, but we must introduce a
                   // loop temp helper variable
                   var temp = looper + '$looptemp';
-                  assert(!(temp in asmData.vars)); 
+                  assert(!(temp in asmData.vars));
                   for (var i = firstLooperUsage; i <= lastLooperUsage; i++) {
                     var curr = i < stats.length-1 ? stats[i] : last[1]; // on the last line, just look in the condition
                     traverse(curr, function looperToLooptemp(node, type) {
@@ -4698,7 +4784,12 @@ var FAST_ELIMINATION_BINARIES = setUnion(setUnion(USEFUL_BINARY_OPS, COMPARE_OPS
 
 function measureSize(ast) {
   var size = 0;
-  traverse(ast, function() {
+  traverse(ast, function(node, type) {
+    // FIXME backwards compatibility: measure var internal node too. this
+    //       affects the 'outline' test.
+    if (type === 'var') {
+      size += node[1].length;
+    }
     size++;
   });
   return size;
@@ -4841,6 +4932,11 @@ function aggressiveVariableEliminationInternal(func, asmData) {
         });
       }
       values[name] = node;
+    }
+    // 'def' is non-null only if the variable was explicitly re-assigned after its definition.
+    // If it wasn't, the initial value should be used, which is supposed to always be zero.
+    else if (name in asmData.vars) {
+      values[name] = makeAsmCoercedZero(asmData.vars[name])
     }
     return node;
   }
@@ -5540,6 +5636,32 @@ function outline(ast) {
     return ret;
   }
 
+  // if we add stack usage, we must pop it too
+  function addStackPopping(func) {
+    function makePop() {
+      return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
+    }
+    traverse(func, function(node, type) {
+      var stats = getStatements(node);
+      if (!stats) return;
+      for (var i = 0; i < stats.length; i++) {
+        var subNode = stats[i];
+        if (subNode[0] === 'stat') subNode = subNode[1];
+        if (subNode[0] == 'return') {
+          stats.splice(i, 0, makePop());
+          i++;
+        }
+      }
+    });
+    // pop the stack at the end if there is not a return
+    var stats = getStatements(func);
+    var last = stats[stats.length-1];
+    if (last[0] === 'stat') last = last[1];
+    if (last[0] !== 'return') {
+      stats.push(makePop());
+    }
+  }
+
   //
 
   if (ast[0] !== 'toplevel') {
@@ -5599,6 +5721,8 @@ function outline(ast) {
                 }
               }
               assert(found);
+              // we also need to restore STACKTOP in each return, otherwise we leak stack
+              addStackPopping(func);
             }
           } else if (!('sp' in asmData.params)) { // if sp is a param, then we are an outlined function, no need to add stack support for us
             // add sp variable and stack bump
@@ -5609,27 +5733,7 @@ function outline(ast) {
             );
             asmData.vars.sp = ASM_INT; // no need to add to vars, we are about to denormalize anyhow
             // we added sp, so we must add stack popping
-            function makePop() {
-              return ['stat', makeAssign(['name', 'STACKTOP'], ['name', 'sp'])];
-            }
-            traverse(func, function(node, type) {
-              var stats = getStatements(node);
-              if (!stats) return;
-              for (var i = 0; i < stats.length; i++) {
-                var subNode = stats[i];
-                if (subNode[0] === 'stat') subNode = subNode[1];
-                if (subNode[0] == 'return') {
-                  stats.splice(i, 0, makePop());
-                  i++;
-                }
-              }
-            });
-            // pop the stack at the end if there is not a return
-            var last = stats[stats.length-1];
-            if (last[0] === 'stat') last = last[1];
-            if (last[0] !== 'return') {
-              stats.push(makePop());
-            }
+            addStackPopping(func);
           }
         }
         if (ret) {
@@ -5712,12 +5816,13 @@ function safeHeap(ast) {
   traverseGeneratedFunctions(ast, function(func) {
     if (func[1] in SAFE_HEAP_FUNCS) return null;
     traverseGenerated(func, function(node, type) {
+      var heap, ptr;
       if (type === 'assign') {
         if (node[1] === true && node[2][0] === 'sub') {
-          var heap = node[2][1][1];
-          var ptr = fixPtr(node[2][2], heap);
+          heap = node[2][1][1];
+          ptr = fixPtr(node[2][2], heap);
           var value = node[3];
-          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat) 
+          // SAFE_HEAP_STORE(ptr, value, bytes, isFloat)
           switch (heap) {
             case 'HEAP8':   case 'HEAPU8': {
               return ['call', ['name', 'SAFE_HEAP_STORE'], [ptr, makeAsmCoercion(value, ASM_INT), ['num', 1]]];
@@ -5741,9 +5846,9 @@ function safeHeap(ast) {
         var target = node[1][1];
         if (target[0] === 'H') {
           // heap access
-          var heap = target;
-          var ptr = fixPtr(node[2], heap);
-          // SAFE_HEAP_LOAD(ptr, bytes, isFloat) 
+          heap = target;
+          ptr = fixPtr(node[2], heap);
+          // SAFE_HEAP_LOAD(ptr, bytes, isFloat)
           switch (heap) {
             case 'HEAP8': {
               return makeAsmCoercion(['call', ['name', 'SAFE_HEAP_LOAD'], [ptr, ['num', 1], ['num', 0]]], ASM_INT);
@@ -5832,12 +5937,13 @@ function fixPtrSlim(ptr, heap, shell) {
 
 function splitMemory(ast, shell) {
   traverse(ast, function(node, type) {
+    var heap, ptr;
     if (type === 'assign') {
       if (node[2][0] === 'sub' && node[2][1][0] === 'name') {
-        var heap = node[2][1][1];
+        heap = node[2][1][1];
         if (parseHeap(heap)) {
           if (node[1] !== true) assert(0, 'bad assign, split memory cannot handle ' + JSON.stringify(node) + '= to a HEAP');
-          var ptr = fixPtrSlim(node[2][2], heap, shell);
+          ptr = fixPtrSlim(node[2][2], heap, shell);
           var value = node[3];
           switch (heap) {
             case 'HEAP8': return ['call', ['name', 'set8'], [ptr, value]];
@@ -5856,8 +5962,8 @@ function splitMemory(ast, shell) {
       var target = node[1][1];
       if (target[0] === 'H') {
         // heap access
-        var heap = target;
-        var ptr = fixPtrSlim(node[2], heap, shell);
+        heap = target;
+        ptr = fixPtrSlim(node[2], heap, shell);
         switch (heap) {
           case 'HEAP8': return ['call', ['name', 'get8'], [ptr]];
           case 'HEAP16': return ['call', ['name', 'get16'], [ptr]];
@@ -5975,8 +6081,6 @@ function ilog2(x) {
 
 // Converts functions into binary format to be run by an emterpreter
 function emterpretify(ast) {
-  emitAst = false;
-
   var EMTERPRETED_FUNCS = set(extraInfo.emterpretedFuncs);
   var EXTERNAL_EMTERPRETED_FUNCS = set(extraInfo.externalEmterpretedFuncs);
   var OPCODES = extraInfo.opcodes;
@@ -6012,8 +6116,10 @@ function emterpretify(ast) {
   }
 
   // functions which are ok to run while async, even if not emterpreted
-  var OK_TO_CALL_WHILE_ASYNC = set('stackSave', 'stackRestore', 'stackAlloc', 'setThrew', '_memset', '_memcpy', '_memmove', '_strlen', '_strncpy', '_strcpy', '_strcat', 'SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK');
-  function okToCallWhileAsync(name) {
+  // safe-heap methods may be called at any time
+  // stack operations are called from invokes for proper stack unwinding
+  var OK_TO_CALL_WHILE_ASYNC = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK', 'stackSave', 'stackRestore');
+  function okToCallDuringAsyncRestore(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;
     if (name in OK_TO_CALL_WHILE_ASYNC) return true;
@@ -6344,7 +6450,7 @@ function emterpretify(ast) {
                   } else {
                     // we can't trample this reg
                     var l = getFree();
-                    ret[1].push(opcode, l, ret[0], 0);                   
+                    ret[1].push(opcode, l, ret[0], 0);
                     ret[0] = l;
                   }
                 } else {
@@ -6465,7 +6571,7 @@ function emterpretify(ast) {
         case 'conditional': {
           // TODO: handle dropIt
           var type = detectType(node[2], asmData);
-          if ((node[2][0] === 'name' || getNum(node[2]) !== null) && 
+          if ((node[2][0] === 'name' || getNum(node[2]) !== null) &&
               (node[3][0] === 'name' || getNum(node[3]) !== null)) {
             // this is a simple choice between concrete values, no need for control flow here
             var out = assignTo >= 0 ? assignTo : getFree();
@@ -6481,7 +6587,7 @@ function emterpretify(ast) {
           assert(type !== ASM_NONE);
           var ret = makeBranchIfFalse(node[1], otherwise);
           var first = getReg(node[2]);
-          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type)); 
+          ret = ret.concat(first[1]).concat(makeSet(temp, releaseIfFree(first[0]), type));
           ret.push('BR', 0, exit, 0);
           var second = getReg(node[3]);
           ret.push('marker', otherwise, 0, 0);
@@ -6569,6 +6675,12 @@ function emterpretify(ast) {
     var hoistedNums = {};
 
     function makeNum(value, type, l) {
+      if (type == ASM_INT && value % 1 != 0) {
+        // normally a double would be +1 etc. However, in hand-written
+        // asm.js we may encounter 1.5 etc. which is a double
+        // by virtue of having a fraction part. fix that here.
+        type = ASM_DOUBLE;
+      }
       if (type === ASM_INT && l === undefined && value in hoistedNums) return [hoistedNums[value], []];
       if (l === undefined) l = getFree();
       var opcode;
@@ -6640,7 +6752,9 @@ function emterpretify(ast) {
             if (type === ASM_INT) {
               opcode = 'ADD';
               tryNumSymmetrical();
-            } else if (type === ASM_DOUBLE) opcode = 'ADDD';
+            } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+              opcode = 'ADDD';
+            }
             break;
           }
         }
@@ -6648,14 +6762,18 @@ function emterpretify(ast) {
           if (type === ASM_INT) {
             opcode = 'SUB';
             tryNumAsymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'SUBD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'SUBD';
+          }
           break;
         }
         case '*': {
           if (type === ASM_INT) {
             opcode = 'MUL';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'MULD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'MULD';
+          }
           break;
         }
         case '/': {
@@ -6664,8 +6782,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SDIV';
             else opcode = 'UDIV';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'DIVD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'DIVD';
           break;
         }
         case '%': {
@@ -6674,8 +6793,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SMOD';
             else opcode = 'UMOD';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'MODD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'MODD';
           break;
         }
         case '<': {
@@ -6684,8 +6804,9 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SLT';
             else opcode = 'ULT';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'LTD';
           }
-          else if (type === ASM_DOUBLE) opcode = 'LTD';
           break;
         }
         case '<=': {
@@ -6694,17 +6815,18 @@ function emterpretify(ast) {
             if (sign === ASM_SIGNED) opcode = 'SLE';
             else opcode = 'ULE';
             tryNumAsymmetrical(sign === ASM_UNSIGNED);
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'LED';
           }
-          else if (type === ASM_DOUBLE) opcode = 'LED';
           break;
         }
         case '>': {
-          assert(type === ASM_DOUBLE);
+          assert(type === ASM_DOUBLE || type === ASM_FLOAT);
           opcode = 'GTD';
           break;
         }
         case '>=': {
-          assert(type === ASM_DOUBLE);
+          assert(type === ASM_DOUBLE || type === ASM_FLOAT);
           opcode = 'GED';
           break;
         }
@@ -6712,14 +6834,18 @@ function emterpretify(ast) {
           if (type === ASM_INT) {
             opcode = 'EQ';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'EQD';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'EQD';
+          }
           break;
         }
         case '!=': {
           if (type === ASM_INT) {
             opcode = 'NE';
             tryNumSymmetrical();
-          } else if (type === ASM_DOUBLE) opcode = 'NED';
+          } else if (type === ASM_DOUBLE || type === ASM_FLOAT) {
+            opcode = 'NED';
+          }
           break;
         }
         case '&': opcode = 'AND'; tryNumSymmetrical(); break;
@@ -6730,7 +6856,7 @@ function emterpretify(ast) {
         case '>>>': opcode = 'LSHR'; tryNumAsymmetrical(true); break;
         default: throw 'bad ' + node[1];
       }
-      if (!opcode) assert(0, JSON.stringify([node, type, sign]));
+      assert(opcode, 'failed to find the proper opcode in makeBinary: ' + JSON.stringify([node, type, sign]));
       var x, y, z;
       var usingNumValue = numValue !== null && ((!numValueUnsigned && ((numValue << 24 >> 24) === numValue)) ||
                                                 ( numValueUnsigned && ((numValue & 255) === numValue)));
@@ -7202,7 +7328,7 @@ function emterpretify(ast) {
           }
         }
       }
-      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes 
+      // remove relative and absolute placeholders, after which every instruction is now in its absolute location, and we can write out absolutes
       for (var i = 0; i < code.length; i += 4) {
         if (code[i] === 'marker') {
           var obj = code[i+1];
@@ -7269,16 +7395,31 @@ function emterpretify(ast) {
       return ret;
     }
 
+    // if we enter a function (emterpreted or not) while we are in
+    // state 1, that means the stack was completely unwound and we are
+    // during a sleep. mark the state as definitely asleep, which lets us
+    // assert on seeing state 1 after each call in non-emterpreted code.
+    function makePreludeStateChange() {
+      assert(ASYNC);
+      return ['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')];
+    }
+
     // walkFunction main
 
     var ignore = !(func[1] in EMTERPRETED_FUNCS);
 
     if (ignore) {
-      // we are not emterpreting this function
-      if (ASYNC && ASSERTIONS && !okToCallWhileAsync(func[1])) {
-        // we need to be careful to never enter non-emterpreted code while doing an async save/restore,
-        // which is what happens if non-emterpreted code is on the stack while we attempt to save.
-        // add asserts right after each call
+      // we are not emterpreting this function. not much to do here, but we do need to
+      // set up some interactions with emterpreted code
+      if (ASYNC && ASSERTIONS && !okToCallDuringAsyncRestore(func[1])) {
+        function makeCheckBadState(state) {
+          // A bad state is when restoring the stack: we must only load the stack in that state,
+          // not do any actual work.
+          return ['binary', '==', makeAsmCoercion(['name', 'asyncState'], ASM_INT), ['num', state]];
+        }
+        function makeBadStateAbort(check, type, otherwise) {
+          return ['conditional', check, makeAsmCoercion(['call', ['name', 'abort'], [['num', -12]]], type), otherwise];
+        }
         var stack = [];
         traverse(func, function(node, type) {
           stack.push(node);
@@ -7287,25 +7428,26 @@ function emterpretify(ast) {
           if (type !== 'call') return;
           if (node[1][0] === 'name' && isMathFunc(node[1][1])) return;
           var callType = ASM_NONE;
+          // after a call, check that we are not asleep - we must not have gone into
+          // emterpreted code and started an async operation with us non-emterpreted
+          // code on the stack.
+          var check = makeCheckBadState(1);
           var parent = stack[stack.length-1];
           if (parent) {
+            callType = detectType(parent, asmData);
             var temp = null;
-            if (parent[0] === 'binary' && parent[1] === '|' && parent[3][0] === 'num' && parent[3][1] === 0 &&
-                parent[2] === node) {
-              // int-coerced call
-              callType = ASM_INT;
-              temp = 'tempInt';
-            } else if (parent[0] === 'unary-prefix' && parent[1] === '+' && parent[2] === node) {
-              // double-coerced call
-              callType = ASM_DOUBLE;
-              temp = 'tempDouble';
+            switch (callType) {
+              case ASM_INT:    temp = 'tempInt'; break;
+              case ASM_DOUBLE: temp = 'tempDouble'; break;
+              case ASM_FLOAT:  temp = 'tempFloat'; break;
+              case ASM_NONE:   break;
+              default: throw 'unhandled parent type in emterpter-async-assertions: ' + callType;
             }
-            // XXX fails on other coercions of odd types, like float32, simd, etc!
             if (temp) {
               // assign to temp, assert, return proper value:     temp = call() , (asyncState ? abort() : temp)
               trample(node, ['seq',
                 ['assign', null, ['name', temp], makeAsmCoercion(copy(node), callType)],
-                ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], callType), ['name', temp]]
+                makeBadStateAbort(check, callType, ['name', temp])
               ]);
               return;
             }
@@ -7313,22 +7455,28 @@ function emterpretify(ast) {
           // no important parent
           trample(node, ['seq',
             copy(node),
-            ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            makeBadStateAbort(check, ASM_INT, ['num', 0])
           ]);
         });
-        // add an assert in the prelude of the function
         var stats = getStatements(func);
         for (var i = 0; i < stats.length; i++) {
           var node = stats[i];
           if (node[0] == 'stat') node = node[1];
           if (node[0] !== 'var' && node[0] !== 'assign') {
-            stats.splice(i, 0, ['stat', 
-              ['conditional', ['name', 'asyncState'], makeAsmCoercion(['call', ['name', 'abort'], [['num', '-12']]], ASM_INT), ['num', 0]]
+            // in the prelude, we check that we are not restoring the stack
+            stats.splice(i, 0, ['stat',
+              makeBadStateAbort(makeCheckBadState(2), ASM_INT, ['num', 0])
+            ]);
+            // update the state if necessary. note that we only do this when assertions are on,
+            // as in a non-emterpreted function the 1 => 3 change only matters for assertion
+            // purposes, no need to add overhead in fast code (but in emterpreted code, we
+            // need to do this on emtry, so that we know we are not saving the stack).
+            stats.splice(i, 0, ['stat',
+              makePreludeStateChange()
             ]);
             break;
           }
         }
-        // perhaps also add at loop headers? TODO
       }
       print(astToSrc(func));
     }
@@ -7340,7 +7488,7 @@ function emterpretify(ast) {
       return;
     }
 
-    //printErr('emterpretifying ' + func[1]);
+    //if (func[1] == '?') printErr('emterpretifying ' + JSON.stringify(func, null, 2)); // for debugging
 
     // we implement floats as doubles, and just decrease precision when fround is called. flip floats to doubles, but we
     // must restore this at the end when we emit the trampolines
@@ -7466,7 +7614,9 @@ function emterpretify(ast) {
         func[3].push(srcToStat('sp = EMTSTACKTOP;'));
         var stackBytes = finalLocals*8;
         func[3].push(srcToStat('EMTSTACKTOP = EMTSTACKTOP + ' + stackBytes + ' | 0;'));
-        func[3].push(srcToStat('assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);'));
+        if (ASSERTIONS) {
+          func[3].push(srcToStat('if (((EMTSTACKTOP|0) > (EMT_STACK_MAX|0))|0) abortStackOverflowEmterpreter();'));
+        }
         asmData.vars['x'] = ASM_INT;
         func[3].push(srcToStat('while ((x | 0) < ' + stackBytes + ') { HEAP32[sp + x >> 2] = HEAP32[x >> 2] | 0; x = x + 4 | 0; }'));
       }
@@ -7485,7 +7635,7 @@ function emterpretify(ast) {
         bump += 8; // each local is a 64-bit value
       });
       if (ASYNC) {
-        argStats.push(['if', srcToExp('(asyncState|0) == 1'), srcToStat('asyncState = 3;')]); // we know we are during a sleep, mark the state
+        argStats.push(makePreludeStateChange());
         argStats = [['if', srcToExp('(asyncState|0) != 2'), ['block', argStats]]]; // 2 means restore, so do not trample the stack
       }
       func[3] = func[3].concat(argStats);
@@ -7767,93 +7917,416 @@ function eliminateDeadGlobals(ast) {
 // Removes obviously-unused code. Similar to closure compiler in its rules -
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
-function JSDCE(ast) {
-  var scopes = [{}]; // begin with empty toplevel scope
-  function DUMP() {
-    printErr('vvvvvvvvvvvvvv');
-    for (var i = 0; i < scopes.length; i++) {
-      printErr(i + ' : ' + JSON.stringify(scopes[i]));
+function JSDCE(ast, multipleIterations) {
+  function iteration() {
+    var removed = false;
+    var scopes = [{}]; // begin with empty toplevel scope
+    function DUMP() {
+      printErr('vvvvvvvvvvvvvv');
+      for (var i = 0; i < scopes.length; i++) {
+        printErr(i + ' : ' + JSON.stringify(scopes[i]));
+      }
+      printErr('^^^^^^^^^^^^^^');
     }
-    printErr('^^^^^^^^^^^^^^');
-  }
-  function ensureData(scope, name) {
-    if (scope[name]) return scope[name];
-    scope[name] = {
-      def: 0,
-      use: 0,
-      param: 0 // true for function params, which cannot be eliminated
-    };
-    return scope[name];
-  }
-  function cleanUp(ast, names) {
+    function ensureData(scope, name) {
+      if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
+      scope[name] = {
+        def: 0,
+        use: 0,
+        param: 0 // true for function params, which cannot be eliminated
+      };
+      return scope[name];
+    }
+    function cleanUp(ast, names) {
+      traverse(ast, function(node, type) {
+        if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) {
+          removed = true;
+          return emptyNode();
+        }
+        if (type === 'defun' || type === 'function') return null; // do not enter other scopes
+        if (type === 'var') {
+          node[1] = node[1].filter(function(varItem, j) {
+            var curr = varItem[0];
+            var value = varItem[1];
+            var keep = !(curr in names) || (value && hasSideEffects(value));
+            if (!keep) removed = true;
+            return keep;
+          });
+          if (node[1].length === 0) return emptyNode();
+        }
+      });
+      return ast;
+    }
     traverse(ast, function(node, type) {
-      if (type === 'defun' && node[1] in names) return emptyNode();
-      if (type === 'defun' || type === 'function') return null; // do not enter other scopes
       if (type === 'var') {
-        node[1] = node[1].filter(function(varItem, j) {
-          var curr = varItem[0];
-          var value = varItem[1];
-          return !(curr in names) || (value && hasSideEffects(value));
+        node[1].forEach(function(varItem, j) {
+          var name = varItem[0];
+          ensureData(scopes[scopes.length-1], name).def = 1;
         });
-        if (node[1].length === 0) return emptyNode();
+        return;
+      }
+      if (type === 'object') {
+        return;
+      }
+      if (type === 'defun' || type === 'function') {
+        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
+        if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
+        var scope = {};
+        node[2].forEach(function(param) {
+          ensureData(scope, param).def = 1;
+          scope[param].param = 1;
+        });
+        scopes.push(scope);
+        return;
+      }
+      if (type === 'name') {
+        ensureData(scopes[scopes.length-1], node[1]).use = 1;
+      }
+    }, function(node, type) {
+      if (type === 'defun' || type === 'function') {
+        // we can ignore self-references, i.e., references to ourselves inside
+        // ourselves, for named defined (defun) functions
+        var ownName = type === 'defun' ? node[1] : '';
+        var scope = scopes.pop();
+        var names = set();
+        for (name in scope) {
+          if (name === ownName) continue;
+          var data = scope[name];
+          if (data.use && !data.def) {
+            // this is used from a higher scope, propagate the use down
+            ensureData(scopes[scopes.length-1], name).use = 1;
+            continue;
+          }
+          if (data.def && !data.use && !data.param) {
+            // this is eliminateable!
+            names[name] = 0;
+          }
+        }
+        cleanUp(node[3], names);
       }
     });
-    return ast;
+    // toplevel
+    var scope = scopes.pop();
+    assert(scopes.length === 0);
+
+    var names = set();
+    for (var name in scope) {
+      var data = scope[name];
+      if (data.def && !data.use) {
+        assert(!data.param); // can't be
+        // this is eliminateable!
+        names[name] = 0;
+      }
+    }
+    cleanUp(ast, names);
+    return removed;
   }
+  while (iteration() && multipleIterations) { }
+}
+
+// Aggressive JSDCE - multiple iterations
+function AJSDCE(ast) {
+  JSDCE(ast, /* multipleIterations= */ true);
+}
+
+function isAsmLibraryArgAssign(node) {
+  return node[0] === 'assign' && node[2][0] === 'dot'
+                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
+                              && node[2][2] === 'asmLibraryArg';
+}
+
+function isAsmUse(node) {
+  return node[0] === 'sub' &&
+         ((node[1][0] === 'name' && node[1][1] === 'asm') || // asm['X']
+          (node[1][0] === 'sub' && node[1][1][0] === 'name' && node[1][1][1] === 'Module' && node[1][2][0] === 'string' && node[1][2][1] === 'asm')) && // Module
+         node[2][0] === 'string';
+}
+
+function getAsmUseName(node) {
+  return node[2][1];
+}
+
+function isModuleUse(node) {
+  return node[0] === 'sub' &&
+         node[1][0] === 'name' && node[1][1] === 'Module' && // Module['X']
+         node[2][0] === 'string';
+}
+
+function getModuleUseName(node) {
+  return node[2][1];
+}
+
+// A static dyncall is dynCall('vii', ..), which is actually static even
+// though we call dynCall() - we see the string signature statically.
+function isStaticDynCall(node) {
+  return node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] === 'string';
+}
+
+function getStaticDynCallName(node) {
+  return 'dynCall_' + node[2][0][1];
+}
+
+// a dynamic dyncall is one in which all we know is *some* dynCall may
+// be called, but not who. This can be either
+//   dynCall(*not a string*, ..)
+// or, to be conservative,
+//   "dynCall_"
+// as that prefix means we may be constructing a dynamic dyncall name
+// (dynCall and embind's requireFunction do this internally).
+function isDynamicDynCall(node) {
+  return (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'dynCall' && node[2][0][0] !== 'string') ||
+         (node[0] === 'string' && node[1] === 'dynCall_');
+}
+
+//
+// Emit the DCE graph, to help optimize the combined JS+wasm.
+// This finds where JS depends on wasm, and where wasm depends
+// on JS, and prints that out.
+//
+// The analysis here is simplified, and not completely general. It
+// is enough to optimize the common case of JS library and runtime
+// functions involved in loops with wasm, but not more complicated
+// things like JS objects and sub-functions. Specifically we
+// analyze as follows:
+//
+//  * We consider (1) the toplevel scope, and (2) the scopes of toplevel defined
+//    functions (defun, not function; i.e., function X() {} where
+//    X can be called later, and not y = function Z() {} where Z is
+//    just a name for stack traces). We also consider the wasm, which
+//    we can see things going to and arriving from.
+//  * Anything used in a defun creates a link in the DCE graph, either
+//    to another defun, or the wasm.
+//  * Anything used in the toplevel scope is rooted, as it is code
+//    we assume will execute. The exceptions are
+//     * when we receive something from wasm; those are "free" and
+//       do not cause rooting. (They will become roots if they are
+//       exported, the metadce logic will handle that.)
+//     * when we send something to wasm; sending a defun causes a
+//       link in the DCE graph.
+//  * Anything not in the toplevel or not in a toplevel defun is
+//    considering rooted. We don't optimize those cases.
+//
+// Special handling:
+//
+//  * dynCall('vii', ..) are dynamic dynCalls, but we analyze them
+//    statically, to preserve the dynCall_vii etc. method they depend on.
+//    Truly dynamic dynCalls (not to a string constant) will not work,
+//    and require the user to export them.
+//  * Truly dynamic dynCalls are assumed to reach any dynCall_*.
+//
+// XXX this modifies the input AST. if you want to keep using it,
+//     that should be fixed. Currently the main use case here does
+//     not require that. TODO FIXME
+//
+function emitDCEGraph(ast) {
+  // First pass: find the wasm imports and exports, and the toplevel
+  // defuns, and save them on the side, removing them from the AST,
+  // which makes the second pass simpler.
+  //
+  // The imports that wasm receives look like this:
+  //
+  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //
+  // The exports are trickier, as they have a different form whether or not
+  // async compilation is enabled. It can be either:
+  //
+  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  });
+  //
+  var imports = [];
+  var defuns = [];
+  var dynCallNames = [];
+  var nameToGraphName = {};
+  var modulePropertyToGraphName = {};
+  var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  var foundAsmLibraryArgAssign = false;
+  var graph = [];
   traverse(ast, function(node, type) {
-    if (type === 'var') {
-      node[1].forEach(function(varItem, j) {
-        var name = varItem[0];
-        ensureData(scopes[scopes.length-1], name).def = 1;
+    if (isAsmLibraryArgAssign(node)) {
+      var items = node[3][1];
+      items.forEach(function(item) {
+        assert(item[1][0] === 'name' && item[1][1] === item[0], item[0]); // must have x: x form, nothing else
+        imports.push(item[0]); // the value doesn't matter, for now
       });
-      return;
-    }
-    if (type === 'defun' || type === 'function') {
-      if (node[1]) ensureData(scopes[scopes.length-1], node[1]).def = 1;
-      var scope = {};
-      node[2].forEach(function(param) {
-        ensureData(scope, param).def = 1;
-        scope[param].param = 1;
-      });
-      scopes.push(scope);
-      return;
-    }
-    if (type === 'name') {
-      ensureData(scopes[scopes.length-1], node[1]).use = 1;
-    }
-  }, function(node, type) {
-    if (type === 'defun' || type === 'function') {
-      var scope = scopes.pop();
-      var names = set();
-      for (name in scope) {
-        var data = scope[name];
-        if (data.use && !data.def) {
-          // this is used from a higher scope, propagate the use down 
-          ensureData(scopes[scopes.length-1], name).use = 1;
-          continue;
-        }
-        if (data.def && !data.use && !data.param) {
-          // this is eliminateable!
-          names[name] = 0;
+      foundAsmLibraryArgAssign = true;
+      return emptyNode(); // ignore this in the second pass; this does not root
+    } else if (type === 'var') {
+      if (node[1] && node[1].length === 1) {
+        var item = node[1][0];
+        var name = item[0];
+        var value = item[1];
+        if (Array.isArray(value) && value[0] === 'assign') {
+          var assigned = value[2];
+          if (isModuleUse(assigned) && getModuleUseName(assigned) === name) {
+            // this is
+            //  var x = Module['x'] = ?
+            // which looks like a wasm export being received. confirm with the asm use
+            var found = 0;
+            var asmName;
+            traverse(value[3], function(node, type) {
+              if (isAsmUse(node)) {
+                found++;
+                asmName = getAsmUseName(node);
+              }
+            });
+            // in the wasm backend, the asm name may have one fewer "_" prefixed
+            if (found === 1) {
+              // this is indeed an export
+              // the asmName is what the wasm provides directly; the outside JS
+              // name may be slightly different (extra "_" in wasm backend)
+              var graphName = getGraphName(name, 'export');
+              nameToGraphName[name] = graphName;
+              modulePropertyToGraphName[name] = graphName;
+              exportNameToGraphName[asmName] = graphName;
+              if (/^dynCall_/.test(name)) {
+                dynCallNames.push(graphName);
+              }
+              return emptyNode(); // ignore this in the second pass; this does not root
+            }
+          }
         }
       }
-      cleanUp(node[3], names);
+    } else if (type === 'defun') {
+      defuns.push(node);
+      var name = node[1];
+      nameToGraphName[name] = getGraphName(name, 'defun');
+      return emptyNode(); // ignore this in the second pass; we scan defuns separately
+    } else if (type === 'function') {
+      return null; // don't look inside
     }
   });
-  // toplevel
-  var scope = scopes.pop();
-  assert(scopes.length === 0);
-
-  var names = set();
-  for (var name in scope) {
-    var data = scope[name];
-    if (data.def && !data.use) {
-      assert(!data.param); // can't be
-      // this is eliminateable!
-      names[name] = 0;
+  // must find the info we need
+  assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
+  // Second pass: everything used in the toplevel scope is rooted;
+  // things used in defun scopes create links
+  function getGraphName(name, what) {
+    return 'emcc$' + what + '$' + name;
+  }
+  var infos = {}; // the graph name of the item => info for it
+  imports.forEach(function(import_) {
+    var name = getGraphName(import_, 'import');
+    var info = infos[name] = {
+      name: name,
+      import: ['env', import_],
+      reaches: {}
+    };
+    if (nameToGraphName.hasOwnProperty(import_)) {
+      info.reaches[nameToGraphName[import_]] = 1;
+    } // otherwise, it's a number, ignore
+  });
+  for (var e in exportNameToGraphName) {
+    var name = exportNameToGraphName[e];
+    infos[name] = {
+      name: name,
+      export: e,
+      reaches: {}
+    };
+  }
+  // a function that handles a node we visit, in either a defun or
+  // the toplevel scope (in which case the second param is not provided)
+  function visitNode(node, defunInfo) {
+    // TODO: scope awareness here. for now we just assume all uses are
+    //       from the top scope, which might create more uses than needed
+    var reached;
+    if (node[0] === 'name') {
+      var name = node[1];
+      if (nameToGraphName.hasOwnProperty(name)) {
+        reached = nameToGraphName[name];
+      }
+    } else if (isModuleUse(node)) {
+      var name = getModuleUseName(node);
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+        reached = modulePropertyToGraphName[name];
+      }
+    } else if (isStaticDynCall(node)) {
+      reached = getGraphName(getStaticDynCallName(node), 'export');
+    } else if (isDynamicDynCall(node)) {
+      // this can reach *all* dynCall_* targets, we can't narrow it down
+      reached = dynCallNames;
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are always rooted in any case
+      var name = getAsmUseName(node);
+      if (exportNameToGraphName.hasOwnProperty(name)) {
+        infos[exportNameToGraphName[name]].root = true;
+      }
+      return;
+    }
+    if (reached) {
+      function addReach(reached) {
+        if (defunInfo) {
+          defunInfo.reaches[reached] = 1; // defun reaches it
+        } else {
+          infos[reached].root = true; // in global scope, root it
+        }
+      }
+      if (typeof reached === 'string') {
+        addReach(reached);
+      } else {
+        reached.forEach(addReach);
+      }
     }
   }
-  cleanUp(ast, names);
+  defuns.forEach(function(defun) {
+    var name = getGraphName(defun[1], 'defun');
+    var info = infos[name] = {
+      name: name,
+      reaches: {}
+    };
+    traverse(defun[3], function(node, type) {
+      visitNode(node, info);
+    });
+  });
+  traverse(ast, function(node, type) {
+    visitNode(node, null);
+  });
+  // Final work: print out the graph
+  // sort for determinism
+  function sortedNamesFromMap(map) {
+    var names = [];
+    for (var name in map) {
+      names.push(name);
+    }
+    names.sort();
+    return names;
+  }
+  sortedNamesFromMap(infos).forEach(function(name) {
+    var info = infos[name];
+    info.reaches = sortedNamesFromMap(info.reaches);
+    graph.push(info);
+  });
+  print(JSON.stringify(graph, null, ' '));
+}
+
+// Apply graph removals from running wasm-metadce
+function applyDCEGraphRemovals(ast) {
+  var unused = set(extraInfo.unused);
+
+  traverse(ast, function(node, type) {
+    if (isAsmLibraryArgAssign(node)) {
+      node[3][1] = node[3][1].filter(function(item) {
+        var name = item[0];
+        var value = item[1];
+        var full = 'emcc$import$' + name;
+        return !((full in unused) && !hasSideEffects(value));
+      });
+    } else if (type === 'assign') {
+      // when we assign to a thing we don't need, we can just remove the assign
+      var target = node[2];
+      if (isAsmUse(target) || isModuleUse(target)) {
+        var name = target[2][1];
+        var full = 'emcc$export$' + name;
+        var value = node[3];
+        if ((full in unused) && !hasSideEffects(value)) {
+          return ['name', 'undefined'];
+        }
+      }
+    }
+  });
 }
 
 function removeFuncs(ast) {
@@ -7867,7 +8340,9 @@ function removeFuncs(ast) {
 
 // Passes table
 
-var minifyWhitespace = false, printMetadata = true, asm = false, asmPreciseF32 = false, emitJSON = false, last = false;
+var minifyWhitespace = false, printMetadata = true, asm = false,
+    asmPreciseF32 = false, emitJSON = false, last = false,
+    emitAst = true;
 
 var passes = {
   // passes
@@ -7902,6 +8377,9 @@ var passes = {
   dumpCallGraph: dumpCallGraph,
   asmLastOpts: asmLastOpts,
   JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
+  emitDCEGraph: emitDCEGraph,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
   removeFuncs: removeFuncs,
   noop: function() {},
 
@@ -7913,6 +8391,7 @@ var passes = {
   emitJSON: function() { emitJSON = true },
   receiveJSON: function() { }, // handled in a special way, before passes are run
   last: function() { last = true },
+  noEmitAst: function() { emitAst = false },
 };
 
 // Main
@@ -7945,8 +8424,6 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 }
 //printErr('ast: ' + JSON.stringify(ast));
 
-var emitAst = true;
-
 arguments_.slice(1).forEach(function(arg) {
   passes[arg](ast);
 });
@@ -7971,7 +8448,4 @@ if (emitAst) {
   } else {
     print(JSON.stringify(ast));
   }
-} else {
-  //print('/* not printing ast */');
 }
-

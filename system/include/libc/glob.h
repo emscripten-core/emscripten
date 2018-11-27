@@ -39,6 +39,7 @@ void globfree(glob_t *);
 #if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
 #define glob64 glob
 #define globfree64 globfree
+#define glob64_t glob_t
 #endif
 
 #ifdef __cplusplus

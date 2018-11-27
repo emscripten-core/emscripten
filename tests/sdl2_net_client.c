@@ -1,4 +1,11 @@
 /*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
  * Compile with:
  *
  * gcc -Wall `sdl-config --cflags` sdl2_net_client.c -o sdl2_net_client `sdl-config --libs` -lSDL_net
@@ -35,7 +42,7 @@ void finish(int result) {
     SDLNet_Quit();
   }
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   emscripten_force_exit(result);
 #else
   exit(result);

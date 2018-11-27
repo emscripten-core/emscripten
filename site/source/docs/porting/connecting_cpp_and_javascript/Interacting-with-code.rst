@@ -21,6 +21,7 @@ JavaScript and compiled C or C++:
 - Call JavaScript functions from **C/C++**:
 
   - :ref:`Using emscripten_run_script() <interacting-with-code-call-javascript-from-native>`.
+  - :ref:`Using EM_JS() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using EM_ASM() <interacting-with-code-call-javascript-from-native>` (faster).
   - :ref:`Using a C API implemented in JavaScript <implement-c-in-javascript>`.
   - :ref:`As function pointers from C <interacting-with-code-call-function-pointers-from-c>`.
@@ -69,7 +70,9 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS="['_int_sqrt']"
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
 
 .. note::
 
@@ -88,8 +91,9 @@ following JavaScript::
 The first parameter is the name of the function to be wrapped, the second is
 the return type of the function (or a JavaScript `null` value if there isn't one), and the third is an array of parameter
 types (which may be omitted if there are no parameters). The types are
-native JavaScript types, "number" (for a C integer, float, or general
-pointer) or "string" (for a C ``char*`` that represents a string).
+"number" (for a JavaScript number corresponding to a C integer, float, or general
+pointer), "string" (for a JavaScript string that corresponds to a C ``char*`` that represents a string) or
+"array" (for a JavaScript array or typed array that corresponds to a C array; for typed arrays, it must be a Uint8Array or Int8Array).
 
 You can run this yourself by first opening the generated page
 **function.html** in a web browser (nothing will happen on page
@@ -145,9 +149,17 @@ parameters to pass to the function:
        as the latter will force the method to actually be included in
        the build.
 
-   - Use ``Module.ccall`` and not ``ccall`` by itself. The former will work
-     at all optimisation levels (even if the :term:`Closure Compiler`
-     minifies the function names).
+   - The compiler will remove code it does not see is used, to improve code
+     size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
+     or ``--post-js``, it will just work. If you use it in a place the compiler
+     didn't see, like another script tag on the HTML or in the JS console like
+     we did in this tutorial, then because of optimizations
+     and minification you should export ccall from the runtime, using
+     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
+     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     and call it on ``Module`` (which contains
+     everything exported, in a safe way that is not influenced by minification
+     or optimizations).
 
 
 Interacting with an API written in C/C++ from NodeJS
@@ -203,17 +215,17 @@ appears in the generated code. This will be the same as the original C
 function, but with a leading ``_``.
 
 .. note:: If you use :js:func:`ccall` or :js:func:`cwrap`, you do not need
-   to prefix function calls with ``_`` — just use the C name.
+   to prefix function calls with ``_`` -- just use the C name.
 
 The types of the parameters you pass to functions need to make sense.
 Integers and floating point values can be passed as is. Pointers are
 simply integers in the generated code.
 
 Strings in JavaScript must be converted to pointers for compiled
-code — the relevant function is :js:func:`Pointer_stringify`, which
+code -- the relevant function is :js:func:`Pointer_stringify`, which
 given a pointer returns a JavaScript string. Converting a JavaScript
 string ``someString`` to a pointer can be accomplished using ``ptr = ``
-:js:func:`allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>`.
+allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
 
 .. note:: The conversion to a pointer allocates memory, which needs to be
    freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
@@ -242,15 +254,32 @@ following JavaScript:
 
 .. note:: The function ``alert`` is present in browsers, but not in *node*
    or other JavaScript shells. A more generic alternative is to call
-   :js:func:`Module.print`.
+   `console.log`.
 
 
 A faster way to call JavaScript from C is to write "inline JavaScript",
-using :c:func:`EM_ASM` (and related macros). These are used in a similar
-manner to inline assembly code. The "alert" example above might be
-written using inline JavaScript as:
+using :c:func:`EM_JS` or :c:func:`EM_ASM` (and related macros).
 
-.. code-block:: c++
+EM_JS is used to declare JavaScript functions from inside a C file. The "alert"
+example might be written using EM_JS like::
+
+   #include <emscripten.h>
+
+   EM_JS(void, call_alert, (), {
+     alert('hello world!');
+     throw 'all done';
+   });
+
+   int main() {
+     call_alert();
+     return 0;
+   }
+
+EM_JS's implementation is essentially a shorthand for :ref:`implementing a
+JavaScript library<implement-c-in-javascript>`.
+
+EM_ASM is used in a similar manner to inline assembly code. The "alert" example
+might be written with inline JavaScript as::
 
    #include <emscripten.h>
 
@@ -269,26 +298,22 @@ Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
 You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
-(note the extra "_" at the end), for example
+(note the extra "_" at the end), for example::
 
-.. code-block:: cpp
+   EM_ASM_({
+     console.log('I received: ' + $0);
+   }, 100);
 
-      EM_ASM_({
-        Module.print('I received: ' + $0);
-      }, 100);
-
-This will show ``I received: 100``. 
+This will show ``I received: 100``.
 
 You can also receive values back, for example the following will print out ``I received: 100``
-and then ``101``.
+and then ``101``::
 
-.. code-block:: cpp
-
-      int x = EM_ASM_INT({
-        Module.print('I received: ' + $0);
-        return $0 + 1;
-      }, 100);
-      printf("%d\n", x);
+   int x = EM_ASM_INT({
+     console.log('I received: ' + $0);
+     return $0 + 1;
+   }, 100);
+   printf("%d\n", x);
 
 See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 
@@ -386,7 +411,7 @@ some common JavaScript practices can not be used in certain ways in emscripten
 library files.
 
 To save space, by default, emscripten only includes library properties
-referenced from C/C++. It does this by calling ``toString`` on each 
+referenced from C/C++. It does this by calling ``toString`` on each
 used property on the JavaScript libraries that are linked in. That means
 that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
@@ -414,7 +439,7 @@ initialization.
      good_02: function() {
        _good_02 = document.querySelector.bind(document);
      },
-     
+
      // Solution for closures
      good_03__postset: '_good_03();',
      good_03: function() {
@@ -423,11 +448,11 @@ initialization.
          console.log("times called: ", ++callCount);
        };
      },
-     
+
      // Solution for curry/transform
      good_05__postset: '_good_05();',
      good_05: function() {
-       _good_05 = curry(scrollTo, 0);  
+       _good_05 = curry(scrollTo, 0);
     },
 
    });
@@ -440,24 +465,24 @@ output file. For the example above this code will be emitted.
      function _good_02() {
        _good_o2 = document.querySelector.bind(document);
      }
-     
+
      function _good_03() {
        var callCount = 0;
        _good_03 = function() {
          console.log("times called: ", ++callCount);
        };
      }
-     
+
      function _good_05() {
-       _good_05 = curry(scrollTo, 0);  
+       _good_05 = curry(scrollTo, 0);
     };
-    
+
     // Call each function once so it will replace itself
     _good_02();
     _good_03();
     _good_05();
 
-You can also put most of your code in the ``xxx__postset`` strings. 
+You can also put most of your code in the ``xxx__postset`` strings.
 The example below each method declares a dependency on ``$method_support``
 and are otherwise dummy functions. ``$method_support`` itself has a
 corresponding ``__postset`` property with all the code to set the
@@ -491,7 +516,7 @@ various methods to the functions we actually want.
       '  _method_03 = inst.reset.bind(inst);          ',
       '}());                                          ',
     ].join('\n'),
-    method_01: function() {}, 
+    method_01: function() {},
     method_01__deps: ['$method_support'],
     method_02: function() {},
     method_01__deps: ['$method_support'],
@@ -512,29 +537,29 @@ a function,
     $method_support__postset: 'method_support();',
     $method_support: {
       init: function() {
-        var SomeLib = function() {                   
-          this.callCount = 0;                        
-        };                                           
-                                                     
+        var SomeLib = function() {
+          this.callCount = 0;
+        };
+
         SomeLib.prototype.getCallCount = function() {
-          return this.callCount;                     
-        };                                           
-                                                     
-        SomeLib.prototype.process = function() {     
-          ++this.callCount;                          
-        };                                           
-                                                     
-        SomeLib.prototype.reset = function() {       
-          this.callCount = 0;                        
-        };                                           
-                                                     
-        var inst = new SomeLib();                    
-        _method_01 = inst.getCallCount.bind(inst);   
-        _method_02 = inst.process.bind(inst);        
-        _method_03 = inst.reset.bind(inst);          
-      }                                         
+          return this.callCount;
+        };
+
+        SomeLib.prototype.process = function() {
+          ++this.callCount;
+        };
+
+        SomeLib.prototype.reset = function() {
+          this.callCount = 0;
+        };
+
+        var inst = new SomeLib();
+        _method_01 = inst.getCallCount.bind(inst);
+        _method_02 = inst.process.bind(inst);
+        _method_03 = inst.reset.bind(inst);
+      }
     },
-    method_01: function() {}, 
+    method_01: function() {},
     method_01__deps: ['$method_support'],
     method_02: function() {},
     method_01__deps: ['$method_support'],
@@ -571,19 +596,36 @@ See the `library_*.js`_ files for other examples.
 Calling JavaScript functions as function pointers from C
 ========================================================
 
-You can use ``Runtime.addFunction`` to return an integer value that represents
-a function pointer. Passing that integer to C code then lets it call that
-value as a function pointer, and the JavaScript function you sent to
-``Runtime.addFunction`` will be called.
+You can use ``addFunction`` to return an integer value that represents a
+function pointer. Passing that integer to C code then lets it call that value as
+a function pointer, and the JavaScript function you sent to ``addFunction`` will
+be called.
 
 See `test_add_function in tests/test_core.py`_ for an example.
 
-When using ``Runtime.addFunction``, there is a backing array where these
-functions are stored. This array must be explicitly sized, which can be
-done via a compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For
-example, to reserve space for 20 functions to be added::
+When using ``addFunction``, there is a backing array where these functions are
+stored. This array must be explicitly sized, which can be done via a
+compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
+space for 20 functions to be added::
 
     emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
+
+.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
+   an additional second argument, a Wasm function signature string. Each
+   character within a signature string represents a type. The first character
+   represents the return type of a function, and remaining characters are for
+   parameter types.
+
+   - ``'v'``: void type
+   - ``'i'``: 32-bit integer type
+   - ``'j'``: 64-bit integer type (currently does not exist in JavaScript)
+   - ``'f'``: 32-bit float type
+   - ``'d'``: 64-bit float type
+
+   For example, if you add a function that takes an integer and does not return
+   anything, you can do ``addFunction(your_function, 'vi');``. See
+   `tests/interop/test_add_function_post.js <https://github.com/kripken/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_ for an example.
+
 
 .. _interacting-with-code-access-memory:
 

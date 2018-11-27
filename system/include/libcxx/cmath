@@ -209,6 +209,10 @@ floating_point hypot (arithmetic x, arithmetic y);
 float          hypotf(float x, float y);
 long double    hypotl(long double x, long double y);
 
+double       hypot(double x, double y, double z);                // C++17
+float        hypot(float x, float y, float z);                   // C++17
+long double  hypot(long double x, long double y, long double z); // C++17
+
 int ilogb (arithmetic x);
 int ilogbf(float x);
 int ilogbl(long double x);
@@ -327,7 +331,6 @@ using ::double_t;
 using ::abs;
 #endif
 
-#ifndef __sun__
 using ::acos;
 using ::acosf;
 using ::asin;
@@ -342,58 +345,47 @@ using ::cos;
 using ::cosf;
 using ::cosh;
 using ::coshf;
-#endif // __sun__
 
 using ::exp;
 using ::expf;
 
-#ifndef __sun__
 using ::fabs;
 using ::fabsf;
 using ::floor;
 using ::floorf;
-#endif //__sun__
 
 using ::fmod;
 using ::fmodf;
 
-#ifndef __sun__
 using ::frexp;
 using ::frexpf;
 using ::ldexp;
 using ::ldexpf;
-#endif // __sun__
 
 using ::log;
 using ::logf;
 
-#ifndef __sun__
 using ::log10;
 using ::log10f;
 using ::modf;
 using ::modff;
-#endif // __sun__ 
 
 using ::pow;
 using ::powf;
 
-#ifndef __sun__
 using ::sin;
 using ::sinf;
 using ::sinh;
 using ::sinhf;
-#endif // __sun__
 
 using ::sqrt;
 using ::sqrtf;
 using ::tan;
 using ::tanf;
 
-#ifndef __sun__
 using ::tanh;
 using ::tanhf;
 
-#ifndef _LIBCPP_MSVCRT
 using ::acosh;
 using ::acoshf;
 using ::asinh;
@@ -402,12 +394,10 @@ using ::atanh;
 using ::atanhf;
 using ::cbrt;
 using ::cbrtf;
-#endif
 
 using ::copysign;
 using ::copysignf;
 
-#ifndef _LIBCPP_MSVCRT
 using ::erf;
 using ::erff;
 using ::erfc;
@@ -444,16 +434,10 @@ using ::lrint;
 using ::lrintf;
 using ::lround;
 using ::lroundf;
-#endif // _LIBCPP_MSVCRT
-#endif // __sun__
 
-#ifndef _LIBCPP_MSVCRT
 using ::nan;
 using ::nanf;
-#endif // _LIBCPP_MSVCRT
 
-#ifndef __sun__
-#ifndef _LIBCPP_MSVCRT
 using ::nearbyint;
 using ::nearbyintf;
 using ::nextafter;
@@ -476,7 +460,6 @@ using ::tgamma;
 using ::tgammaf;
 using ::trunc;
 using ::truncf;
-#endif // !_LIBCPP_MSVCRT
 
 using ::acosl;
 using ::asinl;
@@ -500,17 +483,14 @@ using ::sinhl;
 using ::sqrtl;
 using ::tanl;
 
-#ifndef _LIBCPP_MSVCRT
 using ::tanhl;
 using ::acoshl;
 using ::asinhl;
 using ::atanhl;
 using ::cbrtl;
-#endif  // !_LIBCPP_MSVCRT
 
 using ::copysignl;
 
-#ifndef _LIBCPP_MSVCRT
 using ::erfl;
 using ::erfcl;
 using ::exp2l;
@@ -541,12 +521,90 @@ using ::scalblnl;
 using ::scalbnl;
 using ::tgammal;
 using ::truncl;
-#endif // !_LIBCPP_MSVCRT
 
-#else 
-using ::lgamma;
-using ::lgammaf;
-#endif // __sun__
+#if _LIBCPP_STD_VER > 14
+inline _LIBCPP_INLINE_VISIBILITY float       hypot(       float x,       float y,       float z ) { return sqrt(x*x + y*y + z*z); }
+inline _LIBCPP_INLINE_VISIBILITY double      hypot(      double x,      double y,      double z ) { return sqrt(x*x + y*y + z*z); }
+inline _LIBCPP_INLINE_VISIBILITY long double hypot( long double x, long double y, long double z ) { return sqrt(x*x + y*y + z*z); }
+
+template <class _A1, class _A2, class _A3>
+inline _LIBCPP_INLINE_VISIBILITY
+typename __lazy_enable_if
+<
+    is_arithmetic<_A1>::value &&
+    is_arithmetic<_A2>::value &&
+    is_arithmetic<_A3>::value,
+    __promote<_A1, _A2, _A3>
+>::type
+hypot(_A1 __lcpp_x, _A2 __lcpp_y, _A3 __lcpp_z) _NOEXCEPT
+{
+    typedef typename __promote<_A1, _A2, _A3>::type __result_type;
+    static_assert((!(is_same<_A1, __result_type>::value &&
+                     is_same<_A2, __result_type>::value &&
+                     is_same<_A3, __result_type>::value)), "");
+    return hypot((__result_type)__lcpp_x, (__result_type)__lcpp_y, (__result_type)__lcpp_z);
+}
+#endif
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<is_floating_point<_A1>::value, bool>::type
+__libcpp_isnan_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+#if __has_builtin(__builtin_isnan)
+    return __builtin_isnan(__lcpp_x);
+#else
+    return isnan(__lcpp_x);
+#endif
+}
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<!is_floating_point<_A1>::value, bool>::type
+__libcpp_isnan_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+    return isnan(__lcpp_x);
+}
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<is_floating_point<_A1>::value, bool>::type
+__libcpp_isinf_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+#if __has_builtin(__builtin_isinf)
+    return __builtin_isinf(__lcpp_x);
+#else
+    return isinf(__lcpp_x);
+#endif
+}
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<!is_floating_point<_A1>::value, bool>::type
+__libcpp_isinf_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+    return isinf(__lcpp_x);
+}
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<is_floating_point<_A1>::value, bool>::type
+__libcpp_isfinite_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+#if __has_builtin(__builtin_isfinite)
+    return __builtin_isfinite(__lcpp_x);
+#else
+    return isfinite(__lcpp_x);
+#endif
+}
+
+template <class _A1>
+_LIBCPP_ALWAYS_INLINE
+_LIBCPP_CONSTEXPR typename enable_if<!is_floating_point<_A1>::value, bool>::type
+__libcpp_isfinite_or_builtin(_A1 __lcpp_x) _NOEXCEPT
+{
+    return isfinite(__lcpp_x);
+}
 
 _LIBCPP_END_NAMESPACE_STD
 

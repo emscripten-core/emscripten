@@ -1,3 +1,10 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <sys/time.h>
 
@@ -7,7 +14,7 @@ typedef long long int64;
 
 int main(int argc, char* argv[]) {
   int64 sec = 1329409675 + argc;
-  int64 usec = 2329509675;
+  int64 usec = 2329509675ll;
   int64 mul = int64(sec) * PRMJ_USEC_PER_SEC;
   int64 add = mul + int64(usec);
   int add_low = add;

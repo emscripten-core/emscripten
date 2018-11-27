@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <emscripten.h>
@@ -22,7 +29,7 @@ int EventHandler(void *userdata, SDL_Event *event) {
             printf("b scancode\n"); result *= 23; break;
           }
           printf("unknown key: sym %d scancode %d\n", event->key.keysym.sym, event->key.keysym.scancode);
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
                                                  // addEventListener('keyup', function(event) { console.log(event->keyCode) }, true)
         }

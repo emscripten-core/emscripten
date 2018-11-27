@@ -1,3 +1,8 @@
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 '''
 Tries to evaluate global constructors, applying their effects ahead of time.
 
@@ -5,14 +10,21 @@ This is an LTO-like operation, and to avoid parsing the entire tree (we might fa
 '''
 
 import os, sys, json, subprocess, time
-import shared, js_optimizer
-from tempfiles import try_delete
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared, js_optimizer
+from tools.tempfiles import try_delete
 
 js_file = sys.argv[1]
-mem_init_file = sys.argv[2]
+binary_file = sys.argv[2] # mem init for js, wasm binary for wasm
 total_memory = int(sys.argv[3])
 total_stack = int(sys.argv[4])
 global_base = int(sys.argv[5])
+binaryen_bin = sys.argv[6]
+debug_info = int(sys.argv[7])
+
+wasm = not not binaryen_bin
 
 assert global_base > 0
 
@@ -32,7 +44,17 @@ def find_ctors(js):
   ctors_end += 3
   return (ctors_start, ctors_end)
 
-def eval_ctors(js, mem_init, num):
+def find_ctors_data(js, num):
+  ctors_start, ctors_end = find_ctors(js)
+  assert ctors_start > 0
+  ctors_text = js[ctors_start:ctors_end]
+  all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
+  all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
+  assert len(all_ctors)
+  ctors = all_ctors[:num]
+  return ctors_start, ctors_end, all_ctors, ctors
+
+def eval_ctors_js(js, mem_init, num):
 
   def kill_func(asm, name):
     before = len(asm)
@@ -48,18 +70,11 @@ def eval_ctors(js, mem_init, num):
     return asm
 
   # Find the global ctors
-  ctors_start, ctors_end = find_ctors(js)
-  assert ctors_start > 0
-  ctors_text = js[ctors_start:ctors_end]
-  all_ctors = filter(lambda ctor: ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor, ctors_text.split(' '))
-  all_ctors = map(lambda ctor: ctor.replace('()', ''), all_ctors)
-  total_ctors = len(all_ctors)
-  assert total_ctors > 0
-  ctors = all_ctors[:num]
+  ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
   shared.logging.debug('trying to eval ctors: ' + ', '.join(ctors))
   # Find the asm module, and receive the mem init.
   asm = get_asm(js)
-  assert len(asm) > 0
+  assert len(asm)
   asm = asm.replace('use asm', 'not asm') # don't try to validate this
   # Substitute sbrk with a failing stub: the dynamic heap memory area shouldn't get increased during static ctor initialization.
   asm = asm.replace('function _sbrk(', 'function _sbrk(increment) { throw "no sbrk when evalling ctors!"; } function KILLED_sbrk(', 1)
@@ -68,14 +83,14 @@ def eval_ctors(js, mem_init, num):
   pre_funcs_end = asm.find('function ', pre_funcs_start)
   pre_funcs_end = asm.rfind(';', pre_funcs_start, pre_funcs_end) + 1
   pre_funcs = asm[pre_funcs_start:pre_funcs_end]
-  parts = filter(lambda x: x.startswith('var '), map(lambda x: x.strip(), pre_funcs.split(';')))
+  parts = [x for x in [x.strip() for x in pre_funcs.split(';')] if x.startswith('var ')]
   global_vars = []
   new_globals = '\n'
   for part in parts:
     part = part[4:] # skip 'var '
-    bits = map(lambda x: x.strip(), part.split(','))
+    bits = [x.strip() for x in part.split(',')]
     for bit in bits:
-      name, value = map(lambda x: x.strip(), bit.split('='))
+      name, value = [x.strip() for x in bit.split('=', 1)]
       if value in ['0', '+0', '0.0'] or name in [
         'STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR',
         'HEAP8', 'HEAP16', 'HEAP32',
@@ -237,10 +252,10 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     err_file = config.get_temp_files().get('.err').name
     out_file_handle = open(out_file, 'w')
     err_file_handle = open(err_file, 'w')
-    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle)
+    proc = subprocess.Popen(shared.NODE_JS + [temp_file], stdout=out_file_handle, stderr=err_file_handle, universal_newlines=True)
     try:
-      shared.jsrun.timeout_run(proc, timeout=10, full_output=True)
-    except Exception, e:
+      shared.jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
+    except Exception as e:
       if 'Timed out' not in str(e): raise e
       shared.logging.debug('ctors timed out\n')
       return (0, 0, 0, 0)
@@ -256,7 +271,8 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 
   # out contains the new mem init and other info
   num_successful, mem_init_raw, atexits = json.loads(out_result)
-  mem_init = ''.join(map(chr, mem_init_raw))
+  mem_init = bytes(bytearray(mem_init_raw))
+  total_ctors = len(all_ctors)
   if num_successful < total_ctors:
     shared.logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + err_result + '========')
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
@@ -264,13 +280,38 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     new_ctors = ''
   else:
     elements = []
-    if len(atexits) > 0:
-      elements.append('{ func: function() { %s } }' % '; '.join(map(lambda x: '_atexit(' + str(x[0]) + ',' + str(x[1]) + ')', atexits)))
+    if len(atexits):
+      elements.append('{ func: function() { %s } }' % '; '.join(['_atexit(' + str(x[0]) + ',' + str(x[1]) + ')' for x in atexits]))
     for ctor in all_ctors[num:]:
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
   return (num_successful, js, mem_init, ctors)
+
+def eval_ctors_wasm(js, wasm_file, num):
+  ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
+  cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + ','.join(ctors)]
+  if debug_info:
+    cmd += ['-g']
+  shared.logging.debug('wasm ctor cmd: ' + str(cmd))
+  proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+  try:
+    err = shared.jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
+  except Exception as e:
+    if 'Timed out' not in str(e): raise e
+    shared.logging.debug('ctors timed out\n')
+    return 0, js
+  num_successful = err.count('success on')
+  shared.logging.debug(err)
+  if len(ctors) == num_successful:
+    new_ctors = ''
+  else:
+    elements = []
+    for ctor in all_ctors[num_successful:]:
+      elements.append('{ func: function() { %s() } }' % ctor)
+    new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
+  js = js[:ctors_start] + new_ctors + js[ctors_end:]
+  return num_successful, js
 
 # main
 if __name__ == '__main__':
@@ -288,50 +329,63 @@ if __name__ == '__main__':
   num_ctors = ctors_text.count('function()')
   shared.logging.debug('ctor_evaller: %d ctors, from |%s|' % (num_ctors, ctors_text))
 
-  if os.path.exists(mem_init_file):
-    mem_init = json.dumps(map(ord, open(mem_init_file, 'rb').read()))
+  if not wasm:
+    # js path
+    mem_init_file = binary_file
+    if os.path.exists(mem_init_file):
+      mem_init = json.dumps(list(bytearray(open(mem_init_file, 'rb').read())))
+    else:
+      mem_init = []
+
+    # find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
+
+    shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
+    num_successful, new_js, new_mem_init, removed = eval_ctors_js(js, mem_init, num_ctors)
+    if num_successful == 0:
+      shared.logging.debug('ctor_evaller: not successful')
+      sys.exit(0)
+
+    shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+    if num_successful == num_ctors:
+      js = new_js
+      mem_init = new_mem_init
+    else:
+      shared.logging.debug('ctor_evaller: final execution')
+      check, js, mem_init, removed = eval_ctors_js(js, mem_init, num_successful)
+      assert check == num_successful
+    open(js_file, 'w').write(js)
+    open(mem_init_file, 'wb').write(mem_init)
+
+    # Dead function elimination can help us
+
+    shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
+    # find exports
+    asm = get_asm(open(js_file).read())
+    exports_start = asm.find('return {')
+    exports_end = asm.find('};', exports_start)
+    exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
+    exports = [x.split(':')[1].strip() for x in exports_text.replace(' ', '').split(',')]
+    for r in removed:
+      assert r in exports, 'global ctors were exported'
+    exports = [e for e in exports if e not in removed]
+    # fix up the exports
+    js = open(js_file).read()
+    absolute_exports_start = js.find(exports_text)
+    js = js[:absolute_exports_start] + ', '.join([e + ': ' + e for e in exports]) + js[absolute_exports_start + len(exports_text):]
+    open(js_file, 'w').write(js)
+    # find unreachable methods and remove them
+    reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
+    for r in removed:
+      assert r not in reachable, 'removed ctors must NOT be reachable'
+    shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
   else:
-    mem_init = []
-
-  # find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
-
-  shared.logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
-  num_successful, new_js, new_mem_init, removed = eval_ctors(js, mem_init, num_ctors)
-  if num_successful == 0:
-    shared.logging.debug('ctor_evaller: not successful')
-    sys.exit(0)
-
-  shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
-  if num_successful == num_ctors:
-    js = new_js
-    mem_init = new_mem_init
-  else:
-    shared.logging.debug('ctor_evaller: final execution')
-    check, js, mem_init, removed = eval_ctors(js, mem_init, num_successful)
-    assert check == num_successful
-  open(js_file, 'w').write(js)
-  open(mem_init_file, 'wb').write(mem_init)
-
-  # Dead function elimination can help us
-
-  shared.logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
-  # find exports
-  asm = get_asm(open(js_file).read())
-  exports_start = asm.find('return {')
-  exports_end = asm.find('};', exports_start)
-  exports_text = asm[asm.find('{', exports_start) + 1 : exports_end]
-  exports = map(lambda x: x.split(':')[1].strip(), exports_text.replace(' ', '').split(','))
-  for r in removed:
-    assert r in exports, 'global ctors were exported'
-  exports = filter(lambda e: e not in removed, exports)
-  # fix up the exports
-  js = open(js_file).read()
-  absolute_exports_start = js.find(exports_text)
-  js = js[:absolute_exports_start] + ', '.join(map(lambda e: e + ': ' + e, exports)) + js[absolute_exports_start + len(exports_text):]
-  open(js_file, 'w').write(js)
-  # find unreachable methods and remove them
-  reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
-  for r in removed:
-    assert r not in reachable, 'removed ctors must NOT be reachable'
-  shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={ 'keep': reachable }, output_filename=js_file)
+    # wasm path
+    wasm_file = binary_file
+    shared.logging.debug('ctor_evaller (wasm): trying to eval %d global constructors' % num_ctors)
+    num_successful, new_js = eval_ctors_wasm(js, wasm_file, num_ctors)
+    if num_successful == 0:
+      shared.logging.debug('ctor_evaller: not successful')
+      sys.exit(0)
+    shared.logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+    open(js_file, 'w').write(new_js)
 

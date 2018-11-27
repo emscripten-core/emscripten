@@ -1,35 +1,15 @@
 /**
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
  * This file contains definitions for things that we'd really rather the closure compiler *didn't* minify.
  * See http://code.google.com/p/closure-compiler/wiki/FAQ#How_do_I_write_an_externs_file
  * See also the discussion here: https://github.com/kripken/emscripten/issues/1979
  *
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
-
-// Closure externs used by library_uuid.js
-
-/**
- * @param {Array} typedArray
- */
-crypto.getRandomValues = function(typedArray) {};
-
-/**
- BEGIN_NODE_INCLUDE
- var crypto = require('crypto');
- END_NODE_INCLUDE
- */
-
-/**
- * @type {Object.<string,*>}
- */
-var crypto = {};
-
-/**
- * @param {number} size
- * @param {function(Error, buffer.Buffer)} callback
- */
-crypto.randomBytes = function(size, callback) {};
-
 
 // Closure externs used by library_sockfs.js
 
@@ -107,92 +87,11 @@ var flags = {};
 */
 flags.binary;
 
-
-/**
- * @fileoverview Definitions for W3C's Gamepad specification.
- * @see http://www.w3.org/TR/gamepad/
- * @externs
- */
-
-/**
- * @typedef {{id: string, index: number, timestamp: number, axes: Array.<number>, buttons: Array.<number>}}
- */
-var Gamepad;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.buttons;
-
-/**
-* @type {Array.<number>}
-*/
-Gamepad.axes;
-
-/**
-* @type {number}
-*/
-Gamepad.index;
-
-/**
-* @type {string}
-*/
-Gamepad.id;
-
-/**
-* @type {number}
-*/
-Gamepad.timestamp;
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.getGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGetGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.webkitGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.mozGamepads = function() {};
-
-/**
- * @return {Array.<Gamepad>}
- */
-navigator.gamepads = function() {};
-
 /**
  * Backported from latest closure...
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript
  */
 Document.prototype.currentScript;
-
-//Atomics library (not yet in latest closure):
-//See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics
-var Atomics;
-Atomics.prototype.NOTEQUAL = -1;
-Atomics.prototype.OK = 0;
-Atomics.prototype.TIMEDOUT = -2;
-Atomics.prototype.add = function(typedArray, index, value) {};
-Atomics.prototype.and = function(typedArray, index, value) {};
-Atomics.prototype.compareExchange = function(typedArray, index, expectedValue, replacementValue) {};
-Atomics.prototype.exchange = function(typedArray, index, value) {};
-Atomics.prototype.load = function(typedArray, index) {};
-Atomics.prototype.or = function(typedArray, index, value) {};
-Atomics.prototype.store = function(typedArray, index, value) {};
-Atomics.prototype.sub = function(typedArray, index, value) {};
-Atomics.prototype.xor = function(typedArray, index, value) {};
-Atomics.prototype.wait = function(typedArray, index, valuei, timeout) {};
-Atomics.prototype.wake = function(typedArray, index, value) {};
-Atomics.prototype.isLockFree = function(size) {};
 
 /**
  * SIMD.js support (not in upstream closure yet).
@@ -849,4 +748,596 @@ SIMD.Bool16x8.xor = function() {};
 SIMD.Bool32x4.xor = function() {};
 SIMD.Bool64x2.xor = function() {};
 
+SIMD.Float32x4.load1 = function() {};
+SIMD.Float32x4.load2 = function() {};
+SIMD.Float32x4.load3 = function() {};
+SIMD.Float32x4.load4 = function() {};
+SIMD.Float32x4.store1 = function() {};
+SIMD.Float32x4.store2 = function() {};
+SIMD.Float32x4.store3 = function() {};
+SIMD.Float32x4.store4 = function() {};
+
+SIMD.Int32x4.load1 = function() {};
+SIMD.Int32x4.load2 = function() {};
+SIMD.Int32x4.load3 = function() {};
+SIMD.Int32x4.load4 = function() {};
+SIMD.Int32x4.store1 = function() {};
+SIMD.Int32x4.store2 = function() {};
+SIMD.Int32x4.store3 = function() {};
+SIMD.Int32x4.store4 = function() {};
+
+SIMD.Uint32x4.load1 = function() {};
+SIMD.Uint32x4.load2 = function() {};
+SIMD.Uint32x4.load3 = function() {};
+SIMD.Uint32x4.load4 = function() {};
+SIMD.Uint32x4.store1 = function() {};
+SIMD.Uint32x4.store2 = function() {};
+SIMD.Uint32x4.store3 = function() {};
+SIMD.Uint32x4.store4 = function() {};
+
+SIMD.bool64x2.anyTrue = function() {};
+SIMD.bool32x4.anyTrue = function() {};
+SIMD.bool16x8.anyTrue = function() {};
+SIMD.bool8x16.anyTrue = function() {};
+
+SIMD.Float32x4.fromBool64x2Bits = function() {};
+SIMD.Float64x2.fromBool64x2Bits = function() {};
+SIMD.Int8x16.fromBool64x2Bits = function() {};
+SIMD.Int16x8.fromBool64x2Bits = function() {};
+SIMD.Int32x4.fromBool64x2Bits = function() {};
+SIMD.Uint8x16.fromBool64x2Bits = function() {};
+SIMD.Uint16x8.fromBool64x2Bits = function() {};
+SIMD.Uint32x4.fromBool64x2Bits = function() {};
+SIMD.Bool8x16.fromBool64x2Bits = function() {};
+SIMD.Bool16x8.fromBool64x2Bits = function() {};
+SIMD.Bool32x4.fromBool64x2Bits = function() {};
+SIMD.Bool64x2.fromBool64x2Bits = function() {};
+
+SIMD.Float32x4.fromFloat64x2 = function() {};
+SIMD.Float64x2.fromFloat64x2 = function() {};
+SIMD.Int8x16.fromFloat64x2 = function() {};
+SIMD.Int16x8.fromFloat64x2 = function() {};
+SIMD.Int32x4.fromFloat64x2 = function() {};
+SIMD.Uint8x16.fromFloat64x2 = function() {};
+SIMD.Uint16x8.fromFloat64x2 = function() {};
+SIMD.Uint32x4.fromFloat64x2 = function() {};
+SIMD.Bool8x16.fromFloat64x2 = function() {};
+SIMD.Bool16x8.fromFloat64x2 = function() {};
+SIMD.Bool32x4.fromFloat64x2 = function() {};
+SIMD.Bool64x2.fromFloat64x2 = function() {};
+
+/**
+ * @suppress {duplicate}
+ */
 var GLctx = {};
+
+/**
+ * @const
+ */
+var WebAssembly = {};
+/**
+ * @constructor
+ * @param {!BufferSource} bytes
+ */
+WebAssembly.Module = function(bytes) {};
+/**
+ * @constructor
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {Object=} importObject
+ */
+WebAssembly.Instance = function(moduleObject, importObject) {};
+/** @typedef {{initial:number, maximum:(number|undefined)}} */
+var MemoryDescriptor;
+/**
+ * @constructor
+ * @param {MemoryDescriptor} memoryDescriptor
+ */
+WebAssembly.Memory = function(memoryDescriptor) {};
+/** @typedef {{element:string, initial:number, maximum:(number|undefined)}} */
+var TableDescriptor;
+/**
+ * @constructor
+ * @param {TableDescriptor} tableDescriptor
+ */
+WebAssembly.Table = function(tableDescriptor) {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.CompileError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.LinkError = function() {};
+/**
+ * @constructor
+ * @extends {Error}
+ */
+WebAssembly.RuntimeError = function() {};
+/**
+ * Note: Closure compiler does not support function overloading, omit this overload for now.
+ * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
+ */
+/**
+ * @param {!BufferSource} moduleObject
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiate = function(moduleObject, importObject) {};
+/**
+ * @param {!Promise<!Response>} source
+ * @param {Object=} importObject
+ * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
+ */
+WebAssembly.instantiateStreaming = function(source, importObject) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {!Promise<!WebAssembly.Module>}
+ */
+WebAssembly.compile = function(bytes) {};
+/**
+ * @param {!BufferSource} bytes
+ * @return {boolean}
+ */
+WebAssembly.validate = function(bytes) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{name:string, kind:string}>}
+ */
+WebAssembly.Module.exports = function(moduleObject) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @return {!Array<{module:string, name:string, kind:string}>}
+ */
+WebAssembly.Module.imports = function(moduleObject) {};
+/**
+ * @param {!WebAssembly.Module} moduleObject
+ * @param {string} sectionName
+ * @return {!Array<!ArrayBuffer>}
+ */
+WebAssembly.Module.customSections = function(moduleObject, sectionName) {};
+/** @dict */
+WebAssembly.Instance.prototype.exports;
+/**
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Memory.prototype.grow = function(delta) {};
+/**
+ * @type {!ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.buffer;
+/**
+ * @param {number} delta
+ * @return {number}
+ */
+WebAssembly.Table.prototype.grow = function(delta) {};
+/**
+ * @type {number}
+ */
+WebAssembly.Table.prototype.length;
+/**
+ * @param {number} index
+ * @return {function(...)}
+ */
+WebAssembly.Table.prototype.get = function(index) {};
+/**
+ * @param {number} index
+ * @param {?function(...)} value
+ */
+WebAssembly.Table.prototype.set = function(index, value) {};
+
+// Random SpiderMonkey/V8 externs
+
+/**
+ * @param {string} filename
+ * @param {string} type
+ * @return {string}
+ */
+var read = function(filename, type) {};
+/**
+ * @param {string} expression
+ */
+var print = function(expression) {};
+/**
+ * @param {string} expression
+ */
+var printErr = function(expression) {};
+/**
+ * @param {string} filename
+ * @return {ArrayBuffer}
+ */
+var readbuffer = function(filename) {};
+/**
+ * @const
+ */
+var scriptArgs = [];
+/**
+ * @const
+ */
+var quit = function() {};
+/**
+ * @return {number}
+ */
+var dateNow = function() {};
+/**
+ * This is to prevent Closure Compiler to use `gc` as variable name anywhere, otherwise it might collide with SpiderMonkey's shell `gc()` function
+ */
+var gc = function () {};
+
+// WebIDL
+
+/**
+ * @suppress {duplicate}
+ */
+var WrapperObject;
+/**
+ * @suppress {duplicate}
+ */
+var getCache;
+/**
+ * @suppress {duplicate}
+ */
+var wrapPointer;
+/**
+ * @suppress {duplicate}
+ */
+var castObject;
+/**
+ * @suppress {duplicate}
+ */
+var destroy;
+/**
+ * @suppress {duplicate}
+ */
+var compare;
+/**
+ * @suppress {duplicate}
+ */
+var getPointer;
+/**
+ * @suppress {duplicate}
+ */
+var getClass;
+/**
+ * @suppress {duplicate}
+ */
+var ensureCache;
+/**
+ * @suppress {duplicate}
+ */
+var ensureString;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt8;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt16;
+/**
+ * @suppress {duplicate}
+ */
+var ensureInt32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat32;
+/**
+ * @suppress {duplicate}
+ */
+var ensureFloat64;
+/**
+ * @suppress {duplicate}
+ */
+var VoidPtr;
+
+
+// Various Emscripten-specific global variables
+
+/**
+ * @suppress {duplicate}
+ */
+var tempRet0;
+var tempI64;
+var tempDouble;
+/**
+ * @suppress {duplicate}
+ */
+var WasmJS;
+
+// Various variables that get into WasmJS of Binaryen, but are not present in final build and never actually used (should probably be fixed in future)
+// These are only needed for `interpret-asm2wasm` and not for `asmjs` or `native-wasm`
+
+/**
+ * @suppress {duplicate}
+ */
+var Browser;
+/**
+ * @suppress {duplicate}
+ */
+var SOCKFS = {};
+/**
+ * @suppress {duplicate}
+ */
+var __read_sockaddr = function(addrp, addrlen) {};
+/**
+ * @suppress {duplicate}
+ */
+var DNS = {};
+/**
+ * @suppress {duplicate}
+ */
+var FS;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownAfter;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaUnknownBefore;
+/**
+ * @suppress {undefinedVars}
+ */
+var _scriptDir;
+/**
+ * @suppress {duplicate}
+ */
+var env;
+/**
+ * @suppress {duplicate}
+ */
+var ___cxa_free_exception = function() {};
+
+// On top of node externs to avoid some `declared more than once` errors
+
+/**
+ * @suppress {duplicate}
+ */
+var assert;
+/**
+ * @suppress {duplicate}
+ */
+var buffer;
+/**
+ * @suppress {duplicate}
+ */
+var fs;
+/**
+ * @suppress {undefinedVars}
+ */
+var FUNCTION_TABLE;
+/**
+ * @suppress {undefinedVars}
+ */
+var MozBlobBuilder;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var GL;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var WebGLClient;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var SDL;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var SDL2;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var JSEvents;
+/**
+ * @suppress {undefinedVars}
+ */
+var i64Math;
+
+// Module loaders externs, for AMD etc.
+
+/**
+ * @param {Function} wrapper
+ */
+var define = function (wrapper) {};
+
+/**
+ * GL functions (https://github.com/kripken/emscripten/commit/97a464a654fdadf5dfb8aa082b48516e6bf8d402#commitcomment-25520648)
+ */
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDrawArrays;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDrawElements;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glActiveTexture;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glEnable;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDisable;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glTexEnvf;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glTexEnvi;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glTexEnvfv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glGetIntegerv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glIsEnabled;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glGetBooleanv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glGetString;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glCreateShader;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glShaderSource;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glCompileShader;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glAttachShader;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDetachShader;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glUseProgram;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDeleteProgram;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glBindAttribLocation;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glLinkProgram;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glBindBuffer;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glGetFloatv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glHint;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glEnableVertexAttribArray;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glDisableVertexAttribArray;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _emscripten_glVertexAttribPointer;
+
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glDrawArrays;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glDrawElements;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glTexEnvf;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glTexEnvi;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glTexEnvfv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glGetTexEnviv;
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _glGetTexEnvfv;
+
+var _glutPostRedisplay = function() {};
+
+/**
+ * @suppress {undefinedVars}
+ */
+var emscripten_source_map;
+
+/**
+ * @type {Worker}
+ */
+var worker;
+/**
+ * @type {number}
+ */
+var majorVersion;
+/**
+ * @type {number}
+ */
+var minorVersion;
+
+/**
+ * @param {string} type
+ * @param {!Function} listener
+ */
+var addEventListener = function (type, listener) {};
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ *
+ * @suppress {duplicate}
+ * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
+ */
+var __registerRestoreOldStyle = function(canvas) {};
+
+/**
+ * @param {HTMLCanvasElement} element
+ * @param {number} topBottom
+ * @param {number} leftRight
+ *
+ * @suppress {duplicate}
+ * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
+ */
+var __setLetterbox = function(element, topBottom, leftRight) {};
+
+/**
+ * @param {Object} message
+ */
+var onmessage = function(message) {};
+
+// Fetch.js/Fetch Worker
+
+/**
+ * @suppress {undefinedVars}
+ */
+var ENVIRONMENT_IS_FETCH_WORKER;

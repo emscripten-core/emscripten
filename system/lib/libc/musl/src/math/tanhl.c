@@ -39,4 +39,10 @@ long double tanhl(long double x)
 	}
 	return sign ? -t : t;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double tanhl(long double x)
+{
+	return tanh(x);
+}
 #endif

@@ -1,4 +1,5 @@
 #include <netdb.h>
+#include "locale_impl.h"
 
 static const char msgs[] =
 	"Invalid flags\0"
@@ -19,5 +20,6 @@ const char *gai_strerror(int ecode)
 {
 	const char *s;
 	for (s=msgs, ecode++; ecode && *s; ecode++, s++) for (; *s; s++);
-	return *s ? s : s+1;
+	if (!*s) s++;
+	return LCTRANS_CUR(s);
 }

@@ -1,4 +1,10 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryJSEvents = {
+  $JSEvents__postset: 'JSEvents.staticInit();',
   $JSEvents: {
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
@@ -19,6 +25,7 @@ var LibraryJSEvents = {
     // state.
     lastGamepadState: null,
     lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
+    numGamepadsConnected: 0, // Keep track of how many gamepads are connected, to optimize to not poll gamepads when none are connected.
 
     // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
     // so that we can report information about that element in the event message.
@@ -32,6 +39,20 @@ var LibraryJSEvents = {
     // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
+
+    staticInit: function() {
+      if (typeof window !== 'undefined') {
+        window.addEventListener("gamepadconnected", function() { ++JSEvents.numGamepadsConnected; });
+        window.addEventListener("gamepaddisconnected", function() { --JSEvents.numGamepadsConnected; });
+        
+        // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
+        // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
+        var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
+        if (firstState) {
+          JSEvents.numGamepadsConnected = firstState.length;
+        }
+      }
+    },
 
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
@@ -197,7 +218,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.charCode, 'e.charCode', 'i32') }}};
         {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.keyCode, 'e.keyCode', 'i32') }}};
         {{{ makeSetValue('JSEvents.keyEvent', C_STRUCTS.EmscriptenKeyboardEvent.which, 'e.which', 'i32') }}};
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.keyEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.keyEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -253,8 +274,13 @@ var LibraryJSEvents = {
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
         {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
       }
-      JSEvents.previousScreenX = e.screenX;
-      JSEvents.previousScreenY = e.screenY;
+      // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
+      // https://github.com/kripken/emscripten/pull/4997
+      // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
+      if (e.type !== 'wheel' && e.type !== 'mousewheel') {
+        JSEvents.previousScreenX = e.screenX;
+        JSEvents.previousScreenY = e.screenY;
+      }
     },
     
     registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
@@ -265,7 +291,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
         JSEvents.fillMouseEventData(JSEvents.mouseEvent, e, target);
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.mouseEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.mouseEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -297,7 +323,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -310,7 +336,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-(e["wheelDeltaY"] ? e["wheelDeltaY"] : e["wheelDelta"]) /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
         {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.wheelEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -367,7 +393,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}};
         {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
         {{{ makeSetValue('JSEvents.uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.uiEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.uiEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -402,7 +428,7 @@ var LibraryJSEvents = {
         var id = e.target.id ? e.target.id : '';
         stringToUTF8(nodeName, JSEvents.focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.nodeName }}}, {{{ cDefine('EM_HTML5_LONG_STRING_LEN_BYTES') }}});
         stringToUTF8(id, JSEvents.focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}}, {{{ cDefine('EM_HTML5_LONG_STRING_LEN_BYTES') }}});
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.focusEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.focusEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -437,7 +463,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceOrientationEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.deviceOrientationEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -461,7 +487,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        {{{ makeSetValue('JSEvents.deviceOrientationEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
+        {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
@@ -472,7 +498,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
         {{{ makeSetValue('JSEvents.deviceMotionEvent', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.deviceMotionEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.deviceMotionEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -524,7 +550,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillOrientationChangeEventData(JSEvents.orientationChangeEvent, e);
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.orientationChangeEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.orientationChangeEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -586,7 +612,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillFullscreenChangeEventData(JSEvents.fullscreenChangeEvent, e);
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.fullscreenChangeEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.fullscreenChangeEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -683,7 +709,7 @@ var LibraryJSEvents = {
       }
 
       if (strategy.canvasResizedCallback) {
-        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+        Module['dynCall_iiii'](strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
       }
 
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -715,7 +741,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillPointerlockChangeEventData(JSEvents.pointerlockChangeEvent, e);
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.pointerlockChangeEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.pointerlockChangeEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -742,7 +768,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, 0, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, 0, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -804,7 +830,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillVisibilityChangeEventData(JSEvents.visibilityChangeEvent, e);
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.visibilityChangeEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.visibilityChangeEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -884,7 +910,7 @@ var LibraryJSEvents = {
         }
         {{{ makeSetValue('JSEvents.touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.touchEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.touchEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -892,9 +918,7 @@ var LibraryJSEvents = {
 
       var eventHandler = {
         target: target,
-        allowsDeferredCalls: false, // XXX Currently disabled, see bug https://bugzilla.mozilla.org/show_bug.cgi?id=966493
-        // Once the above bug is resolved, enable the following condition if possible:
-        // allowsDeferredCalls: eventTypeString == 'touchstart',
+        allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
         eventTypeString: eventTypeString,
         callbackfunc: callbackfunc,
         handlerFunc: handlerFunc,
@@ -940,7 +964,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillGamepadEventData(JSEvents.gamepadEvent, e.gamepad);
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.gamepadEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.gamepadEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -961,7 +985,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        var confirmationMessage = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, 0, userData]);
+        var confirmationMessage = Module['dynCall_iiii'](callbackfunc, eventTypeId, 0, userData);
         
         if (confirmationMessage) {
           confirmationMessage = Pointer_stringify(confirmationMessage);
@@ -1003,7 +1027,7 @@ var LibraryJSEvents = {
 
         JSEvents.fillBatteryEventData(JSEvents.batteryEvent, JSEvents.battery());
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, JSEvents.batteryEvent, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, JSEvents.batteryEvent, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -1027,7 +1051,7 @@ var LibraryJSEvents = {
       var handlerFunc = function(event) {
         var e = event || window.event;
 
-        var shouldCancel = Runtime.dynCall('iiii', callbackfunc, [eventTypeId, 0, userData]);
+        var shouldCancel = Module['dynCall_iiii'](callbackfunc, eventTypeId, 0, userData);
         if (shouldCancel) {
           e.preventDefault();
         }
@@ -1110,7 +1134,7 @@ var LibraryJSEvents = {
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP32.set(HEAP32.subarray(JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    HEAP8.set(HEAP8.subarray(JSEvents.mouseEvent, JSEvents.mouseEvent + {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1311,7 +1335,7 @@ var LibraryJSEvents = {
         if (canvas.GLctxObject) canvas.GLctxObject.GLctx.viewport(0, 0, oldWidth, oldHeight);
 
         if (__currentFullscreenStrategy.canvasResizedCallback) {
-          Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+          Module['dynCall_iiii'](__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
         }
       }
     }
@@ -1422,7 +1446,7 @@ var LibraryJSEvents = {
     }
 
     if (!inCenteredWithoutScalingFullscreenMode && __currentFullscreenStrategy.canvasResizedCallback) {
-      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+      Module['dynCall_iiii'](__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
     }
   },
 
@@ -1508,7 +1532,7 @@ var LibraryJSEvents = {
       __restoreHiddenElements(hiddenElements);
       window.removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
       if (strategy.canvasResizedCallback) {
-        Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+        Module['dynCall_iiii'](strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
       }
     }
     __restoreOldWindowedStyle = restoreWindowedState;
@@ -1517,7 +1541,7 @@ var LibraryJSEvents = {
 
     // Inform the caller that the canvas size has changed.
     if (strategy.canvasResizedCallback) {
-      Runtime.dynCall('iiii', strategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData]);
+      Module['dynCall_iiii'](strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -1550,14 +1574,15 @@ var LibraryJSEvents = {
     }
 
     if (__currentFullscreenStrategy.canvasResizedCallback) {
-      Runtime.dynCall('iiii', __currentFullscreenStrategy.canvasResizedCallback, [{{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData]);
+      Module['dynCall_iiii'](__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_set_pointerlockchange_callback: function(target, userData, useCapture, callbackfunc) {
-    if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
+    if (!document || !document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     if (!target) target = document;
@@ -1573,7 +1598,8 @@ var LibraryJSEvents = {
   },
 
   emscripten_set_pointerlockerror_callback: function(target, userData, useCapture, callbackfunc) {
-    if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
+    if (!document || !document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     if (!target) target = document;
@@ -1590,7 +1616,7 @@ var LibraryJSEvents = {
 
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
     if (pointerlockStatus) JSEvents.fillPointerlockChangeEventData(pointerlockStatus);
-    if (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -1701,6 +1727,9 @@ var LibraryJSEvents = {
  },
   
   _emscripten_sample_gamepad_data: function() {
+    // Polling gamepads generates garbage, so don't do it when we know there are no gamepads connected.
+    if (!JSEvents.numGamepadsConnected) return;
+
     // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
     if (Browser.mainLoop.currentFrameNumber !== JSEvents.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
       JSEvents.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : null);
@@ -1710,6 +1739,9 @@ var LibraryJSEvents = {
 
   emscripten_get_num_gamepads__deps: ['_emscripten_sample_gamepad_data'],
   emscripten_get_num_gamepads: function() {
+    // Polling gamepads generates garbage, so don't do it when we know there are no gamepads connected.
+    if (!JSEvents.numGamepadsConnected) return 0;
+
     __emscripten_sample_gamepad_data();
     if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     return JSEvents.lastGamepadState.length;
@@ -1770,6 +1802,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 0, 'i32') }}};
+    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 0, 'i32') }}};
   },
 
   emscripten_webgl_create_context__deps: ['$GL'],
@@ -1785,8 +1818,9 @@ var LibraryJSEvents = {
     contextAttributes['failIfMajorPerformanceCaveat'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 'i32') }}};
     contextAttributes['majorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'i32') }}};
     contextAttributes['minorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
-    var enableExtensionsByDefault = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
+    contextAttributes['enableExtensionsByDefault'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
     contextAttributes['explicitSwapControl'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
+    contextAttributes['renderViaOffscreenBackBuffer'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 'i32') }}};
 
     target = Pointer_stringify(target);
     var canvas;
@@ -1804,24 +1838,47 @@ var LibraryJSEvents = {
 #if OFFSCREENCANVAS_SUPPORT
     if (contextAttributes['explicitSwapControl']) {
       var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
+
       if (!supportsOffscreenCanvas) {
+#if OFFSCREEN_FRAMEBUFFER
+        if (!contextAttributes['renderViaOffscreenBackBuffer']) {
+          contextAttributes['renderViaOffscreenBackBuffer'] = true;
 #if GL_DEBUG
-        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported!');
+          console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
+        }
+#else
+#if GL_DEBUG
+        console.error('emscripten_webgl_create_context failed: OffscreenCanvas is not supported but explicitSwapControl was requested!');
 #endif
         return 0;
+#endif
       }
+
       if (canvas.transferControlToOffscreen) {
         GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
         GL.offscreenCanvases[canvas.id].id = canvas.id;
         canvas = GL.offscreenCanvases[canvas.id];
       }
     }
+#else // !OFFSCREENCANVAS_SUPPORT
+#if OFFSCREEN_FRAMEBUFFER
+    if (contextAttributes['explicitSwapControl'] && !contextAttributes['renderViaOffscreenBackBuffer']) {
+      contextAttributes['renderViaOffscreenBackBuffer'] = true;
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
+#endif
+    }
 #else
     if (contextAttributes['explicitSwapControl']) {
-      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification!');
+#if GL_DEBUG
+      console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
+#endif
       return 0;
     }
-#endif
+#endif // ~!OFFSCREEN_FRAMEBUFFER
+
+#endif // ~!OFFSCREENCANVAS_SUPPORT
 
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
@@ -1836,6 +1893,17 @@ var LibraryJSEvents = {
     return GL.currentContext ? GL.currentContext.handle : 0;
   },
 
+  emscripten_webgl_get_drawing_buffer_size: function(contextHandle, width, height) {
+    var GLContext = GL.getContext(contextHandle);
+
+    if (!GLContext || !GLContext.GLctx || !width || !height) {
+      return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
+    }
+    {{{ makeSetValue('width', '0', 'GLContext.GLctx.drawingBufferWidth', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'GLContext.GLctx.drawingBufferHeight', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
   emscripten_webgl_commit_frame: function() {
     if (!GL.currentContext || !GL.currentContext.GLctx) {
 #if GL_DEBUG
@@ -1843,6 +1911,16 @@ var LibraryJSEvents = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+
+#if OFFSCREEN_FRAMEBUFFER
+    if (GL.currentContext.defaultFbo) {
+      GL.blitOffscreenFramebuffer(GL.currentContext);
+#if GL_DEBUG
+      if (GL.currentContext.GLctx.commit) console.error('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
+#endif
+      return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+    }
+#endif
     if (!GL.currentContext.GLctx.commit) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
@@ -1883,8 +1961,31 @@ var LibraryJSEvents = {
 
   emscripten_is_webgl_context_lost: function(target) {
     // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
-    if (!Module['ctx']) return true; // No context ~> lost context.
-    return Module['ctx'].isContextLost();
+    if (!Module.ctx) return true; // No context ~> lost context.
+    return Module.ctx.isContextLost();
+  },
+
+  emscripten_set_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    target.width = width;
+    target.height = height;
+#if OFFSCREEN_FRAMEBUFFER
+    if (canvas.GLctxObject) GL.resizeOffscreenFramebuffer(canvas.GLctxObject);
+#endif
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+  },
+
+  emscripten_get_canvas_element_size: function(target, width, height) {
+    if (target) target = JSEvents.findEventTarget(target);
+    else target = Module['canvas'];
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+
+    {{{ makeSetValue('width', '0', 'target.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'target.height', 'i32') }}};
+    return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
   emscripten_set_element_css_size: function(target, width, height) {

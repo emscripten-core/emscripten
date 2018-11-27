@@ -8,6 +8,7 @@
 # Do not make changes here.
 #
 
+srcdir = .
 exec_prefix = /usr/local
 bindir = $(exec_prefix)/bin
 
@@ -16,138 +17,183 @@ includedir = $(prefix)/include
 libdir = $(prefix)/lib
 syslibdir = /lib
 
-SRCS = $(sort $(wildcard src/*/*.c arch/$(ARCH)/src/*.c))
-OBJS = $(SRCS:.c=.o)
-LOBJS = $(OBJS:.o=.lo)
-GENH = include/bits/alltypes.h
-GENH_INT = src/internal/version.h
-IMPH = src/internal/stdio_impl.h src/internal/pthread_impl.h src/internal/libc.h
+SRC_DIRS = $(addprefix $(srcdir)/,src/* crt ldso)
+BASE_GLOBS = $(addsuffix /*.c,$(SRC_DIRS))
+ARCH_GLOBS = $(addsuffix /$(ARCH)/*.[csS],$(SRC_DIRS))
+BASE_SRCS = $(sort $(wildcard $(BASE_GLOBS)))
+ARCH_SRCS = $(sort $(wildcard $(ARCH_GLOBS)))
+BASE_OBJS = $(patsubst $(srcdir)/%,%.o,$(basename $(BASE_SRCS)))
+ARCH_OBJS = $(patsubst $(srcdir)/%,%.o,$(basename $(ARCH_SRCS)))
+REPLACED_OBJS = $(sort $(subst /$(ARCH)/,/,$(ARCH_OBJS)))
+ALL_OBJS = $(addprefix obj/, $(filter-out $(REPLACED_OBJS), $(sort $(BASE_OBJS) $(ARCH_OBJS))))
 
-LDFLAGS = 
+LIBC_OBJS = $(filter obj/src/%,$(ALL_OBJS))
+LDSO_OBJS = $(filter obj/ldso/%,$(ALL_OBJS:%.o=%.lo))
+CRT_OBJS = $(filter obj/crt/%,$(ALL_OBJS))
+
+AOBJS = $(LIBC_OBJS)
+LOBJS = $(LIBC_OBJS:.o=.lo)
+GENH = obj/include/bits/alltypes.h obj/include/bits/syscall.h
+GENH_INT = obj/src/internal/version.h
+IMPH = $(addprefix $(srcdir)/, src/internal/stdio_impl.h src/internal/pthread_impl.h src/internal/libc.h)
+
+LDFLAGS =
+LDFLAGS_AUTO =
 LIBCC = -lgcc
 CPPFLAGS =
-CFLAGS = -Os -pipe
+CFLAGS =
+CFLAGS_AUTO = -Os -pipe
 CFLAGS_C99FSE = -std=c99 -ffreestanding -nostdinc 
 
 CFLAGS_ALL = $(CFLAGS_C99FSE)
-CFLAGS_ALL += -D_XOPEN_SOURCE=700 -I./arch/$(ARCH) -I./src/internal -I./include
-CFLAGS_ALL += $(CPPFLAGS) $(CFLAGS)
-CFLAGS_ALL_STATIC = $(CFLAGS_ALL)
-CFLAGS_ALL_SHARED = $(CFLAGS_ALL) -fPIC -DSHARED
+CFLAGS_ALL += -D_XOPEN_SOURCE=700 -I$(srcdir)/arch/$(ARCH) -I$(srcdir)/arch/generic -Iobj/src/internal -I$(srcdir)/src/internal -Iobj/include -I$(srcdir)/include
+CFLAGS_ALL += $(CPPFLAGS) $(CFLAGS_AUTO) $(CFLAGS)
+
+LDFLAGS_ALL = $(LDFLAGS_AUTO) $(LDFLAGS)
 
 AR      = $(CROSS_COMPILE)ar
 RANLIB  = $(CROSS_COMPILE)ranlib
-INSTALL = ./tools/install.sh
+INSTALL = $(srcdir)/tools/install.sh
 
-ARCH_INCLUDES = $(wildcard arch/$(ARCH)/bits/*.h)
-ALL_INCLUDES = $(sort $(wildcard include/*.h include/*/*.h) $(GENH) $(ARCH_INCLUDES:arch/$(ARCH)/%=include/%))
+ARCH_INCLUDES = $(wildcard $(srcdir)/arch/$(ARCH)/bits/*.h)
+GENERIC_INCLUDES = $(wildcard $(srcdir)/arch/generic/bits/*.h)
+INCLUDES = $(wildcard $(srcdir)/include/*.h $(srcdir)/include/*/*.h)
+ALL_INCLUDES = $(sort $(INCLUDES:$(srcdir)/%=%) $(GENH:obj/%=%) $(ARCH_INCLUDES:$(srcdir)/arch/$(ARCH)/%=include/%) $(GENERIC_INCLUDES:$(srcdir)/arch/generic/%=include/%))
 
 EMPTY_LIB_NAMES = m rt pthread crypt util xnet resolv dl
 EMPTY_LIBS = $(EMPTY_LIB_NAMES:%=lib/lib%.a)
-CRT_LIBS = lib/crt1.o lib/Scrt1.o lib/crti.o lib/crtn.o
+CRT_LIBS = $(addprefix lib/,$(notdir $(CRT_OBJS)))
 STATIC_LIBS = lib/libc.a
 SHARED_LIBS = lib/libc.so
 TOOL_LIBS = lib/musl-gcc.specs
 ALL_LIBS = $(CRT_LIBS) $(STATIC_LIBS) $(SHARED_LIBS) $(EMPTY_LIBS) $(TOOL_LIBS)
-ALL_TOOLS = tools/musl-gcc
+ALL_TOOLS = obj/musl-gcc
+
+WRAPCC_GCC = gcc
+WRAPCC_CLANG = clang
 
 LDSO_PATHNAME = $(syslibdir)/ld-musl-$(ARCH)$(SUBARCH).so.1
 
 -include config.mak
 
+ifeq ($(ARCH),)
+
+all:
+	@echo "Please set ARCH in config.mak before running make."
+	@exit 1
+
+else
+
 all: $(ALL_LIBS) $(ALL_TOOLS)
 
-install: install-libs install-headers install-tools
+OBJ_DIRS = $(sort $(patsubst %/,%,$(dir $(ALL_LIBS) $(ALL_TOOLS) $(ALL_OBJS) $(GENH) $(GENH_INT))) obj/include)
 
-clean:
-	rm -f crt/*.o
-	rm -f $(OBJS)
-	rm -f $(LOBJS)
-	rm -f $(ALL_LIBS) lib/*.[ao] lib/*.so
-	rm -f $(ALL_TOOLS)
-	rm -f $(GENH) $(GENH_INT)
-	rm -f include/bits
+$(ALL_LIBS) $(ALL_TOOLS) $(ALL_OBJS) $(ALL_OBJS:%.o=%.lo) $(GENH) $(GENH_INT): | $(OBJ_DIRS)
 
-distclean: clean
-	rm -f config.mak
+$(OBJ_DIRS):
+	mkdir -p $@
 
-include/bits:
-	@test "$(ARCH)" || { echo "Please set ARCH in config.mak before running make." ; exit 1 ; }
-	ln -sf ../arch/$(ARCH)/bits $@
+obj/include/bits/alltypes.h: $(srcdir)/arch/$(ARCH)/bits/alltypes.h.in $(srcdir)/include/alltypes.h.in $(srcdir)/tools/mkalltypes.sed
+	sed -f $(srcdir)/tools/mkalltypes.sed $(srcdir)/arch/$(ARCH)/bits/alltypes.h.in $(srcdir)/include/alltypes.h.in > $@
 
-include/bits/alltypes.h.in: include/bits
+obj/include/bits/syscall.h: $(srcdir)/arch/$(ARCH)/bits/syscall.h.in
+	cp $< $@
+	sed -n -e s/__NR_/SYS_/p < $< >> $@
 
-include/bits/alltypes.h: include/bits/alltypes.h.in include/alltypes.h.in tools/mkalltypes.sed
-	sed -f tools/mkalltypes.sed include/bits/alltypes.h.in include/alltypes.h.in > $@
+obj/src/internal/version.h: $(wildcard $(srcdir)/VERSION $(srcdir)/.git)
+	printf '#define VERSION "%s"\n' "$$(cd $(srcdir); sh tools/version.sh)" > $@
 
-src/internal/version.h: $(wildcard VERSION .git)
-	printf '#define VERSION "%s"\n' "$$(sh tools/version.sh)" > $@
+obj/src/internal/version.o obj/src/internal/version.lo: obj/src/internal/version.h
 
-src/internal/version.lo: src/internal/version.h
+obj/crt/rcrt1.o obj/ldso/dlstart.lo obj/ldso/dynlink.lo: $(srcdir)/src/internal/dynlink.h $(srcdir)/arch/$(ARCH)/reloc.h
 
-src/ldso/dynlink.lo: arch/$(ARCH)/reloc.h
+obj/crt/crt1.o obj/crt/scrt1.o obj/crt/rcrt1.o obj/ldso/dlstart.lo: $(srcdir)/arch/$(ARCH)/crt_arch.h
 
-crt/crt1.o crt/Scrt1.o: $(wildcard arch/$(ARCH)/crt_arch.h)
+obj/crt/rcrt1.o: $(srcdir)/ldso/dlstart.c
 
-crt/Scrt1.o: CFLAGS += -fPIC
+obj/crt/Scrt1.o obj/crt/rcrt1.o: CFLAGS_ALL += -fPIC
 
-OPTIMIZE_SRCS = $(wildcard $(OPTIMIZE_GLOBS:%=src/%))
-$(OPTIMIZE_SRCS:%.c=%.o) $(OPTIMIZE_SRCS:%.c=%.lo): CFLAGS += -O3
+obj/crt/$(ARCH)/crti.o: $(srcdir)/crt/$(ARCH)/crti.s
+
+obj/crt/$(ARCH)/crtn.o: $(srcdir)/crt/$(ARCH)/crtn.s
+
+OPTIMIZE_SRCS = $(wildcard $(OPTIMIZE_GLOBS:%=$(srcdir)/src/%))
+$(OPTIMIZE_SRCS:$(srcdir)/%.c=obj/%.o) $(OPTIMIZE_SRCS:$(srcdir)/%.c=obj/%.lo): CFLAGS += -O3
 
 MEMOPS_SRCS = src/string/memcpy.c src/string/memmove.c src/string/memcmp.c src/string/memset.c
-$(MEMOPS_SRCS:%.c=%.o) $(MEMOPS_SRCS:%.c=%.lo): CFLAGS += $(CFLAGS_MEMOPS)
+$(MEMOPS_SRCS:%.c=obj/%.o) $(MEMOPS_SRCS:%.c=obj/%.lo): CFLAGS_ALL += $(CFLAGS_MEMOPS)
 
-# This incantation ensures that changes to any subarch asm files will
-# force the corresponding object file to be rebuilt, even if the implicit
-# rule below goes indirectly through a .sub file.
-define mkasmdep
-$(dir $(patsubst %/,%,$(dir $(1))))$(notdir $(1:.s=.o)): $(1)
-endef
-$(foreach s,$(wildcard src/*/$(ARCH)*/*.s),$(eval $(call mkasmdep,$(s))))
+NOSSP_SRCS = $(wildcard crt/*.c) \
+	src/env/__libc_start_main.c src/env/__init_tls.c \
+	src/env/__stack_chk_fail.c \
+	src/thread/__set_thread_area.c src/thread/$(ARCH)/__set_thread_area.c \
+	src/string/memset.c src/string/$(ARCH)/memset.c \
+	src/string/memcpy.c src/string/$(ARCH)/memcpy.c \
+	ldso/dlstart.c ldso/dynlink.c
+$(NOSSP_SRCS:%.c=obj/%.o) $(NOSSP_SRCS:%.c=obj/%.lo): CFLAGS_ALL += $(CFLAGS_NOSSP)
 
-%.o: $(ARCH)$(ASMSUBARCH)/%.sub
-	$(CC) $(CFLAGS_ALL_STATIC) -c -o $@ $(dir $<)$(shell cat $<)
+$(CRT_OBJS): CFLAGS_ALL += -DCRT
 
-%.o: $(ARCH)/%.s
-	$(CC) $(CFLAGS_ALL_STATIC) -c -o $@ $<
+$(LOBJS) $(LDSO_OBJS): CFLAGS_ALL += -fPIC
 
-%.o: %.c $(GENH) $(IMPH)
-	$(CC) $(CFLAGS_ALL_STATIC) -c -o $@ $<
+CC_CMD = $(CC) $(CFLAGS_ALL) -c -o $@ $<
 
-%.lo: $(ARCH)$(ASMSUBARCH)/%.sub
-	$(CC) $(CFLAGS_ALL_SHARED) -c -o $@ $(dir $<)$(shell cat $<)
+# Choose invocation of assembler to be used
+ifeq ($(ADD_CFI),yes)
+	AS_CMD = LC_ALL=C awk -f $(srcdir)/tools/add-cfi.common.awk -f $(srcdir)/tools/add-cfi.$(ARCH).awk $< | $(CC) $(CFLAGS_ALL) -x assembler -c -o $@ -
+else
+	AS_CMD = $(CC_CMD)
+endif
 
-%.lo: $(ARCH)/%.s
-	$(CC) $(CFLAGS_ALL_SHARED) -c -o $@ $<
+obj/%.o: $(srcdir)/%.s
+	$(AS_CMD)
 
-%.lo: %.c $(GENH) $(IMPH)
-	$(CC) $(CFLAGS_ALL_SHARED) -c -o $@ $<
+obj/%.o: $(srcdir)/%.S
+	$(CC_CMD)
 
-lib/libc.so: $(LOBJS)
-	$(CC) $(CFLAGS_ALL_SHARED) $(LDFLAGS) -nostdlib -shared \
-	-Wl,-e,_start -Wl,-Bsymbolic-functions \
-	-o $@ $(LOBJS) $(LIBCC)
+obj/%.o: $(srcdir)/%.c $(GENH) $(IMPH)
+	$(CC_CMD)
 
-lib/libc.a: $(OBJS)
+obj/%.lo: $(srcdir)/%.s
+	$(AS_CMD)
+
+obj/%.lo: $(srcdir)/%.S
+	$(CC_CMD)
+
+obj/%.lo: $(srcdir)/%.c $(GENH) $(IMPH)
+	$(CC_CMD)
+
+lib/libc.so: $(LOBJS) $(LDSO_OBJS)
+	$(CC) $(CFLAGS_ALL) $(LDFLAGS_ALL) -nostdlib -shared \
+	-Wl,-e,_dlstart -o $@ $(LOBJS) $(LDSO_OBJS) $(LIBCC)
+
+lib/libc.a: $(AOBJS)
 	rm -f $@
-	$(AR) rc $@ $(OBJS)
+	$(AR) rc $@ $(AOBJS)
 	$(RANLIB) $@
 
 $(EMPTY_LIBS):
 	rm -f $@
 	$(AR) rc $@
 
-lib/%.o: crt/%.o
+lib/%.o: obj/crt/$(ARCH)/%.o
 	cp $< $@
 
-lib/musl-gcc.specs: tools/musl-gcc.specs.sh config.mak
+lib/%.o: obj/crt/%.o
+	cp $< $@
+
+lib/musl-gcc.specs: $(srcdir)/tools/musl-gcc.specs.sh config.mak
 	sh $< "$(includedir)" "$(libdir)" "$(LDSO_PATHNAME)" > $@
 
-tools/musl-gcc: config.mak
-	printf '#!/bin/sh\nexec "$${REALGCC:-gcc}" "$$@" -specs "%s/musl-gcc.specs"\n' "$(libdir)" > $@
+obj/musl-gcc: config.mak
+	printf '#!/bin/sh\nexec "$${REALGCC:-$(WRAPCC_GCC)}" "$$@" -specs "%s/musl-gcc.specs"\n' "$(libdir)" > $@
 	chmod +x $@
 
-$(DESTDIR)$(bindir)/%: tools/%
+obj/%-clang: $(srcdir)/tools/%-clang.in config.mak
+	sed -e 's!@CC@!$(WRAPCC_CLANG)!g' -e 's!@PREFIX@!$(prefix)!g' -e 's!@INCDIR@!$(includedir)!g' -e 's!@LIBDIR@!$(libdir)!g' -e 's!@LDSO@!$(LDSO_PATHNAME)!g' $< > $@
+	chmod +x $@
+
+$(DESTDIR)$(bindir)/%: obj/%
 	$(INSTALL) -D $< $@
 
 $(DESTDIR)$(libdir)/%.so: lib/%.so
@@ -156,10 +202,16 @@ $(DESTDIR)$(libdir)/%.so: lib/%.so
 $(DESTDIR)$(libdir)/%: lib/%
 	$(INSTALL) -D -m 644 $< $@
 
-$(DESTDIR)$(includedir)/bits/%: arch/$(ARCH)/bits/%
+$(DESTDIR)$(includedir)/bits/%: $(srcdir)/arch/$(ARCH)/bits/%
 	$(INSTALL) -D -m 644 $< $@
 
-$(DESTDIR)$(includedir)/%: include/%
+$(DESTDIR)$(includedir)/bits/%: $(srcdir)/arch/generic/bits/%
+	$(INSTALL) -D -m 644 $< $@
+
+$(DESTDIR)$(includedir)/bits/%: obj/include/bits/%
+	$(INSTALL) -D -m 644 $< $@
+
+$(DESTDIR)$(includedir)/%: $(srcdir)/include/%
 	$(INSTALL) -D -m 644 $< $@
 
 $(DESTDIR)$(LDSO_PATHNAME): $(DESTDIR)$(libdir)/libc.so
@@ -169,10 +221,22 @@ install-libs: $(ALL_LIBS:lib/%=$(DESTDIR)$(libdir)/%) $(if $(SHARED_LIBS),$(DEST
 
 install-headers: $(ALL_INCLUDES:include/%=$(DESTDIR)$(includedir)/%)
 
-install-tools: $(ALL_TOOLS:tools/%=$(DESTDIR)$(bindir)/%)
+install-tools: $(ALL_TOOLS:obj/%=$(DESTDIR)$(bindir)/%)
 
+install: install-libs install-headers install-tools
 
+musl-git-%.tar.gz: .git
+	 git --git-dir=$(srcdir)/.git archive --format=tar.gz --prefix=$(patsubst %.tar.gz,%,$@)/ -o $@ $(patsubst musl-git-%.tar.gz,%,$@)
 
-.PRECIOUS: $(CRT_LIBS:lib/%=crt/%)
+musl-%.tar.gz: .git
+	 git --git-dir=$(srcdir)/.git archive --format=tar.gz --prefix=$(patsubst %.tar.gz,%,$@)/ -o $@ v$(patsubst musl-%.tar.gz,%,$@)
+
+endif
+
+clean:
+	rm -rf obj lib
+
+distclean: clean
+	rm -f config.mak
 
 .PHONY: all clean install install-libs install-headers install-tools

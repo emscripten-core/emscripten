@@ -1,5 +1,6 @@
 #include <strings.h>
 #include <ctype.h>
+#include "libc.h"
 
 int strncasecmp(const char *_l, const char *_r, size_t n)
 {
@@ -8,3 +9,10 @@ int strncasecmp(const char *_l, const char *_r, size_t n)
 	for (; *l && *r && n && (*l == *r || tolower(*l) == tolower(*r)); l++, r++, n--);
 	return tolower(*l) - tolower(*r);
 }
+
+int __strncasecmp_l(const char *l, const char *r, size_t n, locale_t loc)
+{
+	return strncasecmp(l, r, n);
+}
+
+weak_alias(__strncasecmp_l, strncasecmp_l);

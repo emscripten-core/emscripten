@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 // Built from glbook/hello triange and sdl_ogl, see details there
 
 #include "SDL/SDL.h"
@@ -151,7 +158,7 @@ void Verify() {
     ok = ok && (data[x*4+1] == 0);
   }
   int result = seen && ok;
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int main(int argc, char *argv[])

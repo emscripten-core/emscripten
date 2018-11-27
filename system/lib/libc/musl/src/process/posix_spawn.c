@@ -22,6 +22,20 @@ struct args {
 
 void __get_handler_set(sigset_t *);
 
+static int __sys_dup2(int old, int new)
+{
+#ifdef SYS_dup2
+	return __syscall(SYS_dup2, old, new);
+#else
+	if (old==new) {
+		int r = __syscall(SYS_fcntl, old, F_GETFD);
+		return r<0 ? r : old;
+	} else {
+		return __syscall(SYS_dup3, old, new, 0);
+	}
+#endif
+}
+
 static int child(void *args_vp)
 {
 	int i, ret;
@@ -63,9 +77,9 @@ static int child(void *args_vp)
 		if ((ret=__syscall(SYS_setpgid, 0, attr->__pgrp)))
 			goto fail;
 
-	/* Use syscalls directly because pthread state because the
-	 * library functions attempt to do a multi-threaded synchronized
-	 * id-change, which would trash the parent's state. */
+	/* Use syscalls directly because the library functions attempt
+	 * to do a multi-threaded synchronized id-change, which would
+	 * trash the parent's state. */
 	if (attr->__flags & POSIX_SPAWN_RESETIDS)
 		if ((ret=__syscall(SYS_setgid, __syscall(SYS_getgid))) ||
 		    (ret=__syscall(SYS_setuid, __syscall(SYS_getuid))) )
@@ -88,19 +102,17 @@ static int child(void *args_vp)
 			}
 			switch(op->cmd) {
 			case FDOP_CLOSE:
-				if ((ret=__syscall(SYS_close, op->fd)))
-					goto fail;
+				__syscall(SYS_close, op->fd);
 				break;
 			case FDOP_DUP2:
-				if ((ret=__syscall(SYS_dup2, op->srcfd, op->fd))<0)
+				if ((ret=__sys_dup2(op->srcfd, op->fd))<0)
 					goto fail;
 				break;
 			case FDOP_OPEN:
-				fd = __syscall(SYS_open, op->path,
-					op->oflag | O_LARGEFILE, op->mode);
+				fd = __sys_open(op->path, op->oflag, op->mode);
 				if ((ret=fd) < 0) goto fail;
 				if (fd != op->fd) {
-					if ((ret=__syscall(SYS_dup2, fd, op->fd))<0)
+					if ((ret=__sys_dup2(fd, op->fd))<0)
 						goto fail;
 					__syscall(SYS_close, fd);
 				}
@@ -124,7 +136,7 @@ static int child(void *args_vp)
 fail:
 	/* Since sizeof errno < PIPE_BUF, the write is atomic. */
 	ret = -ret;
-	if (ret) while (write(p, &ret, sizeof ret) < 0);
+	if (ret) while (__syscall(SYS_write, p, &ret, sizeof ret) < 0);
 	_exit(127);
 }
 

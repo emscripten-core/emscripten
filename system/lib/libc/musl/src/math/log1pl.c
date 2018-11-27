@@ -168,4 +168,10 @@ long double log1pl(long double xm1)
 	z = z + e * C1;
 	return z;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double log1pl(long double x)
+{
+	return log1p(x);
+}
 #endif

@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #define GL_GLEXT_PROTOTYPES
 #include <GLES/gl.h>
 #include <GLES/glext.h>
@@ -81,7 +86,7 @@ int main()
 #ifdef REPORT_RESULT
         // We did not have WebGL 2, but were able to init WebGL 1? In that case, gracefully skip this test with the current browser not supporting this one.
         int result = context ? 0 : 12365;
-        REPORT_RESULT();
+        REPORT_RESULT(result);
 #endif
         return 0;
     }
@@ -178,8 +183,7 @@ int main()
     GL_CALL( glBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 ) );  
 
 #ifdef REPORT_RESULT
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
 
   return 0;

@@ -227,7 +227,7 @@ long double powl(long double x, long double y)
 	if (y <= -LDBL_MAX) {
 		if (x > 1.0 || x < -1.0)
 			return 0.0;
-		if (x != 0.0)
+		if (x != 0.0 || y == -INFINITY)
 			return INFINITY;
 	}
 	if (x >= LDBL_MAX) {
@@ -513,5 +513,10 @@ static long double powil(long double x, int nn)
 		y = 1.0/y;
 	return y;
 }
-
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double powl(long double x, long double y)
+{
+	return pow(x, y);
+}
 #endif

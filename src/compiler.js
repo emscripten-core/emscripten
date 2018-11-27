@@ -1,3 +1,8 @@
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //"use strict";
 
 // LLVM => JavaScript compiler, main entry point
@@ -197,6 +202,19 @@ load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
 
+// State computations
+
+ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENT === 'web';
+ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENT === 'worker';
+ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENT === 'node';
+ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENT === 'shell';
+
+ENVIRONMENT_MAY_BE_WEB_OR_WORKER = ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER;
+
+if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
+  throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
+}
+
 //===============================
 // Main
 //===============================
@@ -219,11 +237,12 @@ try {
   }
 } catch(err) {
   if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
-    // Compiler failed on user error, print out the error message.
-    printErr(err + ' | ' + err.stack);
+    // Compiler failed on user error, don't print the stacktrace in this case.
+    printErr(err);
   } else {
     // Compiler failed on internal compiler error!
-    printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('Internal compiler error in src/compiler.js!');
+    printErr('Please create a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
   }
 
   if (ENVIRONMENT_IS_NODE) {

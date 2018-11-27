@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 /*      gcc linpack.c cpuidc64.o cpuida64.o -m64 -lrt -lc -lm -o linpack
  *
  *          Linpack 100x100 Benchmark In C/C++ For PCs
@@ -139,6 +146,8 @@ int main (int argc, char *argv[])
         char title[5][20];
         int errors;
         
+        int arg = argc > 1 ? argv[1][0] - '0' : 3;
+        if (arg == 0) return 0;
  
         printf("\n");
          

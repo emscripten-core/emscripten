@@ -28,8 +28,7 @@ extern "C" {
 
 typedef unsigned long nfds_t;
 
-struct pollfd
-{
+struct pollfd {
 	int fd;
 	short events;
 	short revents;

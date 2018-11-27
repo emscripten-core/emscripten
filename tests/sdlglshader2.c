@@ -1,4 +1,11 @@
 /*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
 THIS WORK, INCLUDING THE SOURCE CODE, DOCUMENTATION
 AND RELATED MEDIA AND DATA, IS PLACED INTO THE PUBLIC DOMAIN.
 
@@ -158,8 +165,7 @@ int main(int argc, char *argv[])
     SDL_GL_SwapBuffers();
     
 #ifdef REPORT_RESULT
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
 
     SDL_Quit();

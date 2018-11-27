@@ -1,3 +1,10 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -43,7 +50,8 @@ int main() {
   printf("*%lu*\n", strtoul("0", NULL, 0));
   printf("*%lu*\n", strtoul("-10", NULL, 0));
 
-  printf("*malloc(0)!=0:%d*\n", malloc(0) != 0); // We should not fail horribly
+  malloc(0);
+  printf("*malloc(0) does not fail horribly (spec allows 0 or non-zero)*\n");
 
   printf("tolower_l: %c\n", tolower_l('A', 0));
 

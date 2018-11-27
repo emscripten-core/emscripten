@@ -1,11 +1,16 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 #include <assert.h>
 #include <string.h>
 #include <emscripten.h>
-
-int result = 1;
 
 void assertJoystickEvent(int expectedGamepad, int expectedType, int expectedIndex, int expectedValue) {
   SDL_Event event;
@@ -121,8 +126,7 @@ void main_2(void* arg) {
   assertNoJoystickEvent();
 
   // End test.
-  result = 2;
   printf("Test passed!\n");
-  REPORT_RESULT();
+  REPORT_RESULT(2);
 }
 

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -31,8 +36,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 
   // all done
   printf("success\n");
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 }
@@ -44,27 +48,27 @@ int main() {
   //   * Data loaded from IndexedDB
   // In all cases, including the one here of a network request, Blobs allow the browser to optimize them so that
   // a large file is not necessarily all in memory at once.
-  EM_ASM({
+  EM_ASM((
     var meta, blob;
     function maybeReady() {
       if (!(meta && blob)) return;
 
       meta = JSON.parse(meta);
 
-      Module.print('loading into filesystem');
+      out('loading into filesystem');
       FS.mkdir('/files');
       FS.mount(WORKERFS, {
         packages: [{ metadata: meta, blob: blob }]
       }, '/files');
 
-      Module.ccall('finish');
+      ccall('finish');
     }
 
     var meta_xhr = new XMLHttpRequest();
     meta_xhr.open("GET", "files.js.metadata", true);
     meta_xhr.responseType = "text";
     meta_xhr.onload = function() {
-      Module.print('got metadata');
+      out('got metadata');
       meta = meta_xhr.response;
       maybeReady();
     };
@@ -74,12 +78,12 @@ int main() {
     data_xhr.open("GET", "files.data", true);
     data_xhr.responseType = "blob";
     data_xhr.onload = function() {
-      Module.print('got data');
+      out('got data');
       blob = data_xhr.response;
       maybeReady();
     };
     data_xhr.send();
-  });
+  ));
 
   emscripten_exit_with_live_runtime();
 

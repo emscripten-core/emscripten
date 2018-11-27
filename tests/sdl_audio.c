@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
@@ -21,8 +28,7 @@ int play() {
 void done(int channel) {
   assert(channel == 1);
 
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 int play2() {
@@ -42,8 +48,12 @@ int main(int argc, char **argv) {
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
   assert(ret == 0);
 
-  sound = Mix_LoadWAV("sound.ogg");
-  assert(sound);
+  {
+      SDL_RWops * ops = SDL_RWFromFile("sound.ogg", "r");
+      sound = Mix_LoadWAV_RW(ops, 0);
+      SDL_FreeRW(ops);
+      assert(sound);
+  }
 
   {
       struct stat info;

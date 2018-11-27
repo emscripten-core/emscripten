@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -9,7 +16,7 @@ void EMSCRIPTEN_KEEPALIVE success() {
   printf("success? %d\n", result);
   assert(result == 10);
   result += 7;
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void EMSCRIPTEN_KEEPALIVE later() {

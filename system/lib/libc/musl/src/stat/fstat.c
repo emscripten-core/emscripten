@@ -14,7 +14,11 @@ int fstat(int fd, struct stat *st)
 
 	char buf[15+3*sizeof(int)];
 	__procfdname(buf, fd);
+#ifdef SYS_stat
 	return syscall(SYS_stat, buf, st);
+#else
+	return syscall(SYS_fstatat, AT_FDCWD, buf, st, 0);
+#endif
 }
 
 LFS64(fstat);

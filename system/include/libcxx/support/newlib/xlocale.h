@@ -16,18 +16,12 @@
 #include <clocale>
 #include <cwctype>
 #include <ctype.h>
+#if !defined(__NEWLIB__) || __NEWLIB__ < 2 || \
+    __NEWLIB__ == 2 && __NEWLIB_MINOR__ < 5
 #include <support/xlocale/__nop_locale_mgmt.h>
-
-#ifdef __cplusplus
-extern "C" {
 #endif
-
-// Share implementation with Android's Bionic
-#include <support/xlocale/xlocale.h>
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
+#include <support/xlocale/__posix_l_fallback.h>
+#include <support/xlocale/__strtonum_fallback.h>
 
 #endif // _NEWLIB_VERSION
 

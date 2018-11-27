@@ -1,9 +1,4 @@
-/* 
- * This code was written by Rich Felker in 2010; no copyright is claimed.
- * This code is in the public domain. Attribution is appreciated but
- * unnecessary.
- */
-
+#include <stdlib.h>
 #include <wchar.h>
 #include <errno.h>
 #include "internal.h"
@@ -19,6 +14,7 @@ int mbtowc(wchar_t *restrict wc, const char *restrict src, size_t n)
 	if (!wc) wc = &dummy;
 
 	if (*s < 0x80) return !!(*wc = *s);
+	if (MB_CUR_MAX==1) return (*wc = CODEUNIT(*s)), 1;
 	if (*s-SA > SB-SA) goto ilseq;
 	c = bittab[*s++-SA];
 

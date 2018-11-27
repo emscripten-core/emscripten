@@ -230,7 +230,7 @@ static char *sha256crypt(const char *key, const char *setting, char *output)
 		if (u < ROUNDS_MIN)
 			r = ROUNDS_MIN;
 		else if (u > ROUNDS_MAX)
-			r = ROUNDS_MAX;
+			return 0;
 		else
 			r = u;
 		/* needed when rounds is zero prefixed or out of bounds */

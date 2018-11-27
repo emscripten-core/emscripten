@@ -10,7 +10,7 @@ FILE *setmntent(const char *name, const char *mode)
 
 int endmntent(FILE *f)
 {
-	fclose(f);
+	if (f) fclose(f);
 	return 1;
 }
 

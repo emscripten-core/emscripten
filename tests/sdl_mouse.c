@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <assert.h>
@@ -29,7 +36,7 @@ void one() {
       case SDL_MOUSEBUTTONDOWN: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         if (m->button == 2) {
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'");
         }
         printf("button down: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);

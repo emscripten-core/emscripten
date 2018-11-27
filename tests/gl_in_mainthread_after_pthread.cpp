@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -55,8 +60,7 @@ void CreateThread()
   {
     printf("Test Skipped! OffscreenCanvas is not supported!\n");
 #ifdef REPORT_RESULT
-    int result = 0; // But report success, so that runs on non-supporting browsers don't raise noisy errors.
-    REPORT_RESULT();
+    REPORT_RESULT(0); // But report success, so that runs on non-supporting browsers don't raise noisy errors.
 #endif
     exit(0);
   }
@@ -85,8 +89,7 @@ void MainThreadRender()
     printf("Test finished.\n");
     emscripten_cancel_main_loop();
 #ifdef REPORT_RESULT
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
   }
 }

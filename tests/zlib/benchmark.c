@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include "zlib.h"
 #include <stdio.h>
 #include <string.h>
@@ -6,23 +13,23 @@
 
 
 // don't inline, to be friendly to js engine osr
-void __attribute__ ((noinline)) doit(char *buffer, int size, int i) {
-  static char *buffer2 = NULL;
-  static char *buffer3 = NULL;
+void __attribute__ ((noinline)) doit(unsigned char *buffer, int size, int i) {
+  static unsigned char *buffer2 = NULL;
+  static unsigned char *buffer3 = NULL;
 
   unsigned long maxCompressedSize = compressBound(size);
 
-  if (!buffer2) buffer2 = (char*)malloc(maxCompressedSize);
-  if (!buffer3) buffer3 = (char*)malloc(size);
+  if (!buffer2) buffer2 = (unsigned char*)malloc(maxCompressedSize);
+  if (!buffer3) buffer3 = (unsigned char*)malloc(size);
 
   unsigned long compressedSize = maxCompressedSize;
   compress(buffer2, &compressedSize, buffer, size);
-  if (i == 0) printf("sizes: %d,%d\n", size, compressedSize);
+  if (i == 0) printf("sizes: %d,%d\n", size, (int)compressedSize);
 
   unsigned long decompressedSize = size;
-  uncompress(buffer3, &decompressedSize, buffer2, compressedSize);
+  uncompress(buffer3, &decompressedSize, buffer2, (int)compressedSize);
   assert(decompressedSize == size);
-  if (i == 0) assert(strcmp(buffer, buffer3) == 0);
+  if (i == 0) assert(strcmp((char*)buffer, (char*)buffer3) == 0);
 }
 
 int main(int argc, char **argv) {
@@ -38,7 +45,7 @@ int main(int argc, char **argv) {
     default: printf("error: %d\\n", arg); return -1;
   }
 
-  char *buffer = malloc(size);
+  unsigned char *buffer = (unsigned char*)malloc(size);
 
   int i = 0;
   int run = 0;

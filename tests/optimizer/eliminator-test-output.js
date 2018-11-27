@@ -121,11 +121,7 @@ function g(a1, a2) {
  a = c;
  foo(c);
  foo(2);
- for (var i = 0; i < 5; i++) {
-  {
-   a: 1
-  } + [ 2, 3 ];
- }
+ for (var i = 0; i < 5; i++) {}
  for (var iterator in SOME_GLOBAL) {
   quux(iterator);
  }
@@ -139,12 +135,13 @@ function g(a1, a2) {
  new asd;
  sadijn2 = "qwe%sert";
  this.Module || (this.Module = {});
- {
+ var obj = {
   "quoted": 1,
   "doublequoted": 2,
   unquoted: 3,
   4: 5
  };
+ obj();
 }
 function h() {
  var out;

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,7 +69,7 @@ int main(int argc, char* argv[]) {
       return (EXIT_FAILURE);
     }
 
-    printf("%d\n", (uint32_t) adler32(source, bufsize));
+    printf("%u\n", (uint32_t) adler32(source, bufsize));
     
     free(source); /* Don't forget to call free() later! */
 

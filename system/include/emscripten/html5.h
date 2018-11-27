@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_events_h__
 #define __emscripten_events_h__
 
@@ -414,6 +421,7 @@ typedef struct EmscriptenWebGLContextAttributes {
 
   EM_BOOL enableExtensionsByDefault;
   EM_BOOL explicitSwapControl;
+  EM_BOOL renderViaOffscreenBackBuffer;
 } EmscriptenWebGLContextAttributes;
 
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
@@ -422,7 +430,9 @@ extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const cha
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context();
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void);
+
+extern EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
@@ -434,7 +444,10 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char
 
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
 
-extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame();
+extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
+
+extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
+extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
 
 extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
 extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);

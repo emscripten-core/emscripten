@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // *** Environment setup code ***
 var arguments_ = [];
 
@@ -25,10 +30,6 @@ if (ENVIRONMENT_IS_NODE) {
       ret = nodeFS['readFileSync'](filename).toString();
     }
     return ret;
-  };
-
-  load = function(f) {
-    globalEval(read(f));
   };
 
   arguments_ = process['argv'].slice(2);
@@ -63,20 +64,8 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
 
-  this['load'] = importScripts;
-
 } else {
   throw 'Unknown runtime environment. Where are we?';
-}
-
-function globalEval(x) {
-  eval.call(null, x);
-}
-
-if (typeof load == 'undefined' && typeof read != 'undefined') {
-  this['load'] = function(f) {
-    globalEval(read(f));
-  };
 }
 
 if (typeof printErr === 'undefined') {

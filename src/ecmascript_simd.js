@@ -809,11 +809,11 @@ var simdTypes = [float32x4,
                  bool32x4, bool16x8, bool8x16];
 
 // XXX Emscripten: Enable SIMD phase 2 types for Float64x2 and Bool64x2 to enable targeting SSE2 support.
-simdPhase2 = true;
+var simdPhase2 = true;
 
 // SIMD Phase2 types.
 
-if (typeof simdPhase2 !== 'undefined') {
+if (typeof simdPhase2 !== 'undefined' && simdPhase2) {
   // Float64x2
   if (typeof SIMD.Float64x2 === "undefined" ||
       typeof SIMD.Float64x2.extractLane === "undefined") {

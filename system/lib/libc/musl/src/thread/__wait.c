@@ -8,9 +8,9 @@ int _pthread_isduecanceled(struct pthread *pthread_ptr);
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 {
-	int spins=10000;
-	if (priv) priv = 128; priv=0;
-	while (spins--) {
+	int spins=100;
+	if (priv) priv = FUTEX_PRIVATE;
+	while (spins-- && (!waiters || !*waiters)) {
 		if (*addr==val) a_spin();
 		else return;
 	}
@@ -39,7 +39,8 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	}
 #else
 	while (*addr==val) {
-		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0);
+		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS
+		|| __syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
 	}
 #endif
 	if (waiters) a_dec(waiters);

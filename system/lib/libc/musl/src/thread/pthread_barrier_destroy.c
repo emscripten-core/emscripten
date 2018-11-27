@@ -1,7 +1,5 @@
 #include "pthread_impl.h"
 
-void __vm_lock(int), __vm_unlock(void);
-
 int pthread_barrier_destroy(pthread_barrier_t *b)
 {
 	if (b->_b_limit < 0) {
@@ -11,8 +9,7 @@ int pthread_barrier_destroy(pthread_barrier_t *b)
 			while ((v = b->_b_lock) & INT_MAX)
 				__wait(&b->_b_lock, 0, v, 0);
 		}
-		__vm_lock(-1);
-		__vm_unlock();
+		__vm_wait();
 	}
 	return 0;
 }

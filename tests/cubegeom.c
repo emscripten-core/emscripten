@@ -1,4 +1,11 @@
 /*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
 THIS WORK, INCLUDING THE SOURCE CODE, DOCUMENTATION
 AND RELATED MEDIA AND DATA, IS PLACED INTO THE PUBLIC DOMAIN.
 
@@ -54,7 +61,7 @@ int main(int argc, char *argv[])
 
     // Create a texture
 
-    GLuint boundTex = 123;
+    GLint boundTex = 123;
     assert(!glGetError());
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
     assert(!glGetError());

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <emscripten/vector.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,9 +12,25 @@
 #include <math.h>
 #include <assert.h>
 
+void printFloat(float n) {
+    if (isnan(n)) {
+        printf("nan");
+    } else {
+        printf("%f", n);
+    }
+}
+
 void dump(const char *name, float32x4 vec)
 {
-    printf("%s: %f %f %f %f\n", name, emscripten_float32x4_extractLane(vec, 0), emscripten_float32x4_extractLane(vec, 1), emscripten_float32x4_extractLane(vec, 2), emscripten_float32x4_extractLane(vec, 3));
+    printf("%s: ", name);
+    printFloat(emscripten_float32x4_extractLane(vec, 0));
+    printf(" ");
+    printFloat(emscripten_float32x4_extractLane(vec, 1));
+    printf(" ");
+    printFloat(emscripten_float32x4_extractLane(vec, 2));
+    printf(" ");
+    printFloat(emscripten_float32x4_extractLane(vec, 3));
+    printf("\n");
 }
 #define DUMP(V) dump(#V, (V))
 

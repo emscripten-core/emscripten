@@ -340,4 +340,14 @@ long double erfcl(long double x)
 	y = 0x1p-16382L;
 	return sign ? 2 - y : y*y;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double erfl(long double x)
+{
+	return erf(x);
+}
+long double erfcl(long double x)
+{
+	return erfc(x);
+}
 #endif

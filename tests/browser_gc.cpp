@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <gc.h>
 #include <assert.h>
@@ -48,8 +53,7 @@ void waiter(void*) {
     assert(!global);
     if (freed == 5) {
       printf("Ok.\n");
-      int result = 1;
-      REPORT_RESULT();
+      REPORT_RESULT(1);
       return;
     }
     if (emscripten_get_now() - start > 2100) {

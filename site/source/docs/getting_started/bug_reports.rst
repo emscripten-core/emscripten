@@ -32,10 +32,10 @@ Site and documentation bugs
 
 Documentation (site) bugs should be filed in the same `Issue Tracker <https://github.com/kripken/emscripten/issues?state=open>`_.
 
-Include relevant information including: 
+Include relevant information including:
 
 - The URL and title of the affected page(s).
 - A description of the problem.
 - Suggestions for a possible solution.
 
-.. tip:: The `Page bug <https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:How%20to%20Report%20Bugs%20%28under-construction%29%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20../../docs/site/Bug-Reports&labels=bug>`_ link on the bottom-right of every page opens the Issue Tracker pre-seeded with the current page URL and title.  
+.. tip:: The `Page bug <https://github.com/kripken/emscripten/issues/new?title=Bug%20in%20page:How%20to%20Report%20Bugs%20%28under-construction%29%20&body=REPLACE%20THIS%20TEXT%20WITH%20BUG%20DESCRIPTION%20%0A%0AURL:%20../../docs/site/Bug-Reports&labels=bug>`_ link on the bottom-right of every page opens the Issue Tracker pre-seeded with the current page URL and title.

@@ -1,14 +1,11 @@
 #include <utime.h>
-#include <sys/time.h>
-#include "syscall.h"
+#include <sys/stat.h>
+#include <time.h>
+#include <fcntl.h>
 
 int utime(const char *path, const struct utimbuf *times)
 {
-	if (times) {
-		struct timeval tv[2] = {
-			{ .tv_sec = times->actime },
-			{ .tv_sec = times->modtime } };
-		return syscall(SYS_utimes, path, tv);
-	}
-	return syscall(SYS_utimes, path, 0);
+	return utimensat(AT_FDCWD, path, times ? ((struct timespec [2]){
+		{ .tv_sec = times->actime }, { .tv_sec = times->modtime }})
+		: 0, 0);
 }

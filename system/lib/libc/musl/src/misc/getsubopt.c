@@ -15,7 +15,7 @@ int getsubopt(char **opt, char *const *keys, char **val)
 		size_t l = strlen(keys[i]);
 		if (strncmp(keys[i], s, l)) continue;
 		if (s[l] == '=')
-			*val = s + l;
+			*val = s + l + 1;
 		else if (s[l]) continue;
 		return i;
 	}

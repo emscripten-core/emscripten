@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
@@ -109,7 +114,14 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       },
       readdir: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        var entries = ['.', '..'];
+        for (var key in node.contents) {
+          if (!node.contents.hasOwnProperty(key)) {
+            continue;
+          }
+          entries.push(key);
+        }
+        return entries;
       },
       symlink: function(parent, newName, oldPath) {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);

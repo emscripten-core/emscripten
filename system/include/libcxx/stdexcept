@@ -45,22 +45,31 @@ public:
 #include <__config>
 #include <exception>
 #include <iosfwd>  // for string forward decl
+#ifdef _LIBCPP_NO_EXCEPTIONS
+#include <cstdlib>
+#endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
 
-#ifndef _LIBCPP___REFSTRING
 _LIBCPP_BEGIN_NAMESPACE_STD
-class _LIBCPP_HIDDEN __libcpp_refstring {
-#ifdef __clang__
-    const char *__imp_ __attribute__((__unused__)); // only clang emits a warning
-#else
-    const char *__imp_;
-#endif
+
+class _LIBCPP_HIDDEN __libcpp_refstring
+{
+    const char* __imp_;
+
+    bool __uses_refcount() const;
+public:
+    explicit __libcpp_refstring(const char* __msg);
+    __libcpp_refstring(const __libcpp_refstring& __s) _NOEXCEPT;
+    __libcpp_refstring& operator=(const __libcpp_refstring& __s) _NOEXCEPT;
+    ~__libcpp_refstring();
+
+    const char* c_str() const _NOEXCEPT {return __imp_;}
 };
+
 _LIBCPP_END_NAMESPACE_STD
-#endif
 
 namespace std  // purposefully not using versioning namespace
 {
@@ -170,5 +179,100 @@ public:
 };
 
 }  // std
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+// in the dylib
+_LIBCPP_NORETURN _LIBCPP_FUNC_VIS void __throw_runtime_error(const char*);
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_logic_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw logic_error(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_domain_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw domain_error(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_invalid_argument(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw invalid_argument(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_length_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw length_error(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_out_of_range(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw out_of_range(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_range_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw range_error(__msg);
+#else
+    ((void)__msg);
+	  _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_overflow_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw overflow_error(__msg);
+#else
+    ((void)__msg);
+    _VSTD::abort();
+#endif
+}
+
+_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+void __throw_underflow_error(const char*__msg)
+{
+#ifndef _LIBCPP_NO_EXCEPTIONS
+    throw underflow_error(__msg);
+#else
+    ((void)__msg);
+    _VSTD::abort();
+#endif
+}
+
+_LIBCPP_END_NAMESPACE_STD
 
 #endif  // _LIBCPP_STDEXCEPT

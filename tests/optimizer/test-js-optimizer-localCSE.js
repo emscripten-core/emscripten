@@ -59,4 +59,19 @@ function ___towcase() {
  gb + gb + gb + gb;
  gb + gb + gb + gb;
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh", "___towcase"]
+function tableMask(x, y, z, a, b, c) {
+  x = x | 0;
+  y = y | 0;
+  z = z | 0;
+  a = a | 0;
+  b = b | 0;
+  c = c | 0;
+  // tempting as it is to localCSE here, we must keep the
+  // mask for asm.js validation.
+  (x & y & z) & 511;
+  FUNCTION_TABLE[(x & y & z) & 511]();
+  // otherwise, we can localCSE the mask too
+  (a & b & c) & 127;
+  (a & b & c) & 127;
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["skinning", "_i64Subtract", "cubeMD5mesh", "___towcase", "tableMask"]

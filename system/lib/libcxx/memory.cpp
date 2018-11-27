@@ -17,28 +17,6 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-namespace
-{
-
-// NOTE: Relaxed and acq/rel atomics (for increment and decrement respectively)
-// should be sufficient for thread safety.
-// See https://llvm.org/bugs/show_bug.cgi?id=22803
-template <class T>
-inline T
-increment(T& t) _NOEXCEPT
-{
-    return __libcpp_atomic_add(&t, 1, _AO_Relaxed);
-}
-
-template <class T>
-inline T
-decrement(T& t) _NOEXCEPT
-{
-    return __libcpp_atomic_add(&t, -1, _AO_Acq_Rel);
-}
-
-}  // namespace
-
 const allocator_arg_t allocator_arg = allocator_arg_t();
 
 bad_weak_ptr::~bad_weak_ptr() _NOEXCEPT {}
@@ -53,25 +31,26 @@ __shared_count::~__shared_count()
 {
 }
 
+__shared_weak_count::~__shared_weak_count()
+{
+}
+
+#if defined(_LIBCPP_DEPRECATED_ABI_LEGACY_LIBRARY_DEFINITIONS_FOR_INLINE_FUNCTIONS)
 void
 __shared_count::__add_shared() _NOEXCEPT
 {
-    increment(__shared_owners_);
+    __libcpp_atomic_refcount_increment(__shared_owners_);
 }
 
 bool
 __shared_count::__release_shared() _NOEXCEPT
 {
-    if (decrement(__shared_owners_) == -1)
+    if (__libcpp_atomic_refcount_decrement(__shared_owners_) == -1)
     {
         __on_zero_shared();
         return true;
     }
     return false;
-}
-
-__shared_weak_count::~__shared_weak_count()
-{
 }
 
 void
@@ -83,7 +62,7 @@ __shared_weak_count::__add_shared() _NOEXCEPT
 void
 __shared_weak_count::__add_weak() _NOEXCEPT
 {
-    increment(__shared_weak_owners_);
+    __libcpp_atomic_refcount_increment(__shared_weak_owners_);
 }
 
 void
@@ -93,10 +72,40 @@ __shared_weak_count::__release_shared() _NOEXCEPT
         __release_weak();
 }
 
+#endif // _LIBCPP_DEPRECATED_ABI_LEGACY_LIBRARY_DEFINITIONS_FOR_INLINE_FUNCTIONS
+
 void
 __shared_weak_count::__release_weak() _NOEXCEPT
 {
-    if (decrement(__shared_weak_owners_) == -1)
+    // NOTE: The acquire load here is an optimization of the very
+    // common case where a shared pointer is being destructed while
+    // having no other contended references.
+    //
+    // BENEFIT: We avoid expensive atomic stores like XADD and STREX
+    // in a common case.  Those instructions are slow and do nasty
+    // things to caches.
+    //
+    // IS THIS SAFE?  Yes.  During weak destruction, if we see that we
+    // are the last reference, we know that no-one else is accessing
+    // us. If someone were accessing us, then they would be doing so
+    // while the last shared / weak_ptr was being destructed, and
+    // that's undefined anyway.
+    //
+    // If we see anything other than a 0, then we have possible
+    // contention, and need to use an atomicrmw primitive.
+    // The same arguments don't apply for increment, where it is legal
+    // (though inadvisable) to share shared_ptr references between
+    // threads, and have them all get copied at once.  The argument
+    // also doesn't apply for __release_shared, because an outstanding
+    // weak_ptr::lock() could read / modify the shared count.
+    if (__libcpp_atomic_load(&__shared_weak_owners_, _AO_Acquire) == 0)
+    {
+        // no need to do this store, because we are about
+        // to destroy everything.
+        //__libcpp_atomic_store(&__shared_weak_owners_, -1, _AO_Release);
+        __on_zero_shared_weak();
+    }
+    else if (__libcpp_atomic_refcount_decrement(__shared_weak_owners_) == -1)
         __on_zero_shared_weak();
 }
 
@@ -111,7 +120,7 @@ __shared_weak_count::lock() _NOEXCEPT
                                              object_owners+1))
             return this;
     }
-    return 0;
+    return nullptr;
 }
 
 #if !defined(_LIBCPP_NO_RTTI) || !defined(_LIBCPP_BUILD_STATIC)
@@ -119,23 +128,21 @@ __shared_weak_count::lock() _NOEXCEPT
 const void*
 __shared_weak_count::__get_deleter(const type_info&) const _NOEXCEPT
 {
-    return 0;
+    return nullptr;
 }
 
 #endif  // _LIBCPP_NO_RTTI
 
-#if defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_NO_THREADS)
+#if !defined(_LIBCPP_HAS_NO_ATOMIC_HEADER)
 
-static const std::size_t __sp_mut_count = 16;
-static pthread_mutex_t mut_back_imp[__sp_mut_count] =
+_LIBCPP_SAFE_STATIC static const std::size_t __sp_mut_count = 16;
+_LIBCPP_SAFE_STATIC static __libcpp_mutex_t mut_back[__sp_mut_count] =
 {
-    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER,
-    PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_INITIALIZER
+    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
+    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
+    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER,
+    _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER, _LIBCPP_MUTEX_INITIALIZER
 };
-
-static mutex* mut_back = reinterpret_cast<std::mutex*>(mut_back_imp);
 
 _LIBCPP_CONSTEXPR __sp_mut::__sp_mut(void* p) _NOEXCEPT
    : __lx(p)
@@ -145,13 +152,13 @@ _LIBCPP_CONSTEXPR __sp_mut::__sp_mut(void* p) _NOEXCEPT
 void
 __sp_mut::lock() _NOEXCEPT
 {
-    mutex& m = *static_cast<mutex*>(__lx);
+    auto m = static_cast<__libcpp_mutex_t*>(__lx);
     unsigned count = 0;
-    while (!m.try_lock())
+    while (!__libcpp_mutex_trylock(m))
     {
         if (++count > 16)
         {
-            m.lock();
+            __libcpp_mutex_lock(m);
             break;
         }
         this_thread::yield();
@@ -161,13 +168,13 @@ __sp_mut::lock() _NOEXCEPT
 void
 __sp_mut::unlock() _NOEXCEPT
 {
-    static_cast<mutex*>(__lx)->unlock();
+    __libcpp_mutex_unlock(static_cast<__libcpp_mutex_t*>(__lx));
 }
 
 __sp_mut&
 __get_sp_mut(const void* p)
 {
-    static __sp_mut muts[__sp_mut_count] 
+    static __sp_mut muts[__sp_mut_count]
     {
         &mut_back[ 0], &mut_back[ 1], &mut_back[ 2], &mut_back[ 3],
         &mut_back[ 4], &mut_back[ 5], &mut_back[ 6], &mut_back[ 7],
@@ -177,7 +184,7 @@ __get_sp_mut(const void* p)
     return muts[hash<const void*>()(p) & (__sp_mut_count-1)];
 }
 
-#endif // defined(_LIBCPP_HAS_C_ATOMIC_IMP) && !defined(_LIBCPP_HAS_NO_THREADS)
+#endif // !defined(_LIBCPP_HAS_NO_ATOMIC_HEADER)
 
 void
 declare_reachable(void*)
@@ -194,11 +201,12 @@ undeclare_no_pointers(char*, size_t)
 {
 }
 
-pointer_safety
-get_pointer_safety() _NOEXCEPT
+#if !defined(_LIBCPP_ABI_POINTER_SAFETY_ENUM_TYPE)
+pointer_safety get_pointer_safety() _NOEXCEPT
 {
     return pointer_safety::relaxed;
 }
+#endif
 
 void*
 __undeclare_reachable(void* p)

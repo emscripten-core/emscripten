@@ -648,11 +648,10 @@ gears_idle(void)
       tRate0 = t;
       frames = 0;
 #ifdef LONGTEST
-      static runs = 0;
+      static int runs = 0;
       runs++;
       if (runs == 4) {
-        int result = fps;
-        REPORT_RESULT();
+        REPORT_RESULT(fps);
       }
 #endif
    }

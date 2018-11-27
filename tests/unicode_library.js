@@ -1,5 +1,5 @@
 mergeInto(LibraryManager.library, {
 printey: function() {
-  Module.print('Unicode snowman ☃ says hello!');
+  out('Unicode snowman ☃ says hello!');
 }
 });

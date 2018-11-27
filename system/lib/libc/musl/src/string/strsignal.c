@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <string.h>
+#include "locale_impl.h"
 
 #if (SIGHUP == 1) && (SIGINT == 2) && (SIGQUIT == 3) && (SIGILL == 4) \
  && (SIGTRAP == 5) && (SIGABRT == 6) && (SIGBUS == 7) && (SIGFPE == 8) \
@@ -104,12 +105,12 @@ static const char strings[] =
 
 char *strsignal(int signum)
 {
-	char *s = (char *)strings;
+	const char *s = strings;
 
 	signum = sigmap(signum);
 	if (signum - 1U >= _NSIG-1) signum = 0;
 
 	for (; signum--; s++) for (; *s; s++);
 
-	return s;
+	return (char *)LCTRANS_CUR(s);
 }

@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # This is a helper script to validate a file for asm.js.
 
@@ -11,29 +15,34 @@
 
 # This script depends on the SpiderMonkey JS engine, which must be present in PATH in order for this script to function.
 
+from __future__ import print_function
 import subprocess, sys, re, tempfile, os, time
-import shared
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 # Given a .js file, returns True/False depending on if that file is valid asm.js
 def validate_asmjs_jsfile(filename, muteOutput):
   cmd = shared.SPIDERMONKEY_ENGINE + ['-c', filename]
   if not shared.SPIDERMONKEY_ENGINE or cmd[0] == 'js-not-found' or len(cmd[0].strip()) == 0:
-    print >> sys.stderr, 'Could not find SpiderMonkey engine! Please set tis location to SPIDERMONKEY_ENGINE in your ' + shared.hint_config_file_location() + ' configuration file!'
+    print('Could not find SpiderMonkey engine! Please set its location to SPIDERMONKEY_ENGINE in your ' + shared.hint_config_file_location() + ' configuration file!', file=sys.stderr)
     return False
   try:
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-  except Exception, e:
-    print >> sys.stderr, 'Executing command ' + str(cmd) + ' failed due to an exception: ' + str(e) + '!'
+    process = shared.run_process(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+  except Exception as e:
+    print('Executing command ' + str(cmd) + ' failed due to an exception: ' + str(e) + '!', file=sys.stderr)
     return False
-  (stdout, stderr) = process.communicate()
+  stdout = process.stdout
+  stderr = process.stderr
   if not muteOutput:
-    if len(stdout.strip()) > 0:
-      print stdout.strip()
-    if len(stderr.strip()) > 0:
+    if len(stdout.strip()):
+      print(stdout.strip())
+    if len(stderr.strip()):
       # Pretty-print the output not to contain a spurious warning.
       warning_re = re.compile(re.escape('warning: successfully compiled asm.js'), re.IGNORECASE)
       stderr = warning_re.sub(' successfully compiled asm.js', stderr)
-      print >> sys.stderr, stderr.strip()
+      print(stderr.strip(), file=sys.stderr)
   if 'successfully compiled asm.js' in stderr.lower():
     return True
   else:
@@ -64,7 +73,7 @@ def validate_asmjs(filename, muteOutput):
       if os.path.isfile(js_file):
         return validate_asmjs(js_file, muteOutput)
       if not muteOutput:
-        print >> sys.stderr, 'Error: the file does not contain any "use asm" modules.'
+        print('Error: the file does not contain any "use asm" modules.', file=sys.stderr)
       return False
     else:
       return True
@@ -73,13 +82,13 @@ def validate_asmjs(filename, muteOutput):
 
 def main():
   if len(sys.argv) < 2:
-    print 'Usage: validate_asmjs <filename>'
+    print('Usage: validate_asmjs <filename>')
     return 2
   if validate_asmjs(sys.argv[1], muteOutput=False):
-    print "OK: File '" + sys.argv[1] + "' validates as asm.js"
+    print("OK: File '" + sys.argv[1] + "' validates as asm.js")
     return 0
   else:
-    print "FAIL: File '" + sys.argv[1] + "' is not valid asm.js"
+    print("FAIL: File '" + sys.argv[1] + "' is not valid asm.js")
     return 1
 
 if __name__ == '__main__':

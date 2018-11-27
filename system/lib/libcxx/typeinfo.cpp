@@ -6,63 +6,52 @@
 // Source Licenses. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-#include <stdlib.h>
-
-#if defined(__APPLE__) || defined(LIBCXXRT) ||                                 \
-    defined(LIBCXX_BUILDING_LIBCXXABI)
-#include <cxxabi.h>
-#endif
 
 #include "typeinfo"
 
-#if !defined(LIBCXXRT) && !defined(_LIBCPPABI_VERSION)
+#if defined(_LIBCPP_ABI_MICROSOFT)
+#include <string.h>
 
-std::bad_cast::bad_cast() _NOEXCEPT
-{
+int std::type_info::__compare(const type_info &__rhs) const _NOEXCEPT {
+  if (&__data == &__rhs.__data)
+    return 0;
+  return strcmp(&__data.__decorated_name[1], &__rhs.__data.__decorated_name[1]);
 }
 
-std::bad_typeid::bad_typeid() _NOEXCEPT
-{
+const char *std::type_info::name() const _NOEXCEPT {
+  // TODO(compnerd) cache demangled &__data.__decorated_name[1]
+  return &__data.__decorated_name[1];
 }
 
-#ifndef __GLIBCXX__
-
-std::bad_cast::~bad_cast() _NOEXCEPT
-{
-}
-
-const char*
-std::bad_cast::what() const _NOEXCEPT
-{
-  return "std::bad_cast";
-}
-
-std::bad_typeid::~bad_typeid() _NOEXCEPT
-{
-}
-
-const char*
-std::bad_typeid::what() const _NOEXCEPT
-{
-  return "std::bad_typeid";
-}
-
-#ifdef __APPLE__
-  // On Darwin, the cxa_bad_* functions cannot be in the lower level library
-  // because bad_cast and bad_typeid are defined in his higher level library
-  void __cxxabiv1::__cxa_bad_typeid()
-  {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-     throw std::bad_typeid();
+size_t std::type_info::hash_code() const _NOEXCEPT {
+#if defined(_WIN64)
+  constexpr size_t fnv_offset_basis = 14695981039346656037ull;
+  constexpr size_t fnv_prime = 10995116282110ull;
+#else
+  constexpr size_t fnv_offset_basis = 2166136261ull;
+  constexpr size_t fnv_prime = 16777619ull;
 #endif
+
+  size_t value = fnv_offset_basis;
+  for (const char* c = &__data.__decorated_name[1]; *c; ++c) {
+    value ^= static_cast<size_t>(static_cast<unsigned char>(*c));
+    value *= fnv_prime;
   }
-  void __cxxabiv1::__cxa_bad_cast()
-  {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-      throw std::bad_cast();
-#endif
-  }
+
+#if defined(_WIN64)
+  value ^= value >> 32;
 #endif
 
-#endif  // !__GLIBCXX__
-#endif  // !LIBCXXRT && !_LIBCPPABI_VERSION
+  return value;
+}
+#endif // _LIBCPP_ABI_MICROSOFT
+
+// FIXME: Remove __APPLE__ default here once buildit is gone.
+// FIXME: Remove the _LIBCPP_BUILDING_HAS_NO_ABI_LIBRARY configuration.
+#if (!defined(LIBCXX_BUILDING_LIBCXXABI) && !defined(LIBCXXRT) &&              \
+     !defined(__GLIBCXX__) && !defined(__APPLE__)) ||                          \
+    defined(_LIBCPP_BUILDING_HAS_NO_ABI_LIBRARY)
+std::type_info::~type_info()
+{
+}
+#endif
