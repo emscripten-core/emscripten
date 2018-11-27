@@ -531,13 +531,13 @@ def check_sanity(force=False):
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
     else:
-      settings_mtime = os.stat(CONFIG_FILE).st_mtime
+      settings_mtime = os.path.getmtime(CONFIG_FILE)
       sanity_file = CONFIG_FILE + '_sanity'
       if Settings.WASM_BACKEND:
         sanity_file += '_wasm'
       if os.path.exists(sanity_file):
         try:
-          sanity_mtime = os.stat(sanity_file).st_mtime
+          sanity_mtime = os.path.getmtime(sanity_file)
           if sanity_mtime <= settings_mtime:
             reason = 'settings file has changed'
           else:
@@ -971,7 +971,7 @@ def check_vanilla():
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt')
-    if CONFIG_FILE and os.stat(CONFIG_FILE).st_mtime > os.stat(is_vanilla_file).st_mtime:
+    if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
       logger.debug('config file changed since we checked vanilla; re-checking')
       is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
     try:
@@ -1286,6 +1286,9 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
+      exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
+
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
       # TODO(sbc): Make this into a hard error.  We still have a few places that

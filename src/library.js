@@ -57,6 +57,20 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // getTempRet0/setTempRet0: scratch space handling i64 return
+  // ==========================================================================
+
+  getTempRet0__sig: 'i',
+  getTempRet0: function() {
+    return {{{ makeGetTempRet0() }}};
+  },
+
+  setTempRet0__sig: 'vi',
+  setTempRet0: function($i) {
+    {{{ makeSetTempRet0('$i') }}};
+  },
+
+  // ==========================================================================
   // utime.h
   // ==========================================================================
 
@@ -1116,12 +1130,15 @@ LibraryManager.library = {
       if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
       for (var key in EXCEPTIONS.infos) {
         var ptr = +key; // the iteration key is a string, and if we throw this, it must be an integer as that is what we look for
-        var info = EXCEPTIONS.infos[ptr];
-        if (info.adjusted === adjusted) {
+        var adj = EXCEPTIONS.infos[ptr].adjusted;
+        var len = adj.length;
+        for (var i = 0; i < len; i++) {
+          if (adj[i] === adjusted) {
 #if EXCEPTION_DEBUG
-          err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
+            err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
 #endif
-          return ptr;
+            return ptr;
+          }
         }
       }
 #if EXCEPTION_DEBUG
@@ -1204,7 +1221,7 @@ LibraryManager.library = {
 #endif
     EXCEPTIONS.infos[ptr] = {
       ptr: ptr,
-      adjusted: ptr,
+      adjusted: [ptr],
       type: type,
       destructor: destructor,
       refcount: 0,
@@ -1316,6 +1333,7 @@ LibraryManager.library = {
   __cxa_rethrow_primary_exception__deps: ['__cxa_rethrow'],
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
+    ptr = EXCEPTIONS.deAdjust(ptr);
     EXCEPTIONS.caught.push(ptr);
     EXCEPTIONS.infos[ptr].rethrown = true;
     ___cxa_rethrow();
@@ -1370,7 +1388,7 @@ LibraryManager.library = {
     for (var i = 0; i < typeArray.length; i++) {
       if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
         thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
-        info.adjusted = thrown;
+        info.adjusted.push(thrown);
 #if EXCEPTION_DEBUG
         out("  can_catch found " + [thrown, typeArray[i]]);
 #endif

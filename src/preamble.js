@@ -1619,37 +1619,30 @@ addOnPreRun(function() { addRunDependency('pgo') });
 }}}
 
 addOnPreRun(function() {
+  function runPostSets() {
+    if (Module['asm']['runPostSets']) {
+      Module['asm']['runPostSets']();
+    }
+  }
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
         loadDynamicLibrary(lib);
       });
     }
-    if (Module['asm']['runPostSets']) {
-      Module['asm']['runPostSets']();
-    }
+    runPostSets();
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
 #if WASM
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
-    var binaries = [];
-    Module['dynamicLibraries'].forEach(function(lib) {
-      fetch(lib, { credentials: 'same-origin' }).then(function(response) {
-        if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + lib + "'";
-        }
-        return response['arrayBuffer']();
-      }).then(function(buffer) {
-        var binary = new Uint8Array(buffer);
-        binaries.push(binary);
-        if (binaries.length === Module['dynamicLibraries'].length) {
-          // we got them all, wonderful
-          loadDynamicLibraries(binaries);
-          removeRunDependency('preload_dynamicLibraries');
-        }
-      });
+    Promise.all(Module['dynamicLibraries'].map(function(lib) {
+      return loadDynamicLibrary(lib, {loadAsync: true});
+    })).then(function() {
+      // we got them all, wonderful
+      runPostSets();
+      removeRunDependency('preload_dynamicLibraries');
     });
     return;
   }
@@ -2148,7 +2141,7 @@ function integrateWasmJS() {
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
-  // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
+  // doesn't need to care that it is wasm or polyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
     // import table

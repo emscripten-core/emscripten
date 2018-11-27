@@ -2069,7 +2069,7 @@ var LibraryOpenAL = {
   alcCloseDevice__proxy: 'sync',
   alcCloseDevice__sig: 'ii',
   alcCloseDevice: function(deviceId) {
-    if (!deviceId in AL.deviceRefCounts || AL.deviceRefCounts[deviceId] > 0) {
+    if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
       return 0 /* ALC_FALSE */;
     }
 
@@ -2081,7 +2081,7 @@ var LibraryOpenAL = {
   alcCreateContext__proxy: 'sync',
   alcCreateContext__sig: 'iii',
   alcCreateContext: function(deviceId, pAttrList) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcCreateContext() called with an invalid device');
 #endif
@@ -3103,7 +3103,7 @@ var LibraryOpenAL = {
       break;
     case 0xB004 /* AL_EXTENSIONS */:
       ret = '';
-      for (ext in AL.AL_EXTENSIONS) {
+      for (var ext in AL.AL_EXTENSIONS) {
         ret = ret.concat(ext);
         ret = ret.concat(' ');
       }

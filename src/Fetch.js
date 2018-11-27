@@ -400,7 +400,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     }
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
-    if (xhr.status == 200) {
+    if (xhr.status >= 200 && xhr.status < 300) {
 #if FETCH_DEBUG
       console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
 #endif
