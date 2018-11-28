@@ -15,8 +15,6 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
- - Error if `_main` is missing by default.  `_main` has alwasy been in the
-   default EXPORTED_FUNCTIONS by previously did not generate an error.
 
 v1.38.20: 11/20/2018
 --------------------

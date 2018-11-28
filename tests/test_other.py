@@ -27,7 +27,7 @@ import uuid
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
-from tools.shared import Building, PIPE, run_js, run_process, check_call, STDOUT, try_delete, listify
+from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, TEMP_DIR, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
@@ -733,9 +733,9 @@ f.close()
 
   def test_use_cxx(self):
     open('empty_file', 'w').write(' ')
-    dash_xc = check_call([PYTHON, EMCC, '-v', '-xc', '-c', 'empty_file'], stderr=PIPE).stderr
+    dash_xc = run_process([PYTHON, EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
     self.assertNotContained('-std=c++03', dash_xc)
-    dash_xcpp = check_call([PYTHON, EMCC, '-v', '-xc++', '-c', 'empty_file'], stderr=PIPE).stderr
+    dash_xcpp = run_process([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
     self.assertContained('-std=c++03', dash_xcpp)
 
   def test_cxx03(self):
@@ -1336,7 +1336,8 @@ int f() {
       void libf1() { printf("libf1\n"); }
       void libf2() { printf("libf2\n"); }
     '''
-    open('lib.c', 'w').write(lib)
+    lib_name = os.path.join(self.get_dir(), 'lib.c')
+    open(lib_name, 'w').write(lib)
 
     open('main.js', 'w').write('''
       var Module = {
@@ -1347,7 +1348,7 @@ int f() {
       };
     ''')
 
-    Building.emcc('lib.c', ['-s', 'EXPORTED_FUNCTIONS=[]', '-s', 'EXPORT_ALL=1', '-s', 'LINKABLE=1', '--pre-js', 'main.js'], output_filename='a.out.js')
+    Building.emcc(lib_name, ['-s', 'EXPORT_ALL=1', '-s', 'LINKABLE=1', '--pre-js', 'main.js'], output_filename='a.out.js')
 
     self.assertContained('libf1\nlibf2\n', run_js(os.path.join(self.get_dir(), 'a.out.js')))
 
@@ -2384,7 +2385,6 @@ int f() {
         [PYTHON, EMCC, path_from_root('tests', 'embind', 'embind_test.cpp'),
          '--pre-js', path_from_root('tests', 'embind', 'test.pre.js'),
          '--post-js', path_from_root('tests', 'embind', 'test.post.js'),
-         '-s', 'EXPORTED_FUNCTIONS=[]',
          '-s', 'BINARYEN_ASYNC_COMPILATION=0'] + args,
         stderr=PIPE if fail else None,
         check=not fail,
@@ -2737,13 +2737,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'console.log(xxx); //< here is the ReferenceError'
 
-    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'EXPORTED_FUNCTIONS=[]', '-o', 'count.js'])
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js'])
 
     # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
     self.assertNotContained(reference_error_text,
                             run_js('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
-    check_call([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-s', 'EXPORTED_FUNCTIONS=[]', '-o', 'count.js', '-s', 'NODEJS_CATCH_EXIT=0'])
+    run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'count.c'), '-o', 'count.js', '-s', 'NODEJS_CATCH_EXIT=0'])
 
     # Check that the ReferenceError is not caught, so we see the error properly
     self.assertContained(reference_error_text,
@@ -2769,17 +2769,14 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'undefined'
 
-    check_call([PYTHON, EMCC, 'count.c', '-o', 'count.js',
-                '-s', 'FORCE_FILESYSTEM=1',
-                '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]',
-                '-s', 'EXPORTED_FUNCTIONS=[]'])
+    run_process([PYTHON, EMCC, 'count.c', '-s', 'FORCE_FILESYSTEM=1', '-s',
+                 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS_writeFile"]', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile exists
     self.assertNotContained(reference_error_text,
                             run_js('index.js', engine=NODE_JS, stderr=STDOUT, assert_returncode=None))
 
-    check_call([PYTHON, EMCC, 'count.c', '-s', 'FORCE_FILESYSTEM=1', '-s',
-                'EXPORTED_FUNCTIONS=[]', '-o', 'count.js'])
+    run_process([PYTHON, EMCC, 'count.c', '-s', 'FORCE_FILESYSTEM=1', '-o', 'count.js'])
 
     # Check that the Module.FS_writeFile is not exported
     self.assertContained(reference_error_text,
@@ -3207,8 +3204,8 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
     self.assertContained('dir was ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
   def test_float_h(self):
-    # float.h should agree with our system
-    check_call([PYTHON, EMCC, '-c', path_from_root('tests', 'float+.c')])
+    process = run_process([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
+    assert process.returncode is 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
 
   def test_default_obj_ext(self):
     outdir = os.path.join(self.get_dir(), 'out_dir') + '/'
@@ -5068,7 +5065,7 @@ main(const int argc, const char * const * const argv)
       };
     ''')
     open('src.cpp', 'w').write('')
-    check_call([PYTHON, EMCC, '-s', 'EXPORTED_FUNCTIONS=[]', 'src.cpp', '--pre-js', 'pre_main.js'])
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre_main.js'])
     self.assertContained('compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]',
                          run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
@@ -5891,10 +5888,10 @@ public:
 };
 
 Descriptor desc;
-
-int main() {}
     ''')
-    check_call([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1'])
+    try_delete('a.out.js')
+    run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1'])
+    assert os.path.exists('a.out.js')
 
   @no_wasm_backend('tests PRECISE_F32=1')
   def test_f0(self):
@@ -7968,13 +7965,13 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      (['-s', 'EXPORTED_FUNCTIONS=[]'],        23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 16, 29), # noqa
-      (['-s', 'EXPORTED_FUNCTIONS=[]', '-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 13, 13), # noqa
-      (['-s', 'EXPORTED_FUNCTIONS=[]', '-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 13, 13), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 16, 29), # noqa
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 13, 13), # noqa
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 13, 13), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      (['-s', 'EXPORTED_FUNCTIONS=[]', '-O3'],  0, [],                         [],                           55,  0,  1, 1), # noqa
-      (['-s', 'EXPORTED_FUNCTIONS=[]', '-Os'],  0, [],                         [],                           55,  0,  1, 1), # noqa
-      (['-s', 'EXPORTED_FUNCTIONS=[]', '-Oz'],  0, [],                         [],                           55,  0,  1, 1), # noqa
+      (['-O3'],  0, [],                         [],                           55,  0,  1, 1), # noqa
+      (['-Os'],  0, [],                         [],                           55,  0,  1, 1), # noqa
+      (['-Oz'],  0, [],                         [],                           55,  0,  1, 1), # noqa
     ])
 
     print('test on libc++: see effects of emulated function pointers')
@@ -8190,7 +8187,8 @@ int main() {
           inc = '#include <' + directory + '/' + h + '>'
           print(inc)
           open('a.c', 'w').write(inc)
-          check_call([PYTHON, EMCC] + std + ['-Wall', '-Werror', '-c', 'a.c'])
+          open('b.c', 'w').write(inc)
+          run_process([PYTHON, EMCC] + std + ['a.c', 'b.c'])
 
   def test_single_file(self):
     for (single_file_enabled,

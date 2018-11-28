@@ -373,6 +373,9 @@ def apply_settings(changes):
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
+    # used for warnings in emscripten.py
+    shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
+
 
 #
 # Main run() function
@@ -1001,9 +1004,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
       shared.reconfigure_cache()
-
-      # used for warnings in emscripten.py
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
       # Note the exports the user requested
       shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
