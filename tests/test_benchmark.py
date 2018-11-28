@@ -985,12 +985,12 @@ class benchmark(RunnerCore):
         var benchmarkArgumentToPageCount = {
           0: 0,
           1: 1,
-          2: 2,
-          3: 5,
-          4: 8,
-          5: 12,
+          2: 7,
+          3: 15,
+          4: 26,
+          5: 55,
         };
-        Module.arguments = ['-scale-to', '1024', 'paper.pdf', 'filename', '-f', '1', '-l', benchmarkArgumentToPageCount[benchmarkArgument]];
+        Module.arguments = ['-scale-to', '1024', 'input.pdf', 'filename', '-f', '1', '-l', benchmarkArgumentToPageCount[benchmarkArgument]];
         Module.postRun = function() {
           if (benchmarkArgument === 0) return;
           var files = [];
@@ -1019,6 +1019,6 @@ class benchmark(RunnerCore):
     # TODO: poppler in native build
     self.do_benchmark('poppler', '', 'ok.',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('docs', 'emscripten_html5.pdf') + '@input.pdf', '--profiling', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
+                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '--profiling', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
                       lib_builder=lib_builder)
 
