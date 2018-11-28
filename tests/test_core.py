@@ -5481,14 +5481,24 @@ return malloc(size);
 
     test()
 
-    assert 'asm1' in core_test_modes
-    if self.run_name == 'asm1':
-      print('verifing postsets')
+    def count_relocations():
       generated = open('src.cpp.o.js').read()
       generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      main = generated[generated.find('function runPostSets'):]
-      main = main[:main.find('\n}')]
-      assert main.count('\n') <= 7, ('must not emit too many js_transform: %d' % main.count('\n')) + ' : ' + main
+      start = '\nfunction runPostSets() {'
+      relocs_start = generated.find(start)
+      if relocs_start == -1:
+        return "", 0
+      relocs_start += len(start)
+      relocs_end = generated.find('\n}', relocs_start)
+      relocs = generated[relocs_start:relocs_end]
+      num_relocs = relocs.count('\n')
+      return relocs, num_relocs
+
+    assert 'asm1' in core_test_modes
+    if self.run_name == 'asm1':
+      print('verifing relocations')
+      relocs, num_relocs = count_relocations()
+      self.assertEqual(num_relocs, 0)
 
     # TODO: wrappers for wasm modules
     if not self.is_wasm():
@@ -5497,6 +5507,10 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 1)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
       test()
+      if self.run_name == 'asm1':
+        relocs, num_relocs = count_relocations()
+        print('num_relocs: %s' % num_relocs)
+        self.assertGreater(num_relocs, 0)
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
 
