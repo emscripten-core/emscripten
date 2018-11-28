@@ -194,7 +194,7 @@ process(sys.argv[1])
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
-    output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
+    output = run_process(cmd, stdout=None, stderr=None, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
@@ -347,7 +347,7 @@ class CheerpBenchmarker(Benchmarker):
 try:
   benchmarkers_error = ''
   benchmarkers = [
-    NativeBenchmarker('clang', CLANG_CC, CLANG),
+    # NativeBenchmarker('clang', CLANG_CC, CLANG),
     # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
   if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
@@ -981,22 +981,44 @@ class benchmark(RunnerCore):
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:
       f.write('''
-        Module.args = ['-scale-to', '512', 'paper.pdf', 'filename'];
-        Module.preRun = function() {
-          FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
+        var benchmarkArgument = %s;
+        var benchmarkArgumentToPageCount = {
+          0: 0,
+          1: 1,
+          2: 2,
+          3: 5,
+          4: 8,
+          5: 12,
         };
+        Module.arguments = ['-scale-to', '1024', 'paper.pdf', 'filename', '-f', '1', '-l', benchmarkArgumentToPageCount[benchmarkArgument]];
         Module.postRun = function() {
-          var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
-          out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
+          if (benchmarkArgument === 0) return;
+          var files = [];
+          for (var x in FS.root.contents) {
+            if (x.startsWith('filename-')) {
+              files.push(x);
+            }
+          }
+          files.sort();
+          var hash = 5381;
+          var totalSize = 0;
+          files.forEach(function(file) {
+            var data = MEMFS.getFileDataAsRegularArray(FS.root.contents[file]);
+            for (var i = 0; i < data.length; i++) {
+              hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
+            }
+            totalSize += data.length;
+          });
+          out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
         };
-      ''')
+      ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
-      return get_poppler_library(self)
+      return [get_poppler_library(self)]
 
     # TODO: poppler in native build
     self.do_benchmark('poppler', '', 'ok.',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('docs', 'paper.pdf'), '--profiling'],
+                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('docs', 'emscripten_html5.pdf') + '@input.pdf', '--profiling', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
                       lib_builder=lib_builder)
 
