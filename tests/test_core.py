@@ -5507,8 +5507,9 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 1)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
       test()
-      relocs, num_relocs = count_relocations()
-      print('num_relocs: %s' % num_relocs)
+      if self.run_name == 'asm1':
+        relocs, num_relocs = count_relocations()
+        print('num_relocs: %s' % num_relocs)
       self.assertGreater(num_relocs, 0)
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
