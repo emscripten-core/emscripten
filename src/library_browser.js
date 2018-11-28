@@ -593,10 +593,12 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // just add the mouse delta to the current absolut mouse position
-        // FIXME: ideally this should be clamped against the canvas size and zero
+        // just add the mouse delta to the current absolut mouse position and clamp to surface size
         Browser.mouseX += Browser.mouseMovementX;
         Browser.mouseY += Browser.mouseMovementY;
+				var surface = (typeof SDL != 'undefined') ? SDL.surfaces[SDL.screen] : Module['canvas'];
+				Browser.mouseX = Math.min(Math.max(Browser.mouseX, 0), surface.width);
+				Browser.mouseY = Math.min(Math.max(Browser.mouseY, 0), surface.height);
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
