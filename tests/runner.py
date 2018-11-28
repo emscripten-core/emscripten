@@ -1221,6 +1221,40 @@ def get_bullet_library(runner_core, use_cmake):
                                  cache_name_extra=configure_commands[0])
 
 
+def get_poppler_library(runner_core):
+  # The fontconfig symbols are all missing from the poppler build
+  # e.g. FcConfigSubstitute
+  runner_core.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+
+  Building.COMPILER_TEST_OPTS += [
+    '-I' + path_from_root('tests', 'freetype', 'include'),
+    '-I' + path_from_root('tests', 'poppler', 'include')
+  ]
+
+  freetype = runner_core.get_freetype()
+
+  # Poppler has some pretty glaring warning.  Suppress them to keep the
+  # test output readable.
+  Building.COMPILER_TEST_OPTS += [
+      '-Wno-sentinel',
+      '-Wno-logical-not-parentheses',
+      '-Wno-unused-private-field',
+      '-Wno-tautological-compare',
+      '-Wno-unknown-pragmas',
+  ]
+  poppler = runner_core.get_library(
+      'poppler',
+      [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
+      env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
+      configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+
+  # Combine libraries
+
+  combined = os.path.join(runner_core.get_dir(), 'poppler-combined.bc')
+  Building.link(poppler + freetype, combined)
+
+  return combined
+
 def check_js_engines():
   total_engines = len(shared.JS_ENGINES)
   shared.JS_ENGINES = list(filter(jsrun.check_engine, shared.JS_ENGINES))

@@ -977,3 +977,5 @@ class benchmark(RunnerCore):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
     self.do_benchmark('sqlite', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1', '-g1'], force_c=True)
+
+# TODO poppler

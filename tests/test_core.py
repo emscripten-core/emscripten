@@ -22,7 +22,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
+from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_poppler_library
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify
 
 # decorators for limiting which modes a test can run in
@@ -5944,16 +5944,7 @@ return malloc(size);
 
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   def test_poppler(self):
-    # The fontconfig symbols are all missing from the poppler build
-    # e.g. FcConfigSubstitute
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
-
     def test():
-      Building.COMPILER_TEST_OPTS += [
-        '-I' + path_from_root('tests', 'freetype', 'include'),
-        '-I' + path_from_root('tests', 'poppler', 'include')
-      ]
-
       with open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w') as f:
         f.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
 
@@ -5969,30 +5960,7 @@ return malloc(size);
 ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      freetype = self.get_freetype()
-
-      # Poppler has some pretty glaring warning.  Suppress them to keep the
-      # test output readable.
-      Building.COMPILER_TEST_OPTS += [
-          '-Wno-sentinel',
-          '-Wno-logical-not-parentheses',
-          '-Wno-unused-private-field',
-          '-Wno-tautological-compare',
-          '-Wno-unknown-pragmas',
-      ]
-      poppler = self.get_library('poppler',
-                                 [os.path.join('utils', 'pdftoppm.o'),
-                                  os.path.join('utils', 'parseargs.o'),
-                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
-                                 env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
-
-      # Combine libraries
-
-      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link(poppler + freetype, combined)
-
-      self.do_ll_run(combined,
+      self.do_ll_run(get_poppler_library(self),
                      str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '))
 
