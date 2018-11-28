@@ -1221,6 +1221,11 @@ def get_bullet_library(runner_core, use_cmake):
                                  cache_name_extra=configure_commands[0])
 
 
+def get_freetype_library(runner_core):
+  runner_core.set_setting('DEAD_FUNCTIONS', runner_core.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
+
+  return runner_core.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+
 def get_poppler_library(runner_core):
   # The fontconfig symbols are all missing from the poppler build
   # e.g. FcConfigSubstitute
@@ -1231,7 +1236,7 @@ def get_poppler_library(runner_core):
     '-I' + path_from_root('tests', 'poppler', 'include')
   ]
 
-  freetype = runner_core.get_freetype()
+  freetype = get_freetype_library(runner_core)
 
   # Poppler has some pretty glaring warning.  Suppress them to keep the
   # test output readable.

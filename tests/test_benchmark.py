@@ -17,7 +17,7 @@ import zlib
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py benchmark')
 
-from runner import RunnerCore, chdir
+from runner import RunnerCore, chdir, get_poppler_library
 from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLOSURE_COMPILER, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
 from tools import shared, jsrun
 
@@ -976,6 +976,27 @@ class benchmark(RunnerCore):
   def test_zzz_sqlite(self):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1', '-g1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
 
-# TODO poppler
+  def test_zzz_poppler(self):
+    with open('pre.js', 'w') as f:
+      f.write('''
+        Module.args = ['-scale-to', '512', 'paper.pdf', 'filename'];
+        Module.preRun = function() {
+          FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
+        };
+        Module.postRun = function() {
+          var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
+          out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
+        };
+      ''')
+
+    def lib_builder(name, native, env_init):
+      return get_poppler_library(self)
+
+    # TODO: poppler in native build
+    self.do_benchmark('poppler', '', 'ok.',
+                      shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
+                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('docs', 'paper.pdf'), '--profiling'],
+                      lib_builder=lib_builder)
+
