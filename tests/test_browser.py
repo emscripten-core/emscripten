@@ -2528,6 +2528,10 @@ Module["preRun"].push(function () {
   def test_webgl2_packed_types(self):
     self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'USE_WEBGL2=1', '-s', 'GL_ASSERTIONS=1'], expected='0')
 
+  @requires_graphics_hardware
+  def test_webgl2_pbo(self):
+    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
+
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print(opts)
