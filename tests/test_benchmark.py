@@ -994,7 +994,8 @@ class benchmark(RunnerCore):
           Module.arguments = ['-?'];
           Module.printErr = function(){};
         } else {
-          Module.arguments = ['-scale-to', '1024', 'input.pdf', 'filename', '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+          // Add 'filename' after 'input.pdf' to write the output so it can be verified.
+          Module.arguments = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
           Module.postRun = function() {
             var files = [];
             for (var x in FS.root.contents) {
