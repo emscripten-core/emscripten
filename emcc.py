@@ -373,8 +373,9 @@ def apply_settings(changes):
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
-    # used for warnings in emscripten.py
-    shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
+    if key == 'EXPORTED_FUNCTIONS':
+      # used for warnings in emscripten.py
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
 
 #
