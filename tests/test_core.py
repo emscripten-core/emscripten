@@ -2433,7 +2433,7 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, 'error: Could not find dynamic lib: libfoo.so\n')
+    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: No such file or directory')
 
   @needs_dlfcn
   def test_dlfcn_basic(self):
