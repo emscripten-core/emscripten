@@ -441,7 +441,14 @@ var LibraryBrowser = {
     },
 
     requestAnimationFrame: function requestAnimationFrame(func) {
-      if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
+      if (typeof window === 'undefined') {
+#if OFFSCREENCANVAS_SUPPORT
+        if (typeof OffscreenCanvas !== 'undefined' && OffscreenCanvas['requestAnimationFrame']) {
+          OffscreenCanvas['requestAnimationFrame'](func);
+          return;
+        }
+#endif // OFFSCREENCANVAS_SUPPORT
+        // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
         Browser.fakeRequestAnimationFrame(func);
       } else {
         if (!window.requestAnimationFrame) {
