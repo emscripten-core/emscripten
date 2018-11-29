@@ -690,7 +690,8 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(str(Building.COMPILER_TEST_OPTS).encode('utf-8')).hexdigest() + cache_name_extra
+    hash_input = (str(Building.COMPILER_TEST_OPTS) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -1241,11 +1242,11 @@ def get_poppler_library(runner_core):
   # Poppler has some pretty glaring warning.  Suppress them to keep the
   # test output readable.
   Building.COMPILER_TEST_OPTS += [
-      '-Wno-sentinel',
-      '-Wno-logical-not-parentheses',
-      '-Wno-unused-private-field',
-      '-Wno-tautological-compare',
-      '-Wno-unknown-pragmas',
+    '-Wno-sentinel',
+    '-Wno-logical-not-parentheses',
+    '-Wno-unused-private-field',
+    '-Wno-tautological-compare',
+    '-Wno-unknown-pragmas',
   ]
   poppler = runner_core.get_library(
       'poppler',

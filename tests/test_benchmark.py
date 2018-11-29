@@ -144,6 +144,9 @@ class NativeBenchmarker(Benchmarker):
   def get_size_text(self):
     return 'dynamically linked - libc etc. are not included!'
 
+  def cleanup(self):
+    pass
+
 
 def run_binaryen_opts(filename, opts):
   run_process([
@@ -165,6 +168,8 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
+    self.old_env = os.environ
+    os.environ = self.env.copy()
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
@@ -194,7 +199,7 @@ process(sys.argv[1])
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
-    output = run_process(cmd, stdout=None, stderr=None, env=self.env).stdout
+    output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
@@ -210,6 +215,10 @@ process(sys.argv[1])
     else:
       ret.append(self.filename[:-3] + '.wasm')
     return ret
+
+  def cleanup(self):
+    os.environ = self.old_env
+    Building.clear()
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
@@ -342,6 +351,9 @@ class CheerpBenchmarker(Benchmarker):
       'files': []
     }
 
+  def cleanup(self):
+    pass
+
 
 # Benchmarkers
 try:
@@ -352,17 +364,22 @@ try:
   ]
   if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
-      # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'PRECISE_F32=2', '-s', 'WASM=0']),
-      # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
+      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
+      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
       # EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
-      # EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
-      #  'LLVM': '/home/alon/Dev/llvm/build/bin',
-      #  'EMCC_WASM_BACKEND': '1',
-      # }),
+      EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
+       'LLVM': '/usr/local/google/home/azakai/Dev/llvm/build/bin',
+       'EMCC_WASM_BACKEND': '1',
+      }),
     ]
   if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
-      EmscriptenBenchmarker('v8-wasm',  V8_ENGINE),
+      EmscriptenBenchmarker('v8-asmjs', V8_ENGINE, ['-s', 'WASM=0']),
+      EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE),
+      EmscriptenBenchmarker('v8-wasmbackend',  V8_ENGINE, env={
+       'LLVM': '/usr/local/google/home/azakai/Dev/llvm/build/bin',
+       'EMCC_WASM_BACKEND': '1',
+      }),
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -416,6 +433,7 @@ class benchmark(RunnerCore):
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps)
       b.display(benchmarkers[0])
+      b.cleanup()
 
   def test_primes(self, check=True):
     src = r'''
@@ -1024,6 +1042,6 @@ class benchmark(RunnerCore):
     # TODO: poppler in native build
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '--profiling', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
+                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
                       lib_builder=lib_builder)
 
