@@ -983,41 +983,45 @@ class benchmark(RunnerCore):
       f.write('''
         var benchmarkArgument = %s;
         var benchmarkArgumentToPageCount = {
-          0: 0,
-          1: 1,
-          2: 7,
-          3: 15,
-          4: 26,
-          5: 55,
+          '0': 0,
+          '1': 1,
+          '2': 5,
+          '3': 15,
+          '4': 26,
+          '5': 55,
         };
-        Module.arguments = ['-scale-to', '1024', 'input.pdf', 'filename', '-f', '1', '-l', benchmarkArgumentToPageCount[benchmarkArgument]];
-        Module.postRun = function() {
-          if (benchmarkArgument === 0) return;
-          var files = [];
-          for (var x in FS.root.contents) {
-            if (x.startsWith('filename-')) {
-              files.push(x);
+        if (benchmarkArgument === 0) {
+          Module.arguments = ['-?'];
+          Module.printErr = function(){};
+        } else {
+          Module.arguments = ['-scale-to', '1024', 'input.pdf', 'filename', '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+          Module.postRun = function() {
+            var files = [];
+            for (var x in FS.root.contents) {
+              if (x.startsWith('filename-')) {
+                files.push(x);
+              }
             }
-          }
-          files.sort();
-          var hash = 5381;
-          var totalSize = 0;
-          files.forEach(function(file) {
-            var data = MEMFS.getFileDataAsRegularArray(FS.root.contents[file]);
-            for (var i = 0; i < data.length; i++) {
-              hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
-            }
-            totalSize += data.length;
-          });
-          out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
-        };
+            files.sort();
+            var hash = 5381;
+            var totalSize = 0;
+            files.forEach(function(file) {
+              var data = MEMFS.getFileDataAsRegularArray(FS.root.contents[file]);
+              for (var i = 0; i < data.length; i++) {
+                hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
+              }
+              totalSize += data.length;
+            });
+            out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
+          };
+        }
       ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
       return [get_poppler_library(self)]
 
     # TODO: poppler in native build
-    self.do_benchmark('poppler', '', 'ok.',
+    self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
                       emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '--profiling', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
                       lib_builder=lib_builder)
