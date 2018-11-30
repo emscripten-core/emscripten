@@ -1714,25 +1714,25 @@ LibraryManager.library = {
   //    being compiled. Not sure how to tell LLVM to not do so.
   // ==========================================================================
 
+#if MAIN_MODULE == 0
+  dlopen: function(/* ... */) {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+  },
+  dlclose: 'dlopen',
+  dlsym:   'dlopen',
+  dlerror: 'dlopen',
+  dladdr:  'dlopen',
+#else // MAIN_MODULE != 0
+
   $DLFCN: {
     error: null,
     errorMsg: null,
-
-    // next free handle to use for a loaded dso.
-    // (handle=0 is avoided as it means "error" in dlopen)
-    nextHandle: 1,
-
-    loadedLibs: {}, // handle -> [refcount, name, lib_object]
-    loadedLibNames: {}, // name -> handle
   },
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
   dlopen__sig: 'iii',
   dlopen: function(filenameAddr, flag) {
-#if MAIN_MODULE == 0
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
-#endif
     // void *dlopen(const char *file, int mode);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
     var searchpaths = [];
@@ -1762,85 +1762,23 @@ LibraryManager.library = {
       }
     }
 
-    if (DLFCN.loadedLibNames[filename]) {
-      // Already loaded; increment ref count and return.
-      var handle = DLFCN.loadedLibNames[filename];
-      DLFCN.loadedLibs[handle].refcount++;
-      return handle;
+    // We don't care about RTLD_NOW and RTLD_LAZY.
+    var flags = {
+      global:   Boolean(flag & 256),  // RTLD_GLOBAL
+      nodelete: Boolean(flag & 4096), // RTLD_NODELETE
+
+      fs: FS, // load libraries from provided filesystem
     }
 
-    var lib_module;
-    if (filename === '__self__') {
-      var handle = -1;
-      lib_module = Module;
-    } else {
-      if (Module['preloadedWasm'] !== undefined &&
-          Module['preloadedWasm'][filename] !== undefined) {
-        lib_module = Module['preloadedWasm'][filename];
-      } else {
-        var target = FS.findObject(filename);
-        if (!target || target.isFolder || target.isDevice) {
-          DLFCN.errorMsg = 'Could not find dynamic lib: ' + filename;
-          return 0;
-        }
-        FS.forceLoadFile(target);
-
-        try {
-#if WASM
-          // the shared library is a shared wasm library (see tools/shared.py WebAssembly.make_shared_library)
-          var lib_data = FS.readFile(filename, { encoding: 'binary' });
-          if (!(lib_data instanceof Uint8Array)) lib_data = new Uint8Array(lib_data);
-          //err('libfile ' + filename + ' size: ' + lib_data.length);
-          lib_module = loadWebAssemblyModule(lib_data);
-#else
-          // the shared library is a JS file, which we eval
-          var lib_data = FS.readFile(filename, { encoding: 'utf8' });
-          lib_module = eval(lib_data)(
-            alignFunctionTables(),
-            Module
-          );
-#endif
-        } catch (e) {
+    try {
+      handle = loadDynamicLibrary(filename, flags)
+    } catch (e) {
 #if ASSERTIONS
-          err('Error in loading dynamic library: ' + e);
+      err('Error in loading dynamic library ' + filename + ": " + e);
 #endif
-          DLFCN.errorMsg = 'Could not evaluate dynamic lib: ' + filename + '\n' + e;
-          return 0;
-        }
-      }
-
-      var handle = DLFCN.nextHandle++;
-
-      // We don't care about RTLD_NOW and RTLD_LAZY.
-      if (flag & 256) { // RTLD_GLOBAL
-        for (var ident in lib_module) {
-          if (lib_module.hasOwnProperty(ident)) {
-            // When RTLD_GLOBAL is enable, the symbols defined by this shared object will be made
-            // available for symbol resolution of subsequently loaded shared objects.
-            //
-            // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
-            //
-            // Module of SIDE_MODULE has not only the symbols (which should be copied)
-            // but also others (print*, asmGlobal*, FUNCTION_TABLE_**, NAMED_GLOBALS, and so on).
-            //
-            // When the symbol (which should be copied) is method, Module._* 's type becomes function.
-            // When the symbol (which should be copied) is variable, Module._* 's type becomes number.
-            //
-            // Except for the symbol prefix (_), there is no difference in the symbols (which should be copied) and others.
-            // So this just copies over compiled symbols (which start with _).
-            if (ident[0] == '_') {
-              Module[ident] = lib_module[ident];
-            }
-          }
-        }
-      }
+      DLFCN.errorMsg = 'Could not load dynamic lib: ' + filename + '\n' + e;
+      return 0;
     }
-    DLFCN.loadedLibs[handle] = {
-      refcount: 1,
-      name: filename,
-      module: lib_module
-    };
-    DLFCN.loadedLibNames[filename] = handle;
 
     return handle;
   },
@@ -1851,17 +1789,17 @@ LibraryManager.library = {
   dlclose: function(handle) {
     // int dlclose(void *handle);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlclose.html
-    if (!DLFCN.loadedLibs[handle]) {
+    if (!LDSO.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlclose() unopened handle: ' + handle;
       return 1;
     } else {
-      var lib_record = DLFCN.loadedLibs[handle];
+      var lib_record = LDSO.loadedLibs[handle];
       if (--lib_record.refcount == 0) {
         if (lib_record.module.cleanups) {
           lib_record.module.cleanups.forEach(function(cleanup) { cleanup() });
         }
-        delete DLFCN.loadedLibNames[lib_record.name];
-        delete DLFCN.loadedLibs[handle];
+        delete LDSO.loadedLibNames[lib_record.name];
+        delete LDSO.loadedLibs[handle];
       }
       return 0;
     }
@@ -1875,11 +1813,11 @@ LibraryManager.library = {
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
     symbol = Pointer_stringify(symbol);
 
-    if (!DLFCN.loadedLibs[handle]) {
+    if (!LDSO.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     } else {
-      var lib = DLFCN.loadedLibs[handle];
+      var lib = LDSO.loadedLibs[handle];
       symbol = '_' + symbol;
       if (!lib.module.hasOwnProperty(symbol)) {
         DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
@@ -1944,6 +1882,7 @@ LibraryManager.library = {
     {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
+#endif // MAIN_MODULE != 0
 
   // ==========================================================================
   // pwd.h

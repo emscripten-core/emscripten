@@ -361,15 +361,11 @@ def apply_settings(changes):
                'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
-    original_exported_response = False
-
     if value[0] == '@':
-      if key not in DEFERRED_RESPONSE_FILES:
-        if key == 'EXPORTED_FUNCTIONS':
-          original_exported_response = value
-        value = open(value[1:]).read()
-      else:
+      if key in DEFERRED_RESPONSE_FILES:
         value = '"' + value + '"'
+      else:
+        value = open(value[1:]).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
@@ -379,7 +375,7 @@ def apply_settings(changes):
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = original_exported_response or shared.Settings.EXPORTED_FUNCTIONS[:]
+      shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
 
 #

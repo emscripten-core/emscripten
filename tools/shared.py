@@ -1154,12 +1154,6 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
-def expand_response(data):
-  if type(data) == str and data[0] == '@':
-    return json.loads(open(data[1:]).read())
-  return data
-
-
 def expand_byte_size_suffixes(value):
   """Given a string with arithmetic and/or KB/MB size suffixes, such as
   "1024*1024" or "32MB", computes how many bytes that is and returns it as an
@@ -1183,30 +1177,11 @@ class SettingsManager(object):
     @classmethod
     def reset(self):
       self.attrs = {}
-      self.load()
 
-    # Given some emcc-type args (-O3, -s X=Y, etc.), fill Settings with the right settings
-    @classmethod
-    def load(self, args=[]):
       # Load the JS defaults into python
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
-      settings = re.sub(r'var ([\w\d]+)', r'self.attrs["\1"]', settings)
-      exec(settings)
-
-      # Apply additional settings. First -O, then -s
-      for arg in args:
-        if arg.startswith('-O'):
-          v = arg[2]
-          shrink = 0
-          if v in ['s', 'z']:
-            shrink = 1 if v == 's' else 2
-            v = '2'
-          level = int(v)
-          self.apply_opt_level(level, shrink)
-      for i in range(len(args)):
-        if args[i] == '-s':
-          declare = re.sub(r'([\w\d]+)\s*=\s*(.+)', r'self.attrs["\1"]=\2;', args[i + 1])
-          exec(declare)
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      exec(settings, {'attrs': self.attrs})
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1932,7 +1907,7 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    for export in expand_response(Settings.EXPORTED_FUNCTIONS):
+    for export in Settings.EXPORTED_FUNCTIONS:
       cmd += ['--export', export[1:]] # Strip the leading underscore
     if Settings.EXPORT_ALL:
       cmd += ['--export-all']
@@ -2300,7 +2275,7 @@ class Building(object):
     if Settings.LINKABLE:
       return [] # do not internalize anything
 
-    exps = expand_response(Settings.EXPORTED_FUNCTIONS)
+    exps = Settings.EXPORTED_FUNCTIONS
     internalize_public_api = '-internalize-public-api-'
     internalize_list = ','.join([exp[1:] for exp in exps])
 

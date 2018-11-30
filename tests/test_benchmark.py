@@ -1044,4 +1044,3 @@ class benchmark(RunnerCore):
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
                       emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
                       lib_builder=lib_builder)
-

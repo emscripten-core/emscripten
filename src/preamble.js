@@ -1627,7 +1627,8 @@ addOnPreRun(function() {
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
-        loadDynamicLibrary(lib);
+        // libraries linked to main never go away
+        loadDynamicLibrary(lib, {global: true, nodelete: true});
       });
     }
     runPostSets();
@@ -1638,7 +1639,7 @@ addOnPreRun(function() {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
     Promise.all(Module['dynamicLibraries'].map(function(lib) {
-      return loadDynamicLibrary(lib, {loadAsync: true});
+      return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true});
     })).then(function() {
       // we got them all, wonderful
       runPostSets();
