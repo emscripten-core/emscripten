@@ -7100,12 +7100,25 @@ var LibraryGL = {
 #endif
     GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
   },
+
+  glVertex4f: function(x, y, z, w) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = w;
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+  },
+
   glVertex2f: 'glVertex3f',
 
   glVertex3fv__deps: ['glVertex3f'],
   glVertex3fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
+
   glVertex2fv__deps: ['glVertex3f'],
   glVertex2fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
