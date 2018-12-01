@@ -1227,6 +1227,7 @@ def get_freetype_library(runner_core):
 
   return runner_core.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
 
+
 def get_poppler_library(runner_core):
   # The fontconfig symbols are all missing from the poppler build
   # e.g. FcConfigSubstitute
@@ -1260,6 +1261,7 @@ def get_poppler_library(runner_core):
   Building.link(poppler + freetype, combined)
 
   return combined
+
 
 def check_js_engines():
   total_engines = len(shared.JS_ENGINES)

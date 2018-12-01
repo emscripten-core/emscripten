@@ -359,7 +359,7 @@ class CheerpBenchmarker(Benchmarker):
 try:
   benchmarkers_error = ''
   benchmarkers = [
-    # NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
     # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
   if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
