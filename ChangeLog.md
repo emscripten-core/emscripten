@@ -15,9 +15,9 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
- - Rename `pthread-main.js` to `NAME.pthread-main.js`, where `NAME` is the main
+ - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
    name of your application, that is, if you emit `program.js` then you'll get
-   `program.pthread-main.js` (this allows more than one to exist in the same
+   `program.worker.js` (this allows more than one to exist in the same
    directory, etc.).
 
 v1.38.20: 11/20/2018

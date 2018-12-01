@@ -181,11 +181,11 @@ this.onmessage = function(e) {
         _emscripten_current_thread_process_queued_calls();
       }
     } else {
-      err('pthread-main.js received unknown command ' + e.data.cmd);
+      err('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
   } catch(e) {
-    console.error('pthread-main.js onmessage() captured an uncaught exception: ' + e);
+    console.error('worker.js onmessage() captured an uncaught exception: ' + e);
     console.error(e.stack);
     throw e;
   }
