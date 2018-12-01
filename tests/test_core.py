@@ -5484,7 +5484,7 @@ return malloc(size);
     def count_relocations():
       generated = open('src.cpp.o.js').read()
       generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      start = '\nfunction runPostSets() {'
+      start = '\nfunction __apply_relocations() {'
       relocs_start = generated.find(start)
       if relocs_start == -1:
         return "", 0

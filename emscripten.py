@@ -683,7 +683,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   funcs = list(funcs) + metadata['initializers']
   if not shared.Settings.ONLY_MY_CODE:
-    funcs.append('runPostSets')
     if shared.Settings.ALLOW_MEMORY_GROWTH:
       funcs.append('_emscripten_replace_memory')
     if not shared.Settings.SIDE_MODULE:
@@ -1462,9 +1461,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 '''
-    receiving = '\n'.join(['var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
+    receiving = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+    receiving = '\n'.join('var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
+''' for s in receiving)
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in exported_implemented_functions + function_tables(function_table_data)])
   else:
@@ -2118,7 +2118,7 @@ assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. w
 assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', 'runPostSets', '_emscripten_replace_memory', '__start_module']])
+''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', '_emscripten_replace_memory', '__start_module']])
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
