@@ -19,7 +19,7 @@ Current Trunk
 v1.38.21: 11/30/2018
 --------------------
  - fastcomp: Remove `runPostSets` function and replace with normal static
-   constructor function.
+   constructor function. See #7579
 
 v1.38.20: 11/20/2018
 --------------------
