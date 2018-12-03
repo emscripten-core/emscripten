@@ -1863,7 +1863,6 @@ for line in open('a').readlines():
   if (!strcmp(name, "glMultTransposeMatrixf")) return emscripten_glMultTransposeMatrixf;
   if (!strcmp(name, "glSampleCoverage")) return emscripten_glSampleCoverage;
   if (!strcmp(name, "glActiveTexture")) return emscripten_glActiveTextureARB;
-  if (!strcmp(name, "glClientActiveTexture")) return emscripten_glClientActiveTextureARB;
   if (!strcmp(name, "glMultiTexCoord1d")) return emscripten_glMultiTexCoord1dARB;
   if (!strcmp(name, "glMultiTexCoord1dv")) return emscripten_glMultiTexCoord1dvARB;
   if (!strcmp(name, "glMultiTexCoord1f")) return emscripten_glMultiTexCoord1fARB;
@@ -1942,7 +1941,6 @@ for line in open('a').readlines():
   if (!strcmp(name, "glCompressedTexSubImage2D")) return emscripten_glCompressedTexSubImage2D;
   if (!strcmp(name, "glCompressedTexSubImage1D")) return emscripten_glCompressedTexSubImage1D;
   if (!strcmp(name, "glGetCompressedTexImage")) return emscripten_glGetCompressedTexImage;
-  if (!strcmp(name, "glClientActiveTexture")) return emscripten_glClientActiveTexture;
   if (!strcmp(name, "glMultiTexCoord1d")) return emscripten_glMultiTexCoord1d;
   if (!strcmp(name, "glMultiTexCoord1dv")) return emscripten_glMultiTexCoord1dv;
   if (!strcmp(name, "glMultiTexCoord1f")) return emscripten_glMultiTexCoord1f;
@@ -2199,7 +2197,6 @@ for line in open('a').readlines():
   if (!strcmp(name, "glTexBuffer")) return emscripten_glTexBuffer;
   if (!strcmp(name, "glPrimitiveRestartIndex")) return emscripten_glPrimitiveRestartIndex;
   if (!strcmp(name, "glActiveTexture")) return emscripten_glActiveTextureARB;
-  if (!strcmp(name, "glClientActiveTexture")) return emscripten_glClientActiveTextureARB;
   if (!strcmp(name, "glMultiTexCoord1d")) return emscripten_glMultiTexCoord1dARB;
   if (!strcmp(name, "glMultiTexCoord1dv")) return emscripten_glMultiTexCoord1dvARB;
   if (!strcmp(name, "glMultiTexCoord1f")) return emscripten_glMultiTexCoord1fARB;
