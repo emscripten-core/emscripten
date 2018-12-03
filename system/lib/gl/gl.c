@@ -2399,9 +2399,9 @@ for line in open('a').readlines():
   if (!strcmp(name, "glFramebufferTexture2D")) return emscripten_glFramebufferTexture2D;
   if (!strcmp(name, "glFramebufferTexture3D")) return emscripten_glFramebufferTexture3D;
   if (!strcmp(name, "glTexImage2D")) return emscripten_glTexImage2D;
+  if (!strcmp(name, "glGetShaderPrecisionFormat")) return emscripten_glGetShaderPrecisionFormat;
   // If LEGACY_GL_EMULATION is on, allow access to those functions too
   if (EM_ASM_INT({ return GL.legacyGLEmulation })) {
-    if (!strcmp(name, "glGetShaderPrecisionFormat")) return emscripten_glGetShaderPrecisionFormat;
     if (!strcmp(name, "glDeleteObject")) return emscripten_glDeleteObjectARB;
     if (!strcmp(name, "glGetObjectParameteriv")) return emscripten_glGetObjectParameterivARB;
     if (!strcmp(name, "glGetInfoLog")) return emscripten_glGetInfoLogARB;
