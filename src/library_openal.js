@@ -711,25 +711,24 @@ var LibraryOpenAL = {
     },
 
     sourceSeek: function(src, offset) {
-        var playing = src.state == 0x1012 /* AL_PLAYING */;
-        if (playing) {
-            AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+      var playing = src.state == 0x1012 /* AL_PLAYING */;
+      if (playing) {
+        AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
+      }
+
+      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
+        src.bufsProcessed = 0;
+        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
+          offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
+          src.bufsProcessed++;
         }
 
-        if(src.bufQueue[src.bufsProcessed].audioBuf !== null)
-        {
-            src.bufsProcessed = 0;
-            while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-                offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
-                src.bufsProcessed++;
-            }
+        src.bufOffset = offset;
+      }
 
-            src.bufOffset = offset;
-        }
-
-        if (playing) {
-            AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
-        }
+      if (playing) {
+        AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
+      }
     },
 
     // ------------------------------------------------------
