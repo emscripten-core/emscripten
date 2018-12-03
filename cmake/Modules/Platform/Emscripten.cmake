@@ -75,6 +75,7 @@ get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
+list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system/local")
 
 if (CMAKE_HOST_WIN32)
 	set(EMCC_SUFFIX ".bat")
@@ -187,7 +188,8 @@ set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
-set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
+set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include" "${EMSCRIPTEN_ROOT_PATH}/system/local/include")
+set(CMAKE_SYSTEM_LIBRARY_PATH "${EMSCRIPTEN_ROOT_PATH}/system/lib" "${EMSCRIPTEN_ROOT_PATH}/system/local/lib")
 
 # We would prefer to specify a standard set of Clang+Emscripten-friendly common convention for suffix files, especially for CMake executable files,
 # but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.
@@ -281,7 +283,7 @@ function(em_add_tracked_link_flag target flagname)
 			# If the user edits the JS file, we want to relink the emscripten application, but unfortunately it is not possible to make a link step
 			# depend directly on a source file. Instead, we must make a dummy no-op build target on that source file, and make the project depend on
 			# that target.
-			
+
 			# Sanitate the source .js filename to a good symbol name to use as a dummy filename.
 			get_filename_component(jsname "${jsfile}" NAME)
 			string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
@@ -350,10 +352,10 @@ if ("${CMAKE_GENERATOR}" MATCHES "^Visual Studio.*")
 endif()
 
 if (NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
-  find_program(NODE_JS_EXECUTABLE NAMES nodejs node)
-  if(NODE_JS_EXECUTABLE)
-    set(CMAKE_CROSSCOMPILING_EMULATOR "${NODE_JS_EXECUTABLE}" CACHE FILEPATH "Path to the emulator for the target system.")
-  endif()
+	find_program(NODE_JS_EXECUTABLE NAMES nodejs node)
+	if(NODE_JS_EXECUTABLE)
+		set(CMAKE_CROSSCOMPILING_EMULATOR "${NODE_JS_EXECUTABLE}" CACHE FILEPATH "Path to the emulator for the target system.")
+	endif()
 endif()
 # No-op on CMAKE_CROSSCOMPILING_EMULATOR so older versions of cmake do not
 # complain about unused CMake variable.
