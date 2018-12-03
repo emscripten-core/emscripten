@@ -113,8 +113,8 @@ var Fetch = {
       addRunDependency('library_fetch_init');
 
       var fetchJs = 'fetch-worker.js';
-      // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'pthread-main.js' relative
+      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
+      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
       fetchJs = locateFile(fetchJs);
       Fetch.worker = new Worker(fetchJs);
