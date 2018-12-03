@@ -2230,6 +2230,16 @@ class Building(object):
     return Settings.INLINING_LIMIT == 0
 
   @staticmethod
+  def need_asm_js_file():
+    # Explicitly separate asm.js requires it
+    if Settings.SEPARATE_ASM:
+      return True
+    # A binaryen method may require it.
+    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
+      return True
+    return False
+
+  @staticmethod
   def is_wasm_only():
     # not even wasm, much less wasm-only
     if not Settings.WASM:
