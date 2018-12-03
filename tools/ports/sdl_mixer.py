@@ -1,13 +1,13 @@
 import os, shutil, logging
 import stat
 
-TAG = 'release-2.0.0'
+TAG = 'release-2.0.1'
 
 def get(ports, settings, shared):
   if settings.USE_SDL_MIXER == 2:
     sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-    ports.fetch_project('sdl2-mixer', 'https://github.com/aidanhs/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG)
+    ports.fetch_project('sdl2-mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG)
     def create():
       cwd = os.getcwd()
       commonflags = ['--disable-shared', '--disable-music-cmd', '--enable-sdltest', '--disable-smpegtest']
