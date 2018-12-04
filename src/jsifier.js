@@ -544,7 +544,7 @@ function JSify(data, functionsOnly) {
           }
         }
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
-        print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in pthread-main.js)');
+        print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in worker.js)');
       }
       print('DYNAMICTOP_PTR = staticAlloc(4);\n');
       print('STACK_BASE = STACKTOP = alignMemory(STATICTOP);\n');

@@ -27,13 +27,16 @@ from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
 
-colored_logger.enable()
-
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
+DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
+# can add  %(asctime)s  to see timestamps
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
+                    level=logging.DEBUG if DEBUG else logging.INFO)
+colored_logger.enable()
 logger = logging.getLogger('shared')
 
 
@@ -870,7 +873,6 @@ class WarningManager(object):
 
 class Configuration(object):
   def __init__(self, environ=os.environ):
-    self.DEBUG = int(environ.get('EMCC_DEBUG', '0'))
     self.EMSCRIPTEN_TEMP_DIR = None
 
     if "EMCC_TEMP_DIR" in environ:
@@ -888,7 +890,7 @@ class Configuration(object):
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
-    if self.DEBUG:
+    if DEBUG:
       try:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
@@ -897,27 +899,19 @@ class Configuration(object):
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
+      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 
 def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
+  global configuration, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
-  DEBUG = configuration.DEBUG
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def set_logging():
-  level = logging.DEBUG if DEBUG else logging.INFO
-  # can add  %(asctime)s  to see timestamps
-  logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=level)
-
-
 apply_configuration()
-set_logging()
 
 # EM_CONFIG stuff
 if JS_ENGINES is None:

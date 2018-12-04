@@ -15,6 +15,10 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
+   name of your application, that is, if you emit `program.js` then you'll get
+   `program.worker.js` (this allows more than one to exist in the same
+   directory, etc.).
 
 v1.38.21: 11/30/2018
 --------------------
@@ -29,6 +33,9 @@ v1.38.20: 11/20/2018
  - Change `strptime()`'s handling of the "%c" to match that of `strftime()`.
    This is a breaking change for code which depends on the old definition of
    "%c".
+
+v1.38.19: 11/15/2018
+--------------------
 
 v1.38.18: 11/08/2018
 --------------------

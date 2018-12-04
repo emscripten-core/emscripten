@@ -2258,5 +2258,5 @@ def main(infile, outfile, memfile, libraries):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, get_configuration().DEBUG)
+      infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, shared.DEBUG)
   )

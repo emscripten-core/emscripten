@@ -1255,6 +1255,9 @@ var WASM_BINARY_FILE = '';
 // For internal use only (name of the file containing asm.js, if relevant).
 var ASMJS_CODE_FILE = '';
 
+// For internal use only (name of the file containing the pthread *.worker.js, if relevant).
+var PTHREAD_WORKER_FILE = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
