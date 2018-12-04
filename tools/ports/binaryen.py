@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'version_56'
+TAG = 'version_57'
 
 def needed(settings, shared, ports):
   if not settings.WASM: return False
