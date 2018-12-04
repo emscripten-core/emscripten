@@ -3064,6 +3064,11 @@ window.close = function() {
     run_process([PYTHON, EMCC, 'test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
+  @requires_sound_hardware
+  def test_sdl2_mixer(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
+
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
@@ -3550,16 +3555,16 @@ window.close = function() {
       }
     '''))
 
-    # Test that it is possible to define "Module.locateFile" string to locate where pthread-main.js will be loaded from.
+    # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html'])
-    shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
+    shutil.move('test.worker.js', os.path.join('cdn', 'test.worker.js'))
     self.run_browser('test.html', '', '/report_result?1')
 
-    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
-    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
+    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html'])
-    try_delete('pthread-main.js')
+    try_delete('test.worker.js')
     self.run_browser('test2.html', '', '/report_result?1')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
@@ -3826,7 +3831,7 @@ window.close = function() {
     self.do_test_worker(['-s', 'WASM=1'])
 
   def test_wasm_locate_file(self):
-    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     self.clear()
     os.makedirs(os.path.join(self.get_dir(), 'cdn'))
     open('shell2.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
