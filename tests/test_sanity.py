@@ -55,6 +55,8 @@ def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "clang version %s"\n' % version)
@@ -68,6 +70,8 @@ def make_fake_llc(filename, targets):
   """Create a fake llc that only handles --version and writes target
   list to stdout.
   """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
@@ -256,9 +260,6 @@ class sanity(RunnerCore):
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
 
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
-
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for x in range(-2, 3):
         for y in range(-2, 3):
@@ -304,9 +305,6 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     # print '1', open(CONFIG_FILE).read()
 
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
-
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'no j-s backend for you!')
     self.check_working(EMCC, WARNING)
@@ -349,9 +347,6 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
     f.close()
-
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
@@ -897,9 +892,6 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
 
     # fake llc output
-
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
     def test_with_fake(report, expected):
       make_fake(report)
