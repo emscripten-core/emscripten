@@ -7,22 +7,6 @@ import os, shutil, logging
 
 TAG = 'version_15'
 
-def get_with_configure(ports, settings, shared): # not currently used; no real need for configure on emscripten users' machines!
-  if settings.USE_SDL == 2:
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
-    def setup_includes():
-      # copy includes to a location so they can be used as 'SDL2/'
-      include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
-      shared.try_delete(os.path.join(include_path, 'SDL2'))
-      shutil.copytree(include_path, os.path.join(include_path, 'SDL2'))
-    ret = [ports.build_project('sdl2', 'SDL2-' + TAG,
-                               ['sh', './configure', '--host=asmjs-unknown-emscripten', '--disable-assembly', '--disable-threads', '--enable-cpuinfo=false', 'CFLAGS=-O2'],
-                               [os.path.join('build', '.libs', 'libSDL2.a')],
-                               setup_includes)]
-    return ret
-  else:
-    return []
-
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
     # SDL2 uses some things on the Module object, make sure they are exported

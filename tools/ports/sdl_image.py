@@ -13,6 +13,8 @@ def get(ports, settings, shared):
     assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
     ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG)
     def create():
+      # although we shouldn't really do this and could instead use '-Xclang -isystem' as a kind of 'overlay' as sdl_mixer does,
+      # by now people may be relying on headers being pulled in by '-s USE_SDL=2' if sdl_image was built in the past
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))
       srcs = 'IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'.split(' ')
