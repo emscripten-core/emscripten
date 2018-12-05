@@ -1369,6 +1369,22 @@ class Building(object):
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
+  # internal caches
+  internal_nm_cache = {} # cache results of nm - it can be slow to run
+  uninternal_nm_cache = {}
+  ar_contents = {} # Stores the object files contained in different archive files passed as input
+  _is_ar_cache = {}
+
+  # clear internal caches. this is not normally needed, except if the clang/LLVM
+  # used changes inside this invocation of Building, which can happen in the benchmarker
+  # when it compares different builds.
+  @staticmethod
+  def clear():
+    Building.internal_nm_cache = {}
+    Building.uninternal_nm_cache = {}
+    Building.ar_contents = {}
+    Building._is_ar_cache = {}
+
   @staticmethod
   def get_num_cores():
     return int(os.environ.get('EMCC_CORES', multiprocessing.cpu_count()))
@@ -2145,10 +2161,6 @@ class Building(object):
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
-  internal_nm_cache = {} # cache results of nm - it can be slow to run
-  uninternal_nm_cache = {}
-  ar_contents = {} # Stores the object files contained in different archive files passed as input
-
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
@@ -2533,7 +2545,6 @@ class Building(object):
 
   # the exports the user requested
   user_requested_exports = []
-  _is_ar_cache = {}
 
   @staticmethod
   def is_ar(filename):
