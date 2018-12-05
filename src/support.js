@@ -335,29 +335,27 @@ function loadWebAssemblyModule(binary, loadAsync) {
   memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
   assert(tableAlign === 1);
   // prepare memory
-  var memoryStart = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
+  var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
   // The static area consists of explicitly initialized data, followed by zero-initialized data.
   // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
   // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
   // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
   // from uninitialized memory.
-  for (var i = memoryStart; i < memoryStart + memorySize; ++i) HEAP8[i] = 0;
+  for (var i = memoryBase; i < memoryBase + memorySize; ++i) HEAP8[i] = 0;
   // prepare env imports
   var env = Module['asmLibraryArg'];
   // TODO: use only __memory_base and __table_base, need to update asm.js backend
   var table = Module['wasmTable'];
-  var oldTableSize = table.length;
-  env['__memory_base'] = env['gb'] = memoryStart;
-  env['__table_base'] = env['fb'] = oldTableSize;
+  var tableBase = table.length;
   var originalTable = table;
   table.grow(tableSize);
   assert(table === originalTable);
   // zero-initialize memory and table
   // TODO: in some cases we can tell it is already zero initialized
-  for (var i = env['__memory_base']; i < env['__memory_base'] + memorySize; i++) {
+  for (var i = memoryBase; i < memoryBase + memorySize; i++) {
     HEAP8[i] = 0;
   }
-  for (var i = env['__table_base']; i < env['__table_base'] + tableSize; i++) {
+  for (var i = tableBase; i < tableBase + tableSize; i++) {
     table.set(i, null);
   }
   // copy currently exported symbols so the new module can import them
@@ -375,6 +373,16 @@ function loadWebAssemblyModule(binary, loadAsync) {
   // be to inspect the binary directly).
   var proxyHandler = {
     'get': function(obj, prop) {
+      // symbols that should be local to this module
+      switch (prop) {
+        case '__memory_base':
+        case 'gb':
+          return memoryBase;
+        case '__table_base':
+        case 'fb':
+          return tableBase;
+      }
+
       if (prop in obj) {
         return obj[prop]; // already present
       }
@@ -415,7 +423,7 @@ function loadWebAssemblyModule(binary, loadAsync) {
   };
 #if ASSERTIONS
   var oldTable = [];
-  for (var i = 0; i < oldTableSize; i++) {
+  for (var i = 0; i < tableBase; i++) {
     oldTable.push(table.get(i));
   }
 #endif
@@ -430,12 +438,12 @@ function loadWebAssemblyModule(binary, loadAsync) {
       assert(table === instance.exports['table']);
     }
     // the old part of the table should be unchanged
-    for (var i = 0; i < oldTableSize; i++) {
+    for (var i = 0; i < tableBase; i++) {
       assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
     }
     // verify that the new table region was filled in
     for (var i = 0; i < tableSize; i++) {
-      assert(table.get(oldTableSize + i) !== undefined, 'table entry was not filled in');
+      assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
     }
 #endif
     for (var e in instance.exports) {
@@ -450,10 +458,10 @@ function loadWebAssemblyModule(binary, loadAsync) {
 #if EMULATE_FUNCTION_POINTER_CASTS
         // it may be a function pointer
         if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
-          value = value + env['__table_base'];
+          value = value + tableBase;
         } else {
 #endif
-          value = value + env['__memory_base'];
+          value = value + memoryBase;
 #if EMULATE_FUNCTION_POINTER_CASTS
         }
 #endif
