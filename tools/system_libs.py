@@ -600,7 +600,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('pthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
                     Library('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
-                    Library('gl-mt',         'bc', create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+                    Library('gl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
     system_libs += [Library('gl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
