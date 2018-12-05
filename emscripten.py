@@ -1932,7 +1932,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
         shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   basename = shared.unsuffixed(outfile.name)
-  metadata_file = basename + '.metadata'
   wasm = basename + '.wasm'
   base_wasm = infile
   debug_copy(infile, 'base.wasm')
