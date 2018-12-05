@@ -1259,8 +1259,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
       if shared.Settings.WASM:
-        # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
-        if shared.Building.is_wasm_only():
+        if not shared.Building.need_asm_js_file():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           misc_temp_files.note(asm_target)
 

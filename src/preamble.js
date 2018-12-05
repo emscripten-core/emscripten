@@ -962,6 +962,7 @@ function abortOnCannotGrowMemory() {
 }
 #endif
 
+#if WASM == 0
 #if ALLOW_MEMORY_GROWTH
 if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   var ret;
@@ -977,7 +978,8 @@ if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   if (!success) return false;
   return ret;
 };
-#endif
+#endif // ALLOW_MEMORY_GROWTH
+#endif // WASM == 0
 
 function enlargeMemory() {
 #if USE_PTHREADS

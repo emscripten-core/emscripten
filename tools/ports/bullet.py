@@ -7,16 +7,6 @@ import os, shutil, logging, subprocess, sys, stat
 
 TAG = 'version_1'
 
-def build_with_configure(ports, shared, path): # not currently used
-  if not sys.platform.startswith('win'): #TODO: test on windows
-     autogen_path = os.path.join(path, 'bullet', 'autogen.sh')
-     os.chmod(autogen_path, os.stat(autogen_path).st_mode | 0o111) # Make executable
-     subprocess.Popen(["sh", "autogen.sh"], cwd=os.path.join(path, 'bullet')).wait()
-  subprocess.Popen(["python", "make.py"], cwd=path).wait()
-  final = os.path.join(path, 'libbullet.bc')
-  shutil.copyfile(os.path.join(path, 'bullet', 'build', 'libbullet.bc'), final)
-  return final
-
 def get(ports, settings, shared):
   if settings.USE_BULLET == 1:
     ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)

@@ -22,7 +22,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
+from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify
 
 # decorators for limiting which modes a test can run in
@@ -1748,8 +1748,8 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   def test_memorygrowth(self):
+    self.maybe_closure()
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
-
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
@@ -5818,12 +5818,6 @@ return malloc(size);
                   includes=[path_from_root('tests', 'lua')],
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
-  def get_freetype(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
-    return self.get_library('freetype',
-                            os.path.join('objs', '.libs', 'libfreetype.a'))
-
   @no_windows('./configure scripts dont to run on windows.')
   def test_freetype(self):
     assert 'asm2g' in core_test_modes
@@ -5845,7 +5839,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                   open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                   ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=self.get_freetype(),
+                  libraries=get_freetype_library(self),
                   includes=[path_from_root('tests', 'freetype', 'include')])
       self.set_setting('OUTLINING_LIMIT', 0)
 
@@ -5854,14 +5848,14 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c'), 'r').read(),
                 open(path_from_root('tests', 'freetype', 'ref_2.txt'), 'r').read(),
                 ['font.ttf', 'w', '32', '32', '25'],
-                libraries=self.get_freetype(),
+                libraries=get_freetype_library(self),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c'), 'r').read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt'), 'r').read(),
                 ['font.ttf', 'W', '32', '32', '0'],
-                libraries=self.get_freetype(),
+                libraries=get_freetype_library(self),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
@@ -5958,16 +5952,7 @@ return malloc(size);
 
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   def test_poppler(self):
-    # The fontconfig symbols are all missing from the poppler build
-    # e.g. FcConfigSubstitute
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
-
     def test():
-      Building.COMPILER_TEST_OPTS += [
-        '-I' + path_from_root('tests', 'freetype', 'include'),
-        '-I' + path_from_root('tests', 'poppler', 'include')
-      ]
-
       with open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w') as f:
         f.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
 
@@ -5983,30 +5968,7 @@ return malloc(size);
 ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      freetype = self.get_freetype()
-
-      # Poppler has some pretty glaring warning.  Suppress them to keep the
-      # test output readable.
-      Building.COMPILER_TEST_OPTS += [
-          '-Wno-sentinel',
-          '-Wno-logical-not-parentheses',
-          '-Wno-unused-private-field',
-          '-Wno-tautological-compare',
-          '-Wno-unknown-pragmas',
-      ]
-      poppler = self.get_library('poppler',
-                                 [os.path.join('utils', 'pdftoppm.o'),
-                                  os.path.join('utils', 'parseargs.o'),
-                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
-                                 env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
-
-      # Combine libraries
-
-      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link(poppler + freetype, combined)
-
-      self.do_ll_run(combined,
+      self.do_ll_run(get_poppler_library(self),
                      str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '))
 
