@@ -7691,6 +7691,7 @@ int main() {
     # Test that an .asm.js file is outputted exactly when it is requested.
     for args, output_asmjs in [
       ([], False),
+      (['-s', 'MAIN_MODULE=2'], False),
       (['-s', 'BINARYEN_METHOD="native-wasm"'], False),
       (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
     ]:
