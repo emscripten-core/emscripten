@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
   printf("*pre: %s,%.3f*\n", buf1, buf2[0]);
 
-  int totalMemory = emscripten_run_script_int("TOTAL_MEMORY");
+  int totalMemory = EM_ASM_INT({ return TOTAL_MEMORY });
   char *buf3 = (char*)malloc(totalMemory+1);
   buf3[argc] = (int)buf2;
   if (argc % 7 == 6) printf("%d\n", (int)memcpy(buf3, buf1, argc));
