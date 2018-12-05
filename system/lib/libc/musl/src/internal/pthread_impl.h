@@ -19,7 +19,7 @@ struct pthread {
 // XXX Emscripten: Need some custom thread control structures.
 #ifdef __EMSCRIPTEN__
 	// Note: The specific order of these fields is important, since these are accessed
-	// by direct pointer arithmetic in pthread-main.js.
+	// by direct pointer arithmetic in worker.js.
 	int threadStatus; // 0: thread not exited, 1: exited.
 	int threadExitCode; // Thread exit code.
 	int tempDoublePtr[3]; // Temporary memory area for double operations in runtime.
