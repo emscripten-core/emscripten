@@ -2860,9 +2860,12 @@ class JS(object):
     else:
       legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
       args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
-      args = 'index' + (',' if args else '') + args
       ret = 'return ' if sig[0] != 'v' else ''
-      body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
+      body = '%sModule["wasmTable"].get(index)(%s);' % (ret, args)
+      args = 'index' + (',' if args else '') + args
+      if not Settings.WASM:
+        body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
+
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
     ret = '''function%s(%s) {
   var sp = stackSave();

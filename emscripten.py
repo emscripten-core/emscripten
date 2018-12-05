@@ -1288,11 +1288,13 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
       asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
-  asm_setup += setup_function_pointers(function_table_sigs)
 
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    function_tables_impls = make_function_tables_impls(function_table_data)
-    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
+  if not shared.Settings.WASM:
+    asm_setup += setup_function_pointers(function_table_sigs)
+
+    if shared.Settings.EMULATED_FUNCTION_POINTERS:
+      function_tables_impls = make_function_tables_impls(function_table_data)
+      asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
 
   return asm_setup
 
@@ -1478,8 +1480,9 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       receiving += table + '\n'
 
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
+    receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '')
     if not shared.Settings.WASM:
+      receiving += '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
       for sig in function_table_data.keys():
         name = 'FUNCTION_TABLE_' + sig
         fullname = name if not shared.Settings.SIDE_MODULE else ('SIDE_' + name)
