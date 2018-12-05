@@ -1963,19 +1963,12 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     cmd.append('--separate-data-segments=' + memfile)
-  shared.check_call(cmd, stdout=open(metadata_file, 'w'))
+  stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
 
-  return create_metadata_wasm(open(metadata_file).read(), DEBUG)
-
-
-def create_metadata_wasm(metadata_raw, DEBUG):
-  metadata = load_metadata(metadata_raw)
-  if DEBUG:
-    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
-  return metadata
+  return load_metadata_wasm(stdout, DEBUG)
 
 
 def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
@@ -2159,7 +2152,7 @@ var establishStackSpace = Module['establishStackSpace'];
   return module
 
 
-def load_metadata(metadata_raw):
+def load_metadata_wasm(metadata_raw, DEBUG):
   try:
     metadata_json = json.loads(metadata_raw)
   except Exception:
@@ -2172,9 +2165,11 @@ def load_metadata(metadata_raw):
     'externs': [],
     'simd': False,
     'maxGlobalAlign': 0,
+    'staticBump': 0,
     'initializers': [],
     'exports': [],
     'emJsFuncs': {},
+    'asmConsts': {},
     'invokeFuncs': [],
   }
 
@@ -2187,10 +2182,15 @@ def load_metadata(metadata_raw):
     # (specifically the glue returned from compile_settings)
     if type(value) == list:
       value = [asstr(v) for v in value]
+    if key not in metadata:
+      exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
   # Initializers call the global var version of the export, so they get the mangled name.
   metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
+
+  if DEBUG:
+    logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
