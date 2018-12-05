@@ -1934,6 +1934,12 @@ int f() {
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(os.path.exists('a.out.js'))
 
+  def test_GetProcAddress_LEGACY_GL_EMULATION(self):
+    # without legacy gl emulation, getting a proc from there should fail
+    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
+    # with it, it should work
+    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
+
   @no_wasm_backend('linker detects out-of-memory')
   def test_toobig(self):
     # very large [N x i8], we should not oom in the compiler

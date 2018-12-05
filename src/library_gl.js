@@ -14,6 +14,9 @@ var LibraryGL = {
 #if GL_DEBUG
     debug: true,
 #endif
+#if LEGACY_GL_EMULATION
+    legacyGLEmulation: true,
+#endif
 
     counter: 1, // 0 is reserved as 'null' in gl
     lastError: 0,
