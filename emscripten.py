@@ -534,7 +534,8 @@ def update_settings_glue(metadata):
 
   # Integrate info from backend
   if shared.Settings.SIDE_MODULE:
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [] # we don't need any JS library contents in side modules
+    # we don't need any JS library contents in side modules
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
     logger.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
@@ -2164,6 +2165,8 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'externs': [],
     'simd': False,
     'maxGlobalAlign': 0,
+    'jsCallStartIndex': 0,
+    'jsCallFuncType': [],
     'staticBump': 0,
     'initializers': [],
     'exports': [],
