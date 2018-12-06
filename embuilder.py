@@ -4,9 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-Tool to manage building of various useful things, such as libc, libc++, native optimizer, as well as fetch and build ports like zlib and sdl2
-'''
+"""Tool to manage building of various useful things, such as libc, libc++,
+native optimizer, as well as fetch and build ports like zlib and sdl2
+"""
 
 from __future__ import print_function
 import logging
@@ -62,8 +62,8 @@ Available operations and tasks:
         vorbis
         zlib
         cocos2d
-        wasm-libc
-        wasm_compiler_rt
+        libc-wasm
+        compiler_rt_wasm
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
@@ -107,7 +107,7 @@ SYSTEM_TASKS = ['al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-ext
 USER_TASKS = ['binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
-logger = logging.getLogger(__file__)
+logger = logging.getLogger('embuilder')
 
 def build(src, result_libs, args=[]):
   # build in order to generate the libraries
@@ -165,7 +165,7 @@ def main():
           c = a / b;
           return 0;
         }
-      ''', ['compiler-rt.a'])
+      ''', ['libcompiler-rt.a'])
     elif what == 'libc':
       build(C_WITH_MALLOC, ['libc.bc'])
     elif what == 'libc-extras':
@@ -178,19 +178,19 @@ def main():
     elif what == 'struct_info':
       build(C_BARE, ['generated_struct_info.json'])
     elif what == 'emmalloc':
-      build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
+      build(C_WITH_MALLOC, ['libemmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
-      build(C_WITH_MALLOC, ['emmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
+      build(C_WITH_MALLOC, ['libemmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
     elif what == 'dlmalloc':
-      build(C_WITH_MALLOC, ['dlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
+      build(C_WITH_MALLOC, ['libdlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
     elif what == 'dlmalloc_debug':
-      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
+      build(C_WITH_MALLOC, ['libdlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
     elif what == 'dlmalloc_threadsafe_debug':
-      build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
     elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
-      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
-    elif what == 'wasm-libc':
-      build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'libdlmalloc_threadsafe.bc', 'libpthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'libc-wasm':
+      build(C_WITH_STDLIB, ['libc-wasm.bc'], ['-s', 'WASM=1'])
     elif what == 'libcxx':
       build(CXX_WITH_STDLIB, ['libcxx.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     elif what == 'libcxx_noexcept':
@@ -211,21 +211,21 @@ def main():
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', ['gl.bc'])
+      ''', ['libgl.bc'])
     elif what == 'gl-mt':
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', ['gl-mt.bc'], ['-s', 'USE_PTHREADS=1'])
+      ''', ['libgl-mt.bc'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
-    elif what == 'wasm_compiler_rt':
+    elif what == 'compiler_rt_wasm':
       if shared.Settings.WASM_BACKEND:
-        build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
+        build(C_BARE, ['libcompiler_rt_wasm.a'], ['-s', 'WASM=1'])
       else:
-        logger.warning('wasm_compiler_rt not built when using JSBackend')
+        logger.warning('compiler_rt_wasm not built when using JSBackend')
     elif what == 'html5':
       build('''
         #include <stdlib.h>
@@ -234,7 +234,7 @@ def main():
           return emscripten_compute_dom_pk_code(NULL);
         }
 
-      ''', ['html5.bc'])
+      ''', ['libhtml5.bc'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
@@ -242,7 +242,7 @@ def main():
           alGetProcAddress(0);
           return 0;
         }
-      ''', ['al.bc'])
+      ''', ['libal.bc'])
     elif what == 'icu':
       build_port('icu', 'libicuuc.bc', ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
