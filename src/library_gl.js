@@ -14,6 +14,9 @@ var LibraryGL = {
 #if GL_DEBUG
     debug: true,
 #endif
+#if LEGACY_GL_EMULATION
+    legacyGLEmulation: true,
+#endif
 
     counter: 1, // 0 is reserved as 'null' in gl
     lastError: 0,
@@ -26,7 +29,7 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
     vaos: [],
-    contexts: [],
+    contexts: {},
     currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
     timerQueriesEXT: [],
@@ -709,7 +712,11 @@ var LibraryGL = {
 #endif
 
     registerContext: function(ctx, webGLContextAttributes) {
-      var handle = GL.getNewId(GL.contexts);
+      var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+      {{{ makeSetValue('handle', 0, 'webGLContextAttributes["explicitSwapControl"]', 'i32')}}}; // explicitSwapControl
+#if USE_PTHREADS
+      {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
+#endif
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
@@ -809,6 +816,7 @@ var LibraryGL = {
       if (GL.currentContext === GL.contexts[contextHandle]) GL.currentContext = null;
       if (typeof JSEvents === 'object') JSEvents.removeAllHandlersOnTarget(GL.contexts[contextHandle].GLctx.canvas); // Release all JS event handlers on the DOM element that the GL context is associated with since the context is now deleted.
       if (GL.contexts[contextHandle] && GL.contexts[contextHandle].GLctx.canvas) GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined; // Make sure the canvas object no longer refers to the context object so there are no GC surprises.
+      _free(GL.contexts[contextHandle]);
       GL.contexts[contextHandle] = null;
     },
 
@@ -1317,7 +1325,11 @@ var LibraryGL = {
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
 #if USE_WEBGL2
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
+      } else {
+        GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+      }
       return;
     }
 #endif
@@ -1328,7 +1340,11 @@ var LibraryGL = {
   glCompressedTexImage3D__sig: 'viiiiiiiii',
   glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
+      } else {
+        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
+      }
     } else {
       GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
     }
@@ -1339,7 +1355,11 @@ var LibraryGL = {
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
 #if USE_WEBGL2
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
+      } else {
+        GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+      }
       return;
     }
 #endif
@@ -1350,7 +1370,11 @@ var LibraryGL = {
   glCompressedTexSubImage3D__sig: 'viiiiiiiiiii',
   glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
+      if (GLctx.currentPixelUnpackBufferBinding) {
+        GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
+      } else {
+        GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
+      }
     } else {
       GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
     }
@@ -1765,6 +1789,10 @@ var LibraryGL = {
 
       if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
       if (id == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
+#if USE_WEBGL2
+      if (id == GLctx.currentPixelPackBufferBinding) GLctx.currentPixelPackBufferBinding = 0;
+      if (id == GLctx.currentPixelUnpackBufferBinding) GLctx.currentPixelUnpackBufferBinding = 0;
+#endif
     }
   },
 
@@ -3632,9 +3660,11 @@ var LibraryGL = {
       // the proper API function to call.
       GLctx.currentPixelPackBufferBinding = buffer;
     } else if (target == 0x88EC /*GL_PIXEL_UNPACK_BUFFER*/) {
-      // In WebGL 2 glTexImage2D, glTexSubImage2D, glTexImage3D and glTexSubImage3D entry points, we need to use a different WebGL 2 API function
-      // call when a buffer is bound to GL_PIXEL_UNPACK_BUFFER_BINDING point, so must keep track whether that binding point is non-null to know what
-      // is the proper API function to call.
+      // In WebGL 2 gl(Compressed)Tex(Sub)Image[23]D entry points, we need to
+      // use a different WebGL 2 API function call when a buffer is bound to
+      // GL_PIXEL_UNPACK_BUFFER_BINDING point, so must keep track whether that
+      // binding point is non-null to know what is the proper API function to
+      // call.
       GLctx.currentPixelUnpackBufferBinding = buffer;
     }
 #endif
@@ -7724,7 +7754,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
-    GLctx.vertexAttribIPointer(index, size, type, stride, ptr);
+    GLctx['vertexAttribIPointer'](index, size, type, stride, ptr);
   },
 // ~USE_WEBGL2
 #endif

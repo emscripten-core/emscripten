@@ -47,6 +47,7 @@ Available operations and tasks:
         libcxx_noexcept
         libcxxabi
         gl
+        gl-mt
         native_optimizer
         binaryen
         bullet
@@ -55,6 +56,7 @@ Available operations and tasks:
         ogg
         sdl2
         sdl2-image
+        sdl2-mixer
         sdl2-ttf
         sdl2-net
         vorbis
@@ -101,8 +103,8 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
-SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+SYSTEM_TASKS = ['al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger(__file__)
@@ -143,7 +145,7 @@ def main():
     auto_tasks = True
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
-      skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
+      skip_tasks = {'libc-mt', 'gl-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
@@ -210,6 +212,13 @@ def main():
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', ['gl.bc'])
+    elif what == 'gl-mt':
+      build('''
+        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
+        int main() {
+          return int(emscripten_GetProcAddress("waka waka"));
+        }
+      ''', ['gl-mt.bc'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'wasm_compiler_rt':
@@ -254,6 +263,8 @@ def main():
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
+    elif what == 'sdl2-mixer':
+      build_port('sdl2-mixer', 'libsdl2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':

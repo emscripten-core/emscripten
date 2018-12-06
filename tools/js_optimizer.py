@@ -68,10 +68,6 @@ def split_funcs(js, just_split=False):
   return funcs
 
 def get_native_optimizer():
-  if os.environ.get('EMCC_FAST_COMPILER') == '0':
-    logging.critical('Non-fastcomp compiler is no longer available, please use fastcomp or an older version of emscripten')
-    sys.exit(1)
-
   # Allow users to override the location of the optimizer executable by setting
   # an environment variable EMSCRIPTEN_NATIVE_OPTIMIZER=/path/to/optimizer(.exe)
   opt = os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER')
@@ -593,5 +589,5 @@ if __name__ == '__main__':
     shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   except Exception as e:
     ToolchainProfiler.record_process_exit(1)
-    raise e
+    raise
   ToolchainProfiler.record_process_exit(0)

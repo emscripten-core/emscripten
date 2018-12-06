@@ -537,8 +537,7 @@ if has_preloaded:
 
   package_uuid = uuid.uuid4()
   package_name = data_target
-  statinfo = os.stat(package_name)
-  remote_package_size = statinfo.st_size
+  remote_package_size = os.path.getsize(package_name)
   remote_package_name = os.path.basename(package_name)
   ret += r'''
     var PACKAGE_PATH;

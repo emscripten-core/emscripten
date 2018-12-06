@@ -237,8 +237,6 @@ function __ZN10Randomized9writelineEj(i5, i2) {
  return;
 }
 
-function runPostSets() {}
-
 // EMSCRIPTEN_END_FUNCS
 
 

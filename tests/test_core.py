@@ -19,10 +19,10 @@ from textwrap import dedent
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
-from tools.shared import Building, STDOUT, PIPE, run_js, run_process, Settings, try_delete
+from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library
+from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify
 
 # decorators for limiting which modes a test can run in
@@ -1273,6 +1273,10 @@ int main(int argc, char **argv)
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
 
+  def test_exceptions_multiple_inherit_rethrow(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
+
   def test_bad_typeid(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -1744,8 +1748,8 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   def test_memorygrowth(self):
+    self.maybe_closure()
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
-
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
@@ -2429,7 +2433,7 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, 'error: Could not find dynamic lib: libfoo.so\n')
+    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: No such file or directory')
 
   @needs_dlfcn
   def test_dlfcn_basic(self):
@@ -2869,7 +2873,7 @@ The current type of b is: 9
             table = line
             break
         else:
-          raise Exception('Could not find symbol table!')
+          self.fail('Could not find symbol table!')
       table = table[table.find('{'):table.find('}') + 1]
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') <= 30, table.count(',')
@@ -3289,6 +3293,63 @@ ok: 65
 int 123
 ok
 ''')
+
+  @needs_dlfcn
+  def test_dlfcn_handle_alloc(self):
+    # verify that dlopen does not allocate already used handles
+    dirname = self.get_dir()
+
+    def indir(name):
+      return os.path.join(dirname, name)
+
+    libecho = r'''
+      #include <stdio.h>
+
+      static struct %(libname)s {
+        %(libname)s() {
+          puts("%(libname)s: loaded");
+        }
+      } _;
+    '''
+
+    self.prep_dlfcn_lib()
+    self.build_dlfcn_lib(libecho % {'libname': 'a'}, dirname, indir('a.cpp'))
+    shutil.move(indir('liblib.so'), indir('liba.so'))
+    self.build_dlfcn_lib(libecho % {'libname': 'b'}, dirname, indir('b.cpp'))
+    shutil.move(indir('liblib.so'), indir('libb.so'))
+
+    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('EXPORT_ALL', 1)
+    self.emcc_args += ['--embed-file', '.@/']
+
+    # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
+    self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
+
+    src = r'''
+      #include <dlfcn.h>
+      #include <assert.h>
+      #include <stddef.h>
+
+      int main() {
+        void *liba, *libb, *liba2;
+        int err;
+
+        liba = dlopen("liba.so", RTLD_NOW);
+        assert(liba != NULL);
+        libb = dlopen("libb.so", RTLD_NOW);
+        assert(liba != NULL);
+
+        err = dlclose(liba);
+        assert(!err);
+
+        liba2 = dlopen("liba.so", RTLD_NOW);
+        assert(liba2 != libb);
+
+        return 0;
+      }
+      '''
+    self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
   def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
     # shared settings
@@ -4000,7 +4061,7 @@ ok
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third' + dylib_suffix])
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + self.get_emcc_args() + ['-o', 'third' + dylib_suffix])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -5420,14 +5481,24 @@ return malloc(size);
 
     test()
 
-    assert 'asm1' in core_test_modes
-    if self.run_name == 'asm1':
-      print('verifing postsets')
+    def count_relocations():
       generated = open('src.cpp.o.js').read()
       generated = re.sub(r'\n+[ \n]*\n+', '\n', generated)
-      main = generated[generated.find('function runPostSets'):]
-      main = main[:main.find('\n}')]
-      assert main.count('\n') <= 7, ('must not emit too many js_transform: %d' % main.count('\n')) + ' : ' + main
+      start = '\nfunction __apply_relocations() {'
+      relocs_start = generated.find(start)
+      if relocs_start == -1:
+        return "", 0
+      relocs_start += len(start)
+      relocs_end = generated.find('\n}', relocs_start)
+      relocs = generated[relocs_start:relocs_end]
+      num_relocs = relocs.count('\n')
+      return relocs, num_relocs
+
+    assert 'asm1' in core_test_modes
+    if self.run_name == 'asm1':
+      print('verifing relocations')
+      relocs, num_relocs = count_relocations()
+      self.assertEqual(num_relocs, 0)
 
     # TODO: wrappers for wasm modules
     if not self.is_wasm():
@@ -5436,6 +5507,10 @@ return malloc(size);
       self.set_setting('RELOCATABLE', 1)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
       test()
+      if self.run_name == 'asm1':
+        relocs, num_relocs = count_relocations()
+        print('num_relocs: %s' % num_relocs)
+        self.assertGreater(num_relocs, 0)
       self.set_setting('RELOCATABLE', 0)
       self.set_setting('EMULATED_FUNCTION_POINTERS', 0)
 
@@ -5743,12 +5818,6 @@ return malloc(size);
                   includes=[path_from_root('tests', 'lua')],
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
-  def get_freetype(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
-    return self.get_library('freetype',
-                            os.path.join('objs', '.libs', 'libfreetype.a'))
-
   @no_windows('./configure scripts dont to run on windows.')
   def test_freetype(self):
     assert 'asm2g' in core_test_modes
@@ -5770,7 +5839,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c'), 'r').read(),
                   open(path_from_root('tests', 'freetype', 'ref.txt'), 'r').read(),
                   ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=self.get_freetype(),
+                  libraries=get_freetype_library(self),
                   includes=[path_from_root('tests', 'freetype', 'include')])
       self.set_setting('OUTLINING_LIMIT', 0)
 
@@ -5779,14 +5848,14 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c'), 'r').read(),
                 open(path_from_root('tests', 'freetype', 'ref_2.txt'), 'r').read(),
                 ['font.ttf', 'w', '32', '32', '25'],
-                libraries=self.get_freetype(),
+                libraries=get_freetype_library(self),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c'), 'r').read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt'), 'r').read(),
                 ['font.ttf', 'W', '32', '32', '0'],
-                libraries=self.get_freetype(),
+                libraries=get_freetype_library(self),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
@@ -5883,16 +5952,7 @@ return malloc(size);
 
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   def test_poppler(self):
-    # The fontconfig symbols are all missing from the poppler build
-    # e.g. FcConfigSubstitute
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
-
     def test():
-      Building.COMPILER_TEST_OPTS += [
-        '-I' + path_from_root('tests', 'freetype', 'include'),
-        '-I' + path_from_root('tests', 'poppler', 'include')
-      ]
-
       with open(os.path.join(self.get_dir(), 'paper.pdf.js'), 'w') as f:
         f.write(str(list(bytearray(open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()))))
 
@@ -5908,30 +5968,7 @@ return malloc(size);
 ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      freetype = self.get_freetype()
-
-      # Poppler has some pretty glaring warning.  Suppress them to keep the
-      # test output readable.
-      Building.COMPILER_TEST_OPTS += [
-          '-Wno-sentinel',
-          '-Wno-logical-not-parentheses',
-          '-Wno-unused-private-field',
-          '-Wno-tautological-compare',
-          '-Wno-unknown-pragmas',
-      ]
-      poppler = self.get_library('poppler',
-                                 [os.path.join('utils', 'pdftoppm.o'),
-                                  os.path.join('utils', 'parseargs.o'),
-                                  os.path.join('poppler', '.libs', 'libpoppler.a')],
-                                 env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-                                 configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
-
-      # Combine libraries
-
-      combined = os.path.join(self.get_dir(), 'poppler-combined.bc')
-      Building.link(poppler + freetype, combined)
-
-      self.do_ll_run(combined,
+      self.do_ll_run(get_poppler_library(self),
                      str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
                      args='-scale-to 512 paper.pdf filename'.split(' '))
 
@@ -6426,9 +6463,10 @@ return malloc(size);
 
     # Sanity check that it works and the dead function is emitted
     js = test('*1*', ['x'])
-    test('*2*', no_build=True)
     if self.run_name in ['default', 'asm1', 'asm2g']:
       assert 'function _unused($' in js
+    return
+    test('*2*', no_build=True)
 
     # Kill off the dead function, and check a code path using it aborts
     self.set_setting('DEAD_FUNCTIONS', ['_unused'])
@@ -7845,7 +7883,7 @@ extern "C" {
     if not self.is_wasm():
       self.skipTest('wasm test')
     TRAP_OUTPUTS = ('trap', 'RuntimeError')
-    default = self.get_setting('BINARYEN_TRAP_MODE')
+    default = 'allow'
     print('default is', default)
     for mode in ['js', 'clamp', 'allow', '']:
       if mode == 'js' and self.is_wasm_backend():
@@ -7925,9 +7963,11 @@ extern "C" {
 
 
 # Generate tests for everything
-def make_run(name, emcc_args, env=None):
+def make_run(name, emcc_args, settings=None, env=None):
   if env is None:
     env = {}
+  if settings is None:
+    settings = {}
 
   TT = type(name, (TestCoreBase,), dict(run_name=name, env=env))  # noqa
 
@@ -7953,9 +7993,9 @@ def make_run(name, emcc_args, env=None):
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
     self.emcc_args = emcc_args[:]
-    Settings.load(self.emcc_args)
+    for k, v in settings.items():
+      self.set_setting(k, v)
     Building.LLVM_OPTS = 0
-
     Building.COMPILER_TEST_OPTS += [
         '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
         '-Wno-format-extra-args', '-Wno-format-security',
@@ -7974,11 +8014,11 @@ def make_run(name, emcc_args, env=None):
 
 
 # Main asm.js test modes
-asm0 = make_run('asm0', emcc_args=['-s', 'ASM_JS=2', '-s', 'WASM=0'])
-asm1 = make_run('asm1', emcc_args=['-O1', '-s', 'WASM=0'])
-asm2 = make_run('asm2', emcc_args=['-O2', '-s', 'WASM=0'])
-asm3 = make_run('asm3', emcc_args=['-O3', '-s', 'WASM=0'])
-asm2g = make_run('asm2g', emcc_args=['-O2', '-s', 'WASM=0', '-g', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'])
+asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
+asm1 = make_run('asm1', emcc_args=['-O1'], settings={'WASM': 0})
+asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
+asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
+asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
 
 # Main wasm test modes
 binaryen0 = make_run('binaryen0', emcc_args=['-O0'])
@@ -7988,29 +8028,29 @@ binaryen3 = make_run('binaryen3', emcc_args=['-O3'])
 binaryens = make_run('binaryens', emcc_args=['-Os'])
 binaryenz = make_run('binaryenz', emcc_args=['-Oz'])
 
-wasmobj0 = make_run('wasmobj0', emcc_args=['-O0', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj1 = make_run('wasmobj1', emcc_args=['-O1', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj2 = make_run('wasmobj2', emcc_args=['-O2', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobj3 = make_run('wasmobj3', emcc_args=['-O3', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobjs = make_run('wasmobjs', emcc_args=['-Os', '-s', 'WASM_OBJECT_FILES=1'])
-wasmobjz = make_run('wasmobjz', emcc_args=['-Oz', '-s', 'WASM_OBJECT_FILES=1'])
+wasmobj0 = make_run('wasmobj0', emcc_args=['-O0'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj1 = make_run('wasmobj1', emcc_args=['-O1'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj2 = make_run('wasmobj2', emcc_args=['-O2'], settings={'WASM_OBJECT_FILES': 1})
+wasmobj3 = make_run('wasmobj3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES': 1})
+wasmobjs = make_run('wasmobjs', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 1})
+wasmobjz = make_run('wasmobjz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 1})
 
 
 # Secondary test modes - run directly when there is a specific need
 
 # asm.js
-asm2f = make_run('asm2f', emcc_args=['-Oz', '-s', 'PRECISE_F32=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
-asm2nn = make_run('asm2nn', emcc_args=['-O2', '-s', 'WASM=0'], env={'EMCC_NATIVE_OPTIMIZER': '0'})
+asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
+asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3', '-s', 'BINARYEN_METHOD="native-wasm,asmjs"'])
-binaryen2s = make_run('binaryen2s', emcc_args=['-O2', '-s', 'SAFE_HEAP=1'])
-binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
+binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
+binaryen2s = make_run('binaryen2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2'], settings={'BINARYEN_METHOD', 'interpret-binary'})
 
 # emterpreter
-asmi = make_run('asmi', emcc_args=['-s', 'ASM_JS=2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
-asm2i = make_run('asm2i', emcc_args=['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'WASM=0'])
+asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})
+asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

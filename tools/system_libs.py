@@ -120,6 +120,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o_s = []
     commands = []
     opts = default_opts + lib_opts
+    # Make sure we don't mark symbols as default visibility.  This works around
+    # an issue with the wasm backend where all default visibility symbols are
+    # exported (and therefore can't be GC'd).
+    # FIXME(https://github.com/kripken/emscripten/issues/7383)
+    opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
     if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
       opts += ['-fno-exceptions']
     for src in files:
@@ -131,6 +136,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     create_lib(in_temp(lib_filename), o_s)
 
     return in_temp(lib_filename)
+
+  # Returns linker flags specific to singlethreading or multithreading
+  def threading_flags(libname):
+    if shared.Settings.USE_PTHREADS:
+      assert '-mt' in libname
+      return ['-s', 'USE_PTHREADS=1']
+    else:
+      assert '-mt' not in libname
+      return []
 
   # libc
   def create_libc(libname):
@@ -200,11 +214,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # like the standard library. This can cause unexpected bugs when we use our
     # custom standard library. The same for other libc/libm builds.
     args = ['-Os', '-fno-builtin']
-    if shared.Settings.USE_PTHREADS:
-      args += ['-s', 'USE_PTHREADS=1']
-      assert '-mt' in libname
-    else:
-      assert '-mt' not in libname
+    args += threading_flags(libname)
     return build_libc(libname, libc_files, args)
 
   def create_pthreads(libname):
@@ -333,10 +343,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ['-Oz', '-I' + libcxxabi_include])
 
   # gl
-  def create_gl(libname): # libname is ignored, this is just one .o file
-    o = in_temp('gl.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o] + get_cflags())
-    return o
+  def create_gl(libname):
+    src_dir = shared.path_from_root('system', 'lib', 'gl')
+    files = []
+    for dirpath, dirnames, filenames in os.walk(src_dir):
+      filenames = filter(lambda f: f.endswith('.c'), filenames)
+      files += map(lambda f: os.path.join(src_dir, f), filenames)
+    flags = ['-Oz']
+    flags += threading_flags(libname)
+    return build_libc(libname, files, flags)
 
   # al
   def create_al(libname): # libname is ignored, this is just one .o file
@@ -577,7 +592,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   system_libs = [Library('libcxx',        'a', create_libcxx,      libcxx_symbols,      ['libcxxabi'], True), # noqa
                  Library('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
-                 Library('gl',            ext, create_gl,          gl_symbols,          [libc_name],   False), # noqa
                  Library('al',            ext, create_al,          al_symbols,          [libc_name],   False), # noqa
                  Library('html5',         ext, create_html5,       html5_symbols,       [],            False), # noqa
                  Library('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
@@ -585,7 +599,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('pthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
+                    Library('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
+                    Library('gl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+  else:
+    system_libs += [Library('gl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 

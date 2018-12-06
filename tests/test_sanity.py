@@ -13,7 +13,7 @@ import re
 import tempfile
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
-from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE, CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR, EMSCRIPTEN_VERSION
+from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE, CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs, expected_llvm_version, generate_sanity
 from tools.shared import Cache, Settings
 from tools import jsrun, shared
@@ -49,6 +49,33 @@ def add_to_config(content):
 
 def mtime(filename):
   return os.path.getmtime(filename)
+
+
+def make_fake_clang(filename, version):
+  """Create a fake clang that only handles --version
+  --version writes to stdout (unlike -v which writes to stderr)
+  """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('echo "clang version %s"\n' % version)
+    f.write('echo "..."\n')
+  shutil.copyfile(filename, filename + '++')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
+def make_fake_llc(filename, targets):
+  """Create a fake llc that only handles --version and writes target
+  list to stdout.
+  """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
@@ -188,7 +215,7 @@ class sanity(RunnerCore):
         if 'LLVM_ROOT' not in settings:
           self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
         elif 'runner.py' not in ' '.join(command):
-          self.assertContained('CRITICAL', output) # sanity check should fail
+          self.assertContained('ERROR', output) # sanity check should fail
 
   def test_closure_compiler(self):
     CLOSURE_FATAL = 'fatal: closure compiler'
@@ -224,7 +251,7 @@ class sanity(RunnerCore):
     restore_and_set_up()
 
     # Clang should report the version number we expect, and emcc should not warn
-    assert shared.check_clang_version()
+    assert shared.check_llvm_version()
     output = self.check_working(EMCC)
     assert LLVM_WARNING not in output, output
 
@@ -233,25 +260,16 @@ class sanity(RunnerCore):
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
 
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
-
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for x in range(-2, 3):
         for y in range(-2, 3):
-          f = open(path_from_root('tests', 'fake', 'clang'), 'w')
-          f.write('#!/bin/sh\n')
           expected_x, expected_y = (int(x) for x in expected_llvm_version().split('.'))
           expected_x += x
           expected_y += y
           if expected_x < 0 or expected_y < 0:
             continue # must be a valid llvm version
           print(expected_llvm_version(), x, y, expected_x, expected_y)
-          f.write('echo "clang version %d.%d" 1>&2\n' % (expected_x, expected_y))
-          f.close()
-          shutil.copyfile(path_from_root('tests', 'fake', 'clang'), path_from_root('tests', 'fake', 'clang++'))
-          os.chmod(path_from_root('tests', 'fake', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-          os.chmod(path_from_root('tests', 'fake', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+          make_fake_clang(path_from_root('tests', 'fake', 'clang'), '%s.%s' % (expected_x, expected_y))
           if x != 0 or y != 0:
             output = self.check_working(EMCC, LLVM_WARNING)
           else:
@@ -276,7 +294,7 @@ class sanity(RunnerCore):
     restore_and_set_up()
 
     # Should see js backend during sanity check
-    assert shared.check_fastcomp()
+    self.assertTrue(shared.check_llvm())
     output = self.check_working(EMCC)
     self.assertNotIn(WARNING, output)
     self.assertNotIn(WARNING2, output)
@@ -287,68 +305,27 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     # print '1', open(CONFIG_FILE).read()
 
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
-
-    with open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w') as f:
-      f.write('#!/bin/sh\n')
-      f.write('echo "llc fake output\nRegistered Targets:\nno j-s backend for you!"')
-    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-    output = self.check_working(EMCC, WARNING)
-    output = self.check_working(EMCC, WARNING2)
+    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'no j-s backend for you!')
+    self.check_working(EMCC, WARNING)
+    self.check_working(EMCC, WARNING2)
 
     # fake some more
-    for fake in ['llvm-link', 'clang', 'clang++', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
+    for fake in ['llvm-link', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
       open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
     try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, WARNING)
+    self.check_working(EMCC, WARNING)
     # make sure sanity checks notice there is no source dir with version #
-    open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w').write('#!/bin/sh\necho "Registered Targets: there IZ a js backend: JavaScript (asm.js, emscripten) backend"')
-    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write('#!/bin/sh\necho "clang version %s (blah blah)" >&2\necho "..." >&2\n' % expected_llvm_version())
-    os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-    os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'there IZ a js backend: JavaScript (asm.js, emscripten) backend')
     try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, 'did not see a source tree above or next to the LLVM root directory')
+    self.check_working(EMCC, 'clang version does not appear to include fastcomp')
 
-    VERSION_WARNING = 'Emscripten, llvm and clang repo versions do not match, this is dangerous'
-    BUILD_VERSION_WARNING = 'Emscripten, llvm and clang build versions do not match, this is dangerous'
+    VERSION_WARNING = 'Emscripten, llvm and clang build versions do not match, this is dangerous'
 
     # add version number
-    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write('waka')
+    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), '%s (emscripten waka : waka)' % expected_llvm_version())
     try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, VERSION_WARNING)
-
-    os.makedirs(path_from_root('tests', 'fake', 'tools', 'clang'))
-
-    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
-    try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, VERSION_WARNING)
-
-    open(path_from_root('tests', 'fake', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
-    try_delete(SANITY_FILE)
-    output = self.check_working(EMCC)
-    self.assertNotIn(VERSION_WARNING, output)
-
-    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write('waka')
-    try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, VERSION_WARNING)
-
-    # restore clang version to ok, and fake the *build* versions
-    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write(EMSCRIPTEN_VERSION)
-    output = self.check_working(EMCC)
-    self.assertNotIn(VERSION_WARNING, output)
-    fake = '#!/bin/sh\necho "clang version %s (blah blah) (emscripten waka : waka)"\necho "..."\n' % expected_llvm_version()
-    open(path_from_root('tests', 'fake', 'bin', 'clang'), 'w').write(fake)
-    open(path_from_root('tests', 'fake', 'bin', 'clang++'), 'w').write(fake)
-    os.chmod(path_from_root('tests', 'fake', 'bin', 'clang'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-    os.chmod(path_from_root('tests', 'fake', 'bin', 'clang++'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
-    try_delete(SANITY_FILE)
-    output = self.check_working(EMCC, BUILD_VERSION_WARNING)
-    self.assertNotIn(VERSION_WARNING, output)
-    # break clang repo version again, see it hides the build warning
-    open(path_from_root('tests', 'fake', 'tools', 'clang', 'emscripten-version.txt'), 'w').write('waka')
-    output = self.check_working(EMCC, VERSION_WARNING)
-    self.assertNotIn(BUILD_VERSION_WARNING, output)
+    self.check_working(EMCC, VERSION_WARNING)
 
     restore_and_set_up()
 
@@ -370,9 +347,6 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
     f.close()
-
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
@@ -514,14 +488,17 @@ fi
     # Manual cache clearing
     ensure_cache()
     self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
     self.assertFalse(os.path.exists(EMCC_CACHE))
+    self.assertFalse(os.path.exists(Cache.root_dirname))
     self.assertIn(SANITY_MESSAGE, output)
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     ensure_cache()
-    with env_modify({'LLVM': 'waka'}):
+    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
+    with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(EMCC_CACHE))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
@@ -767,6 +744,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'icu'], ['building and verifying icu', 'success'], True, ['icu.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, ['sdl2-ttf.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'sdl2-mixer'], ['building and verifying sdl2-mixer', 'success'], True, ['sdl2-mixer.bc']),
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
       ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
       ([PYTHON, EMBUILDER, 'build', 'wasm-libc'], ['building and verifying wasm-libc', 'success'], True, ['wasm-libc.bc']),
@@ -889,10 +867,8 @@ fi
         # doesn't actually use it.
         f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
 
-      with open(path_from_root('tests', 'fake', 'bin', 'llc'), 'w') as f:
-        f.write('#!/bin/sh\n')
-        f.write('echo "llc fake output\nRegistered Targets:\n%s"' % report)
-      os.chmod(path_from_root('tests', 'fake', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+      make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), report)
+
       with open(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), 'w') as f:
         f.write('#!/bin/sh\n')
         f.write('exit 0\n')
@@ -917,9 +893,6 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
 
     # fake llc output
-
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
     def test_with_fake(report, expected):
       make_fake(report)

@@ -19,6 +19,6 @@ RUN cd /root/ \
 
 ARG TEST_TARGET
 RUN export EMTEST_BROWSER=0 \
- && python /root/emscripten/tests/runner.py $TEST_TARGET skip:asm*.test_sse1_full skip:asm*.test_sse2_full skip:asm*.test_sse3_full skip:asm*.test_ssse3_full skip:asm*.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_llvm_lit skip:other.test_single_file skip:other.test_vorbis skip:other.test_eval_ctors
+ && python /root/emscripten/tests/runner.py $TEST_TARGET skip:asm*.test_sse1_full skip:asm*.test_sse2_full skip:asm*.test_sse3_full skip:asm*.test_ssse3_full skip:asm*.test_sse4_1_full skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_single_file skip:other.test_vorbis skip:other.test_eval_ctors
 
 # skip:other.test_emcc_v to prevent tool version differences from breaking CI

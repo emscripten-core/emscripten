@@ -127,7 +127,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
     if not skip_check:
       require_engine(engine)
     # if we got here, then require_engine succeeded, so we can raise the original error
-    raise e
+    raise
   timeout = 15*60 if check_timeout else None
   if TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))

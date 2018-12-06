@@ -14,6 +14,8 @@ def get(ports, settings, shared):
     ports.fetch_project('sdl2-net', 'https://github.com/emscripten-ports/SDL2_net/archive/' + TAG + '.zip', 'SDL2_net-' + TAG)
     def create():
       logging.info('building port: sdl2-net')
+      # although we shouldn't really do this and could instead use '-Xclang -isystem' as a kind of 'overlay' as sdl_mixer does,
+      # by now people may be relying on headers being pulled in by '-s USE_SDL=2' if sdl_net was built in the past
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_net.h'))
       shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_net.h'))
       srcs = 'SDLnet.c SDLnetselect.c SDLnetTCP.c SDLnetUDP.c'.split(' ')

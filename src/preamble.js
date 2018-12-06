@@ -908,7 +908,7 @@ var STACK_BASE, STACKTOP, STACK_MAX; // stack area
 var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
   STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
   staticSealed = false;
@@ -962,6 +962,7 @@ function abortOnCannotGrowMemory() {
 }
 #endif
 
+#if WASM == 0
 #if ALLOW_MEMORY_GROWTH
 if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   var ret;
@@ -977,7 +978,8 @@ if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   if (!success) return false;
   return ret;
 };
-#endif
+#endif // ALLOW_MEMORY_GROWTH
+#endif // WASM == 0
 
 function enlargeMemory() {
 #if USE_PTHREADS
@@ -1422,32 +1424,30 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 
 #if POLYFILL_OLD_MATH_FUNCTIONS
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
-if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
+if (!Math.imul || Math.imul(0xffffffff, 5) !== -5) Math.imul = function imul(a, b) {
   var ah  = a >>> 16;
   var al = a & 0xffff;
   var bh  = b >>> 16;
   var bl = b & 0xffff;
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
-Math.imul = Math['imul'];
 
 #if PRECISE_F32
 #if PRECISE_F32 == 1
-if (!Math['fround']) {
+if (!Math.fround) {
   var froundBuffer = new Float32Array(1);
-  Math['fround'] = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
+  Math.fround = function(x) { froundBuffer[0] = x; return froundBuffer[0] };
 }
 #else // 2
-if (!Math['fround']) Math['fround'] = function(x) { return x };
+if (!Math.fround) Math.fround = function(x) { return x };
 #endif
-Math.fround = Math['fround'];
 #else
 #if SIMD
-if (!Math['fround']) Math['fround'] = function(x) { return x };
+if (!Math.fround) Math.fround = function(x) { return x };
 #endif
 #endif
 
-if (!Math['clz32']) Math['clz32'] = function(x) {
+if (!Math.clz32) Math.clz32 = function(x) {
   var n = 32;
   var y = x >> 16; if (y) { n -= 16; x = y; }
   y = x >> 8; if (y) { n -= 8; x = y; }
@@ -1456,18 +1456,16 @@ if (!Math['clz32']) Math['clz32'] = function(x) {
   y = x >> 1; if (y) return n - 2;
   return n - x;
 };
-Math.clz32 = Math['clz32']
 
-if (!Math['trunc']) Math['trunc'] = function(x) {
+if (!Math.trunc) Math.trunc = function(x) {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
-Math.trunc = Math['trunc'];
 #else // POLYFILL_OLD_MATH_FUNCTIONS
 #if ASSERTIONS
-assert(Math['imul'], 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['fround'], 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['clz32'], 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
-assert(Math['trunc'], 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.imul, 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.fround, 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.clz32, 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
+assert(Math.trunc, 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 #endif
 #endif // LEGACY_VM_SUPPORT
 
@@ -1522,7 +1520,7 @@ function addRunDependency(id) {
 #if USE_PTHREADS
   // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
   // so good to be very explicit)
-  assert(!ENVIRONMENT_IS_PTHREAD);
+  assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
 #endif
   runDependencies++;
   if (Module['monitorRunDependencies']) {
@@ -1626,11 +1624,9 @@ addOnPreRun(function() {
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
-        loadDynamicLibrary(lib);
+        // libraries linked to main never go away
+        loadDynamicLibrary(lib, {global: true, nodelete: true});
       });
-    }
-    if (Module['asm']['runPostSets']) {
-      Module['asm']['runPostSets']();
     }
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
@@ -1638,22 +1634,11 @@ addOnPreRun(function() {
   if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
-    var binaries = [];
-    Module['dynamicLibraries'].forEach(function(lib) {
-      fetch(lib, { credentials: 'same-origin' }).then(function(response) {
-        if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + lib + "'";
-        }
-        return response['arrayBuffer']();
-      }).then(function(buffer) {
-        var binary = new Uint8Array(buffer);
-        binaries.push(binary);
-        if (binaries.length === Module['dynamicLibraries'].length) {
-          // we got them all, wonderful
-          loadDynamicLibraries(binaries);
-          removeRunDependency('preload_dynamicLibraries');
-        }
-      });
+    Promise.all(Module['dynamicLibraries'].map(function(lib) {
+      return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true});
+    })).then(function() {
+      // we got them all, wonderful
+      removeRunDependency('preload_dynamicLibraries');
     });
     return;
   }
@@ -2152,7 +2137,7 @@ function integrateWasmJS() {
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
-  // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
+  // doesn't need to care that it is wasm or polyfilled wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
     // import table

@@ -151,6 +151,16 @@ Also make sure that gzip is enabled:
 
     AddOutputFilterByType DEFLATE application/wasm
 
+If you serve large ``.wasm`` files, the webserver will consume CPU compressing them on the fly at each request.
+Instead you can pre-compress them to ``.wasm.gz`` and use content negotiation:
+
+.. code-block:: none
+
+    Options Multiviews
+    RemoveType .gz
+    AddEncoding x-gzip .gz
+    AddType application/wasm .wasm
+
 LLVM WebAssembly backend
 ========================
 
@@ -169,5 +179,4 @@ The ``EMCC_WASM_BACKEND`` env var tells Emscripten to use the wasm backend.
 Note that when using the WebAssembly backend in this manner, you do not actually need Emscripten's asm.js backend, which means you don't need Emscripten's "fastcomp" fork of LLVM. Instead you must use "vanilla" LLVM (that is, pure upstream LLVM, with no Emscripten additions).
 
 - When doing so, you do not need the ``EMCC_WASM_BACKEND=1`` env var, as emcc will detect the lack of the asm.js backend and infer it must use the wasm backend. (However, you can still set it, and it's a little faster, since it avoids the check).
-- If you build LLVM by yourself, note that WebAssembly is not built by default. You should pass ``-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly`` to ``cmake``.
 - Edit ``LLVM_ROOT`` in ``~/.emscripten`` so that it points to the ``bin`` directory of your custom LLVM build.

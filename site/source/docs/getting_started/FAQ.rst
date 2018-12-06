@@ -174,10 +174,11 @@ Another option is to implement needed C APIs as JavaScript libraries (see ``--js
 What are my options for audio playback?
 =======================================
 
-Emscripten has partial support for SDL (1, not 2) audio, and OpenAL.
+Emscripten has partial support for SDL1 and 2 audio, and OpenAL.
 
-To use SDL audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
+To use SDL1 audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
 
+To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-s SDL_MIXER=2`. Format support is currently limited to OGG.
 
 How can my compiled program access files?
 =========================================
@@ -355,7 +356,7 @@ will export ``ccall``. In both cases you can then access the exported function o
 
 .. note:: You can use runtime methods directly, without exporting them, if the compiler can see them used. For example, you can use ``getValue`` in ``EM_ASM`` code, or a ``--pre-js``, by calling it directly. The optimizer will not remove that JS runtime method because it sees it is used. You only need to use ``Module.getValue`` if you want to call that method from outside the JS code the compiler can see, and then you need to export it.
 
-.. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``Changelog.markdown`` for details.
+.. note:: Emscripten used to export many runtime methods by default. This increased code size, and for that reason we've changed that default. If you depend on something that used to be exported, you should see a warning pointing you to the solution, in an unoptimized build, or a build with ``ASSERTIONS`` enabled, which we hope will minimize any annoyance. See ``ChangeLog.md`` for details.
 
 .. _faq-runtime-change:
 

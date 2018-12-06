@@ -92,6 +92,23 @@ def encode_leb(number):
   return struct.pack('<i', number)[:1]
 
 
+def get_fastcomp_src_dir():
+  """Locate fastcomp source tree by searching realtive to LLVM_ROOT."""
+  d = LLVM_ROOT
+  key_file = 'readme-emscripten-fastcomp.txt'
+  while d != os.path.dirname(d):
+    d = os.path.abspath(d)
+    # when the build directory lives below the source directory
+    if os.path.exists(os.path.join(d, key_file)):
+      return d
+    # when the build directory lives alongside the source directory
+    elif os.path.exists(os.path.join(d, 'src', key_file)):
+      return os.path.join(d, 'src')
+    else:
+      d = os.path.dirname(d)
+  return None
+
+
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
@@ -606,7 +623,7 @@ f.close()
           if ret.stderr is not None and 'error' in ret.stderr.lower():
             print('Failed command: ' + ' '.join(cmd))
             print('Result:\n' + ret.stderr)
-            raise Exception('cmake call failed!')
+            self.fail('cmake call failed!')
 
           if prebuild:
             prebuild(tempdirname)
@@ -621,7 +638,7 @@ f.close()
           if ret.stdout is not None and 'error' in ret.stdout.lower() and '0 error(s)' not in ret.stdout.lower():
             print('Failed command: ' + ' '.join(cmd))
             print('Result:\n' + ret.stdout)
-            raise Exception('make failed!')
+            self.fail('make failed!')
           assert os.path.exists(tempdirname + '/' + output_file), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file
 
           # Run through node, if CMake produced a .js file.
@@ -1916,6 +1933,12 @@ int f() {
           else:
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(os.path.exists('a.out.js'))
+
+  def test_GetProcAddress_LEGACY_GL_EMULATION(self):
+    # without legacy gl emulation, getting a proc from there should fail
+    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
+    # with it, it should work
+    self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
 
   @no_wasm_backend('linker detects out-of-memory')
   def test_toobig(self):
@@ -3566,7 +3589,7 @@ int main() {
       print(name, args)
       self.clear()
       run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE)
-      sizes[name] = os.stat('dlmalloc.o').st_size
+      sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
     # -c should not affect code size
     for name in ['0', '1', '2', '3', 's', 'z']:
@@ -3695,13 +3718,15 @@ int main()
   def test_llvm_lit(self):
     grep_path = Building.which('grep')
     if not grep_path:
-      self.skipTest('Skipping other.test_llvm_lit: This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
-    llvm_src = shared.get_fastcomp_src_dir()
+      self.skipTest('This test needs the "grep" tool in PATH. If you are using emsdk on Windows, you can obtain it via installing and activating the gnu package.')
+    llvm_src = get_fastcomp_src_dir()
+    if not llvm_src:
+      self.skipTest('llvm source tree not found')
     LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit.py')
     if not os.path.exists(LLVM_LIT):
       LLVM_LIT = os.path.join(LLVM_ROOT, 'llvm-lit')
       if not os.path.exists(LLVM_LIT):
-        raise Exception('cannot find llvm-lit tool')
+        self.skipTest('llvm-lit not found; fastcomp directory is most likely prebuilt')
     cmd = [PYTHON, LLVM_LIT, '-v', os.path.join(llvm_src, 'test', 'CodeGen', 'JS')]
     print(cmd)
     run_process(cmd)
@@ -5183,11 +5208,11 @@ main(const int argc, const char * const * const argv)
     FS_MARKER = 'var FS'
     # fopen forces full filesystem support
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c')])
-    yes_size = os.stat('a.out.js').st_size
+    yes_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained(FS_MARKER, open('a.out.js').read())
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
-    no_size = os.stat('a.out.js').st_size
+    no_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())
     print('yes fs, no fs:', yes_size, no_size)
@@ -6142,7 +6167,7 @@ int main(int argc, char** argv) {
 
     self.assertGreater(vector, 1000)
     # we can strip out almost all of libcxx when just using vector
-    self.assertLess(2.5 * vector, iostream)
+    self.assertLess(2.4 * vector, iostream)
 
   @no_wasm_backend('relies on EMULATED_FUNCTION_POINTERS')
   def test_emulated_function_pointers(self):
@@ -6263,10 +6288,10 @@ int main(int argc, char** argv) {
         ''' % library_file)
         run_process([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
         self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=STDOUT))
-        size = os.stat('a.out.js').st_size
+        size = os.path.getsize('a.out.js')
         if wasm:
-          size += os.stat('a.out.wasm').st_size
-        side_size = os.stat(library_file).st_size
+          size += os.path.getsize('a.out.wasm')
+        side_size = os.path.getsize(library_file)
         print('  sizes:', size, side_size)
         return (size, side_size)
 
@@ -6799,7 +6824,7 @@ Resolved: "/" => "/"
       print(cmd)
       run_process(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
-      sizes[lto] = os.stat('a.out.wasm').st_size
+      sizes[lto] = os.path.getsize('a.out.wasm')
     print(sizes)
 
     # LTO sizes should be distinct
@@ -6849,7 +6874,7 @@ Resolved: "/" => "/"
           cmd += ['-s', 'MALLOC="%s"' % malloc]
         print(cmd)
         run_process(cmd)
-        sizes[name] = os.stat('a.out.wasm').st_size
+        sizes[name] = os.path.getsize('a.out.wasm')
       print(sizes)
       # dlmalloc is the default
       self.assertEqual(sizes['dlmalloc'], sizes['default'])
@@ -6952,7 +6977,7 @@ int main() {
 }
 ''')
     run_process([PYTHON, EMCC, 'src.c', '-O2', '-g'])
-    size = os.stat('a.out.wasm').st_size
+    size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
     assert size < (123456 / 2), size
 
@@ -7541,21 +7566,21 @@ int main() {
   @uses_canonical_tmp
   def test_binaryen_opts(self):
     with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect_js_opts, expect_only_wasm in [
-          ([], False, True),
-          (['-O0'], False, True),
-          (['-O1'], False, True),
-          (['-O2'], False, True),
-          (['-O2', '--js-opts', '1'], True, False), # user asked
-          (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
-          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
-          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
-          (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
-          (['-O3'], False, True),
-          (['-Os'], False, True),
-          (['-Oz'], False, True), # ctor evaller turned off since only-wasm
+      for args, expect_js_opts, expect_wasm_opts, expect_only_wasm in [
+          ([], False, False, True),
+          (['-O0'], False, False, True),
+          (['-O1'], False, True, True),
+          (['-O2'], False, True, True),
+          (['-O2', '--js-opts', '1'], True, True, False), # user asked
+          (['-O2', '-s', 'EMTERPRETIFY=1'], True, True, False), # option forced
+          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, True, False), # option forced
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, True, False), # asmjs in methods means we need good asm.js
+          (['-O3'], False, True, True),
+          (['-Os'], False, True, True),
+          (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
         ]:
         try_delete('a.out.js')
         try_delete('a.out.wast')
@@ -7572,12 +7597,12 @@ int main() {
         assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
         selects = wast.count('(select')
         print('    seen selects:', selects)
-        if '-Os' in args or '-Oz' in args:
-          # when optimizing for size we should create selects
-          self.assertGreater(selects, 50)
+        if expect_wasm_opts:
+          # when optimizing we should create selects
+          self.assertGreater(selects, 15)
         else:
-          # when not optimizing for size we should not create selects
-          self.assertLess(selects, 10)
+          # when not optimizing for size we should not
+          self.assertEqual(selects, 0)
         # asm2wasm opt line
         asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
         asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
@@ -7629,7 +7654,7 @@ int main() {
       else:
         # should be just one name, for the export
         self.assertEqual(code.count(b'malloc'), 1)
-      sizes[str(args)] = os.stat('a.out.wasm').st_size
+      sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
     self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
 
@@ -7672,6 +7697,7 @@ int main() {
     # Test that an .asm.js file is outputted exactly when it is requested.
     for args, output_asmjs in [
       ([], False),
+      (['-s', 'MAIN_MODULE=2'], False),
       (['-s', 'BINARYEN_METHOD="native-wasm"'], False),
       (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
     ]:
@@ -7826,7 +7852,7 @@ int main() {
         asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
         print('|' + asm2wasm_line + '|')
         assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
-        sizes.append(os.stat('a.out.wasm').st_size)
+        sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
   def test_binaryen_methods(self):
@@ -7907,7 +7933,7 @@ int main() {
         for not_exists in expected_not_exists:
           self.assertNotIn(not_exists, sent)
         self.assertEqual(len(sent), expected_len)
-        wasm_size = os.stat('a.out.wasm').st_size
+        wasm_size = os.path.getsize('a.out.wasm')
         ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
         print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
         self.assertLess(ratio, 0.05)
@@ -7922,9 +7948,9 @@ int main() {
 
     print('test on hello world')
     test(path_from_root('tests', 'hello_world.cpp'), [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   19, 62), # noqa
-      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   17, 34), # noqa
-      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   17, 33), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  46505,  24,   16, 59), # noqa
+      (['-O1'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12630,  16,   14, 31), # noqa
+      (['-O2'], 18, ['abort', 'tempDoublePtr'], ['waka'],                  12616,  16,   14, 31), # noqa
       (['-O3'],  7, [],                         [],  2690,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
       (['-Os'],  7, [],                         [],  2690,  10,    2, 21), # noqa
       (['-Oz'],  7, [],                         [],  2690,  10,    2, 21), # noqa
@@ -7933,7 +7959,7 @@ int main() {
                  0, [],                         [],     8,   0,    0, 0), # noqa; totally empty!
       # but we don't metadce with linkable code! other modules may want it
       (['-O3', '-s', 'MAIN_MODULE=1'],
-              1494, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+              1505, [],                         [], 226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
     ]) # noqa
 
     print('test on a minimal pure computational thing')
@@ -7946,9 +7972,9 @@ int main() {
       }
       ''')
     test('minimal.c', [
-      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 18, 31), # noqa
-      (['-O1'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 15, 15), # noqa
-      (['-O2'], 11, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 15, 15), # noqa
+      ([],      23, ['abort', 'tempDoublePtr'], ['waka'],                  22712, 24, 15, 28), # noqa
+      (['-O1'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10450,  9, 12, 12), # noqa
+      (['-O2'], 13, ['abort', 'tempDoublePtr'], ['waka'],                  10440,  9, 12, 12), # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       (['-O3'],  0, [],                         [],                           55,  0,  1, 1), # noqa
       (['-Os'],  0, [],                         [],                           55,  0,  1, 1), # noqa
@@ -7957,9 +7983,9 @@ int main() {
 
     print('test on libc++: see effects of emulated function pointers')
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2'], 53, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   44, 661), # noqa
+      (['-O2'], 36, ['abort', 'tempDoublePtr'], ['waka'],                 196709,  30,   41, 659), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                54, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   25, 622), # noqa
+                36, ['abort', 'tempDoublePtr'], ['waka'],                 196709,  30,   22, 620), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce
@@ -8341,8 +8367,12 @@ end
     self.do_other_test(os.path.join('other', 'fflush'))
 
   def test_fflush_fs(self):
-    # fflush with the full filesystem will
+    # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test(os.path.join('other', 'fflush_fs'), emcc_args=['-s', 'FORCE_FILESYSTEM=1'])
+
+  def test_fflush_fs_exit(self):
+    # on exit, we can send out a newline as no more code will run
+    self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
@@ -8741,3 +8771,49 @@ int main () {
     rval = send (0, thing, 0, 0);
     return 0;
 }''', '', force_c=True)
+
+  # This test verifies that function names embedded into the build with --js-library (JS functions imported to asm.js/wasm)
+  # are minified when -O3 is used
+  def test_js_function_names_are_minified(self):
+    def check_size(f, expected_size):
+      if not os.path.isfile(f):
+        return # Nonexistent file passes in this check
+      obtained_size = os.path.getsize(f)
+      print('size of generated ' + f + ': ' + str(obtained_size))
+      try_delete(f)
+      assert obtained_size < expected_size
+
+    run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
+    # TODO: Add support to Wasm to minify imports, and then add Wasm testing ['-s', 'WASM=1'] to this list
+    for wasm in [['-s', 'WASM=1'], ['-s', 'WASM=0']]:
+      # Currently we rely on Closure for full minification of every appearance of JS function names.
+      # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
+      for closure in [['--closure', '1']]:
+        args = [PYTHON, EMCC, '-O3', '--js-library', 'library_long.js', 'main_long.c', '-o', 'a.html'] + wasm + closure
+        print(' '.join(args))
+        run_process(args)
+
+        ret = run_process(NODE_JS + ['a.js'], stdout=PIPE).stdout
+        self.assertTextDataIdentical('Sum of numbers from 1 to 1000: 500500 (expected 500500)', ret.strip())
+
+        check_size('a.js', 150000)
+        check_size('a.wasm', 80000)
+
+  # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
+  def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
+    self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
+    for args in [[], ['-s', 'WASM=0']]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-o', 'a.html'] + args)
+      output = open('a.js', 'r').read()
+      self.assertContained('_main', output) # Smoke test that we actually compiled
+      self.assertNotContained('invoke_', output)
+
+  # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
+  def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
+    self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
+    for args in [[], ['-s', 'WASM=0']]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'invoke_i.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
+      output = open('a.js', 'r').read()
+      self.assertContained('invoke_i', output)
+      self.assertNotContained('invoke_ii', output)
+      self.assertNotContained('invoke_v', output)

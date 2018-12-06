@@ -877,6 +877,9 @@ keydown(100);keyup(100); // trigger the end
 
     self.btest('sdl_key_proxy.c', '223092870', args=['--proxy-to-worker', '--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main', '_one']''', '-lSDL', '-lGL'], manual_reference=True, post_build=post)
 
+  def test_canvas_focus(self):
+    self.btest('canvas_focus.c', '1')
+
   def test_keydown_preventdefault_proxy(self):
     def post():
       html = open('test.html').read()
@@ -1342,8 +1345,8 @@ keydown(100);keyup(100); // trigger the end
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print('emcc-normal')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
-    assert os.stat('file1.txt').st_size + os.stat(os.path.join('subdir', 'file2.txt')).st_size + os.stat('file3.txt').st_size == 3 * 1024 * 128 * 10 + 1
-    assert os.stat('test.data').st_size < (3 * 1024 * 128 * 10) / 2  # over half is gone
+    assert os.path.getsize('file1.txt') + os.path.getsize(os.path.join('subdir', 'file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
+    assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
 
@@ -1816,8 +1819,10 @@ keydown(100);keyup(100); // trigger the end
     self.btest('gl_teximage.c', '1', args=['-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @requires_threads
   def test_gl_textures(self):
-    self.btest('gl_textures.cpp', '0', args=['-lGL'])
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('gl_textures.cpp', '0', args=['-lGL'])
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -2453,7 +2458,7 @@ Module["preRun"].push(function () {
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
   def test_html5(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
@@ -2466,7 +2471,7 @@ Module["preRun"].push(function () {
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
@@ -2522,6 +2527,10 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_webgl2_packed_types(self):
     self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'USE_WEBGL2=1', '-s', 'GL_ASSERTIONS=1'], expected='0')
+
+  @requires_graphics_hardware
+  def test_webgl2_pbo(self):
+    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
@@ -3055,6 +3064,11 @@ window.close = function() {
     run_process([PYTHON, EMCC, 'test.o', '-s', 'USE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '...', '/report_result?1')
 
+  @requires_sound_hardware
+  def test_sdl2_mixer(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
+
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
@@ -3541,16 +3555,16 @@ window.close = function() {
       }
     '''))
 
-    # Test that it is possible to define "Module.locateFile" string to locate where pthread-main.js will be loaded from.
+    # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
     open(self.in_dir('shell.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html'])
-    shutil.move('pthread-main.js', os.path.join('cdn', 'pthread-main.js'))
+    shutil.move('test.worker.js', os.path.join('cdn', 'test.worker.js'))
     self.run_browser('test.html', '', '/report_result?1')
 
-    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
-    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "pthread-main.js") return "cdn/pthread-main.js"; else return filename; }, '))
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
+    open(self.in_dir('shell2.html'), 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
     run_process([PYTHON, EMCC, os.path.join(self.get_dir(), 'main.cpp'), '--shell-file', 'shell2.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test2.html'])
-    try_delete('pthread-main.js')
+    try_delete('test.worker.js')
     self.run_browser('test2.html', '', '/report_result?1')
 
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
@@ -3817,7 +3831,7 @@ window.close = function() {
     self.do_test_worker(['-s', 'WASM=1'])
 
   def test_wasm_locate_file(self):
-    # Test that it is possible to define "Module.locateFile(foo)" function to locate where pthread-main.js will be loaded from.
+    # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     self.clear()
     os.makedirs(os.path.join(self.get_dir(), 'cdn'))
     open('shell2.html', 'w').write(open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
@@ -3868,6 +3882,26 @@ window.close = function() {
   def test_webgl_workaround_webgl_uniform_upload_bug(self):
     self.btest('webgl_draw_triangle_with_uniform_color.c', '0', args=['-lGL', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'])
 
+  # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
+  # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used
+  # -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via automatic transferring of Module.canvas when EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas is also used
+  @requires_threads
+  @requires_graphics_hardware
+  def test_webgl_offscreen_canvas_in_proxied_pthread(self):
+    for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
+      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1']
+      print(str(cmd))
+      self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_webgl_resize_offscreencanvas_from_main_thread(self):
+    for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
+      for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
+        cmd = args1 + args2 + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1']
+        print(str(cmd))
+        self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
+
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
@@ -3908,7 +3942,7 @@ window.close = function() {
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), os.path.join(self.get_dir(), 'gears.png'))
-    self.btest('fetch/response_headers.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'WASM=0'])
+    self.btest('fetch/response_headers.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_asmjs=True)
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   @no_chrome('depends on moz-chunked-arraybuffer')
@@ -4028,11 +4062,23 @@ window.close = function() {
   # Tests that emscripten_run_script() variants of functions work in pthreads.
   @requires_threads
   def test_pthread_run_script(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm'], timeout=30)
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm'] + args, timeout=30)
 
+  # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_threads
-  def test_pthread_run_script_pthreads(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_script.cpp'), expected='1', args=['-O3', '--separate-asm', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], timeout=30)
+  @requires_graphics_hardware
+  def test_emscripten_animate_canvas_element_size(self):
+    for args in [
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
+      ['-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_EXPLICIT_CONTEXT_SWAP=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1'],
+      ['-DTEST_EXPLICIT_CONTEXT_SWAP=1',    '-s', 'PROXY_TO_PTHREAD=1', '-s', 'USE_PTHREADS=1', '-s',   'OFFSCREEN_FRAMEBUFFER=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'],
+    ]:
+      cmd = ['-lGL', '-O3', '-g2', '--shell-file', path_from_root('tests', 'canvas_animate_resize_shell.html'), '--separate-asm', '-s', 'GL_DEBUG=1', '--threadprofiler'] + args
+      print(' '.join(cmd))
+      self.btest('canvas_animate_resize.cpp', expected='1', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @requires_threads

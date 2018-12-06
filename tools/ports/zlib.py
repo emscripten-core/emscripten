@@ -8,15 +8,6 @@ from subprocess import Popen
 
 TAG = 'version_1'
 
-def get_with_configure(ports, settings, shared):
-  if settings.USE_ZLIB == 1:
-    ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
-    return [ports.build_project('zlib', 'zlib-' + TAG,
-                                ['sh', './configure'],
-                                ['libz.a'])]
-  else:
-    return []
-
 def get(ports, settings, shared):
   if settings.USE_ZLIB == 1:
     ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
