@@ -820,8 +820,8 @@ base align: 0, 0, 0, 0'''])
   def test_assert(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_assert')
 
-  def test_libcextra(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
+  def test_wcslen(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_wcslen')
 
   def test_regex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_regex')
@@ -4174,12 +4174,10 @@ ok
     run_process([PYTHON, path_from_root('embuilder.py'), 'build', 'zlib'])
 
     zlib = shared.Cache.get_path(os.path.join('ports-builds', 'zlib', 'libz.a'))
-    side = [zlib]
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libcextra'}):
-      self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
-                       side=side,
-                       expected=open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
-                       force_c=True)
+    self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c'), 'r').read(),
+                     side=[zlib],
+                     expected=open(path_from_root('tests', 'zlib', 'ref.txt'), 'r').read(),
+                     force_c=True)
 
   # @needs_dlfcn
   # def test_dylink_bullet(self):
