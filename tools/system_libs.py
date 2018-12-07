@@ -575,7 +575,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ext = 'bc'
 
   libc_name = 'libc'
-  libc_deps = ['libcompiler-rt']
+  libc_deps = ['libcompiler_rt']
   if shared.Settings.WASM:
     libc_deps += ['libc-wasm']
   if shared.Settings.USE_PTHREADS:
@@ -584,7 +584,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     always_include.add('libpthreads_asmjs')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
-    always_include.add('libcompiler-rt')
+    always_include.add('libcompiler_rt')
 
   Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
 
@@ -592,7 +592,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
                  Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
                  Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
-                 Library('libcompiler-rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
+                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
