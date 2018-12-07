@@ -1,7 +1,6 @@
 {
-  "name": "emscripten",
-  "version": "1.13.0",
-  "dependencies": {
+  "private": true,
+  "devDependencies": {
     "ws": "~0.4.28"
   }
 }
