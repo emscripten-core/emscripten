@@ -1695,6 +1695,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = options.opt_level
           else:
             lto_level = 0
+          if DEBUG:
+            for i, linker_input in enumerate(linker_inputs):
+              name = 'linker_input_%d_%s' % (i, os.path.basename(linker_input))
+              shutil.copyfile(linker_input, os.path.join(shared.get_emscripten_temp_dir(), name))
           final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, options.llvm_opts, lto_level)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
