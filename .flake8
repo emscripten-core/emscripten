@@ -6,6 +6,7 @@ filename =
   */emcc.py
   */emscons.py
   */emscripten.py
+  */embuilder.py
   */tools/shared.py
   */tools/response_file.py
   */tools/python_selector.py
