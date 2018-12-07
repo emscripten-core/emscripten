@@ -820,8 +820,8 @@ base align: 0, 0, 0, 0'''])
   def test_assert(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_assert')
 
-  def test_libcextra(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_libcextra')
+  def test_wcslen(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_wcslen')
 
   def test_regex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_regex')
