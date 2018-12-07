@@ -2459,7 +2459,11 @@ var LibraryJSEvents = {
     var varargs = stackAlloc(12);
 
     // TODO: This could be optimized a bit (basically a dumb encoding agnostic strdup)
-    var targetStr = targetCanvas ? Pointer_stringify(targetCanvas) : 0;
+    var targetStr = targetCanvas
+                      ? typeof targetCanvas === 'string'
+                        ? targetCanvas
+                        : Pointer_stringify(targetCanvas)
+                      : 0;
     var targetStrHeap = targetStr ? _malloc(targetStr.length+1) : 0;
     if (targetStrHeap) stringToUTF8(targetStr, targetStrHeap, targetStr.length+1);
 
