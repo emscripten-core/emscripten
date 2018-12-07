@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import re
-import sys
 import tarfile
 import zipfile
 from collections import namedtuple
@@ -399,8 +398,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # only dlmalloc supports most modes
     def require_dlmalloc(what):
       if base != 'dlmalloc':
-        logging.error('only dlmalloc is possible when using %s' % what)
-        sys.exit(1)
+        shared.exit_with_error('only dlmalloc is possible when using %s' % what)
 
     extra = ''
     if shared.Settings.USE_PTHREADS:
@@ -415,7 +413,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       source = 'dlmalloc.c'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
-    return (source, base + extra)
+    return (source, 'lib' + base + extra)
 
   def malloc_source():
     return malloc_decision()[0]
@@ -577,38 +575,38 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     ext = 'bc'
 
   libc_name = 'libc'
-  libc_deps = ['compiler-rt']
+  libc_deps = ['libcompiler-rt']
   if shared.Settings.WASM:
-    libc_deps += ['wasm-libc']
+    libc_deps += ['libc-wasm']
   if shared.Settings.USE_PTHREADS:
     libc_name = 'libc-mt'
-    always_include.add('pthreads')
-    always_include.add('pthreads_asmjs')
+    always_include.add('libpthreads')
+    always_include.add('libpthreads_asmjs')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
-    always_include.add('compiler-rt')
+    always_include.add('libcompiler-rt')
 
   Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
 
   system_libs = [Library('libcxx',        'a', create_libcxx,      libcxx_symbols,      ['libcxxabi'], True), # noqa
                  Library('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
-                 Library('al',            ext, create_al,          al_symbols,          [libc_name],   False), # noqa
-                 Library('html5',         ext, create_html5,       html5_symbols,       [],            False), # noqa
-                 Library('compiler-rt',   'a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
+                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
+                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
+                 Library('libcompiler-rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [Library('pthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('pthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
-                    Library('gl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
+                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
+                    Library('libgl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
-    system_libs += [Library('gl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    system_libs += [Library('libgl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.WASM:
-    system_libs.append(Library('wasm-libc', ext, create_wasm_libc, wasm_libc_symbols, [], False))
+    system_libs.append(Library('libc-wasm', ext, create_wasm_libc, wasm_libc_symbols, [], False))
 
   # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
   system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False))
@@ -616,12 +614,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libs_to_link = []
   already_included = set()
 
+  system_libs_map = {l.shortname: l for l in system_libs}
+
+  for lib in always_include:
+    assert lib in system_libs_map
+
+  for lib in force_include:
+    if lib not in system_libs_map:
+      shared.exit_with_error('invalid forced library: %s', lib)
+
   def maybe_noexcept(name):
     if shared.Settings.DISABLE_EXCEPTION_CATCHING:
       name += '_noexcept'
     return name
-
-  system_libs_map = {l.shortname: l for l in system_libs}
 
   def add_library(lib):
     if lib.shortname in already_included:
@@ -648,6 +653,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Go over libraries to figure out which we must include
   for lib in system_libs:
+    assert lib.shortname.startswith('lib')
     if lib.shortname in already_included:
       continue
     force_this = lib.shortname in force_include
@@ -679,8 +685,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(lib)
 
   if shared.Settings.WASM_BACKEND:
-    libs_to_link.append((shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a'), False))
-    libs_to_link.append((shared.Cache.get('wasm_libc_rt.a', lambda: create_wasm_libc_rt('wasm_libc_rt.a'), extension='a'), False))
+    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a'), extension='a'), False))
+    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a'), extension='a'), False))
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
