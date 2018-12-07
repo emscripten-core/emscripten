@@ -462,7 +462,7 @@ fi
     with env_modify({'EMCC_DEBUG': '1'}):
       # Building a file that *does* need something *should* trigger cache
       # generation, but only the first time
-      for filename, libname in [('hello_libcxx.cpp', 'libcxx')]:
+      for filename, libname in [('hello_libcxx.cpp', 'libc++')]:
         for i in range(3):
           print(filename, libname, i)
           self.clear()
@@ -470,13 +470,13 @@ fi
           # print '\n\n\n', output
           assert INCLUDING_MESSAGE.replace('X', libname) in output
           if libname == 'libc':
-            assert INCLUDING_MESSAGE.replace('X', 'libcxx') not in output # we don't need libcxx in this code
+            assert INCLUDING_MESSAGE.replace('X', 'libc++') not in output # we don't need libc++ in this code
           else:
-            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libcxx always forces inclusion of libc
+            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
           assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
           self.assertContained('hello, world!', run_js('a.out.js'))
           assert os.path.exists(EMCC_CACHE)
-          full_libname = libname + '.bc' if libname != 'libcxx' else libname + '.a'
+          full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
           assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
 
     try_delete(CANONICAL_TEMP_DIR)
@@ -726,9 +726,9 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['libpthreads.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libcxx'], ['success'], True, ['libcxx.a']),
-      ([PYTHON, EMBUILDER, 'build', 'libcxx_noexcept'], ['success'], True, ['libcxx_noexcept.a']),
-      ([PYTHON, EMBUILDER, 'build', 'libcxxabi'], ['success'], True, ['libcxxabi.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'libc++'], ['success'], True, ['libc++.a']),
+      ([PYTHON, EMBUILDER, 'build', 'libc++_noexcept'], ['success'], True, ['libc++_noexcept.a']),
+      ([PYTHON, EMBUILDER, 'build', 'libc++abi'], ['success'], True, ['libc++abi.bc']),
       ([PYTHON, EMBUILDER, 'build', 'gl'], ['success'], True, ['libgl.bc']),
       ([PYTHON, EMBUILDER, 'build', 'native_optimizer'], ['success'], True, ['optimizer.2.exe']),
       ([PYTHON, EMBUILDER, 'build', 'zlib'], ['building and verifying zlib', 'success'], True, ['zlib.bc']),
