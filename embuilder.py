@@ -165,7 +165,7 @@ def main():
           c = a / b;
           return 0;
         }
-      ''', ['libcompiler-rt.a'])
+      ''', ['libcompiler_rt.a'])
     elif what == 'libc':
       build(C_WITH_MALLOC, ['libc.bc'])
     elif what == 'libc-extras':
