@@ -19,7 +19,7 @@ from runner import BrowserCore, no_windows, chdir, flaky
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
 
-node_ws_module_installed = False
+npm_checked = False
 
 NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
 
@@ -102,15 +102,11 @@ class CompiledServerHarness(object):
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
-    child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    global node_ws_module_installed
-    # Attempt to automatically install ws module for Node.js.
-    if child.returncode != 0 and not node_ws_module_installed:
-      node_ws_module_installed = True
-      run_process([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC))
-      # Did installation succeed?
+    global npm_checked
+    if not npm_checked:
       child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    assert child.returncode == 0, 'ws module for Node.js not installed, and automatic installation failed! Please run \'npm install\' from %s' % shared.__rootpath__
+      assert child.returncode == 0, '"ws" node module not found.  you may need to run npm install'
+      npm_checked = True
 
     # compile the server
     proc = run_process([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
