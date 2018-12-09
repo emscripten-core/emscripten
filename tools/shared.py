@@ -27,13 +27,16 @@ from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
 
-colored_logger.enable()
-
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
+DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
+# can add  %(asctime)s  to see timestamps
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
+                    level=logging.DEBUG if DEBUG else logging.INFO)
+colored_logger.enable()
 logger = logging.getLogger('shared')
 
 
@@ -173,6 +176,8 @@ def check_call(cmd, *args, **kw):
     return proc
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
+  except OSError as e:
+    exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
 
 
 def generate_config(path, first_time=False):
@@ -387,13 +392,13 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
-    response = run_process([CLANG, '--version'], stdout=PIPE).stdout
-    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', response)
+    proc = check_call([CLANG, '--version'], stdout=PIPE)
+    m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
     actual_clang_version = m and m.group(1)
   return actual_clang_version
 
 
-def check_clang_version():
+def check_llvm_version():
   expected = expected_llvm_version()
   actual = get_clang_version()
   if expected in actual:
@@ -402,20 +407,15 @@ def check_clang_version():
   return False
 
 
-def check_llvm_version():
-  try:
-    check_clang_version()
-  except Exception as e:
-    logger.critical('Could not verify LLVM version: %s' % str(e))
-
-
 def get_llc_targets():
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
-    pre, targets = llc_version_info.split('Registered Targets:')
-    return targets
   except Exception as e:
     return '(no targets could be identified: ' + str(e) + ')'
+  if 'Registered Targets:' not in llc_version_info:
+    return '(no targets could be identified: ' + llc_version_info + ')'
+  pre, targets = llc_version_info.split('Registered Targets:')
+  return targets
 
 
 def has_asm_js_target(targets):
@@ -523,8 +523,9 @@ def check_sanity(force=False):
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes"""
-  ToolchainProfiler.enter_block('sanity')
-  try:
+  with ToolchainProfiler.profile_block('sanity'):
+    check_llvm_version()
+    expected = generate_sanity()
     if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
       return
     reason = None
@@ -542,8 +543,8 @@ def check_sanity(force=False):
             reason = 'settings file has changed'
           else:
             sanity_data = open(sanity_file).read().rstrip('\n\r') # workaround weird bug with read() that appends new line char in some old python version
-            if sanity_data != generate_sanity():
-              reason = 'system change: %s vs %s' % (generate_sanity(), sanity_data)
+            if sanity_data != expected:
+              reason = 'system change: %s vs %s' % (expected, sanity_data)
             else:
               if not force:
                 return # all is well
@@ -555,7 +556,6 @@ def check_sanity(force=False):
       force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_llvm_version()
     check_node_version()
 
     llvm_ok = check_llvm()
@@ -591,15 +591,8 @@ def check_sanity(force=False):
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
-      f = open(sanity_file, 'w')
-      f.write(generate_sanity())
-      f.close()
-
-  except Exception as e:
-    # Any error here is not worth failing on
-    print('WARNING: sanity check failed to run', e)
-  finally:
-    ToolchainProfiler.exit_block('sanity')
+      with open(sanity_file, 'w') as f:
+        f.write(expected)
 
 
 # Tools/paths
@@ -781,7 +774,8 @@ EMAR = path_from_root('emar.py')
 EMRANLIB = path_from_root('emranlib')
 EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
-EMMAKEN = path_from_root('tools', 'emmaken.py')
+EMCONFIGURE = path_from_root('emconfigure.py')
+EMMAKE = path_from_root('emmake.py')
 AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
@@ -870,7 +864,6 @@ class WarningManager(object):
 
 class Configuration(object):
   def __init__(self, environ=os.environ):
-    self.DEBUG = int(environ.get('EMCC_DEBUG', '0'))
     self.EMSCRIPTEN_TEMP_DIR = None
 
     if "EMCC_TEMP_DIR" in environ:
@@ -888,7 +881,7 @@ class Configuration(object):
 
     self.CANONICAL_TEMP_DIR = get_canonical_temp_dir(self.TEMP_DIR)
 
-    if self.DEBUG:
+    if DEBUG:
       try:
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
@@ -897,27 +890,19 @@ class Configuration(object):
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not self.DEBUG else get_emscripten_temp_dir(),
+      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 
 def apply_configuration():
-  global configuration, DEBUG, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
+  global configuration, EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   configuration = Configuration()
-  DEBUG = configuration.DEBUG
   EMSCRIPTEN_TEMP_DIR = configuration.EMSCRIPTEN_TEMP_DIR
   CANONICAL_TEMP_DIR = configuration.CANONICAL_TEMP_DIR
   TEMP_DIR = configuration.TEMP_DIR
 
 
-def set_logging():
-  level = logging.DEBUG if DEBUG else logging.INFO
-  # can add  %(asctime)s  to see timestamps
-  logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=level)
-
-
 apply_configuration()
-set_logging()
 
 # EM_CONFIG stuff
 if JS_ENGINES is None:
@@ -1383,6 +1368,22 @@ class Building(object):
   COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
+
+  # internal caches
+  internal_nm_cache = {} # cache results of nm - it can be slow to run
+  uninternal_nm_cache = {}
+  ar_contents = {} # Stores the object files contained in different archive files passed as input
+  _is_ar_cache = {}
+
+  # clear internal caches. this is not normally needed, except if the clang/LLVM
+  # used changes inside this invocation of Building, which can happen in the benchmarker
+  # when it compares different builds.
+  @staticmethod
+  def clear():
+    Building.internal_nm_cache = {}
+    Building.uninternal_nm_cache = {}
+    Building.ar_contents = {}
+    Building._is_ar_cache = {}
 
   @staticmethod
   def get_num_cores():
@@ -2160,10 +2161,6 @@ class Building(object):
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
 
-  internal_nm_cache = {} # cache results of nm - it can be slow to run
-  uninternal_nm_cache = {}
-  ar_contents = {} # Stores the object files contained in different archive files passed as input
-
   @staticmethod
   def llvm_nm_uncached(filename, stdout=PIPE, stderr=PIPE, include_internal=False):
     # LLVM binary ==> list of symbols
@@ -2228,6 +2225,16 @@ class Building(object):
   @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
+
+  @staticmethod
+  def need_asm_js_file():
+    # Explicitly separate asm.js requires it
+    if Settings.SEPARATE_ASM:
+      return True
+    # A binaryen method may require it.
+    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
+      return True
+    return False
 
   @staticmethod
   def is_wasm_only():
@@ -2548,7 +2555,6 @@ class Building(object):
 
   # the exports the user requested
   user_requested_exports = []
-  _is_ar_cache = {}
 
   @staticmethod
   def is_ar(filename):

@@ -55,6 +55,8 @@ def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "clang version %s"\n' % version)
@@ -68,6 +70,8 @@ def make_fake_llc(filename, targets):
   """Create a fake llc that only handles --version and writes target
   list to stdout.
   """
+  if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
@@ -211,7 +215,7 @@ class sanity(RunnerCore):
         if 'LLVM_ROOT' not in settings:
           self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
         elif 'runner.py' not in ' '.join(command):
-          self.assertContained('CRITICAL', output) # sanity check should fail
+          self.assertContained('ERROR', output) # sanity check should fail
 
   def test_closure_compiler(self):
     CLOSURE_FATAL = 'fatal: closure compiler'
@@ -247,7 +251,7 @@ class sanity(RunnerCore):
     restore_and_set_up()
 
     # Clang should report the version number we expect, and emcc should not warn
-    assert shared.check_clang_version()
+    assert shared.check_llvm_version()
     output = self.check_working(EMCC)
     assert LLVM_WARNING not in output, output
 
@@ -255,9 +259,6 @@ class sanity(RunnerCore):
     restore_and_set_up()
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
-
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for x in range(-2, 3):
@@ -304,21 +305,18 @@ class sanity(RunnerCore):
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
     # print '1', open(CONFIG_FILE).read()
 
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
-
+    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'no j-s backend for you!')
     self.check_working(EMCC, WARNING)
     self.check_working(EMCC, WARNING2)
 
     # fake some more
-    for fake in ['llvm-link', 'clang', 'clang++', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
+    for fake in ['llvm-link', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
       open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
     try_delete(SANITY_FILE)
     self.check_working(EMCC, WARNING)
     # make sure sanity checks notice there is no source dir with version #
     make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'there IZ a js backend: JavaScript (asm.js, emscripten) backend')
-    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     try_delete(SANITY_FILE)
     self.check_working(EMCC, 'clang version does not appear to include fastcomp')
 
@@ -349,9 +347,6 @@ class sanity(RunnerCore):
     f = open(CONFIG_FILE, 'a')
     f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
     f.close()
-
-    if not os.path.exists(path_from_root('tests', 'fake')):
-      os.makedirs(path_from_root('tests', 'fake'))
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
@@ -502,7 +497,8 @@ fi
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     ensure_cache()
-    with env_modify({'LLVM': 'waka'}):
+    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
+    with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(EMCC_CACHE))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
@@ -748,6 +744,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'icu'], ['building and verifying icu', 'success'], True, ['icu.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, ['sdl2-ttf.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'sdl2-mixer'], ['building and verifying sdl2-mixer', 'success'], True, ['sdl2-mixer.bc']),
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
       ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
       ([PYTHON, EMBUILDER, 'build', 'wasm-libc'], ['building and verifying wasm-libc', 'success'], True, ['wasm-libc.bc']),
@@ -896,9 +893,6 @@ fi
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'asmjs-unknown-emscripten')
 
     # fake llc output
-
-    try_delete(path_from_root('tests', 'fake'))
-    os.makedirs(path_from_root('tests', 'fake', 'bin'))
 
     def test_with_fake(report, expected):
       make_fake(report)

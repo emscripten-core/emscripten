@@ -3,8 +3,6 @@
 
 {{GLOBAL_VARS}}
 
-__ATPRERUN__.push(runPostSets);
-
 if (runtimeInitialized) {
   // dlopen case: we are being loaded after the system is fully initialized, so just run our prerun and atinit stuff now
   callRuntimeCallbacks(__ATPRERUN__);

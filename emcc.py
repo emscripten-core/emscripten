@@ -1088,7 +1088,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'getMemory',
         ]
       if shared.Settings.USE_PTHREADS:
-        # These runtime methods are called from pthread-main.js
+        # These runtime methods are called from worker.js
         shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
       if shared.Settings.MODULARIZE_INSTANCE:
@@ -1200,7 +1200,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ALLOW_MEMORY_GROWTH:
           exit_with_error('Memory growth is not yet supported with pthreads')
         if shared.Settings.MODULARIZE:
-          # currently pthread-main.js uses the global namespace, so it's setting of
+          # currently worker.js uses the global namespace, so it's setting of
           # ENVIRONMENT_IS_PTHREAD is not picked up, in addition to all the other
           # modifications it performs.
           exit_with_error('MODULARIZE is not yet supported with pthreads')
@@ -1209,6 +1209,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
         newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
         shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
+        # set location of worker.js
+        shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
       else:
         options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
@@ -1257,8 +1259,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
       if shared.Settings.WASM:
-        # When only targeting wasm, the .asm.js file is not executable, so is treated as an intermediate build file that can be cleaned up.
-        if shared.Building.is_wasm_only():
+        if not shared.Building.need_asm_js_file():
           asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
           misc_temp_files.note(asm_target)
 
@@ -1929,8 +1930,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
-        shutil.copyfile(shared.path_from_root('src', 'pthread-main.js'),
-                        os.path.join(target_dir, 'pthread-main.js'))
+        shutil.copyfile(shared.path_from_root('src', 'worker.js'),
+                        os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:

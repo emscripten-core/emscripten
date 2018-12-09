@@ -395,7 +395,7 @@ var FULL_ES2 = 0;
 var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
 
 // Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
-// the offset of a typed array view pointing to an ArrayBuffer. Set this to 
+// the offset of a typed array view pointing to an ArrayBuffer. Set this to
 // 1 to enable a polyfill that works around the issue when it appears. This
 // bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
@@ -1070,6 +1070,10 @@ var USE_OGG = 0;
 // 1 = use freetype from emscripten-ports
 var USE_FREETYPE = 0;
 
+// Specify the SDL_mixer version that is being linked against.
+// Doesn't *have* to match USE_SDL, but a good idea.
+var USE_SDL_MIXER = 1;
+
 // 1 = use harfbuzz from harfbuzz upstream
 var USE_HARFBUZZ = 0;
 
@@ -1254,6 +1258,9 @@ var WASM_BINARY_FILE = '';
 
 // For internal use only (name of the file containing asm.js, if relevant).
 var ASMJS_CODE_FILE = '';
+
+// For internal use only (name of the file containing the pthread *.worker.js, if relevant).
+var PTHREAD_WORKER_FILE = '';
 
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';

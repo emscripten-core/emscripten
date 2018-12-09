@@ -908,7 +908,7 @@ var STACK_BASE, STACKTOP, STACK_MAX; // stack area
 var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
   STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
   staticSealed = false;
@@ -962,6 +962,7 @@ function abortOnCannotGrowMemory() {
 }
 #endif
 
+#if WASM == 0
 #if ALLOW_MEMORY_GROWTH
 if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   var ret;
@@ -977,7 +978,8 @@ if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
   if (!success) return false;
   return ret;
 };
-#endif
+#endif // ALLOW_MEMORY_GROWTH
+#endif // WASM == 0
 
 function enlargeMemory() {
 #if USE_PTHREADS
@@ -1619,11 +1621,6 @@ addOnPreRun(function() { addRunDependency('pgo') });
 }}}
 
 addOnPreRun(function() {
-  function runPostSets() {
-    if (Module['asm']['runPostSets']) {
-      Module['asm']['runPostSets']();
-    }
-  }
   function loadDynamicLibraries(libs) {
     if (libs) {
       libs.forEach(function(lib) {
@@ -1631,7 +1628,6 @@ addOnPreRun(function() {
         loadDynamicLibrary(lib, {global: true, nodelete: true});
       });
     }
-    runPostSets();
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
 #if WASM
@@ -1642,7 +1638,6 @@ addOnPreRun(function() {
       return loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true});
     })).then(function() {
       // we got them all, wonderful
-      runPostSets();
       removeRunDependency('preload_dynamicLibraries');
     });
     return;
