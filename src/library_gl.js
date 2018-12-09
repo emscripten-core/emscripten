@@ -7094,10 +7094,11 @@ var LibraryGL = {
 #endif
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 0;
 #if ASSERTIONS
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 2, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
   },
 
   glVertex3f: function(x, y, z) {
