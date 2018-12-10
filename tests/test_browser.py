@@ -3299,6 +3299,61 @@ window.close = function() {
     # same wasm side module works
     self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
 
+  # verify that dynamic linking works in all kinds of in-browser environments.
+  # don't mix different kinds in a single test.
+  def test_dylink_dso_needed_wasm(self):
+    self._test_dylink_dso_needed(1, 0)
+
+  def test_dylink_dso_needed_wasm_inworker(self):
+    self._test_dylink_dso_needed(1, 1)
+
+  def test_dylink_dso_needed_asmjs(self):
+    self._test_dylink_dso_needed(0, 0)
+
+  def test_dylink_dso_needed_asmjs_inworker(self):
+    self._test_dylink_dso_needed(0, 1)
+
+  @requires_sync_compilation
+  def _test_dylink_dso_needed(self, wasm, inworker):
+    # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
+    print('\n# wasm=%d inworker=%d' % (wasm, inworker))
+    self.set_setting('WASM', wasm)
+    self.emcc_args += ['-O2']
+
+    def do_run(src, expected_output):
+      # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
+      # -> do the assert about expected output inside browser.
+      #
+      # we have to put the hook into post.js because in main it is too late
+      # (in main we won't be able to catch what static constructors inside
+      # linked dynlibs printed), and in pre.js it is too early (out is not yet
+      # setup by the shell).
+      with open('post.js', 'w') as f:
+        f.write(r'''
+          Module.realPrint = out;
+          out = function(x) {
+            if (!Module.printed) Module.printed = "";
+            Module.printed += x + '\n'; // out is passed str without last \n
+            Module.realPrint(x);
+          };
+        ''')
+      src += r'''
+        int main() {
+          _main();
+          EM_ASM({
+            var expected = %r;
+            assert(Module.printed === expected, ['stdout expected:', expected]);
+          });
+          REPORT_RESULT(0);
+        }
+      ''' % (expected_output,)
+      # --proxy-to-worker only on main
+      if inworker:
+        self.emcc_args += ['--proxy-to-worker']
+      self.btest(src, '0', args=self.get_emcc_args() + ['--post-js', 'post.js'])
+
+    super(browser, self)._test_dylink_dso_needed(do_run)
+
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):

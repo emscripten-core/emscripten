@@ -2608,7 +2608,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE:
-    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
+    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
     # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
     shutil.move(wso, wasm_binary_target)
     if not shared.Settings.WASM_BACKEND and not DEBUG:

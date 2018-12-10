@@ -2934,7 +2934,7 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
-  def make_shared_library(js_file, wasm_file):
+  def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
@@ -2957,6 +2957,34 @@ class WebAssembly(object):
     name = b"\06dylink" # section name, including prefixed size
     contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
                 WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
+
+    # we extend "dylink" section with information about which shared libraries
+    # our shared library needs. This is similar to DT_NEEDED entries in ELF.
+    #
+    # In theory we could avoid doing this, since every import in wasm has
+    # "module" and "name" attributes, but currently emscripten almost always
+    # uses just "env" for "module". This way we have to embed information about
+    # required libraries for the dynamic linker somewhere, and "dylink" section
+    # seems to be the most relevant place.
+    #
+    # Binary format of the extension:
+    #
+    #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
+    #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
+    #
+    # dynlib_entry:
+    #
+    #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
+    #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
+    #
+    # a proposal has been filed to include the extension into "dylink" specification:
+    # https://github.com/WebAssembly/tool-conventions/pull/77
+    contents += WebAssembly.lebify(len(needed_dynlibs))
+    for dyn_needed in needed_dynlibs:
+      dyn_needed = asbytes(dyn_needed)
+      contents += WebAssembly.lebify(len(dyn_needed))
+      contents += dyn_needed
+
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)
