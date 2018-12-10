@@ -121,10 +121,10 @@ def needs_dlfcn(func):
 
 
 def is_slow_test(func):
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     if EMTEST_SKIP_SLOW:
       return self.skipTest('skipping slow tests')
-    return func(self)
+    return func(self, *args, **kwargs)
 
   return decorated
 
