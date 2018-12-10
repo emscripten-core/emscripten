@@ -352,10 +352,7 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            # FIXME not all stuff builds in wb:
-            #   - al: see https://bugs.llvm.org/show_bug.cgi?id=39591
-            #   - cocos2d: source code error, cannot detect platform
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc libc-mt libc-extras struct_info emmalloc dlmalloc dlmalloc_threadsafe pthreads libcxx libcxx_noexcept libcxxabi gl bullet freetype libpng ogg sdl2 sdl2-image sdl2-ttf sdl2-net vorbis zlib libc-wasm compiler_rt_wasm emmalloc_debug dlmalloc_debug dlmalloc_threadsafe_debug
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
