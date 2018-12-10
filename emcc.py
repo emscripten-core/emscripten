@@ -1284,8 +1284,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
         if 'BINARYEN_PASSES' not in settings_key_changes:
+          passes = []
           if options.opt_level > 0 or options.shrink_level > 0:
-            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
+            passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          if options.debug_level < 3:
+            passes += ['--strip']
+          if passes:
+            shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -2572,10 +2577,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
-    shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
+    if DEBUG:
+      shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
     passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
     if debug_info:
       cmd += ['-g'] # preserve the debug info
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
