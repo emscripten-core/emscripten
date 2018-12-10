@@ -1284,13 +1284,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
         if 'BINARYEN_PASSES' not in settings_key_changes:
-          parts = []
+          passes = []
           if options.opt_level > 0 or options.shrink_level > 0:
-            parts += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+            passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if options.debug_level < 3:
-            parts += ['--strip']
-          if parts:
-            shared.Settings.BINARYEN_PASSES = ','.join(parts)
+            passes += ['--strip']
+          if passes:
+            shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
