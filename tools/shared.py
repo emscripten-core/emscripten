@@ -513,6 +513,30 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
 
+def perform_sanify_checks():
+  logger.info('(Emscripten: Running sanity checks)')
+
+  with ToolchainProfiler.profile_block('sanity compiler_engine'):
+    if not jsrun.check_engine(COMPILER_ENGINE):
+      exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
+
+  with ToolchainProfiler.profile_block('sanity LLVM'):
+    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+      if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
+        exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
+
+  if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
+    try:
+      run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
+    except (OSError, subprocess.CalledProcessError):
+      exit_with_error('Cannot find %s, check the paths in config file (%s)', PYTHON, CONFIG_FILE)
+
+  # Sanity check passed!
+  with ToolchainProfiler.profile_block('sanity closure compiler'):
+    if not check_closure_compiler():
+      logger.warning('closure compiler will not be available')
+
+
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -520,7 +544,8 @@ def check_sanity(force=False):
   The test runner always does this check (through |force|). emcc does this less
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
-  re-check sanity and clear the cache when the version changes"""
+  re-check sanity and clear the cache when the version changes.
+  """
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
@@ -529,29 +554,28 @@ def check_sanity(force=False):
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
-    else:
-      settings_mtime = os.path.getmtime(CONFIG_FILE)
-      sanity_file = CONFIG_FILE + '_sanity'
-      if Settings.WASM_BACKEND:
-        sanity_file += '_wasm'
-      if os.path.exists(sanity_file):
-        try:
-          sanity_mtime = os.path.getmtime(sanity_file)
-          if sanity_mtime <= settings_mtime:
-            reason = 'settings file has changed'
-          else:
-            sanity_data = open(sanity_file).read().rstrip('\n\r') # workaround weird bug with read() that appends new line char in some old python version
-            if sanity_data != expected:
-              reason = 'system change: %s vs %s' % (expected, sanity_data)
-            else:
-              if not force:
-                return # all is well
-        except Exception as e:
-          reason = 'unknown: ' + str(e)
+
+    settings_mtime = os.path.getmtime(CONFIG_FILE)
+    sanity_file = CONFIG_FILE + '_sanity'
+    if Settings.WASM_BACKEND:
+      sanity_file += '_wasm'
+    if os.path.exists(sanity_file):
+      sanity_mtime = os.path.getmtime(sanity_file)
+      if sanity_mtime <= settings_mtime:
+        reason = 'settings file has changed'
+      else:
+        sanity_data = open(sanity_file).read().rstrip()
+        if sanity_data != expected:
+          reason = 'system change: %s vs %s' % (expected, sanity_data)
+        elif not force:
+          return # all is well
+
     if reason:
       logger.warning('(Emscripten: %s, clearing cache)' % reason)
       Cache.erase()
-      force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
+      # the check actually failed, so definitely write out the sanity file, to
+      # avoid others later seeing failures too
+      force = False
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_node_version()
@@ -562,30 +586,10 @@ def check_sanity(force=False):
       logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
       return
 
-    logger.info('(Emscripten: Running sanity checks)')
-
-    with ToolchainProfiler.profile_block('sanity compiler_engine'):
-      if not jsrun.check_engine(COMPILER_ENGINE):
-        exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
-
-    with ToolchainProfiler.profile_block('sanity LLVM'):
-      for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
-        if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-          exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-    if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
-      try:
-        run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
-      except:
-        exit_with_error('Cannot find %s, check the paths in %s', PYTHON, EM_CONFIG)
-
     if not llvm_ok:
       exit_with_error('failing sanity checks due to previous llvm failure')
 
-    # Sanity check passed!
-    with ToolchainProfiler.profile_block('sanity closure compiler'):
-      if not check_closure_compiler():
-        logger.warning('closure compiler will not be available')
+    perform_sanify_checks()
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
