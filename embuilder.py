@@ -103,11 +103,21 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
-SYSTEM_TASKS = ['al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
-USER_TASKS = ['binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+SYSTEM_TASKS = [
+    'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
+    'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
+    'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept',
+    'libcxxabi', 'html5'
+]
+USER_TASKS = [
+    'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
+    'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
+    'vorbis', 'zlib'
+]
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
+
 
 def build(src, result_libs, args=[]):
   # build in order to generate the libraries
@@ -119,21 +129,22 @@ def build(src, result_libs, args=[]):
   shared.Building.emcc(cpp, args, output_filename=temp_js)
 
   # verify
-  assert os.path.exists(temp_js), 'failed to build file'
-  if result_libs:
-    for lib in result_libs:
-      assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
+  if not os.path.exists(temp_js):
+    shared.exit_with_error('failed to build file')
+
+  for lib in result_libs:
+    if not os.path.exists(shared.Cache.get_path(lib)):
+      shared.exit_with_error('not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib)))
 
 
 def build_port(port_name, lib_name, params):
-  build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
+  build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else [], params)
 
 
 def main():
   operation = sys.argv[1]
   if operation != 'build':
-    logger.error('unfamiliar operation: ' + operation)
-    return 1
+    shared.exit_with_error('unfamiliar operation: ' + operation)
 
   auto_tasks = False
   tasks = sys.argv[2:]
