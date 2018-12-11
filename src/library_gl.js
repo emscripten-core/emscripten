@@ -7098,10 +7098,11 @@ var LibraryGL = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
   },
 
   glVertex3f: function(x, y, z) {
@@ -7111,10 +7112,11 @@ var LibraryGL = {
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
   },
 
   glVertex4f: function(x, y, z, w) {
