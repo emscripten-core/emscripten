@@ -4686,7 +4686,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx,dlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -7566,21 +7566,21 @@ int main() {
   @uses_canonical_tmp
   def test_binaryen_opts(self):
     with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect_js_opts, expect_only_wasm in [
-          ([], False, True),
-          (['-O0'], False, True),
-          (['-O1'], False, True),
-          (['-O2'], False, True),
-          (['-O2', '--js-opts', '1'], True, False), # user asked
-          (['-O2', '-s', 'EMTERPRETIFY=1'], True, False), # option forced
-          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', 'EVAL_CTORS=1'], False, True), # ctor evaller turned off since only-wasm
-          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, False), # option forced
-          (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, False), # asmjs in methods means we need good asm.js
-          (['-O3'], False, True),
-          (['-Os'], False, True),
-          (['-Oz'], False, True), # ctor evaller turned off since only-wasm
+      for args, expect_js_opts, expect_wasm_opts, expect_only_wasm in [
+          ([], False, False, True),
+          (['-O0'], False, False, True),
+          (['-O1'], False, True, True),
+          (['-O2'], False, True, True),
+          (['-O2', '--js-opts', '1'], True, True, False), # user asked
+          (['-O2', '-s', 'EMTERPRETIFY=1'], True, True, False), # option forced
+          (['-O2', '-s', 'EMTERPRETIFY=1', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, True, False), # option forced
+          (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
+          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, True, False), # asmjs in methods means we need good asm.js
+          (['-O3'], False, True, True),
+          (['-Os'], False, True, True),
+          (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
         ]:
         try_delete('a.out.js')
         try_delete('a.out.wast')
@@ -7597,12 +7597,12 @@ int main() {
         assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
         selects = wast.count('(select')
         print('    seen selects:', selects)
-        if '-Os' in args or '-Oz' in args:
-          # when optimizing for size we should create selects
-          self.assertGreater(selects, 50)
+        if expect_wasm_opts:
+          # when optimizing we should create selects
+          self.assertGreater(selects, 15)
         else:
-          # when not optimizing for size we should not create selects
-          self.assertLess(selects, 10)
+          # when not optimizing for size we should not
+          self.assertEqual(selects, 0)
         # asm2wasm opt line
         asm2wasm_line = [line for line in err.split('\n') if 'asm2wasm' in line]
         asm2wasm_line = '' if not asm2wasm_line else asm2wasm_line[0]
@@ -7983,9 +7983,9 @@ int main() {
 
     print('test on libc++: see effects of emulated function pointers')
     test(path_from_root('tests', 'hello_libcxx.cpp'), [
-      (['-O2'], 36, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   41, 659), # noqa
+      (['-O2'], 36, ['abort', 'tempDoublePtr'], ['waka'],                 196709,  30,   41, 659), # noqa
       (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                36, ['abort', 'tempDoublePtr'], ['waka'],                 208677,  30,   22, 620), # noqa
+                36, ['abort', 'tempDoublePtr'], ['waka'],                 196709,  30,   22, 620), # noqa
     ]) # noqa
 
   # ensures runtime exports work, even with metadce

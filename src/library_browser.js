@@ -244,7 +244,7 @@ var LibraryBrowser = {
         // promises to run in series.
         this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
           function() {
-            return loadWebAssemblyModule(byteArray, true);
+            return loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true});
           }).then(
             function(module) {
               Module['preloadedWasm'][name] = module;

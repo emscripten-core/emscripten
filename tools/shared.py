@@ -150,7 +150,9 @@ class Py2CompletedProcess:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 
-def run_base(cmd, check=False, input=None, *args, **kw):
+def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **kw):
+  kw.setdefault('universal_newlines', True)
+
   if hasattr(subprocess, "run"):
     return subprocess.run(cmd, check=check, input=input, *args, **kw)
 
@@ -163,10 +165,6 @@ def run_base(cmd, check=False, input=None, *args, **kw):
   if check:
     result.check_returncode()
   return result
-
-
-def run_process(cmd, universal_newlines=True, check=True, *args, **kw):
-  return run_base(cmd, universal_newlines=universal_newlines, check=check, *args, **kw)
 
 
 def check_call(cmd, *args, **kw):
@@ -515,6 +513,30 @@ def generate_sanity():
   return EMSCRIPTEN_VERSION + '|' + LLVM_ROOT + '|' + get_clang_version() + ('_wasm' if Settings.WASM_BACKEND else '')
 
 
+def perform_sanify_checks():
+  logger.info('(Emscripten: Running sanity checks)')
+
+  with ToolchainProfiler.profile_block('sanity compiler_engine'):
+    if not jsrun.check_engine(COMPILER_ENGINE):
+      exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
+
+  with ToolchainProfiler.profile_block('sanity LLVM'):
+    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+      if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
+        exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
+
+  if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
+    try:
+      run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
+    except (OSError, subprocess.CalledProcessError):
+      exit_with_error('Cannot find %s, check the paths in config file (%s)', PYTHON, CONFIG_FILE)
+
+  # Sanity check passed!
+  with ToolchainProfiler.profile_block('sanity closure compiler'):
+    if not check_closure_compiler():
+      logger.warning('closure compiler will not be available')
+
+
 def check_sanity(force=False):
   """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
   and LLVM) exists.
@@ -522,7 +544,8 @@ def check_sanity(force=False):
   The test runner always does this check (through |force|). emcc does this less
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
-  re-check sanity and clear the cache when the version changes"""
+  re-check sanity and clear the cache when the version changes.
+  """
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
@@ -531,29 +554,28 @@ def check_sanity(force=False):
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
-    else:
-      settings_mtime = os.path.getmtime(CONFIG_FILE)
-      sanity_file = CONFIG_FILE + '_sanity'
-      if Settings.WASM_BACKEND:
-        sanity_file += '_wasm'
-      if os.path.exists(sanity_file):
-        try:
-          sanity_mtime = os.path.getmtime(sanity_file)
-          if sanity_mtime <= settings_mtime:
-            reason = 'settings file has changed'
-          else:
-            sanity_data = open(sanity_file).read().rstrip('\n\r') # workaround weird bug with read() that appends new line char in some old python version
-            if sanity_data != expected:
-              reason = 'system change: %s vs %s' % (expected, sanity_data)
-            else:
-              if not force:
-                return # all is well
-        except Exception as e:
-          reason = 'unknown: ' + str(e)
+
+    settings_mtime = os.path.getmtime(CONFIG_FILE)
+    sanity_file = CONFIG_FILE + '_sanity'
+    if Settings.WASM_BACKEND:
+      sanity_file += '_wasm'
+    if os.path.exists(sanity_file):
+      sanity_mtime = os.path.getmtime(sanity_file)
+      if sanity_mtime <= settings_mtime:
+        reason = 'settings file has changed'
+      else:
+        sanity_data = open(sanity_file).read().rstrip()
+        if sanity_data != expected:
+          reason = 'system change: %s vs %s' % (expected, sanity_data)
+        elif not force:
+          return # all is well
+
     if reason:
       logger.warning('(Emscripten: %s, clearing cache)' % reason)
       Cache.erase()
-      force = False # the check actually failed, so definitely write out the sanity file, to avoid others later seeing failures too
+      # the check actually failed, so definitely write out the sanity file, to
+      # avoid others later seeing failures too
+      force = False
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_node_version()
@@ -564,30 +586,10 @@ def check_sanity(force=False):
       logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
       return
 
-    logger.info('(Emscripten: Running sanity checks)')
-
-    with ToolchainProfiler.profile_block('sanity compiler_engine'):
-      if not jsrun.check_engine(COMPILER_ENGINE):
-        exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
-
-    with ToolchainProfiler.profile_block('sanity LLVM'):
-      for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
-        if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-          exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-    if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
-      try:
-        run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
-      except:
-        exit_with_error('Cannot find %s, check the paths in %s', PYTHON, EM_CONFIG)
-
     if not llvm_ok:
       exit_with_error('failing sanity checks due to previous llvm failure')
 
-    # Sanity check passed!
-    with ToolchainProfiler.profile_block('sanity closure compiler'):
-      if not check_closure_compiler():
-        logger.warning('closure compiler will not be available')
+    perform_sanify_checks()
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
@@ -2936,7 +2938,7 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
-  def make_shared_library(js_file, wasm_file):
+  def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
@@ -2959,6 +2961,34 @@ class WebAssembly(object):
     name = b"\06dylink" # section name, including prefixed size
     contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
                 WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
+
+    # we extend "dylink" section with information about which shared libraries
+    # our shared library needs. This is similar to DT_NEEDED entries in ELF.
+    #
+    # In theory we could avoid doing this, since every import in wasm has
+    # "module" and "name" attributes, but currently emscripten almost always
+    # uses just "env" for "module". This way we have to embed information about
+    # required libraries for the dynamic linker somewhere, and "dylink" section
+    # seems to be the most relevant place.
+    #
+    # Binary format of the extension:
+    #
+    #   needed_dynlibs_count        varuint32       ; number of needed shared libraries
+    #   needed_dynlibs_entries      dynlib_entry*   ; repeated dynamic library entries as described below
+    #
+    # dynlib_entry:
+    #
+    #   dynlib_name_len             varuint32       ; length of dynlib_name_str in bytes
+    #   dynlib_name_str             bytes           ; name of a needed dynamic library: valid UTF-8 byte sequence
+    #
+    # a proposal has been filed to include the extension into "dylink" specification:
+    # https://github.com/WebAssembly/tool-conventions/pull/77
+    contents += WebAssembly.lebify(len(needed_dynlibs))
+    for dyn_needed in needed_dynlibs:
+      dyn_needed = asbytes(dyn_needed)
+      contents += WebAssembly.lebify(len(dyn_needed))
+      contents += dyn_needed
+
     size = len(name) + len(contents)
     f.write(WebAssembly.lebify(size))
     f.write(name)

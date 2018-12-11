@@ -91,6 +91,8 @@ EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 # to force testing on all js engines, good to find js engine bugs
 EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
+EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -114,6 +116,15 @@ def needs_dlfcn(func):
   def decorated(self):
     self.check_dlfcn()
     return func(self)
+
+  return decorated
+
+
+def is_slow_test(func):
+  def decorated(self, *args, **kwargs):
+    if EMTEST_SKIP_SLOW:
+      return self.skipTest('skipping slow tests')
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -774,6 +785,126 @@ class RunnerCore(unittest.TestCase):
       }
     '''
     return (main, supp)
+
+  # excercise dynamic linker.
+  #
+  # test that linking to shared library B, which is linked to A, loads A as well.
+  # main is also linked to C, which is also linked to A. A is loaded/initialized only once.
+  #
+  #          B
+  #   main <   > A
+  #          C
+  #
+  # this test is used by both test_core and test_browser.
+  # when run under broswer it excercises how dynamic linker handles concurrency
+  # - because B and C are loaded in parallel.
+  def _test_dylink_dso_needed(self, do_run):
+    with open('liba.cpp', 'w') as f:
+      f.write(r'''
+        #include <stdio.h>
+        #include <emscripten.h>
+
+        static const char *afunc_prev;
+
+        EMSCRIPTEN_KEEPALIVE void afunc(const char *s);
+        void afunc(const char *s) {
+          printf("a: %s (prev: %s)\n", s, afunc_prev);
+          afunc_prev = s;
+        }
+
+        struct ainit {
+          ainit() {
+            puts("a: loaded");
+          }
+        };
+
+        static ainit _;
+      ''')
+
+    with open('libb.cpp', 'w') as f:
+      f.write(r'''
+        #include <emscripten.h>
+
+        void afunc(const char *s);
+        EMSCRIPTEN_KEEPALIVE void bfunc();
+        void bfunc() {
+          afunc("b");
+        }
+      ''')
+
+    with open('libc.cpp', 'w') as f:
+      f.write(r'''
+        #include <emscripten.h>
+
+        void afunc(const char *s);
+        EMSCRIPTEN_KEEPALIVE void cfunc();
+        void cfunc() {
+          afunc("c");
+        }
+      ''')
+
+    # _test_dylink_dso_needed can be potentially called several times by a test.
+    # reset dylink-related options first.
+    self.set_setting('MAIN_MODULE', 0)
+    self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('RUNTIME_LINKED_LIBS', [])
+
+    # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
+    self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
+
+    so = '.wasm' if self.is_wasm() else '.js'
+
+    def ccshared(src, linkto=[]):
+      cmdv = [PYTHON, EMCC, src, '-o', os.path.splitext(src)[0] + so] + self.get_emcc_args()
+      cmdv += ['-s', 'SIDE_MODULE=1', '-s', 'RUNTIME_LINKED_LIBS=' + str(linkto)]
+      run_process(cmdv)
+
+    ccshared('liba.cpp')
+    ccshared('libb.cpp', ['liba' + so])
+    ccshared('libc.cpp', ['liba' + so])
+
+    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
+    do_run(r'''
+      void bfunc();
+      void cfunc();
+
+      int _main() {
+        bfunc();
+        cfunc();
+        return 0;
+      }
+      ''',
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
+
+    self.set_setting('RUNTIME_LINKED_LIBS', [])
+    self.emcc_args += ['--embed-file', '.@/']
+    do_run(r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stddef.h>
+
+      int _main() {
+        void *bdso, *cdso;
+        void (*bfunc)(), (*cfunc)();
+
+        // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currenlty working
+        bdso = dlopen("libb%(so)s", RTLD_GLOBAL);
+        assert(bdso != NULL);
+        cdso = dlopen("libc%(so)s", RTLD_GLOBAL);
+        assert(cdso != NULL);
+
+        bfunc = (void (*)())dlsym(bdso, "_Z5bfuncv");
+        assert(bfunc != NULL);
+        cfunc = (void (*)())dlsym(cdso, "_Z5cfuncv");
+        assert(cfunc != NULL);
+
+        bfunc();
+        cfunc();
+        return 0;
+      }
+    ''' % locals(),
+           'a: loaded\na: b (prev: (null))\na: c (prev: b)\n')
 
   def filtered_js_engines(self, js_engines=None):
     if js_engines is None:
