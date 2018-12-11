@@ -551,6 +551,11 @@ function JSify(data, functionsOnly) {
       if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = alignMemory(' + STACK_START + ');\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
       print('DYNAMIC_BASE = alignMemory(STACK_MAX);\n');
+      if (WASM_BACKEND) {
+        // wasm backend stack goes down
+        print('STACKTOP = STACK_BASE + TOTAL_STACK;');
+        print('STACK_MAX = STACK_BASE;');
+      }
       print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
       print('staticSealed = true; // seal the static portion of memory\n');
       if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
