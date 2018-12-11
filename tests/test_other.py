@@ -519,8 +519,6 @@ f.close()
 
   @uses_canonical_tmp
   def test_emcc_cflags(self):
-    # see we print them out
-    # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
     output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(shared.COMPILER_OPTS)), flags)

@@ -547,7 +547,7 @@ def run_npm_install():
   if not os.path.exists(npm):
     exit_with_error('npm not found at: %s', npm)
   logger.info('running `npm install` to update node_modules')
-  jsrun.run_js_tool(npm, NODE_JS, jsargs=['install'], cwd=__rootpath__)
+  jsrun.run_js_tool(npm, NODE_JS, jsargs=['install'], stdout=PIPE, cwd=__rootpath__)
 
 
 def check_sanity(force=False):
