@@ -91,6 +91,8 @@ EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 # to force testing on all js engines, good to find js engine bugs
 EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
+EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -114,6 +116,15 @@ def needs_dlfcn(func):
   def decorated(self):
     self.check_dlfcn()
     return func(self)
+
+  return decorated
+
+
+def is_slow_test(func):
+  def decorated(self, *args, **kwargs):
+    if EMTEST_SKIP_SLOW:
+      return self.skipTest('skipping slow tests')
+    return func(self, *args, **kwargs)
 
   return decorated
 
