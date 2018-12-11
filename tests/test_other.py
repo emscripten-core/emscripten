@@ -4658,7 +4658,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': None}):
       test('normal') # normally is ok
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}):
       test('forced libs is ok, they were there anyhow')
 
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
@@ -4667,7 +4667,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4686,7 +4686,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
