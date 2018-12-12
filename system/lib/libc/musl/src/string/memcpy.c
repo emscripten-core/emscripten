@@ -15,60 +15,60 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
 
 #ifdef __EMSCRIPTEN__
 
-  unsigned char *aligned_d_end;
-  unsigned char *block_aligned_d_end;
-  unsigned char *d_end;
+	unsigned char *aligned_d_end;
+	unsigned char *block_aligned_d_end;
+	unsigned char *d_end;
 
-  if (n >= 8192) {
-    return emscripten_memcpy_big(dest, src, n);
-  }
+	if (n >= 8192) {
+		return emscripten_memcpy_big(dest, src, n);
+	}
 
-  d_end = d + n;
-  if ((((uintptr_t)d) & 3) == (((uintptr_t)s) & 3)) {
-    // The initial unaligned < 4-byte front.
-    while ((((uintptr_t)d) & 3) && d < d_end) {
-      *d++ = *s++;
-    }
-    aligned_d_end = (unsigned char *)(((uintptr_t)d_end) & -4);
-    if (aligned_d_end >= 64) {
-      block_aligned_d_end = aligned_d_end - 64;
-      while (d <= block_aligned_d_end) {
-        *(((uint64_t*)d)) = *(((uint64_t*)s));
-        *(((uint64_t*)d) + 1) = *(((uint64_t*)s) + 1);
-        *(((uint64_t*)d) + 2) = *(((uint64_t*)s) + 2);
-        *(((uint64_t*)d) + 3) = *(((uint64_t*)s) + 3);
-        *(((uint64_t*)d) + 4) = *(((uint64_t*)s) + 4);
-        *(((uint64_t*)d) + 5) = *(((uint64_t*)s) + 5);
-        *(((uint64_t*)d) + 6) = *(((uint64_t*)s) + 6);
-        *(((uint64_t*)d) + 7) = *(((uint64_t*)s) + 7);
-        d += 64;
-        s += 64;
-      }
-    }
-    while (d < aligned_d_end) {
-      *((uint32_t *)d) = *((uint32_t *)s);
-      d += 4;
-      s += 4;
-    }
-  } else {
-    // In the unaligned copy case, unroll a bit as well.
-    if (d_end >= 4) {
-      aligned_d_end = d_end - 4;
-      while (d <= aligned_d_end) {
-        *d = *s;
-        *(d + 1) = *(s + 1);
-        *(d + 2) = *(s + 2);
-        *(d + 3) = *(s + 3);
-        d += 4;
-        s += 4;
-      }
-    }
-  }
-  // The remaining unaligned < 4 byte tail.
-  while (d < d_end) {
-    *d++ = *s++;
-  }
-  return dest;
+	d_end = d + n;
+	if ((((uintptr_t)d) & 3) == (((uintptr_t)s) & 3)) {
+		// The initial unaligned < 4-byte front.
+		while ((((uintptr_t)d) & 3) && d < d_end) {
+			*d++ = *s++;
+		}
+		aligned_d_end = (unsigned char *)(((uintptr_t)d_end) & -4);
+		if (aligned_d_end >= 64) {
+			block_aligned_d_end = aligned_d_end - 64;
+			while (d <= block_aligned_d_end) {
+				*(((uint64_t*)d)) = *(((uint64_t*)s));
+				*(((uint64_t*)d) + 1) = *(((uint64_t*)s) + 1);
+				*(((uint64_t*)d) + 2) = *(((uint64_t*)s) + 2);
+				*(((uint64_t*)d) + 3) = *(((uint64_t*)s) + 3);
+				*(((uint64_t*)d) + 4) = *(((uint64_t*)s) + 4);
+				*(((uint64_t*)d) + 5) = *(((uint64_t*)s) + 5);
+				*(((uint64_t*)d) + 6) = *(((uint64_t*)s) + 6);
+				*(((uint64_t*)d) + 7) = *(((uint64_t*)s) + 7);
+				d += 64;
+				s += 64;
+			}
+		}
+		while (d < aligned_d_end) {
+			*((uint32_t *)d) = *((uint32_t *)s);
+			d += 4;
+			s += 4;
+		}
+	} else {
+		// In the unaligned copy case, unroll a bit as well.
+		if (d_end >= 4) {
+			aligned_d_end = d_end - 4;
+			while (d <= aligned_d_end) {
+				*d = *s;
+				*(d + 1) = *(s + 1);
+				*(d + 2) = *(s + 2);
+				*(d + 3) = *(s + 3);
+				d += 4;
+				s += 4;
+			}
+		}
+	}
+	// The remaining unaligned < 4 byte tail.
+	while (d < d_end) {
+		*d++ = *s++;
+	}
+	return dest;
 
 #else // __EMSCRIPTEN__
 
