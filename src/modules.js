@@ -100,7 +100,6 @@ var LibraryManager = {
   libraries: [],
 
   has: function(name) {
-//printErr(['has?', name, this.libraries.length, this.libraries.indexOf(name), this.libraries]);
     return this.libraries.indexOf(name) >= 0;
   },
 

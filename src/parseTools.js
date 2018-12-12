@@ -41,12 +41,9 @@ function preprocess(text, filenameHint) {
       } else {
         if (line[1] == 'i') {
           if (line[2] == 'f') { // if
-//printErr(line);
             var parts = line.split(' ');
             var after = parts.slice(1).join(' ');
-//printErr('-> ' + after);
             var truthy = !!eval(after);
-//printErr('===> ' + !!truthy);
             showStack.push(truthy);
           } else if (line[2] == 'n') { // include
             var filename = line.substr(line.indexOf(' ')+1);
