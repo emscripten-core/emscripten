@@ -7935,7 +7935,7 @@ int main() {
         wasm_size = os.path.getsize('a.out.wasm')
         ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
         print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
-        self.assertLess(ratio, 0.05)
+        self.assertLess(ratio, 0.10)
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
         exports = wast.count('(export ')
@@ -7992,9 +7992,9 @@ int main() {
       # wasm-backend
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      19, ['assert'], ['waka'], 30405,  9,  15, 69), # noqa
-        (['-O1'], 17, ['assert'], ['waka'], 11684,  7,  14, 28), # noqa
-        (['-O2'], 17, ['assert'], ['waka'], 11529,  7,  14, 24), # noqa
+        ([],      19, ['assert'], ['waka'], 33171,  9,  15, 69), # noqa
+        (['-O1'], 17, ['assert'], ['waka'], 14720,  7,  14, 28), # noqa
+        (['-O2'], 17, ['assert'], ['waka'], 14569,  7,  14, 24), # noqa
         (['-O3'], 10, [],         [],        3395,  6,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'], 10, [],         [],        3350,  6,   3, 15), # noqa
         (['-Oz'], 10, [],         [],        3309,  6,   2, 14), # noqa
@@ -8005,9 +8005,9 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      19, ['assert'], ['waka'], 11608,  9, 15, 24), # noqa
-        (['-O1'], 12, ['assert'], ['waka'],  8232,  3, 12, 10), # noqa
-        (['-O2'], 12, ['assert'], ['waka'],  8214,  3, 12, 10), # noqa
+        ([],      19, ['assert'], ['waka'], 14567,  9, 15, 24), # noqa
+        (['-O1'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
+        (['-O2'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  5, [],         [],          61,  0,  1,  1), # noqa
         (['-Os'],  5, [],         [],          61,  0,  1,  1), # noqa
