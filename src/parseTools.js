@@ -43,6 +43,10 @@ function preprocess(text, filenameHint) {
           if (line[2] == 'f') { // if
             var parts = line.split(' ');
             var after = parts.slice(1).join(' ');
+            // FIXME: temporary workaround for embind preprocessing issue that will be fixed by https://github.com/kripken/emscripten/pull/7653
+            if (after === 'NO_DYNAMIC_EXECUTION') {
+              after = 'DYNAMIC_EXECUTION == 0';
+            }
             var truthy = !!eval(after);
             showStack.push(truthy);
           } else if (line[2] == 'n') { // include
