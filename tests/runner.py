@@ -364,13 +364,21 @@ class RunnerCore(unittest.TestCase):
       return self.settings_mods[key]
     return Settings[key]
 
-  def set_setting(self, key, value):
+  def set_setting(self, key, value=1):
+    if value is None:
+      self.clear_setting(key)
     self.settings_mods[key] = value
+
+  def clear_setting(self, key):
+    self.settings_mods.pop(key, None)
 
   def serialize_settings(self):
     ret = []
     for key, value in self.settings_mods.items():
-      ret += ['-s', '{}={}'.format(key, json.dumps(value))]
+      if value == 1:
+        ret += ['-s', key]
+      else:
+        ret += ['-s', '{}={}'.format(key, json.dumps(value))]
     return ret
 
   def get_dir(self):
@@ -845,9 +853,9 @@ class RunnerCore(unittest.TestCase):
 
     # _test_dylink_dso_needed can be potentially called several times by a test.
     # reset dylink-related options first.
-    self.set_setting('MAIN_MODULE', 0)
-    self.set_setting('SIDE_MODULE', 0)
-    self.set_setting('RUNTIME_LINKED_LIBS', [])
+    self.clear_setting('MAIN_MODULE')
+    self.clear_setting('SIDE_MODULE')
+    self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
     self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
