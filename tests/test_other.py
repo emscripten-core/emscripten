@@ -8011,7 +8011,7 @@ int main() {
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  5, [],         [],          61,  0,  1,  1), # noqa
         (['-Os'],  5, [],         [],          61,  0,  1,  1), # noqa
-        (['-Oz'],  5, [],         [],           8,  0,  0,  0), # noqa XXX
+        (['-Oz'],  5, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/kripken/emscripten/issues/6233
       ])
 
       print('test on libc++: see effects of emulated function pointers')
