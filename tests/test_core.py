@@ -7209,61 +7209,58 @@ err = err = function(){};
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     Building.COMPILER_TEST_OPTS.append('-g4')
 
-    def build_and_check():
-      Building.emcc('src.cpp',
-                    self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS,
-                    out_filename,
-                    stderr=PIPE)
-      map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
-      # after removing the @line and @sourceMappingURL comments, the build
-      # result should be identical to the non-source-mapped debug version.
-      # this is worth checking because the parser AST swaps strings for token
-      # objects when generating source maps, so we want to make sure the
-      # optimizer can deal with both types.
-      map_filename = map_referent + '.map'
+    Building.emcc(os.path.abspath('src.cpp'),
+                  self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS,
+                  out_filename,
+                  stderr=PIPE)
+    map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
+    # after removing the @line and @sourceMappingURL comments, the build
+    # result should be identical to the non-source-mapped debug version.
+    # this is worth checking because the parser AST swaps strings for token
+    # objects when generating source maps, so we want to make sure the
+    # optimizer can deal with both types.
+    map_filename = map_referent + '.map'
 
-      def encode_utf8(data):
-        if isinstance(data, dict):
-          for key in data:
-            data[key] = encode_utf8(data[key])
-          return data
-        elif isinstance(data, list):
-          for i in range(len(data)):
-            data[i] = encode_utf8(data[i])
-          return data
-        elif isinstance(data, unicode):
-          return data.encode('utf8')
-        else:
-          return data
+    def encode_utf8(data):
+      if isinstance(data, dict):
+        for key in data:
+          data[key] = encode_utf8(data[key])
+        return data
+      elif isinstance(data, list):
+        for i in range(len(data)):
+          data[i] = encode_utf8(data[i])
+        return data
+      elif isinstance(data, unicode):
+        return data.encode('utf8')
+      else:
+        return data
 
-      data = json.load(open(map_filename))
-      if str is bytes:
-        # Python 2 compatibility
-        data = encode_utf8(data)
-      if hasattr(data, 'file'):
-        # the file attribute is optional, but if it is present it needs to refer
-        # the output file.
-        self.assertPathsIdentical(map_referent, data['file'])
-      assert len(data['sources']) == 1, data['sources']
-      self.assertPathsIdentical(os.path.abspath('src.cpp'), data['sources'][0])
-      if hasattr(data, 'sourcesContent'):
-        # the sourcesContent attribute is optional, but if it is present it
-        # needs to containt valid source text.
-        self.assertTextDataIdentical(src, data['sourcesContent'][0])
-      mappings = json.loads(jsrun.run_js(
-        path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
-        shared.NODE_JS, [map_filename]))
-      if str is bytes:
-        # Python 2 compatibility
-        mappings = encode_utf8(mappings)
-      seen_lines = set()
-      for m in mappings:
-        self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
-        seen_lines.add(m['originalLine'])
-      # ensure that all the 'meaningful' lines in the original code get mapped
-      assert seen_lines.issuperset([6, 7, 11, 12])
-
-    build_and_check()
+    data = json.load(open(map_filename))
+    if str is bytes:
+      # Python 2 compatibility
+      data = encode_utf8(data)
+    if hasattr(data, 'file'):
+      # the file attribute is optional, but if it is present it needs to refer
+      # the output file.
+      self.assertPathsIdentical(map_referent, data['file'])
+    assert len(data['sources']) == 1, data['sources']
+    self.assertPathsIdentical(os.path.abspath('src.cpp'), data['sources'][0])
+    if hasattr(data, 'sourcesContent'):
+      # the sourcesContent attribute is optional, but if it is present it
+      # needs to containt valid source text.
+      self.assertTextDataIdentical(src, data['sourcesContent'][0])
+    mappings = json.loads(jsrun.run_js(
+      path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
+      shared.NODE_JS, [map_filename]))
+    if str is bytes:
+      # Python 2 compatibility
+      mappings = encode_utf8(mappings)
+    seen_lines = set()
+    for m in mappings:
+      self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
+      seen_lines.add(m['originalLine'])
+    # ensure that all the 'meaningful' lines in the original code get mapped
+    assert seen_lines.issuperset([6, 7, 11, 12])
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
