@@ -2394,14 +2394,14 @@ The current type of b is: 9
       self.do_run(src, '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,0,1,2,64,68,69,72*\n*2*')
 
   def prep_dlfcn_lib(self):
-    self.set_setting('MAIN_MODULE', 0)
-    self.set_setting('SIDE_MODULE', 1)
-    self.set_setting('EXPORT_ALL', 1)
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
+    self.set_setting('EXPORT_ALL')
 
   def prep_dlfcn_main(self):
-    self.set_setting('MAIN_MODULE', 1)
-    self.set_setting('SIDE_MODULE', 0)
-    self.set_setting('EXPORT_ALL', 1)
+    self.set_setting('MAIN_MODULE')
+    self.clear_setting('SIDE_MODULE')
+    self.set_setting('EXPORT_ALL')
 
     with open('lib_so_pre.js', 'w') as f:
       f.write('''
@@ -3319,9 +3319,9 @@ ok
     self.build_dlfcn_lib(libecho % {'libname': 'b'}, dirname, indir('b.cpp'))
     shutil.move(indir('liblib.so'), indir('libb.so'))
 
-    self.set_setting('MAIN_MODULE', 1)
-    self.set_setting('SIDE_MODULE', 0)
-    self.set_setting('EXPORT_ALL', 1)
+    self.set_setting('MAIN_MODULE')
+    self.clear_setting('SIDE_MODULE')
+    self.set_setting('EXPORT_ALL')
     self.emcc_args += ['--embed-file', '.@/']
 
     # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
@@ -3362,8 +3362,8 @@ ok
     old_args = self.emcc_args[:]
 
     # side settings
-    self.set_setting('MAIN_MODULE', 0)
-    self.set_setting('SIDE_MODULE', 1)
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
     print(self.is_wasm())
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
@@ -3383,8 +3383,8 @@ ok
     shutil.move('liblib.cpp.o.' + side_suffix, 'liblib.so')
 
     # main settings
-    self.set_setting('MAIN_MODULE', 1)
-    self.set_setting('SIDE_MODULE', 0)
+    self.set_setting('MAIN_MODULE')
+    self.clear_setting('SIDE_MODULE')
     if auto_load:
       self.set_setting('RUNTIME_LINKED_LIBS', ['liblib.so'])
       self.emcc_args += main_emcc_args
@@ -4062,7 +4062,7 @@ ok
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'] + self.get_emcc_args() + ['-o', 'third' + dylib_suffix])
+    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE', '-s', 'EXPORT_ALL'] + self.get_emcc_args() + ['-o', 'third' + dylib_suffix])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
