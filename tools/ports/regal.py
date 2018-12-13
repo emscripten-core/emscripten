@@ -216,11 +216,13 @@ def get(ports, settings, shared):
                 o = os.path.join(dest_path_src, src + '.o')
                 shared.safe_ensure_dirs(os.path.dirname(o))
                 commands.append([shared.PYTHON, shared.EMCC, c,
+                                 # specify the defined symbols as the Regal Makefiles does for Emscripten+Release
+                                 # the define logic for other symbols will be handled automatically by Regal headers (SYS_EMSCRIPTEN, SYS_EGL, SYS_ES2, etc.)
                                  '-DNDEBUG',
                                  '-DREGAL_NO_PNG=1',
                                  '-DREGAL_LOG=0',
                                  '-DREGAL_NO_TLS=1',
-                                 '-DREGAL_THREAD_LOCKING=0',    # override from default regal build
+                                 '-DREGAL_THREAD_LOCKING=0',
                                  '-fomit-frame-pointer',
                                  '-Wno-constant-logical-operand',
                                  '-fvisibility=hidden',
