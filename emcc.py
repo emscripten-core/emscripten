@@ -1289,6 +1289,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if options.debug_level < 3:
             passes += ['--strip']
+          if not shared.Settings.EXIT_RUNTIME:
+            passes += ['--no-exit-runtime']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
