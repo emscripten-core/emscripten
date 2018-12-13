@@ -991,20 +991,20 @@ def make_function_tables_impls(function_table_data):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     arg_coercions = ' '.join(['a' + str(i) + '=' + shared.JS.make_coercion('a' + str(i), sig[i]) + ';' for i in range(1, len(sig))])
     coerced_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i]) for i in range(1, len(sig))])
-    sig_mask = str(table.count(','))
-    ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&%s](%s)' % (sig, sig_mask, coerced_args), sig[0])
-    if not shared.Settings.EMULATED_FUNCTION_POINTERS:
-      function_tables_impls.append('''
+    if shared.Settings.EMULATED_FUNCTION_POINTERS:
+      # Only one function table
+      sig_mask = str(function_table_data["X"].count(','))
+      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&%s](%s)' % ("X", sig_mask, coerced_args), sig[0])
+    else:
+      sig_mask = str(table.count(','))
+      ret = ('return ' if sig[0] != 'v' else '') + shared.JS.make_coercion('FUNCTION_TABLE_%s[index&%s](%s)' % (sig, sig_mask, coerced_args), sig[0])
+    function_tables_impls.append('''
 function dynCall_%s(index%s%s) {
   index = index|0;
   %s
   %s;
 }
 ''' % (sig, ',' if len(sig) > 1 else '', args, arg_coercions, ret))
-    else:
-      function_tables_impls.append('''
-var dynCall_%s = ftCall_%s;
-''' % (sig, sig))
 
     ffi_args = ','.join([shared.JS.make_coercion('a' + str(i), sig[i], ffi_arg=True) for i in range(1, len(sig))])
     for i in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
@@ -1291,10 +1291,6 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
 
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    function_tables_impls = make_function_tables_impls(function_table_data)
-    asm_setup += '\n' + '\n'.join(function_tables_impls) + '\n'
-
   return asm_setup
 
 
@@ -1430,10 +1426,7 @@ def create_asm_runtime_funcs():
 
 
 def function_tables(function_table_data):
-  if not shared.Settings.EMULATED_FUNCTION_POINTERS:
-    return ['dynCall_' + table for table in function_table_data]
-  else:
-    return []
+  return ['dynCall_' + table for table in function_table_data]
 
 
 def create_the_global(metadata):
@@ -1479,7 +1472,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       receiving += table + '\n'
 
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
-    receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
+    receiving += '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not shared.Settings.WASM:
       for sig in function_table_data.keys():
         name = 'FUNCTION_TABLE_' + sig
