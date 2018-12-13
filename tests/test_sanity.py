@@ -748,6 +748,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
       ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libc-wasm'], ['building and verifying libc-wasm', 'success'], True, ['libc-wasm.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'regal'], ['building and verifying regal', 'success'], True, ['regal.bc']),
     ]
     if Settings.WASM_BACKEND:
       tests.append(([PYTHON, EMBUILDER, 'build', 'libcompiler_rt_wasm'], ['building and verifying libcompiler_rt_wasm', 'success'], True, ['libcompiler_rt_wasm.a']),)

@@ -64,7 +64,8 @@ Available operations and tasks:
         cocos2d
         libc-wasm
         compiler_rt_wasm
-
+        regal
+        
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
 It is also possible to build native_optimizer manually by using CMake. To
@@ -112,7 +113,7 @@ SYSTEM_TASKS = [
 USER_TASKS = [
     'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
     'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
-    'vorbis', 'zlib'
+    'vorbis', 'zlib', 'regal'
 ]
 
 temp_files = shared.configuration.get_temp_files()
