@@ -9,12 +9,12 @@ TAG = 'version_1'
 
 def get(ports, settings, shared):
     if settings.USE_REGAL_GLSLOPT == 1:
-        ports.fetch_project('glslopt', 'https://github.com/gabrielcuvillier/regal/archive/' + TAG + '.zip', 'Regal-' + TAG)
+        ports.fetch_project('glslopt', 'https://github.com/gabrielcuvillier/regal/archive/' + TAG + '.zip', 'regal-' + TAG)
         def create():
             logging.info('building port: glslopt')
             ports.clear_project_build('glslopt')
 
-            source_path = os.path.join(ports.get_dir(), 'regal', 'Regal-' + TAG)
+            source_path = os.path.join(ports.get_dir(), 'glslopt', 'regal-' + TAG)
             dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'glslopt')
 
             shutil.rmtree(dest_path, ignore_errors=True)
