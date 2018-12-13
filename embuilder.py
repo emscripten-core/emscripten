@@ -286,6 +286,8 @@ def main():
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    elif what == 'glslopt':
+      build_port('glslopt', 'libglslopt.a', ['-s', 'USE_REGAL_GLSLOPT=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
