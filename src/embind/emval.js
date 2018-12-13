@@ -151,7 +151,7 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argsList = new Array(argCount + 1);
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
@@ -202,7 +202,7 @@ var LibraryEmVal = {
     return newer(handle, argTypes, args);
   },
 
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
@@ -354,7 +354,7 @@ var LibraryEmVal = {
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var retType = types[0];
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
     var invokerFunction = function(handle, name, destructors, args) {
       var offset = 0;
