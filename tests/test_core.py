@@ -7245,7 +7245,7 @@ err = err = function(){};
         # the output file.
         self.assertPathsIdentical(map_referent, data['file'])
       assert len(data['sources']) == 1, data['sources']
-      self.assertPathsIdentical('src.cpp', data['sources'][0])
+      self.assertPathsIdentical(os.path.abspath('src.cpp'), data['sources'][0])
       if hasattr(data, 'sourcesContent'):
         # the sourcesContent attribute is optional, but if it is present it
         # needs to containt valid source text.
@@ -7258,7 +7258,7 @@ err = err = function(){};
         mappings = encode_utf8(mappings)
       seen_lines = set()
       for m in mappings:
-        self.assertPathsIdentical('src.cpp', m['source'])
+        self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
         seen_lines.add(m['originalLine'])
       # ensure that all the 'meaningful' lines in the original code get mapped
       assert seen_lines.issuperset([6, 7, 11, 12])
