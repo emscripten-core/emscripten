@@ -1109,8 +1109,8 @@ var LibraryGL = {
               case 0x8CA6: // FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
+              case 0x85B5: // WebGL 2 GL_VERTEX_ARRAY_BINDING, or WebGL 1 extension OES_vertex_array_object GL_VERTEX_ARRAY_BINDING_OES
 #if USE_WEBGL2
-              case 0x85B5: // GL_VERTEX_ARRAY_BINDING
               case 0x8919: // GL_SAMPLER_BINDING
               case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
 #endif
