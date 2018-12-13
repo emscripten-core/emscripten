@@ -169,10 +169,6 @@ EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
 
-// TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to
-// avoid needing this here.
-USES_GL_EMULATION = FULL_ES2 || LEGACY_GL_EMULATION;
-
 DEAD_FUNCTIONS.forEach(function(dead) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
 });
