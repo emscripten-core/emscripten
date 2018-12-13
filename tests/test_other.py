@@ -2399,6 +2399,12 @@ int f() {
       if fail:
         self.assertNotEqual(proc.returncode, 0)
       else:
+        if 'DYNAMIC_EXECUTION=0' in args:
+          with open(self.in_dir('a.out.js'), 'r') as js_binary_file:
+            js_binary_str = js_binary_file.read()
+            self.assertNotIn('new Function(', js_binary_str, 'Found "new Function(" with DYNAMIC_EXECUTION=0')
+            self.assertNotIn('eval(', js_binary_str, 'Found "eval(" with DYNAMIC_EXECUTION=0')
+
         with open(self.in_dir('a.out.js'), 'ab') as f:
           for tf in testFiles:
             f.write(open(tf, 'rb').read())

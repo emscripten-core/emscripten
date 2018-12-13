@@ -44,6 +44,8 @@ IGNORE_COMPILATION = 0
 
 OPTIMIZATIONS = '-O3'
 
+PROFILING = 0
+
 
 class Benchmarker(object):
   def __init__(self, name):
@@ -192,13 +194,14 @@ process(sys.argv[1])
       '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'FILESYSTEM=0',
-      # '--profiling',
       '--closure', '1',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
+    if PROFILING:
+      cmd += ['--profiling-funcs']
     output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -364,21 +367,26 @@ try:
   ]
   if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
-      EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
-      EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
-      # EmscriptenBenchmarker('sm-asm2wasm-lto',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], ['--llvm-lto', '1']),
-      EmscriptenBenchmarker('sm-wasmbackend',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], env={
-       'LLVM': '/usr/local/google/home/azakai/Dev/llvm/build/bin',
-       'EMCC_WASM_BACKEND': '1',
-      }),
+      # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
+      # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
+      # EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
+      #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+      # }),
+      # EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
+      #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+      # }),
     ]
   if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
     benchmarkers += [
       EmscriptenBenchmarker('v8-asmjs', V8_ENGINE, ['-s', 'WASM=0']),
-      EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE),
-      EmscriptenBenchmarker('v8-wasmbackend',  V8_ENGINE, env={
-       'LLVM': '/usr/local/google/home/azakai/Dev/llvm/build/bin',
-       'EMCC_WASM_BACKEND': '1',
+      EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE, env={
+       'LLVM': os.path.expanduser('~/Dev/fastcomp/build/bin'),
+      }),
+      EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
+       'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+      }),
+      EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
+       'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
       }),
     ]
   if os.path.exists(CHEERP_BIN):

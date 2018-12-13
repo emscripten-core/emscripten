@@ -7091,32 +7091,68 @@ var LibraryGL = {
     GLImmediate.modifiedClientAttributes = true;
   },
 
+  glVertex2f: function(x, y) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+  },
+
   glVertex3f: function(x, y, z) {
 #if ASSERTIONS
     assert(GLImmediate.mode >= 0); // must be in begin/end
 #endif
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
-    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z || 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
   },
-  glVertex2f: 'glVertex3f',
+
+  glVertex4f: function(x, y, z, w) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = w;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+  },
+
+  glVertex2fv__deps: ['glVertex2f'],
+  glVertex2fv: function(p) {
+    _glVertex2f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}});
+  },
 
   glVertex3fv__deps: ['glVertex3f'],
   glVertex3fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
-  glVertex2fv__deps: ['glVertex3f'],
-  glVertex2fv: function(p) {
-    _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
+
+  glVertex4fv__deps: ['glVertex4f'],
+  glVertex4fv: function(p) {
+    _glVertex4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
   },
+
+  glVertex2i: 'glVertex2f',
 
   glVertex3i: 'glVertex3f',
 
-  glVertex2i: 'glVertex3f',
+  glVertex4i: 'glVertex4f',
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
