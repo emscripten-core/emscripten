@@ -2140,13 +2140,6 @@ var asm = Module['asm'](Module%s, Module%s, buffer);
 %s;
 ''' % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg'), receiving)]
 
-  module.append('''
-var stackAlloc = Module['_stackAlloc'];
-var stackSave = Module['_stackSave'];
-var stackRestore = Module['_stackRestore'];
-var establishStackSpace = Module['establishStackSpace'];
-''')
-
   module.append(invoke_wrappers)
   module.append(jscall_funcs)
   return module
@@ -2222,7 +2215,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
+  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
   if name.startswith('dynCall_'):
     return name
   if name in library_functions_in_module:
