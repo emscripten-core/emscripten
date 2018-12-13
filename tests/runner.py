@@ -210,6 +210,13 @@ def limit_size(string, MAX=800 * 20):
   return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
 
 
+def create_test_file(name, contents, binary=False):
+  assert not os.path.isabs(name)
+  mode = 'wb' if binary else 'w'
+  with open(name, mode) as f:
+    f.write(contents)
+
+
 # The core test modes
 core_test_modes = [
   'asm0',
@@ -397,7 +404,7 @@ class RunnerCore(unittest.TestCase):
     if not args:
       return
     js = open(filename).read()
-    open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
+    create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     # force_recompile = force_recompile or os.path.getsize(filename + '.o.ll') > 50000
@@ -774,7 +781,7 @@ class RunnerCore(unittest.TestCase):
       int suppInt = 76;
     '''
     supp_name = os.path.join(self.get_dir(), 'supp.cpp')
-    open(supp_name, 'w').write(supp)
+    create_test_file(supp_name, supp)
 
     main = r'''
       #include <stdio.h>
@@ -814,8 +821,7 @@ class RunnerCore(unittest.TestCase):
   # when run under broswer it excercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
-    with open('liba.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('liba.cpp', r'''
         #include <stdio.h>
         #include <emscripten.h>
 
@@ -836,8 +842,7 @@ class RunnerCore(unittest.TestCase):
         static ainit _;
       ''')
 
-    with open('libb.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('libb.cpp', r'''
         #include <emscripten.h>
 
         void afunc(const char *s);
@@ -847,8 +852,7 @@ class RunnerCore(unittest.TestCase):
         }
       ''')
 
-    with open('libc.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('libc.cpp', r'''
         #include <emscripten.h>
 
         void afunc(const char *s);
