@@ -298,7 +298,7 @@ namespace emscripten {
         }
 
         template<typename T>
-        static val array(const std::vector<T> vec) {
+        static val array(const std::vector<T>& vec) {
             val new_array = array();
             for(auto it = vec.begin(); it != vec.end(); it++)
                 new_array.call<void>("push", *it);
