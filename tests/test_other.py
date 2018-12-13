@@ -8012,8 +8012,8 @@ int main() {
       print('test on a minimal pure computational thing')
       test('minimal.c', [
         ([],      19, ['assert'], ['waka'], 11697,  9, 15, 24), # noqa
-        (['-O1'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
-        (['-O2'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
+        (['-O1'], 12, ['assert'], ['waka'],  8232,  3, 12, 10), # noqa
+        (['-O2'], 12, ['assert'], ['waka'],  8232,  3, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  5, [],         [],          61,  0,  1,  1), # noqa
         (['-Os'],  5, [],         [],          61,  0,  1,  1), # noqa
