@@ -2399,6 +2399,12 @@ int f() {
       if fail:
         self.assertNotEqual(proc.returncode, 0)
       else:
+        if 'DYNAMIC_EXECUTION=0' in args:
+          with open(self.in_dir('a.out.js'), 'r') as js_binary_file:
+            js_binary_str = js_binary_file.read()
+            self.assertNotIn('new Function(', js_binary_str, 'Found "new Function(" with DYNAMIC_EXECUTION=0')
+            self.assertNotIn('eval(', js_binary_str, 'Found "eval(" with DYNAMIC_EXECUTION=0')
+
         with open(self.in_dir('a.out.js'), 'ab') as f:
           for tf in testFiles:
             f.write(open(tf, 'rb').read())
@@ -7968,7 +7974,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1505, [],         [],      226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1506, [],         [],      226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ]) # noqa
 
       print('test on a minimal pure computational thing')

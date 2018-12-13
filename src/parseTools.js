@@ -42,47 +42,9 @@ function preprocess(text, filenameHint) {
         if (line[1] == 'i') {
           if (line[2] == 'f') { // if
             var parts = line.split(' ');
-            var ident = parts[1];
-            var op = parts[2];
-            var value = parts[3];
-            if (typeof value === 'string') {
-              // when writing
-              // #if option == 'stringValue'
-              // we need to get rid of the quotes
-              if (value[0] === '"' || value[0] === "'") {
-                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
-                value = value.substring(1, value.length - 1);
-              }
-            }
-            if (op) {
-              if (op === '==') {
-                showStack.push(ident in this && this[ident] == value);
-              } else if (op === '!=') {
-                showStack.push(!(ident in this && this[ident] == value));
-              } else if (op === '<') {
-                showStack.push(ident in this && this[ident] < value);
-              } else if (op === '<=') {
-                showStack.push(ident in this && this[ident] <= value);
-              } else if (op === '>') {
-                showStack.push(ident in this && this[ident] > value);
-              } else if (op === '>=') {
-                showStack.push(ident in this && this[ident] >= value);
-              } else {
-                error('unsupported preprocessor op ' + op);
-              }
-            } else {
-              // Check if a value is truthy.
-              var short = ident[0] === '!' ? ident.substr(1) : ident;
-              var truthy = short in this;
-              if (truthy) {
-                truthy = !!this[short];
-              }
-              if (ident[0] === '!') {
-                showStack.push(!truthy);
-              } else {
-                showStack.push(truthy);
-              }
-            }
+            var after = parts.slice(1).join(' ');
+            var truthy = !!eval(after);
+            showStack.push(truthy);
           } else if (line[2] == 'n') { // include
             var filename = line.substr(line.indexOf(' ')+1);
             if (filename.indexOf('"') === 0) {
