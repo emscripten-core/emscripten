@@ -93,6 +93,8 @@ EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
+EMTEST_VERBOSE = os.getenv('EMTEST_VERBOSE')
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -618,17 +620,18 @@ class RunnerCore(unittest.TestCase):
     return ('(export "%s"' % name) in wat
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
-    stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
-    stderr = os.path.join(self.get_dir(), 'stderr')
-    try:
-      cwd = os.getcwd()
-    except:
-      cwd = None
-    os.chdir(self.get_dir())
-    self.assertEqual(line_endings.check_line_endings(filename), 0) # Make sure that we produced proper line endings to the .js file we are about to run.
-    jsrun.run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
-    if cwd is not None:
-      os.chdir(cwd)
+    # use files, as PIPE can get too full and hang us
+    stdout = self.in_dir('stdout')
+    stderr = self.in_dir('stderr')
+    # Make sure that we produced proper line endings to the .js file we are about to run.
+    self.assertEqual(line_endings.check_line_endings(filename), 0)
+    if EMTEST_VERBOSE:
+      print("Running '%s' under '%s'" % (filename, engine))
+    with chdir(self.get_dir()):
+      jsrun.run_js(filename, engine, args, check_timeout,
+                   stdout=open(stdout, 'w'),
+                   stderr=open(stderr, 'w'),
+                   assert_returncode=assert_returncode)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
@@ -638,6 +641,10 @@ class RunnerCore(unittest.TestCase):
     else:
       ret = out + err
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
+    if EMTEST_VERBOSE:
+      print('-- being program output --')
+      print(ret, end='')
+      print('-- end program output --')
     return ret
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
