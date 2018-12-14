@@ -1259,10 +1259,6 @@ def verify_settings():
       logger.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
       Settings.WASM = 1
 
-    if not BINARYEN_ROOT:
-      exit_with_error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                      ' when using the LLVM wasm backend')
-
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
 
