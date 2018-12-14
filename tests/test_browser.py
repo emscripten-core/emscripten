@@ -3238,7 +3238,7 @@ window.close = function() {
   def test_dynamic_link(self):
     create_test_file('pre.js', '''
       Module.dynamicLibraries = ['side.wasm'];
-  ''')
+    ''')
     create_test_file('main.cpp', r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3274,7 +3274,7 @@ window.close = function() {
       }
     ''')
     run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'EXPORT_ALL=1'])
-    self.btest('main.cpp', '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
     print('wasm in worker (we can read binary data synchronously there)')
 
@@ -3282,7 +3282,7 @@ window.close = function() {
       var Module = { dynamicLibraries: ['side.wasm'] };
   ''')
     run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
-    self.btest('main.cpp', '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '--proxy-to-worker', '-s', 'EXPORT_ALL=1'])
 
     print('wasm (will auto-preload since no sync binary reading)')
 
@@ -3290,7 +3290,7 @@ window.close = function() {
       Module.dynamicLibraries = ['side.wasm'];
   ''')
     # same wasm side module works
-    self.btest('main.cpp', '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '2', args=['-s', 'MAIN_MODULE=1', '-O2', '--pre-js', 'pre.js', '-s', 'WASM=1', '-s', 'EXPORT_ALL=1'])
 
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
@@ -3376,7 +3376,7 @@ window.close = function() {
     ''')
     run_process([PYTHON, EMCC, 'side.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-o', 'side.wasm', '-lSDL', '-s', 'EXPORT_ALL=1'])
 
-    self.btest('main.cpp', '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
+    self.btest(self.in_dir('main.cpp'), '1', args=['-s', 'MAIN_MODULE=1', '-O2', '-s', 'LEGACY_GL_EMULATION=1', '-lSDL', '-lGL', '--pre-js', 'pre.js', '-s', 'EXPORT_ALL=1'])
 
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
