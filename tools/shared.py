@@ -2537,7 +2537,7 @@ class Building(object):
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--mvp-features', '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
     if debug_info:
       cmd.append('-g')
     out = check_call(cmd, stdout=PIPE).stdout
