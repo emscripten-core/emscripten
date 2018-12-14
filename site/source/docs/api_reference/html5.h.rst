@@ -1689,9 +1689,21 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
+.. c:function:: EMSCRIPTEN_RESULT emscripten_sample_gamepad_data(void)
+
+  This function samples a new state of connected Gamepad data, and returns either
+  EMSCRIPTEN_RESULT_SUCCESS if Gamepad API is supported by the current browser,
+  or EMSCRIPTEN_RESULT_NOT_SUPPORTED if Gamepad API is not supported. Note that
+  even if EMSCRIPTEN_RESULT_SUCCESS is returned, there may not be any gamepads
+  connected yet to the current browser tab.
+
+  Call this function before calling either of the functions
+  emscripten_get_num_gamepads() or emscripten_get_gamepad_status().
+
 .. c:function:: int emscripten_get_num_gamepads(void)
 
-  Returns the number of gamepads connected to the system or
+  After having called emscripten_sample_gamepad_data(), this function
+  returns the number of gamepads connected to the system or
   :c:type:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` if the current browser does not
   support gamepads.
 
@@ -1707,16 +1719,18 @@ Functions
      for the count of connected gamepads, even though gamepad A is no longer
      present. To find the actual number of connected gamepads, listen for the
      gamepadconnected and gamepaddisconnected events.  Consider the return value
-     of this function as the largest value (-1) that can be passed to the
-     function emscripten_get_gamepad_status().
+     of function emscripten_get_num_gamepads() minus one to be the largest index
+     value that can be passed to the function emscripten_get_gamepad_status().
 
-  :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+  :returns: The number of gamepads connected to the browser tab.
   :rtype: int
 
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_get_gamepad_status(int index, EmscriptenGamepadEvent *gamepadState)
 
-  Returns a snapshot of the current gamepad state.
+  After having called emscripten_sample_gamepad_data(), this function returns a
+  snapshot of the current gamepad state for the gamepad controller located at
+  given index of the controllers array.
 
   :param int index: The index of the gamepad to check (in the `array of connected gamepads <https://developer.mozilla.org/en-US/docs/Web/API/Navigator.getGamepads>`_).
   :param EmscriptenGamepadEvent* gamepadState: The most recently received gamepad state.
