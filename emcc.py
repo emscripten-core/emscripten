@@ -2556,6 +2556,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     else:
       cmd += ['-o', wasm_text_target, '-S']
       wrote_wasm_text = True
+    cmd += shared.Building.get_binaryen_feature_flags()
     logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
     shared.check_call(cmd)
