@@ -2456,6 +2456,11 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
+  def test_html5_gamepad(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      print(opts)
+      self.btest(path_from_root('tests', 'test_gamepad.c'), args=opts, expected='0', timeout=20)
+
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
