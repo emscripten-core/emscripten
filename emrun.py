@@ -56,7 +56,9 @@ page_exit_code = 0
 processname_killed_atexit = ""
 
 # If user does not specify a --hostname parameter, this hostname is used to launch the server.
-default_webserver_hostname = "localhost"
+# Using "0.0.0.0" means "all interfaces", which should allow connecting to this server via LAN
+# addresses. Using "localhost" should allow only connecting from local computer
+default_webserver_hostname = socket.gethostbyname(socket.gethostname())
 
 # If user does not specify a --port parameter, this port is used to launch the server.
 default_webserver_port = 6931
@@ -259,20 +261,6 @@ user_pref("browser.privatebrowsing.autostart", true);
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
 user_pref("dom.allow_scripts_to_close_windows", true);
-// Set various update timers to a large value in the future in order to not
-// trigger a large mass of update HTTP traffic on each Firefox run on the clean profile.
-// 2147483647 seconds since Unix epoch is sometime in the year 2038, and this is the max integer accepted by Firefox.
-user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
-user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
-user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
-user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
-user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
-user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
-user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
 // Detect directly when executing if asm.js does not validate by throwing an error.
 user_pref("javascript.options.throw_on_asmjs_validation_failure", true);
 // Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
@@ -292,6 +280,9 @@ user_pref("extensions.getAddons.cache.enabled", false);
 user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
+// Don't show Firefox Privacy Notice at startup
+user_pref("datareporting.policy.dataSubmissionPolicyAcceptedVersion", 2);
+user_pref("datareporting.policy.dataSubmissionPolicyNotifiedTime", "1518798283624");
 ''')
   f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
@@ -483,7 +474,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         self.send_header("Location", self.path + "/")
         self.end_headers()
         return None
-      for index in "index.html", "index.htm":
+      for index in "index.html.gz", "index.htm.gz", "index.html", "index.htm":
         index = os.path.join(path, index)
         if os.path.isfile(index):
           path = index
@@ -1400,8 +1391,7 @@ def run():
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
     if len(cmdlineparams):
       url += '?' + '&'.join(cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
-    url = 'http://' + hostname + ':' + str(options.port)+'/'+url
+    url = 'http://' + options.hostname + ':' + str(options.port)+'/'+url
 
   os.chdir(serve_dir)
   if not options.no_server:
