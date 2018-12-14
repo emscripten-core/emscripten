@@ -1922,8 +1922,8 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
 
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
-  wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
-  wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
+  wasm_emscripten_finalize = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-emscripten-finalize')
+  wasm_dis = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-dis')
 
   def debug_copy(src, dst):
     if DEBUG:
