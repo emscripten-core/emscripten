@@ -152,7 +152,7 @@ class NativeBenchmarker(Benchmarker):
 
 def run_binaryen_opts(filename, opts):
   run_process([
-    os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+    os.path.join(Building.get_binaryen_bin(), 'wasm-opt', '--mvp-features'),
     filename,
     '-o', filename
   ] + opts)
