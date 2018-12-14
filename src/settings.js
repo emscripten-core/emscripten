@@ -873,6 +873,16 @@ var MODULARIZE = 0;
 // (since you aren't creating the instance yourself).
 var MODULARIZE_INSTANCE = 0;
 
+// If we separate out asm.js with the --separate-asm option,
+// this is the name of the variable where the generated asm.js
+// Module is assigned to. This name can either be a property
+// of Module, or a freestanding variable name, like "var asmJs".
+// If you are XHRing in multiple asm.js built files, use this option to
+// assign the generated asm.js modules to different variable names
+// so that they do not conflict. Default name is 'Module["asm"]' if a custom
+// name is not passed in.
+var SEPARATE_ASM_MODULE_NAME = '';
+
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;

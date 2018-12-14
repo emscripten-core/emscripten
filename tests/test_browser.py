@@ -4496,3 +4496,35 @@ window.close = function() {
   @requires_graphics_hardware
   def test_closure_in_web_only_target_environment_webgl(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+
+  # Tests that it is possible to load two asm.js compiled programs to one page when both --separate-asm and MODULARIZE=1 is used, by assigning
+  # the pages different asm module names to ensure they do not conflict when being XHRed in.
+  @no_wasm_backend('this tests asm.js support')
+  def test_two_separate_asm_files_on_same_page(self):
+    html_file = open('main.html', 'w')
+    html_file.write(open(path_from_root('tests', 'two_separate_asm_files.html')).read().replace('localhost:8888', 'localhost:%s' % self.test_port))
+    html_file.close()
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page1.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module1', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage1["asm"]']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page2.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module2', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage2["asm"]']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    self.run_browser('main.html', None, '/report_result?1')
+
+  # Tests that it is possible to encapsulate asm.js compiled programs by using --separate-asm + MODULARIZE=1. See
+  # encapsulated_asmjs_page_load.html for the example.
+  @no_wasm_backend('this tests asm.js support')
+  def test_encapsulated_asmjs_page_load(self):
+    html_file = open('main.html', 'w')
+    html_file.write(open(path_from_root('tests', 'encapsulated_asmjs_page_load.html')).read().replace('localhost:8888', 'localhost:%s' % self.test_port))
+    html_file.close()
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'a.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=EmscriptenCode', '-s', 'SEPARATE_ASM_MODULE_NAME="var EmscriptenCode"']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    self.run_browser('main.html', None, '/report_result?1')
