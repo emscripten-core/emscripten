@@ -860,7 +860,8 @@ var LibraryPThread = {
     var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
     // Follow musl convention: detached:0 means not detached, 1 means the thread was created as detached, and 2 means that the thread was detached via pthread_detach.
     var wasDetached = Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 0, 2);
-    return wasDetached ? (threadStatus == 0/*running*/ ? ERRNO_CODES.EINVAL : ERRNO_CODES.ESRCH) : 0;
+
+    return wasDetached ? ERRNO_CODES.EINVAL : 0;
   },
 
   pthread_exit__deps: ['exit'],
