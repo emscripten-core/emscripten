@@ -1866,6 +1866,7 @@ class Building(object):
         '--no-entry',
         '--allow-undefined',
         '--import-memory',
+        '--import-table',
         '--export',
         '__wasm_call_ctors',
         '--export',
