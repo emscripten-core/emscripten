@@ -501,11 +501,9 @@ If manually bisecting:
 
   def test_multifile(self):
     # a few files inside a directory
-    self.clear()
-    os.makedirs('subdirr')
-    os.makedirs('subdirr', 'moar')
-    open('subdirr', 'data1.txt', 'w').write('''1214141516171819''')
-    open('subdirr', 'moar', 'data2.txt', 'w').write('''3.14159265358979''')
+    os.makedirs(os.path.join('subdirr', 'moar'))
+    create_test_file(os.path.join('subdirr', 'data1.txt'), '1214141516171819')
+    create_test_file(os.path.join('subdirr', 'moar', 'data2.txt'), '3.14159265358979')
     create_test_file('main.cpp', self.with_report_result(r'''
       #include <stdio.h>
       #include <string.h>
@@ -547,8 +545,9 @@ If manually bisecting:
     self.clear()
     os.makedirs('subdirr')
     os.makedirs('cdn')
-    open('subdirr', 'data1.txt', 'w').write('''1214141516171819''')
-    # change the file package base dir to look in a "cdn". note that normally you would add this in your own custom html file etc., and not by
+    create_test_file(os.path.join('subdirr', 'data1.txt'), '1214141516171819')
+    # change the file package base dir to look in a "cdn". note that normally
+    # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     create_test_file('main.cpp', self.with_report_result(r'''
@@ -570,12 +569,9 @@ If manually bisecting:
       }
     '''))
 
-    def test():
-      run_process([PYTHON, EMCC, 'main.cpp', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'])
-      shutil.move('test.data', os.path.join('cdn', 'test.data'))
-      self.run_browser('test.html', '', '/report_result?1')
-
-    test()
+    run_process([PYTHON, EMCC, 'main.cpp', '--shell-file', 'shell.html', '--preload-file', 'subdirr/data1.txt', '-o', 'test.html'])
+    shutil.move('test.data', os.path.join('cdn', 'test.data'))
+    self.run_browser('test.html', '', '/report_result?1')
 
   def test_missing_data_throws_error(self):
     def setup(assetLocalization):

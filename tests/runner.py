@@ -756,14 +756,12 @@ class RunnerCore(unittest.TestCase):
   # Shared test code between main suite and others
 
   def setup_runtimelink_test(self):
-    header = r'''
+    create_test_file('header.h', r'''
       struct point
       {
         int x, y;
       };
-
-    '''
-    open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+    ''')
 
     supp = r'''
       #include <stdio.h>
@@ -780,8 +778,7 @@ class RunnerCore(unittest.TestCase):
 
       int suppInt = 76;
     '''
-    supp_name = os.path.join(self.get_dir(), 'supp.cpp')
-    create_test_file(supp_name, supp)
+    create_test_file('supp.cpp', supp)
 
     main = r'''
       #include <stdio.h>
