@@ -1280,6 +1280,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
       logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1, since MODULARIZE currently requires declaring asm.js/wasm module exports in full')
 
+    if shared.Settings.MODULARIZE and shared.Settings.SEPARATE_ASM and not shared.Settings.WASM and not shared.Settings.SEPARATE_ASM_MODULE_NAME:
+      exit_with_error('Targeting asm.js with --separate-asm and -s MODULARIZE=1 requires specifying the target variable name to which the asm.js module is loaded into. See https://github.com/emscripten-core/emscripten/pull/7949 for details')
+    # Apply default option if no custom name is provided
+    if not shared.Settings.SEPARATE_ASM_MODULE_NAME:
+      shared.Settings.SEPARATE_ASM_MODULE_NAME = 'Module["asm"]'
+
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
@@ -2455,7 +2461,7 @@ def emit_js_source_maps(target, js_transform_tempfiles):
 def separate_asm_js(final, asm_target):
   """Separate out the asm.js code, if asked. Or, if necessary for another option"""
   logger.debug('separating asm')
-  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final])
+  shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final, shared.Settings.SEPARATE_ASM_MODULE_NAME])
 
   # extra only-my-code logic
   if shared.Settings.ONLY_MY_CODE:
