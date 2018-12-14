@@ -2274,7 +2274,7 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
-      os.environ['EM_CACHE'] = newargs[i + 1]
+      os.environ['EM_CACHE'] = os.path.normpath(newargs[i + 1])
       shared.reconfigure_cache()
       newargs[i] = ''
       newargs[i + 1] = ''
