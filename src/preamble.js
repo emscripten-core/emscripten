@@ -2136,6 +2136,9 @@ function integrateWasmJS() {
   Module['asm'] = function(global, env, providedBuffer) {
     // import table
     if (!env['table']) {
+#if ASSERTIONS
+     assert(Module['wasmTableSize'] !== undefined);
+#endif
       var TABLE_SIZE = Module['wasmTableSize'];
       var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
       if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {

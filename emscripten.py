@@ -2165,6 +2165,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'invokeFuncs': [],
   }
 
+  assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
     # json.loads returns `unicode` for strings but other code in this file
     # generally works with utf8 encoded `str` objects, and they don't alwasy
