@@ -486,6 +486,19 @@ extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 
 extern EM_BOOL emscripten_supports_offscreencanvas(void);
 
+// Returns function pointers to WebGL 1 functions. Please avoid using this function ever - all WebGL1/GLES2 functions, even those for WebGL1 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl1_get_proc_address(const char *name);
+
+// Returns function pointers to WebGL 2 functions. Please avoid using this function ever - all WebGL2/GLES3 functions, even those for WebGL2 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl2_get_proc_address(const char *name);
+
+// Combines emscripten_webgl1_get_proc_address() and emscripten_webgl2_get_proc_address() to return function pointers to both WebGL1 and WebGL2 functions. Same drawbacks apply.
+extern void *emscripten_webgl_get_proc_address(const char *name);
+
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
 

@@ -1562,8 +1562,12 @@ GLAPI void APIENTRY emscripten_glClearDepthf (GLclampf d);
 
 GLAPI void APIENTRY emscripten_glVertexAttribDivisor (GLuint index, GLuint divisor);
 
+extern void *emscripten_webgl_get_proc_address(const char *name);
 
 void* emscripten_GetProcAddress(const char *name_) {
+#ifdef __EMSCRIPTEN_PTHREADS__
+  return emscripten_webgl_get_proc_address(name_);
+#else
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);
   // remove EXT|ARB|OES|ANGLE suffixes
@@ -2569,5 +2573,6 @@ for line in open('a').readlines():
 #endif
 
   return 0;
+#endif
 }
 
