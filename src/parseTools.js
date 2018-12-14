@@ -1477,6 +1477,34 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
+// Generates access to module exports variable in pthreads worker.js
+function makeAsmExportAccessInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "']" // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return EXPORT_NAME + "['" + variable + "']"
+  }
+}
+
+// Generates access to a global scope variable in pthreads worker.js
+function makeAsmGlobalAccessInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "']" // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return variable
+  }
+}
+
+// Generates access to both global scope variable and exported Module variable, e.g. "Module['foo'] = foo" or just plain "foo" depending on if we are MODULARIZEing.
+// Used the be able to initialize both variables at the same time.
+function makeAsmExportAndGlobalAccessInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "'] = " + variable // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return variable
+  }
+}
+
 // Some things, like the dynamic and stack bases, will be computed later and
 // applied. Return them as {{{ STR }}} for that replacing later.
 
