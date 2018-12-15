@@ -2507,6 +2507,11 @@ class Building(object):
         if 'import' in item:
           if item['import'][1][0] == '_':
             item['import'][1] = item['import'][1][1:]
+    # map import names from wasm to JS, using the actual name the wasm uses for the import
+    import_name_map = {}
+    for item in graph:
+      if 'import' in item:
+        import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f:
@@ -2522,6 +2527,8 @@ class Building(object):
     for line in out.splitlines():
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
+        if name in import_name_map:
+          name = import_name_map[name]
         unused.append(name)
     # remove them
     passes = ['applyDCEGraphRemovals']
