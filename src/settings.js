@@ -287,9 +287,7 @@ var ALIASING_FUNCTION_POINTERS = 0;
 // By default we use a wasm Table for function pointers, which is fast and
 // efficient. When enabling emulation, we also use the Table *outside* the wasm
 // module, exactly as when emulating in asm.js, just replacing the plain JS
-// array with a Table. However, Tables have some limitations currently, like not
-// being able to assign an arbitrary JS method to them, which we have yet to
-// work around.
+// array with a Table.
 var EMULATED_FUNCTION_POINTERS = 0;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type

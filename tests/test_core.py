@@ -6317,39 +6317,44 @@ return malloc(size);
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
-
-    test_path = path_from_root('tests', 'interop')
-    src, expected = (os.path.join(test_path, s) for s in ('test_add_function.cpp', 'test_add_function.out'))
-
-    post_js = os.path.join(test_path, 'test_add_function_post.js')
+    src = path_from_root('tests', 'interop', 'test_add_function.cpp')
+    post_js = path_from_root('tests', 'interop', 'test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
-    self.do_run_from_file(src, expected)
 
-    if self.get_setting('ASM_JS'):
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
-      self.do_run(open(src).read(), '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
-      generated = open('src.cpp.o.js').read()
-      assert 'jsCall_' not in generated
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
+    print('basics')
+    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
-      # flip the test
-      self.set_setting('ALIASING_FUNCTION_POINTERS', 1 - self.get_setting('ALIASING_FUNCTION_POINTERS'))
-      self.do_run_from_file(src, expected)
-
-    assert 'asm2' in core_test_modes
-    if self.run_name == 'asm2':
-      print('closure')
+    if not self.is_wasm_backend():
+      print('with --closure')
+      old = list(self.emcc_args)
       self.emcc_args += ['--closure', '1']
-      self.do_run_from_file(src, expected)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+      self.emcc_args = old
+      print(old)
 
-    # when emulating, we use a wasm Table, but we can't just assign a JS function to it
-    # TODO: wrap the JS in wasm, see settings.js
+    print('with ALIASING_FUNCTION_POINTERS')
+    self.set_setting('ALIASING_FUNCTION_POINTERS', 1)
+    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+    self.clear_setting('ALIASING_FUNCTION_POINTERS')
+
+    print('with RESERVED_FUNCTION_POINTERS=0')
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+
+    if self.is_wasm_backend():
+      self.do_run(open(src).read(), 'Unable to grow wasm table')
+      print('- with table growth')
+      self.set_setting('ALLOW_TABLE_GROWTH', 1)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+    else:
+      self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.')
+      self.assertNotContained('jsCall_', open('src.cpp.o.js').read())
+
     if not self.is_wasm():
-      print('function pointer emulation')
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
-      # with emulation, we don't need to reserve
+      # with emulation, we don't need to reserve, except with wasm where
+      # we still do.
+      print('- with function pointer emulation')
       self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
-      self.do_run_from_file(src, expected)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
   def test_getFuncWrapper_sig_alias(self):
     src = r'''

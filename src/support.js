@@ -599,32 +599,108 @@ Module['registerFunctions'] = registerFunctions;
 #endif // RELOCATABLE
 #endif // EMULATED_FUNCTION_POINTERS
 
-#if EMULATED_FUNCTION_POINTERS == 0
-#if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
-var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
-var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
-var jsCallNumSigs = Object.keys(jsCallSigOrder).length;
-var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS }}});
-#else // WASM_BACKEND && RESERVED_FUNCTION_POINTERS == 0
+#if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // WASM_BACKEND && RESERVED_FUNCTION_POINTERS
 #endif // EMULATED_FUNCTION_POINTERS == 0
 
 #if WASM
+// Wraps a JS function as a wasm function with a given signature.
+// In the future, we may get a WebAssembly.Function constructor. Until then,
+// we create a wasm module that takes the JS function as an import with a given
+// signature, and re-exports that as a wasm function.
+function convertJsFunctionToWasm(func, sig) {
+  // The module is static, with the exception of the type section, which is
+  // generated based on the signature passed in.
+  var typeSection = [
+    0x01, // id: section,
+    0x00, // length: 0 (placeholder)
+    0x01, // count: 1
+    0x60, // form: func
+  ];
+  var sigRet = sig.slice(0, 1);
+  var sigParam = sig.slice(1);
+  var typeCodes = {
+    'i': 0x7f, // i32
+    'j': 0x7e, // i64
+    'f': 0x7d, // f32
+    'd': 0x7c, // f64
+  };
+
+  // Parameters, length + signatures
+  typeSection.push(sigParam.length);
+  for (var i = 0; i < sigParam.length; ++i) {
+    typeSection.push(typeCodes[sigParam[i]]);
+  }
+
+  // Return values, length + signatures
+  // With no multi-return in MVP, either 0 (void) or 1 (anything else)
+  if (sigRet == 'v') {
+    typeSection.push(0x00);
+  } else {
+    typeSection = typeSection.concat([0x01, typeCodes[sigRet]]);
+  }
+
+  // Write the overall length of the type section back into the section header
+  // (excepting the 2 bytes for the section id and length)
+  typeSection[1] = typeSection.length - 2;
+
+  // Rest of the module is static
+  var bytes = new Uint8Array([
+    0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
+    0x01, 0x00, 0x00, 0x00, // version: 1
+  ].concat(typeSection, [
+    0x02, 0x07, // import section
+      // (import "e" "f" (func 0 (type 0)))
+      0x01, 0x01, 0x65, 0x01, 0x66, 0x00, 0x00,
+    0x07, 0x05, // export section
+      // (export "f" (func 0 (type 0)))
+      0x01, 0x01, 0x66, 0x00, 0x00,
+  ]));
+
+   // We can compile this wasm module synchronously because it is very small.
+  // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
+  var module = new WebAssembly.Module(bytes);
+  var instance = new WebAssembly.Instance(module, {
+    e: {
+      f: func
+    }
+  });
+  var wrappedFunc = instance.exports.f;
+  return wrappedFunc;
+}
+
 // Add a wasm function to the table.
 // Attempting to call this with JS function will cause of table.set() to fail
-function addWasmFunction(func) {
+function addWasmFunction(func, sig) {
   var table = wasmTable;
   var ret = table.length;
-  table.grow(1);
-  table.set(ret, func);
+
+  // Grow the table
+  try {
+    table.grow(1);
+  } catch (err) {
+    if (!err instanceof RangeError)
+      throw err;
+    throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
+  }
+
+  // Insert new element
+  try {
+    table.set(ret, func);
+  } catch (err) {
+    if (!err instanceof TypeError)
+      throw err;
+    var wrapped = convertJsFunctionToWasm(func, sig);
+    table.set(ret, wrapped);
+  }
+
   return ret;
 }
 #endif
 
-// 'sig' parameter is currently only used for LLVM backend under certain
-// circumstance: RESERVED_FUNCTION_POINTERS=1, EMULATED_FUNCTION_POINTERS=0.
+// 'sig' parameter is required for the llvm backend but only when func is not
+// already as WebAssembly function.
 function addFunction(func, sig) {
 #if ASSERTIONS == 2
   if (typeof sig === 'undefined') {
@@ -632,15 +708,15 @@ function addFunction(func, sig) {
   }
 #endif // ASSERTIONS
 
-#if EMULATED_FUNCTION_POINTERS == 0
-#if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
+#if WASM_BACKEND
   assert(typeof sig !== 'undefined',
          'Second argument of addFunction should be a wasm function signature ' +
          'string');
-  var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
-#else // WASM_BACKEND && RESERVED_FUNCTION_POINTERS == 0
+  return addWasmFunction(func, sig);
+#else
+
+#if EMULATED_FUNCTION_POINTERS == 0
   var base = 0;
-#endif // WASM_BACKEND && RESERVED_FUNCTION_POINTERS
   for (var i = base; i < base + {{{ RESERVED_FUNCTION_POINTERS }}}; i++) {
     if (!functionPointers[i]) {
       functionPointers[i] = func;
@@ -652,11 +728,7 @@ function addFunction(func, sig) {
 #else // EMULATED_FUNCTION_POINTERS == 0
 
 #if WASM
-  // assume we have been passed a wasm function and can add it to the table
-  // directly.
-  // TODO(sbc): This assumtion is most likely not valid.  Look into ways of
-  // creating wasm functions based on JS functions as input.
-  return addWasmFunction(func);
+  return addWasmFunction(func, sig);
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();
@@ -671,9 +743,13 @@ function addFunction(func, sig) {
 #endif
 
 #endif // EMULATED_FUNCTION_POINTERS == 0
+
+#endif // WASM_BACKEND
 }
 
 function removeFunction(index) {
+#if WASM_BACKEND
+#else
 #if EMULATED_FUNCTION_POINTERS == 0
   functionPointers[index-jsCallStartIndex] = null;
 #else
@@ -682,6 +758,7 @@ function removeFunction(index) {
   for (var sig in tables) {
     tables[sig][index] = null;
   }
+#endif
 #endif
 }
 

@@ -2156,19 +2156,16 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   pre = None
 
   invoke_funcs = metadata.get('invokeFuncs', [])
-  # List of function signatures used in jsCall functions, e.g.['v', 'vi']
-  jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except:
     pass
 
-  sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
-                                metadata)
+  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
   receiving = create_receiving_wasm(all_implemented)
 
-  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
+  module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
   write_output_file(outfile, post, module)
   module = None
@@ -2205,9 +2202,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     debug_copy(base_source_map, 'base_wasm.map')
 
   cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
-         '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-         ('--emscripten-reserved-function-pointers=%d' %
-          shared.Settings.RESERVED_FUNCTION_POINTERS)]
+         '--global-base=%s' % shared.Settings.GLOBAL_BASE]
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
@@ -2294,7 +2289,7 @@ def create_em_js(forwarded_json, metadata):
   return em_js_funcs
 
 
-def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
+def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
@@ -2310,10 +2305,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
   global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
 
-  jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
-
-  send_items = (basic_funcs + invoke_funcs + jscall_funcs + global_funcs +
-                basic_vars + global_vars)
+  send_items = (basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
@@ -2361,9 +2353,8 @@ return real_%(mangled)s.apply(null, arguments);
   return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
+def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
-  jscall_funcs = create_jscall_funcs(jscall_sigs)
 
   module = []
   module.append('var asmGlobalArg = {};\n')
@@ -2375,7 +2366,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
 
   module.append(receiving)
   module.append(invoke_wrappers)
-  module.append(jscall_funcs)
   return module
 
 
@@ -2441,13 +2431,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def create_jscall_funcs(sigs):
-  jscall_funcs = ''
-  for i, sig in enumerate(sigs):
-    jscall_funcs += '\n' + shared.JS.make_jscall(sig, i) + '\n'
-  return jscall_funcs
 
 
 def treat_as_user_function(name):
