@@ -613,6 +613,18 @@ var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 #endif // WASM_BACKEND && RESERVED_FUNCTION_POINTERS
 
+#if WASM
+// Add a wasm function to the table.
+// Attempting to call this with JS function will cause of table.set() to fail
+function addFunctionWasm(func) {
+  var table = Module['wasmTable'];
+  var ret = table.length;
+  table.grow(1);
+  table.set(ret, func);
+  return ret;
+}
+#endif
+
 // 'sig' parameter is only used on LLVM wasm backend
 function addFunction(func, sig) {
 #if WASM_BACKEND
@@ -641,11 +653,7 @@ function addFunction(func, sig) {
 #else
 #if WASM
   // we can simply append to the wasm table
-  var table = Module['wasmTable'];
-  var ret = table.length;
-  table.grow(1);
-  table.set(ret, func);
-  return ret;
+  return addFunctionWasm(func);
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();
