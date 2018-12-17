@@ -9,7 +9,7 @@ TAG = 'version_2'
 
 def get(ports, settings, shared):
     if settings.USE_REGAL == 1:
-        ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip', 'Regal-' + TAG)
+        ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip', 'regal-' + TAG)
         def create():
             logging.info('building port: regal')
             ports.clear_project_build('regal')
