@@ -1816,42 +1816,40 @@ LibraryManager.library = {
     if (!LDSO.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
-    } else {
-      var lib = LDSO.loadedLibs[handle];
-      symbol = '_' + symbol;
-      if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                               '" in dynamic lib: ' + lib.name);
-        return 0;
-      } else {
-        var result = lib.module[symbol];
-        if (typeof result === 'function') {
-#if WASM
-#if EMULATE_FUNCTION_POINTER_CASTS
-          // for wasm with emulated function pointers, the i64 ABI is used for all
-          // function calls, so we can't just call addFunction on something JS
-          // can call (which does not use that ABI), as the function pointer would
-          // not be usable from wasm. instead, the wasm has exported function pointers
-          // for everything we need, with prefix fp$, use those
-          result = lib.module['fp$' + symbol];
-          if (typeof result === 'object') {
-            // a breaking change in the wasm spec, globals are now objects
-            // https://github.com/WebAssembly/mutable-global/issues/1
-            result = result.value;
-          }
-#if ASSERTIONS
-          assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
-#endif // ASSERTIONS
-          return result;
-#endif // EMULATE_FUNCTION_POINTER_CASTS
-#endif // WASM
-          // convert the exported function into a function pointer using our generic
-          // JS mechanism.
-          return addFunction(result);
-        }
-        return result;
-      }
     }
+    var lib = LDSO.loadedLibs[handle];
+    symbol = '_' + symbol;
+    if (!lib.module.hasOwnProperty(symbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                             '" in dynamic lib: ' + lib.name);
+      return 0;
+    }
+
+    var result = lib.module[symbol];
+    if (typeof result !== 'function')
+      return result;
+
+#if WASM && EMULATE_FUNCTION_POINTER_CASTS
+    // for wasm with emulated function pointers, the i64 ABI is used for all
+    // function calls, so we can't just call addFunction on something JS
+    // can call (which does not use that ABI), as the function pointer would
+    // not be usable from wasm. instead, the wasm has exported function pointers
+    // for everything we need, with prefix fp$, use those
+    result = lib.module['fp$' + symbol];
+    if (typeof result === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      result = result.value;
+    }
+#if ASSERTIONS
+    assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
+#endif // ASSERTIONS
+    return result;
+#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
+    // convert the exported function into a function pointer using our generic
+    // JS mechanism.
+    return addFunction(result);
+#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
   },
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN'],
