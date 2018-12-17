@@ -5931,6 +5931,7 @@ return malloc(size);
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
+  @is_slow_test
   def test_poppler(self):
     def test():
       pdf_data = open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()
