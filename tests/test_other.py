@@ -389,21 +389,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         self.assertContained('missing function', run_js(target, stderr=STDOUT, assert_returncode=None))
         try_delete(target)
 
-        # Combining those bc files into js should work
+        # Combining those object files into js should work
         proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE)
         assert os.path.exists(target), proc.stdout + '\n' + proc.stderr
         self.assertContained('side got: hello from main, over', run_js(target))
 
-        # Combining bc files into another bc should also work
+        # Combining object files into another object should also work
         try_delete(target)
         assert not os.path.exists(target)
-        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE)
-        syms = Building.llvm_nm('combined.bc')
+        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'] + args, stdout=PIPE, stderr=PIPE)
+        syms = Building.llvm_nm('combined.o')
         assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-        proc = run_process([PYTHON, compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout=PIPE, stderr=PIPE)
+        proc = run_process([PYTHON, compiler, 'combined.o', '-o', 'combined.o.js'], stdout=PIPE, stderr=PIPE)
         assert len(proc.stdout) == 0, proc.stdout
-        assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
-        self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
+        assert os.path.exists('combined.o.js'), 'Expected %s to exist' % ('combined.o.js')
+        self.assertContained('side got: hello from main, over', run_js('combined.o.js'))
 
   def test_emcc_7(self):
     for compiler in [EMCC, EMXX]:
