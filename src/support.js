@@ -603,6 +603,7 @@ Module['registerFunctions'] = registerFunctions;
 #endif // RELOCATABLE
 #endif // EMULATED_FUNCTION_POINTERS
 
+#if EMULATED_FUNCTION_POINTERS == 0
 #if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
 var jsCallStartIndex = {{{ JSCALL_START_INDEX }}};
 var jsCallSigOrder = {{{ JSON.stringify(JSCALL_SIG_ORDER) }}};
@@ -612,6 +613,7 @@ var functionPointers = new Array(jsCallNumSigs * {{{ RESERVED_FUNCTION_POINTERS 
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 #endif // WASM_BACKEND && RESERVED_FUNCTION_POINTERS
+#endif // EMULATED_FUNCTION_POINTERS == 0
 
 #if WASM
 // Add a wasm function to the table.
@@ -625,20 +627,20 @@ function addWasmFunction(func) {
 }
 #endif
 
-// 'sig' parameter is only used on LLVM wasm backend
+// 'sig' parameter is currently only used for LLVM backend under certain
+// circumstance: RESERVED_FUNCTION_POINTERS=1, EMULATED_FUNCTION_POINTERS=0.
 function addFunction(func, sig) {
-#if WASM_BACKEND
+#if ASSERTIONS == 2
+  if (typeof sig === 'undefined') {
+    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but can be required for the LLVM wasm backend, so it is recommended for full portability.');
+  }
+#endif // ASSERTIONS
+
+#if EMULATED_FUNCTION_POINTERS == 0
+#if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
   assert(typeof sig !== 'undefined',
          'Second argument of addFunction should be a wasm function signature ' +
          'string');
-#endif // WASM_BACKEND
-#if ASSERTIONS
-  if (typeof sig === 'undefined') {
-    err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but is required for the LLVM wasm backend, so it is recommended for full portability.');
-  }
-#endif // ASSERTIONS
-#if EMULATED_FUNCTION_POINTERS == 0
-#if WASM_BACKEND && RESERVED_FUNCTION_POINTERS
   var base = jsCallSigOrder[sig] * {{{ RESERVED_FUNCTION_POINTERS }}};
 #else // WASM_BACKEND && RESERVED_FUNCTION_POINTERS == 0
   var base = 0;
@@ -650,7 +652,9 @@ function addFunction(func, sig) {
     }
   }
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
-#else
+
+#else // EMULATED_FUNCTION_POINTERS == 0
+
 #if WASM
   // assume we have been passed a wasm function and can add it to the table
   // directly.
@@ -669,7 +673,8 @@ function addFunction(func, sig) {
   }
   return ret;
 #endif
-#endif
+
+#endif // EMULATED_FUNCTION_POINTERS == 0
 }
 
 function removeFunction(index) {
