@@ -972,7 +972,7 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
-var WASM_OBJECT_FILES = 0;
+var WASM_OBJECT_FILES = 1;
 
 // How we should run WebAssembly code. By default, we run it natively.
 // See binaryen's src/js/wasm.js-post.js for more details and options.

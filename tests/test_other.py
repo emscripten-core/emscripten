@@ -7954,7 +7954,7 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      19, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
+        ([],      19, ['assert'], ['waka'], 33171, 10,  15, 66), # noqa
         (['-O1'], 17, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
         (['-O2'], 17, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
         (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
@@ -7967,7 +7967,7 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      19, ['assert'], ['waka'], 14567, 10, 15, 24), # noqa
+        ([],      14, ['assert'], ['waka'], 14567,  6, 13, 16), # noqa
         (['-O1'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
         (['-O2'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7978,9 +7978,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 42, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
+        (['-O2'], 42, ['assert'], ['waka'], 348370,  27,  219, 575), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  42, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
+                  42, ['assert'], ['waka'], 348249,  27,  219, 575), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
