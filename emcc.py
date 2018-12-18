@@ -1285,12 +1285,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # we run the optimizer during asm2wasm itself). use it, if not overridden
         if 'BINARYEN_PASSES' not in settings_key_changes:
           passes = []
+          if not shared.Settings.EXIT_RUNTIME:
+            passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if options.debug_level < 3:
             passes += ['--strip']
-          if not shared.Settings.EXIT_RUNTIME:
-            passes += ['--no-exit-runtime']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 

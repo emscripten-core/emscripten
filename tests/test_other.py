@@ -7913,7 +7913,7 @@ int main() {
 
     if not self.is_wasm_backend():
       # fastcomp
-      size_slack_factor = 0.05  # changes very little
+      size_slack = 0.05  # changes very little
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7978,9 +7978,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 42, ['assert'], ['waka'], 348370,  28,  220, 723), # noqa
+        (['-O2'], 42, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  42, ['assert'], ['waka'], 348249,  28,  220, 723), # noqa
+                  42, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
