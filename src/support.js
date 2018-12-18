@@ -616,7 +616,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 #if WASM
 // Add a wasm function to the table.
 // Attempting to call this with JS function will cause of table.set() to fail
-function addFunctionWasm(func) {
+function addWasmFunction(func) {
   var table = Module['wasmTable'];
   var ret = table.length;
   table.grow(1);
@@ -653,7 +653,7 @@ function addFunction(func, sig) {
 #else
 #if WASM
   // we can simply append to the wasm table
-  return addFunctionWasm(func);
+  return addWasmFunction(func);
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();

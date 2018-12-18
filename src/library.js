@@ -1854,7 +1854,7 @@ LibraryManager.library = {
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
-    return addFunctionWasm(result);
+    return addWasmFunction(result);
 #else
     // convert the exported function into a function pointer using our generic
     // JS mechanism.
