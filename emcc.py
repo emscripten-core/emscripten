@@ -877,7 +877,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                   break
               libs.append((i, l))
               newargs[i] = ''
-            elif 'WASM_OBJECT_FILES=1' in settings_changes and shared.Building.is_wasm(arg):
+            elif 'WASM_OBJECT_FILES=0' not in settings_changes and shared.Building.is_wasm(arg):
               input_files.append((i, arg))
             else:
               logger.warning(arg + ' is not valid LLVM bitcode')
@@ -1021,8 +1021,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.STACK_OVERFLOW_CHECK = 2
 
       if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
-        logger.error('WASM_OBJECT_FILES can only be used with wasm backend')
-        return 1
+        if 'WASM_OBJECT_FILES=1' in settings_changes:
+          logger.error('WASM_OBJECT_FILES can only be used with wasm backend')
+          return 1
+        shared.Settings.WASM_OBJECT_FILES = 0
 
       if not shared.Settings.STRICT:
         # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
