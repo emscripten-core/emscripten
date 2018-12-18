@@ -3827,25 +3827,22 @@ int main()
     run_process(cmd)
     self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_warn_dylibs(self):
-    shared_suffixes = ['.so', '.dylib', '.dll']
-
-    for suffix in ['.o', '.a', '.bc', '.so', '.lib', '.dylib', '.js', '.html']:
-      err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stdout=PIPE, stderr=PIPE).stderr
-      warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
-      if suffix in shared_suffixes:
-        self.assertContained(warning, err)
-      else:
-        self.assertNotContained(warning, err)
-
   @no_wasm_backend('uses SIDE_MODULE')
-  def test_side_module_without_proper_target(self):
-    # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
-    # otherwise, we are just linking bitcode, and should show an error
+  def test_side_module_when_compiling(self):
+    # SIDE_MODULE is only meaningful when linking a shared library (wasm,so)
     for wasm in [0, 1]:
       print(wasm)
-      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
-      self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode', process.stderr)
+      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE', '-c', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
+      self.assertContained('SIDE_MODULE is only valid when linking', process.stderr)
+      assert process.returncode is not 0
+
+  @no_wasm_backend('uses SIDE_MODULE')
+  def test_main_module_when_compiling(self):
+    # SIDE_MODULE is only meaningful when linking a shared library (wasm,so)
+    for wasm in [0, 1]:
+      print(wasm)
+      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'MAIN_MODULE', '-c', '-s', 'WASM=%d' % wasm], stdout=PIPE, stderr=PIPE, check=False)
+      self.assertContained('MAIN_MODULE is only valid when linking', process.stderr)
       assert process.returncode is not 0
 
   @no_wasm_backend()

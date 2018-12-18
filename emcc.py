@@ -65,6 +65,7 @@ SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECI
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
+EXECUTABLE_ENDINGS = JS_CONTAINING_SUFFIXES + ('.wasm', '.so', '.dylib', '.dll')
 BITCODE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
@@ -79,7 +80,6 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive')
 
 LIB_PREFIXES = ('', 'lib')
-
 
 DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
 
@@ -1696,11 +1696,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
             shared.Building.link_to_object(linker_inputs, specified_target)
-        logger.debug('stopping at bitcode')
+        logger.debug('stopping at object file')
         if shared.Settings.SIDE_MODULE:
-          exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode. That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an LLVM bitcode file, which you should then compile to .wasm or .js with SIDE_MODULE.')
-        if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          logger.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an LLVM bitcode file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a file with LLVM bitcode, \'.bc\', which would avoid this warning.)')
+          exit_with_error('SIDE_MODULE is only valid when linking')
+        if shared.Settings.MAIN_MODULE:
+          exit_with_error('MAIN_MODULE is only valid when linking')
         return 0
 
     # exit block 'process inputs'
@@ -1828,7 +1828,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             save_intermediate('lto', 'bc')
             link_opts = []
           else:
-            # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+            # At minimum remove dead functions etc., this potentially saves a
+            # lot in the size of the generated code (and the time to compile it)
             link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
           if options.cfi:
