@@ -1896,6 +1896,8 @@ class Building(object):
     if Settings.EXPORT_ALL:
       cmd += ['--export-all']
 
+    cmd += opts
+
     logger.debug('emcc: lld-linking: %s to %s', args, target)
     check_call(cmd)
     return target
