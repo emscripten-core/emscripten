@@ -539,9 +539,9 @@ def perform_sanify_checks():
 
 def run_npm_install():
   """Run `npm install` command to update node_modules based on package.json.
-  For normally node projects developers are expected to run this when they
-  fetch from git, but emscripten it not a normal node project so for now
-  at least we hide this extra step and do it for them.
+  Normally node projects developers are expected to run this when they
+  fetch from git, but emscripten it not a normal node project so, for now
+  at least, we run this automatically whenever the version changes.
   """
   npm = os.path.join(os.path.dirname(NODE_JS[0]), 'npm')
   if not os.path.exists(npm):
@@ -573,7 +573,9 @@ def check_sanity(force=False):
     sanity_file = CONFIG_FILE + '_sanity'
     if Settings.WASM_BACKEND:
       sanity_file += '_wasm'
-    if os.path.exists(sanity_file):
+    if not os.path.exists(sanity_file):
+      reason = 'sanity file not found'
+    else:
       sanity_mtime = os.path.getmtime(sanity_file)
       if sanity_mtime <= settings_mtime:
         reason = 'settings file has changed'
@@ -587,6 +589,7 @@ def check_sanity(force=False):
     if reason:
       logger.warning('(Emscripten: %s, clearing cache)' % reason)
       Cache.erase()
+      run_npm_install()
       # the check actually failed, so definitely write out the sanity file, to
       # avoid others later seeing failures too
       force = False
@@ -604,8 +607,6 @@ def check_sanity(force=False):
       exit_with_error('failing sanity checks due to previous llvm failure')
 
     perform_sanify_checks()
-
-    run_npm_install()
 
     if not force:
       # Only create/update this file if the sanity check succeeded, i.e., we got here
