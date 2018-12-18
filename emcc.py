@@ -1134,7 +1134,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
-        forced_stdlibs += ['libcxxabi']
+        forced_stdlibs += ['libc++abi']
 
       if not shared.Settings.ONLY_MY_CODE:
         # Always need malloc and free to be kept alive and exported, for internal use and other modules

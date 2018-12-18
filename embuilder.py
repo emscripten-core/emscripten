@@ -43,9 +43,9 @@ Available operations and tasks:
         dlmalloc_threadsafe
         dlmalloc_threadsafe_debug
         pthreads
-        libcxx
-        libcxx_noexcept
-        libcxxabi
+        libc++
+        libc++_noexcept
+        libc++abi
         gl
         gl-mt
         native_optimizer
@@ -106,8 +106,8 @@ CXX_WITH_STDLIB = '''
 SYSTEM_TASKS = [
     'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
     'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
-    'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept',
-    'libcxxabi', 'html5'
+    'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++', 'libc++_noexcept',
+    'libc++abi', 'html5'
 ]
 USER_TASKS = [
     'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
@@ -202,11 +202,11 @@ def main():
       build(C_WITH_MALLOC, ['libc-mt.bc', 'libdlmalloc_threadsafe.bc', 'libpthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
     elif what == 'libc-wasm':
       build(C_WITH_STDLIB, ['libc-wasm.bc'], ['-s', 'WASM=1'])
-    elif what == 'libcxx':
-      build(CXX_WITH_STDLIB, ['libcxx.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-    elif what == 'libcxx_noexcept':
-      build(CXX_WITH_STDLIB, ['libcxx_noexcept.a'])
-    elif what == 'libcxxabi':
+    elif what == 'libc++':
+      build(CXX_WITH_STDLIB, ['libc++.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+    elif what == 'libc++_noexcept':
+      build(CXX_WITH_STDLIB, ['libc++_noexcept.a'])
+    elif what == 'libc++abi':
       build('''
         struct X { int x; virtual void a() {} };
         struct Y : X { int y; virtual void a() { y = 10; }};
@@ -215,7 +215,7 @@ def main():
           y->a();
           return y->y;
         }
-      ''', ['libcxxabi.bc'])
+      ''', ['libc++abi.bc'])
     elif what == 'gl':
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
