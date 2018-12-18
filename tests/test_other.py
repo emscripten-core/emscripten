@@ -467,7 +467,7 @@ f.close()
   # cache on demand, that exactly one of the processes will, and the other
   # processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    self.create_test_file('test.c', r'''
+    create_test_file('test.c', r'''
       #include <stdio.h>
       int main() {
         printf("hello, world!\n");
@@ -497,7 +497,7 @@ f.close()
   def test_emcc_cache_flag(self):
     cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
-    self.create_test_file('test.c', r'''
+    create_test_file('test.c', r'''
       #include <stdio.h>
       int main() {
         printf("hello, world!\n");
@@ -671,7 +671,7 @@ f.close()
   # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that needs C++11 (embind)
   def test_cmake_with_embind_cpp11_mode(self):
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      with self.temp_directory(self.get_dir()) as tempdirname:
+      with temp_directory(self.get_dir()) as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         run_process(configure)
