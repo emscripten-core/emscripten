@@ -6794,6 +6794,7 @@ Resolved: "/" => "/"
         assert ('''warning: emterpreter bytecode is fairly large''' in stderr) == need_warning, stderr
         assert ('''It is recommended to use  -s EMTERPRETIFY_FILE=..''' in stderr) == need_warning, stderr
 
+  @no_wasm_backend('needs LTO with WASM_OBJECT_FILES')
   def test_llvm_lto(self):
     sizes = {}
     lto_levels = [0, 1, 2, 3]
