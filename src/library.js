@@ -1728,6 +1728,7 @@ LibraryManager.library = {
     error: null,
     errorMsg: null,
   },
+
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
@@ -1782,6 +1783,7 @@ LibraryManager.library = {
 
     return handle;
   },
+
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
   dlclose__proxy: 'sync',
@@ -1804,6 +1806,7 @@ LibraryManager.library = {
       return 0;
     }
   },
+
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN'],
   dlsym__proxy: 'sync',
@@ -1846,11 +1849,20 @@ LibraryManager.library = {
 #endif // ASSERTIONS
     return result;
 #else // WASM && EMULATE_FUNCTION_POINTER_CASTS
+
+#if WASM
+    // Insert the function into the wasm table.  Since we know the function
+    // comes directly from the loaded wasm module we can insert it directly
+    // into the table, avoiding any JS interaction.
+    return addWasmFunction(result);
+#else
     // convert the exported function into a function pointer using our generic
     // JS mechanism.
     return addFunction(result);
+#endif // WASM
 #endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
   },
+
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN'],
   dlerror__proxy: 'sync',
