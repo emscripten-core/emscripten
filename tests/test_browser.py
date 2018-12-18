@@ -2456,6 +2456,11 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
+  def test_html5_gamepad(self):
+    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      print(opts)
+      self.btest(path_from_root('tests', 'test_gamepad.c'), args=opts, expected='0', timeout=20)
+
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
@@ -4240,7 +4245,7 @@ window.close = function() {
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
   def test_emscripten_thread_sleep(self):
-    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
+    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print"]'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):

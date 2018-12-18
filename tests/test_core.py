@@ -3902,7 +3902,7 @@ ok
           self.assertNotContained(assertion, str(e))
       assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
 
-    test('libcxx')
+    test('libc++')
     test('1')
     if 'ASSERTIONS=1' not in self.emcc_args:
       self.set_setting('ASSERTIONS', 0)
@@ -3913,7 +3913,7 @@ ok
     test('', expect_pass=False, need_reverse=False)
 
   @needs_dlfcn
-  @with_env_modify({'EMCC_FORCE_STDLIBS': 'libcxx'})
+  @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
   def test_dylink_iostream(self):
     self.dylink_test(header=r'''
       #include <iostream>
@@ -5931,6 +5931,7 @@ return malloc(size);
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
+  @is_slow_test
   def test_poppler(self):
     def test():
       pdf_data = open(path_from_root('tests', 'poppler', 'paper.pdf'), 'rb').read()

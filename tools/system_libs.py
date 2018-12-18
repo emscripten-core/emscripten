@@ -274,9 +274,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     return build_libc(libname, files, ['-O2', '-fno-builtin'])
 
-  # libcxx
+  # libc++
   def create_libcxx(libname):
-    logging.debug('building libcxx for cache')
+    logging.debug('building libc++ for cache')
     libcxx_files = [
       'algorithm.cpp',
       'any.cpp',
@@ -321,7 +321,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
-    logging.debug('building libcxxabi for cache')
+    logging.debug('building libc++abi for cache')
     libcxxabi_files = [
       'abort_message.cpp',
       'cxa_aux_runtime.cpp',
@@ -500,7 +500,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return create_wasm_rt_lib(libname, math_files + string_files)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
+  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   force_all = force == '1'
@@ -522,7 +522,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Add in some hacks for js libraries. If a js lib depends on a symbol provided by a C library, it must be
   # added to here, because our deps go only one way (each library here is checked, then we check the next
-  # in order - libcxx, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
+  # in order - libc++, libcxextra, etc. - and then we run the JS compiler and provide extra symbols from
   # library*.js files. But we cannot then go back to the C libraries if a new dep was added!
   # TODO: Move all __deps from src/library*.js to deps_info.json, and use that single source of info
   #       both here and in the JS compiler.
@@ -588,8 +588,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
 
-  system_libs = [Library('libcxx',        'a', create_libcxx,      libcxx_symbols,      ['libcxxabi'], True), # noqa
-                 Library('libcxxabi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
+  system_libs = [Library('libc++',        'a', create_libcxx,      libcxx_symbols,      ['libc++abi'], True), # noqa
+                 Library('libc++abi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
                  Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
                  Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
                  Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
@@ -690,12 +690,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
-  # libcxxabi and libcxx *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
+  # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
   # exceptions, but since the string methods in the headers are *weakly* linked, then
-  # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
+  # we might have exception-supporting versions of them from elsewhere, and if libc++abi
   # is first then it would "win", breaking exception throwing from those string
-  # header methods. To avoid that, we link libcxxabi last.
-  libs_to_link.sort(key=lambda x: x[0].endswith('libcxxabi.bc'))
+  # header methods. To avoid that, we link libc++abi last.
+  libs_to_link.sort(key=lambda x: x[0].endswith('libc++abi.bc'))
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.

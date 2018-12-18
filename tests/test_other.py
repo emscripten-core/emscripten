@@ -4634,7 +4634,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': None}):
       test('normal') # normally is ok
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}):
       test('forced libs is ok, they were there anyhow')
 
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
@@ -4643,7 +4643,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4662,7 +4662,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libcxxabi,libcxx,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -7868,7 +7868,7 @@ int main() {
           self.assertNotIn('hello, world!', proc.stdout)
 
   def test_binaryen_metadce(self):
-    def test(filename, expectations, size_slack_factor):
+    def test(filename, expectations, size_slack):
       # in -Os, -Oz, we remove imports wasm doesn't need
       for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs in expectations:
         print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs)
@@ -7892,7 +7892,7 @@ int main() {
         wasm_size = os.path.getsize('a.out.wasm')
         ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
         print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
-        self.assertLess(ratio, size_slack_factor)
+        self.assertLess(ratio, size_slack)
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
         exports = wast.count('(export ')
@@ -7929,7 +7929,7 @@ int main() {
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
                 1506, [],         [],      226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
-      ], size_slack_factor) # noqa
+      ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
@@ -7940,30 +7940,30 @@ int main() {
         (['-O3'],  0, [],         [],          55,  0,  1, 1), # noqa
         (['-Os'],  0, [],         [],          55,  0,  1, 1), # noqa
         (['-Oz'],  0, [],         [],          55,  0,  1, 1), # noqa
-      ], size_slack_factor)
+      ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
         (['-O2'], 36, ['assert'], ['waka'], 196709,  30,   41, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
                   36, ['assert'], ['waka'], 196709,  30,   22, 620), # noqa
-      ], size_slack_factor) # noqa
+      ], size_slack) # noqa
     else:
       # wasm-backend
-      size_slack_factor = 0.50  # changes quite a bit
+      size_slack = 0.5  # for now, don't look carefully at code size
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
         ([],      19, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
         (['-O1'], 17, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
         (['-O2'], 17, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'], 10, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'], 10, [],         [],        3350,  7,   3, 15), # noqa
-        (['-Oz'], 10, [],         [],        3309,  7,   2, 14), # noqa
+        (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
+        (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   5, [],         [],          61,  0,   1,  1), # noqa; almost totally empty!
-      ], size_slack_factor) # noqa
+                   0, [],         [],          61,  0,   1,  1), # noqa; almost totally empty!
+      ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
@@ -7971,17 +7971,17 @@ int main() {
         (['-O1'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
         (['-O2'], 12, ['assert'], ['waka'], 11255,  3, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  5, [],         [],          61,  0,  1,  1), # noqa
-        (['-Os'],  5, [],         [],          61,  0,  1,  1), # noqa
-        (['-Oz'],  5, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/kripken/emscripten/issues/6233
-      ], size_slack_factor)
+        (['-O3'],  0, [],         [],          61,  0,  1,  1), # noqa
+        (['-Os'],  0, [],         [],          61,  0,  1,  1), # noqa
+        (['-Oz'],  0, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/kripken/emscripten/issues/6233
+      ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
         (['-O2'], 42, ['assert'], ['waka'], 348370,  28,  220, 723), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
                   42, ['assert'], ['waka'], 348249,  28,  220, 723), # noqa
-      ], size_slack_factor) # noqa
+      ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
