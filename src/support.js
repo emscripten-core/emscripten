@@ -652,7 +652,10 @@ function addFunction(func, sig) {
   throw 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.';
 #else
 #if WASM
-  // we can simply append to the wasm table
+  // assume we have been passed a wasm function and can add it to the table
+  // directly.
+  // TODO(sbc): This assumtion is most likely not valid.  Look into ways of
+  // creating wasm functions based on JS functions as input.
   return addWasmFunction(func);
 #else
   alignFunctionTables(); // XXX we should rely on this being an invariant
