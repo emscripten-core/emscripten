@@ -82,6 +82,9 @@ def is_python3_version_supported():
   if not python3:
     return False
   output = run_process([python3, '--version'], stdout=PIPE).stdout
+  # strip out 'rc1' etc., we don't care about release candidates
+  if 'rc' in output:
+    output = output.split('rc')[0]
   version = [int(x) for x in output.split(' ')[1].split('.')]
   return version >= [3, 5, 0]
 
