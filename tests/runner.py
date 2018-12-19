@@ -93,6 +93,8 @@ EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
+EMTEST_VERBOSE = os.getenv('EMTEST_VERBOSE')
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -206,6 +208,13 @@ def limit_size(string, MAX=800 * 20):
   if len(string) < MAX:
     return string
   return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+
+
+def create_test_file(name, contents, binary=False):
+  assert not os.path.isabs(name)
+  mode = 'wb' if binary else 'w'
+  with open(name, mode) as f:
+    f.write(contents)
 
 
 # The core test modes
@@ -364,13 +373,21 @@ class RunnerCore(unittest.TestCase):
       return self.settings_mods[key]
     return Settings[key]
 
-  def set_setting(self, key, value):
+  def set_setting(self, key, value=1):
+    if value is None:
+      self.clear_setting(key)
     self.settings_mods[key] = value
+
+  def clear_setting(self, key):
+    self.settings_mods.pop(key, None)
 
   def serialize_settings(self):
     ret = []
     for key, value in self.settings_mods.items():
-      ret += ['-s', '{}={}'.format(key, json.dumps(value))]
+      if value == 1:
+        ret += ['-s', key]
+      else:
+        ret += ['-s', '{}={}'.format(key, json.dumps(value))]
     return ret
 
   def get_dir(self):
@@ -387,7 +404,7 @@ class RunnerCore(unittest.TestCase):
     if not args:
       return
     js = open(filename).read()
-    open(filename, 'w').write(js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
+    create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
     # force_recompile = force_recompile or os.path.getsize(filename + '.o.ll') > 50000
@@ -610,17 +627,18 @@ class RunnerCore(unittest.TestCase):
     return ('(export "%s"' % name) in wat
 
   def run_generated_code(self, engine, filename, args=[], check_timeout=True, output_nicerizer=None, assert_returncode=0):
-    stdout = os.path.join(self.get_dir(), 'stdout') # use files, as PIPE can get too full and hang us
-    stderr = os.path.join(self.get_dir(), 'stderr')
-    try:
-      cwd = os.getcwd()
-    except:
-      cwd = None
-    os.chdir(self.get_dir())
-    self.assertEqual(line_endings.check_line_endings(filename), 0) # Make sure that we produced proper line endings to the .js file we are about to run.
-    jsrun.run_js(filename, engine, args, check_timeout, stdout=open(stdout, 'w'), stderr=open(stderr, 'w'), assert_returncode=assert_returncode)
-    if cwd is not None:
-      os.chdir(cwd)
+    # use files, as PIPE can get too full and hang us
+    stdout = self.in_dir('stdout')
+    stderr = self.in_dir('stderr')
+    # Make sure that we produced proper line endings to the .js file we are about to run.
+    self.assertEqual(line_endings.check_line_endings(filename), 0)
+    if EMTEST_VERBOSE:
+      print("Running '%s' under '%s'" % (filename, engine))
+    with chdir(self.get_dir()):
+      jsrun.run_js(filename, engine, args, check_timeout,
+                   stdout=open(stdout, 'w'),
+                   stderr=open(stderr, 'w'),
+                   assert_returncode=assert_returncode)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
@@ -630,6 +648,10 @@ class RunnerCore(unittest.TestCase):
     else:
       ret = out + err
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
+    if EMTEST_VERBOSE:
+      print('-- being program output --')
+      print(ret, end='')
+      print('-- end program output --')
     return ret
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
@@ -734,14 +756,12 @@ class RunnerCore(unittest.TestCase):
   # Shared test code between main suite and others
 
   def setup_runtimelink_test(self):
-    header = r'''
+    create_test_file('header.h', r'''
       struct point
       {
         int x, y;
       };
-
-    '''
-    open(os.path.join(self.get_dir(), 'header.h'), 'w').write(header)
+    ''')
 
     supp = r'''
       #include <stdio.h>
@@ -758,8 +778,7 @@ class RunnerCore(unittest.TestCase):
 
       int suppInt = 76;
     '''
-    supp_name = os.path.join(self.get_dir(), 'supp.cpp')
-    open(supp_name, 'w').write(supp)
+    create_test_file('supp.cpp', supp)
 
     main = r'''
       #include <stdio.h>
@@ -799,8 +818,7 @@ class RunnerCore(unittest.TestCase):
   # when run under broswer it excercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
-    with open('liba.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('liba.cpp', r'''
         #include <stdio.h>
         #include <emscripten.h>
 
@@ -821,8 +839,7 @@ class RunnerCore(unittest.TestCase):
         static ainit _;
       ''')
 
-    with open('libb.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('libb.cpp', r'''
         #include <emscripten.h>
 
         void afunc(const char *s);
@@ -832,8 +849,7 @@ class RunnerCore(unittest.TestCase):
         }
       ''')
 
-    with open('libc.cpp', 'w') as f:
-      f.write(r'''
+    create_test_file('libc.cpp', r'''
         #include <emscripten.h>
 
         void afunc(const char *s);
@@ -845,9 +861,9 @@ class RunnerCore(unittest.TestCase):
 
     # _test_dylink_dso_needed can be potentially called several times by a test.
     # reset dylink-related options first.
-    self.set_setting('MAIN_MODULE', 0)
-    self.set_setting('SIDE_MODULE', 0)
-    self.set_setting('RUNTIME_LINKED_LIBS', [])
+    self.clear_setting('MAIN_MODULE')
+    self.clear_setting('SIDE_MODULE')
+    self.clear_setting('RUNTIME_LINKED_LIBS')
 
     # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
     self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)

@@ -297,12 +297,18 @@ namespace emscripten {
             return val(internal::_emval_new_array());
         }
 
-        template<typename T>
-        static val array(const std::vector<T> vec) {
+        template<typename Iter>
+        static val array(Iter begin, Iter end) {
             val new_array = array();
-            for(auto it = vec.begin(); it != vec.end(); it++)
+            for (auto it = begin; it != end; ++it) {
                 new_array.call<void>("push", *it);
+            }
             return new_array;
+        }
+
+        template<typename T>
+        static val array(const std::vector<T>& vec) {
+            return array(vec.begin(), vec.end());
         }
 
         static val object() {

@@ -1134,7 +1134,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
-        forced_stdlibs += ['libcxxabi']
+        forced_stdlibs += ['libc++abi']
 
       if not shared.Settings.ONLY_MY_CODE:
         # Always need malloc and free to be kept alive and exported, for internal use and other modules
@@ -2274,7 +2274,7 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
-      os.environ['EM_CACHE'] = newargs[i + 1]
+      os.environ['EM_CACHE'] = os.path.normpath(newargs[i + 1])
       shared.reconfigure_cache()
       newargs[i] = ''
       newargs[i + 1] = ''
@@ -2556,6 +2556,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     else:
       cmd += ['-o', wasm_text_target, '-S']
       wrote_wasm_text = True
+    cmd += shared.Building.get_binaryen_feature_flags()
     logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
     shared.check_call(cmd)
@@ -2582,6 +2583,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
     passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
+    cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g'] # preserve the debug info
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))

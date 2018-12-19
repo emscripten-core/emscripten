@@ -19,9 +19,21 @@ int main() {
     // test for additional things being exported
     assert(Module['addFunction']);
     assert(Module['lengthBytesUTF8']);
+    Module['setTempRet0'](42);
+    assert(Module['getTempRet0']() == 42);
     // the main test here
     Module['dynCall']('viii', $0, [1, 4, 9]);
 #else
+    // If 'ASSERTIONS' is enabled, these properties all exist, but with
+    // stubs that show a useful error if called. So it is only meaningful
+    // to check they don't exist when assertions are disabled.
+    if (!ASSERTIONS) {
+      assert(!Module['addFunction']);
+      assert(!Module['lengthBytesUTF8']);
+      assert(!Module['setTempRet0']);
+      assert(!Module['getTempRet0']);
+      assert(!Module['dynCall']);
+    }
     dynCall('viii', $0, [1, 4, 9]);
 #endif
   }, &waka);

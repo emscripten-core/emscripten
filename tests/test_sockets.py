@@ -246,9 +246,9 @@ class sockets(BrowserCore):
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
-    shared.try_delete(self.in_dir('enet'))
-    shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
-    with chdir(self.in_dir('enet')):
+    shared.try_delete('enet')
+    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    with chdir('enet'):
       run_process([PYTHON, path_from_root('emconfigure'), './configure'])
       run_process([PYTHON, path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
@@ -264,10 +264,10 @@ class sockets(BrowserCore):
   # somewhat work, but those have been removed). However, with WebRTC it
   # should be able to resurect this test.
   # def test_enet_in_browser(self):
-  #   shared.try_delete(self.in_dir('enet'))
-  #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
+  #   shared.try_delete('enet')
+  #   shutil.copytree(path_from_root('tests', 'enet'), 'enet')
   #   pwd = os.getcwd()
-  #   os.chdir(self.in_dir('enet'))
+  #   os.chdir('enet')
   #   run_process([PYTHON, path_from_root('emconfigure'), './configure'])
   #   run_process([PYTHON, path_from_root('emmake'), 'make'])
   #   enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]

@@ -20,3 +20,5 @@ third_party/lzma.js/lzma-native
 third_party/lzma.js/lzma-native.exe
 
 tools/optimizer_build/
+
+.DS_Store
