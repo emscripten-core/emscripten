@@ -65,7 +65,7 @@ Available operations and tasks:
         libc-wasm
         compiler_rt_wasm
         regal
-        
+
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
 It is also possible to build native_optimizer manually by using CMake. To
