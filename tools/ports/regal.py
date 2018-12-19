@@ -20,7 +20,6 @@ def get(ports, settings, shared):
             source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
             dest_path_src = os.path.join(ports.get_build_dir(), 'regal', 'src')
 
-
             source_path_regal = os.path.join(source_path_src, 'regal')
             source_path_md5 = os.path.join(source_path_src, 'md5')
             source_path_jsonsl = os.path.join(source_path_src, 'jsonsl')
