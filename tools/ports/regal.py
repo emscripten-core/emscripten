@@ -15,10 +15,11 @@ def get(ports, settings, shared):
             ports.clear_project_build('regal')
 
             # copy sources
-            # only what is needed is copied: regal, md5, jsonsl, boost, lookup3
-            # Note: GLSL Optimizer is not included in the build
+            # only what is needed is copied: regal, md5, jsonsl, boost, lookup3,
+            # Note: GLSL Optimizer is included (needed for headers) but not built
             source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
             dest_path_src = os.path.join(ports.get_build_dir(), 'regal', 'src')
+            source_path_glslopt = os.path.join(source_path_src, 'glsl')
 
             source_path_regal = os.path.join(source_path_src, 'regal')
             source_path_md5 = os.path.join(source_path_src, 'md5')
@@ -30,6 +31,7 @@ def get(ports, settings, shared):
             dest_path_jsonsl = os.path.join(dest_path_src, 'jsonsl')
             dest_path_boost = os.path.join(dest_path_src, 'boost')
             dest_path_lookup3 = os.path.join(dest_path_src, 'lookup3')
+            dest_path_glslopt = os.path.join(source_path_src, 'glsl')
 
             shutil.rmtree(dest_path_src, ignore_errors=True)
             shutil.copytree(source_path_regal, dest_path_regal)
@@ -37,6 +39,7 @@ def get(ports, settings, shared):
             shutil.copytree(source_path_jsonsl, dest_path_jsonsl)
             shutil.copytree(source_path_boost, dest_path_boost)
             shutil.copytree(source_path_lookup3, dest_path_lookup3)
+            shutil.copytree(source_path_glslopt, dest_path_glslopt)
 
             # includes
             source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include')
@@ -128,6 +131,9 @@ def get(ports, settings, shared):
                                  '-I' + dest_path_lookup3,
                                  '-I' + dest_path_jsonsl,
                                  '-I' + dest_path_boost,
+                                 '-I' + os.path.join(dest_path_glslopt, 'include'),
+                                 '-I' + os.path.join(dest_path_glslopt,'src','glsl'),
+                                 '-I' + os.path.join(dest_path_glslopt,'src','mesa'),
                                  '-w'])
                 o_s.append(o)
 
