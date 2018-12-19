@@ -1134,7 +1134,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs = []
       if shared.Settings.DEMANGLE_SUPPORT:
         shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
-        forced_stdlibs += ['libcxxabi']
+        forced_stdlibs += ['libc++abi']
 
       if not shared.Settings.ONLY_MY_CODE:
         # Always need malloc and free to be kept alive and exported, for internal use and other modules
@@ -1284,8 +1284,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
         # we run the optimizer during asm2wasm itself). use it, if not overridden
         if 'BINARYEN_PASSES' not in settings_key_changes:
+          passes = []
           if options.opt_level > 0 or options.shrink_level > 0:
-            shared.Settings.BINARYEN_PASSES = shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)
+            passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          if options.debug_level < 3:
+            passes += ['--strip']
+          if passes:
+            shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
@@ -2269,7 +2274,7 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '--cache':
       check_bad_eq(newargs[i])
-      os.environ['EM_CACHE'] = newargs[i + 1]
+      os.environ['EM_CACHE'] = os.path.normpath(newargs[i + 1])
       shared.reconfigure_cache()
       newargs[i] = ''
       newargs[i + 1] = ''
@@ -2551,6 +2556,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     else:
       cmd += ['-o', wasm_text_target, '-S']
       wrote_wasm_text = True
+    cmd += shared.Building.get_binaryen_feature_flags()
     logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
     shared.check_call(cmd)
@@ -2572,10 +2578,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if shared.Settings.BINARYEN_PASSES:
-    shutil.move(wasm_binary_target, wasm_binary_target + '.pre')
+    if DEBUG:
+      shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
     passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target + '.pre', '-o', wasm_binary_target] + passes
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
+    cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g'] # preserve the debug info
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
@@ -2602,7 +2610,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE:
-    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target)
+    wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
     # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
     shutil.move(wso, wasm_binary_target)
     if not shared.Settings.WASM_BACKEND and not DEBUG:

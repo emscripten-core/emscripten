@@ -4,7 +4,6 @@
 // found in the LICENSE file.
 
 var LibraryJSEvents = {
-  $JSEvents__postset: 'JSEvents.staticInit();',
   $JSEvents__deps: ['_get_canvas_element_size', '_set_canvas_element_size'],
   $JSEvents: {
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
@@ -20,14 +19,6 @@ var LibraryJSEvents = {
     visibilityChangeEvent: 0,
     touchEvent: 0,
 
-    // In order to ensure most coherent Gamepad API state as possible (https://github.com/w3c/gamepad/issues/22) and
-    // to minimize the amount of garbage created, we sample the gamepad state at most once per frame, and not e.g. once per
-    // each controller or similar. To implement that, the following variables retain a cache of the most recent polled gamepad
-    // state.
-    lastGamepadState: null,
-    lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
-    numGamepadsConnected: 0, // Keep track of how many gamepads are connected, to optimize to not poll gamepads when none are connected.
-
     // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
@@ -41,33 +32,12 @@ var LibraryJSEvents = {
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false, 
 
-    _onGamepadConnected: function() { ++JSEvents.numGamepadsConnected; },
-    _onGamepadDisconnected: function() { --JSEvents.numGamepadsConnected; },
-
-    staticInit: function() {
-      if (typeof window !== 'undefined') {
-        window.addEventListener("gamepadconnected", JSEvents._onGamepadConnected);
-        window.addEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
-        
-        // Chromium does not fire the gamepadconnected event on reload, so we need to get the number of gamepads here as a workaround.
-        // See https://bugs.chromium.org/p/chromium/issues/detail?id=502824
-        var firstState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null);
-        if (firstState) {
-          JSEvents.numGamepadsConnected = firstState.length;
-        }
-      }
-    },
-
     removeAllEventListeners: function() {
       for(var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
         JSEvents._removeHandler(i);
       }
       JSEvents.eventHandlers = [];
       JSEvents.deferredCalls = [];
-      if (typeof window !== 'undefined') {
-        window.removeEventListener("gamepadconnected", JSEvents._onGamepadConnected);
-        window.removeEventListener("gamepaddisconnected", JSEvents._onGamepadDisconnected);
-      }
     },
 
     registerRemoveEventListeners: function() {
@@ -2015,37 +1985,32 @@ var LibraryJSEvents = {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     JSEvents.registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
- },
+  },
   
-  _emscripten_sample_gamepad_data: function() {
-    // Polling gamepads generates garbage, so don't do it when we know there are no gamepads connected.
-    if (!JSEvents.numGamepadsConnected) return;
-
-    // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
-    if (Browser.mainLoop.currentFrameNumber !== JSEvents.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
-      JSEvents.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : null);
-      JSEvents.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
-    }
+  emscripten_sample_gamepad_data__proxy: 'sync',
+  emscripten_sample_gamepad_data__sig: 'i',
+  emscripten_sample_gamepad_data: function() {
+    return (JSEvents.lastGamepadState = (navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null)))
+      ? {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
   },
 
-  emscripten_get_num_gamepads__deps: ['_emscripten_sample_gamepad_data'],
   emscripten_get_num_gamepads__proxy: 'sync',
   emscripten_get_num_gamepads__sig: 'i',
   emscripten_get_num_gamepads: function() {
-    // Polling gamepads generates garbage, so don't do it when we know there are no gamepads connected.
-    if (!JSEvents.numGamepadsConnected) return 0;
-
-    __emscripten_sample_gamepad_data();
-    if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+#if ASSERTIONS
+    if (!JSEvents.lastGamepadState) throw 'emscripten_get_num_gamepads() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+#endif
+    // N.B. Do not call emscripten_get_num_gamepads() unless having first called emscripten_sample_gamepad_data(), and that has returned EMSCRIPTEN_RESULT_SUCCESS.
+    // Otherwise the following line will throw an exception.
     return JSEvents.lastGamepadState.length;
   },
   
-  emscripten_get_gamepad_status__deps: ['_emscripten_sample_gamepad_data'],
   emscripten_get_gamepad_status__proxy: 'sync',
   emscripten_get_gamepad_status__sig: 'iii',
   emscripten_get_gamepad_status: function(index, gamepadState) {
-    __emscripten_sample_gamepad_data();
-    if (!JSEvents.lastGamepadState) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+#if ASSERTIONS
+    if (!JSEvents.lastGamepadState) throw 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+#endif
 
     // INVALID_PARAM is returned on a Gamepad index that never was there.
     if (index < 0 || index >= JSEvents.lastGamepadState.length) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
@@ -2593,8 +2558,8 @@ var LibraryJSEvents = {
     else target = Module['canvas'];
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    target.style.setProperty("width", width + "px");
-    target.style.setProperty("height", height + "px");
+    target.style.width = width + "px";
+    target.style.height = height + "px";
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },

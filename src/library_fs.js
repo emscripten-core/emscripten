@@ -5,16 +5,16 @@
 
 mergeInto(LibraryManager.library, {
   $FS__deps: ['$ERRNO_CODES', '$ERRNO_MESSAGES', '__setErrNo', '$PATH', '$TTY', '$MEMFS',
-#if __EMSCRIPTEN_HAS_idbfs_js__
+#if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
-#if __EMSCRIPTEN_HAS_nodefs_js__
+#if LibraryManager.has('library_nodefs.js')
     '$NODEFS',
 #endif
-#if __EMSCRIPTEN_HAS_workerfs_js__
+#if LibraryManager.has('library_workerfs.js')
     '$WORKERFS',
 #endif
-#if __EMSCRIPTEN_HAS_noderawfs_js__
+#if LibraryManager.has('library_noderawfs.js')
     '$NODERAWFS',
 #endif
     'stdin', 'stdout', 'stderr'],
@@ -1418,13 +1418,13 @@ mergeInto(LibraryManager.library, {
 
       FS.filesystems = {
         'MEMFS': MEMFS,
-#if __EMSCRIPTEN_HAS_idbfs_js__
+#if LibraryManager.has('library_idbfs.js')
         'IDBFS': IDBFS,
 #endif
-#if __EMSCRIPTEN_HAS_nodefs_js__
+#if LibraryManager.has('library_nodefs.js')
         'NODEFS': NODEFS,
 #endif
-#if __EMSCRIPTEN_HAS_workerfs_js__
+#if LibraryManager.has('library_workerfs.js')
         'WORKERFS': WORKERFS,
 #endif
       };

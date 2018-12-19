@@ -1728,6 +1728,7 @@ LibraryManager.library = {
     error: null,
     errorMsg: null,
   },
+
   // void* dlopen(const char* filename, int flag);
   dlopen__deps: ['$DLFCN', '$FS', '$ENV'],
   dlopen__proxy: 'sync',
@@ -1782,6 +1783,7 @@ LibraryManager.library = {
 
     return handle;
   },
+
   // int dlclose(void* handle);
   dlclose__deps: ['$DLFCN'],
   dlclose__proxy: 'sync',
@@ -1804,6 +1806,7 @@ LibraryManager.library = {
       return 0;
     }
   },
+
   // void* dlsym(void* handle, const char* symbol);
   dlsym__deps: ['$DLFCN'],
   dlsym__proxy: 'sync',
@@ -1816,43 +1819,50 @@ LibraryManager.library = {
     if (!LDSO.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
-    } else {
-      var lib = LDSO.loadedLibs[handle];
-      symbol = '_' + symbol;
-      if (!lib.module.hasOwnProperty(symbol)) {
-        DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
-                               '" in dynamic lib: ' + lib.name);
-        return 0;
-      } else {
-        var result = lib.module[symbol];
-        if (typeof result === 'function') {
-#if WASM
-#if EMULATE_FUNCTION_POINTER_CASTS
-          // for wasm with emulated function pointers, the i64 ABI is used for all
-          // function calls, so we can't just call addFunction on something JS
-          // can call (which does not use that ABI), as the function pointer would
-          // not be usable from wasm. instead, the wasm has exported function pointers
-          // for everything we need, with prefix fp$, use those
-          result = lib.module['fp$' + symbol];
-          if (typeof result === 'object') {
-            // a breaking change in the wasm spec, globals are now objects
-            // https://github.com/WebAssembly/mutable-global/issues/1
-            result = result.value;
-          }
-#if ASSERTIONS
-          assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
-#endif // ASSERTIONS
-          return result;
-#endif // EMULATE_FUNCTION_POINTER_CASTS
-#endif // WASM
-          // convert the exported function into a function pointer using our generic
-          // JS mechanism.
-          return addFunction(result);
-        }
-        return result;
-      }
     }
+    var lib = LDSO.loadedLibs[handle];
+    symbol = '_' + symbol;
+    if (!lib.module.hasOwnProperty(symbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+                             '" in dynamic lib: ' + lib.name);
+      return 0;
+    }
+
+    var result = lib.module[symbol];
+    if (typeof result !== 'function')
+      return result;
+
+#if WASM && EMULATE_FUNCTION_POINTER_CASTS
+    // for wasm with emulated function pointers, the i64 ABI is used for all
+    // function calls, so we can't just call addFunction on something JS
+    // can call (which does not use that ABI), as the function pointer would
+    // not be usable from wasm. instead, the wasm has exported function pointers
+    // for everything we need, with prefix fp$, use those
+    result = lib.module['fp$' + symbol];
+    if (typeof result === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      result = result.value;
+    }
+#if ASSERTIONS
+    assert(typeof result === 'number', 'could not find function pointer for ' + symbol);
+#endif // ASSERTIONS
+    return result;
+#else // WASM && EMULATE_FUNCTION_POINTER_CASTS
+
+#if WASM
+    // Insert the function into the wasm table.  Since we know the function
+    // comes directly from the loaded wasm module we can insert it directly
+    // into the table, avoiding any JS interaction.
+    return addWasmFunction(result);
+#else
+    // convert the exported function into a function pointer using our generic
+    // JS mechanism.
+    return addFunction(result);
+#endif // WASM
+#endif // WASM && EMULATE_FUNCTION_POINTER_CASTS
   },
+
   // char* dlerror(void);
   dlerror__deps: ['$DLFCN'],
   dlerror__proxy: 'sync',

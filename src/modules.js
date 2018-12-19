@@ -97,6 +97,11 @@ var LibraryManager = {
   library: null,
   structs: {},
   loaded: false,
+  libraries: [],
+
+  has: function(name) {
+    return this.libraries.indexOf(name) >= 0;
+  },
 
   load: function() {
     if (this.library) return;
@@ -163,17 +168,14 @@ var LibraryManager = {
 
     libraries = libraries.concat(additionalLibraries);
 
-    // For each JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
-    // if a particular feature is not being linked in.
-    for (var i = 0; i < libraries.length; ++i) {
-      global['__EMSCRIPTEN_HAS_' + libraries[i].replace('.', '_').replace('library_', '') + '__'] = 1
-    }
-
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
     if (ONLY_MY_CODE) {
-      libraries = [];
+      libraries.length = 0;
       LibraryManager.library = {};
     }
+
+    // Save the list for has() queries later.
+    this.libraries = libraries;
 
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
@@ -414,6 +416,8 @@ function exportRuntime() {
     'establishStackSpace',
     'print',
     'printErr',
+    'getTempRet0',
+    'setTempRet0',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');

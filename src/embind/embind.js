@@ -50,10 +50,10 @@ var LibraryEmbind = {
     Module['flushPendingDeletes'] = flushPendingDeletes;
     Module['setDelayFunction'] = setDelayFunction;
 #if IN_TEST_HARNESS
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION
     // Without dynamic execution, dynamically created functions will have no
     // names. This lets the test suite know that.
-    Module['NO_DYNAMIC_EXECUTION'] = true;
+    Module['DYNAMIC_EXECUTION'] = true;
 #endif
 #if EMBIND_STD_STRING_IS_UTF8
     Module['EMBIND_STD_STRING_IS_UTF8'] = true;
@@ -194,7 +194,7 @@ var LibraryEmbind = {
   $createNamedFunction__deps: ['$makeLegalFunctionName'],
   $createNamedFunction: function(name, body) {
     name = makeLegalFunctionName(name);
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     return function() {
       "use strict";
       return body.apply(this, arguments);
@@ -847,9 +847,9 @@ var LibraryEmbind = {
     if (!(constructor instanceof Function)) {
         throw new TypeError('new_ called with constructor type ' + typeof(constructor) + " which is not a function");
     }
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     if (constructor === Function) {
-      throw new Error('new_ cannot create a new Function with NO_DYNAMIC_EXECUTION.');
+      throw new Error('new_ cannot create a new Function with DYNAMIC_EXECUTION == 0.');
     }
 #endif
 
@@ -913,7 +913,7 @@ var LibraryEmbind = {
 
     var returns = (argTypes[0].name !== "void");
 
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argsWired = new Array(argCount - 2);
     return function() {
       if (arguments.length !== argCount - 2) {
@@ -1042,7 +1042,7 @@ var LibraryEmbind = {
     signature = readLatin1String(signature);
 
     function makeDynCaller(dynCall) {
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
       return function() {
           var args = new Array(arguments.length + 1);
           args[0] = rawFunction;

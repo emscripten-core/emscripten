@@ -395,6 +395,7 @@ typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamep
 extern EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 
+extern EMSCRIPTEN_RESULT emscripten_sample_gamepad_data(void);
 extern int emscripten_get_num_gamepads(void);
 extern EMSCRIPTEN_RESULT emscripten_get_gamepad_status(int index, EmscriptenGamepadEvent *gamepadState);
 

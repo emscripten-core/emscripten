@@ -683,9 +683,8 @@ var MAIN_MODULE = 0;
 // Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 var SIDE_MODULE = 0;
 
-// If this is a main module (MAIN_MODULE == 1), then
-// we will link these at runtime. They must have been built with
-// SIDE_MODULE == 1.
+// If this is a shared object (MAIN_MODULE == 1 || SIDE_MODULE == 1), then we
+// will link these at runtime. They must have been built with SIDE_MODULE == 1.
 var RUNTIME_LINKED_LIBS = [];
 
 // If set to 1, this is a worker library, a special kind of library that is run
