@@ -3529,21 +3529,6 @@ int main() {
             assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
             assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
 
-  def test_no_exit_runtime_warnings_atexit(self):
-    create_test_file('code.cpp', r'''
-#include <stdlib.h>
-void bye() {}
-int main() {
-  atexit(bye);
-}
-''')
-    for no_exit in [0, 1]:
-      for assertions in [0, 1]:
-        print(no_exit, assertions)
-        run_process([PYTHON, EMCC, 'code.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions])
-        output = run_js('a.out.js', stderr=PIPE, full_output=True)
-        assert (no_exit and assertions) == ('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1' in output), 'warning should be shown'
-
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
       print(args)
@@ -7931,8 +7916,7 @@ int main() {
 
     if not self.is_wasm_backend():
       # fastcomp
-
-      size_slack = 0.05
+      size_slack = 0.05  # changes very little
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7969,8 +7953,7 @@ int main() {
       ], size_slack) # noqa
     else:
       # wasm-backend
-
-      size_slack = 0.5
+      size_slack = 0.5  # for now, don't look carefully at code size
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7998,9 +7981,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 42, ['assert'], ['waka'], 348370,  28,  220, 723), # noqa
+        (['-O2'], 42, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  42, ['assert'], ['waka'], 348249,  28,  220, 723), # noqa
+                  42, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
