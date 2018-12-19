@@ -19,19 +19,20 @@ def get(ports, settings, shared):
             # Note: GLSL Optimizer is included (needed for headers) but not built
             source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
             dest_path_src = os.path.join(ports.get_build_dir(), 'regal', 'src')
-            source_path_glslopt = os.path.join(source_path_src, 'glsl')
+
 
             source_path_regal = os.path.join(source_path_src, 'regal')
             source_path_md5 = os.path.join(source_path_src, 'md5')
             source_path_jsonsl = os.path.join(source_path_src, 'jsonsl')
             source_path_boost = os.path.join(source_path_src, 'boost')
             source_path_lookup3 = os.path.join(source_path_src, 'lookup3')
+            source_path_glslopt = os.path.join(source_path_src, 'glsl')
             dest_path_regal = os.path.join(dest_path_src, 'regal')
             dest_path_md5 = os.path.join(dest_path_src, 'md5')
             dest_path_jsonsl = os.path.join(dest_path_src, 'jsonsl')
             dest_path_boost = os.path.join(dest_path_src, 'boost')
             dest_path_lookup3 = os.path.join(dest_path_src, 'lookup3')
-            dest_path_glslopt = os.path.join(source_path_src, 'glsl')
+            dest_path_glslopt = os.path.join(dest_path_src, 'glsl')
 
             shutil.rmtree(dest_path_src, ignore_errors=True)
             shutil.copytree(source_path_regal, dest_path_regal)
