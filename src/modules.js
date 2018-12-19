@@ -416,6 +416,8 @@ function exportRuntime() {
     'establishStackSpace',
     'print',
     'printErr',
+    'getTempRet0',
+    'setTempRet0',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');

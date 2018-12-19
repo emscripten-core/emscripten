@@ -6333,12 +6333,12 @@ return malloc(size);
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
-  def test_dyncall(self):
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+  def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
+    self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8'])
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
+    self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
