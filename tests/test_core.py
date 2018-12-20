@@ -650,7 +650,7 @@ align 32: 0
 base align: 0, 0, 0, 0'''])
 
     test()
-    if '-O' in str(self.emcc_args):
+    if '-O' in str(self.emcc_args) and not self.is_wasm_backend():
       print('outlining')
       self.set_setting('OUTLINING_LIMIT', 60)
       test()
@@ -5812,6 +5812,8 @@ return malloc(size);
 
     # Main
     for outlining in [0, 5000]:
+      if outlining and self.is_wasm_backend():
+        continue
       self.set_setting('OUTLINING_LIMIT', outlining)
       print('outlining:', outlining, file=sys.stderr)
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
@@ -5853,8 +5855,6 @@ return malloc(size);
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
-
-    # self.set_setting('OUTLINING_LIMIT', 60000)
 
     src = '''
        #define SQLITE_DISABLE_LFS

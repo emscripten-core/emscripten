@@ -1052,6 +1052,7 @@ int main() {
            expected_ranges,
            args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
+  @no_wasm_backend('outlining is an asmjs only feature')
   def test_outline_stack(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
