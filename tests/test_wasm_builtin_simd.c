@@ -335,12 +335,12 @@ int32_t TESTFN i16x8_all_true(i16x8 vec) {
 i16x8 TESTFN i16x8_add(i16x8 x, i16x8 y) {
   return x + y;
 }
-// i16x8 TESTFN i16x8_add_saturate_s(i16x8 x, i16x8 y) {
-//   return __builtin_wasm_add_saturate_s_i16x8(x, y);
-// }
-// i16x8 TESTFN i16x8_add_saturate_u(i16x8 x, i16x8 y) {
-//   return __builtin_wasm_add_saturate_u_i16x8(x, y);
-// }
+i16x8 TESTFN i16x8_add_saturate_s(i16x8 x, i16x8 y) {
+  return __builtin_wasm_add_saturate_s_i16x8(x, y);
+}
+i16x8 TESTFN i16x8_add_saturate_u(i16x8 x, i16x8 y) {
+  return __builtin_wasm_add_saturate_u_i16x8(x, y);
+}
 i16x8 TESTFN i16x8_sub(i16x8 x, i16x8 y) {
   return x - y;
 }
@@ -483,6 +483,6 @@ f64x2 TESTFN f64x2_convert_u_i64x2(i64x2 vec) {
   return __builtin_convertvector((u64x2)vec, f64x2);
 }
 
-int main(int argc, char** argv) {
+int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   printf("Success!\n");
 }
