@@ -435,9 +435,21 @@ function loadWebAssemblyModule(binary, flags) {
         if (prop.startsWith('invoke_')) {
           // A missing invoke, i.e., an invoke for a function type
           // present in the dynamic library but not in the main JS,
-          // and the dynamic library cannot provide JS for it. Use
-          // the generic "X" invoke for it.
-          return env[prop] = invoke_X;
+          // and the dynamic library cannot provide JS for it. Generate
+          // a closure for it.
+          var dynCallName = 'dynCall_' + prop.slice(7);
+          env[prop] = function() {
+            var sp = stackSave();
+            try {
+              var args = Array.prototype.slice.call(arguments);
+              return Module[dynCallName].apply(null, args);
+            } catch(e) {
+              stackRestore(sp);
+              if (typeof e !== 'number' && e !== 'longjmp') throw e;
+              Module["setThrew"](1, 0);
+            }
+          }
+          return env[prop];
         }
         // if not a global, then a function - call it indirectly
         return env[prop] = function() {
