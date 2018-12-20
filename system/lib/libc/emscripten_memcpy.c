@@ -32,6 +32,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
     if (((uintptr_t)aligned_d_end) >= 64) {
       block_aligned_d_end = aligned_d_end - 64;
       while (d <= block_aligned_d_end) {
+        // TODO: we could use 64-bit ops here, but we'd need to make sure the
+        //       alignment is 64-bit, which might cost us
         *(((uint32_t*)d)) = *(((uint32_t*)s));
         *(((uint32_t*)d) + 1) = *(((uint32_t*)s) + 1);
         *(((uint32_t*)d) + 2) = *(((uint32_t*)s) + 2);
