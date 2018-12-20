@@ -54,6 +54,8 @@ jobs:
             rm -r ~/emsdk-master/emscripten/
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
+            echo "final .emscripten:"
+            cat ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
@@ -340,10 +342,8 @@ jobs:
             cd -
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
-            # FIXME fix node
-            echo NODE_JS="'$HOME/emsdk-master/node/8.9.1_64bit/bin/node'" >> ~/.emscripten
-            echo "COMPILER_ENGINE = NODE_JS" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "final .emscripten:"
+            cat ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
