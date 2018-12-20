@@ -162,7 +162,7 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = cm['NO_DYNAMIC_EXECUTION'] ? '' : 'HasTwoBases';
+            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
@@ -1598,7 +1598,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = cm['NO_DYNAMIC_EXECUTION'] ? "" : "HeldBySmartPtr";
+            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
             assert.equal(expectedName, e.constructor.name);
             e.delete();
         });
@@ -2342,7 +2342,7 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        if (cm['NO_DYNAMIC_EXECUTION']) {
+        if (!cm['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.name);
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);

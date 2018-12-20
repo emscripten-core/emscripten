@@ -1913,7 +1913,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   receiving = create_receiving_wasm(exported_implemented_functions)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                              exported_implemented_functions)
+                              exported_implemented_functions, metadata)
 
   write_output_file(outfile, post, module)
   module = None
@@ -1922,8 +1922,8 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
 
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
-  wasm_emscripten_finalize = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-emscripten-finalize')
-  wasm_dis = os.path.join(shared.BINARYEN_ROOT, 'bin', 'wasm-dis')
+  wasm_emscripten_finalize = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-emscripten-finalize')
+  wasm_dis = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-dis')
 
   def debug_copy(src, dst):
     if DEBUG:
@@ -2122,31 +2122,20 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 
 
 def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                       exported_implemented_functions):
+                       exported_implemented_functions, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
+  module = []
+  module.append('Module%s = {};\n' % access_quote('asmGlobalArg'))
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    shared_array_buffer = "if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;"
-  else:
-    shared_array_buffer = ''
+    module.append("if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;\n")
 
-  module = ['''
-Module%s = {};
-%s
-Module%s = %s;
-''' % (access_quote('asmGlobalArg'), shared_array_buffer, access_quote('asmLibraryArg'), sending) + '''
-var asm = Module['asm'](Module%s, Module%s, buffer);
-%s;
-''' % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg'), receiving)]
+  module.append("Module['wasmTableSize'] = %s;\n" % metadata['tableSize'])
+  module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
+  module.append("var asm = Module['asm'](Module%s, Module%s, buffer);\n" % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg')))
 
-  module.append('''
-var stackAlloc = Module['_stackAlloc'];
-var stackSave = Module['_stackSave'];
-var stackRestore = Module['_stackRestore'];
-var establishStackSpace = Module['establishStackSpace'];
-''')
-
+  module.append(receiving)
   module.append(invoke_wrappers)
   module.append(jscall_funcs)
   return module
@@ -2168,6 +2157,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'jsCallStartIndex': 0,
     'jsCallFuncType': [],
     'staticBump': 0,
+    'tableSize': 0,
     'initializers': [],
     'exports': [],
     'emJsFuncs': {},
@@ -2175,6 +2165,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'invokeFuncs': [],
   }
 
+  assert 'tableSize' in metadata_json.keys()
   for key, value in metadata_json.items():
     # json.loads returns `unicode` for strings but other code in this file
     # generally works with utf8 encoded `str` objects, and they don't alwasy
@@ -2222,7 +2213,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0')
+  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
   if name.startswith('dynCall_'):
     return name
   if name in library_functions_in_module:

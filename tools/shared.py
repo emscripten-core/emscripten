@@ -1259,10 +1259,6 @@ def verify_settings():
       logger.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
       Settings.WASM = 1
 
-    if not BINARYEN_ROOT:
-      exit_with_error('emcc: BINARYEN_ROOT must be set in the .emscripten config'
-                      ' when using the LLVM wasm backend')
-
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
 
@@ -1870,6 +1866,7 @@ class Building(object):
         '--no-entry',
         '--allow-undefined',
         '--import-memory',
+        '--import-table',
         '--export',
         '__wasm_call_ctors',
         '--export',
@@ -2510,6 +2507,11 @@ class Building(object):
         if 'import' in item:
           if item['import'][1][0] == '_':
             item['import'][1] = item['import'][1][1:]
+    # map import names from wasm to JS, using the actual name the wasm uses for the import
+    import_name_map = {}
+    for item in graph:
+      if 'import' in item:
+        import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
     with open(temp, 'w') as f:
@@ -2525,6 +2527,8 @@ class Building(object):
     for line in out.splitlines():
       if line.startswith(PREFIX):
         name = line.replace(PREFIX, '').strip()
+        if name in import_name_map:
+          name = import_name_map[name]
         unused.append(name)
     # remove them
     passes = ['applyDCEGraphRemovals']
@@ -2538,6 +2542,7 @@ class Building(object):
     logger.debug('minifying wasm imports and exports')
     # run the pass
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd.append('-g')
     out = check_call(cmd, stdout=PIPE).stdout
@@ -2657,6 +2662,16 @@ class Building(object):
     if 'USE_SDL=2' in link_settings:
       system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
     return [path_from_root('src', x) for x in system_js_libraries]
+
+  @staticmethod
+  def get_binaryen_feature_flags():
+    # start with the MVP features, add the rest as needed
+    ret = ['--mvp-features']
+    if Settings.USE_PTHREADS:
+      ret += ['--enable-threads']
+    if Settings.SIMD:
+      ret += ['--enable-simd']
+    return ret
 
   @staticmethod
   def get_binaryen():
@@ -2819,8 +2834,8 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_order=0, named=True):
-    fnargs = ','.join(['a' + str(i) for i in range(1, len(sig))])
+  def make_jscall(sig, sig_order=None):
+    fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
     args = 'index' + (',' if fnargs else '') + fnargs
     # While asm.js/fastcomp's addFunction support preallocates
     # Settings.RESERVED_FUNCTION_POINTERS slots in functionPointers array, on
@@ -2834,12 +2849,14 @@ class JS(object):
     # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
     # the 'sig_order' parameter will be 0 for 'v', 1 for 'ii', and so on.
     if Settings.WASM_BACKEND:
+      assert sig_order is not None
       index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_order)
     else:
       index = 'index'
-    ret = '''function%s(%s) {
+    ret = '''\
+function jsCall_%s(%s) {
     %sfunctionPointers[%s](%s);
-}''' % ((' jsCall_' + sig) if named else '', args, 'return ' if sig[0] != 'v' else '', index, fnargs)
+}''' % (sig, args, 'return ' if sig[0] != 'v' else '', index, fnargs)
     return ret
 
   @staticmethod

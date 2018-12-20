@@ -12,4 +12,3 @@ ports_by_name = {}
 for port in ports:
   name = port.__name__.split('.')[-1]
   ports_by_name[name] = port
-

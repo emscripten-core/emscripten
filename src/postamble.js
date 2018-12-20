@@ -154,7 +154,6 @@ function ExitStatus(status) {
 ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
-var initialStackTop;
 var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
@@ -392,7 +391,6 @@ function exit(status, implicit) {
 
     ABORT = true;
     EXITSTATUS = status;
-    STACKTOP = initialStackTop;
 
     exitRuntime();
 

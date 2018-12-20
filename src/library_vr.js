@@ -195,7 +195,7 @@ var LibraryWebVR = {
         /* Prevent scheduler being called twice when loop is changed */
         display.mainLoop.running = true;
 
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
         GL.newRenderingFrameStarted();
 #endif
 

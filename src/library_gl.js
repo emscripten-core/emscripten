@@ -40,7 +40,7 @@ var LibraryGL = {
     syncs: [],
 #endif
 
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
 #endif
@@ -73,11 +73,10 @@ var LibraryGL = {
 #endif
     tempFixedLengthArray: [],
 
-    packAlignment: 4,   // default alignment is 4 bytes
     unpackAlignment: 4, // default alignment is 4 bytes
 
     init: function() {
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
       GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
 #endif
       GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
@@ -113,7 +112,7 @@ var LibraryGL = {
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
 
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
     // for rendering. Maintain a set of temp VBOs that are created-on-demand to appropriate sizes, and never destroyed.
     // Also, for best performance the VBOs are double-buffered, i.e. every second frame we switch the set of VBOs we
@@ -279,18 +278,8 @@ var LibraryGL = {
     getSource: function(shader, count, string, length) {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var frag;
-        if (length) {
-          var len = {{{ makeGetValue('length', 'i*4', 'i32') }}};
-          if (len < 0) {
-            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-          } else {
-            frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len);
-          }
-        } else {
-          frag = Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}});
-        }
-        source += frag;
+        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : undefined;
+        source += Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -542,8 +531,10 @@ var LibraryGL = {
 #endif
           if (webGLContextAttributes['majorVersion'] == 1 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
+#if USE_WEBGL2
           } else if (webGLContextAttributes['majorVersion'] == 2 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl2", webGLContextAttributes);
+#endif
           } else {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
           }
@@ -924,7 +915,7 @@ var LibraryGL = {
       var utable = ptable.uniforms;
       // A program's uniform table maps the string name of an uniform to an integer location of that uniform.
       // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
-      var numUniforms = GLctx.getProgramParameter(p, GLctx.ACTIVE_UNIFORMS);
+      var numUniforms = GLctx.getProgramParameter(p, 0x8B86/*GL_ACTIVE_UNIFORMS*/);
       for (var i = 0; i < numUniforms; ++i) {
         var u = GLctx.getActiveUniform(p, i);
 
@@ -961,9 +952,7 @@ var LibraryGL = {
 
   glPixelStorei__sig: 'vii',
   glPixelStorei: function(pname, param) {
-    if (pname == 0x0D05 /* GL_PACK_ALIGNMENT */) {
-      GL.packAlignment = param;
-    } else if (pname == 0x0cf5 /* GL_UNPACK_ALIGNMENT */) {
+    if (pname == 0x0cf5 /* GL_UNPACK_ALIGNMENT */) {
       GL.unpackAlignment = param;
     }
     GLctx.pixelStorei(pname, param);
@@ -1120,8 +1109,8 @@ var LibraryGL = {
               case 0x8CA6: // FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
+              case 0x85B5: // WebGL 2 GL_VERTEX_ARRAY_BINDING, or WebGL 1 extension OES_vertex_array_object GL_VERTEX_ARRAY_BINDING_OES
 #if USE_WEBGL2
-              case 0x85B5: // GL_VERTEX_ARRAY_BINDING
               case 0x8919: // GL_SAMPLER_BINDING
               case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
 #endif
@@ -1290,25 +1279,6 @@ var LibraryGL = {
   },
 #endif
 
-  glGenTextures__sig: 'vii',
-  glGenTextures: function(n, textures) {
-    for (var i = 0; i < n; i++) {
-      var texture = GLctx.createTexture();
-      if (!texture) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // GLES + EGL specs don't specify what should happen here, so best to issue an error and create IDs with 0.
-#if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenTextures: GLctx.createTexture returned null - most likely GL context is lost!');
-#endif
-        while(i < n) {{{ makeSetValue('textures', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.textures);
-      texture.name = id;
-      GL.textures[id] = texture;
-      {{{ makeSetValue('textures', 'i*4', 'id', 'i32') }}};
-    }
-  },
-
   glDeleteTextures__sig: 'vii',
   glDeleteTextures: function(n, textures) {
     for (var i = 0; i < n; i++) {
@@ -1391,90 +1361,57 @@ var LibraryGL = {
              ((height - 1) * alignedRowSize + plainRowSize);
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize'],
+  _colorChannelsInGlTextureFormat: {
+    0x1906 /* GL_ALPHA */: 1,
+    0x1909 /* GL_LUMINANCE */: 1,
+    0x1902 /* GL_DEPTH_COMPONENT */: 1,
+    0x190A /* GL_LUMINANCE_ALPHA */: 2,
+    0x1907 /* GL_RGB */: 3,
+    0x8C40 /* GL_SRGB_EXT */: 3,
+    0x1908 /* GL_RGBA */: 4,
+    0x8C42 /* GL_SRGB_ALPHA_EXT */: 4,
+#if USE_WEBGL2
+    0x1903 /* GL_RED */: 1,
+    0x8D94 /* GL_RED_INTEGER */: 1,
+    0x8227 /* GL_RG */: 2,
+    0x8228 /* GL_RG_INTEGER*/: 2,
+    0x8D98 /* GL_RGB_INTEGER */: 3,
+    0x8D99 /* GL_RGBA_INTEGER */: 4
+#endif
+  },
+
+  _sizeOfGlTextureElementType: {
+    0x1401 /* GL_UNSIGNED_BYTE */: 1,
+    0x1403 /* GL_UNSIGNED_SHORT */: 2,
+    0x8D61 /* GL_HALF_FLOAT_OES */: 2,
+    0x1405 /* GL_UNSIGNED_INT */: 4,
+    0x1406 /* GL_FLOAT */: 4,
+    0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 4,
+    0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 2,
+    0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 2,
+    0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 2,
+#if USE_WEBGL2
+    0x1400 /* GL_BYTE */: 1,
+    0x140B /* GL_HALF_FLOAT */: 2,
+    0x1402 /* GL_SHORT */: 2,
+    0x1404 /* GL_INT */: 4,
+    0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 4,
+    0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 4,
+    0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 4,
+    0x84FA /* GL_UNSIGNED_INT_24_8 */: 4,
+#endif
+  },
+
+  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize', '_colorChannelsInGlTextureFormat', '_sizeOfGlTextureElementType'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
-    var sizePerPixel;
-    var numChannels;
-    switch(format) {
-      case 0x1906 /* GL_ALPHA */:
-      case 0x1909 /* GL_LUMINANCE */:
-      case 0x1902 /* GL_DEPTH_COMPONENT */:
-#if USE_WEBGL2
-      case 0x1903 /* GL_RED */:
-      case 0x8D94 /* GL_RED_INTEGER */:
-#endif
-        numChannels = 1;
-        break;
-      case 0x190A /* GL_LUMINANCE_ALPHA */:
-#if USE_WEBGL2
-      case 0x8227 /* GL_RG */:
-      case 0x8228 /* GL_RG_INTEGER*/:
-#endif
-        numChannels = 2;
-        break;
-      case 0x1907 /* GL_RGB */:
-      case 0x8C40 /* GL_SRGB_EXT */:
-#if USE_WEBGL2
-      case 0x8D98 /* GL_RGB_INTEGER */:
-#endif
-        numChannels = 3;
-        break;
-      case 0x1908 /* GL_RGBA */:
-      case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
-#if USE_WEBGL2
-      case 0x8D99 /* GL_RGBA_INTEGER */:
-#endif
-        numChannels = 4;
-        break;
-      default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
+    var sizePerPixel = __colorChannelsInGlTextureFormat[format] * __sizeOfGlTextureElementType[type];
+    if (!sizePerPixel) {
+      GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-        err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
+      if (!__colorChannelsInGlTextureFormat[format]) err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
+      else err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return null;
-    }
-    switch (type) {
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-#if USE_WEBGL2
-      case 0x1400 /* GL_BYTE */:
-#endif
-        sizePerPixel = numChannels*1;
-        break;
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-#if USE_WEBGL2
-      case 0x140B /* GL_HALF_FLOAT */:
-      case 0x1402 /* GL_SHORT */:
-#endif
-        sizePerPixel = numChannels*2;
-        break;
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x1406 /* GL_FLOAT */:
-#if USE_WEBGL2
-      case 0x1404 /* GL_INT */:
-#endif
-        sizePerPixel = numChannels*4;
-        break;
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-#if USE_WEBGL2
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-#endif
-        sizePerPixel = 4;
-        break;
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-        sizePerPixel = 2;
-        break;
-      default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
-#endif
-        return null;
+      return;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
     switch(type) {
@@ -1530,12 +1467,11 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
 #endif
-        return null;
     }
   },
 
 #if USE_WEBGL2
-  $emscriptenWebGLGetHeapForType: function(type) {
+  _heapObjectForWebGLType: function(type) {
     switch(type) {
       case 0x1400 /* GL_BYTE */:
         return HEAP8;
@@ -1561,43 +1497,32 @@ var LibraryGL = {
         return HEAPU32;
       case 0x1406 /* GL_FLOAT */:
         return HEAPF32;
-      default:
-        return null;
     }
   },
 
-  $emscriptenWebGLGetShiftForType: function(type) {
-    switch(type) {
-      case 0x1400 /* GL_BYTE */:
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-        return 0;
-      case 0x1402 /* GL_SHORT */:
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-      case 0x140B /* GL_HALF_FLOAT */:
-        return 1;
-      case 0x1404 /* GL_INT */:
-      case 0x1406 /* GL_FLOAT */:
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-        return 2;
-      default:
-        return 0;
-    }
+  _heapAccessShiftForWebGLType: {
+      0x1402 /* GL_SHORT */: 1,
+      0x1403 /* GL_UNSIGNED_SHORT */: 1,
+      0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 1,
+      0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 1,
+      0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 1,
+      0x8D61 /* GL_HALF_FLOAT_OES */: 1,
+      0x140B /* GL_HALF_FLOAT */: 1,
+      0x1404 /* GL_INT */: 2,
+      0x1406 /* GL_FLOAT */: 2,
+      0x1405 /* GL_UNSIGNED_INT */: 2,
+      0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 2,
+      0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 2,
+      0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 2,
+      0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 2,
+      0x84FA /* GL_UNSIGNED_INT_24_8 */: 2
   },
 #endif
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
@@ -1625,7 +1550,7 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels != 0) {
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1641,7 +1566,7 @@ var LibraryGL = {
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                          , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                          , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
@@ -1659,7 +1584,7 @@ var LibraryGL = {
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels != 0) {
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1674,7 +1599,7 @@ var LibraryGL = {
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
@@ -1683,7 +1608,7 @@ var LibraryGL = {
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
-        GLctx.readPixels(x, y, width, height, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+        GLctx.readPixels(x, y, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
       }
       return;
     }
@@ -1754,23 +1679,51 @@ var LibraryGL = {
     return GLctx.isTexture(texture);
   },
 
-  glGenBuffers__sig: 'vii',
-  glGenBuffers: function(n, buffers) {
+  // The code path for creating textures, buffers, framebuffers and other objects is so identical to each other (and not in fast path), that
+  // merge the functions together to only have one generated copy of this. 'createFunction' refers to the WebGL context function name to do
+  // the actual creation, 'objectTable' points to the GL object table where to populate the created objects, and 'functionName' carries
+  // the name of the caller for debug information.
+  _glGenObject__sig: 'vii',
+  _glGenObject: function(n, buffers, createFunction, objectTable
+#if GL_ASSERTIONS
+    , functionName
+#endif
+    ) {
     for (var i = 0; i < n; i++) {
-      var buffer = GLctx.createBuffer();
+      var buffer = GLctx[createFunction]();
       if (!buffer) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenBuffers: GLctx.createBuffer returned null - most likely GL context is lost!');
+        err('GL_INVALID_OPERATION in ' + functionName + ': GLctx.' + createFunction + ' returned null - most likely GL context is lost!');
 #endif
         while(i < n) {{{ makeSetValue('buffers', 'i++*4', 0, 'i32') }}};
         return;
       }
-      var id = GL.getNewId(GL.buffers);
+      var id = GL.getNewId(objectTable);
       buffer.name = id;
-      GL.buffers[id] = buffer;
+      objectTable[id] = buffer;
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
+  },
+
+  glGenBuffers__deps: ['_glGenObject'],
+  glGenBuffers__sig: 'vii',
+  glGenBuffers: function(n, buffers) {
+    __glGenObject(n, buffers, 'createBuffer', GL.buffers
+#if GL_ASSERTIONS
+    , 'glGenBuffers'
+#endif
+      );
+  },
+
+  glGenTextures__deps: ['_glGenObject'],
+  glGenTextures__sig: 'vii',
+  glGenTextures: function(n, textures) {
+    __glGenObject(n, textures, 'createTexture', GL.textures
+#if GL_ASSERTIONS
+    , 'glGenTextures'
+#endif
+      );
   },
 
   glDeleteBuffers__sig: 'vii',
@@ -2160,24 +2113,24 @@ var LibraryGL = {
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
-  glTexImage3D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels != 0) {
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
     } else {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
-  glTexSubImage3D__deps: ['$emscriptenWebGLGetTexPixelData', '$emscriptenWebGLGetHeapForType', '$emscriptenWebGLGetShiftForType'],
+  glTexSubImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels != 0) {
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, emscriptenWebGLGetHeapForType(type), pixels >> emscriptenWebGLGetShiftForType(type));
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
     } else {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -2185,22 +2138,13 @@ var LibraryGL = {
 
   // Queries
   glGenQueries__sig: 'vii',
+  glGenQueries__deps: ['_glGenObject'],
   glGenQueries: function(n, ids) {
-    for (var i = 0; i < n; i++) {
-      var query = GLctx['createQuery']();
-      if (!query) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenQueries: GLctx.createQuery returned null - most likely GL context is lost!');
+    , 'glGenQueries'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.queries);
-      query.name = id;
-      GL.queries[id] = query;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteQueries__sig: 'vii',
@@ -2270,22 +2214,13 @@ var LibraryGL = {
 
   // Sampler objects
   glGenSamplers__sig: 'vii',
+  glGenSamplers__deps: ['_glGenObject'],
   glGenSamplers: function(n, samplers) {
-    for (var i = 0; i < n; i++) {
-      var sampler = GLctx['createSampler']();
-      if (!sampler) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenSamplers: GLctx.createSampler returned null - most likely GL context is lost!');
+    , 'glGenSamplers'
 #endif
-        while(i < n) {{{ makeSetValue('samplers', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.samplers);
-      sampler.name = id;
-      GL.samplers[id] = sampler;
-      {{{ makeSetValue('samplers', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteSamplers__sig: 'vii',
@@ -2381,22 +2316,13 @@ var LibraryGL = {
 
   // Transform Feedback
   glGenTransformFeedbacks__sig: 'vii',
+  glGenTransformFeedbacks__deps: ['_glGenObject'],
   glGenTransformFeedbacks: function(n, ids) {
-    for (var i = 0; i < n; i++) {
-      var transformFeedback = GLctx['createTransformFeedback']();
-      if (!transformFeedback) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenTransformFeedbacks: GLctx.createTransformFeedback returned null - most likely GL context is lost!');
+    , 'glGenTransformFeedbacks'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.transformFeedbacks);
-      transformFeedback.name = id;
-      GL.transformFeedbacks[id] = transformFeedback;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteTransformFeedbacks__sig: 'vii',
@@ -2834,22 +2760,13 @@ var LibraryGL = {
   },
 
   glGenRenderbuffers__sig: 'vii',
+  glGenRenderbuffers__deps: ['_glGenObject'],
   glGenRenderbuffers: function(n, renderbuffers) {
-    for (var i = 0; i < n; i++) {
-      var renderbuffer = GLctx.createRenderbuffer();
-      if (!renderbuffer) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenRenderbuffers: GLctx.createRenderbuffer returned null - most likely GL context is lost!');
+    , 'glGenRenderbuffers'
 #endif
-        while(i < n) {{{ makeSetValue('renderbuffers', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.renderbuffers);
-      renderbuffer.name = id;
-      GL.renderbuffers[id] = renderbuffer;
-      {{{ makeSetValue('renderbuffers', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteRenderbuffers__sig: 'vii',
@@ -3642,7 +3559,7 @@ var LibraryGL = {
 #endif
     var bufferObj = buffer ? GL.buffers[buffer] : null;
 
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
     if (target == GLctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
 #if LEGACY_GL_EMULATION
@@ -3957,7 +3874,7 @@ var LibraryGL = {
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
       if (ptable.maxAttributeLength == -1) {
         program = GL.programs[program];
-        var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
+        var numAttribs = GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/);
         ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
         for (var i = 0; i < numAttribs; ++i) {
           var activeAttrib = GLctx.getActiveAttrib(program, i);
@@ -3968,7 +3885,7 @@ var LibraryGL = {
     } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
       if (ptable.maxUniformBlockNameLength == -1) {
         program = GL.programs[program];
-        var numBlocks = GLctx.getProgramParameter(program, GLctx.ACTIVE_UNIFORM_BLOCKS);
+        var numBlocks = GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/);
         ptable.maxUniformBlockNameLength = 0;
         for (var i = 0; i < numBlocks; ++i) {
           var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
@@ -4145,22 +4062,13 @@ var LibraryGL = {
   },
 
   glGenFramebuffers__sig: 'vii',
+  glGenFramebuffers__deps: ['_glGenObject'],
   glGenFramebuffers: function(n, ids) {
-    for (var i = 0; i < n; ++i) {
-      var framebuffer = GLctx.createFramebuffer();
-      if (!framebuffer) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenFramebuffers: GLctx.createFramebuffer returned null - most likely GL context is lost!');
+    , 'glGenFramebuffers'
 #endif
-        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.framebuffers);
-      framebuffer.name = id;
-      GL.framebuffers[id] = framebuffer;
-      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
-    }
+      );
   },
 
   glDeleteFramebuffers__sig: 'vii',
@@ -4220,9 +4128,11 @@ var LibraryGL = {
     return GLctx.isFramebuffer(fb);
   },
 
+  glGenVertexArrays__deps: ['_glGenObject'
 #if LEGACY_GL_EMULATION
-  glGenVertexArrays__deps: ['emulGlGenVertexArrays'],
+  , 'emulGlGenVertexArrays'
 #endif
+  ],
   glGenVertexArrays__sig: 'vii',
   glGenVertexArrays: function (n, arrays) {
 #if LEGACY_GL_EMULATION
@@ -4231,22 +4141,11 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-
-    for (var i = 0; i < n; i++) {
-      var vao = GLctx['createVertexArray']();
-      if (!vao) {
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+    __glGenObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
-        err('GL_INVALID_OPERATION in glGenVertexArrays: GLctx.vao.createVertexArrayOES returned null - most likely GL context is lost!');
+    , 'glGenVertexArrays'
 #endif
-        while(i < n) {{{ makeSetValue('arrays', 'i++*4', 0, 'i32') }}};
-        return;
-      }
-      var id = GL.getNewId(GL.vaos);
-      vao.name = id;
-      GL.vaos[id] = vao;
-      {{{ makeSetValue('arrays', 'i*4', 'id', 'i32') }}};
-    }
+      );
 #endif
   },
 
@@ -4282,7 +4181,7 @@ var LibraryGL = {
 #endif
     GLctx['bindVertexArray'](GL.vaos[vao]);
 #endif
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
     var ibo = GLctx.getParameter(GLctx.ELEMENT_ARRAY_BUFFER_BINDING);
     GL.currElementArrayBuffer = ibo ? (ibo.name | 0) : 0;
 #endif
@@ -7091,32 +6990,68 @@ var LibraryGL = {
     GLImmediate.modifiedClientAttributes = true;
   },
 
+  glVertex2f: function(x, y) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+  },
+
   glVertex3f: function(x, y, z) {
 #if ASSERTIONS
     assert(GLImmediate.mode >= 0); // must be in begin/end
 #endif
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
     GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
-    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z || 0;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = 1;
 #if ASSERTIONS
     assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
 #endif
-    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 3, GLctx.FLOAT);
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
   },
-  glVertex2f: 'glVertex3f',
+
+  glVertex4f: function(x, y, z, w) {
+#if ASSERTIONS
+    assert(GLImmediate.mode >= 0); // must be in begin/end
+#endif
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = x;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = y;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = z;
+    GLImmediate.vertexData[GLImmediate.vertexCounter++] = w;
+#if ASSERTIONS
+    assert(GLImmediate.vertexCounter << 2 < GL.MAX_TEMP_BUFFER_SIZE);
+#endif
+    GLImmediate.addRendererComponent(GLImmediate.VERTEX, 4, GLctx.FLOAT);
+  },
+
+  glVertex2fv__deps: ['glVertex2f'],
+  glVertex2fv: function(p) {
+    _glVertex2f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}});
+  },
 
   glVertex3fv__deps: ['glVertex3f'],
   glVertex3fv: function(p) {
     _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
   },
-  glVertex2fv__deps: ['glVertex3f'],
-  glVertex2fv: function(p) {
-    _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, 0);
+
+  glVertex4fv__deps: ['glVertex4f'],
+  glVertex4fv: function(p) {
+    _glVertex4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
   },
+
+  glVertex2i: 'glVertex2f',
 
   glVertex3i: 'glVertex3f',
 
-  glVertex2i: 'glVertex3f',
+  glVertex4i: 'glVertex4f',
 
   glTexCoord2i: function(u, v) {
 #if ASSERTIONS
