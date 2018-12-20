@@ -442,7 +442,11 @@ function loadWebAssemblyModule(binary, flags) {
             var sp = stackSave();
             try {
               var args = Array.prototype.slice.call(arguments);
-              return Module[dynCallName].apply(null, args);
+              if (Module.hasOwnProperty(dynCallName)) {
+                return Module[dynCallName].apply(null, args);
+              } else {
+                return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+              }
             } catch(e) {
               stackRestore(sp);
               if (typeof e !== 'number' && e !== 'longjmp') throw e;
