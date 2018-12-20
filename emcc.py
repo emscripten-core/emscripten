@@ -682,7 +682,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         raise
 
-  temp_dir = tempfile.mkdtemp(dir=temp_root)
+  if not DEBUG:
+    temp_dir = tempfile.mkdtemp(dir=temp_root)
+  else:
+    temp_dir = shared.get_emscripten_temp_dir()
 
   def in_temp(name):
     return os.path.join(temp_dir, os.path.basename(name))
@@ -2115,7 +2118,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   finally:
     try:
-      shutil.rmtree(temp_dir)
+      if not DEBUG:
+        shutil.rmtree(temp_dir)
     except:
       pass
 
