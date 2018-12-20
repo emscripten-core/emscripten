@@ -49,11 +49,13 @@ jobs:
             ./emsdk --notty activate latest
             cd -
             # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with that version
+            # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -r ~/emsdk-master/emscripten/
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
+            echo "final .emscripten:"
+            cat ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
@@ -331,24 +333,17 @@ jobs:
             tar -xf master.tar.gz
             cd emsdk-master
             ./emsdk --notty update-tags
-            export WATERFALL_LKGR=`python -c "print [x.split('\"')[3] for x in open('upstream/lkgr.json').readlines() if '\"build\"' in x][0]"`
-            echo "LKGR: $WATERFALL_LKGR"
-            ./emsdk --notty install node-8.9.1-64bit # TODO: should emsdk install this automatically?
-            ./emsdk --notty install clang-upstream-$WATERFALL_LKGR-64bit
-            ./emsdk --notty activate clang-upstream-$WATERFALL_LKGR-64bit
-            cd -
-            # Use LLVM, clang, lld binaries from the emsdk
-            export LLVM="$HOME/emsdk-master/upstream/$WATERFALL_LKGR/bin"
+            ./emsdk --notty install latest-upstream
+            ./emsdk --notty activate latest-upstream
             # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with that version
+            # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
-            rm -r ~/emsdk-master/upstream/$WATERFALL_LKGR/emscripten/
+            rm -Rf `find -name "emscripten"`
+            cd -
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
-            # FIXME fix node
-            echo NODE_JS="'$HOME/emsdk-master/node/8.9.1_64bit/bin/node'" >> ~/.emscripten
-            echo "COMPILER_ENGINE = NODE_JS" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "final .emscripten:"
+            cat ~/.emscripten
       - run:
           name: embuilder build ALL
           command: |
