@@ -28,14 +28,28 @@ from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
 # decorators for limiting which modes a test can run in
 
 
-def SIMD(f):
+def ASM_SIMD(f):
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
     if self.is_wasm():
-      self.skipTest('wasm will not support SIMD in the MVP')
+      self.skipTest('asm.js simd not compatible with wasm yet')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
+  return decorated
+
+
+def WASM_SIMD(f):
+  def decorated(self):
+    if self.is_emterpreter():
+      self.skipTest('simd not supported in empterpreter yet')
+    if not self.is_wasm():
+      self.skipTest('wasm simd not compatible with asm.js yet')
+    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+      self.skipTest('wasm simd only supported in d8 for now')
+    self.set_setting('SIMD', 1)
+    self.emcc_args.append('-fno-lax-vector-conversions')
+    f(self, js_engines = [V8_ENGINE + ['--experimental-wasm-simd']])
   return decorated
 
 
@@ -5503,11 +5517,16 @@ return malloc(size);
     self.set_setting('RELOCATABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
-  @SIMD
+  @WASM_SIMD
+  def test_wasm_builtin_simd(self, js_engines):
+    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
+                js_engines=js_engines)
+
+  @ASM_SIMD
   def test_sse1(self):
     # SM fails here due to NaN canonicalization.
     self.banned_js_engines += [SPIDERMONKEY_ENGINE]
-    # SIMD currently requires Math.fround
+    # asm SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
 
     orig_args = self.emcc_args
@@ -5525,12 +5544,12 @@ return malloc(size);
     return '\n'.join([x for x in (out + '\n' + err).split('\n') if 'NaN' not in x])
 
   # Tests the full SSE1 API.
-  @SIMD
+  @ASM_SIMD
   def test_sse1_full(self):
     run_process([CLANG, path_from_root('tests', 'test_sse1_full.cpp'), '-o', 'test_sse1_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + shared.get_clang_native_args(), env=shared.get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse1_full', stdout=PIPE).stdout
 
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
@@ -5540,7 +5559,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1_full.cpp')).read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE2 API.
-  @SIMD
+  @ASM_SIMD
   def test_sse2_full(self):
     if self.run_name == 'asm1' or self.run_name == 'asm2f':
       self.skipTest("some i64 thing we can't legalize")
@@ -5555,7 +5574,7 @@ return malloc(size);
     run_process([CLANG, path_from_root('tests', 'test_sse2_full.cpp'), '-o', 'test_sse2_full', '-D_CRT_SECURE_NO_WARNINGS=1'] + args + shared.get_clang_native_args(), env=shared.get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse2_full', stdout=PIPE).stdout
 
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
@@ -5565,7 +5584,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse2_full.cpp')).read(), self.ignore_nans(native_result), output_nicerizer=self.ignore_nans)
 
   # Tests the full SSE3 API.
-  @SIMD
+  @ASM_SIMD
   def test_sse3_full(self):
     args = []
     if '-O0' in self.emcc_args:
@@ -5573,14 +5592,14 @@ return malloc(size);
     run_process([CLANG, path_from_root('tests', 'test_sse3_full.cpp'), '-o', 'test_sse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse3'] + args + shared.get_clang_native_args(), env=shared.get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse3_full', stdout=PIPE).stdout
 
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse3'] + args
       self.do_run(open(path_from_root('tests', 'test_sse3_full.cpp')).read(), native_result)
 
-  @SIMD
+  @ASM_SIMD
   def test_ssse3_full(self):
     args = []
     if '-O0' in self.emcc_args:
@@ -5588,14 +5607,14 @@ return malloc(size);
     run_process([CLANG, path_from_root('tests', 'test_ssse3_full.cpp'), '-o', 'test_ssse3_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-mssse3'] + args + shared.get_clang_native_args(), env=shared.get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_ssse3_full', stdout=PIPE).stdout
 
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-mssse3'] + args
       self.do_run(open(path_from_root('tests', 'test_ssse3_full.cpp')).read(), native_result)
 
-  @SIMD
+  @ASM_SIMD
   def test_sse4_1_full(self):
     args = []
     if '-O0' in self.emcc_args:
@@ -5603,24 +5622,24 @@ return malloc(size);
     run_process([CLANG, path_from_root('tests', 'test_sse4_1_full.cpp'), '-o', 'test_sse4_1_full', '-D_CRT_SECURE_NO_WARNINGS=1', '-msse4.1'] + args + shared.get_clang_native_args(), env=shared.get_clang_native_env(), stdout=PIPE)
     native_result = run_process('./test_sse4_1_full', stdout=PIPE).stdout
 
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     orig_args = self.emcc_args
     for mode in [[], ['-s', 'SIMD=1']]:
       self.emcc_args = orig_args + mode + ['-I' + path_from_root('tests'), '-msse4.1'] + args
       self.do_run(open(path_from_root('tests', 'test_sse4_1_full.cpp')).read(), native_result)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd2')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd3(self):
-    # SIMD currently requires Math.fround
+    # ASM_SIMD currently requires Math.fround
     self.set_setting('PRECISE_F32', 1)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -5629,7 +5648,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd4(self):
     # test_simd4 is to test phi node handling of SIMD path
     self.emcc_args = self.emcc_args + ['-msse']
@@ -5637,12 +5656,12 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
     self.do_run_in_out_file_test('tests', 'core', 'test_simd5')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd6(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -5652,7 +5671,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd7(self):
     # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
     self.emcc_args = self.emcc_args + ['-msse']
@@ -5660,7 +5679,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd8(self):
     # test_simd8 is to test unaligned load and store
     test_path = path_from_root('tests', 'core', 'test_simd8')
@@ -5668,7 +5687,7 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse']
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd9(self):
     # test_simd9 is to test a bug where _mm_set_ps(0.f) would generate an expression that did not validate as asm.js
     self.emcc_args = self.emcc_args + ['-msse']
@@ -5676,7 +5695,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd10(self):
     # test_simd10 is to test that loading and storing arbitrary bit patterns works in SSE1.
     self.emcc_args = self.emcc_args + ['-msse']
@@ -5684,7 +5703,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd11(self):
     # test_simd11 is to test that _mm_movemask_ps works correctly when handling input floats with 0xFFFFFFFF NaN bit patterns.
     test_path = path_from_root('tests', 'core', 'test_simd11')
@@ -5692,21 +5711,21 @@ return malloc(size);
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd12(self):
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd12')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd13(self):
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd13')
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd14(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -5715,7 +5734,7 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd15(self):
     if any(opt in self.emcc_args for opt in ('-O1', '-Os', '-Oz')):
       self.skipTest('legalizing -O1/s/z output is much harder, and not worth it - we work on -O0 and -O2+')
@@ -5724,37 +5743,37 @@ return malloc(size);
     src, output = (test_path + s for s in ('.c', '.out'))
     self.do_run_from_file(src, output)
 
-  @SIMD
+  @ASM_SIMD
   def test_simd16(self):
     self.emcc_args = self.emcc_args + ['-msse', '-msse2']
     self.do_run_in_out_file_test('tests', 'core', 'test_simd16')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_set_epi64x(self):
     self.emcc_args = self.emcc_args + ['-msse2']
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_set_epi64x')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_float64x2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_float32x4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_float32x4')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_int32x4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int32x4')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_int16x8(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int16x8')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_int8x16(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int8x16')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_dyncall(self):
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd_dyncall')
@@ -5762,11 +5781,11 @@ return malloc(size);
     self.do_run_from_file(src, output)
 
   # Tests that the vector SIToFP instruction generates an appropriate Int->Float type conversion operator and not a bitcasting/reinterpreting conversion
-  @SIMD
+  @ASM_SIMD
   def test_simd_sitofp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
 
-  @SIMD
+  @ASM_SIMD
   def test_simd_shift_right(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 
