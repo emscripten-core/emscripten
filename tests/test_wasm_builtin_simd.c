@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <emscripten.h>
@@ -483,6 +482,76 @@ f64x2 TESTFN f64x2_convert_u_i64x2(i64x2 vec) {
   return __builtin_convertvector((u64x2)vec, f64x2);
 }
 
+static int failures = 0;
+
+#define expect_vec(_a, _b) ({                                           \
+  i32x4 a = (i32x4)_a, b = (i32x4)_b;                                   \
+  if (a[0] != b[0] || a[1] != b[1] || a[2] != b[2] || a[3] != b[3]) {   \
+    failures++;                                                         \
+    fprintf(stderr, "line %d: expected {0x%08x, 0x%08x, 0x%08x, 0x%08x}, " \
+            "got {0x%08x, 0x%08x, 0x%08x, 0x%08x}\n",                   \
+            __LINE__, b[0], b[1], b[2], b[3], a[0], a[1], a[2], a[3]);  \
+  }                                                                     \
+})
+
+#define formatter(x) _Generic((x),              \
+                              int64_t: "%ld",   \
+                              int: "%d",        \
+                              float: "%f"       \
+    )
+
+#define err(x) fprintf(stderr, formatter(x), x)
+
+#define expect_eq(_a, _b) ({                                            \
+  int64_t a = (_a), b = (_b);                                           \
+  if (a != b) {                                                         \
+    failures++;                                                         \
+    fprintf(stderr, "line %d: expected ", __LINE__);                    \
+    err(b);                                                             \
+    fprintf(stderr, ", got ");                                          \
+    err(a);                                                             \
+    fprintf(stderr, "\n");                                              \
+  }                                                                     \
+})
+
 int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
-  printf("Success!\n");
+  {
+    v128 vec = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    expect_vec(v128_load(&vec),
+              ((v128){3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}));
+    v128_store(&vec, (v128){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7});
+    expect_vec(v128_load(&vec),
+              ((v128){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
+  }
+  expect_vec(i32x4_const(), ((i32x4){1, 2, 3, 4}));
+  // expect_vec(
+  //   v128_shuffle_interleave_bytes(
+  //     (v128){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
+  //     (v128){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
+  //   ),
+  //   ((v128){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+  // );
+  // expect_vec(v128_shuffle_reverse_i32s((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
+
+  // i8x16 lane accesses
+  expect_vec(i8x16_splat(5), ((i8x16){5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}));
+  expect_vec(i8x16_splat(257), ((i8x16){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
+  expect_eq(i8x16_extract_lane_s_first((i8x16){255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), -1);
+  expect_eq(i8x16_extract_lane_s_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255}), -1);
+  expect_eq(i8x16_extract_lane_u_first((i8x16){255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
+  expect_eq(i8x16_extract_lane_u_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255}), 255);
+  expect_vec(
+    i8x16_replace_lane_first((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
+    ((i8x16){7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+  );
+  expect_vec(
+    i8x16_replace_lane_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
+    ((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7})
+  );
+
+  if (failures == 0) {
+    printf("Success!\n");
+  } else {
+    printf("Failed :(\n");
+  }
 }
