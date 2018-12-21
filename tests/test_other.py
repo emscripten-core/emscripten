@@ -7957,12 +7957,12 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      19, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
-        (['-O1'], 17, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
-        (['-O2'], 17, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
+        ([],      19, ['assert'], ['waka'], 33171, 11,  15, 69), # noqa
+        (['-O1'], 17, ['assert'], ['waka'], 14720,  9,  14, 28), # noqa
+        (['-O2'], 17, ['assert'], ['waka'], 14569,  9,  14, 24), # noqa
+        (['-O3'],  6, [],         [],        3395,  8,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  6, [],         [],        3350,  8,   3, 15), # noqa
+        (['-Oz'],  6, [],         [],        3309,  8,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],         [],          61,  0,   1,  1), # noqa; almost totally empty!
@@ -7981,9 +7981,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 42, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
+        (['-O2'], 42, ['assert'], ['waka'], 348370,  28,  220, 723), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  42, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
+                  42, ['assert'], ['waka'], 348249,  28,  220, 723), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
