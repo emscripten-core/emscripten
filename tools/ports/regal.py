@@ -152,6 +152,11 @@ def get(ports, settings, shared):
     return []
 
 
+def process_dependencies(settings):
+  if settings.USE_REGAL == 1:
+    settings.FULL_ES2 = 1
+
+
 def process_args(ports, args, settings, shared):
   if settings.USE_REGAL == 1:
     get(ports, settings, shared)
