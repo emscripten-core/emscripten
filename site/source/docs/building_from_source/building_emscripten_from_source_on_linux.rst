@@ -52,7 +52,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`.
 
-#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
+#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from GitHub. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
   - Create a directory (with no spaces in the name) to contain the clone.
   - Enter the following command into the terminal::

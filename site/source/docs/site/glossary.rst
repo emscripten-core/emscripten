@@ -77,12 +77,12 @@ Emscripten tools and dependencies
     The closure compiler is used to minify Emscripten-generated code at higher optimisations.
 
   Git
-    `Git <http://en.wikipedia.org/wiki/Git_(software)>`_ is a distributed revision control system. Emscripten is hosted on :term:`Github` and can be updated and modified using a git client.
+    `Git <http://en.wikipedia.org/wiki/Git_(software)>`_ is a distributed revision control system. Emscripten is hosted on :term:`GitHub` and can be updated and modified using a git client.
 
-  Github
+  GitHub
     `GitHub <https://github.com/>`_ is a :term:`Git` repository web-based hosting service that also offers project-based collaboration features including wikis, task management, and bug tracking.
 
-    The Emscripten project is hosted on Github.
+    The Emscripten project is hosted on GitHub.
 
   lli
   LLVM Interpreter

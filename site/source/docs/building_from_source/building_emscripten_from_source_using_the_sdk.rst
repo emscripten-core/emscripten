@@ -4,7 +4,7 @@
 Building Emscripten from Source using the SDK
 =============================================
 
-The SDK can be used to fetch and build Emscripten from the latest sources in the Emscripten and :ref:`Fastcomp <LLVM-Backend>` repositories. This allows you to obtain new features and defect fixes as soon as they are pushed to Github.
+The SDK can be used to fetch and build Emscripten from the latest sources in the Emscripten and :ref:`Fastcomp <LLVM-Backend>` repositories. This allows you to obtain new features and defect fixes as soon as they are pushed to GitHub.
 
 :ref:`Contributors <contributing>` can replace these sources with their own forks of Emscripten and *Fastcomp*, build them, and then use the normal process to pull changes into the main repository.
 
