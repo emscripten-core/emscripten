@@ -61,10 +61,10 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
     # Install cmake
     sudo apt-get install cmake
 
-- Mac OS X: Install the *XCode Command Line Tools*:
+- Mac OS X: Install the *Xcode Command Line Tools*:
 
-  -  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-  -  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+  -  Install Xcode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+  -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 .. note:: Building LLVM and Clang from source can require a lot of memory and hard drive space. The specific requirements change from LLVM version to another, but you probably need at least 2GB of RAM, preferably 4GB or more. Debug builds or builds with assertions can require even more memory.
 
