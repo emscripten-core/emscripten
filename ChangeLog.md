@@ -15,8 +15,8 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
- - System librarys have been renamed to include the `lib` prefix.  If you use
-   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libaries
+ - System libraries have been renamed to include the `lib` prefix.  If you use
+   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libraries
    you may need to add the `lib` prefix.
  - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
    name of your application, that is, if you emit `program.js` then you'll get
