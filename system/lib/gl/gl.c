@@ -1559,9 +1559,51 @@ GLAPI void APIENTRY emscripten_glGetShaderPrecisionFormat (GLenum shadertype, GL
 GLAPI void APIENTRY emscripten_glDepthRangef (GLclampf n, GLclampf f);
 GLAPI void APIENTRY emscripten_glClearDepthf (GLclampf d);
 
+GLAPI void *APIENTRY emscripten_glMapBufferRange (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+GLAPI void APIENTRY emscripten_glFlushMappedBufferRange (GLenum target, GLintptr offset, GLsizeiptr length);
+
+GLAPI void APIENTRY emscripten_glCopyBufferSubData (GLenum readTarget, GLenum writeTarget, GLintptr readOffset, GLintptr writeOffset, GLsizeiptr size);
+
+GLAPI GLsync APIENTRY emscripten_glFenceSync (GLenum condition, GLbitfield flags);
+GLAPI GLboolean APIENTRY emscripten_glIsSync (GLsync sync);
+GLAPI void APIENTRY emscripten_glDeleteSync (GLsync sync);
+GLAPI GLenum APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
+GLAPI void APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
+GLAPI void APIENTRY emscripten_glGetInteger64v (GLenum pname, GLint64 *data);
+GLAPI void APIENTRY emscripten_glGetSynciv (GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length, GLint *values);
+GLAPI void APIENTRY emscripten_glGetInteger64i_v (GLenum target, GLuint index, GLint64 *data);
+GLAPI void APIENTRY emscripten_glGetBufferParameteri64v (GLenum target, GLenum pname, GLint64 *params);
+
+GLAPI void APIENTRY emscripten_glGenSamplers (GLsizei count, GLuint *samplers);
+GLAPI void APIENTRY emscripten_glDeleteSamplers (GLsizei count, const GLuint *samplers);
+GLAPI GLboolean APIENTRY emscripten_glIsSampler (GLuint sampler);
+GLAPI void APIENTRY emscripten_glBindSampler (GLuint unit, GLuint sampler);
+GLAPI void APIENTRY emscripten_glSamplerParameteri (GLuint sampler, GLenum pname, GLint param);
+GLAPI void APIENTRY emscripten_glSamplerParameteriv (GLuint sampler, GLenum pname, const GLint *param);
+GLAPI void APIENTRY emscripten_glSamplerParameterf (GLuint sampler, GLenum pname, GLfloat param);
+GLAPI void APIENTRY emscripten_glSamplerParameterfv (GLuint sampler, GLenum pname, const GLfloat *param);
+GLAPI void APIENTRY emscripten_glGetSamplerParameteriv (GLuint sampler, GLenum pname, GLint *params);
+GLAPI void APIENTRY emscripten_glGetSamplerParameterfv (GLuint sampler, GLenum pname, GLfloat *params);
+
+GLAPI void APIENTRY emscripten_glBindTransformFeedback (GLenum target, GLuint id);
+GLAPI void APIENTRY emscripten_glDeleteTransformFeedbacks (GLsizei n, const GLuint *ids);
+GLAPI void APIENTRY emscripten_glGenTransformFeedbacks (GLsizei n, GLuint *ids);
+GLAPI GLboolean APIENTRY emscripten_glIsTransformFeedback (GLuint id);
+GLAPI void APIENTRY emscripten_glPauseTransformFeedback (void);
+GLAPI void APIENTRY emscripten_glResumeTransformFeedback (void);
+
+GLAPI void APIENTRY emscripten_glGetProgramBinary (GLuint program, GLsizei bufSize, GLsizei *length, GLenum *binaryFormat, void *binary);
+GLAPI void APIENTRY emscripten_glProgramBinary (GLuint program, GLenum binaryFormat, const void *binary, GLsizei length);
+GLAPI void APIENTRY emscripten_glProgramParameteri (GLuint program, GLenum pname, GLint value);
+
+GLAPI void APIENTRY emscripten_glInvalidateFramebuffer (GLenum target, GLsizei numAttachments, const GLenum *attachments);
+GLAPI void APIENTRY emscripten_glInvalidateSubFramebuffer (GLenum target, GLsizei numAttachments, const GLenum *attachments, GLint x, GLint y, GLsizei width, GLsizei height);
+
+GLAPI void APIENTRY emscripten_glTexStorage2D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
+GLAPI void APIENTRY emscripten_glTexStorage3D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth);
+GLAPI void APIENTRY emscripten_glGetInternalformativ (GLenum target, GLenum internalformat, GLenum pname, GLsizei bufSize, GLint *params);
 
 GLAPI void APIENTRY emscripten_glVertexAttribDivisor (GLuint index, GLuint divisor);
-
 
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
@@ -2397,6 +2439,46 @@ for line in open('a').readlines():
   if (!strcmp(name, "glFramebufferTexture3D")) return emscripten_glFramebufferTexture3D;
   if (!strcmp(name, "glTexImage2D")) return emscripten_glTexImage2D;
   if (!strcmp(name, "glGetShaderPrecisionFormat")) return emscripten_glGetShaderPrecisionFormat;
+  
+  // missing OpenGLES 3.0 core functions
+  if (!strcmp(name, "glReadBuffer")) return emscripten_glReadBuffer;
+  if( !strcmp(name, "glMapBufferRange")) return emscripten_glMapBufferRange;
+  if( !strcmp(name, "glFlushMappedBufferRange")) return emscripten_glFlushMappedBufferRange;
+  if( !strcmp(name, "glCopyBufferSubData")) return emscripten_glCopyBufferSubData;
+  if( !strcmp(name, "glFenceSync")) return emscripten_glFenceSync;
+  if( !strcmp(name, "glIsSync")) return emscripten_glIsSync;
+  if( !strcmp(name, "glDeleteSync")) return emscripten_glDeleteSync;
+  if( !strcmp(name, "glClientWaitSync")) return emscripten_glClientWaitSync;
+  if( !strcmp(name, "glWaitSync")) return emscripten_glWaitSync;
+  if( !strcmp(name, "glGetInteger64v")) return emscripten_glGetInteger64v;
+  if( !strcmp(name, "glGetSynciv")) return emscripten_glGetSynciv;
+  if( !strcmp(name, "glGetInteger64i_v")) return emscripten_glGetInteger64i_v;
+  if( !strcmp(name, "glGetBufferParameteri64v")) return emscripten_glGetBufferParameteri64v;
+  if( !strcmp(name, "glGenSamplers")) return emscripten_glGenSamplers;
+  if( !strcmp(name, "glDeleteSamplers")) return emscripten_glDeleteSamplers;
+  if( !strcmp(name, "glIsSampler")) return emscripten_glIsSampler;
+  if( !strcmp(name, "glBindSampler")) return emscripten_glBindSampler;
+  if( !strcmp(name, "glSamplerParameteri")) return emscripten_glSamplerParameteri;
+  if( !strcmp(name, "glSamplerParameteriv")) return emscripten_glSamplerParameteriv;
+  if( !strcmp(name, "glSamplerParameterf")) return emscripten_glSamplerParameterf;
+  if( !strcmp(name, "glSamplerParameterfv")) return emscripten_glSamplerParameterfv;
+  if( !strcmp(name, "glGetSamplerParameteriv")) return emscripten_glGetSamplerParameteriv;
+  if( !strcmp(name, "glGetSamplerParameterfv")) return emscripten_glGetSamplerParameterfv;
+  if( !strcmp(name, "glBindTransformFeedback")) return emscripten_glBindTransformFeedback;
+  if( !strcmp(name, "glDeleteTransformFeedbacks")) return emscripten_glDeleteTransformFeedbacks;
+  if( !strcmp(name, "glGenTransformFeedbacks")) return emscripten_glGenTransformFeedbacks;
+  if( !strcmp(name, "glIsTransformFeedback")) return emscripten_glIsTransformFeedback;
+  if( !strcmp(name, "glPauseTransformFeedback")) return emscripten_glPauseTransformFeedback;
+  if( !strcmp(name, "glResumeTransformFeedback")) return emscripten_glResumeTransformFeedback;
+  if( !strcmp(name, "glGetProgramBinary")) return emscripten_glGetProgramBinary;
+  if( !strcmp(name, "glProgramBinary")) return emscripten_glProgramBinary;
+  if( !strcmp(name, "glProgramParameteri")) return emscripten_glProgramParameteri;
+  if( !strcmp(name, "glInvalidateFramebuffer")) return emscripten_glInvalidateFramebuffer;
+  if( !strcmp(name, "glInvalidateSubFramebuffer")) return emscripten_glInvalidateSubFramebuffer;
+  if( !strcmp(name, "glTexStorage2D")) return emscripten_glTexStorage2D;
+  if( !strcmp(name, "glTexStorage3D")) return emscripten_glTexStorage3D;
+  if( !strcmp(name, "glGetInternalformativ")) return emscripten_glGetInternalformativ;
+  
   // If LEGACY_GL_EMULATION is on, allow access to those functions too
   if (EM_ASM_INT({ return GL.legacyGLEmulation })) {
     if (!strcmp(name, "glDeleteObject")) return emscripten_glDeleteObjectARB;
@@ -2508,7 +2590,6 @@ for line in open('a').readlines():
     if (!strcmp(name, "glTranslated")) return emscripten_glTranslated;
     if (!strcmp(name, "glTranslatef")) return emscripten_glTranslatef;
     if (!strcmp(name, "glDrawBuffer")) return emscripten_glDrawBuffer;
-    if (!strcmp(name, "glReadBuffer")) return emscripten_glReadBuffer;
     if (!strcmp(name, "glLightf")) return emscripten_glLightf;
     if (!strcmp(name, "glLighti")) return emscripten_glLighti;
     if (!strcmp(name, "glLightfv")) return emscripten_glLightfv;
