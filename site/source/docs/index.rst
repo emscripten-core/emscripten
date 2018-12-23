@@ -24,7 +24,7 @@ This comprehensive documentation set contains everything you need to know to use
 **Contributing:**
 
 - :ref:`contributing-to-emscripten-index` explains how you can contribute to the project.
-- :ref:`installing-from-source` explains how to build Emscripten from sources on Github (this is useful for contributors).
+- :ref:`installing-from-source` explains how to build Emscripten from sources on GitHub (this is useful for contributors).
 - :ref:`about-this-site` describes the documentation tools and writing conventions used to create this site.
 
 **Reference:**
