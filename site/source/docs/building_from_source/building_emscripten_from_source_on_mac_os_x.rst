@@ -1,10 +1,10 @@
-.. _building-emscripten-on-mac-osx-from-source:
+.. _building-emscripten-on-macos-from-source:
 
-========================================
-Manually Building Emscripten on Mac OS X
-========================================
+=====================================
+Manually Building Emscripten on macOS
+=====================================
 
-This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Mac OS X box (tested on OS X version 10.8.2).
+This page contains basic instructions on how to manually build and configure Emscripten from source on a clean macOS box (tested on macOS version 10.8.2).
 
 .. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
@@ -23,7 +23,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install the *Xcode Command Line Tools*. These include the toolchain to build :term:`Fastcomp`, and are a precondition for *git*.
 
-	-  Install Xcode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+	-  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
 	-  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
@@ -39,7 +39,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 #. Install *node.js* from http://nodejs.org/ 
 
 
-	.. _getting-started-on-osx-install-python2:
+	.. _getting-started-on-macos-install-python2:
 
 #. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source-building>`. 
 	

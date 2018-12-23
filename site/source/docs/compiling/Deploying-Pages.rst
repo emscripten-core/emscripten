@@ -147,7 +147,7 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - If the page uses WebGL, make sure that it is able to gracefully handle the WebGL context loss event. Use the `WebGL_lose_context <https://www.khronos.org/registry/webgl/extensions/WEBGL_lose_context/>`_ developer extension to programmatically trigger context loss events when testing.
 
-- Verify that the page works as intended on displays with different ``window.devicePixelRatio`` (DPI) settings, in particular when using WebGL. See `Khronos.org: HandlingHighDPI <https://www.khronos.org/webgl/wiki/HandlingHighDPI>`_. On Windows and OS X, try changing the desktop display scaling setting to test different values of ``window.devicePixelRatio`` that the browser reports.
+- Verify that the page works as intended on displays with different ``window.devicePixelRatio`` (DPI) settings, in particular when using WebGL. See `Khronos.org: HandlingHighDPI <https://www.khronos.org/webgl/wiki/HandlingHighDPI>`_. On Windows and macOS, try changing the desktop display scaling setting to test different values of ``window.devicePixelRatio`` that the browser reports.
 
 - Test out that different page zoom levels do not break the site layout, especially when navigating to the page with the browser window already pre-zoomed.
 

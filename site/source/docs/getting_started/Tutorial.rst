@@ -17,7 +17,7 @@ Emscripten is accessed using the :ref:`emccdoc`. This script invokes all the oth
 
 For the next section you will need to open a command prompt:
 
-- On Linux or Mac OS X, open a *Terminal*.
+- On Linux or macOS, open a *Terminal*.
 - On Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`, a command prompt that has been pre-configured with the correct system paths and settings to point to the :term:`active <Active Tool/SDK>` Emscripten tools. To access this prompt, type **Emscripten** in the Windows 8 start screen, and then select the **Emscripten Command Prompt** option.
 
 Navigate with the command prompt to the :term:`SDK root directory` for your target SDK. This is an SDK-version-specific folder below the :term:`emsdk root directory`, for example **<emsdk root directory>/emscripten/1.20.0/**.

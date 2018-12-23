@@ -512,7 +512,7 @@ Struct
 
     Movement of the wheel on each of the axis. Note that these values may be fractional, so you should avoid simply casting them to integer, or it might result
     in scroll values of 0. The positive Y scroll direction is when scrolling the page downwards (page CSS pixel +Y direction), which corresponds to scrolling
-    the mouse wheel downwards (away from the screen) on Windows, Linux, and also on OSX when the 'natural scroll' option is disabled.
+    the mouse wheel downwards (away from the screen) on Windows, Linux, and also on macOS when the 'natural scroll' option is disabled.
 
   .. c:member:: unsigned long deltaMode
 

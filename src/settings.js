@@ -559,7 +559,7 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 var FS_LOG = 0;
 
 // If set to nonzero, the provided virtual filesystem if treated
-// case-insensitive, like Windows and OSX do. If set to 0, the VFS is
+// case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
 var CASE_INSENSITIVE_FS = 0;
 
