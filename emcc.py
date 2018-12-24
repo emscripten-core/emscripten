@@ -132,10 +132,10 @@ class Intermediate(object):
 # return it)
 # TODO: refactor all this, a singleton that abstracts over the final output
 #       and saving of intermediates
-def save_intermediate(name=None, suffix='js'):
+def save_intermediate(name, suffix='js'):
   if not DEBUG:
     return
-  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d%s.%s' % (Intermediate.counter, '' if name is None else '-' + name, suffix))
+  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.%s' % (Intermediate.counter, name, suffix))
   if isinstance(final, list):
     logger.debug('(not saving intermediate %s because deferring linking)' % name)
     return
@@ -2006,12 +2006,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
-          save_intermediate('dfe', 'js')
+          save_intermediate('dfe')
 
       if shared.Settings.EVAL_CTORS and options.memory_init_file and not use_source_map(options) and not shared.Settings.WASM:
         optimizer.flush()
         shared.Building.eval_ctors(final, memfile)
-        save_intermediate('eval-ctors', 'js')
+        save_intermediate('eval-ctors')
 
       if options.js_opts:
         # some compilation modes require us to minify later or not at all
@@ -2591,8 +2591,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
-      save_intermediate('pre-eval-ctors', 'js')
-      shutil.copyfile(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), 'pre-eval-ctors.wasm'))
+      save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE:
@@ -2705,7 +2704,7 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
     })
 
   f.close()
-  save_intermediate('modularized', 'js')
+  save_intermediate('modularized')
 
 
 def module_export_name_substitution():
@@ -2717,7 +2716,7 @@ def module_export_name_substitution():
   replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
   f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
   f.close()
-  save_intermediate('module_export_name_substitution', 'js')
+  save_intermediate('module_export_name_substitution')
 
 
 def generate_html(target, options, js_target, target_basename,
