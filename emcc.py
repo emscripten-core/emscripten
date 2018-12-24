@@ -35,7 +35,6 @@ import shlex
 import shutil
 import stat
 import sys
-import tempfile
 import time
 from subprocess import PIPE
 
