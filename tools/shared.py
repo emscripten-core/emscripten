@@ -782,8 +782,10 @@ AUTODEBUGGER = path_from_root('tools', 'autodebugger.py')
 EXEC_LLVM = path_from_root('tools', 'exec_llvm.py')
 FILE_PACKAGER = path_from_root('tools', 'file_packager.py')
 
+EMSCRIPTEN_TEMP_DIR = None
+configuration = None
 
-# Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use TEMP_DIR/emscripten_temp
+
 def safe_ensure_dirs(dirname):
   try:
     os.makedirs(dirname)
@@ -794,18 +796,8 @@ def safe_ensure_dirs(dirname):
       raise
 
 
-# Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist.
 def get_emscripten_temp_dir():
-  global configuration, EMSCRIPTEN_TEMP_DIR
-  if not EMSCRIPTEN_TEMP_DIR:
-    EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=configuration.TEMP_DIR)
-
-    def prepare_to_clean_temp(d):
-      def clean_temp():
-        try_delete(d)
-
-      atexit.register(clean_temp)
-    prepare_to_clean_temp(EMSCRIPTEN_TEMP_DIR) # this global var might change later
+  assert EMSCRIPTEN_TEMP_DIR
   return EMSCRIPTEN_TEMP_DIR
 
 
@@ -868,6 +860,8 @@ class Configuration(object):
   def __init__(self, environ=os.environ):
     self.EMSCRIPTEN_TEMP_DIR = None
 
+    # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use
+    # TEMP_DIR/emscripten_temp
     if "EMCC_TEMP_DIR" in environ:
       TEMP_DIR = environ.get("EMCC_TEMP_DIR")
     try:
@@ -892,7 +886,7 @@ class Configuration(object):
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
-      tmp=self.TEMP_DIR if not DEBUG else get_emscripten_temp_dir(),
+      tmp=self.TEMP_DIR if not DEBUG else self.EMSCRIPTEN_TEMP_DIR,
       save_debug_files=os.environ.get('EMCC_DEBUG_SAVE'))
 
 
@@ -905,6 +899,7 @@ def apply_configuration():
 
 
 apply_configuration()
+
 
 # EM_CONFIG stuff
 if JS_ENGINES is None:
@@ -3081,12 +3076,11 @@ def clang_preprocess(filename):
 
 
 def read_and_preprocess(filename):
-  temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
   # Note: Settings.serialize returns an array of -s options i.e. ['-s', '<setting1>', '-s', '<setting2>', ...]
   #       we only want the actual settings, hence the [1::2] slice operation.
   settings_str = "var " + ";\nvar ".join(Settings.serialize()[1::2])
-  settings_file = os.path.join(temp_dir, 'settings.js')
+  settings_file = os.path.join(EMSCRIPTEN_TEMP_DIR, 'settings.js')
   open(settings_file, 'w').write(settings_str)
 
   # Run the JS preprocessor
@@ -3096,7 +3090,7 @@ def read_and_preprocess(filename):
   (path, file) = os.path.split(filename)
   if not path:
     path = None
-  stdout = os.path.join(temp_dir, 'stdout')
+  stdout = os.path.join(EMSCRIPTEN_TEMP_DIR, 'stdout')
   args = [settings_file, file]
 
   run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
