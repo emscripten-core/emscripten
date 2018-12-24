@@ -23,8 +23,11 @@ function processMacros(text) {
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting.
+// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  var fileext = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
+  var ishtml = (fileext == "html" || fileext == "htm") ? true : false;
+  var instyle = false;
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
@@ -34,7 +37,13 @@ function preprocess(text, filenameHint) {
       if (line[line.length-1] == '\r') {
         line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-      if (!line[0] || line[0] != '#') {
+      if (ishtml && line.indexOf('<style') != -1 && !instyle) {
+        instyle = true;
+      }
+      if (ishtml && line.indexOf('</style') != -1 && instyle) {
+        instyle = false;
+      }
+      if (!line[0] || line[0] != '#' || instyle) {
         if (showStack.indexOf(false) == -1) {
           ret += line + '\n';
         }
@@ -442,7 +451,7 @@ function splitI64(value, floatConversion) {
     asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
                asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' + 
+               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
       ')' +
     ' : 0',
     value,
@@ -987,7 +996,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   if (value < 0) value += 256; // make it unsigned
   var values = {
     1: value,
-    2: value | (value << 8), 
+    2: value | (value << 8),
     4: value | (value << 8) | (value << 16) | (value << 24)
   };
   var ret = [];

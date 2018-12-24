@@ -8445,7 +8445,14 @@ int main() {
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8454,7 +8461,14 @@ T6:!ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=1'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:ASSERTIONS == 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+</style>
+T1:ASSERTIONS == 1
 T2:(else) ASSERTIONS == 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8463,7 +8477,14 @@ T6:(else) !ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=2'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:(else) ASSERTIONS >= 2
 T4:ASSERTIONS > 1

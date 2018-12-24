@@ -138,6 +138,6 @@ load(settings_file);
 load('parseTools.js');
 
 var from_html = read(shell_file);
-var to_html = process_macros ? processMacros(preprocess(from_html)) : preprocess(from_html);
+var to_html = process_macros ? processMacros(preprocess(from_html, shell_file)) : preprocess(from_html, shell_file);
 
 print(to_html);
