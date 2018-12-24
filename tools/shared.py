@@ -2077,18 +2077,21 @@ class Building(object):
 
       link_args = ["@" + response_file]
 
-      response_fh = open(response_file, 'w')
-      for arg in actual_files:
-        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes backslashes in response files, so Windows paths
-        # "c:\path\to\file.txt" with single slashes no longer work. LLVM upstream dev 3.9.0 from January 2016 still treated
-        # backslashes without escaping. To preserve compatibility with both versions of llvm-link, don't pass backslash
-        # path delimiters at all to response files, but always use forward slashes.
-        if WINDOWS:
-          arg = arg.replace('\\', '/')
+      with open(response_file, 'w') as f:
+        for arg in actual_files:
+          # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
+          # backslashes in response files, so Windows paths
+          # "c:\path\to\file.txt" with single slashes no longer work. LLVM
+          # upstream dev 3.9.0 from January 2016 still treated backslashes
+          # without escaping. To preserve compatibility with both versions of
+          # llvm-link, don't pass backslash path delimiters at all to response
+          # files, but always use forward slashes.
+          if WINDOWS:
+            arg = arg.replace('\\', '/')
 
-        # escaped double quotes allows 'space' characters in pathname the response file can use
-        response_fh.write("\"" + arg + "\"\n")
-      response_fh.close()
+          # escaped double quotes allows 'space' characters in pathname the
+          # response file can use
+          f.write("\"" + arg + "\"\n")
 
     if not just_calculate:
       logger.debug('emcc: llvm-linking: %s to %s', actual_files, target)
@@ -2306,9 +2309,8 @@ class Building(object):
       logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
       finalized_exports = '\n'.join([exp[1:] for exp in exps])
       internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
-      internalize_list_fh = open(internalize_list_file, 'w')
-      internalize_list_fh.write(finalized_exports)
-      internalize_list_fh.close()
+      with open(internalize_list_file, 'w') as f:
+        f.write(finalized_exports)
       internalize_public_api += 'file=' + internalize_list_file
     else:
       internalize_public_api += 'list=' + internalize_list

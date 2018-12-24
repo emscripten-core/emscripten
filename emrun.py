@@ -206,8 +206,8 @@ def delete_emrun_safe_firefox_profile():
 def create_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  f = open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w')
-  f.write('''
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
+    f.write('''
 // Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
 user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
@@ -293,7 +293,6 @@ user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
 ''')
-  f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
   return temp_firefox_profile_dir
 
