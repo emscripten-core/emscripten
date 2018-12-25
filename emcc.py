@@ -1439,8 +1439,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if DEBUG:
     # we are about to start using temp dirs. serialize access to the temp dir
-    # when using EMCC_DEBUG, since then multiple processes would use the same
-    # location
+    # when using EMCC_DEBUG, since we don't want multiple processes would to
+    # use it at once, they might collide if they happen to use the same
+    # tempfile names
     shared.Cache.acquire_cache_lock()
 
   try:
