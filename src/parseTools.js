@@ -43,33 +43,31 @@ function preprocess(text, filenameHint) {
       if (ishtml && line.indexOf('</style') != -1 && instyle) {
         instyle = false;
       }
-      if (!line[0] || line[0] != '#' || instyle) {
+
+      if (!instyle && line.indexOf('#if') === 0) {
+        var parts = line.split(' ');
+        var after = parts.slice(1).join(' ');
+        var truthy = !!eval(after);
+        showStack.push(truthy);
+      } else if (!instyle && line.indexOf('#include') === 0) {
+        var filename = line.substr(line.indexOf(' ')+1);
+        if (filename.indexOf('"') === 0) {
+          filename = filename.substr(1, filename.length - 2);
+        }
+        var included = read(filename);
+        ret += '\n' + preprocess(included, filename) + '\n';
+      } else if (!instyle && line.indexOf('#else') === 0) {
+        assert(showStack.length > 0);
+        showStack.push(!showStack.pop());
+      } else if (!instyle && line.indexOf('#endif') === 0) {
+        assert(showStack.length > 0);
+        showStack.pop();
+      } else {
+        if (!instyle && line[0] == '#') {
+          printErr("Ignoring unclear preprocessor command: " + line);
+        }
         if (showStack.indexOf(false) == -1) {
           ret += line + '\n';
-        }
-      } else {
-        if (line[1] == 'i') {
-          if (line[2] == 'f') { // if
-            var parts = line.split(' ');
-            var after = parts.slice(1).join(' ');
-            var truthy = !!eval(after);
-            showStack.push(truthy);
-          } else if (line[2] == 'n') { // include
-            var filename = line.substr(line.indexOf(' ')+1);
-            if (filename.indexOf('"') === 0) {
-              filename = filename.substr(1, filename.length - 2);
-            }
-            var included = read(filename);
-            ret += '\n' + preprocess(included, filename) + '\n'
-          }
-        } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
-          showStack.push(!showStack.pop());
-        } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
-          showStack.pop();
-        } else {
-          throw "Unclear preprocessor command on line " + i + ': ' + line;
         }
       }
     } catch(e) {
