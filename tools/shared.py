@@ -1408,17 +1408,21 @@ class Building(object):
             for t in tasks:
               results += [func(t)]
             return results
+
           def map_async(self, func, tasks, **kwargs):
             class Result:
               def __init__(self, func, tasks):
                 self.func = func
                 self.tasks = tasks
+
               def get(self, timeout):
                 results = []
                 for t in tasks:
                   results += [func(t)]
                 return results
+
             return Result(func, tasks)
+
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
