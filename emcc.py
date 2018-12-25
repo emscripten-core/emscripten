@@ -1376,11 +1376,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.separate_asm:
           exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      # wasm outputs are only possible with a side wasm
       if target.endswith(WASM_ENDINGS):
-        if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-          logger.warning('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library (see SIDE_MODULE option). specify an output file with suffix .js or .html, and a wasm file will be created on the side' % target)
-          return 1
+        shared.Settings.EMITTING_JS = 0
+        js_target = misc_temp_files.get(suffix='.js').name
 
       if shared.Settings.EVAL_CTORS:
         if not shared.Settings.WASM:

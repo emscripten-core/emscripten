@@ -7814,6 +7814,35 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
+  def test_no_emitting_js(self):
+    for opts, potentially_expect_minified_exports_and_imports in (
+      ([], False),
+      (['-O2'], False),
+      (['-O3'], True),
+      (['-Os'], True),
+    ):
+      for target in ('out.js', 'out.wasm'):
+        expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
+        print (opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
+
+        self.clear()
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
+        assert os.path.exists('out.wasm')
+        if target.endswith('.wasm'):
+          assert not os.path.exists('out.js'), 'only wasm requested'
+        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
+        wast_lines = wast.split('\n')
+        exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
+        imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
+        exports_and_imports = exports + imports
+        print(exports)
+        print(imports)
+        if expect_minified_exports_and_imports:
+          assert 'a' in exports_and_imports
+        else:
+          assert 'a' not in exports_and_imports
+        assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
+
   def test_binaryen_methods(self):
     for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
       # check success and failure for simple modes, only success for combined/fallback ones
@@ -8779,7 +8808,6 @@ int main () {
       assert obtained_size < expected_size
 
     run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    # TODO: Add support to Wasm to minify imports, and then add Wasm testing ['-s', 'WASM=1'] to this list
     for wasm in [['-s', 'WASM=1'], ['-s', 'WASM=0']]:
       # Currently we rely on Closure for full minification of every appearance of JS function names.
       # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.

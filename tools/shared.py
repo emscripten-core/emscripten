@@ -2476,8 +2476,10 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-        # also minify the names used between js and wasm
-        js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+        # also minify the names used between js and wasm, if we emitting JS (then the JS knows
+        # how to load the minified names)
+        if Settings.EMITTING_JS:
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
         logger.debug('running closure on shell code')
