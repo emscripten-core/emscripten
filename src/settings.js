@@ -738,7 +738,7 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // EXPORTED_FUNCTIONS will also be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
-// If set to 1, any -lfoo directives pointing to nonexisting library files will
+// If set to 1, any -lfoo directives pointing to nonexistent library files will
 // issue a linker error.
 
 // The default value for this is currently 0, but will be transitioned to 1 in
@@ -826,7 +826,7 @@ var MODULARIZE = 0;
 // EXPORT_NAME() to create the instance manually.
 //
 // Note that the promise-like API MODULARIZE provides isn't available here
-// (since you arean't creating the instance yourself).
+// (since you aren't creating the instance yourself).
 var MODULARIZE_INSTANCE = 0;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
