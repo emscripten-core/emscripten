@@ -7814,35 +7814,6 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
-  def test_no_emitting_js(self):
-    for opts, potentially_expect_minified_exports_and_imports in (
-      ([], False),
-      (['-O2'], False),
-      (['-O3'], True),
-      (['-Os'], True),
-    ):
-      for target in ('out.js', 'out.wasm'):
-        expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
-        print (opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
-
-        self.clear()
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
-        assert os.path.exists('out.wasm')
-        if target.endswith('.wasm'):
-          assert not os.path.exists('out.js'), 'only wasm requested'
-        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
-        wast_lines = wast.split('\n')
-        exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
-        imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
-        exports_and_imports = exports + imports
-        print(exports)
-        print(imports)
-        if expect_minified_exports_and_imports:
-          assert 'a' in exports_and_imports
-        else:
-          assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
-
   def test_binaryen_methods(self):
     for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
       # check success and failure for simple modes, only success for combined/fallback ones
@@ -8094,12 +8065,33 @@ int main() {
       assert result == str(expected) + ', errno: 0', expected
 
   def test_wasm_targets(self):
-    for f in ['a.wasm', 'a.wast']:
-      print('generating: ' + f)
-      process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', f], stdout=PIPE, stderr=PIPE, check=False)
-      print(process.stderr)
-      assert process.returncode is not 0, 'wasm suffix is an error'
-      self.assertContained('output file "%s" has a wasm suffix, but we cannot emit wasm by itself, except as a dynamic library' % f, process.stderr)
+    for opts, potentially_expect_minified_exports_and_imports in (
+      ([], False),
+      (['-O2'], False),
+      (['-O3'], True),
+      (['-Os'], True),
+    ):
+      for target in ('out.js', 'out.wasm'):
+        expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
+        print (opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
+
+        self.clear()
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
+        assert os.path.exists('out.wasm')
+        if target.endswith('.wasm'):
+          assert not os.path.exists('out.js'), 'only wasm requested'
+        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
+        wast_lines = wast.split('\n')
+        exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
+        imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
+        exports_and_imports = exports + imports
+        print(exports)
+        print(imports)
+        if expect_minified_exports_and_imports:
+          assert 'a' in exports_and_imports
+        else:
+          assert 'a' not in exports_and_imports
+        assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
 
   @no_wasm_backend('uses SIDE_MODULE')
   def test_wasm_targets_side_module(self):
