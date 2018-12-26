@@ -3149,10 +3149,24 @@ ok
       #include <setjmp.h>
       #include <stdio.h>
 
+      // Issue #7708: Making indirect calls in a side module to a function with
+      // a signature that doesn't exist in the main module fails.
+
+      int indirect_func(int a, int b, int c) {
+        return a * b * c;
+      }
+
+      typedef int (*indirect_ptr)(int, int, int);
+
       void jumpy(jmp_buf buf) {
+        indirect_ptr func_ptr = &indirect_func;
+
         static int i = 0;
         i++;
         if (i == 10) longjmp(buf, i);
+        if (func_ptr((double)i, (double)i, (double)i) != i*i*i) {
+          printf("fail\n");
+        }
         printf("pre %d\n", i);
       }
       '''
