@@ -437,23 +437,22 @@ function loadWebAssemblyModule(binary, flags) {
           // present in the dynamic library but not in the main JS,
           // and the dynamic library cannot provide JS for it. Generate
           // a closure to call the underlying dynCall.
-          var dynCallName = 'dynCall_' + prop.slice(7);
-          env[prop] = function() {
-            var sp = stackSave();
-            try {
-              var args = Array.prototype.slice.call(arguments);
-              if (Module.hasOwnProperty(dynCallName)) {
+          if (Module.hasOwnProperty(dynCallName)) {
+            var dynCallName = 'dynCall_' + prop.slice(7);
+            return env[prop] = function() {
+              var sp = stackSave();
+              try {
+                var args = Array.prototype.slice.call(arguments);
                 return Module[dynCallName].apply(null, args);
-              } else {
-                return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+              } catch(e) {
+                stackRestore(sp);
+                if (typeof e !== 'number' && e !== 'longjmp') throw e;
+                Module["setThrew"](1, 0);
               }
-            } catch(e) {
-              stackRestore(sp);
-              if (typeof e !== 'number' && e !== 'longjmp') throw e;
-              Module["setThrew"](1, 0);
             }
+          } else {
+            return env[prop] = invoke_X;
           }
-          return env[prop];
         }
         // if not a global, then a function - call it indirectly
         return env[prop] = function() {
