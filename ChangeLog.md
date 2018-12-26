@@ -22,6 +22,7 @@ Current Trunk
    name of your application, that is, if you emit `program.js` then you'll get
    `program.worker.js` (this allows more than one to exist in the same
    directory, etc.).
+ - Dynamic linker has been taught to handle library -> library dependencies.
 
 v1.38.21: 11/30/2018
 --------------------
