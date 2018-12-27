@@ -766,7 +766,7 @@ the context, and from this context we can create an ``oscillator``,
 :cpp:func:`~emscripten::val::set` its properties (again using ``val``)
 and then play the tone.
 
-The example can be compiled on the Linux/Mac OS X terminal with::
+The example can be compiled on the Linux/macOS terminal with::
 
    ./emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
 

@@ -41,7 +41,7 @@ The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug 
 
 .. code-block:: bash
 
-  # Linux or Mac OS X
+  # Linux or macOS
   EMCC_DEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
 
   # Windows
@@ -227,7 +227,7 @@ To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBU
 
 .. code-block:: bash
 
-  # Linux or Mac OS X
+  # Linux or macOS
   EMCC_AUTODEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
 
   # Windows

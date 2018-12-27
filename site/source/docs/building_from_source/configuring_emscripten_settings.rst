@@ -36,7 +36,7 @@ Locating the compiler configuration file (.emscripten)
 
 The settings file is created in the user's home directory: 
 
-	- On Linux and Mac OS X this file is named **~/.emscripten**, where ~ is the user's home directory. 
+	- On Linux and macOS this file is named **~/.emscripten**, where ~ is the user's home directory.
 
 		.. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
 

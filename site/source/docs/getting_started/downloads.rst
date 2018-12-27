@@ -59,8 +59,8 @@ Windows
 
   .. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
 
-Mac OS X
-++++++++
+macOS
++++++
 
 If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
@@ -68,7 +68,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install the *Xcode Command Line Tools*. These are a precondition for *git*.
 
-  -  Install Xcode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+  -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
   -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
@@ -83,7 +83,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *node.js* from http://nodejs.org/
 
-  .. _getting-started-on-osx-install-python2:
+  .. _getting-started-on-macos-install-python2:
 
 Linux
 ++++++++
