@@ -438,7 +438,7 @@ function loadWebAssemblyModule(binary, flags) {
           // and the dynamic library cannot provide JS for it. Generate
           // a closure to call the underlying dynCall.
           var dynCallName = 'dynCall_' + prop.slice(7);
-          if (Module.hasOwnProperty(dynCallName) && false) {
+          if (Module.hasOwnProperty(dynCallName)) {
             return env[prop] = function() {
               var sp = stackSave();
               try {
