@@ -3151,7 +3151,6 @@ ok
 
       // Issue #7708: Making indirect calls in a side module to a function with
       // a signature that doesn't exist in the main module fails.
-
       int indirect_func(int a, int b, int c) {
         return a * b * c;
       }
@@ -3164,6 +3163,8 @@ ok
         static int i = 0;
         i++;
         if (i == 10) longjmp(buf, i);
+        jmp_buf buf;
+        int jmpval = setjmp(buf);
         if (func_ptr((double)i, (double)i, (double)i) != i*i*i) {
           printf("fail\n");
         }
