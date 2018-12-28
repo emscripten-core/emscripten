@@ -3163,8 +3163,9 @@ ok
         static int i = 0;
         i++;
         if (i == 10) longjmp(buf, i);
-        jmp_buf buf;
-        int jmpval = setjmp(buf);
+        jmp_buf buf2;
+        // Call setjmp to trigger the use of invoke_iiii below
+        int jmpval = setjmp(buf2);
         if (func_ptr((double)i, (double)i, (double)i) != i*i*i) {
           printf("fail\n");
         }
