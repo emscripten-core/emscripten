@@ -122,6 +122,6 @@ Emscripten memory representation
 
 In both asm.js and WebAssembly Emscripten represents memory in a way similar to native architectures. Pointers represent offsets into memory, structs use the same amount of address space as they normally do, and so forth.
 
-In WebAssembly, this is done using a ``WebAssembly.Memory`` which was designed for that purpose. In asm.js, Emscripten uses using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.).
+In WebAssembly, this is done using a ``WebAssembly.Memory`` which was designed for that purpose. In asm.js, Emscripten uses a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.).
 
 Emscripten experimented with other memory representations in the past, ending up on the "typed arrays mode 2" approach for JS and then asm.js, as described above, and then WebAssembly implemented something similar.
