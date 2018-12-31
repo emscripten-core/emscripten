@@ -57,7 +57,7 @@ sys.argv = filter(handle_arg, sys.argv)
 
 # consts
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', 'copyTempDouble', 'copyTempFloat', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
+BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset', '_strlen', 'stackAlloc', 'setThrew', 'stackRestore', 'setTempRet0', 'getTempRet0', 'stackSave', '_emscripten_autodebug_double', '_emscripten_autodebug_float', '_emscripten_autodebug_i8', '_emscripten_autodebug_i16', '_emscripten_autodebug_i32', '_emscripten_autodebug_i64', '_strncpy', '_strcpy', '_strcat', '_saveSetjmp', '_testSetjmp', '_emscripten_replace_memory', '_bitshift64Shl', '_bitshift64Ashr', '_bitshift64Lshr', 'setAsyncState', 'emtStackSave', 'emtStackRestore'])
 WHITELIST = []
 
 SYNC_FUNCS = set(['_emscripten_sleep', '_emscripten_sleep_with_yield', '_emscripten_wget_data', '_emscripten_idb_load', '_emscripten_idb_store', '_emscripten_idb_delete'])
@@ -523,12 +523,6 @@ opcode_used = {}
 for opcode in OPCODES:
   opcode_used[opcode] = False
 
-def is_function_table(name):
-  return name.startswith('FUNCTION_TABLE_')
-
-def is_dyn_call(func):
-  return func.startswith('dynCall_')
-
 def make_emterpreter(zero=False):
   # return is specialized per interpreter
   CASES[ROPCODES['RET']] = pop_stacktop(zero)
@@ -539,7 +533,7 @@ def make_emterpreter(zero=False):
     name = global_func_names[i]
     sig = global_func_sigs[i]
 
-    function_pointer_call = is_function_table(name)
+    function_pointer_call = shared.JS.is_function_table(name)
 
     # our local registers are never true floats, and we just do fround calls to ensure correctness, not caring
     # about performance. but when coercing to outside of the emterpreter, we need to know the true sig,
@@ -635,8 +629,8 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //Module.print([pc, inst&255, %s[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]].join(', '));
-''' % (json.dumps(OPCODES))
+  //Module.print([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
+'''
 
   if not INNERTERPRETER_LAST_OPCODE:
     main_loop = main_loop_prefix + r'''
@@ -727,45 +721,12 @@ if __name__ == '__main__':
 
   if ADVISE:
     # Advise the user on which functions should likely be emterpreted
-    temp = temp_files.get('.js').name
-    shared.Building.js_optimizer(infile, ['dumpCallGraph'], output_filename=temp, just_concat=True)
-    asm = asm_module.AsmModule(temp)
-    lines = asm.funcs_js.split('\n')
-    can_call = {}
-    for i in range(len(lines)):
-      line = lines[i]
-      if line.startswith('// REACHABLE '):
-        curr = json.loads(line[len('// REACHABLE '):])
-        func = curr[0]
-        targets = curr[2]
-        can_call[func] = set(targets)
-    # function tables too - treat a function all as a function that can call anything in it, which is effectively what it is
-    for name, funcs in asm.tables.iteritems():
-      can_call[name] = set(funcs[1:-1].split(','))
-    #print can_call
-    # Note: We ignore calls in from outside the asm module, so you could do emterpreted => outside => emterpreted, and we would
-    #       miss the first one there. But this is acceptable to do, because we can't save such a stack anyhow, due to the outside!
-    #print 'can call', can_call, '\n!!!\n', asm.tables, '!'
-    reachable_from = {}
-    for func, targets in can_call.iteritems():
-      for target in targets:
-        if target not in reachable_from:
-          reachable_from[target] = set()
-        reachable_from[target].add(func)
-    #print 'reachable from', reachable_from
-    # find all functions that can reach the sync funcs, which are those that can be on the stack during an async save/load, and hence must all be emterpreted
-    to_check = list(SYNC_FUNCS)
-    advised = set()
-    while len(to_check) > 0:
-      curr = to_check.pop()
-      if curr in reachable_from:
-        for reacher in reachable_from[curr]:
-          if reacher not in advised:
-            if not is_dyn_call(reacher) and not is_function_table(reacher): advised.add(str(reacher))
-            to_check.append(reacher)
+    data = shared.Building.calculate_reachable_functions(infile, list(SYNC_FUNCS))
+    advised = data['reachable']
+    total_funcs = data['total_funcs']
     print "Suggested list of functions to run in the emterpreter:"
-    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(list(advised))).replace("'", '"') + "'"
-    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/len(can_call)), len(can_call))
+    print "  -s EMTERPRETIFY_WHITELIST='" + str(sorted(advised)).replace("'", '"') + "'"
+    print "(%d%% out of %d functions)" % (int((100.0*len(advised))/total_funcs), total_funcs)
     sys.exit(0)
 
   # final global functions
@@ -798,17 +759,17 @@ if __name__ == '__main__':
 
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 
-  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not is_dyn_call(func)])
+  emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not shared.JS.is_dyn_call(func)])
 
   tabled_funcs = asm.get_table_funcs()
   exported_funcs = [func.split(':')[0] for func in asm.exports]
 
-  temp = temp_files.get('.js').name # infile + '.tmp.js'
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force a trampoline for them later
 
-  shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp: # infile + '.tmp.js'
+    shared.Building.js_optimizer(infile, ['findReachable'], extra_info={ 'blacklist': list(emterpreted_funcs) }, output_filename=temp, just_concat=True)
+    asm = asm_module.AsmModule(temp)
   lines = asm.funcs_js.split('\n')
 
   reachable_funcs = set([])
@@ -821,10 +782,10 @@ if __name__ == '__main__':
   external_emterpreted_funcs = filter(lambda func: func in tabled_funcs or func in exported_funcs or func in reachable_funcs, emterpreted_funcs)
 
   # process functions, generating bytecode
-  shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
-
-  # load the module and modify it
-  asm = asm_module.AsmModule(temp)
+  with temp_files.get_file('.js') as temp:
+    shared.Building.js_optimizer(infile, ['emterpretify'], extra_info={ 'emterpretedFuncs': list(emterpreted_funcs), 'externalEmterpretedFuncs': list(external_emterpreted_funcs), 'opcodes': OPCODES, 'ropcodes': ROPCODES, 'ASYNC': ASYNC, 'PROFILING': PROFILING, 'ASSERTIONS': ASSERTIONS }, output_filename=temp, just_concat=True)
+    # load the module and modify it
+    asm = asm_module.AsmModule(temp)
 
   relocations = [] # list of places that need to contain absolute offsets, we will add eb to them at runtime to relocate them
 

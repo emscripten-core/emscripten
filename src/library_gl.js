@@ -23,6 +23,8 @@ var LibraryGL = {
     vaos: [],
     contexts: [],
     currentContext: null,
+    offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
+    timerQueriesEXT: [],
 #if USE_WEBGL2
     queries: [],
     samplers: [],
@@ -54,6 +56,7 @@ var LibraryGL = {
     /* { uniforms: {}, // Maps ints back to the opaque WebGLUniformLocation objects.
          maxUniformLength: int, // Cached in order to implement glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH)
          maxAttributeLength: int // Cached in order to implement glGetProgramiv(GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
+         maxUniformBlockNameLength: int // Cached in order to implement glGetProgramiv(GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH)
        } */
 
     stringCache: {},
@@ -91,7 +94,7 @@ var LibraryGL = {
     },
 
     // Mini temp buffer
-    MINI_TEMP_BUFFER_SIZE: 16,
+    MINI_TEMP_BUFFER_SIZE: 256,
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
 
@@ -116,7 +119,7 @@ var LibraryGL = {
       var log2 = 0;
       var pow2 = 1;
       GL.log2ceilLookup[0] = 0;
-      for(var i = 1; i <= maxValue; ++i) {
+      for (var i = 1; i <= maxValue; ++i) {
         if (i > pow2) {
           pow2 <<= 1;
           ++log2;
@@ -135,7 +138,7 @@ var LibraryGL = {
       context.tempVertexBuffers1.length = context.tempVertexBuffers2.length = largestIndex+1;
       context.tempIndexBuffers = [];
       context.tempIndexBuffers.length = largestIndex+1;
-      for(var i = 0; i <= largestIndex; ++i) {
+      for (var i = 0; i <= largestIndex; ++i) {
         context.tempIndexBuffers[i] = null; // Created on-demand
         context.tempVertexBufferCounters1[i] = context.tempVertexBufferCounters2[i] = 0;
         var ringbufferLength = GL.numTempVertexBuffersPerSize;
@@ -144,7 +147,7 @@ var LibraryGL = {
         var ringbuffer1 = context.tempVertexBuffers1[i];
         var ringbuffer2 = context.tempVertexBuffers2[i];
         ringbuffer1.length = ringbuffer2.length = ringbufferLength;
-        for(var j = 0; j < ringbufferLength; ++j) {
+        for (var j = 0; j < ringbufferLength; ++j) {
           ringbuffer1[j] = ringbuffer2[j] = null; // Created on-demand
         }
       }
@@ -221,7 +224,7 @@ var LibraryGL = {
       GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
       GL.currentContext.tempVertexBufferCounters2 = vb;
       var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
-      for(var i = 0; i <= largestIndex; ++i) {
+      for (var i = 0; i <= largestIndex; ++i) {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
     },
@@ -403,13 +406,13 @@ var LibraryGL = {
     
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
-      if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
+      if (typeof webGLContextAttributes['majorVersion'] === 'undefined' && typeof webGLContextAttributes['minorVersion'] === 'undefined') {
 #if USE_WEBGL2
-        webGLContextAttributes.majorVersion = 2;
+        webGLContextAttributes['majorVersion'] = 2;
 #else
-        webGLContextAttributes.majorVersion = 1;
+        webGLContextAttributes['majorVersion'] = 1;
 #endif
-        webGLContextAttributes.minorVersion = 0;
+        webGLContextAttributes['minorVersion'] = 0;
       }
       var ctx;
       var errorInfo = '?';
@@ -419,9 +422,9 @@ var LibraryGL = {
       try {
         canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
         try {
-          if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
+          if (webGLContextAttributes['majorVersion'] == 1 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
-          } else if (webGLContextAttributes.majorVersion == 2 && webGLContextAttributes.minorVersion == 0) {
+          } else if (webGLContextAttributes['majorVersion'] == 2 && webGLContextAttributes['minorVersion'] == 0) {
             ctx = canvas.getContext("webgl2", webGLContextAttributes) || canvas.getContext("experimental-webgl2", webGLContextAttributes);
           } else {
             throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
@@ -528,13 +531,14 @@ var LibraryGL = {
       var handle = GL.getNewId(GL.contexts);
       var context = {
         handle: handle,
-        version: webGLContextAttributes.majorVersion,
+        attributes: webGLContextAttributes,
+        version: webGLContextAttributes['majorVersion'],
         GLctx: ctx
       };
       // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
-      if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+      if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes['enableExtensionsByDefault']) {
         GL.initExtensions(context);
       }
       return handle;
@@ -611,6 +615,8 @@ var LibraryGL = {
         }
       }
 
+      GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
+
       // These are the 'safe' feature-enabling extensions that don't add any performance impact related to e.g. debugging, and
       // should be enabled by default so that client GLES2/GL code will not need to go through extra hoops to get its stuff working.
       // As new extensions are ratified at http://www.khronos.org/registry/webgl/extensions/ , feel free to add your new extensions
@@ -622,7 +628,7 @@ var LibraryGL = {
                                              "OES_texture_float_linear", "OES_texture_half_float_linear", "WEBGL_compressed_texture_atc",
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_frag_depth", "EXT_sRGB", "WEBGL_draw_buffers", "WEBGL_shared_resources",
-                                             "EXT_shader_texture_lod" ];
+                                             "EXT_shader_texture_lod", "EXT_color_buffer_float"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
@@ -659,7 +665,8 @@ var LibraryGL = {
       GL.programInfos[program] = {
         uniforms: {},
         maxUniformLength: 0, // This is eagerly computed below, since we already enumerate all uniforms anyway.
-        maxAttributeLength: -1 // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
+        maxAttributeLength: -1, // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
+        maxUniformBlockNameLength: -1 // Lazily computed as well
       };
 
       var ptable = GL.programInfos[program];
@@ -715,8 +722,21 @@ var LibraryGL = {
     switch(name_) {
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
-      case 0x1F02 /* GL_VERSION */:
+      case 0x9245 /* UNMASKED_VENDOR_WEBGL */:
+      case 0x9246 /* UNMASKED_RENDERER_WEBGL */:
         ret = allocate(intArrayFromString(GLctx.getParameter(name_)), 'i8', ALLOC_NORMAL);
+        break;
+      case 0x1F02 /* GL_VERSION */:
+        var glVersion = GLctx.getParameter(GLctx.VERSION);
+        // return GLES version string corresponding to the version of the WebGL context
+#if USE_WEBGL2
+        if (GLctx.canvas.GLctxObject.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
+        else
+#endif
+        {
+          glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
+        }
+        ret = allocate(intArrayFromString(glVersion), 'i8', ALLOC_NORMAL);
         break;
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions();
@@ -728,7 +748,15 @@ var LibraryGL = {
         ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
-        ret = allocate(intArrayFromString('OpenGL ES GLSL 1.00 (WebGL)'), 'i8', ALLOC_NORMAL);
+        var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
+        // extract the version number 'N.M' from the string 'WebGL GLSL ES N.M ...'
+        var ver_re = /^WebGL GLSL ES ([0-9]\.[0-9][0-9]?)(?:$| .*)/;
+        var ver_num = glslVersion.match(ver_re);
+        if (ver_num !== null) {
+          if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
+          glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
+        }
+        ret = allocate(intArrayFromString(glslVersion), 'i8', ALLOC_NORMAL);
         break;
       default:
         GL.recordError(0x0500/*GL_INVALID_ENUM*/);
@@ -778,12 +806,6 @@ var LibraryGL = {
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats.length;
         break;
-      case 0x8B9A: // GL_IMPLEMENTATION_COLOR_READ_TYPE
-        ret = 0x1401; // GL_UNSIGNED_BYTE
-        break;
-      case 0x8B9B: // GL_IMPLEMENTATION_COLOR_READ_FORMAT
-        ret = 0x1908; // GL_RGBA
-        break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
         if (GLctx.canvas.GLctxObject.version < 2) {
@@ -792,6 +814,14 @@ var LibraryGL = {
         }
         var exts = GLctx.getSupportedExtensions();
         ret = 2*exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        break;
+      case 0x821B: // GL_MAJOR_VERSION
+      case 0x821C: // GL_MINOR_VERSION
+        if (GLctx.canvas.GLctxObject.version < 2) {
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+          return;
+        }
+        ret = name_ == 0x821B ? 3 : 0; // return version 3.0
         break;
 #endif
     }
@@ -822,6 +852,11 @@ var LibraryGL = {
               case 0x8CA6: // FRAMEBUFFER_BINDING
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
+#if USE_WEBGL2
+              case 0x85B5: // GL_VERTEX_ARRAY_BINDING
+              case 0x8919: // GL_SAMPLER_BINDING
+              case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
+#endif
               case 0x8514: { // TEXTURE_BINDING_CUBE_MAP
                 ret = 0;
                 break;
@@ -851,6 +886,13 @@ var LibraryGL = {
                      result instanceof WebGLProgram ||
                      result instanceof WebGLFramebuffer ||
                      result instanceof WebGLRenderbuffer ||
+#if USE_WEBGL2
+                     result instanceof WebGLQuery ||
+                     result instanceof WebGLSampler ||
+                     result instanceof WebGLSync ||
+                     result instanceof WebGLTransformFeedback ||
+                     result instanceof WebGLVertexArrayObject ||
+#endif
                      result instanceof WebGLTexture) {
             ret = result.name | 0;
           } else {
@@ -1045,47 +1087,69 @@ var LibraryGL = {
       case 0x1906 /* GL_ALPHA */:
       case 0x1909 /* GL_LUMINANCE */:
       case 0x1902 /* GL_DEPTH_COMPONENT */:
+#if USE_WEBGL2
       case 0x1903 /* GL_RED */:
+      case 0x8D94 /* GL_RED_INTEGER */:
+#endif
         numChannels = 1;
         break;
       case 0x190A /* GL_LUMINANCE_ALPHA */:
+#if USE_WEBGL2
       case 0x8227 /* GL_RG */:
+      case 0x8228 /* GL_RG_INTEGER*/:
+#endif
         numChannels = 2;
         break;
       case 0x1907 /* GL_RGB */:
       case 0x8C40 /* GL_SRGB_EXT */:
+#if USE_WEBGL2
+      case 0x8D98 /* GL_RGB_INTEGER */:
+#endif
         numChannels = 3;
         break;
       case 0x1908 /* GL_RGBA */:
       case 0x8C42 /* GL_SRGB_ALPHA_EXT */:
+#if USE_WEBGL2
+      case 0x8D99 /* GL_RGBA_INTEGER */:
+#endif
         numChannels = 4;
         break;
       default:
         GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
-        Module.printErr('GL_INVALID_ENUM due to unknown format in getTexPixelData, type: ' + type + ', format: ' + format);
+        Module.printErr('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     switch (type) {
       case 0x1401 /* GL_UNSIGNED_BYTE */:
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+#endif
         sizePerPixel = numChannels*1;
         break;
       case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
 #if USE_WEBGL2
       case 0x140B /* GL_HALF_FLOAT */:
+      case 0x1402 /* GL_SHORT */:
 #endif
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
         sizePerPixel = numChannels*2;
         break;
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x1406 /* GL_FLOAT */:
+#if USE_WEBGL2
+      case 0x1404 /* GL_INT */:
+#endif
         sizePerPixel = numChannels*4;
         break;
-      case 0x84FA /* UNSIGNED_INT_24_8_WEBGL/UNSIGNED_INT_24_8 */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
         sizePerPixel = 4;
         break;
       case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
@@ -1098,65 +1162,94 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
 #endif
-        return {
-          pixels: null,
-          internalFormat: 0x0
-        };
+        return null;
     }
     var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-    if (type == 0x1401 /* GL_UNSIGNED_BYTE */) {
-      pixels = {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1406 /* GL_FLOAT */) {
-      pixels = {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
-    } else if (type == 0x1405 /* GL_UNSIGNED_INT */ || type == 0x84FA /* UNSIGNED_INT_24_8_WEBGL */) {
-      pixels = {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
-    } else {
-      pixels = {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+    switch(type) {
+#if USE_WEBGL2
+      case 0x1400 /* GL_BYTE */:
+        return {{{ makeHEAPView('8', 'pixels', 'pixels+bytes') }}};
+#endif
+      case 0x1401 /* GL_UNSIGNED_BYTE */:
+        return {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+#if USE_WEBGL2
+      case 0x1402 /* GL_SHORT */:
+#if GL_ASSERTIONS
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
+        return {{{ makeHEAPView('16', 'pixels', 'pixels+bytes') }}};
+      case 0x1404 /* GL_INT */:
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('32', 'pixels', 'pixels+bytes') }}};
+#endif
+      case 0x1406 /* GL_FLOAT */:
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+      case 0x1405 /* GL_UNSIGNED_INT */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
+#if USE_WEBGL2
+      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
+      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
+      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
+      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
+#endif
+        return {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+      case 0x1403 /* GL_UNSIGNED_SHORT */:
+      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
+      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
+      case 0x8D61 /* GL_HALF_FLOAT_OES */:
+#if USE_WEBGL2
+      case 0x140B /* GL_HALF_FLOAT */:
+#endif
+#if GL_ASSERTIONS
+        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+#endif
+        return {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+      default:
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
+#endif
+        return null;
     }
-    return {
-      pixels: pixels,
-      internalFormat: internalFormat
-    };
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
-      pixelData = data.pixels;
-      internalFormat = data.internalFormat;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
-    var pixelData;
-    if (pixels) {
-      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, -1).pixels;
-    } else {
-      pixelData = null;
-    }
+    var pixelData = null;
+    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-    var data = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
-    if (!data.pixels) {
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
+    if (!pixelData) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
       Module.printErr('GL_INVALID_ENUM in glReadPixels: Unrecognized combination of type=' + type + ' and format=' + format + '!');
 #endif
       return;
     }
-    GLctx.readPixels(x, y, width, height, format, type, data.pixels);
+    GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
   glBindTexture__sig: 'vii',
@@ -1310,6 +1403,131 @@ var LibraryGL = {
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
   },
 
+  // Queries EXT
+  glGenQueriesEXT__sig: 'vii',
+  glGenQueriesEXT: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var query = GLctx.disjointTimerQueryExt['createQueryEXT']();
+      if (!query) {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+        Module.printErr('GL_INVALID_OPERATION in glGenQueriesEXT: GLctx.disjointTimerQueryExt.createQueryEXT returned null - most likely GL context is lost!');
+#endif
+        while(i < n) {{{ makeSetValue('ids', 'i++*4', 0, 'i32') }}};
+        return;
+      }
+      var id = GL.getNewId(GL.timerQueriesEXT);
+      query.name = id;
+      GL.timerQueriesEXT[id] = query;
+      {{{ makeSetValue('ids', 'i*4', 'id', 'i32') }}};
+    }
+  },
+
+  glDeleteQueriesEXT__sig: 'vii',
+  glDeleteQueriesEXT: function(n, ids) {
+    for (var i = 0; i < n; i++) {
+      var id = {{{ makeGetValue('ids', 'i*4', 'i32') }}};
+      var query = GL.timerQueriesEXT[id];
+      if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
+      GLctx.disjointTimerQueryExt['deleteQueryEXT'](query);
+      GL.timerQueriesEXT[id] = null;
+    }
+  },
+
+  glIsQueryEXT__sig: 'ii',
+  glIsQueryEXT: function(id) {
+    var query = GL.timerQueriesEXT[query];
+    if (!query) return 0;
+    return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
+  },
+
+  glBeginQueryEXT__sig: 'vii',
+  glBeginQueryEXT: function(target, id) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
+#endif
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, id ? GL.timerQueriesEXT[id] : null);
+  },
+
+  glEndQueryEXT__sig: 'vi',
+  glEndQueryEXT: function(target) {
+    GLctx.disjointTimerQueryExt['endQueryEXT'](target);
+  },
+
+  glQueryCounterEXT__sig: 'vii',
+  glQueryCounterEXT: function(id, target) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
+#endif
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](id ? GL.timerQueriesEXT[id] : null, target);
+  },
+
+  glGetQueryivEXT__sig: 'viii',
+  glGetQueryivEXT: function(target, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryivEXT(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+    {{{ makeSetValue('params', '0', 'GLctx.disjointTimerQueryExt[\'getQueryEXT\'](target, pname)', 'i32') }}};
+  },
+
+  glGetQueryObjectivEXT__sig: 'viii',
+  glGetQueryObjectivEXT: function(id, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryObject(u)ivEXT(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjectivEXT', 'id');
+#endif
+    var query = GL.timerQueriesEXT[id];
+    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var ret;
+    if (typeof param == 'boolean') {
+      ret = param ? 1 : 0;
+    } else {
+      ret = param;
+    }
+    {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
+  },
+  glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
+
+  glGetQueryObjecti64vEXT__sig: 'viii',
+  glGetQueryObjecti64vEXT: function(id, pname, params) {
+    if (!params) {
+      // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
+      // if p == null, issue a GL error to notify user about it. 
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetQueryObject(u)i64vEXT(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glGetQueryObjecti64vEXT', 'id');
+#endif
+    var query = GL.timerQueriesEXT[id];
+    var param = GLctx.disjointTimerQueryExt['getQueryObjectEXT'](query, pname);
+    var ret;
+    if (typeof param == 'boolean') {
+      ret = param ? 1 : 0;
+    } else {
+      ret = param;
+    }
+    {{{ makeSetValue('params', '0', 'ret', 'i64') }}};
+  },
+  glGetQueryObjectui64vEXT: 'glGetQueryObjecti64vEXT',
+
 #if FULL_ES3
   $emscriptenWebGLGetBufferBinding: function(target) {
     switch(target) {
@@ -1392,7 +1610,7 @@ var LibraryGL = {
   glFlushMappedBufferRange: function(target, offset, length) {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-      Module.printErr('GL_INVALID_ENUM in glUnmapBuffer');
+      Module.printErr('GL_INVALID_ENUM in glFlushMappedBufferRange');
       return 0;
     }
 
@@ -1503,7 +1721,6 @@ var LibraryGL = {
       var query = GL.queries[id];
       if (!query) continue; // GL spec: "unused names in ids are ignored, as is the name zero."
       GLctx['deleteQuery'](query);
-      query.name = 0;
       GL.queries[id] = null;
     }
   },
@@ -1747,10 +1964,9 @@ var LibraryGL = {
     var info = GLctx['getTransformFeedbackVarying'](program, index);
     if (!info) return; // If an error occurred, the return parameters length, size, type and name will be unmodified.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (name && bufSize > 0) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -1944,14 +2160,21 @@ var LibraryGL = {
 #endif
     program = GL.programs[program];
 
-    var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
-    if (!result) return; // If an error occurs, nothing will be written to params.
-    if (typeof result == 'number') {
-      {{{ makeSetValue('params', '0', 'result', 'i32') }}};
-    } else {
-      for (var i = 0; i < result.length; i++) {
-        {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
-      }
+    switch(pname) {
+      case 0x8A41: /* GL_UNIFORM_BLOCK_NAME_LENGTH */
+        var name = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
+        {{{ makeSetValue('params', 0, 'name.length+1', 'i32') }}};
+        return;
+      default:
+        var result = GLctx['getActiveUniformBlockParameter'](program, uniformBlockIndex, pname);
+        if (!result) return; // If an error occurs, nothing will be written to params.
+        if (typeof result == 'number') {
+          {{{ makeSetValue('params', '0', 'result', 'i32') }}};
+        } else {
+          for (var i = 0; i < result.length; i++) {
+            {{{ makeSetValue('params', 'i*4', 'result[i]', 'i32') }}};
+          }
+        }
     }
   },
 
@@ -1964,10 +2187,9 @@ var LibraryGL = {
 
     var result = GLctx['getActiveUniformBlockName'](program, uniformBlockIndex);
     if (!result) return; // If an error occurs, nothing will be written to uniformBlockName or length.
-    var name = result.slice(0, Math.max(0, bufSize - 1));
     if (uniformBlockName && bufSize > 0) {
-      writeStringToMemory(name, uniformBlockName);
-      if (length) {{{ makeSetValue('length', '0', 'name.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(result, uniformBlockName, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -1985,9 +2207,12 @@ var LibraryGL = {
 
   glClearBufferiv__sig: 'viii',
   glClearBufferiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('32', 'value', 'value+16') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     view = new Int32Array(view);
 #endif
     GLctx['clearBufferiv'](buffer, drawbuffer, view);
@@ -1995,9 +2220,12 @@ var LibraryGL = {
 
   glClearBufferuiv__sig: 'viii',
   glClearBufferuiv: function(buffer, drawbuffer, value) {
+#if GL_ASSERTIONS
+    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
+#endif
     var view = {{{ makeHEAPView('U32', 'value', 'value+16') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     view = new Uint32Array(view);
 #endif
     GLctx['clearBufferuiv'](buffer, drawbuffer, view);
@@ -2010,16 +2238,20 @@ var LibraryGL = {
     view[1] = {{{ makeGetValue('value', '4', 'float') }}};
     view[2] = {{{ makeGetValue('value', '8', 'float') }}};
     view[3] = {{{ makeGetValue('value', '12', 'float') }}};
-    GLctx['clearBufferuiv'](buffer, drawbuffer, view);
+    GLctx['clearBufferfv'](buffer, drawbuffer, view);
   },
 
   glFenceSync__sig: 'iii',
-  glFenceSync: function() {
-    var id = GL.getNewId(GL.syncs);
-    var sync = GLctx.fenceSync();
-    sync.name = id;
-    GL.syncs[id] = sync;
-    return id;
+  glFenceSync: function(condition, flags) {
+    var sync = GLctx.fenceSync(condition, flags);
+    if (sync) {
+      var id = GL.getNewId(GL.syncs);
+      sync.name = id;
+      GL.syncs[id] = sync;
+      return id;
+    } else {
+      return 0; // Failed to create a sync object
+    }
   },
 
   glDeleteSync__sig: 'vi',
@@ -2108,7 +2340,7 @@ var LibraryGL = {
     }
     var ret = GLctx.getInternalFormatParameter(target, internalformat, pname);
     if (ret === null) return;
-    for(var i = 0; i < ret.length && i < bufSize; ++i) {
+    for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
     }
   },
@@ -2293,7 +2525,9 @@ var LibraryGL = {
     }
 #endif
     var data = GLctx.getVertexAttrib(index, pname);
-    if (typeof data == 'number' || typeof data == 'boolean') {
+    if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
+      {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
+    } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
         case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
@@ -2372,10 +2606,9 @@ var LibraryGL = {
     var info = GLctx.getActiveUniform(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && name) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -2460,11 +2693,12 @@ var LibraryGL = {
   glUniform1iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Int32Array(value);
 #endif
     GLctx.uniform1iv(location, value);
@@ -2474,12 +2708,13 @@ var LibraryGL = {
   glUniform2iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Int32Array(value);
 #endif
     GLctx.uniform2iv(location, value);
@@ -2489,12 +2724,13 @@ var LibraryGL = {
   glUniform3iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Int32Array(value);
 #endif
     GLctx.uniform3iv(location, value);
@@ -2504,12 +2740,13 @@ var LibraryGL = {
   glUniform4iv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4iv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
     value = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Int32Array(value);
 #endif
     GLctx.uniform4iv(location, value);
@@ -2519,17 +2756,20 @@ var LibraryGL = {
   glUniform1fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[0];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
+    if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[count-1];
+      for (var i = 0; i < count; ++i) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2540,18 +2780,21 @@ var LibraryGL = {
   glUniform2fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[1];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
+    if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[2*count-1];
+      for (var i = 0; i < 2*count; i += 2) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2562,19 +2805,22 @@ var LibraryGL = {
   glUniform3fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[2];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
-      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
+    if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[3*count-1];
+      for (var i = 0; i < 3*count; i += 3) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2585,20 +2831,23 @@ var LibraryGL = {
   glUniform4fv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform
-      view = GL.miniTempBufferViews[3];
-      view[0] = {{{ makeGetValue('value', '0', 'float') }}};
-      view[1] = {{{ makeGetValue('value', '4', 'float') }}};
-      view[2] = {{{ makeGetValue('value', '8', 'float') }}};
-      view[3] = {{{ makeGetValue('value', '12', 'float') }}};
+    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[4*count-1];
+      for (var i = 0; i < 4*count; i += 4) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+      }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2646,11 +2895,12 @@ var LibraryGL = {
   glUniform1uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Uint32Array(value);
 #endif
     GLctx.uniform1uiv(location, value);
@@ -2660,12 +2910,13 @@ var LibraryGL = {
   glUniform2uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 2;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Uint32Array(value);
 #endif
     GLctx.uniform2uiv(location, value);
@@ -2675,12 +2926,13 @@ var LibraryGL = {
   glUniform3uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 3;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Uint32Array(value);
 #endif
     GLctx.uniform3uiv(location, value);
@@ -2690,12 +2942,13 @@ var LibraryGL = {
   glUniform4uiv: function(location, count, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
+    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     count *= 4;
     value = {{{ makeHEAPView('U32', 'value', 'value+count*4') }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     value = new Uint32Array(value);
 #endif
     GLctx.uniform4uiv(location, value);
@@ -2706,69 +2959,98 @@ var LibraryGL = {
   glUniformMatrix2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[3];
-      for (var i = 0; i < 4; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[4*count-1];
+      for (var i = 0; i < 4*count; i += 4) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix2fv(location, transpose, view);
+    GLctx.uniformMatrix2fv(location, !!transpose, view);
   },
 
   glUniformMatrix3fv__sig: 'viiii',
   glUniformMatrix3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[8];
-      for (var i = 0; i < 9; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[9*count-1];
+      for (var i = 0; i < 9*count; i += 9) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix3fv(location, transpose, view);
+    GLctx.uniformMatrix3fv(location, !!transpose, view);
   },
 
   glUniformMatrix4fv__sig: 'viiii',
   glUniformMatrix4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[15];
-      for (var i = 0; i < 16; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[16*count-1];
+      for (var i = 0; i < 16*count; i += 16) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
+        view[i+12] = {{{ makeGetValue('value', '4*i+48', 'float') }}};
+        view[i+13] = {{{ makeGetValue('value', '4*i+52', 'float') }}};
+        view[i+14] = {{{ makeGetValue('value', '4*i+56', 'float') }}};
+        view[i+15] = {{{ makeGetValue('value', '4*i+60', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
-    GLctx.uniformMatrix4fv(location, transpose, view);
+    GLctx.uniformMatrix4fv(location, !!transpose, view);
   },
 
 #if USE_WEBGL2
@@ -2776,19 +3058,25 @@ var LibraryGL = {
   glUniformMatrix2x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[5];
-      for (var i = 0; i < 6; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[6*count-1];
+      for (var i = 0; i < 6*count; i += 6) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2799,19 +3087,25 @@ var LibraryGL = {
   glUniformMatrix3x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[5];
-      for (var i = 0; i < 6; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (6*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[6*count-1];
+      for (var i = 0; i < 6*count; i += 6) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*24') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2822,19 +3116,27 @@ var LibraryGL = {
   glUniformMatrix2x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[7];
-      for (var i = 0; i < 8; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[8*count-1];
+      for (var i = 0; i < 8*count; i += 8) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2845,19 +3147,27 @@ var LibraryGL = {
   glUniformMatrix4x2fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[7];
-      for (var i = 0; i < 8; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (8*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[8*count-1];
+      for (var i = 0; i < 8*count; i += 8) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*32') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2868,42 +3178,66 @@ var LibraryGL = {
   glUniformMatrix3x4fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[11];
-      for (var i = 0; i < 12; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[12*count-1];
+      for (var i = 0; i < 12*count; i += 12) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
     GLctx.uniformMatrix3x4fv(location, transpose, view);
   },
 
-  glUniformMatrix3x4fv__sig: 'viiii',
+  glUniformMatrix4x3fv__sig: 'viiii',
   glUniformMatrix4x3fv: function(location, count, transpose, value) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
+    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
     location = GL.uniforms[location];
     var view;
-    if (count === 1) {
-      // avoid allocation for the common case of uploading one uniform matrix
-      view = GL.miniTempBufferViews[11];
-      for (var i = 0; i < 12; i++) {
-        view[i] = {{{ makeGetValue('value', 'i*4', 'float') }}};
+    if (12*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      view = GL.miniTempBufferViews[12*count-1];
+      for (var i = 0; i < 12*count; i += 12) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
+        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
+        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
+        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
+        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
+        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
+        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
+        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
       }
     } else {
       view = {{{ makeHEAPView('F32', 'value', 'value+count*48') }}};
 #if USE_PTHREADS
-      // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+      // TODO: This is temporary to cast a shared Float32Array to a non-shared Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
       view = new Float32Array(view);
 #endif
     }
@@ -2934,50 +3268,59 @@ var LibraryGL = {
 
   glVertexAttrib1fv__sig: 'vii',
   glVertexAttrib1fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (1*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib1fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib1fv(index, v);
+    var view = GL.miniTempBufferViews[0];
+    view[0] = HEAPF32[v >> 2];
+    GLctx.vertexAttrib1fv(index, view);
   },
 
   glVertexAttrib2fv__sig: 'vii',
   glVertexAttrib2fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (2*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib2fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib2fv(index, v);
+    var view = GL.miniTempBufferViews[1];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    GLctx.vertexAttrib2fv(index, view);
   },
 
   glVertexAttrib3fv__sig: 'vii',
   glVertexAttrib3fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (3*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib3fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib3fv(index, v);
+    var view = GL.miniTempBufferViews[2];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    GLctx.vertexAttrib3fv(index, view);
   },
 
   glVertexAttrib4fv__sig: 'vii',
   glVertexAttrib4fv: function(index, v) {
-    v = {{{ makeHEAPView('F32', 'v', 'v+' + (4*4)) }}};
-#if USE_PTHREADS
-    // TODO: This is temporary to cast SharedFloat32Array to a Float32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
-    v = new Float32Array(v);
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to float data passed to glVertexAttrib4fv must be aligned to four bytes!');
 #endif
-    GLctx.vertexAttrib4fv(index, v);
+    var view = GL.miniTempBufferViews[3];
+    view[0] = HEAPF32[v >> 2];
+    view[1] = HEAPF32[v + 4 >> 2];
+    view[2] = HEAPF32[v + 8 >> 2];
+    view[3] = HEAPF32[v + 12 >> 2];
+    GLctx.vertexAttrib4fv(index, view);
   },
 
 #if USE_WEBGL2
   glVertexAttribI4iv__sig: 'vii',
   glVertexAttribI4iv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedInt32Array to a Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Int32Array to a non-shared Int32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     v = new Int32Array(v);
 #endif
     GLctx.vertexAttribI4iv(index, v);
@@ -2985,9 +3328,12 @@ var LibraryGL = {
 
   glVertexAttribI4uiv__sig: 'vii',
   glVertexAttribI4uiv: function(index, v) {
+#if GL_ASSERTIONS
+    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
+#endif
     v = {{{ makeHEAPView('U32', 'v', 'v+' + (4*4)) }}};
 #if USE_PTHREADS
-    // TODO: This is temporary to cast SharedUint32Array to a Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1205390 lands.
+    // TODO: This is temporary to cast a shared Uint32Array to a non-shared Uint32Array. Remove this once https://bugzilla.mozilla.org/show_bug.cgi?id=1232808 lands.
     v = new Uint32Array(v);
 #endif
     GLctx.vertexAttribI4uiv(index, v);
@@ -3010,10 +3356,9 @@ var LibraryGL = {
     var info = GLctx.getActiveAttrib(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
 
-    var infoname = info.name.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && name) {
-      writeStringToMemory(infoname, name);
-      if (length) {{{ makeSetValue('length', '0', 'infoname.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3077,10 +3422,9 @@ var LibraryGL = {
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
     if (!result) return; // If an error occurs, nothing will be written to length or source.
-    result = result.slice(0, Math.max(0, bufSize - 1));
     if (bufSize > 0 && source) {
-      writeStringToMemory(result, source);
-      if (length) {{{ makeSetValue('length', '0', 'result.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(result, source, bufSize);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3101,10 +3445,9 @@ var LibraryGL = {
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
     if (log === null) log = '(unknown error)';
-    log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
-      writeStringToMemory(log, infoLog);
-      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3147,51 +3490,52 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramiv', 'program');
 #endif
+
+    if (program >= GL.counter) {
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_VALUE in glGetProgramiv(program=' + program + ', pname=' + pname + ', p=0x' + p.toString(16) + '): The specified program object name was not generated by GL!');
+#endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      return;
+    }
+
+    var ptable = GL.programInfos[program];
+    if (!ptable) {
+#if GL_ASSERTIONS
+      Module.printErr('GL_INVALID_OPERATION in glGetProgramiv(program=' + program + ', pname=' + pname + ', p=0x' + p.toString(16) + '): The specified GL object name does not refer to a program object!');
+#endif
+      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+      return;
+    }
+
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getProgramInfoLog(GL.programs[program]);
       if (log === null) log = '(unknown error)';
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
-      var ptable = GL.programInfos[program];
-      if (ptable) {
-        {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
-        return;
-      } else if (program < GL.counter) {
-#if GL_ASSERTIONS
-        Module.printErr("A GL object " + program + " that is not a program object was passed to glGetProgramiv!");
-#endif
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
-      } else {
-#if GL_ASSERTIONS
-        Module.printErr("A GL object " + program + " that did not come from GL was passed to glGetProgramiv!");
-#endif
-        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      }
+      {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
-      var ptable = GL.programInfos[program];
-      if (ptable) {
-        if (ptable.maxAttributeLength == -1) {
-          var program = GL.programs[program];
-          var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
-          ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
-          for(var i = 0; i < numAttribs; ++i) {
-            var activeAttrib = GLctx.getActiveAttrib(program, i);
-            ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length+1);
-          }
+      if (ptable.maxAttributeLength == -1) {
+        var program = GL.programs[program];
+        var numAttribs = GLctx.getProgramParameter(program, GLctx.ACTIVE_ATTRIBUTES);
+        ptable.maxAttributeLength = 0; // Spec says if there are no active attribs, 0 must be returned.
+        for (var i = 0; i < numAttribs; ++i) {
+          var activeAttrib = GLctx.getActiveAttrib(program, i);
+          ptable.maxAttributeLength = Math.max(ptable.maxAttributeLength, activeAttrib.name.length+1);
         }
-        {{{ makeSetValue('p', '0', 'ptable.maxAttributeLength', 'i32') }}};
-        return;
-      } else if (program < GL.counter) {
-#if GL_ASSERTIONS
-        Module.printErr("A GL object " + program + " that is not a program object was passed to glGetProgramiv!");
-#endif
-        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
-      } else {
-#if GL_ASSERTIONS
-        Module.printErr("A GL object " + program + " that did not come from GL was passed to glGetProgramiv!");
-#endif
-        GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       }
+      {{{ makeSetValue('p', '0', 'ptable.maxAttributeLength', 'i32') }}};
+    } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
+      if (ptable.maxUniformBlockNameLength == -1) {
+        var program = GL.programs[program];
+        var numBlocks = GLctx.getProgramParameter(program, GLctx.ACTIVE_UNIFORM_BLOCKS);
+        ptable.maxUniformBlockNameLength = 0;
+        for (var i = 0; i < numBlocks; ++i) {
+          var activeBlockName = GLctx.getActiveUniformBlockName(program, i);
+          ptable.maxUniformBlockNameLength = Math.max(ptable.maxAttributeLength, activeBlockName.length+1);
+        }
+      }
+      {{{ makeSetValue('p', '0', 'ptable.maxUniformBlockNameLength', 'i32') }}};
     } else {
       {{{ makeSetValue('p', '0', 'GLctx.getProgramParameter(GL.programs[program], pname)', 'i32') }}};
     }
@@ -3272,10 +3616,9 @@ var LibraryGL = {
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
     if (log === null) log = '(unknown error)';
 
-    log = log.substr(0, maxLength - 1);
     if (maxLength > 0 && infoLog) {
-      writeStringToMemory(log, infoLog);
-      if (length) {{{ makeSetValue('length', '0', 'log.length', 'i32') }}};
+      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
+      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     } else {
       if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
     }
@@ -3396,6 +3739,16 @@ var LibraryGL = {
                                     GL.textures[texture], level);
   },
 
+#if USE_WEBGL2
+  glFramebufferTextureLayer__sig: 'viiiii',
+  glFramebufferTextureLayer: function(target, attachment, texture, level, layer) {
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.textures, texture, 'glFramebufferTextureLayer', 'texture');
+#endif
+    GLctx.framebufferTextureLayer(target, attachment, GL.textures[texture], level, layer);
+  },
+#endif
+
   glGetFramebufferAttachmentParameteriv__sig: 'viiii',
   glGetFramebufferAttachmentParameteriv: function(target, attachment, pname, params) {
     var result = GLctx.getFramebufferAttachmentParameter(target, attachment, pname);
@@ -3421,7 +3774,7 @@ var LibraryGL = {
     assert(GLctx['createVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
 
-    for(var i = 0; i < n; i++) {
+    for (var i = 0; i < n; i++) {
       var vao = GLctx['createVertexArray']();
       if (!vao) {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
@@ -3450,7 +3803,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     assert(GLctx['deleteVertexArray'], 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    for(var i = 0; i < n; i++) {
+    for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
       GLctx['deleteVertexArray'](GL.vaos[id]);
       GL.vaos[id] = null;
@@ -4098,7 +4451,7 @@ var LibraryGL = {
     } else if (GL.shaders[id]) {
       _glGetShaderInfoLog(id, maxLength, length, infoLog);
     } else {
-      Module.printErr('WARNING: getObjectParameteriv received invalid id: ' + id);
+      Module.printErr('WARNING: glGetInfoLog received invalid id: ' + id);
     }
   },
   glGetInfoLogARB: 'glGetInfoLog',
@@ -6903,7 +7256,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateVertexAttribPointer(size, type, stride, ptr);
 #endif
-    GLctx.vertexAttribPointer(index, size, type, normalized, stride, ptr);
+    GLctx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr);
   },
 
 #if USE_WEBGL2
@@ -7088,12 +7441,40 @@ var LibraryGL = {
     for (var i = 0; i < n; i++)
       bufArray.push({{{ makeGetValue('bufs', 'i*4', 'i32') }}});
 
+    // Work around Firefox WebGL 2 bug, see https://github.com/kripken/emscripten/issues/3890.
+    if (n == 0) {
+      // If a FBO is bound, glDrawBuffers(0, *) means glDrawBuffers(1, GL_NONE).
+      // If an FBO is not bound, glDrawBuffers(0, *) is an error.
+      if (GLctx.getParameter(GLctx['DRAW_FRAMEBUFFER_BINDING']) != 0) bufArray.push(GLctx['NONE']);
+      else {
+        GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
+        return;
+      }
+    }
+
     GLctx['drawBuffers'](bufArray);
   },
 
   // OpenGL ES 2.0 draw buffer extensions compatibility
 
   glDrawBuffersEXT: 'glDrawBuffers',
+
+  // passthrough functions with GLboolean parameters
+
+  glColorMask__sig: 'viiii',
+  glColorMask: function(red, green, blue, alpha) {
+    GLctx.colorMask(!!red, !!green, !!blue, !!alpha);
+  },
+
+  glDepthMask__sig: 'vi',
+  glDepthMask: function(flag) {
+    GLctx.depthMask(!!flag);
+  },
+
+  glSampleCoverage__sig: 'vii',
+  glSampleCoverage: function(value, invert) {
+    GLctx.sampleCoverage(value, !!invert);
+  },
 
   // signatures of simple pass-through functions, see later
 
@@ -7114,12 +7495,10 @@ var LibraryGL = {
   glBlendFuncSeparate__sig: 'viiii',
   glBlendColor__sig: 'vffff',
   glPolygonOffset__sig: 'vii',
-  glColorMask__sig: 'viiii',
   glStencilOp__sig: 'viii',
   glStencilOpSeparate__sig: 'viiii',
   glGenerateMipmap__sig: 'vi',
   glHint__sig: 'vii',
-  glDepthMask__sig: 'vi',
   glViewport__sig: 'viiii',
   glDepthFunc__sig: 'vi',
   glStencilMask__sig: 'vi',
@@ -7130,7 +7509,6 @@ var LibraryGL = {
   glClearColor__sig: 'viiii',
   glIsEnabled__sig: 'ii',
   glFrontFace__sig: 'vi',
-  glSampleCoverage__sig: 'vii',
 #if USE_WEBGL2
   glVertexAttribI4i__sig: 'viiiii',
   glVertexAttribI4ui__sig: 'viiiii',
@@ -7147,16 +7525,15 @@ var LibraryGL = {
   glRenderbufferStorageMultisample__sig: 'viiiii',
   glCopyTexSubImage3D__sig: 'viiiiiiiii',
   glClearBufferfi__sig: 'viifi',
-  glFramebufferTextureLayer__sig: 'viiiii',
 #endif
 };
 
 // Simple pass-through functions. Starred ones have return values. [X] ones have X in the C name but not in the JS name
 var glFuncs = [[0, 'finish flush'],
- [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil depthMask stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
- [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f sampleCoverage'],
+ [1, 'clearDepth clearDepth[f] depthFunc enable disable frontFace cullFace clear lineWidth clearStencil stencilMask checkFramebufferStatus* generateMipmap activeTexture blendEquation isEnabled*'],
+ [2, 'blendFunc blendEquationSeparate depthRange depthRange[f] stencilMaskSeparate hint polygonOffset vertexAttrib1f'],
  [3, 'texParameteri texParameterf vertexAttrib2f stencilFunc stencilOp'],
- [4, 'viewport clearColor scissor vertexAttrib3f colorMask renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
+ [4, 'viewport clearColor scissor vertexAttrib3f renderbufferStorage blendFuncSeparate blendColor stencilFuncSeparate stencilOpSeparate'],
  [5, 'vertexAttrib4f'],
  [6, ''],
  [7, ''],
@@ -7168,7 +7545,7 @@ var glFuncs = [[0, 'finish flush'],
 glFuncs[0][1] += ' endTransformFeedback pauseTransformFeedback resumeTransformFeedback';
 glFuncs[1][1] += ' beginTransformFeedback readBuffer endQuery';
 glFuncs[4][1] += ' clearBufferfi';
-glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample framebufferTextureLayer';
+glFuncs[5][1] += ' vertexAttribI4i vertexAttribI4ui copyBufferSubData texStorage2D renderbufferStorageMultisample';
 // TODO: Removed as a workaround, see https://bugzilla.mozilla.org/show_bug.cgi?id=1202427
 //glFuncs[6][1] += ' drawRangeElements';
 glFuncs[6][1] += ' texStorage3D';
@@ -7180,8 +7557,8 @@ glFuncs.forEach(function(data) {
   var num = data[0];
   var names = data[1];
   var args = range(num).map(function(i) { return 'x' + i }).join(', ');
-  var plainStub = '(function(' + args + ') { GLctx.NAME(' + args + ') })';
-  var returnStub = '(function(' + args + ') { return GLctx.NAME(' + args + ') })';
+  var plainStub = '(function(' + args + ') { GLctx[\'NAME\'](' + args + ') })';
+  var returnStub = '(function(' + args + ') { return GLctx[\'NAME\'](' + args + ') })';
   var sigEnd = range(num).map(function() { return 'i' }).join('');
   names.split(' ').forEach(function(name) {
     if (name.length == 0) return;

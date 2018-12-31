@@ -1,0 +1,61 @@
+v: 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+w: 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2
+emscripten_int8x16_add(v, w): 3 2 3 -127 0 11 15 -126 5 21 75 -51 44 68 12 102
+emscripten_int8x16_sub(v, w): -1 -2 -1 125 -4 7 11 126 1 17 71 -55 40 64 8 98
+emscripten_int8x16_mul(v, w): 2 0 2 -2 -4 18 26 0 6 38 -110 -106 84 -124 20 -56
+emscripten_int8x16_neg(v): -1 0 -1 -127 2 -9 -13 -128 -3 -19 -73 53 -42 -66 -10 -100
+emscripten_int8x16_and(v, w): 0 0 0 2 2 0 0 0 2 2 0 2 2 2 2 0
+emscripten_int8x16_xor(v, w): 3 2 3 125 -4 11 15 -126 1 17 75 -55 40 64 8 102
+emscripten_int8x16_or(v, w): 3 2 3 127 -2 11 15 -126 3 19 75 -53 42 66 10 102
+emscripten_int8x16_not(v): -2 -1 -2 -128 1 -10 -14 127 -4 -20 -74 52 -43 -67 -11 -101
+emscripten_int8x16_lessThan(v, w): -1 -1 -1 0 -1 0 0 -1 0 0 0 -1 0 0 0 0
+emscripten_int8x16_lessThanOrEqual(v, w): -1 -1 -1 0 -1 0 0 -1 0 0 0 -1 0 0 0 0
+emscripten_int8x16_greaterThan(v, w): 0 0 0 -1 0 -1 -1 0 -1 -1 -1 0 -1 -1 -1 -1
+emscripten_int8x16_greaterThanOrEqual(v, w): 0 0 0 -1 0 -1 -1 0 -1 -1 -1 0 -1 -1 -1 -1
+emscripten_int8x16_equal(v, w): 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+emscripten_int8x16_notEqual(v, w): -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+emscripten_int8x16_shiftLeftByScalar(v, 0): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftLeftByScalar(v, 1): 2 0 2 -2 -4 18 26 0 6 38 -110 -106 84 -124 20 -56
+emscripten_int8x16_shiftLeftByScalar(v, 2): 4 0 4 -4 -8 36 52 0 12 76 36 44 -88 8 40 -112
+emscripten_int8x16_shiftLeftByScalar(v, 16): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftLeftByScalar(v, 32): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftLeftByScalar(v, 48): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftRightByScalar(v, 0): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftRightByScalar(v, 1): 0 0 0 63 -1 4 6 -64 1 9 36 -27 21 33 5 50
+emscripten_int8x16_shiftRightByScalar(v, 2): 0 0 0 31 -1 2 3 -32 0 4 18 -14 10 16 2 25
+emscripten_int8x16_shiftRightByScalar(v, 16): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftRightByScalar(v, 32): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_shiftRightByScalar(v, 48): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_select(b, v, w): 2 0 2 127 2 9 2 -128 2 19 2 -53 2 66 2 100
+emscripten_int8x16_addSaturate(v, w): 3 2 3 127 0 11 15 -126 5 21 75 -51 44 68 12 102
+emscripten_int8x16_subSaturate(v, w): -1 -2 -1 125 -4 7 11 -128 1 17 71 -55 40 64 8 98
+emscripten_int8x16_replaceLane(v, 0, 9): 9 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 1, 3): 1 3 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 2, 0): 1 0 0 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 3, 91): 1 0 1 91 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 4, 127): 1 0 1 127 127 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 5, 100): 1 0 1 127 -2 100 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 6, -100): 1 0 1 127 -2 9 -100 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 7, -128): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 8, 9): 1 0 1 127 -2 9 13 -128 9 19 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 9, 3): 1 0 1 127 -2 9 13 -128 3 3 73 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 10, 0): 1 0 1 127 -2 9 13 -128 3 19 0 -53 42 66 10 100
+emscripten_int8x16_replaceLane(v, 11, 91): 1 0 1 127 -2 9 13 -128 3 19 73 91 42 66 10 100
+emscripten_int8x16_replaceLane(v, 12, 127): 1 0 1 127 -2 9 13 -128 3 19 73 -53 127 66 10 100
+emscripten_int8x16_replaceLane(v, 13, 100): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 100 10 100
+emscripten_int8x16_replaceLane(v, 14, -100): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 -100 100
+emscripten_int8x16_replaceLane(v, 15, -128): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 -128
+emscripten_int8x16_store: 01 00 01 7F FE 09 0D 80 03 13 49 CB 2A 42 0A 64
+emscripten_int8x16_load(bytes): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_swizzle(v, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15): 1 0 1 127 -2 9 13 -128 3 19 73 -53 42 66 10 100
+emscripten_int8x16_swizzle(v, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0): 100 10 66 42 -53 73 19 3 -128 13 9 -2 127 1 0 1
+emscripten_int8x16_swizzle(v, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0): 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+emscripten_int8x16_swizzle(v, 0, 3, 0, 3, 7, 1, 2, 6, 9, 14, 5, 12, 15, 4, 10, 2): 1 127 1 127 -128 0 1 13 19 10 9 42 100 -2 73 1
+emscripten_int8x16_swizzle(v, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3): 127 127 127 127 127 127 127 127 127 127 127 127 127 127 127 127
+z: -5 20 14 9 0 11 120 -120 40 50 60 70 80 90 100 110
+emscripten_int8x16_shuffle(v, z, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0): 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+emscripten_int8x16_shuffle(v, z, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4): -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2 -2
+emscripten_int8x16_shuffle(v, z, 15, 15, 15, 15, 7, 7, 7, 7, 31, 31, 31, 31, 15, 14, 13, 12): 100 100 100 100 -128 -128 -128 -128 110 110 110 110 100 10 66 42
+emscripten_int8x16_shuffle(v, z, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30): 1 1 -2 13 3 73 42 10 -5 14 0 120 40 60 80 100
+emscripten_int8x16_shuffle(v, z, 7, 0, 3, 5, 9, 11, 1, 4, 6, 12, 19, 4, 9, 0, 2, 3): -128 1 127 9 19 -53 0 -2 13 42 9 -2 19 1 1 127
+Done!

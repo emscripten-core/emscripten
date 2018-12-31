@@ -312,10 +312,10 @@ def gen_inspect_code(path, struct, code):
   c_descent(path[-1], code)
   
   if len(path) == 1:
-    c_set('__size__', 'i%u', 'sizeof (' + prefix + path[0] + ')', code)
+    c_set('__size__', 'i%zu', 'sizeof (' + prefix + path[0] + ')', code)
   else:
-    c_set('__size__', 'i%u', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
-    #c_set('__offset__', 'i%u', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
+    c_set('__size__', 'i%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
+    #c_set('__offset__', 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
   
   for field in struct:
     if isinstance(field, dict):
@@ -323,7 +323,7 @@ def gen_inspect_code(path, struct, code):
       fname = field.keys()[0]
       gen_inspect_code(path + [fname], field[fname], code)
     else:
-      c_set(field, 'i%u', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
+      c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
   
   c_ascent(code)
 
@@ -375,22 +375,31 @@ def inspect_code(headers, cpp_opts, structs, defines):
   for opt in ['EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS']:
     if opt in safe_env:
       del safe_env[opt]
-  
+
+  # Use binaryen, if necessary
+  binaryen = os.environ.get('EMCC_WASM_BACKEND_BINARYEN')
+  if binaryen:
+    cpp_opts += ['-s', 'BINARYEN=1']
+
   info = []
+
   try:
-    # Compile the program.
-    show('Compiling generated code...')
-    subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
+    try:
+      # Compile the program.
+      show('Compiling generated code...')
+      subprocess.check_call([shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0'], env=safe_env) # -Oz optimizes enough to avoid warnings on code size/num locals
+    except:
+      sys.stderr.write('FAIL: Compilation failed!\n')
+      sys.exit(1)
+
     # Run the compiled program.
     show('Calling generated program...')
-    info = shared.run_js(js_file[1]).splitlines()
-  except subprocess.CalledProcessError:
-    if os.path.isfile(js_file[1]):
+    try:
+      info = shared.run_js(js_file[1]).splitlines()
+    except subprocess.CalledProcessError:
       sys.stderr.write('FAIL: Running the generated program failed!\n')
-    else:
-      sys.stderr.write('FAIL: Compilation failed!\n')
-    
-    sys.exit(1)
+      sys.exit(1)
+
   finally:
     # Remove all temporary files.
     os.unlink(src_file[1])

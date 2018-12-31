@@ -134,4 +134,8 @@ function deadCondExpr(i2) {
  var i1 = 0;
  return i1 | 0;
 }
+function b1() {
+ abort(1);
+ return SIMD_Float32x4(0, 0, 0, 0);
+}
 

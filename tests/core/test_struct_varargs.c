@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 struct A {
   int x;
@@ -21,7 +22,7 @@ void foo(int unused, ...)
   printf("%f\n", b.x);
 }
 
-int main() {
+void a() {
   struct A a = {
     .x = 42,
   };
@@ -29,6 +30,42 @@ int main() {
     .x = 42.314,
   };
   foo(0, a, b);
-  return 0;
+}
+
+struct tiny
+{
+  short c;
+};
+
+void f (int n, ...)
+{
+  struct tiny x;
+  int i;
+  va_list ap;
+  va_start (ap,n);  
+  for (i = 0; i < n; i++)
+  {
+    x = va_arg (ap,struct tiny);
+    printf("%d : %d\n", i, x.c);
+    if (x.c != i + 10) abort();
+  }
+  va_end (ap);
+}
+
+void b ()
+{
+  struct tiny x[3];
+  struct tiny y;
+  printf("sizeof tiny: %d (3 of them: %d)\n", sizeof(y), sizeof(x));
+  x[0].c = 10;
+  x[1].c = 11;
+  x[2].c = 12;
+  f (3, x[0], x[1], x[2]);
+}
+
+int main() {
+  a();
+  b();
+  printf("ok.\n");
 }
 

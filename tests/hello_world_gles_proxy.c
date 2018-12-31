@@ -55,6 +55,10 @@
 #include <GL/glut.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 #define STRIPS_PER_TOOTH 7
 #define VERTICES_PER_TOOTH 34
 #define GEAR_VERTEX_STRIDE 6
@@ -528,7 +532,6 @@ static void
 gears_draw(void)
 {
 #ifdef __EMSCRIPTEN__
-  #include <emscripten.h>
    glutIdleFunc (NULL);
    glutReshapeFunc(NULL);
    glutDisplayFunc(NULL);
@@ -752,6 +755,13 @@ gears_init(void)
 int
 main(int argc, char *argv[])
 {
+#ifdef __EMSCRIPTEN__
+   // Don't trigger the reftest immediately after main finishes,
+   // this test uses rAF to perform rendering, so let it trigger
+   // the reftest after having rendered some frames.
+   EM_ASM(Module['postRun'] = undefined);
+#endif
+
    /* Initialize the window */
    glutInit(&argc, argv);
    glutInitWindowSize(300, 300);

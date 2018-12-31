@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <cmath>
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 # include <emscripten.h>
 #endif
 

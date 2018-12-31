@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <emscripten.h>
-#include <bind.h>
+#include <emscripten/bind.h>
 #include <memory>
 
 int counter = 0;

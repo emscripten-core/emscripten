@@ -85,6 +85,11 @@ The most important settings are:
 
 		You can also set ``SAFE_HEAP_LOG`` to log ``SAFE_HEAP`` operations.
 
+	-
+		.. _debugging-STACK_OVERFLOW_CHECK:
+
+		Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic token value at the end of the stack, which is checked in certain locations to verify that the user code does not accidentally write past the end of the stack. While overrunning the Emscripten stack is not a security issue (JavaScript is sandboxed already), writing past the stack causes memory corruption in global data and dynamically allocated memory sections in the Emscripten HEAP, which makes the application fail in unexpected ways. The value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard checks, which can give a more precise callstack at the expense of some performance. Default value is 2 if ``ASSERTIONS=1`` is set, and disabled otherwise.
+
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
 
@@ -105,9 +110,9 @@ Manual print debugging
 
 You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues.
 
-If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and tries to demangle C++ function names. Debug printouts can even execute arbitrary JavaScript.
+If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and tries to demangle C++ function names (if you don't want or need C++ demangling, you can call :js:func:`jsStackTrace`).
 
-For example:
+Debug printouts can even execute arbitrary JavaScript. For example:
 
 .. code-block:: cpp
 

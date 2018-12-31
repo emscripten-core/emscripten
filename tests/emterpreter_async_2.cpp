@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<emscripten.h>
-#include<assert.h>
+#include <stdio.h>
+#include <emscripten.h>
+#include <assert.h>
 
 int calc(int x) {
   printf("..%d..\n", x);

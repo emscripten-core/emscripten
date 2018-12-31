@@ -275,7 +275,7 @@ function moreLabels() {
  cheez();
 }
 function notComps() {
- if (HEAP32[$incdec_ptr71_i + 8 >> 2] != 0) {
+ if (HEAP32[$incdec_ptr71_i + 8 >> 2]) {
   shoo();
  }
 }

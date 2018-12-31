@@ -2,7 +2,7 @@
 /*global HEAP32*/
 /*global new_*/
 /*global createNamedFunction*/
-/*global readLatin1String, writeStringToMemory*/
+/*global readLatin1String, stringToUTF8*/
 /*global requireRegisteredType, throwBindingError, runDestructors*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 

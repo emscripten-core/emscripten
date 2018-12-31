@@ -9,6 +9,8 @@ sme.parentFunc(90);
 TheModule.print(typeof sme.getAsConst());
 TheModule.print(typeof sme.voidStar(sme));
 TheModule.print(sme.get_immutableAttr());
+TheModule.print(typeof sme.getBoolean());
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c1');
 
@@ -20,6 +22,7 @@ TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
 TheModule.print(c1.getValTimes()); // default argument should be 1
 TheModule.print(c1.getValTimes(2));
+TheModule.print(sme.getBoolean());
 c1.parentFunc(90);
 
 TheModule.print('c1 v2');
@@ -30,6 +33,7 @@ c1.mulVal(2);
 TheModule.print(c1.getVal());
 TheModule.print(c1.getValSqr());
 TheModule.print(c1.getValSqr(3));
+TheModule.print(sme.getBoolean());
 
 TheModule.print('c2')
 
@@ -118,6 +122,7 @@ TheModule.print(bv2.getCopy().getValue(bv2));
 bv2.getAnother().PrintFloat(21.12);
 
 TheModule.print(new TheModule.Inner().get());
+TheModule.print('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 
 TheModule.print(TheModule.enum_value1);
@@ -201,6 +206,10 @@ arrayClass.set_struct_ptr_array(0, struct);
 TheModule.print('struct_ptr_array[0]->attr1 == ' + arrayClass.get_struct_ptr_array(0).get_attr1());
 TheModule.print('struct_ptr_array[0]->attr2 == ' + arrayClass.get_struct_ptr_array(0).get_attr2());
 
+// receiving arrays
+
+var receiver = new TheModule.ReceiveArrays();
+receiver.giveMeArrays([0.5, 0.25, 0.01, -20.42], [1, 4, 9, 10], 4);
 
 // Test IDL_CHECKS=ALL
 
@@ -220,9 +229,12 @@ try {
 
 // Check for overflowing the stack
 
+var before = Date.now();
+
 for (var i = 0; i < 1000000; i++) {
   var temp = new TheModule.StringUser('abc', 1);
   TheModule.destroy(temp);
+  if (Date.now() - before >= 1000) break;
 }
 
 //

@@ -174,7 +174,9 @@ Emscripten Ports is a collection of useful libraries, ported to Emscripten. They
 
 You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
 
-.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``.
+.. note:: *SDL_image* has also been added to ports, use it with ``-s USE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with -s SDL2_IMAGE_FORMATS='["png"]'. This will also ensure that ``IMG_Init`` works properly. Alternatively, you can use specify ``emcc --use-preload-plugins`` (and ``--preload-file`` your images, so the browser codecs decode them), but then your calls to ``IMG_Init`` will fail.
+
+.. note:: *SDL_net* has also been added to ports, use it with ``-s USE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
 
 .. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/kripken/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
@@ -266,17 +268,22 @@ The :ref:`Tutorial` showed how :ref:`emcc <emccdoc>` can be used to compile sing
 In addition to the capabilities it shares with *gcc*, *emcc* supports options to optimize code, control what debug information is emitted, generate HTML and other output formats, etc. These options are documented in the :ref:`emcc tool reference <emccdoc>` (``./emcc --help`` on the command line).
 
 
-Alternatives to emcc
-====================
+Detecting Emscripten in Preprocessor
+====================================
 
-.. tip:: Do not attempt to bypass *emcc* and call the Emscripten tools directly from your build system. 
+Emscripten provides the following preprocessor macros that can be used to identify the compiler version and platform:
 
-You can in theory call *clang*, *llvm-ld*, and the other tools yourself. This is however considered dangerous because by default:
-
-- *Clang* does not use the Emscripten-bundled headers, which can lead to various errors. 
-- *llvm-ld* uses unsafe/unportable LLVM optimizations. 
-
-*Emcc* automatically ensures the tools are configured and used properly.
+ * The preprocessor define ``__EMSCRIPTEN__`` is always defined when compiling programs with Emscripten.
+ * The preprocessor variables ``__EMSCRIPTEN_major__``, ``__EMSCRIPTEN_minor__`` and ``__EMSCRIPTEN_tiny__`` specify, as integers, the currently used Emscripten compiler version.
+ * Emscripten behaves like a variant of Unix, so the preprocessor defines ``unix``, ``__unix`` and ``__unix__`` are always present when compiling code with Emscripten.
+ * Emscripten uses Clang/LLVM as its underlying codegen compiler, so the preprocessor defines ``__llvm__`` and ``__clang__`` are defined, and the preprocessor defines ``__clang_major__``, ``__clang_minor__`` and ``__clang_patchlevel__`` indicate the version of Clang that is used.
+ * Clang/LLVM is GCC-compatible, so the preprocessor defines ``__GNUC__``, ``__GNUC_MINOR__`` and ``__GNUC_PATCHLEVEL__`` are also defined to represent the level of GCC compatibility that Clang/LLVM provides.
+ * The preprocessor string ``__VERSION__`` indicates the GCC compatible version, which is expanded to also show Emscripten version information.
+ * Likewise, ``__clang_version__`` is present and indicates both Emscripten and LLVM version information.
+ * Emscripten is a 32-bit platform, so ``size_t`` is a 32-bit unsigned integer, ``__POINTER_WIDTH__=32``, ``__SIZEOF_LONG__=4`` and ``__LONG_MAX__`` equals ``2147483647L``.
+ * When targeting asm.js, the preprocessor defines ``__asmjs`` and ``__asmjs__`` are present.
+ * When targeting SSEx SIMD APIs using one of the command line compiler flags ``-msse``, ``-msse2``, ``-msse3``, ``-mssse3``, or ``-msse4.1``, one or more of the preprocessor flags ``__SSE__``, ``__SSE2__``, ``__SSE3__``, ``__SSSE3__``, ``__SSE4_1__`` will be present to indicate available support for these instruction sets.
+ * If targeting the pthreads multithreading support with the compiler & linker flag ``-s USE_PTHREADS=1``, the preprocessor define ``__EMSCRIPTEN_PTHREADS__`` will be present.
 
 
 Examples / test code

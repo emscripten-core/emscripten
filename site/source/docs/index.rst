@@ -27,6 +27,7 @@ This comprehensive documentation set contains everything you need to know to use
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
+- :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
@@ -37,11 +38,13 @@ The full hierarchy of articles, opened to the second level, is shown below.
 	getting_started/index
 	porting/index
 	optimizing/Optimizing-Code
+	optimizing/Profiling-Toolchain
 	compiling/index
 	building_from_source/index
 	contributing/index
 	api_reference/index
 	tools_reference/index
+	debugging/CyberDWARF
 	site/index
 
 

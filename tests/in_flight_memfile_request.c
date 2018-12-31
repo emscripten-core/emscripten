@@ -1,5 +1,5 @@
-#include<stdio.h>
-#include<emscripten.h>
+#include <stdio.h>
+#include <emscripten.h>
 
 int main() {
   int result = EM_ASM_INT_V({

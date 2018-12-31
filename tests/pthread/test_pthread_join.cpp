@@ -26,6 +26,10 @@ static void *thread_start(void *arg)
 
 int main()
 {
+  // Test existence of nanosleep(), https://github.com/kripken/emscripten/issues/4578
+  struct timespec ts = { 1, 0 };
+  nanosleep(&ts, 0);
+
   int result = 0;
   if (!emscripten_has_threading_support())
   {

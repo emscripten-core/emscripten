@@ -7,6 +7,7 @@
 */ 
  
 var LibraryEGL = {
+  $EGL__deps: ['$Browser'],
   $EGL: {
     // This variable tracks the success status of the most recently invoked EGL function call.
     errorCode: 0x3000 /* EGL_SUCCESS */,

@@ -6,9 +6,7 @@
 #include <inttypes.h>
 #include <float.h>
 #include <assert.h>
-#ifdef _WIN32
-#include <string>
-#endif
+#include <string.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -57,43 +55,45 @@ bool always_true() { return time(NULL) != 0; } // This function always returns t
 
 bool IsNan(float f) { return (fcastu(f) << 1) > 0xFF000000u; }
 
-#ifdef _WIN32
-std::string replace(std::string str, std::string a, std::string b)
+// Replaces all occurrences of 'src' in string 'str' with 'dst', operating in place. strlen(dst) <= strlen(src).
+void contract_inplace(char *str, const char *src, const char *dst)
 {
-	size_t index = 0;
+	int dstLen = strlen(dst);
+	int srcLen = strlen(src);
+	int diff = srcLen - dstLen;
+	assert(diff >= 0);
+
 	while(true)
 	{
-		index = str.find(a, index);
-		if (index == std::string::npos) break;
-		str.replace(index, a.length(), b);
-		index += b.length();
+		char *pos = strstr(str, src);
+		if (!pos) return;
+		str = pos;
+		strcpy(pos, dst);
+		pos += dstLen;
+		strcpy(pos, pos + diff);
 	}
-	return str;
 }
 
-// sprintf on Windows prints floats a bit differently, but since we
-// are using Clang to compile and not MSVC, we don't seem to have access
-// to the Win32-specific MSVC runtime functions to adjust the output.
-// Therefore just be brute and hacky about unifying the result.
-std::string WinHackCanonicalizeStringComparisons(std::string s)
+// sprintf standard does not allow controlling how many leading zeros to use
+// for printing out the exponent, and different compilers give different
+// values. Perform a canonicalization step that enforces the printouts are
+// the same.
+void CanonicalizeStringComparisons(char *s)
 {
-	s = replace(s, "e+0", "e+");
-	s = replace(s, "e-0", "e-");
-	s = replace(s, "1.#INF", "inf");
-	return s;
+	contract_inplace(s, "e+00", "e+");
+	contract_inplace(s, "e-00", "e-");
+	contract_inplace(s, "e+0", "e+");
+	contract_inplace(s, "e-0", "e-");
+	contract_inplace(s, "1.#INF", "inf");
 }
-#endif
 
 char *SerializeFloat(float f, char *dstStr)
 {
 	if (!IsNan(f))
 	{
-		int numChars = sprintf(dstStr, "%.9g", f);
-#ifdef _WIN32
-		std::string s = WinHackCanonicalizeStringComparisons(dstStr);
-		numChars = sprintf(dstStr, "%s", s.c_str());
-#endif		
-		return dstStr + numChars;
+		sprintf(dstStr, "%.9g", f);
+		CanonicalizeStringComparisons(dstStr);
+		return dstStr + strlen(dstStr);
 	}
 	else
 	{
@@ -111,12 +111,9 @@ char *SerializeDouble(double f, char *dstStr)
 {
 	if (!IsNan(f))
 	{
-		int numChars = sprintf(dstStr, "%.17g", f);
-#ifdef _WIN32
-		std::string s = WinHackCanonicalizeStringComparisons(dstStr);
-		numChars = sprintf(dstStr, "%s", s.c_str());
-#endif		
-		return dstStr + numChars;
+		sprintf(dstStr, "%.17g", f);
+		CanonicalizeStringComparisons(dstStr);
+		return dstStr + strlen(dstStr);
 	}
 	else
 	{
@@ -276,6 +273,17 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 				printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
 			}
 
+#define Ret_M128_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingFloats / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+		{ \
+			__m128 m1 = E1(interesting_floats, i*4+k, numInterestingFloats); \
+			Ret_type ret = func(m1, Tint); \
+			char str[256]; tostr(&m1, str); \
+			char str2[256]; tostr(&ret, str2); \
+			printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
+		}
+
 #define Ret_M128i_Tint_body(Ret_type, func, Tint) \
 	for(int i = 0; i < numInterestingInts / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
@@ -313,6 +321,20 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
 			}
 
+#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) \
+	for(int i = 0; i < numInterestingInts / 4; ++i) \
+		for(int k = 0; k < 4; ++k) \
+			for(int j = 0; j < numInterestingInts / 4; ++j) \
+			{ \
+				__m128i m1 = E1(interesting_ints, i*4+k, numInterestingInts); \
+				__m128i m2 = E2(interesting_ints, j*4, numInterestingInts); \
+				Ret_type ret = func(m1, m2, Tint); \
+				char str[256]; tostr(&m1, str); \
+				char str2[256]; tostr(&m2, str2); \
+				char str3[256]; tostr(&ret, str3); \
+				printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
+			}
+
 #define Ret_M128_M128_Tint_body(Ret_type, func, Tint) \
 	for(int i = 0; i < numInterestingFloats / 4; ++i) \
 		for(int k = 0; k < 4; ++k) \
@@ -328,7 +350,6 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 			}
 
 #define const_int8_unroll(Ret_type, F, func) \
-	F(Ret_type, func, -1); \
 	F(Ret_type, func, 0); \
 	F(Ret_type, func, 1); \
 	F(Ret_type, func, 2); \
@@ -351,11 +372,12 @@ __m128 ExtractInRandomOrder(float *arr, int i, int n, int prime)
 	F(Ret_type, func, 128); \
 	F(Ret_type, func, 191); \
 	F(Ret_type, func, 254); \
-	F(Ret_type, func, 255); \
-	F(Ret_type, func, 309);
+	F(Ret_type, func, 255);
 
+#define Ret_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_Tint_body, func)
 #define Ret_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_Tint_body, func)
 #define Ret_M128i_int_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_int_Tint_body, func)
+#define Ret_M128i_M128i_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128i_M128i_Tint_body, func)
 #define Ret_M128d_M128d_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128d_M128d_Tint_body, func)
 #define Ret_M128_M128_Tint(Ret_type, func) const_int8_unroll(Ret_type, Ret_M128_M128_Tint_body, func)
 

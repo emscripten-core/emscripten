@@ -86,8 +86,9 @@ var LibraryWebVR = {
     var dev = WebVR.getDeviceByID(deviceId);
     var buffer, devName;
     devName = dev ? dev.deviceName : "";
-    buf = _malloc(devName.length + 1);
-    writeStringToMemory(devName, buf);
+    var len = lengthBytesUTF8(devName);
+    buf = _malloc(len + 1);
+    stringToUTF8(devName, buf, len + 1);
     return buf;
   },
 

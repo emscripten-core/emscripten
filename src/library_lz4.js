@@ -25,7 +25,6 @@ mergeInto(LibraryManager.library, {
                                                                       compressedData.cachedOffset + (i+1)*LZ4.CHUNK_SIZE);
         assert(compressedData.cachedChunks[i].length === LZ4.CHUNK_SIZE);
       }
-      console.log('loading package');
       pack['metadata'].files.forEach(function(file) {
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);

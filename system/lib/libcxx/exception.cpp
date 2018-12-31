@@ -12,11 +12,7 @@
 #include "exception"
 #include "new"
 
-#ifndef __has_include
-#define __has_include(inc) 0
-#endif
-
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(LIBCXXRT)
   #include <cxxabi.h>
 
   using namespace __cxxabiv1;
@@ -29,16 +25,16 @@
     #define __terminate_handler  __cxxabiapple::__cxa_terminate_handler
     #define __unexpected_handler __cxxabiapple::__cxa_unexpected_handler
   #endif  // _LIBCPPABI_VERSION
-#elif defined(LIBCXXRT) || __has_include(<cxxabi.h>)
+#elif defined(LIBCXXRT) || defined(LIBCXX_BUILDING_LIBCXXABI)
   #include <cxxabi.h>
   using namespace __cxxabiv1;
   #if defined(LIBCXXRT) || defined(_LIBCPPABI_VERSION)
     #define HAVE_DEPENDENT_EH_ABI 1
   #endif
-#elif !defined(__GLIBCXX__) // __has_include(<cxxabi.h>)
+#elif !defined(__GLIBCXX__) // defined(LIBCXX_BUILDING_LIBCXXABI)
   static std::terminate_handler  __terminate_handler;
   static std::unexpected_handler __unexpected_handler;
-#endif // __has_include(<cxxabi.h>)
+#endif // defined(LIBCXX_BUILDING_LIBCXXABI)
 
 namespace std
 {
@@ -90,14 +86,14 @@ terminate() _NOEXCEPT
 #endif  // _LIBCPP_NO_EXCEPTIONS
         (*get_terminate())();
         // handler should not return
-        printf("terminate_handler unexpectedly returned\n");
+        fprintf(stderr, "terminate_handler unexpectedly returned\n");
         ::abort();
 #ifndef _LIBCPP_NO_EXCEPTIONS
     }
     catch (...)
     {
         // handler should not throw exception
-        printf("terminate_handler unexpectedly threw an exception\n");
+        fprintf(stderr, "terminate_handler unexpectedly threw an exception\n");
         ::abort();
     }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -106,18 +102,24 @@ terminate() _NOEXCEPT
 #endif // !defined(LIBCXXRT) && !defined(_LIBCPPABI_VERSION)
 
 #if !defined(LIBCXXRT) && !defined(__GLIBCXX__) && !defined(__EMSCRIPTEN__)
-bool uncaught_exception() _NOEXCEPT
+bool uncaught_exception() _NOEXCEPT { return uncaught_exceptions() > 0; }
+
+int uncaught_exceptions() _NOEXCEPT
 {
 #if defined(__APPLE__) || defined(_LIBCPPABI_VERSION)
-    // on Darwin, there is a helper function so __cxa_get_globals is private
-    return __cxa_uncaught_exception();
+   // on Darwin, there is a helper function so __cxa_get_globals is private
+# if _LIBCPPABI_VERSION > 1101
+    return __cxa_uncaught_exceptions();
+# else
+    return __cxa_uncaught_exception() ? 1 : 0;
+# endif
 #else  // __APPLE__
 #   if defined(_MSC_VER) && ! defined(__clang__)
-        _LIBCPP_WARNING("uncaught_exception not yet implemented")
+        _LIBCPP_WARNING("uncaught_exceptions not yet implemented")
 #   else
 #       warning uncaught_exception not yet implemented
 #   endif
-    printf("uncaught_exception not yet implemented\n");
+    fprintf(stderr, "uncaught_exceptions not yet implemented\n");
     ::abort();
 #endif  // __APPLE__
 }
@@ -190,7 +192,7 @@ exception_ptr::~exception_ptr() _NOEXCEPT
 #   else
 #       warning exception_ptr not yet implemented
 #   endif
-    printf("exception_ptr not yet implemented\n");
+    fprintf(stderr, "exception_ptr not yet implemented\n");
     ::abort();
 #endif
 }
@@ -209,7 +211,7 @@ exception_ptr::exception_ptr(const exception_ptr& other) _NOEXCEPT
 #   else
 #       warning exception_ptr not yet implemented
 #   endif
-    printf("exception_ptr not yet implemented\n");
+    fprintf(stderr, "exception_ptr not yet implemented\n");
     ::abort();
 #endif
 }
@@ -234,7 +236,7 @@ exception_ptr& exception_ptr::operator=(const exception_ptr& other) _NOEXCEPT
 #   else
 #       warning exception_ptr not yet implemented
 #   endif
-    printf("exception_ptr not yet implemented\n");
+    fprintf(stderr, "exception_ptr not yet implemented\n");
     ::abort();
 #endif
 }
@@ -278,7 +280,7 @@ exception_ptr current_exception() _NOEXCEPT
 #   else
 #       warning exception_ptr not yet implemented
 #   endif
-    printf("exception_ptr not yet implemented\n");
+    fprintf(stderr, "exception_ptr not yet implemented\n");
     ::abort();
 #endif
 }
@@ -300,7 +302,7 @@ void rethrow_exception(exception_ptr p)
 #   else
 #       warning exception_ptr not yet implemented
 #   endif
-    printf("exception_ptr not yet implemented\n");
+    fprintf(stderr, "exception_ptr not yet implemented\n");
     ::abort();
 #endif
 }

@@ -10,17 +10,17 @@ openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
 as taken from http://docs.python.org/dev/library/ssl.html#certificates
 '''
 
-import os, sys, select, optparse
-sys.path.insert(0,os.path.dirname(__file__) + "/../")
-from websocket import WebSocketServer
+import os, sys, select, optparse, logging
+sys.path.insert(0,os.path.join(os.path.dirname(__file__), ".."))
+from websockify.websocket import WebSocketServer, WebSocketRequestHandler
 
-class WebSocketEcho(WebSocketServer):
+class WebSocketEcho(WebSocketRequestHandler):
     """
     WebSockets server that echos back whatever is received from the
     client.  """
     buffer_size = 8096
 
-    def new_client(self):
+    def new_websocket_client(self):
         """
         Echo back whatever is received.
         """
@@ -28,28 +28,27 @@ class WebSocketEcho(WebSocketServer):
         cqueue = []
         c_pend = 0
         cpartial = ""
-        rlist = [self.client]
+        rlist = [self.request]
 
         while True:
             wlist = []
 
-            if cqueue or c_pend: wlist.append(self.client)
+            if cqueue or c_pend: wlist.append(self.request)
             ins, outs, excepts = select.select(rlist, wlist, [], 1)
             if excepts: raise Exception("Socket exception")
 
-            if self.client in outs:
+            if self.request in outs:
                 # Send queued target data to the client
                 c_pend = self.send_frames(cqueue)
                 cqueue = []
 
-            if self.client in ins:
+            if self.request in ins:
                 # Receive client data, decode it, and send it back
                 frames, closed = self.recv_frames()
                 cqueue.extend(frames)
 
                 if closed:
                     self.send_close()
-                    raise self.EClose(closed)
 
 if __name__ == '__main__':
     parser = optparse.OptionParser(usage="%prog [options] listen_port")
@@ -69,7 +68,9 @@ if __name__ == '__main__':
     except:
         parser.error("Invalid arguments")
 
+    logging.basicConfig(level=logging.INFO)
+
     opts.web = "."
-    server = WebSocketEcho(**opts.__dict__)
+    server = WebSocketServer(WebSocketEcho, **opts.__dict__)
     server.start_server()
 

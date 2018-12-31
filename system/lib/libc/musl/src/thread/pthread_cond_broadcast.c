@@ -35,9 +35,10 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 #ifdef __EMSCRIPTEN__
 	int futexResult;
 	do {
-		// XXX Emscripten: Bug, this does not work correctly.
+		// We want to wake one and requeue all others, without comparing the value, but SAB spec doesn't
+		// have requeue without comparing, so implement it by spinning instead.
 		futexResult = emscripten_futex_wake_or_requeue(&c->_c_seq, !m->_m_type || (m->_m_lock&INT_MAX)!=pthread_self()->tid,
-			c->_c_seq, &m->_m_lock);
+			&m->_m_lock, c->_c_seq);
 	} while(futexResult == -EAGAIN);
 #else
 	/* Perform the futex requeue, waking one waiter unless we know

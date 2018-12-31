@@ -80,10 +80,10 @@ while 1:
     notes['invalid'] += 1
     continue
 
-  shared.check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS)
-  shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'])
+  shared.check_execute([COMP, '-m32', opts, '-emit-llvm', '-c', fullname, '-o', filename + '.bc'] + CSMITH_CFLAGS + shared.EMSDK_OPTS + ['-w'])
+  shared.check_execute([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
-  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS)
+  shared.check_execute([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
   print '3) Run natively'
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
@@ -98,14 +98,55 @@ while 1:
     notes['invalid'] += 1
     continue
 
+  fail_output_name = 'newfail_%d_%d%s' % (os.getpid(), fails, suffix)
+
   print '4) Compile JS-ly and compare'
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
-    js_args = [shared.PYTHON, shared.EMCC, opts] + llvm_opts + [fullname, '-o', filename + '.js'] + CSMITH_CFLAGS + args
+    js_args = [shared.PYTHON, shared.EMCC, fullname, '-o', filename + '.js'] + [opts] + llvm_opts + CSMITH_CFLAGS + args + ['-w']
+    if 0: # binaryen testing, off by default for now
+      js_args += ['-s', 'BINARYEN=1']
+      r = random.random()
+      if r < 0.45:
+        js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr"']
+      elif r < 0.90:
+        js_args += ['-s', 'BINARYEN_METHOD="interpret-binary"']
+      else:
+        if random.random() < 0.5:
+          js_args += ['-s', 'BINARYEN_METHOD="interpret-binary,asmjs"']
+        else:
+          js_args += ['-s', 'BINARYEN_METHOD="interpret-s-expr,asmjs"']
+      if random.random() < 0.5:
+        if random.random() < 0.5:
+          js_args += ['--js-opts', '0']
+        else:
+          js_args += ['--js-opts', '1']
+      if random.random() < 0.5:
+        # pick random passes
+        BINARYEN_PASSES = [
+          "duplicate-function-elimination",
+          "dce",
+          "remove-unused-brs",
+          "remove-unused-names",
+          "optimize-instructions",
+          "precompute",
+          "simplify-locals",
+          "vacuum",
+          "coalesce-locals",
+          "reorder-locals",
+          "merge-blocks",
+          "remove-unused-functions",
+        ]
+        passes = []
+        while 1:
+          passes.append(random.choice(BINARYEN_PASSES))
+          if random.random() < 0.1:
+            break
+        js_args += ['-s', 'BINARYEN_PASSES="' + ','.join(passes) + '"']
     if random.random() < 0.5:
       js_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
-    if random.random() < 0.5:
+    if random.random() < 0.5 and 'ALLOW_MEMORY_GROWTH=1' not in js_args and 'BINARYEN=1' not in js_args:
       js_args += ['-s', 'MAIN_MODULE=1']
     if random.random() < 0.25:
       js_args += ['-s', 'INLINING_LIMIT=1'] # inline nothing, for more call interaction
@@ -123,17 +164,23 @@ while 1:
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
     print '(compile)', ' '.join(js_args)
-    open(fullname, 'a').write('\n// ' + ' '.join(js_args) + '\n\n')
+    short_args = [shared.PYTHON, shared.EMCC, fail_output_name] + js_args[5:]
+    escaped_short_args = map(lambda x : ("'" + x + "'") if '"' in x else x, short_args)
+    open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
     try:
       shared.check_execute(js_args)
       assert os.path.exists(filename + '.js')
-      return True
+      return js_args
     except:
       return False
 
   def execute_js(engine):
     print '(run in %s)' % engine
-    js = shared.run_js(filename + '.js', engine=engine1, check_timeout=True, assert_returncode=None)
+    try:
+      js = shared.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
+    except:
+      print 'failed to run in primary'
+      return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     return correct1 == js or correct2 == js
 
@@ -142,9 +189,10 @@ while 1:
     print "EMSCRIPTEN BUG"
     notes['embug'] += 1
     fails += 1
-    shutil.copyfile(fullname, 'newfail_%d_%d%s' % (os.getpid(), fails, suffix))
+    shutil.copyfile(fullname, fail_output_name)
 
-  if not try_js():
+  js_args = try_js()
+  if not js_args:
     fail()
     continue
   if not execute_js(engine1):
@@ -155,11 +203,11 @@ while 1:
     continue
 
   # This is ok. Try validation in secondary JS engine
-  if opts != '-O0' and engine2:
+  if opts != '-O0' and 'ALLOW_MEMORY_GROWTH=1' not in js_args and engine2 and 'BINARYEN=1' not in js_args:
     try:
       js2 = shared.run_js(filename + '.js', stderr=PIPE, engine=engine2 + ['-w'], full_output=True, check_timeout=True, assert_returncode=None)
     except:
-      print 'failed to run in secondary', js2
+      print 'failed to run in secondary'
       break
 
     # asm.js testing

@@ -23,8 +23,8 @@ The whole core test suite can be run using the script `tests/runner.py <https://
 	- This may take several hours.
 	- :term:`Node.js` cannot run all of the tests in the suite; if you need to run them all, you should get a recent trunk version of the `SpiderMonkey <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ shell. On Windows you can install and activate *SpiderMonkey* using the :ref:`emsdk`.
 
-Running a specific test
-=======================
+Running specific tests
+======================
 
 You can also use *runner.py* to run different parts of the test suite, or individual tests. For example, you would run test named ``test_hello_world`` as shown:
 
@@ -33,6 +33,22 @@ You can also use *runner.py* to run different parts of the test suite, or indivi
     python tests/runner.py test_hello_world
 	
 Tests in the "core" test suite (``tests/test_core.py``) can be run as above. Other tests may need a prefix, for example ``browser.test_cubegeom`` for a test in ``tests/test_browser.py``. You can also specify an optional prefix for tests in core, to run them with extra options, for example ``asm2.test_hello_world`` will run ``hello_world`` using ``asm2`` opts (basically ``-O2``). See more examples in :ref:`emscripten-test-suite-list-of-tests`.
+
+It is possible to pass a wildcard to match multiple tests by name. For example, the commands
+
+.. code-block:: bash
+
+    python tests/runner.py ALL.test_simd_* ALL.test_sse*
+
+would run all the SIMD related tests in the suite.
+
+Individual tests can be skipped, so
+
+.. code-block:: bash
+
+    python tests/runner.py browser.test_pthread_* skip:browser.test_pthread_gcc_atomic_fetch_and_op
+
+would run all the multithreading tests except the one test ``browser.test_pthread_gcc_atomic_fetch_and_op``.
 
 Running a bunch of random tests
 ===============================

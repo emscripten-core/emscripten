@@ -16,7 +16,7 @@ def get(ports, settings, shared):
   if settings.USE_BULLET == 1:
     ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
     def create():
-      logging.warning('building port: bullet')
+      logging.info('building port: bullet')
      
       source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
       dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'bullet')

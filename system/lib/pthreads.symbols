@@ -21,6 +21,18 @@
          T _pthread_getcanceltype
          T _pthread_isduecanceled
          T _pthread_msecs_until
+         T ___atomic_is_lock_free
+         T ___atomic_load_8
+         T ___atomic_store_8
+         T ___atomic_exchange_8
+         T ___atomic_compare_exchange_8
+         T ___atomic_fetch_add_8
+         T ___atomic_fetch_sub_8
+         T ___atomic_fetch_and_8
+         T ___atomic_fetch_or_8
+         T ___atomic_fetch_xor_8
+         T _llvm_atomic_load_add_i32_p0i32
+         T _llvm_memory_barrier
          U accept
          U access
          U atexit
@@ -66,7 +78,10 @@
          U emscripten_get_now
          U emscripten_is_main_runtime_thread
          T emscripten_main_thread_process_queued_calls
+         T emscripten_pthread_attr_settransferredcanvases
+         T emscripten_pthread_attr_gettransferredcanvases
          T emscripten_sync_run_in_main_thread
+         T emscripten_sync_run_in_main_thread_0
          T emscripten_sync_run_in_main_thread_1
          T emscripten_sync_run_in_main_thread_2
          T emscripten_sync_run_in_main_thread_3
@@ -134,6 +149,7 @@
          U mktemp
          U mmap
          U munmap
+         T nanosleep
          U open
          U opendir
          U pclose

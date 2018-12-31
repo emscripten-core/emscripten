@@ -28,6 +28,9 @@ class interactive(BrowserCore):
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
 
+  def test_html5_pointerlockerror(self):
+    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0')
+
   def test_sdl_mousewheel(self):
     self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
 
@@ -104,8 +107,16 @@ class interactive(BrowserCore):
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_buffers(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
-    self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
+    self.btest('openal_buffers.c', '0', args=['--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_buffers_animated_pitch(self):
+    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
 
   def get_freealut_library(self):
     if WINDOWS and Building.which('cmake'):
@@ -123,5 +134,11 @@ class interactive(BrowserCore):
   def test_glfw_fullscreen(self):
     self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
 
+  def test_glfw_pointerlock(self):
+    self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+
   def test_cpuprofiler_memoryprofiler(self):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
+
+  def test_threadprofiler(self):
+    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-msse', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])

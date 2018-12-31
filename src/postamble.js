@@ -1,6 +1,8 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+{{{ maybeExport('FS') }}}
+
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
 if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
@@ -53,17 +55,21 @@ if (memoryInitializer) {
       }
 #endif
       HEAPU8.set(data, Runtime.GLOBAL_BASE);
+      // Delete the typed array that contains the large blob of the memory initializer request response so that
+      // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
+      // its .status field can still be accessed later.
+      if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     }
     function doBrowserLoad() {
-      Browser.asyncLoad(memoryInitializer, applyMemoryInitializer, function() {
+      Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     }
-    var request = Module['memoryInitializerRequest'];
-    if (request) {
+    if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
       function useRequest() {
+        var request = Module['memoryInitializerRequest'];
         if (request.status !== 200 && request.status !== 0) {
           // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
           // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
@@ -74,10 +80,10 @@ if (memoryInitializer) {
         }
         applyMemoryInitializer(request.response);
       }
-      if (request.response) {
+      if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
       } else {
-        request.addEventListener('load', useRequest); // wait for it
+        Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
       }
     } else {
       // fetch it from the network ourselves
@@ -86,6 +92,10 @@ if (memoryInitializer) {
   }
 }
 #endif
+#endif
+
+#if CYBERDWARF
+  Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
 #endif
 
 function ExitStatus(status) {
@@ -107,8 +117,10 @@ dependenciesFulfilled = function runCaller() {
 }
 
 Module['callMain'] = Module.callMain = function callMain(args) {
+#if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on __ATMAIN__)');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+#endif
 
   args = args || [];
 
@@ -183,6 +195,10 @@ function run(args) {
     return;
   }
 
+#if STACK_OVERFLOW_CHECK
+  writeStackCookie();
+#endif
+
   preRun();
 
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
@@ -192,7 +208,7 @@ function run(args) {
     if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
     Module['calledRun'] = true;
 
-    if (ABORT) return; 
+    if (ABORT) return;
 
     ensureInitRuntime();
 
@@ -222,6 +238,9 @@ function run(args) {
   } else {
     doRun();
   }
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 }
 Module['run'] = Module.run = run;
 
@@ -251,24 +270,9 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-#if NODE_STDOUT_FLUSH_WORKAROUND
   if (ENVIRONMENT_IS_NODE) {
-    // Work around a node.js bug where stdout buffer is not flushed at process exit:
-    // Instead of process.exit() directly, wait for stdout flush event.
-    // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
-    // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
-    process['stdout']['once']('drain', function () {
-      process['exit'](status);
-    });
-    console.log(' '); // Make sure to print something to force the drain event to occur, in case the stdout buffer was empty.
-    // Work around another node bug where sometimes 'drain' is never fired - make another effort
-    // to emit the exit status, after a significant delay (if node hasn't fired drain by then, give up)
-    setTimeout(function() {
-      process['exit'](status);
-    }, 500);
-  } else
-#endif
-  if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
+    process['exit'](status);
+  } else if (ENVIRONMENT_IS_SHELL && typeof quit === 'function') {
     quit(status);
   }
   // if we reach here, we must throw an exception to halt the current execution
@@ -401,4 +405,3 @@ var workerResponded = false, workerCallbackId = -1;
 })();
 
 #endif
-

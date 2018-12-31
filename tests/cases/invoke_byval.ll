@@ -54,9 +54,9 @@ define i32 @main(i32 %argc, i8** %argv) #0 personality i8* bitcast (i32 (...)* @
   %28 = bitcast %struct.point* %7 to i8*
   %29 = bitcast %struct.point* %p to i8*
   %waka = add i32 26, 0
-  call void @emscripten_preinvoke()
+  call void @emscripten_preinvoke(i32 1000)
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %28, i8* %29, i32 %waka, i32 1, i1 false)
-  %fizzle = call i32 @emscripten_postinvoke()
+  %fizzle = call i32 @emscripten_postinvoke(i32 1000)
   invoke void @_Z4chak5point(%struct.point* byval align 1 %7)
           to label %30 unwind label %31
 
@@ -120,9 +120,9 @@ declare i8* @__cxa_begin_catch(i8*)
 
 declare void @__cxa_end_catch()
 
-declare void @emscripten_preinvoke()
+declare void @emscripten_preinvoke(i32)
 
-declare i32 @emscripten_postinvoke()
+declare i32 @emscripten_postinvoke(i32)
 
 attributes #0 = { "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }
 attributes #1 = { nounwind "less-precise-fpmad"="false" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-nans-fp-math"="false" "stack-protector-buffer-size"="8" "unsafe-fp-math"="false" "use-soft-float"="false" }

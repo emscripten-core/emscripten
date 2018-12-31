@@ -139,21 +139,18 @@ After installing the main repositories:
 
 	::
 	
-		# From your emsdk "root" (where emsdk is installed). Navigate to the LLVM clone:
-		cd clang/fastcomp/src
+		# From your emsdk "root" (where emsdk is installed). Navigate to the Emscripten clone:
+		cd emscripten/incoming
 		
-		# Add a git remote link to your LLVM repository fork, then fetch changes
-		git remote add myremote https://github.com/mygituseraccount/emscripten-fastcomp.git
+		# Add a git remote link to your Emscripten repository fork
+		git remote add myremote https://github.com/mygituseraccount/emscripten.git
+		
+
+		# Fetch the changes in the remote.
 		git fetch myremote
 		
-		# Add a git remote link to your Clang repository fork.
-		git remote add myclangremote https://github.com/mygituseraccount/emscripten-fastcomp-clang.git
-		
-		# Fetch the changes in the remote.
-		git fetch myllvmremote
-		
 		# Checkout the code in your LLVM fork to replace the original repository code
-		git checkout -b myllvmremote --track myremote/incoming  
+		git checkout -b myremote --track myremote/incoming
 
 
 You can switch back and forth between remotes (the original sources and your fork, or the incoming and master branches) using the ``git checkout`` command. You can switch between the SDK and source using the ``./emsdk activate <target>`` command.

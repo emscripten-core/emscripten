@@ -108,6 +108,7 @@ setTimeout(function() {
     height: Module.canvas.height,
     boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()),
     URL: document.URL,
+    currentScriptUrl: '{{{ filename }}}.js',
     preMain: true });
 }, 0); // delay til next frame, to make sure html is ready
 
@@ -223,9 +224,26 @@ worker.onmessage = function worker_onmessage(event) {
       }
       break;
     }
-    default: throw 'what?';
+    case 'custom': {
+      if (Module['onCustomMessage']) {
+        Module['onCustomMessage'](event);
+      } else {
+        throw 'Custom message received but client Module.onCustomMessage not implemented.';
+      }
+      break;
+    }
+    case 'setimmediate': {
+      worker.postMessage({target: 'setimmediate'});
+      break;
+    }
+    default: throw 'what? ' + data.target;
   }
 };
+
+function postCustomMessage(data, options) {
+  options = options || {};
+  worker.postMessage({ target: 'custom', userData: data, preMain: options.preMain });
+}
 
 function cloneObject(event) {
   var ret = {};
@@ -237,10 +255,23 @@ function cloneObject(event) {
   return ret;
 };
 
+// Only prevent default on backspace/tab because we don't want unexpected navigation.
+// Do not prevent default on the rest as we need the keypress event.
+function shouldPreventDefault(event) {
+  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+    return false; // keypress, back navigation
+  } else {
+    return true; // NO keypress, NO back navigation
+  }
+};
+
 ['keydown', 'keyup', 'keypress', 'blur', 'visibilitychange'].forEach(function(event) {
   document.addEventListener(event, function(event) {
     worker.postMessage({ target: 'document', event: cloneObject(event) });
-    event.preventDefault();
+    
+    if (shouldPreventDefault(event)) {
+      event.preventDefault();
+    }
   });
 });
 

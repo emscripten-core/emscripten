@@ -44,7 +44,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install `Github for Windows <http://windows.github.com/>`_ (or any other git client).
 
-#. Install `Java <http://java.com/en/download/index.jsp>`_.
+#. Install `Java <http://java.com/en/download/index.jsp>`_ (Java is optional, you only need it for Closure Compiler minification).
 
 #. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`. 
 	

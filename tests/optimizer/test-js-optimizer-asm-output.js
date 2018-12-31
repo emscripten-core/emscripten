@@ -242,4 +242,20 @@ function hoisting() {
   }
  }
 }
+function toZero(x, y) {
+ x = x | 0;
+ y = +y;
+ if (x) a();
+ if (y) a();
+ while (x) a();
+ while (y) a();
+ do {
+  a();
+ } while (x);
+ do {
+  a();
+ } while (y);
+ x ? a() : b();
+ y ? a() : b();
+}
 

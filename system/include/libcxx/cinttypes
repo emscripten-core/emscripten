@@ -246,7 +246,6 @@ uintmax_t wcstoumax(const wchar_t* restrict nptr, wchar_t** restrict endptr, int
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 using::imaxdiv_t;
-
 using::imaxabs;
 using::imaxdiv;
 using::strtoimax;

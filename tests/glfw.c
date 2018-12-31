@@ -27,6 +27,9 @@ unsigned int nb_params = sizeof(params) / sizeof(int);
 int features[] = {GLFW_MOUSE_CURSOR, GLFW_STICKY_KEYS, GLFW_STICKY_MOUSE_BUTTONS, GLFW_SYSTEM_KEYS, GLFW_KEY_REPEAT, GLFW_AUTO_POLL_EVENTS};
 unsigned int nb_features = sizeof(features) / sizeof(int);
 
+// Will be set to 1 as soon as OnResize callback is called
+int on_resize_called = 0;
+
 float rotate_y = 0,
       rotate_z = 0;
 const float rotations_per_tick = .2;
@@ -62,10 +65,15 @@ void Init()
     Shut_Down(1);
   glfwSetWindowTitle("The GLFW Window");
  
-  glfwSetKeyCallback( OnKeyPressed );
-  glfwSetCharCallback( OnCharPressed );
+  glfwSetKeyCallback(OnKeyPressed);
+  glfwSetCharCallback(OnCharPressed);
   glfwSetWindowCloseCallback(OnClose);
   glfwSetWindowSizeCallback(OnResize);
+  if (!on_resize_called)
+  {
+    Shut_Down(1);
+  }
+
   glfwSetWindowRefreshCallback(OnRefresh);
   glfwSetMouseWheelCallback(OnMouseWheel);
   glfwSetMousePosCallback(OnMouseMove);
@@ -319,6 +327,7 @@ void OnRefresh(){
 }
 
 void OnResize( int width, int height ){
+  on_resize_called = 1;
   printf("Resizing to %i %i\n", width, height);
 }
 

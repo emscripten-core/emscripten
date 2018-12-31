@@ -15,7 +15,16 @@ everything = open(infile).read()
 module = asm_module.AsmModule(infile).asm_js
 
 module = module[module.find('=')+1:] # strip the initial "var asm =" bit, leave just the raw module as a function
-everything = everything.replace(module, 'Module["asm"]')
+if 'var Module' in everything:
+  everything = everything.replace(module, 'Module["asm"]')
+else:
+  # closure compiler removes |var Module|, we need to find the closured name
+  # seek a pattern like (e.ENVIRONMENT), which is in the shell.js if-cascade for the ENVIRONMENT override
+  import re
+  m = re.search('\((\w+)\.ENVIRONMENT\)', everything)
+  assert m, 'cannot figure out the closured name of Module statically'
+  closured_name = m.group(1)
+  everything = everything.replace(module, closured_name + '["asm"]')
 
 o = open(asmfile, 'w')
 o.write('Module["asm"] = ')

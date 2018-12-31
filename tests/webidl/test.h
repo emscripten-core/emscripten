@@ -14,6 +14,7 @@ public:
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
+  bool getBoolean() { return true; }
 
   const int immutableAttr;
 };
@@ -84,6 +85,7 @@ namespace Space {
     Inner() {}
     int get() { return 198; }
     Inner& operator*=(float x) { return *this; }
+    int operator[](int x) { return x*2; }
   };
 }
 
@@ -143,3 +145,12 @@ class ArrayClass {
   StructInArray struct_array[8];
   StructInArray* struct_ptr_array[8];
 };
+
+struct ReceiveArrays {
+  void giveMeArrays(float* vertices, int* triangles, int num) {
+    for (int i = 0; i < num; i++) {
+      printf("%d : %.2f\n", triangles[i], vertices[i]);
+    }
+  }
+};
+

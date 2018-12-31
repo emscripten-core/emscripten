@@ -9,6 +9,29 @@
 
 #include "abort_message.h"
 
+#if __EMSCRIPTEN__
+
+// XXX EMSCRIPTEN making guard operations simple and LTO-optimizable opens up
+//                a lot of code saving opportunities
+
+#include <stdint.h>
+
+extern "C"
+{
+
+int __cxa_guard_acquire(uint64_t* p) {
+  char* q = (char*)p;
+  if (*q == 1) return 0;
+  *q = 1;
+  return 1;
+}
+void __cxa_guard_release(uint64_t*) {}
+void __cxa_guard_abort(uint64_t*) {}
+
+}
+
+#else
+
 #include <pthread.h>
 #include <stdint.h>
 
@@ -229,3 +252,5 @@ void __cxa_guard_abort(guard_type* guard_object)
 }  // extern "C"
 
 }  // __cxxabiv1
+
+#endif // EMSCRIPTEN

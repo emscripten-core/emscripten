@@ -198,8 +198,15 @@ mergeInto(LibraryManager.library, {
             Module.print('connect: ' + url + ', ' + subProtocols.toString());
 #endif
             // If node we use the ws library.
-            var WebSocket = ENVIRONMENT_IS_NODE ? require('ws') : window['WebSocket'];
-            ws = new WebSocket(url, opts);
+            var WebSocketConstructor;
+            if (ENVIRONMENT_IS_NODE) {
+              WebSocketConstructor = require('ws');
+            } else if (ENVIRONMENT_IS_WEB) {
+              WebSocketConstructor = window['WebSocket'];
+            } else {
+              WebSocketConstructor = WebSocket;
+            }
+            ws = new WebSocketConstructor(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
             throw new FS.ErrnoError(ERRNO_CODES.EHOSTUNREACH);
@@ -273,6 +280,13 @@ mergeInto(LibraryManager.library, {
 
         function handleMessage(data) {
           assert(typeof data !== 'string' && data.byteLength !== undefined);  // must receive an ArrayBuffer
+
+          // An empty ArrayBuffer will emit a pseudo disconnect event
+          // as recv/recvmsg will return zero which indicates that a socket
+          // has performed a shutdown although the connection has not been disconnected yet.
+          if (data.byteLength == 0) {
+            return;
+          }
           data = new Uint8Array(data);  // make a typed array view on the array buffer
 
 #if SOCKET_DEBUG

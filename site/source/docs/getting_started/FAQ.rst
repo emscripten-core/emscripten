@@ -64,6 +64,10 @@ The main tips for improving build time are:
 
 - When you have multiple bitcode files as inputs, put the largest file first (LLVM linking links the second and later ones into the first, so less copying is done on the first input to the linker).
 
+- Having fewer bitcode files can be faster, so you might want to link files into larger files in parallel in your build system (you might already do this if you have logical libraries), and then the final command has fewer things to operate on.
+
+- You don't need to link into a single bitcode file yourself, you can call the final ``emcc`` command that emits JS with a list of files. ``emcc`` can then defer linking and avoid an intermediary step, if possible (this optimization is disabled by LTO and by `EMCC_DEBUG=2`).
+
 	
 Why does my code run slowly?
 ============================
@@ -180,7 +184,7 @@ Why can't my code access a file in the same directory?
 
 Emscripten-generated code running *in the browser* cannot access files in the local file system. Instead you can use :ref:`preloading <emcc-preload-file>` and :ref:`embedding <emcc-embed-file>` to work around the lack of synchronous file IO. See :ref:`file-system-overview` for more information.
 
-It is possible to allow access to local file system for code running in *node.js*.
+It is possible to allow access to local file system for code running in *node.js*, use the :ref:`NODEFS <filesystem-api-nodefs>` filesystem option.
 
 
 .. _faq-when-safe-to-call-compiled-functions:
@@ -188,9 +192,9 @@ It is possible to allow access to local file system for code running in *node.js
 How can I tell when the page is fully loaded and it is safe to call compiled functions?
 =======================================================================================
 
-(You may need this answer if you see an error saying something like ``you need to wait for the runtime to be ready (e.g. wait for main() to be called)``.)
+(You may need this answer if you see an error saying something like ``you need to wait for the runtime to be ready (e.g. wait for main() to be called)``, which is a check enabled in ``ASSERTIONS`` builds.)
 
-Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously).
+Calling a compiled function before a page has fully loaded can result in an error, if the function relies on files that may not be present (for example the :ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded <emcc-preload-file>` files are loaded asynchronously, and therefore if you just place some JS that calls compiled code in a ``--post-js``, that code will be called synchronously at the end of the combined JS file, potentially before the asynchronous event happens, which is bad).
 
 The easiest way to find out when loading is complete is to add a ``main()`` function, and within it call a JavaScript function to notify your code that loading is complete. 
 

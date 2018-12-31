@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<emscripten.h>
-#include<assert.h>
+#include <stdio.h>
+#include <emscripten.h>
+#include <assert.h>
 
 void print1(const char *c, int x) {
   EM_ASM_({ Module.print([$0, $1]) }, c, x);

@@ -7,11 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#define _LIBCPP_BUILDING_SYSTEM_ERROR
 #include "__config"
+
+#define _LIBCPP_BUILDING_SYSTEM_ERROR
 #include "system_error"
-#include "string"
+
+#include "include/config_elast.h"
 #include "cstring"
+#include "string"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -149,7 +152,7 @@ system_error::__init(const error_code& ec, string what_arg)
             what_arg += ": ";
         what_arg += ec.message();
     }
-    return _VSTD::move(what_arg);
+    return what_arg;
 }
 
 system_error::system_error(error_code ec, const string& what_arg)

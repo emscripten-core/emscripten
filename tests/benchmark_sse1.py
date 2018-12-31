@@ -100,9 +100,9 @@ native_workload = native_results['workload']
 html_workload = html_results['workload']
 
 html = '''<html><head></head><body><h1>SSE1 JavaScript Benchmark</h1>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script><b>System Info:</b><br/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script><b>System Info:</b><br/>
 ''' + system_info[0].replace('\n', '<br/>') + '''
 <b>Native Clang Compiler:</b><br/>
 ''' + native_info[1].replace('\n', '<br/>') + '''

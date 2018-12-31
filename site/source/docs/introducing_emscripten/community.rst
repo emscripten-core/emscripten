@@ -21,7 +21,6 @@ Emscripten also has a presence on social media:
 
 - `#emscripten <https://twitter.com/hashtag/emscripten>`_ (Emscripten Hashtag on Twitter)   
 - `@kripken <https://twitter.com/kripken>`_ (an Emscripten developer's account on Twitter, mentions Emscripten updates)
-- Unofficial `Google+ page <https://plus.google.com/100622854474489221138>`_
 
 
 Report a bug

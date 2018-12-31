@@ -2,7 +2,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include<emscripten.h>
+#include <emscripten.h>
 
 int value = 0;
 

@@ -57,24 +57,28 @@ Options that are modified or new in *emcc* are listed below:
 ``-O2``
 	Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations. 
 	
-	.. note:: This is the recommended setting for a release build, offering slower compilation time in return for the smallest and fastest output.
+	.. note:: This is a reasonable setting for a release build.
 
-.. _emcc-Os: 
-	
-``-Os``
-	Like ``-O2``, but with extra optimizations that reduce code size at the expense of performance. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
-
-.. _emcc-Oz: 
-	
-``-Oz``
-	Like ``-Os``, but reduces code size even further. This applies only for bitcode optimization (``-O2`` is used for JavaScript optimizations).
+	.. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_.
 
 .. _emcc-O3:
 
 ``-O3``
-	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time and/or are relatively new. 
+	Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+
+	.. note:: This is a good setting for a release build.
+
+.. _emcc-Os: 
 	
-	.. note:: This differs from ``-O2`` only during the bitcode to JavaScript (final link and JavaScript generation) stage. It is JavaScript-specific, so you can run ``-Os`` on your source files for example, and ``-O3`` during JavaScript generation if you want.
+``-Os``
+	Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can effect both bitcode generation and JavaScript.
+
+.. _emcc-Oz: 
+	
+``-Oz``
+	Like ``-Os``, but reduces code size even further. This can effect both bitcode generation and JavaScript.
+
+	For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
 
  	.. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
@@ -191,15 +195,17 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-js-opts: 
 	
 ``--js-opts <level>``
-	Enables JavaScript optimizations. Possible ``level`` values are:
+	Enables JavaScript optimizations, relevant when we generate JavaScript. Possible ``level`` values are:
 	 
 		- ``0``: Prevent JavaScript optimizer from running.
 		- ``1``: Use JavaScript optimizer (default).
 
+	You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
+
 .. _emcc-llvm-opts: 
 		
 ``--llvm-opts <level>``
-	Enables LLVM optimizations. Possible ``level`` values are:
+	Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object files / bitcode). Possible ``level`` values are:
 	 
 		- ``0``: No LLVM optimizations (default in -O0).
 		- ``1``: LLVM ``-O1`` optimizations (default in -O1).
@@ -209,6 +215,8 @@ Options that are modified or new in *emcc* are listed below:
 	You can also specify arbitrary LLVM options, e.g.::
 	
 		--llvm-opts "['-O3', '-somethingelse']"
+
+	You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
 .. _emcc-llvm-lto: 
 		
@@ -354,7 +362,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-clear-ports:
 	 
 ``--clear-ports``
-	Manually clears the local copies and builds of projects from the Emscripten Ports repos (sdl2, etc.)
+	Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
 	
 	You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
 
@@ -398,6 +406,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--memoryprofiler``
 	Embeds a memory allocation tracker onto the generated page. Use this to profile the application usage of the Emscripten HEAP.
 
+``--threadprofiler``
+	Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-s USE_PTHREADS=1/2).
+
 .. _emcc-config:
 	
 ``--em-config``
@@ -436,7 +447,9 @@ Options that are modified or new in *emcc* are listed below:
 ``--separate-asm``
 	Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
 
-	
+``--output-eol windows|linux``
+	Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output-eol linux", the final generated files will be written with Unix \n line endings.
+
 .. _emcc-environment-variables:
 
 Environment variables

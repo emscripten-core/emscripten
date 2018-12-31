@@ -39,13 +39,27 @@ class TempFiles:
     self.to_clean.append(filename)
 
   def get(self, suffix):
-    """Returns a named temp file  with the given prefix."""
+    """Returns a named temp file with the given prefix."""
     named_file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
     self.note(named_file.name)
     return named_file
 
+  def get_file(self, suffix):
+    """Returns an object representing a RAII-like access to a temp file, that has convenient pythonesque
+    semantics for being used via a construct 'with TempFiles.get_file(..) as filename:'. The file will be
+    deleted immediately once the 'with' block is exited."""
+    class TempFileObject:
+      def __enter__(self_):
+        self_.file = tempfile.NamedTemporaryFile(dir=self.tmp, suffix=suffix, delete=False)
+        self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
+        return self_.file.name
+
+      def __exit__(self_, type, value, traceback):
+        try_delete(self_.file.name)
+    return TempFileObject()
+
   def get_dir(self):
-    """Returns a named temp file  with the given prefix."""
+    """Returns a named temp directory with the given prefix."""
     directory = tempfile.mkdtemp(dir=self.tmp)
     self.note(directory)
     return directory

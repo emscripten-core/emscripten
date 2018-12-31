@@ -38,7 +38,7 @@ Calling compiled C functions from JavaScript
 	
 	.. note:: 
 		- ``ccall`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!	
+		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to call them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
 		
 			::
@@ -47,7 +47,7 @@ Calling compiled C functions from JavaScript
 			
 			Exported functions can be called as normal: ::
 			
-				a_result = Module.ccall('myfunc', 'number', ['number'], 10)
+				a_result = Module.ccall('myfunc', 'number', ['number'], [10])
 		
 
 	:param ident: The name of the C function to be called.	
@@ -86,9 +86,9 @@ Calling compiled C functions from JavaScript
 	.. COMMENT (not rendered): There is more complete documentation in the guide: **HamishW** — add link to guide when it exists (currently in wiki at "Interacting with code").
 	
 	.. note:: 
-		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. 
-		- If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`writeStringToMemory`. However, you must later delete it manually!
+		- ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
 		- LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :  
+		- ``cwrap`` does not actually call compiled code (only calling the wrapper it returns does that). That means that it is safe to call ``cwrap`` early, before the runtime is fully initialized (but calling the returned wrapped function must wait for the runtime, of course, like calling compiled code in general).
 		
 			::
 
@@ -100,7 +100,7 @@ Calling compiled C functions from JavaScript
 				my_func(12)
 
 	:param ident: The name of the C function to be called.	
-	:param returnType: The return type of the function. This will be one of the JavaScript types ``number``, ``string`` or ``array`` (use ``number`` for any C pointer, and ``array`` for JavaScript arrays and typed arrays; note that arrays are 8-bit).
+	:param returnType: The return type of the function. This can be ``"number"``, ``"string"`` or ``"array"``, which correspond to the appropriate JavaScript types (use ``"number"`` for any C pointer, and ``"array"`` for JavaScript arrays and typed arrays; note that arrays are 8-bit), or for a void function it can be ``null`` (note: the JavaScript ``null`` value, not a string containing the word "null").
 	:param argTypes: An array of the types of arguments for the function (if there are no arguments, this can be omitted). Types are as in ``returnType``, except that ``array`` is not supported as there is no way for us to know the length of the array).
 	:returns: A JavaScript function that can be used for running the C function. 	
 
@@ -166,14 +166,16 @@ Conversion functions — strings, pointers and arrays
 	
 
 
-.. js:function:: stringToUTF8(str, outPtr[, maxBytesToWrite])
+.. js:function:: stringToUTF8(str, outPtr, maxBytesToWrite)
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF8 form.
+
+	The copy will require at most ``str.length*4+1`` bytes of space in the HEAP. You can use the function ``lengthBytesUTF8()`` to compute the exact amount of bytes (excluding the null terminator) needed to encode the string.
 
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in UTF8 format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes to write out.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite > 0``.
 
 
 .. js:function:: UTF16ToString(ptr)
@@ -185,16 +187,16 @@ Conversion functions — strings, pointers and arrays
 	
 
 
-.. js:function:: stringToUTF16(str, outPtr[, maxBytesToWrite])
+.. js:function:: stringToUTF16(str, outPtr, maxBytesToWrite)
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF16LE form. 
 	
-	The copy will require at most ``(str.length*2+1)*2`` bytes of space in the HEAP.
+	The copy will require exactly ``(str.length+1)*2`` bytes of space in the HEAP.
 
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in UTF16LE format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes to write out.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite >= 2`` so that there is space for the null terminator.
 
 
 
@@ -206,16 +208,16 @@ Conversion functions — strings, pointers and arrays
 	:returns: A JavaScript ``String`` object.
 	
 
-.. js:function:: stringToUTF32(str, outPtr[, maxBytesToWrite])
+.. js:function:: stringToUTF32(str, outPtr, maxBytesToWrite)
 
 	Copies the given JavaScript ``String`` object ``str`` to the Emscripten HEAP at address ``outPtr``, null-terminated and encoded in UTF32LE form. 
 	
-	The copy will require at most ``(str.length+1)*4`` bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string.
+	The copy will require at most ``(str.length+1)*4`` bytes of space in the HEAP, but can use less, since ``str.length`` does not return the number of characters in the string, but the number of UTF-16 code units in the string. You can use the function ``lengthBytesUTF32()`` to compute the exact amount of bytes (excluding the null terminator) needed to encode the string.
 	
 	:param str: A JavaScript ``String`` object.
 	:type str: String
 	:param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
-	:param maxBytesToWrite: A limit on the number of bytes to write out.
+	:param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
 
 
@@ -243,6 +245,8 @@ Conversion functions — strings, pointers and arrays
 .. js:function:: writeStringToMemory(string, buffer, dontAddNull)
 
 	Writes a JavaScript string to a specified address in the heap. 
+
+	.. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure bounded version of the same functionality instead.
 	
 	.. code-block:: javascript
 	
@@ -359,12 +363,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 
 .. js:data:: HEAPU8
 
-	View for 32-bit unsigned memory. 
-
-	
-.. js:data:: HEAPU8
-
-	View for 32-bit unsigned memory.
+	View for 8-bit unsigned memory. 
 
 	
 .. js:data:: HEAPU16

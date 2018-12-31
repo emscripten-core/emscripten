@@ -242,4 +242,20 @@ function hoisting() {
   }
  }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky", "asmy"]
+function toZero(x, y) {
+ x = x | 0;
+ y = +y;
+ if (x != 0) a();
+ if (y != 0) a();
+ while (x != 0) a();
+ while (y != 0) a();
+ do {
+  a();
+ } while (x != 0);
+ do {
+  a();
+ } while (y != 0);
+ x != 0 ? a() : b();
+ y != 0 ? a() : b();
+}
+// EMSCRIPTEN_GENERATED_FUNCTIONS: ["abc", "xyz", "xyz2", "expr", "loopy", "bits", "maths", "hoisting", "demangle", "lua", "moreLabels", "notComps", "tricky", "asmy", "toZero"]

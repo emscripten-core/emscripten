@@ -1292,7 +1292,11 @@ function makeGetTempRet0() {
 }
 
 function makeSetTempRet0(value) {
-  return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+  if (WASM_BACKEND == 1) {
+    return 'asm["setTempRet0"](' + value + ')';
+  } else {
+    return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
+  }
 }
 
 function makeStructuralReturn(values, inAsm) {
@@ -1442,5 +1446,25 @@ function makeDynCall(sig) {
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
   if (!SPLIT_MEMORY) return heap + ',' + ptr;
   return heap + 's[(' + ptr + ') >> SPLIT_MEMORY_BITS], (' + ptr + ') & SPLIT_MEMORY_MASK'; 
+}
+
+function makeEval(code) {
+  if (NO_DYNAMIC_EXECUTION == 1) {
+    // Treat eval as error.
+    return "abort('NO_DYNAMIC_EXECUTION=1 was set, cannot eval');";
+  }
+  var ret = '';
+  if (NO_DYNAMIC_EXECUTION == 2) {
+    // Warn on evals, but proceed.
+    ret += "Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret += "Module.printErr(stackTrace());\n";
+  }
+  ret += code;
+  return ret;
+}
+
+function makeStaticAlloc(size) {
+  size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
+  return 'STATICTOP; STATICTOP += ' + size + ';';
 }
 

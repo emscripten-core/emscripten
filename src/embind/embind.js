@@ -616,6 +616,8 @@ var LibraryEmbind = {
             var getElement;
             if (value instanceof Uint8Array) {
                 getElement = getTAElement;
+            } else if (value instanceof Uint8ClampedArray) {
+                getElement = getTAElement;
             } else if (value instanceof Int8Array) {
                 getElement = getTAElement;
             } else if (typeof value === 'string') {
@@ -1487,7 +1489,7 @@ var LibraryEmbind = {
     }
   },
 
-  $makeClassHandle__deps: ['throwInternalError'],
+  $makeClassHandle__deps: ['$throwInternalError'],
   $makeClassHandle: function(prototype, record) {
     if (!record.ptrType || !record.ptr) {
         throwInternalError('makeClassHandle requires ptr and ptrType');
@@ -2082,6 +2084,71 @@ var LibraryEmbind = {
     });
   },
 
+  _embind_register_class_class_property__deps: [
+    '$readLatin1String', '$requireFunction', '$runDestructors',
+    '$throwBindingError', '$throwUnboundTypeError',
+    '$whenDependentTypesAreResolved', '$validateThis'],
+  _embind_register_class_class_property: function(
+    rawClassType,
+    fieldName,
+    rawFieldType,
+    rawFieldPtr,
+    getterSignature,
+    getter,
+    setterSignature,
+    setter
+  ) {
+    fieldName = readLatin1String(fieldName);
+    getter = requireFunction(getterSignature, getter);
+
+    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+        classType = classType[0];
+        var humanName = classType.name + '.' + fieldName;
+        var desc = {
+            get: function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+            },
+            enumerable: true,
+            configurable: true
+        };
+        if (setter) {
+            desc.set = function() {
+                throwUnboundTypeError('Cannot access ' + humanName + ' due to unbound types', [getterReturnType, setterArgumentType]);
+            };
+        } else {
+            desc.set = function(v) {
+                throwBindingError(humanName + ' is a read-only property');
+            };
+        }
+
+        Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
+
+        whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
+            fieldType = fieldType[0];
+            var desc = {
+                get: function() {
+                    return fieldType['fromWireType'](getter(rawFieldPtr));
+                },
+                enumerable: true
+            };
+
+            if (setter) {
+                setter = requireFunction(setterSignature, setter);
+                desc.set = function(v) {
+                    var destructors = [];
+                    setter(rawFieldPtr, fieldType['toWireType'](destructors, v));
+                    runDestructors(destructors);
+                };
+            }
+
+            Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
+            return [];
+        });
+
+        return [];
+    });
+  },
+
   _embind_create_inheriting_constructor__deps: [
     '$createNamedFunction', '_emval_register',
     '$PureVirtualError', '$readLatin1String',
@@ -2215,13 +2282,13 @@ var LibraryEmbind = {
     var shift = getShiftFromSize(size);
     name = readLatin1String(name);
 
-    function constructor() {
+    function ctor() {
     }
-    constructor.values = {};
+    ctor.values = {};
 
     registerType(rawType, {
         name: name,
-        constructor: constructor,
+        constructor: ctor,
         'fromWireType': function(c) {
             return this.constructor.values[c];
         },
@@ -2232,7 +2299,7 @@ var LibraryEmbind = {
         'readValueFromPointer': enumReadValueFromPointer(name, shift, isSigned),
         destructorFunction: null,
     });
-    exposePublicSymbol(name, constructor);
+    exposePublicSymbol(name, ctor);
   },
 
   _embind_register_enum_value__deps: [

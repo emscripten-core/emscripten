@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 int result = 0;
 void report_result()

@@ -76,7 +76,7 @@ The ``userData`` parameter is a user-defined value that is passed (unchanged) to
 
 The ``useCapture`` parameter  maps to ``useCapture`` in `EventTarget.addEventListener <https://developer.mozilla.org/en-US/docs/Web/API/EventTarget.addEventListener>`_. It indicates whether or not to initiate *capture*: if ``true`` the callback will be invoked only for the DOM capture and target phases; if ``false`` the callback will be triggered during the target and bubbling phases. See `DOM Level 3 Events <http://www.w3.org/TR/2003/NOTE-DOM-Level-3-Events-20031107/events.html#Events-phases>`_ for a more detailed explanation.
 
-Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Non-zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
+Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
 
 	
 Callback functions
@@ -130,8 +130,17 @@ General types
 
 .. c:macro:: EM_BOOL
 
-	This is the Emscripten type for a ``bool``.  
+	This is the Emscripten type for a ``bool``. 
+	Possible values:
 	
+	.. c:macro:: EM_TRUE
+
+		This is the Emscripten value for ``true``. 
+
+	.. c:macro:: EM_FALSE
+
+		This is the Emscripten value for ``false``. 
+
 	
 .. c:macro:: EM_UTF8
 
@@ -147,7 +156,7 @@ Most functions in this API return a result of type :c:data:`EMSCRIPTEN_RESULT`. 
 	
 .. c:macro:: EMSCRIPTEN_RESULT
 
-	This type is used to return the result of most functions in this API.  Positive values denote success, while zero and negative values signal failure. Possible values are listed below.
+	This type is used to return the result of most functions in this API. Zero and positive values denote success, while negative values signal failure. Possible values are listed below.
 	
 	
 	.. c:macro:: EMSCRIPTEN_RESULT_SUCCESS
@@ -1237,8 +1246,11 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKCHANGE
 			 
-    Emscripten `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ events.
-	
+    Emscripten `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+
+.. c:macro:: EMSCRIPTEN_EVENT_POINTERLOCKERROR
+
+    Emscripten `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
 Struct
 ------
@@ -1282,6 +1294,20 @@ Callback functions
 	:param void* userData: The ``userData`` originally passed to the registration function.
 	:returns: |callback-handler-return-value-doc|
 	:rtype: |EM_BOOL|
+
+.. c:type:: em_pointerlockerror_callback_func
+
+	Function pointer for the :c:func:`pointerlockerror event callback functions <emscripten_set_pointerlockerror_callback>`, defined as:
+
+	.. code-block:: cpp
+
+		typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
+
+	:param int eventType: The type of pointerlockerror event (:c:data:`EMSCRIPTEN_EVENT_POINTERLOCKERROR`).
+	:param const void* reserved: Reserved for future use; pass in 0.
+	:param void* userData: The ``userData`` originally passed to the registration function.
+	:returns: |callback-handler-return-value-doc|
+	:rtype: |EM_BOOL|
 	
 
 	
@@ -1299,6 +1325,20 @@ Functions
 	:param void* userData: |userData-parameter-doc|
 	:param EM_BOOL useCapture: |useCapture-parameter-doc|
 	:param em_pointerlockchange_callback_func callback: |callback-function-parameter-doc|
+	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
+	:rtype: |EMSCRIPTEN_RESULT|
+
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback)
+
+	Registers a callback function for receiving the `pointerlockerror <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
+
+	:param target: |target-parameter-doc|
+	:type target: const char*
+	:param void* userData: |userData-parameter-doc|
+	:param EM_BOOL useCapture: |useCapture-parameter-doc|
+	:param em_pointerlockerror_callback_func callback: |callback-function-parameter-doc|
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: |EMSCRIPTEN_RESULT|
 
@@ -1739,7 +1779,6 @@ Functions
 	Registers a callback function for receiving the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
 	:param void* userData: |userData-parameter-doc|
-	:param EM_BOOL useCapture: |useCapture-parameter-doc|
 	:param em_battery_callback_func callback: |callback-function-parameter-doc|
 	:returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
 	:rtype: |EMSCRIPTEN_RESULT|	
@@ -1977,7 +2016,7 @@ Functions
 	:param target: The DOM canvas element in which to initialize the WebGL context. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*
 	:param attributes: The attributes of the requested context version.
-	:type attributes: EmscriptenWebGLContextAttributes*
+	:type attributes: const EmscriptenWebGLContextAttributes*
 	:returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
 	:rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
@@ -2030,7 +2069,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char * target, double width, double height)
 
-	Resizes the css width and height of the element specified by ``target`` on the Emscripten web page.
+	Resizes the CSS width and height of the element specified by ``target`` on the Emscripten web page.
 
 	:param target: Element to resize. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*
@@ -2042,7 +2081,7 @@ Functions
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char * target, double * width, double * height)
 
-	Gets the current css width and height of the element specified by ``target``.
+	Gets the current CSS width and height of the element specified by ``target``.
 
 	:param target: Element to get size of. If 0 is passed, the element specified by ``Module.canvas`` will be used.
 	:type target: const char*

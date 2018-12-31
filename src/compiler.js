@@ -123,6 +123,15 @@ if (typeof print === 'undefined') {
 
 DEBUG_MEMORY = false;
 
+// Polyfilling
+
+if (!String.prototype.startsWith) {
+  String.prototype.startsWith = function(searchString, position) {
+    position = position || 0;
+    return this.indexOf(searchString, position) === position;
+  };
+}
+
 // Basic utilities
 
 load('utility.js');
@@ -152,8 +161,8 @@ if (settings_file) {
 
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
-EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
+IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
 
 // TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to
 // avoid needing this here.
@@ -166,22 +175,13 @@ DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
-if (NO_BROWSER) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
-}
-
 // Output some info and warnings based on settings
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO) {
+if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
   // Load struct and define information.
-  //try {
-    var temp = JSON.parse(read(STRUCT_INFO));
-  //} catch(e) {
-  //  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-  //  temp = JSON.parse(read('struct_info.compiled.json'));
-  //}
+  var temp = JSON.parse(read(STRUCT_INFO));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {

@@ -102,4 +102,26 @@ Other methods
 	This method should be called to destroy C++ objects created in JavaScript using :ref:`WebIDL bindings <WebIDL-Binder>`. If this method is not called, an object may be garbage collected, but its destructor will not be called.
 
 	:param obj: The JavaScript-wrapped C++ object to be destroyed.
-	
+
+.. js:function:: Module.onCustomMessage
+
+	When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+
+Overriding execution environment
+================================
+
+The generated program is able to detect its execution environment by checking the presence of some typical objects of the environment itself (such as ``window`` for browsers).
+
+However, sometimes it may be needed to override the detected environment: a typical use case would be module bundlers (like webpack): they are executed by nodejs but the final output is for browser.
+
+In order to do that, you can dictate your preferred execution environment by setting the ``Module.ENVIRONMENT`` variable to one of those allowed values: 
+
+``WEB``
+
+``WORKER``
+
+``NODE``
+
+``SHELL``
+
+In that case, ``Module`` will honor your preference and skip auto detection.

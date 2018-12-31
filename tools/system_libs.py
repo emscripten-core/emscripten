@@ -1,7 +1,8 @@
 import os, json, logging, zipfile, glob
 import shared
 from subprocess import Popen, CalledProcessError
-import multiprocessing
+import subprocess, multiprocessing, re
+from sys import maxint
 from tools.shared import check_call
 
 stdout = None
@@ -23,7 +24,8 @@ def run_commands(commands):
       call_process(command)
   else:
     pool = multiprocessing.Pool(processes=cores)
-    pool.map(call_process, commands, chunksize=1)
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
+    pool.map_async(call_process, commands, chunksize=1).get(maxint)
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
@@ -33,21 +35,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
   # compile a malloc implementation and stdlibc++.)
 
-  def read_symbols(path, exclude=None):
-    symbols = map(lambda line: line.strip().split(' ')[1], open(path).readlines())
-    if exclude:
-      symbols = filter(lambda symbol: symbol not in exclude, symbols)
-    return set(symbols)
+  def read_symbols(path):
+    with open(path) as f:
+      return shared.Building.parse_symbols(f.read()).defs
 
-  default_opts = []
+  default_opts = ['-Werror']
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
   libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
-  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'), exclude=libc_symbols)
-  libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'), exclude=libc_symbols)
+  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
+  libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
   gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
+  wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -57,7 +59,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     # Hide several musl warnings that produce a lot of spam to unit test build server logs.
     # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
+    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes', '-Wno-shift-count-overflow', '-Wno-shift-negative-value', '-Wno-dangling-else', '-Wno-unknown-pragmas', '-Wno-shift-op-parentheses', '-Wno-string-plus-int', '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses', '-Wno-visibility', '-Wno-pointer-sign']
+    if shared.Settings.WASM_BACKEND:
+      c_opts.append('-Wno-error=absolute-value')
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes + default_opts + c_opts + lib_opts)
@@ -95,7 +99,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     blacklist = set(
       ['ipc', 'passwd', 'thread', 'signal', 'sched', 'ipc', 'time', 'linux', 'aio', 'exit', 'legacy', 'mq', 'process', 'search', 'setjmp', 'env', 'ldso', 'conf'] + # musl modules
       ['memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c', 'inet_addr.c', 'res_query.c', 'gai_strerror.c', 'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c', 'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c', 'usleep.c', 'alarm.c', 'syscall.c'] + # individual files
-      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c'] # individual math files
+      ['abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c', 'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c'] # individual math files
     )
     # TODO: consider using more math code from musl, doing so makes box2d faster
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
@@ -124,34 +128,48 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files += [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'thread', x) for x in ('pthread_attr_destroy.c', 'pthread_condattr_setpshared.c', 'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c', 'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c', 'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c', 'pthread_mutex_timedlock.c', 'pthread_spin_lock.c', 'pthread_attr_setdetachstate.c', 'pthread_cond_init.c', 'pthread_mutex_trylock.c', 'pthread_spin_trylock.c', 'pthread_attr_setguardsize.c', 'pthread_cond_signal.c', 'pthread_mutex_unlock.c', 'pthread_spin_unlock.c', 'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c', 'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c', 'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c', 'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c', 'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c', 'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c', 'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c', 'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c', 'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c', 'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c', 'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c', 'pthread_rwlock_timedrdlock.c', 'sem_unlink.c', 'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c', 'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c', 'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c', '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c', 'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c', 'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c', 'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c', 'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c', 'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c', 'pthread_condattr_setclock.c', 'pthread_mutex_init.c', 'pthread_setspecific.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_wasm_libc(libname):
+    # in asm.js we just use Math.sin etc., which is good for code size. But wasm doesn't have such builtins, so
+    # we need to bundle in more code
+    # we also build in musl versions of things that we have hand-optimized asm.js for
+    files = ([shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'math', x) for x in ('cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c', 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c')] +
+             [shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'string', x) for x in ('memcpy.c', 'memset.c', 'memmove.c')])
+
+    return build_libc(libname, files, ['-O2'])
+
   # libcxx
   def create_libcxx(libname):
     logging.debug('building libcxx for cache')
     libcxx_files = [
       'algorithm.cpp',
-      'condition_variable.cpp',
-      'future.cpp',
-      'iostream.cpp',
-      'memory.cpp',
-      'random.cpp',
-      'stdexcept.cpp',
-      'system_error.cpp',
-      'utility.cpp',
+      'any.cpp',
       'bind.cpp',
-      'debug.cpp',
-      'hash.cpp',
-      'mutex.cpp',
-      'string.cpp',
-      'thread.cpp',
-      'valarray.cpp',
       'chrono.cpp',
+      'condition_variable.cpp',
+      'debug.cpp',
       'exception.cpp',
+      'future.cpp',
+      'hash.cpp',
       'ios.cpp',
+      'iostream.cpp',
       'locale.cpp',
+      'memory.cpp',
+      'mutex.cpp',
+      'new.cpp',
+      'optional.cpp',
+      'random.cpp',
       'regex.cpp',
-      'strstream.cpp'
+      'shared_mutex.cpp',
+      'stdexcept.cpp',
+      'string.cpp',
+      'strstream.cpp',
+      'system_error.cpp',
+      'thread.cpp',
+      'typeinfo.cpp',
+      'utility.cpp',
+      'valarray.cpp'
     ]
-    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
+    return build_libcxx(os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files, ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')], has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
@@ -162,13 +180,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
       'cxa_exception_storage.cpp',
+      'cxa_guard.cpp',
       'cxa_new_delete.cpp',
       'cxa_handlers.cpp',
       'exception.cpp',
       'stdexcept.cpp',
       'typeinfo.cpp',
-      'private_typeinfo.cpp',
-      os.path.join('..', '..', 'libcxx', 'new.cpp'),
+      'private_typeinfo.cpp'
     ]
     return build_libcxx(os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files, ['-Oz', '-I' + shared.path_from_root('system', 'lib', 'libcxxabi', 'include')])
 
@@ -177,6 +195,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     o = in_temp('gl.o')
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'gl.c'), '-o', o])
     return o
+
+  def create_compiler_rt(libname):
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
+    filenames = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+    files = (os.path.join(srcdir, f) for f in filenames)
+
+    o_s = []
+    commands = []
+    for src in files:
+      o = in_temp(os.path.basename(src) + '.o')
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
+      o_s.append(o)
+    run_commands(commands)
+    shared.Building.emar('cr', in_temp(libname), o_s)
+    return in_temp(libname)
 
   def create_dlmalloc(out_name, clflags):
     o = in_temp(out_name)
@@ -203,6 +236,33 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     lib = in_temp(libname)
     shared.Building.link([dlmalloc_o, split_malloc_o], lib)
     return lib
+
+  def create_wasm_compiler_rt(libname):
+    srcdir = shared.path_from_root('system', 'lib', 'compiler-rt', 'lib', 'builtins')
+    filenames = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'comparetf2.c', 'divtf3.c', 'divti3.c', 'udivmodti4.c',
+                 'extenddftf2.c', 'extendsftf2.c',
+                 'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
+                 'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
+                 'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c',
+                 'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
+                 'modti3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
+                 'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
+                 'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
+                 'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
+    files = (os.path.join(srcdir, f) for f in filenames)
+    o_s = []
+    commands = []
+    for src in files:
+      o = in_temp(os.path.basename(src) + '.o')
+      # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
+      # get emcc to output wasm .s files, which is what we archive in compiler_rt.
+      commands.append([shared.CLANG_CC, '--target=wasm32', '-S', shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + shared.EMSDK_OPTS)
+      o_s.append(o)
+    run_commands(commands)
+    lib = in_temp(libname)
+    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
+    return lib
+
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libcxx, etc.)
@@ -265,15 +325,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  all_needed = set()
-  for symbols in symbolses:
-    all_needed.update(symbols.undefs)
-  for symbols in symbolses:
-    all_needed.difference_update(symbols.defs)
-
-  system_libs = [('libcxx',    'a',  create_libcxx,    libcxx_symbols,    ['libcxxabi'], True),
-                 ('libcxxabi', 'bc', create_libcxxabi, libcxxabi_symbols, ['libc'],      False),
-                 ('gl',        'bc', create_gl,        gl_symbols,        ['libc'],      False)]
+  system_libs = [('libcxx',      'a',  create_libcxx,      libcxx_symbols,      ['libcxxabi'], True),
+                 ('libcxxabi',   'bc', create_libcxxabi,   libcxxabi_symbols,   ['libc'],      False),
+                 ('gl',          'bc', create_gl,          gl_symbols,          ['libc'],      False),
+                 ('compiler-rt', 'a',  create_compiler_rt, compiler_rt_symbols, ['libc'],      False)]
 
   # malloc dependency is force-added, so when using pthreads, it must be force-added
   # as well, since malloc needs to be thread-safe, so it depends on mutexes.
@@ -300,6 +355,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       else:
         system_libs += [('dlmalloc', 'bc', create_dlmalloc_singlethreaded, [], [], False)]
         force.add('dlmalloc')
+
+  # if building to wasm, we need more math code, since we have less builtins
+  if shared.Settings.BINARYEN:
+    system_libs += [('wasm-libc', 'bc', create_wasm_libc, wasm_libc_symbols, [], False)]
+    # if libc is included, we definitely must be, as it might need us
+    for data in system_libs:
+      if data[3] == libc_symbols:
+        data[4].append('wasm-libc')
+        break
+    else:
+      raise Exception('did not find libc?')
 
   # Go over libraries to figure out which we must include
   def maybe_noexcept(name):
@@ -340,6 +406,21 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ret.append(libfile)
       force = force.union(deps)
   ret.sort(key=lambda x: x.endswith('.a')) # make sure to put .a files at the end.
+
+  # Handle backend compiler_rt separately because it is not a bitcode system lib like the others.
+  # Here, just ensure that it's in the cache.
+  if shared.Settings.BINARYEN and shared.Settings.WASM_BACKEND:
+    crt_file = shared.Cache.get('wasm_compiler_rt.a', lambda: create_wasm_compiler_rt('wasm_compiler_rt.a'), extension='a')
+
+  for actual in ret:
+    if os.path.basename(actual) == 'libcxxabi.bc':
+      # libcxxabi and libcxx *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
+      # exceptions, but since the string methods in the headers are *weakly* linked, then
+      # we might have exception-supporting versions of them from elsewhere, and if libcxxabi
+      # is first then it would "win", breaking exception throwing from those string
+      # header methods. To avoid that, we link libcxxabi last.
+      ret = filter(lambda f: f != actual, ret) + [actual]
+
   return ret
 
 #---------------------------------------------------------------------------
@@ -485,7 +566,7 @@ class Ports:
   @staticmethod
   def build_project(name, subdir, configure, generated_libs, post_create=None):
     def create():
-      logging.warning('building port: ' + name + '...')
+      logging.info('building port: ' + name + '...')
       port_build_dir = Ports.get_build_dir()
       shared.safe_ensure_dirs(port_build_dir)
       libs = shared.Building.build_library(name, port_build_dir, None, generated_libs, source_dir=os.path.join(Ports.get_dir(), name, subdir), copy_project=True,
@@ -500,6 +581,34 @@ class Ports:
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
     shared.try_delete(shared.Cache.get_path(name + '.bc'))
 
+  @staticmethod
+  def build_native(subdir):
+    shared.Building.ensure_no_emmake('We cannot build the native system library in "%s" when under the influence of emmake/emconfigure. To avoid this, create system dirs beforehand, so they are not auto-built on demand. For example, for binaryen, do "python embuilder.py build binaryen"' % subdir)
+
+    old = os.getcwd()
+
+    try:
+      os.chdir(subdir)
+
+      cmake_build_type = 'Release'
+
+      # Configure
+      subprocess.check_call(['cmake', '-DCMAKE_BUILD_TYPE=' + cmake_build_type, '.'])
+
+      # Check which CMake generator CMake used so we know which form to pass parameters to make/msbuild/etc. build tool.
+      generator = re.search('CMAKE_GENERATOR:INTERNAL=(.*)$', open('CMakeCache.txt', 'r').read(), re.MULTILINE).group(1)
+
+      # Make variants support '-jX' for number of cores to build, MSBuild does /maxcpucount:X
+      num_cores = os.environ.get('EMCC_CORES') or str(multiprocessing.cpu_count())
+      make_args = []
+      if 'Makefiles' in generator: make_args = ['--', '-j', num_cores]
+      elif 'Visual Studio' in generator: make_args = ['--config', cmake_build_type, '--', '/maxcpucount:' + num_cores]
+
+      # Kick off the build.
+      subprocess.check_call(['cmake', '--build', '.'] + make_args)
+    finally:
+      os.chdir(old)
+
 def get_ports(settings):
   ret = []
 
@@ -507,11 +616,12 @@ def get_ports(settings):
   try:
     process_dependencies(settings)
     for port in ports.ports:
-      ret += port.get(Ports, settings, shared)
+      # ports return their output files, which will be linked, or a txt file
+      ret += filter(lambda f: not f.endswith('.txt'), port.get(Ports, settings, shared))
     ok = True
   finally:
     if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-cache --clear-ports    and then run this command again')
+      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-ports    and then run this command again')
 
   ret.reverse()
   return ret
@@ -531,4 +641,3 @@ def show_ports():
   print 'Available ports:'
   for port in ports.ports:
     print '   ', port.show()
-

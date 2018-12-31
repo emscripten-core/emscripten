@@ -889,6 +889,22 @@ Classes
       :param Policies...: |policies-argument|
       :returns: |class_-function-returns|
 
+   .. cpp:function:: const class_& class_property(const char* fieldName, FieldType *field) const
+
+      .. code-block:: cpp
+
+         //prototype
+         template<typename FieldType>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType *field) const
+
+      **HamishW** Add description.
+
+      :param const char* fieldName: **HamishW** Add description.
+      :param FieldType ClassType::*field: **HamishW** Add description.
+
+      :returns: |class_-function-returns|
+
+
 
 
 

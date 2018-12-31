@@ -10,7 +10,12 @@
 //                   or otherwise).
 
 var LibrarySDL = {
-  $SDL__deps: ['$FS', '$PATH', '$Browser', 'SDL_GetTicks'],
+  $SDL__deps: [
+#if NO_FILESYSTEM == 0
+    '$FS',
+#endif
+    '$PATH', '$Browser', 'SDL_GetTicks'
+  ],
   $SDL: {
     defaults: {
       width: 320,
@@ -385,7 +390,8 @@ var LibrarySDL = {
       var webGLContextAttributes = {
         antialias: ((SDL.glAttributes[13 /*SDL_GL_MULTISAMPLEBUFFERS*/] != 0) && (SDL.glAttributes[14 /*SDL_GL_MULTISAMPLESAMPLES*/] > 1)),
         depth: (SDL.glAttributes[6 /*SDL_GL_DEPTH_SIZE*/] > 0),
-        stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0)
+        stencil: (SDL.glAttributes[7 /*SDL_GL_STENCIL_SIZE*/] > 0),
+        alpha: (SDL.glAttributes[3 /*SDL_GL_ALPHA_SIZE*/] > 0)
       };
       
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
@@ -700,7 +706,7 @@ var LibrarySDL = {
             SDL.canRequestFullscreen = true;
           } else if (event.type === 'keyup' || event.type === 'mouseup') {
             if (SDL.isRequestingFullscreen) {
-              Module['requestFullScreen'](true, true);
+              Module['requestFullscreen'](/*lockPointer=*/true, /*resizeCanvas=*/true);
               SDL.isRequestingFullscreen = false;
             }
             SDL.canRequestFullscreen = false;
@@ -1123,7 +1129,7 @@ var LibrarySDL = {
           // graph will send the onended signal, but we don't want to process that, since pausing should not clear/destroy the audio
           // channel.
           audio.webAudioNode['onended'] = undefined;
-          audio.webAudioNode.stop();
+          audio.webAudioNode.stop(0); // 0 is a default parameter, but WebKit is confused by it #3861
           audio.webAudioNode = undefined;
         } catch(e) {
           Module.printErr('pauseWebAudio failed: ' + e);
@@ -1257,6 +1263,8 @@ var LibrarySDL = {
     // Converts the double-based browser axis value [-1, 1] into SDL's 16-bit
     // value [-32768, 32767]
     joystickAxisValueConversion: function(value) {
+      // Make sure value is properly clamped
+      value = Math.min(1, Math.max(value, -1));
       // Ensures that 0 is 0, 1 is 32767, and -1 is 32768.
       return Math.ceil(((value+1) * 32767.5) - 32768);
     },
@@ -1731,7 +1739,7 @@ var LibrarySDL = {
   SDL_ShowCursor: function(toggle) {
     switch (toggle) {
       case 0: // SDL_DISABLE
-        if (Browser.isFullScreen) { // only try to lock the pointer when in full screen mode
+        if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
           Module['canvas'].requestPointerLock();
           return 0;
         } else { // else return SDL_ENABLE to indicate the failure
@@ -2086,8 +2094,8 @@ var LibrarySDL = {
   SDL_WM_GrabInput: function() {},
   
   SDL_WM_ToggleFullScreen: function(surf) {
-    if (Browser.isFullScreen) {
-      Module['canvas'].cancelFullScreen();
+    if (Browser.isFullscreen) {
+      Module['canvas'].exitFullscreen();
       return 1;
     } else {
       if (!SDL.canRequestFullscreen) {
@@ -2162,8 +2170,9 @@ var LibrarySDL = {
         if (!raw) {
           if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
-          var name = Module['_malloc'](filename.length+1);
-          writeStringToMemory(filename, name);
+          var lengthBytes = lengthBytesUTF8(filename)+1;
+          var name = Module['_malloc'](lengthBytes);
+          stringToUTF8(filename, name, lengthBytes);
           addCleanup(function() {
             Module['_free'](name);
           });
@@ -2952,7 +2961,7 @@ var LibrarySDL = {
   },
 
   TTF_OpenFont: function(filename, size) {
-    filename = FS.standardizePath(Pointer_stringify(filename));
+    filename = PATH.normalize(Pointer_stringify(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
       name: filename, // but we don't actually do anything with it..
@@ -3199,7 +3208,7 @@ var LibrarySDL = {
   SDL_DestroyRenderer: function(renderer) {},
 
   SDL_GetWindowFlags: function(x, y) {
-    if (Browser.isFullScreen) {
+    if (Browser.isFullscreen) {
        return 1;
     }
 
@@ -3236,8 +3245,8 @@ var LibrarySDL = {
   SDL_LogSetOutputFunction: function(callback, userdata) {},
 
   SDL_SetWindowFullscreen: function(window, fullscreen) {
-    if (Browser.isFullScreen) {
-      Module['canvas'].cancelFullScreen();
+    if (Browser.isFullscreen) {
+      Module['canvas'].exitFullscreen();
       return 1;
     } else {
       return 0;

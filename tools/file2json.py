@@ -12,7 +12,7 @@ VARNAME - the variable to store it in (the output will be VARNAME = [...])
 
 import os, sys
 
-data = open(sys.argv[1], 'r').read()
+data = open(sys.argv[1], 'rb').read()
 sdata = map(lambda x: str(ord(x)) + ',', data)
 sdata[-1] = sdata[-1].replace(',', '')
 lined = []
@@ -31,7 +31,7 @@ else:
 '''
 or (but this fails, we get a string at runtime?)
 
-data = open(sys.argv[1], 'r').read()
+data = open(sys.argv[1], 'rb').read()
 counter = 0
 print '[',
 for i in range(len(data)):

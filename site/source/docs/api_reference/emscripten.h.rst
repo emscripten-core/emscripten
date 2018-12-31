@@ -48,7 +48,9 @@ Defines
 	Input-output versions of EM_ASM.
  	
 	:c:macro:`EM_ASM_` (an extra "_" is added) or :c:macro:`EM_ASM_ARGS` allow values (``int`` or ``double``) to be sent into the code.
-	
+
+	.. note:: The C preprocessor does not have a full understanding of JavaScript tokens, of course. An issue you might see is that it is not aware of nesting due to ``{`` or ``[``, it is only aware of ``,`` and ``(``. As a result, if you have a JavaScript array ``[1,2,3]`` then you might get an error, but can fix things with parentheses: ``([1,2,3])``.
+
 	If you also want a return value, :c:macro:`EM_ASM_INT` receives arguments (of ``int`` or ``double`` type) and returns an ``int``; :c:macro:`EM_ASM_DOUBLE` does the same and returns a ``double``.
 	
 	Arguments arrive as ``$0``, ``$1`` etc. The output value should be returned: ::
@@ -110,7 +112,7 @@ Functions
 
 .. c:function:: void emscripten_run_script(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. 
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -119,7 +121,7 @@ Functions
 	
 .. c:function:: int emscripten_run_script_int(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. 
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -129,7 +131,7 @@ Functions
 	
 .. c:function:: char *emscripten_run_script_string(const char *script)
 
-	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls.
+	Interface to the underlying JavaScript engine. This function will ``eval()`` the given script. Note that this overload uses a single buffer shared between calls. Note: If -s NO_DYNAMIC_EXECUTION=1 is set, this function will not be available.
 
 	:param script: The script to evaluate.
 	:type script: const char* 
@@ -315,7 +317,7 @@ Functions
 	:rtype: double
 	:return: The pixel ratio or 1.0 if not supported.
 
-.. c:function::void emscripten_hide_mouse(void)
+.. c:function:: void emscripten_hide_mouse(void)
 
 	Hide the OS mouse cursor over the canvas.
 
@@ -447,7 +449,7 @@ Functions
 	To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
 
 	:param const char* url: The URL to load.
-	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
 	
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
@@ -459,7 +461,7 @@ Functions
 	When the file is ready the ``onload`` callback will be called. If any error occurs ``onerror`` will be called. The callbacks are called with the file as their argument.
 	
 	:param const char* url: The URL to load.
-	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
+	:param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 	:param em_str_callback_func onload: Callback on successful load of the file. The callback function parameter value is:	
 	
 		- *(const char*)* : The name of the ``file`` that was loaded from the URL.
@@ -506,7 +508,7 @@ Functions
 	
 	:param url: The URL of the file to load.
 	:type url: const char* 
-	:param file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten.
+	:param file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 	:type file: const char* 
 	:param requesttype: 'GET' or 'POST'.
 	:type requesttype: const char* 	
@@ -548,8 +550,8 @@ Functions
 	:param param: Request parameters for POST requests (see ``requesttype``). The parameters are specified in the same way as they would be in the URL for an equivalent GET request: e.g. ``key=value&key2=value2``.
 	:type param: const char*
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
-	:param const int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
-	:type free: const int
+	:param int free: Tells the runtime whether to free the returned buffer after ``onload`` is complete. If ``false`` freeing the buffer is the receiver's responsibility.
+	:type free: int
 	:param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
@@ -571,7 +573,7 @@ Functions
 	:returns: A handle to request (``int``) that can be used to :c:func:`abort <emscripten_async_wget2_abort>` the request.		
 
 
-.. c:function:: emscripten_async_wget2_abort(int handle)
+.. c:function:: void emscripten_async_wget2_abort(int handle)
 
 	Abort an asynchronous request raised using :c:func:`emscripten_async_wget2` or :c:func:`emscripten_async_wget2_data`.
 	
@@ -635,7 +637,7 @@ Emscripten Asynchronous IndexedDB API
 	:param ptr: A pointer to the data to store.
 	:param num: How many bytes to store.
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
-	:param em_async_wget_onload_func onload: Callback on successful load of the URL into the buffer. The callback function parameter values are:	
+	:param em_arg_callback_func onstore: Callback on successful store of the data buffer to the URL. The callback function parameter values are:
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
 	
@@ -660,7 +662,7 @@ Emscripten Asynchronous IndexedDB API
 	
 		- *(void*)* : Equal to ``arg`` (user defined data).
 
-.. c:function:: void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_arg_callback_func oncheck, em_arg_callback_func onerror)
+.. c:function:: void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror)
 		 
 	Checks if data with a certain ID exists in the local IndexedDB storage asynchronously.
 	
@@ -669,7 +671,7 @@ Emscripten Asynchronous IndexedDB API
 	:param db_name: The IndexedDB database.
 	:param file_id: The identifier of the data.
 	:param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
-	:param em_arg_callback_func oncheck: Callback on successful check, with arguments
+	:param em_idb_exists_func oncheck: Callback on successful check, with arguments
 
 		- *(void*)* : Equal to ``arg`` (user defined data).
 		- *int* : Whether the file exists or not.
@@ -933,7 +935,7 @@ Functions
 
 	:param double x: The double.
 	:param char* to: A pre-allocated buffer of sufficient size, or NULL if no output is requested (useful to get the necessary size).
-	:param signed max: The maximum number of characters to write
+	:param signed max: The maximum number of bytes that can be written to the output pointer 'to' (including the null terminator).
 	:rtype: The number of necessary bytes, not including the null terminator (actually written, if ``to`` is not NULL).
 	
 .. _emscripten-api-reference-sockets:
@@ -996,14 +998,14 @@ Callback functions
 Functions
 ---------
 
-.. c:function:: void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback *callback)
+.. c:function:: void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback)
 
 	Triggered by a ``WebSocket`` error. 
 	
 	See :ref:`emscripten-api-reference-sockets` for more information.
 	
 	:param void* userData: Arbitrary user data to be passed to the callback.
-	:param em_socket_error_callback* callback: Pointer to a callback function. The callback returns a file descriptor, error code and message, and the arbitrary ``userData`` passed to this function.
+	:param em_socket_error_callback callback: Pointer to a callback function. The callback returns a file descriptor, error code and message, and the arbitrary ``userData`` passed to this function.
 
 
 .. c:function:: void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback)
@@ -1168,21 +1170,21 @@ Typedefs
 Functions
 ---------
 
-.. c::function:: void emscripten_sleep(unsigned int ms)
+.. c:function:: void emscripten_sleep(unsigned int ms)
 
     Sleep for `ms` milliseconds.
 
-.. c::function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
+.. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
 
     Create a coroutine which will be run as `func(arg)`.
 
     :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
 
-.. c::function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
+.. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
 
     Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
 
-.. c::function:: void emscripten_yield(void)
+.. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
     

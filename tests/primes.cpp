@@ -1,5 +1,5 @@
-#include<stdio.h>
-#include<math.h>
+#include <stdio.h>
+#include <math.h>
 int main(int argc, char **argv) {
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {

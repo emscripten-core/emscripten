@@ -1,5 +1,7 @@
 mergeInto(LibraryManager.library, {
+#if NO_FILESYSTEM == 0
   $PATH__deps: ['$FS'],
+#endif
   $PATH: {
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.

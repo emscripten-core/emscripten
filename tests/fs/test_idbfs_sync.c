@@ -115,6 +115,17 @@ void test() {
 
 #endif
 
+#if EXTRA_WORK
+  EM_ASM(
+    for (var i = 0; i < 100; i++) {
+      FS.syncfs(function (err) {
+        assert(!err);
+        console.log('extra work');
+      });
+    }
+  );
+#endif
+
   // sync from memory state to persisted and then
   // run 'success'
   EM_ASM(
