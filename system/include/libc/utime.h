@@ -9,8 +9,7 @@ extern "C" {
 
 #include <bits/alltypes.h>
 
-struct utimbuf
-{
+struct utimbuf {
 	time_t actime;
 	time_t modtime;
 };

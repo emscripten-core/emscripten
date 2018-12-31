@@ -153,7 +153,7 @@ function generateMap(mappings, sourceRoot, mapFileBaseName, generatedLineOffset)
 function appendMappingURL(fileName, source, mapFileName) {
   var lastLine = source.slice(source.lastIndexOf('\n'));
   if (!/sourceMappingURL/.test(lastLine))
-    fs.appendFileSync(fileName, '//@ sourceMappingURL=' + path.basename(mapFileName));
+    fs.appendFileSync(fileName, '//# sourceMappingURL=' + path.basename(mapFileName));
 }
 
 function parseArgs(args) {

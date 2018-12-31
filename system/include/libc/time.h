@@ -7,16 +7,21 @@ extern "C" {
 
 #include <features.h>
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
+
 
 #define __NEED_size_t
 #define __NEED_time_t
 #define __NEED_clock_t
+#define __NEED_struct_timespec
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
  || defined(_BSD_SOURCE)
-#define __NEED_struct_timespec
 #define __NEED_clockid_t
 #define __NEED_timer_t
 #define __NEED_pid_t
@@ -30,8 +35,7 @@ extern "C" {
 #define __tm_zone tm_zone
 #endif
 
-struct tm
-{
+struct tm {
 	int tm_sec;
 	int tm_min;
 	int tm_hour;
@@ -54,9 +58,11 @@ struct tm *gmtime (const time_t *);
 struct tm *localtime (const time_t *);
 char *asctime (const struct tm *);
 char *ctime (const time_t *);
+int timespec_get(struct timespec *, int);
 
 #define CLOCKS_PER_SEC 1000000L
 
+#define TIME_UTC 1
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
@@ -71,8 +77,7 @@ char *ctime_r (const time_t *, char *);
 
 void tzset (void);
 
-struct itimerspec
-{
+struct itimerspec {
 	struct timespec it_interval;
 	struct timespec it_value;
 };
@@ -82,8 +87,8 @@ struct itimerspec
 #define CLOCK_PROCESS_CPUTIME_ID 2
 #define CLOCK_THREAD_CPUTIME_ID  3
 #define CLOCK_MONOTONIC_RAW      4
-#define CLOCK_REALTIME_COURSE    5
-#define CLOCK_MONOTONIC_COURSE   6
+#define CLOCK_REALTIME_COARSE    5
+#define CLOCK_MONOTONIC_COARSE   6
 #define CLOCK_BOOTTIME           7
 #define CLOCK_REALTIME_ALARM     8
 #define CLOCK_BOOTTIME_ALARM     9
@@ -109,7 +114,7 @@ int timer_getoverrun (timer_t);
 #endif
 
 
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)
+#if defined(_XOPEN_SOURCE) || defined(_BSD_SOURCE) || defined(_GNU_SOURCE)
 char *strptime (const char *__restrict, const char *__restrict, struct tm *__restrict);
 extern int daylight;
 extern long timezone;
@@ -120,7 +125,7 @@ struct tm *getdate (const char *);
 
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-int stime(time_t *);
+int stime(const time_t *);
 time_t timegm(struct tm *);
 #endif
 

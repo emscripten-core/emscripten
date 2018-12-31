@@ -8,7 +8,7 @@
 
 #include <SDL/SDL.h>
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include "emscripten.h"
@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   #define emColor4ubv(x)
 #else
 #define emColor4ubv(x) glColor4ubv(x)
@@ -392,7 +392,7 @@ int main( int argc, char* argv[] )
      */
     one_iter(); // just one for testing purposes
 
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Delay(2000);
 #endif    
     

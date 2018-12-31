@@ -9,10 +9,21 @@
 #     - http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-10
 
 require 'gserver'
+require 'openssl'
 require 'stringio'
 require 'digest/md5'
 require 'digest/sha1'
 require 'base64'
+
+unless OpenSSL::SSL::SSLSocket.instance_methods.index("read_nonblock")
+  module OpenSSL
+    module SSL
+      class SSLSocket
+        alias :read_nonblock :readpartial
+      end
+    end
+  end
+end
 
 class EClose < Exception
 end
@@ -44,7 +55,17 @@ Sec-WebSocket-Accept: %s\r
     host = opts['listen_host'] || GServer::DEFAULT_HOST
 
     super(port, host)
-   
+    msg opts.inspect
+    if opts['server_cert']
+      msg "creating ssl context"
+      @sslContext = OpenSSL::SSL::SSLContext.new
+      @sslContext.cert = OpenSSL::X509::Certificate.new(File.open(opts['server_cert']))
+      @sslContext.key = OpenSSL::PKey::RSA.new(File.open(opts['server_key']))
+      @sslContext.ca_file = opts['server_cert']
+      @sslContext.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      @sslContext.verify_depth = 0
+    end
+
     @@client_id = 0  # Track client number total on class
 
     @verbose = opts['verbose']
@@ -53,6 +74,18 @@ Sec-WebSocket-Accept: %s\r
   
   def serve(io)
     @@client_id += 1
+    msg self.inspect
+    if @sslContext
+      msg "Enabling SSL context"
+      ssl = OpenSSL::SSL::SSLSocket.new(io, @sslContext)
+      #ssl.sync_close = true
+      #ssl.sync = true
+      msg "SSL accepting"
+      ssl.accept
+      io = ssl # replace the unencrypted handle with the encrypted one
+    end
+    
+    msg "initializing thread"
 
     # Initialize per thread state
     t = Thread.current
@@ -61,11 +94,11 @@ Sec-WebSocket-Accept: %s\r
     t[:recv_part] = nil
     t[:base64] = nil
 
-    puts "in serve, client: #{t[:client].inspect}"
+    puts "in serve, client: #{t[:my_client_id].inspect}"
 
     begin
       t[:client] = do_handshake(io)
-      new_client(t[:client])
+      new_websocket_client(t[:client])
     rescue EClose => e
       msg "Client closed: #{e.message}"
       return
@@ -85,12 +118,12 @@ Sec-WebSocket-Accept: %s\r
     if @verbose then print token; STDOUT.flush; end
   end
 
-  def msg(msg)
-    puts "% 3d: %s" % [Thread.current[:my_client_id], msg]
+  def msg(m)
+    printf("% 3d: %s\n", Thread.current[:my_client_id] || 0, m)
   end
 
-  def vmsg(msg)
-    if @verbose then msg(msg) end
+  def vmsg(m)
+    if @verbose then msg(m) end
   end
 
   #
@@ -110,12 +143,11 @@ Sec-WebSocket-Accept: %s\r
 
   def unmask(buf, hlen, length)
     pstart = hlen + 4
-    mask = buf[hlen...hlen+4]
+    mask = buf[hlen...hlen+4].each_byte.map{|b|b}
     data = buf[pstart...pstart+length]
     #data = data.bytes.zip(mask.bytes.cycle(length)).map { |d,m| d^m }
-    for i in (0...data.length) do
-      data[i] ^= mask[i%4]
-    end
+    i=-1
+    data = data.each_byte.map{|b| i+=1; (b ^ mask[i % 4]).chr}.join("")
     return data
   end
 
@@ -237,7 +269,7 @@ Sec-WebSocket-Accept: %s\r
 
     while t[:send_parts].length > 0
       buf = t[:send_parts].shift
-      sent = t[:client].send(buf, 0)
+      sent = t[:client].write(buf)
 
       if sent == buf.length
         traffic "<"
@@ -257,7 +289,7 @@ Sec-WebSocket-Accept: %s\r
     closed = false
     bufs = []
 
-    buf = t[:client].recv(@@Buffer_size)
+    buf = t[:client].read_nonblock(@@Buffer_size)
 
     if buf.length == 0
       return bufs, "Client closed abrubtly"
@@ -286,10 +318,10 @@ Sec-WebSocket-Accept: %s\r
           end
         end
       else
-        if buf[0...2] == "\xff\x00":
+        if buf[0...2] == "\xff\x00"
           closed = "Client sent orderly close frame"
           break
-        elsif buf[0...2] == "\x00\xff":
+        elsif buf[0...2] == "\x00\xff"
           buf = buf[2...buf.length]
           continue # No-op frame
         elsif buf.count("\xff") == 0
@@ -308,7 +340,7 @@ Sec-WebSocket-Accept: %s\r
 
       bufs << frame['payload']
 
-      if frame['left'] > 0:
+      if frame['left'] > 0
         buf = buf[-frame['left']...buf.length]
       else
         buf = ''
@@ -328,10 +360,10 @@ Sec-WebSocket-Accept: %s\r
       end
 
       buf, lenh, lent = encode_hybi(msg, opcode=0x08, base64=false)
-      t[:client].send(buf, 0)
+      t[:client].write(buf)
     elsif t[:version] == "hixie-76"
       buf = "\xff\x00"
-      t[:client].send(buf, 0)
+      t[:client].write(buf)
     end
   end
 
@@ -344,16 +376,21 @@ Sec-WebSocket-Accept: %s\r
       raise EClose, "ignoring socket not ready"
     end
 
-    handshake = sock.recv(1024, Socket::MSG_PEEK)
-    #msg "Handshake [#{handshake.inspect}]"
+    handshake = ""
+    msg "About to read from sock [#{sock.inspect}]"
+    handshake = sock.read_nonblock(1024)
+    msg "Handshake [#{handshake.inspect}]"
 
-    if handshake == ""
+    if handshake == nil or handshake == ""
       raise(EClose, "ignoring empty handshake")
     else
       stype = "Plain non-SSL (ws://)"
       scheme = "ws"
+      if sock.class == OpenSSL::SSL::SSLSocket
+        stype = "SSL (wss://)"
+        scheme = "wss"
+      end
       retsock = sock
-      sock.recv(1024)
     end
 
     h = t[:headers] = {}
@@ -365,7 +402,7 @@ Sec-WebSocket-Accept: %s\r
       hsplit = hline.match(/^([^:]+):\s*(.+)$/)
       h[hsplit[1].strip.downcase] = hsplit[2]
     end
-    #puts "Headers: #{h.inspect}"
+    puts "Headers: #{h.inspect}"
 
     unless h.has_key?('upgrade') &&
        h['upgrade'].downcase == 'websocket'
@@ -445,7 +482,7 @@ Sec-WebSocket-Accept: %s\r
     if t[:path] then msg "Path: '%s'" % [t[:path]] end
 
     #puts "sending reponse #{response.inspect}"
-    retsock.send(response, 0)
+    retsock.write(response)
 
     # Return the WebSocket socket which may be SSL wrapped
     return retsock

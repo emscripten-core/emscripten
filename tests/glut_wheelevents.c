@@ -63,6 +63,6 @@ int main(int argc, char *argv[])
     
     result = wheel_up && wheel_down;
   
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     return 0;
 }

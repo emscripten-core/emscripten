@@ -1,11 +1,25 @@
 
 /* XXX Emscripten XXX */
-#if EMSCRIPTEN
-#define DLMALLOC_EXPORT __attribute__((__weak__, __visibility__("default")))
+#if __EMSCRIPTEN__
+#define DLMALLOC_EXPORT __attribute__((__weak__))
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
+#ifndef DLMALLOC_DEBUG
+/* dlmalloc has many checks, calls to abort() increase code size,
+   leave them only in debug builds */
+#define ABORT __builtin_unreachable()
+#endif
+/* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
+#include <emscripten/trace.h>
+
+/* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
+#if __EMSCRIPTEN_PTHREADS__
+#define USE_LOCKS 1
+#define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
+#endif
+
 #endif
 
 
@@ -601,8 +615,15 @@
 #define MAX_SIZE_T           (~(size_t)0)
 
 #ifndef USE_LOCKS /* ensure true if spin or recursive locks set */
-#define USE_LOCKS  ((defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
-(defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0))
+/* XXX: The following block adapted locally to avoid
+        clean up new Clang -Wexpansion-to-defined warnings.
+        http://lists.llvm.org/pipermail/cfe-commits/Week-of-Mon-20160118/147239.html */
+#if (defined(USE_SPIN_LOCKS) && USE_SPIN_LOCKS != 0) || \
+    (defined(USE_RECURSIVE_LOCKS) && USE_RECURSIVE_LOCKS != 0)
+#define USE_LOCKS 1
+#else
+#define USE_LOCKS 0
+#endif
 #endif /* USE_LOCKS */
 
 #if USE_LOCKS /* Spin locks for gcc >= 4.1, older gcc on x86, MSC >= 1310 */
@@ -1570,7 +1591,11 @@ extern "C" {
 #    endif
 #  endif
 #  ifdef _SC_PAGE_SIZE
-#    define malloc_getpagesize sysconf(_SC_PAGE_SIZE)
+#    if defined(__EMSCRIPTEN__)
+#      define malloc_getpagesize (4096) /* avoid sysconf calls during startup */
+#    else
+#      define malloc_getpagesize sysconf(_SC_PAGE_SIZE)
+#    endif
 #  else
 #    if defined(BSD) || defined(DGUX) || defined(HAVE_GETPAGESIZE)
 extern size_t getpagesize();
@@ -2015,6 +2040,7 @@ static void init_malloc_global_mutex() {
 }
 
 #else /* pthreads-based locks */
+
 #define MLOCK_T               pthread_mutex_t
 #define ACQUIRE_LOCK(lk)      pthread_mutex_lock(lk)
 #define RELEASE_LOCK(lk)      pthread_mutex_unlock(lk)
@@ -3184,7 +3210,7 @@ static int init_mparams(void) {
 #endif /* USE_DEV_RANDOM */
 #ifdef WIN32
                 magic = (size_t)(GetTickCount() ^ (size_t)0x55555555U);
-#elif defined(LACKS_TIME_H)
+#elif defined(LACKS_TIME_H) || defined(__EMSCRIPTEN__)
             magic = (size_t)&magic ^ (size_t)0x55555555U;
 #else
             magic = (size_t)(time(0) ^ (size_t)0x55555555U);
@@ -4683,6 +4709,10 @@ void* dlmalloc(size_t bytes) {
         
     postaction:
         POSTACTION(gm);
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_allocation(mem, bytes);
+#endif
         return mem;
     }
     
@@ -4699,6 +4729,10 @@ void dlfree(void* mem) {
      */
     
     if (mem != 0) {
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_free(mem);
+#endif
         mchunkptr p  = mem2chunk(mem);
 #if FOOTERS
         mstate fm = get_mstate_for(p);
@@ -5235,6 +5269,10 @@ void* dlrealloc(void* oldmem, size_t bytes) {
                 }
             }
         }
+#if __EMSCRIPTEN__
+        /* XXX Emscripten Tracing API. */
+        emscripten_trace_record_reallocation(oldmem, mem, bytes);
+#endif
     }
     return mem;
 }
@@ -5984,6 +6022,15 @@ int mspace_mallopt(int param_number, int value) {
 
 #endif /* MSPACES */
 
+// Export malloc and free as duplicate names emscripten_builtin_malloc and
+// emscripten_builtin_free so that applications can replace malloc and free
+// in their code, and make those replacements refer to the original dlmalloc
+// and dlfree from this file.
+// This allows an easy mechanism for hooking into memory allocation.
+#if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
+#endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */
 

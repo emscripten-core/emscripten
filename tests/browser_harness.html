@@ -1,29 +1,54 @@
+<!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Emscripten Browser Test Harness</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      background-color: #79f;
+    }
+    .full {
+      border: none;
+      width: 100%;
+      flex: 1;
+    }
+  </style>
+  <script>
+    var counter = 0;
+    function check() {
+      var request = new XMLHttpRequest();
+      request.open('GET', '/check');
+      request.send(null);
+      request.addEventListener("load", function() {
+        if (request.responseText != 'False') {
+          iframe.src = request.responseText;
+          document.getElementById('count').textContent = counter++;
+        }
+        setTimeout(check, 333);
+      });
+      request.addEventListener("error", function() {
+        document.body.innerHTML = 'Tests complete. View log in console.';
+        // Attempt to close the main window.  This works on chrome
+        // but fails on firefox with: `Scripts may not close windows that
+        // were not opened by script.`
+        window.close();
+      });
+    }
+    document.addEventListener('DOMContentLoaded', check);
+  </script>
 </head>
 <body>
-<h2><b>Running tests...</b></h2>
-<div id="output"></div>
-<script>
-  var counter = 0;
-  function check() {
-    var request = new XMLHttpRequest();
-    request.open('GET', '/check', false);
-    try {
-      request.send(null);
-      if (request.responseText != 'False') {
-        window.open(request.responseText);
-        document.getElementById('output').innerHTML += 'opened test window ' + (counter++) + '..<br>';
-      }
-      setTimeout(check, 333);
-    } catch(e) {
-      document.write('Tests complete. View log in console.');
-      return;
-    }
-  }
-  check();
-</script>
+  <span class="topbar">Running test <span id="count"></span>...</span>
+  <iframe class="full" id="iframe" allowfullscreen="true"></iframe>
 </body>
 </html>
 

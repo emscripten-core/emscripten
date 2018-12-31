@@ -65,6 +65,6 @@ int main(int argc, char *argv[])
    result += loop2();
    emscripten_run_script("keydown(65);"); // A
    result += alphakey();
-   REPORT_RESULT();
+   REPORT_RESULT(result);
    return 0;
 }

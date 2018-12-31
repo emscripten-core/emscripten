@@ -21,7 +21,7 @@ extern "C" {
 #define	LOG_MAKEPRI(f, p) (((f)<<3)|(p))
 
 #define LOG_MASK(p) (1<<(p))
-#define LOG_UPTO(p) ((1<<(p)+1)-1)
+#define LOG_UPTO(p) ((1<<((p)+1))-1)
 
 #define LOG_KERN     (0<<3)
 #define LOG_USER     (1<<3)
@@ -69,21 +69,17 @@ void vsyslog (int, const char *, va_list);
 #if defined(SYSLOG_NAMES)
 #define	INTERNAL_NOPRI 0x10
 #define	INTERNAL_MARK (LOG_NFACILITIES<<3)
-struct __CODE {
-	const char *c_name;
-	int c_val;
-};
 typedef struct {
 	char *c_name;
 	int c_val;
 } CODE;
-#define prioritynames ((CODE *)(const struct __CODE []){ \
+#define prioritynames ((CODE *)(const CODE []){ \
 	{ "alert", LOG_ALERT }, { "crit", LOG_CRIT }, { "debug", LOG_DEBUG }, \
 	{ "emerg", LOG_EMERG }, { "err", LOG_ERR }, { "error", LOG_ERR }, \
 	{ "info", LOG_INFO }, { "none", INTERNAL_NOPRI }, \
 	{ "notice", LOG_NOTICE }, { "panic", LOG_EMERG }, \
-	{ "warn", LOG_WARNING }, { "warning", LOG_WARNING }, { NULL, -1 } })
-#define facilitynames ((CODE *)(const struct __CODE []){ \
+	{ "warn", LOG_WARNING }, { "warning", LOG_WARNING }, { 0, -1 } })
+#define facilitynames ((CODE *)(const CODE []){ \
 	{ "auth", LOG_AUTH }, { "authpriv", LOG_AUTHPRIV }, \
 	{ "cron", LOG_CRON }, { "daemon", LOG_DAEMON }, { "ftp", LOG_FTP }, \
 	{ "kern", LOG_KERN }, { "lpr", LOG_LPR }, { "mail", LOG_MAIL }, \
@@ -93,7 +89,7 @@ typedef struct {
 	{ "local0", LOG_LOCAL0 }, { "local1", LOG_LOCAL1 }, \
 	{ "local2", LOG_LOCAL2 }, { "local3", LOG_LOCAL3 }, \
 	{ "local4", LOG_LOCAL4 }, { "local5", LOG_LOCAL5 }, \
-	{ "local6", LOG_LOCAL6 }, { "local7", LOG_LOCAL7 }, { NULL, -1 } })
+	{ "local6", LOG_LOCAL6 }, { "local7", LOG_LOCAL7 }, { 0, -1 } })
 #endif
 #endif
 

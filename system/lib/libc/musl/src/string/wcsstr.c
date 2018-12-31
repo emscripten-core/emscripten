@@ -1,7 +1,4 @@
 #include <wchar.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
@@ -87,7 +84,7 @@ static wchar_t *twoway_wcsstr(const wchar_t *h, const wchar_t *n)
 		}
 		/* Compare left half */
 		for (k=ms+1; k>mem && n[k-1] == h[k-1]; k--);
-		if (k == mem) return (wchar_t *)h;
+		if (k <= mem) return (wchar_t *)h;
 		h += p;
 		mem = mem0;
 	}

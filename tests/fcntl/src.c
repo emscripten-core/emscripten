@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 
 int main() {
-  int f = open("/test", O_RDWR, 0777);
+  int f = open("test", O_RDWR, 0777);
+  assert(f > 0);
 
   printf("F_DUPFD: %d\n", fcntl(f, F_DUPFD, 100) >= 100);
   printf("errno: %d\n", errno);
@@ -30,7 +32,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL: %d\n", fcntl(f, F_GETFL) == O_RDWR);
+  printf("F_GETFL: %d\n", !!(fcntl(f, F_GETFL) & O_RDWR));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;
@@ -40,7 +42,7 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL/2: %d\n", fcntl(f, F_GETFL) == (O_RDWR | O_APPEND));
+  printf("F_GETFL/2: %d\n", !!(fcntl(f, F_GETFL) & (O_RDWR | O_APPEND)));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;

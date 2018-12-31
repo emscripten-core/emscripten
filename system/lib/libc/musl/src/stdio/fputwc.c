@@ -1,4 +1,5 @@
 #include "stdio_impl.h"
+#include "locale_impl.h"
 #include <wchar.h>
 #include <limits.h>
 #include <ctype.h>
@@ -7,9 +8,10 @@ wint_t __fputwc_unlocked(wchar_t c, FILE *f)
 {
 	char mbc[MB_LEN_MAX];
 	int l;
+	locale_t *ploc = &CURRENT_LOCALE, loc = *ploc;
 
-#if 0 // XXX EMSCRIPTEN
-	f->mode |= f->mode+1;
+	if (f->mode <= 0) fwide(f, 1);
+	*ploc = f->locale;
 
 	if (isascii(c)) {
 		c = putc_unlocked(c, f);
@@ -21,23 +23,8 @@ wint_t __fputwc_unlocked(wchar_t c, FILE *f)
 		l = wctomb(mbc, c);
 		if (l < 0 || __fwritex((void *)mbc, l, f) < l) c = WEOF;
 	}
-	return c;
-#else
-  if (isascii(c)) {
-    c = fputc(c, f);
-  } else {
-    l = wctomb(mbc, c);
-    if (l < 0) c = WEOF;
-    else {
-      for (int i = 0; i < l; i++) {
-        if (fputc(mbc[i], f) == EOF) {
-          c = WEOF;
-          break;
-        }
-      }
-    }
-  }
-#endif
+	if (c==WEOF) f->flags |= F_ERR;
+	*ploc = loc;
 	return c;
 }
 

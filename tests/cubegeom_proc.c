@@ -12,7 +12,7 @@ RESULTING FROM THE USE, MODIFICATION, OR
 REDISTRIBUTION OF THIS SOFTWARE.
 */
 
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
 #define USE_GLEW 1
 #endif
 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 
     // Create a texture
 
-    GLuint boundTex = 123;
+    GLint boundTex = 123;
     assert(!glGetError());
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
     assert(!glGetError());
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
   
-#if !EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Delay(1500);
 #endif
 

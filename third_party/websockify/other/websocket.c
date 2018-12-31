@@ -795,7 +795,7 @@ void start_server() {
         }
         handler_msg("handler exit\n");
     } else {
-        handler_msg("wsproxy exit\n");
+        handler_msg("websockify exit\n");
     }
 
 }

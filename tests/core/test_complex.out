@@ -1,0 +1,8 @@
+value = real 1.00 imag 3.00
+abs = 3.16
+value = real 1.00 imag -3.00
+value = real -2.69 imag 0.38
+value = real 1.00 imag -3.00
+value = real 1.25 imag 0.00
+value = real 0.50 imag 0.00
+value = real 0.00 imag 1.00

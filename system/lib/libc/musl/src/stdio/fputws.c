@@ -1,29 +1,28 @@
 #include "stdio_impl.h"
+#include "locale_impl.h"
 #include <wchar.h>
 
 int fputws(const wchar_t *restrict ws, FILE *restrict f)
 {
 	unsigned char buf[BUFSIZ];
 	size_t l=0;
+	locale_t *ploc = &CURRENT_LOCALE, loc = *ploc;
 
 	FLOCK(f);
 
-#if 0 // XXX EMSCRIPTEN
-	f->mode |= f->mode+1;
-#endif
+	fwide(f, 1);
+	*ploc = f->locale;
 
 	while (ws && (l = wcsrtombs((void *)buf, (void*)&ws, sizeof buf, 0))+1 > 1)
-#if 0 // XXX EMSCRIPTEN
 		if (__fwritex(buf, l, f) < l) {
-#else
-		if (fwrite(buf, 1, l, f) < l) {
-#endif
 			FUNLOCK(f);
+			*ploc = loc;
 			return -1;
 		}
 
 	FUNLOCK(f);
 
+	*ploc = loc;
 	return l; /* 0 or -1 */
 }
 

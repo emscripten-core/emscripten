@@ -42,10 +42,31 @@ union ldshape {
 		uint64_t hi;
 	} i2;
 };
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384 && __BYTE_ORDER == __BIG_ENDIAN
+union ldshape {
+	long double f;
+	struct {
+		uint16_t se;
+		uint16_t top;
+		uint32_t mid;
+		uint64_t lo;
+	} i;
+	struct {
+		uint64_t hi;
+		uint64_t lo;
+	} i2;
+};
 #else
 #error Unsupported long double representation
 #endif
 
+#ifdef __EMSCRIPTEN__
+/*
+ * asm.js doesn't have user-accessible floating point exceptions, so there's
+ * no point in trying to force expression evaluations to produce them.
+ */
+#define FORCE_EVAL(x)
+#else
 #define FORCE_EVAL(x) do {                        \
 	if (sizeof(x) == sizeof(float)) {         \
 		volatile float __x;               \
@@ -58,6 +79,7 @@ union ldshape {
 		__x = (x);                        \
 	}                                         \
 } while(0)
+#endif
 
 /* Get two 32 bit ints from a double.  */
 #define EXTRACT_WORDS(hi,lo,d)                    \
@@ -128,6 +150,18 @@ do {                                              \
   (d) = __u.f;                                    \
 } while (0)
 
+#undef __CMPLX
+#undef CMPLX
+#undef CMPLXF
+#undef CMPLXL
+
+#define __CMPLX(x, y, t) \
+	((union { _Complex t __z; t __xy[2]; }){.__xy = {(x),(y)}}.__z)
+
+#define CMPLX(x, y) __CMPLX(x, y, double)
+#define CMPLXF(x, y) __CMPLX(x, y, float)
+#define CMPLXL(x, y) __CMPLX(x, y, long double)
+
 /* fdlibm kernel functions */
 
 int    __rem_pio2_large(double*,double*,int,int,int);
@@ -154,16 +188,5 @@ long double __tanl(long double, long double, int);
 /* polynomial evaluation */
 long double __polevll(long double, const long double *, int);
 long double __p1evll(long double, const long double *, int);
-
-#if 0
-/* Attempt to get strict C99 semantics for assignment with non-C99 compilers. */
-#define STRICT_ASSIGN(type, lval, rval) do {    \
-        volatile type __v = (rval);             \
-        (lval) = __v;                           \
-} while (0)
-#else
-/* Should work with -fexcess-precision=standard (>=gcc-4.5) or -ffloat-store */
-#define STRICT_ASSIGN(type, lval, rval) ((lval) = (type)(rval))
-#endif
 
 #endif

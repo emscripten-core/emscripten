@@ -6,8 +6,6 @@ extern "C" {
 
 #include <features.h>
 
-#include <signal.h>
-
 #define __NEED_pid_t
 #define __NEED_id_t
 #include <bits/alltypes.h>
@@ -19,8 +17,14 @@ typedef enum {
 } idtype_t;
 
 pid_t wait (int *);
-int waitid (idtype_t, id_t, siginfo_t *, int);
 pid_t waitpid (pid_t, int *, int );
+
+#if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
+ || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
+ || defined(_BSD_SOURCE)
+#include <signal.h>
+int waitid (idtype_t, id_t, siginfo_t *, int);
+#endif
 
 #if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
 #include <sys/resource.h>
@@ -46,7 +50,7 @@ pid_t wait4 (pid_t, int *, int, struct rusage *);
 #define WCOREDUMP(s) ((s) & 0x80)
 #define WIFEXITED(s) (!WTERMSIG(s))
 #define WIFSTOPPED(s) ((short)((((s)&0xffff)*0x10001)>>8) > 0x7f00)
-#define WIFSIGNALED(s) (((s)&0xffff)-1 < 0xffu)
+#define WIFSIGNALED(s) (((s)&0xffff)-1U < 0xffu)
 #define WIFCONTINUED(s) ((s) == 0xffff)
 
 #ifdef __cplusplus

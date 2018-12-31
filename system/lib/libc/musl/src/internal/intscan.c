@@ -83,6 +83,7 @@ unsigned long long __intscan(FILE *f, unsigned base, int pok, unsigned long long
 		for (; val[c]<base; c=shgetc(f));
 		errno = ERANGE;
 		y = lim;
+		if (lim&1) neg = 0;
 	}
 done:
 	shunget(f);

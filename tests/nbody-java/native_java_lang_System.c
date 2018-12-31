@@ -97,7 +97,7 @@ JAVA_OBJECT java_lang_System_getEncoding___int(JAVA_INT n1)
 {
     //XMLVM_BEGIN_NATIVE[java_lang_System_getEncoding___int]
     //Get charset from the OS
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 	return xmlvm_create_java_string("UTF-8");
 #else
     char charset[CHARSETBUFF];

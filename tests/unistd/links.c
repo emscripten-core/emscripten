@@ -42,6 +42,7 @@ int main() {
   printf("result: %s\n\n", buffer);
   errno = 0;
 
+  buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = '*';
   printf("readlink(short buffer)\n");
   printf("ret: %d\n", readlink("link", buffer, 4));
   printf("errno: %d\n", errno);

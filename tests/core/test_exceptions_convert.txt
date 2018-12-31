@@ -1,0 +1,3 @@
+Successfully converted 'One' to TestEnum::type: 1... ok
+Failed to convert 'Two' to TestEnum::type... ok
+Unknown exception caught converting 'Three' to TestEnum... fail

@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 
     SDL_GL_SwapBuffers();
 
-#if !EMSCRIPTEN
+#if !defined(__EMSCRIPTEN__)
     // Wait for 3 seconds to give us a chance to see the image
     SDL_Delay(30000);
 #endif

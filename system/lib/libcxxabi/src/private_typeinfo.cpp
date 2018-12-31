@@ -1159,4 +1159,26 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
 
 #pragma GCC visibility pop
 
+#ifdef __EMSCRIPTEN__
+extern "C" {
+
+int __cxa_can_catch(__shim_type_info* catchType, __shim_type_info* excpType, void **thrown) {
+  //std::type_info *t1 = static_cast<std::type_info*>(catchType);
+  //std::type_info *t2 = static_cast<std::type_info*>(excpType);
+  //printf("can %s catch %s (%p)?\n", t1->name(), t2->name(), thrown);
+
+  void *temp = *thrown;
+  int ret = catchType->can_catch(excpType, temp);
+  if (ret) *thrown = temp; // apply changes only if we are catching
+  return ret;
+}
+
+int __cxa_is_pointer_type(__shim_type_info* type) {
+  return !!dynamic_cast<__pointer_type_info*>(type);
+}
+
+}
+#endif // __EMSCRIPTEN__
+
+
 }  // __cxxabiv1

@@ -63,6 +63,7 @@ extern "C" {
 
 #define PTHREAD_CANCEL_ENABLE 0
 #define PTHREAD_CANCEL_DISABLE 1
+#define PTHREAD_CANCEL_MASKED 2
 
 #define PTHREAD_CANCEL_DEFERRED 0
 #define PTHREAD_CANCEL_ASYNCHRONOUS 1
@@ -78,13 +79,12 @@ int pthread_detach(pthread_t);
 _Noreturn void pthread_exit(void *);
 int pthread_join(pthread_t, void **);
 
-#ifdef __GNUC__
-__attribute__((const))
-#endif
 pthread_t pthread_self(void);
 
 int pthread_equal(pthread_t, pthread_t);
+#ifndef __cplusplus
 #define pthread_equal(x,y) ((x)==(y))
+#endif
 
 int pthread_setcancelstate(int, int *);
 int pthread_setcanceltype(int, int *);
@@ -203,17 +203,26 @@ struct __ptcb {
 	struct __ptcb *__next;
 };
 
+#ifdef __EMSCRIPTEN__
+// For Emscripten, the cleanup stack is not implemented as a macro, since it's currently in the JS side.
+typedef void (*cleanup_handler_routine)(void *arg);
+void pthread_cleanup_push(cleanup_handler_routine routine, void *arg);
+void pthread_cleanup_pop(int execute);
+#else
 void _pthread_cleanup_push(struct __ptcb *, void (*)(void *), void *);
 void _pthread_cleanup_pop(struct __ptcb *, int);
 
 #define pthread_cleanup_push(f, x) do { struct __ptcb __cb; _pthread_cleanup_push(&__cb, f, x);
 #define pthread_cleanup_pop(r) _pthread_cleanup_pop(&__cb, (r)); } while(0)
+#endif
 
 #ifdef _GNU_SOURCE
 struct cpu_set_t;
 int pthread_getaffinity_np(pthread_t, size_t, struct cpu_set_t *);
 int pthread_setaffinity_np(pthread_t, size_t, const struct cpu_set_t *);
 int pthread_getattr_np(pthread_t, pthread_attr_t *);
+int pthread_tryjoin_np(pthread_t, void **);
+int pthread_timedjoin_np(pthread_t, void **, const struct timespec *);
 #endif
 
 #ifdef __cplusplus

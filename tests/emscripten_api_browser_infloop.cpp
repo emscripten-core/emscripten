@@ -14,8 +14,7 @@ struct Class {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
-      int result = x;
-      REPORT_RESULT();
+      REPORT_RESULT(x);
       emscripten_cancel_main_loop();
     }
   }
@@ -26,6 +25,17 @@ struct Class {
 
   void start() {
     instance = this;
+
+    EM_ASM({
+      var initial = stackSave();
+      out('seeing initial stack of ' + initial);
+      setTimeout(function() {
+        var current = stackSave();
+        out('seeing later stack of   ' + current);
+        assert(current === initial);
+      }, 0);
+    });
+
     // important if we simulate an infinite loop here or not. With an infinite loop, the
     // destructor should *NOT* have been called
     emscripten_set_main_loop(Class::callback, 3, 1);

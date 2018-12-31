@@ -142,7 +142,15 @@ var document = {
         });
         return ret;
       }
-      default: throw 'createElement ' + what;
+      case 'div': {
+        return {
+          appendChild: function() {},
+          requestFullscreen: function() {
+            return document.getElementById('canvas').requestFullscreen();
+          },
+        };
+      }
+      default: throw 'createElement ' + what + new Error().stack;
     }
   },
   elements: {},
@@ -169,7 +177,7 @@ var document = {
     appendChild: function(){},
   },
   exitPointerLock: function(){},
-  cancelFullScreen: function(){},
+  exitFullscreen: function(){},
 };
 var alert = function(x) {
   print(x);
@@ -236,9 +244,6 @@ var Worker = function(workerPath) {
   workerPath = fixPath(workerPath);
   var workerCode = read(workerPath);
   workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
-                          //replace(/Date.now/g, 'Recorder.dnow'). // recorded values are just for the "main thread" - workers were not recorded, and should not consume
-                          //replace(/performance.now/g, 'Recorder.pnow').
-                          //replace(/Math.random/g, 'Recorder.random').
                           replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to varify that to sandbox
   headlessPrint('loading worker ' + workerPath + ' : ' + workerCode.substring(0, 50));
   eval(workerCode); // will implement onmessage()
@@ -279,11 +284,13 @@ var screen = { // XXX these values may need to be adjusted
   availWidth: 2100,
   availHeight: 1283,
 };
-var console = {
-  log: function(x) {
-    print(x);
-  },
-};
+if (typeof console === "undefined") {
+  console = {
+    log: function(x) {
+      print(x);
+    }
+  };
+}
 var MozBlobBuilder = function() {
   this.data = new Uint8Array(0);
   this.append = function(buffer) {

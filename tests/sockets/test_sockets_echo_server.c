@@ -5,13 +5,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <winsock2.h>
+typedef int socklen_t;
+#define close closesocket
+#pragma comment(lib, "Ws2_32.lib")
+#else
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
-#if EMSCRIPTEN
+#endif
+#include <sys/types.h>
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -92,12 +99,12 @@ void main_loop() {
     int fd = server.fd;
 #endif
   if (client.state == MSG_READ) {
-    socklen_t addrlen;
 
     if (!FD_ISSET(fd, &fdr)) {
       return;
     }
 
+    socklen_t addrlen = sizeof(client.addr);
     res = do_msg_read(fd, &client.msg, client.read, 0, (struct sockaddr *)&client.addr, &addrlen);
     if (res == -1) {
       return;
@@ -114,7 +121,9 @@ void main_loop() {
       client.read = 0;
       client.state = MSG_WRITE;
     }
-  } else {
+  }
+
+  if (client.state == MSG_WRITE) {
     if (!FD_ISSET(fd, &fdw)) {
       return;
     }
@@ -142,7 +151,26 @@ void main_loop() {
   }
 }
 
+// The callbacks for the async network events have a different signature than from
+// emscripten_set_main_loop (they get passed the fd of the socket triggering the event).
+// In this test application we want to try and keep as much in common as the timed loop
+// version but in a real application the fd can be used instead of needing to select().
+void async_main_loop(int fd, void* userData) {
+  printf("%s callback\n", userData);
+  main_loop();
+}
+
 int main() {
+
+#ifdef _WIN32
+  WSADATA wsaData = {};
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result) {
+    printf("WSAStartup failed!\n");
+    exit(1);
+  }
+#endif
+
   struct sockaddr_in addr;
   int res;
 
@@ -162,7 +190,12 @@ int main() {
     perror("cannot create socket");
     exit(EXIT_FAILURE);
   }
+#ifdef _WIN32
+  unsigned long nonblocking = 1;
+  ioctlsocket(server.fd, FIONBIO, &nonblocking);
+#else
   fcntl(server.fd, F_SETFL, O_NONBLOCK);
+#endif
 
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -186,8 +219,16 @@ int main() {
   }
 #endif
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
+#if TEST_ASYNC
+  // The first parameter being passed is actually an arbitrary userData pointer
+  // for simplicity this test just passes a basic char*
+  emscripten_set_socket_connection_callback("connection", async_main_loop);
+  emscripten_set_socket_message_callback("message", async_main_loop);
+  emscripten_set_socket_close_callback("close", async_main_loop);
+#else
   emscripten_set_main_loop(main_loop, 60, 0);
+#endif
 #else
   while (1) main_loop();
 #endif

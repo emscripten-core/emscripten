@@ -8,40 +8,67 @@ to normal socket traffic. Websockify accepts the WebSockets handshake,
 parses it, and then begins forwarding traffic between the client and
 the target in both directions.
 
+### News/help/contact
+
+Notable commits, announcements and news are posted to
+<a href="http://www.twitter.com/noVNC">@noVNC</a>
+
+If you are a websockify developer/integrator/user (or want to be)
+please join the <a
+href="https://groups.google.com/forum/?fromgroups#!forum/novnc">noVNC/websockify
+discussion group</a>
+
+Bugs and feature requests can be submitted via [github
+issues](https://github.com/kanaka/websockify/issues).
+
+If you want to show appreciation for websockify you could donate to a great
+non-profits such as: [Compassion
+International](http://www.compassion.com/), [SIL](http://www.sil.org),
+[Habitat for Humanity](http://www.habitat.org), [Electronic Frontier
+Foundation](https://www.eff.org/), [Against Malaria
+Foundation](http://www.againstmalaria.com/), [Nothing But
+Nets](http://www.nothingbutnets.net/), etc. Please tweet <a
+href="http://www.twitter.com/noVNC">@noVNC</a> if you do.
+
 ### WebSockets binary data
 
-Websockify supports all versions of the WebSockets protocol (Hixie and
-HyBi). The older Hixie versions of the protocol only support UTF-8
-text payloads. In order to transport binary data over UTF-8 an
-encoding must used to encapsulate the data within UTF-8.
+Starting with websockify 0.5.0, only the HyBi / IETF
+6455 WebSocket protocol is supported.
 
-With Hixie clients, Websockify uses base64 to encode all traffic to
-and from the client. This does not affect the data between websockify
-and the server.
-
-With HyBi clients, websockify negotiates whether to base64 encode
-traffic to and from the client via the subprotocol header
-(Sec-WebSocket-Protocol). The valid subprotocol values are 'binary'
-and 'base64' and if the client sends both then the server (the python
-implementation) will prefer 'binary'. The 'binary' subprotocol
-indicates that the data will be sent raw using binary WebSocket
-frames. Some HyBi clients (such as the Flash fallback and older Chrome
-and iOS versions) do not support binary data which is why the
-negotiation is necessary.
+Websockify negotiates whether to base64 encode traffic to and from the
+client via the subprotocol header (Sec-WebSocket-Protocol). The valid
+subprotocol values are 'binary' and 'base64' and if the client sends
+both then the server (the python implementation) will prefer 'binary'.
+The 'binary' subprotocol indicates that the data will be sent raw
+using binary WebSocket frames. Some HyBi clients (such as the Flash
+fallback and older Chrome and iOS versions) do not support binary data
+which is why the negotiation is necessary.
 
 
 ### Encrypted WebSocket connections (wss://)
 
-To encrypt the traffic using the WebSocket 'wss://' URI scheme you
-need to generate a certificate for websockify to load. By default websockify
-loads a certificate file name `self.pem` but the `--cert=CERT` option can
-override the file name. You can generate a self-signed certificate using
-openssl. When asked for the common name, use the hostname of the server where
-the proxy will be running:
+To encrypt the traffic using the WebSocket 'wss://' URI scheme you need to
+generate a certificate and key for Websockify to load. By default, Websockify
+loads a certificate file name `self.pem` but the `--cert=CERT` and `--key=KEY`
+options can override the file name. You can generate a self-signed certificate
+using openssl. When asked for the common name, use the hostname of the server
+where the proxy will be running:
 
 ```
 openssl req -new -x509 -days 365 -nodes -out self.pem -keyout self.pem
 ```
+
+For a self-signed certificate to work, you need to make your client/browser
+understand it. You can do this by installing it as accepted certificate, or by
+using that same certificate for a HTTPS connection to which you navigate first
+and approve. Browsers generally don't give you the "trust certificate?" prompt
+by opening a WSS socket with invalid certificate, hence you need to have it
+acccept it by either of those two methods.
+
+If you have a commercial/valid SSL certificate with one ore more intermediate
+certificates, concat them into one file, server certificate first, then the
+intermediate(s) from the CA, etc. Point to this file with the `--cert` option
+and then also to the key with `--key`. Finally, use `--ssl-only` as needed.
 
 
 ### Websock Javascript library
@@ -88,11 +115,14 @@ These are not necessary for the basic operation.
 
 * Mini-webserver: websockify can detect and respond to normal web
   requests on the same port as the WebSockets proxy and Flash security
-  policy. This functionality is activate with the `--web DIR` option
+  policy. This functionality is activated with the `--web DIR` option
   where DIR is the root of the web directory to serve.
 
 * Wrap a program: see the "Wrap a Program" section below.
 
+* Log files: websockify can save all logging information in a file.
+  This functionality is activated with the `--log-file FILE` option
+  where FILE is the file where the logs should be saved.
 
 ### Implementations of websockify
 
@@ -123,7 +153,7 @@ new (moved) port of the program.
 The program wrap mode is invoked by replacing the target with `--`
 followed by the program command line to wrap.
 
-    `./websockify 2023 -- PROGRAM ARGS`
+    `./run 2023 -- PROGRAM ARGS`
 
 The `--wrap-mode` option can be used to indicate what action to take
 when the wrapped program exits or daemonizes.
@@ -132,16 +162,17 @@ Here is an example of using websockify to wrap the vncserver command
 (which backgrounds itself) for use with
 [noVNC](https://github.com/kanaka/noVNC):
 
-    `./websockify 5901 --wrap-mode=ignore -- vncserver -geometry 1024x768 :1`
+    `./run 5901 --wrap-mode=ignore -- vncserver -geometry 1024x768 :1`
 
-Here is an example of wrapping telnetd (from krb5-telnetd).telnetd
+Here is an example of wrapping telnetd (from krb5-telnetd). telnetd
 exits after the connection closes so the wrap mode is set to respawn
 the command:
 
-    `sudo ./websockify 2023 --wrap-mode=respawn -- telnetd -debug 2023`
+    `sudo ./run 2023 --wrap-mode=respawn -- telnetd -debug 2023`
 
 The `wstelnet.html` page demonstrates a simple WebSockets based telnet
-client.
+client (use 'localhost' and '2023' for the host and port
+respectively).
 
 
 ### Building the Python ssl module (for python 2.5 and older)
@@ -150,11 +181,10 @@ client.
 
     `sudo aptitude install python-dev bluetooth-dev`
 
-* Download, build the ssl module and symlink to it:
+* At the top level of the websockify repostory, download, build and
+  symlink the ssl module:
 
-    `cd websockify/`
-
-    `wget http://pypi.python.org/packages/source/s/ssl/ssl-1.15.tar.gz`
+    `wget --no-check-certificate http://pypi.python.org/packages/source/s/ssl/ssl-1.15.tar.gz`
 
     `tar xvzf ssl-1.15.tar.gz`
 

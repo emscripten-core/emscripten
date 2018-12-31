@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -7,6 +8,7 @@
 int main() {
   struct stat s;
   int f = open("/test", O_RDWR, 0777);
+  assert(f);
 
   printf("posix_fadvise: %d\n", posix_fadvise(f, 3, 2, POSIX_FADV_DONTNEED));
   printf("errno: %d\n", errno);

@@ -1,0 +1,5 @@
+Tracing enter-context,0,Application Startup
+Tracing log-message,0,Application,starting up
+Tracing exit-context,0
+Tracing frame-start,0
+Tracing frame-end,0

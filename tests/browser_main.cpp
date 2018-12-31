@@ -31,7 +31,7 @@ void next(const char *x) {
   assert(twofunc() == 7);
   onefunc();
   int result = twofunc();
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 int main() {

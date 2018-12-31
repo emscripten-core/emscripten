@@ -4,8 +4,6 @@
 
 int main()
 {
-    int result = 0;
-
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
@@ -25,9 +23,8 @@ int main()
         SDL_FreeSurface(text);
     }
 
-#if __EMSCRIPTEN__
-    result = 1;
-    REPORT_RESULT();
+#ifdef __EMSCRIPTEN__
+    REPORT_RESULT(1);
 #endif
 }
 

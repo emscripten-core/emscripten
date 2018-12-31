@@ -61,7 +61,7 @@ var MatrixArray = Float32Array;
 /*
  * vec3
  */
- 
+
 /**
  * Creates a new instance of a vec3 using the default array type
  * Any javascript array-like objects containing at least 3 numeric elements can serve as a vec3
@@ -352,7 +352,7 @@ vec3.dist = function (vec, vec2) {
     var x = vec2[0] - vec[0],
         y = vec2[1] - vec[1],
         z = vec2[2] - vec[2];
-        
+
     return Math.sqrt(x*x + y*y + z*z);
 };
 
@@ -373,22 +373,22 @@ vec3.unproject = function (vec, view, proj, viewport, dest) {
 
     var m = mat4.create();
     var v = new MatrixArray(4);
-    
+
     v[0] = (vec[0] - viewport[0]) * 2.0 / viewport[2] - 1.0;
     v[1] = (vec[1] - viewport[1]) * 2.0 / viewport[3] - 1.0;
     v[2] = 2.0 * vec[2] - 1.0;
     v[3] = 1.0;
-    
+
     mat4.multiply(proj, view, m);
     if(!mat4.inverse(m)) { return null; }
-    
+
     mat4.multiplyVec4(m, v);
     if(v[3] === 0.0) { return null; }
 
     dest[0] = v[0] / v[3];
     dest[1] = v[1] / v[3];
     dest[2] = v[2] / v[3];
-    
+
     return dest;
 };
 
@@ -481,8 +481,6 @@ mat3.identity = function (dest) {
  * Params:
  * @param {mat3} mat mat3 to transpose
  * @param {mat3} [dest] mat3 receiving transposed values. If not specified result is written to mat
- *
- * @returns {mat3} dest is specified, mat otherwise
  */
 mat3.transpose = function (mat, dest) {
     // If we are transposing ourselves we can skip a few steps but have to cache some values
@@ -656,8 +654,6 @@ mat4.identity = function (dest) {
  *
  * @param {mat4} mat mat4 to transpose
  * @param {mat4} [dest] mat4 receiving transposed values. If not specified result is written to mat
- *
- * @param {mat4} dest is specified, mat otherwise
  */
 mat4.transpose = function (mat, dest) {
     // If we are transposing ourselves we can skip a few steps but have to cache some values
@@ -726,9 +722,7 @@ mat4.determinant = function (mat) {
  * Calculates the inverse matrix of a mat4
  *
  * @param {mat4} mat mat4 to calculate inverse of
- * @param {mat4} [dest] mat4 receiving inverse matrix. If not specified result is written to mat
- *
- * @param {mat4} dest is specified, mat otherwise, null if matrix cannot be inverted
+ * @param {mat4} [dest] mat4 receiving inverse matrix. If not specified result is written to mat, null if matrix cannot be inverted
  */
 mat4.inverse = function (mat, dest) {
     if (!dest) { dest = mat; }
@@ -881,8 +875,6 @@ mat4.toInverseMat3 = function (mat, dest) {
  * @param {mat4} mat First operand
  * @param {mat4} mat2 Second operand
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.multiply = function (mat, mat2, dest) {
     if (!dest) { dest = mat; }
@@ -968,8 +960,6 @@ mat4.multiplyVec4 = function (mat, vec, dest) {
  * @param {mat4} mat mat4 to translate
  * @param {vec3} vec vec3 specifying the translation
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.translate = function (mat, vec, dest) {
     var x = vec[0], y = vec[1], z = vec[2],
@@ -1006,8 +996,6 @@ mat4.translate = function (mat, vec, dest) {
  * @param {mat4} mat mat4 to scale
  * @param {vec3} vec vec3 specifying the scale for each axis
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @param {mat4} dest if specified, mat otherwise
  */
 mat4.scale = function (mat, vec, dest) {
     var x = vec[0], y = vec[1], z = vec[2];
@@ -1053,10 +1041,8 @@ mat4.scale = function (mat, vec, dest) {
  *
  * @param {mat4} mat mat4 to rotate
  * @param {number} angle Angle (in radians) to rotate
- * @param {vec3} axis vec3 representing the axis to rotate around 
+ * @param {vec3} axis vec3 representing the axis to rotate around
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.rotate = function (mat, angle, axis, dest) {
     var x = axis[0], y = axis[1], z = axis[2],
@@ -1123,8 +1109,6 @@ mat4.rotate = function (mat, angle, axis, dest) {
  * @param {mat4} mat mat4 to rotate
  * @param {number} angle Angle (in radians) to rotate
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.rotateX = function (mat, angle, dest) {
     var s = Math.sin(angle),
@@ -1171,8 +1155,6 @@ mat4.rotateX = function (mat, angle, dest) {
  * @param {mat4} mat mat4 to rotate
  * @param {number} angle Angle (in radians) to rotate
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.rotateY = function (mat, angle, dest) {
     var s = Math.sin(angle),
@@ -1219,8 +1201,6 @@ mat4.rotateY = function (mat, angle, dest) {
  * @param {mat4} mat mat4 to rotate
  * @param {number} angle Angle (in radians) to rotate
  * @param {mat4} [dest] mat4 receiving operation result. If not specified result is written to mat
- *
- * @returns {mat4} dest if specified, mat otherwise
  */
 mat4.rotateZ = function (mat, angle, dest) {
     var s = Math.sin(angle),
@@ -1496,7 +1476,7 @@ mat4.fromRotationTranslation = function (quat, vec, dest) {
     dest[13] = vec[1];
     dest[14] = vec[2];
     dest[15] = 1;
-    
+
     return dest;
 };
 
@@ -1558,8 +1538,8 @@ quat4.set = function (quat, dest) {
 
 /**
  * Calculates the W component of a quat4 from the X, Y, and Z components.
- * Assumes that quaternion is 1 unit in length. 
- * Any existing W component will be ignored. 
+ * Assumes that quaternion is 1 unit in length.
+ * Any existing W component will be ignored.
  *
  * @param {quat4} quat quat4 to calculate W component of
  * @param {quat4} [dest] quat4 receiving calculated values. If not specified result is written to quat
@@ -1604,9 +1584,9 @@ quat4.inverse = function(quat, dest) {
     var q0 = quat[0], q1 = quat[1], q2 = quat[2], q3 = quat[3],
         dot = q0*q0 + q1*q1 + q2*q2 + q3*q3,
         invDot = dot ? 1.0/dot : 0;
-    
+
     // TODO: Would be faster to return [0,0,0,0] immediately if dot == 0
-    
+
     if(!dest || quat === dest) {
         quat[0] *= -invDot;
         quat[1] *= -invDot;

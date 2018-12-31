@@ -110,7 +110,7 @@ var LibraryGLEW = {
 
   glewIsSupported: function(name) {
     var exts = Pointer_stringify(name).split(' ');
-    for (i in exts) {
+    for (var i in exts) {
       if (!GLEW.extensionIsSupported(exts[i]))
         return 0;
     }

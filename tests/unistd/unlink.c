@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -23,19 +23,28 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   mkdir("working", 0777);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
+
+#ifdef __EMSCRIPTEN_ASMFS__
+  mkdir("working", 0777);
+#else
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
 #endif
+#endif
   chdir("working");
   create_file("file", "test", 0777);
   create_file("file1", "test", 0777);
+#ifndef NO_SYMLINK
   symlink("file1", "file1-link");
+#endif
   mkdir("dir-empty", 0777);
+#ifndef NO_SYMLINK
   symlink("dir-empty", "dir-empty-link");
+#endif
   mkdir("dir-readonly", 0777);
   create_file("dir-readonly/anotherfile", "test", 0777);
   mkdir("dir-readonly/anotherdir", 0777);
@@ -47,9 +56,13 @@ void setup() {
 void cleanup() {
   unlink("file");
   unlink("file1");
+#ifndef NO_SYMLINK
   unlink("file1-link");
+#endif
   rmdir("dir-empty");
+#ifndef NO_SYMLINK
   unlink("dir-empty-link");
+#endif
   chmod("dir-readonly", 0777);
   unlink("dir-readonly/anotherfile");
   rmdir("dir-readonly/anotherdir");
@@ -71,24 +84,34 @@ void test() {
 
   err = unlink("dir-readonly");
   assert(err == -1);
-#ifdef __linux__
-  assert(errno == EISDIR);
+
+  // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
+  // See issue #6121.
+  assert(errno == EISDIR || errno == EPERM);
 #else
   assert(errno == EPERM);
 #endif
 
+#ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
+#ifndef NO_SYMLINK
   // try unlinking the symlink first to make sure
   // we don't follow the link
   err = unlink("file1-link");
   assert(!err);
+#endif
   err = access("file1", F_OK);
   assert(!err);
+#ifndef NO_SYMLINK
   err = access("file1-link", F_OK);
   assert(err == -1);
+#endif
 
   err = unlink("file");
   assert(!err);
@@ -106,9 +129,11 @@ void test() {
   assert(err == -1);
   assert(errno == ENOTDIR);
 
+#ifndef SKIP_ACCESS_TESTS
   err = rmdir("dir-readonly/anotherdir");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
   err = rmdir("dir-full");
   assert(err == -1);
@@ -120,19 +145,26 @@ void test() {
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
+#ifdef NODERAWFS
+  assert(errno == ENOTEMPTY);
+#else
   assert(errno == EBUSY);
+#endif
 #endif
   err = rmdir("/");
   assert(err == -1);
 #ifdef __APPLE__
   assert(errno == EISDIR);
 #else
-  assert(errno == EBUSY);
+  // errno is EISDIR for NODERAWFS on macOS. See issue #6121.
+  assert(errno == EBUSY || errno == EISDIR);
 #endif
 
+#ifndef NO_SYMLINK
   err = rmdir("dir-empty-link");
   assert(err == -1);
   assert(errno == ENOTDIR);
+#endif
 
   err = rmdir("dir-empty");
   assert(!err);
@@ -147,5 +179,9 @@ int main() {
   signal(SIGABRT, cleanup);
   setup();
   test();
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
   return EXIT_SUCCESS;
 }

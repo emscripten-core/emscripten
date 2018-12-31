@@ -7,12 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "__config"
+#ifndef _LIBCPP_HAS_NO_THREADS
+
 #define _LIBCPP_BUILDING_SHARED_MUTEX
 #include "shared_mutex"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-shared_mutex::shared_mutex()
+// Shared Mutex Base
+__shared_mutex_base::__shared_mutex_base()
     : __state_(0)
 {
 }
@@ -20,7 +24,7 @@ shared_mutex::shared_mutex()
 // Exclusive ownership
 
 void
-shared_mutex::lock()
+__shared_mutex_base::lock()
 {
     unique_lock<mutex> lk(__mut_);
     while (__state_ & __write_entered_)
@@ -31,7 +35,7 @@ shared_mutex::lock()
 }
 
 bool
-shared_mutex::try_lock()
+__shared_mutex_base::try_lock()
 {
     unique_lock<mutex> lk(__mut_);
     if (__state_ == 0)
@@ -43,7 +47,7 @@ shared_mutex::try_lock()
 }
 
 void
-shared_mutex::unlock()
+__shared_mutex_base::unlock()
 {
     lock_guard<mutex> _(__mut_);
     __state_ = 0;
@@ -53,7 +57,7 @@ shared_mutex::unlock()
 // Shared ownership
 
 void
-shared_mutex::lock_shared()
+__shared_mutex_base::lock_shared()
 {
     unique_lock<mutex> lk(__mut_);
     while ((__state_ & __write_entered_) || (__state_ & __n_readers_) == __n_readers_)
@@ -64,7 +68,7 @@ shared_mutex::lock_shared()
 }
 
 bool
-shared_mutex::try_lock_shared()
+__shared_mutex_base::try_lock_shared()
 {
     unique_lock<mutex> lk(__mut_);
     unsigned num_readers = __state_ & __n_readers_;
@@ -79,7 +83,7 @@ shared_mutex::try_lock_shared()
 }
 
 void
-shared_mutex::unlock_shared()
+__shared_mutex_base::unlock_shared()
 {
     lock_guard<mutex> _(__mut_);
     unsigned num_readers = (__state_ & __n_readers_) - 1;
@@ -98,4 +102,16 @@ shared_mutex::unlock_shared()
 }
 
 
+// Shared Timed Mutex
+// These routines are here for ABI stability
+shared_timed_mutex::shared_timed_mutex() : __base() {}
+void shared_timed_mutex::lock()     { return __base.lock(); }
+bool shared_timed_mutex::try_lock() { return __base.try_lock(); }
+void shared_timed_mutex::unlock()   { return __base.unlock(); }
+void shared_timed_mutex::lock_shared() { return __base.lock_shared(); }
+bool shared_timed_mutex::try_lock_shared() { return __base.try_lock_shared(); }
+void shared_timed_mutex::unlock_shared() { return __base.unlock_shared(); }
+
 _LIBCPP_END_NAMESPACE_STD
+
+#endif // !_LIBCPP_HAS_NO_THREADS

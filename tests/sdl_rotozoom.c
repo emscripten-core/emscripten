@@ -2,7 +2,7 @@
 #include "SDL/SDL_image.h"
 #include "SDL/SDL_rotozoom.h"
 
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include "emscripten.h"
 #endif
 
@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
 
     mainloop();
 
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     SDL_Event evt;
     SDL_SaveBMP(screen, "native_output.bmp");
     while (1) {

@@ -21,7 +21,6 @@
 #define _PATH_UTMP	"/dev/null/utmp"
 #define	_PATH_VI	"/usr/bin/vi"
 #define _PATH_WTMP	"/dev/null/wtmp"
-#define _PATH_LASTLOG   "/var/log/lastlog"
 
 #define	_PATH_DEV	"/dev/"
 #define	_PATH_TMP	"/tmp/"

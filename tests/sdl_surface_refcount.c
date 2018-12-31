@@ -23,6 +23,6 @@ int main(int argc, char *argv[])
     SDL_FreeSurface(surface);
     SDL_FreeSurface(reference);
     int result = is_surface_freed(surface);
-    REPORT_RESULT();
+    REPORT_RESULT(result);
     return 0;
 }

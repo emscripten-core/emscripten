@@ -55,7 +55,7 @@ void test() {
   assert(s.st_atime == 1200000000);
   assert(s.st_mtime == 1200000000);
   assert(s.st_ctime);
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -73,7 +73,7 @@ void test() {
   assert(s.st_atime == 1200000000);
   assert(s.st_mtime == 1200000000);
   assert(s.st_ctime);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -91,7 +91,7 @@ void test() {
   assert(s.st_atime == 1200000000);
   assert(s.st_mtime == 1200000000);
   assert(s.st_ctime);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -112,7 +112,7 @@ void test() {
   assert(s.st_atime);
   assert(s.st_mtime);
   assert(s.st_ctime);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 0);
 #endif
@@ -130,7 +130,7 @@ void test() {
   assert(s.st_atime == 1200000000);
   assert(s.st_mtime == 1200000000);
   assert(s.st_ctime);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -148,7 +148,7 @@ void test() {
   assert(s.st_atime != 1200000000);  // should NOT match the utime call we did for dir/file
   assert(s.st_mtime != 1200000000);
   assert(s.st_ctime);
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif

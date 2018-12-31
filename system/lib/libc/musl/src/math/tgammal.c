@@ -272,4 +272,10 @@ small:
 		q = z / (x * __polevll(x, S, 8));
 	return q;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double tgammal(long double x)
+{
+	return tgamma(x);
+}
 #endif

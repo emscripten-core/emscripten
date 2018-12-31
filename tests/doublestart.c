@@ -4,8 +4,7 @@
 int times = 0;
 
 void later(void* nada) {
-  int result = times;
-  REPORT_RESULT();
+  REPORT_RESULT(times);
 }
 
 void main_loop(void) {

@@ -1,0 +1,3 @@
+Name: glesv2
+Description: OpenGL ES 2.0 library
+Version: 10.2.2

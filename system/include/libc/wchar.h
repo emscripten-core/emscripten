@@ -12,6 +12,7 @@ extern "C" {
 #define __NEED_size_t
 #define __NEED_wchar_t
 #define __NEED_wint_t
+#define __NEED_mbstate_t
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \
  || defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
@@ -33,15 +34,14 @@ extern "C" {
 #define WCHAR_MIN (-1-0x7fffffff+L'\0')
 #endif
 
+#ifdef __cplusplus
 #define NULL 0L
+#else
+#define NULL ((void*)0)
+#endif
 
 #undef WEOF
 #define WEOF 0xffffffffU
-
-typedef struct __mbstate_t
-{
-	unsigned __opaque1, __opaque2;
-} mbstate_t;
 
 wchar_t *wcscpy (wchar_t *__restrict, const wchar_t *__restrict);
 wchar_t *wcsncpy (wchar_t *__restrict, const wchar_t *__restrict, size_t);
@@ -172,8 +172,11 @@ int       iswctype(wint_t, wctype_t);
 wint_t    towlower(wint_t);
 wint_t    towupper(wint_t);
 wctype_t  wctype(const char *);
+
+#ifndef __cplusplus
 #undef iswdigit
-#define iswdigit(a) ((unsigned)(a)-'0' < 10)
+#define iswdigit(a) (0 ? iswdigit(a) : ((unsigned)(a)-'0') < 10)
+#endif
 #endif
 
 #ifdef __cplusplus

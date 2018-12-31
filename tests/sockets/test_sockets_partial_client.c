@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <assert.h>
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
@@ -19,10 +19,12 @@ int sum = 0;
 
 void finish(int result) {
   close(sockfd);
-#if EMSCRIPTEN
-  REPORT_RESULT();
-#endif
+#ifdef __EMSCRIPTEN__
+  REPORT_RESULT(result);
+  emscripten_force_exit(result);
+#else
   exit(result);
+#endif
 }
 
 void iter() {
@@ -54,7 +56,7 @@ void iter() {
   }
 
   if (res != 1) {
-    perror("should read 1 byte");
+    fprintf(stderr, "should read 1 byte, got: %d, sum %d so far\n", res, sum);
     finish(EXIT_FAILURE);
   }
 
@@ -108,7 +110,7 @@ int main() {
     finish(EXIT_FAILURE);
   }
 
-#if EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(iter, 0, 0);
 #else
   while (1) iter();

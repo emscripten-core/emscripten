@@ -1,4 +1,0 @@
-This directory contains a useful mercurial patch queue.
-
-Note to patch queue maintainer: You need to manually copy from .hg/patches into this directory, after |qrefresh|ing the patch.
-

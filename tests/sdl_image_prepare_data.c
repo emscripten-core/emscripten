@@ -63,8 +63,8 @@ int main() {
   fread(buffer, SIZE, 1, f);
   fclose(f);
 
-  emscripten_async_prepare_data(buffer, SIZE, "jpg", (void*)25, ready, NULL);
-  emscripten_async_prepare_data(buffer, SIZE, "jpg", (void*)33, ready, NULL); // twice to see different filenames
+  emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)25, ready, NULL);
+  emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)33, ready, NULL); // twice to see different filenames
 
   return 0;
 }

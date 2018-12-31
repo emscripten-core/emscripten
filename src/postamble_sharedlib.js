@@ -3,14 +3,11 @@
 
 {{GLOBAL_VARS}}
 
-function run(args) {
-  initRuntime();
-}
-Module['run'] = run;
+__ATPRERUN__.push(runPostSets);
 
-// {{PRE_RUN_ADDITIONS}}
-
-run();
-
-// {{POST_RUN_ADDITIONS}}
+if (runtimeInitialized) {
+  // dlopen case: we are being loaded after the system is fully initialized, so just run our prerun and atinit stuff now
+  callRuntimeCallbacks(__ATPRERUN__);
+  callRuntimeCallbacks(__ATINIT__);
+} // otherwise, general dynamic linking case: stuff we added to prerun and init will be executed with the rest of the system as it loads
 

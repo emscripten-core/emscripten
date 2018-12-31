@@ -2,6 +2,9 @@
   Simple DirectMedia Layer
   Copyright (C) 1997-2011 Sam Lantinga <slouken@libsdl.org>
 
+  Portions of these headers taken from SDL2 (where noted)
+  Copyright (C) 1997-2013 Sam Lantinga <slouken@libsdl.org>
+
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
   arising from the use of this software.
@@ -182,33 +185,43 @@ typedef struct SDL_TextInputEvent
 /**
  *  \brief Mouse motion event structure (event.motion.*)
  */
+/*================================= IMPORTANT ================================
+   The version of SDL_MouseMotionEvent that comes in these (emscripten)
+   headers is taken from the finalized version of SDL2
+  ============================================================================*/  
+
 typedef struct SDL_MouseMotionEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEMOTION */
+    Uint32 timestamp;
     Uint32 windowID;    /**< The window with mouse focus, if any */
-    Uint8 state;        /**< The current button state */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
-    int x;              /**< X coordinate, relative to window */
-    int y;              /**< Y coordinate, relative to window */
-    int xrel;           /**< The relative motion in the X direction */
-    int yrel;           /**< The relative motion in the Y direction */
+    Uint32 which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    Uint32 state;       /**< The current button state */
+    Sint32 x;           /**< X coordinate, relative to window */
+    Sint32 y;           /**< Y coordinate, relative to window */
+    Sint32 xrel;        /**< The relative motion in the X direction */
+    Sint32 yrel;        /**< The relative motion in the Y direction */
 } SDL_MouseMotionEvent;
 
 /**
  *  \brief Mouse button event structure (event.button.*)
  */
+/*================================= IMPORTANT ================================
+   The version of SDL_MouseButtonEvent that comes in these (emscripten)
+   headers is taken from the finalized version of SDL2
+  ============================================================================*/  
 typedef struct SDL_MouseButtonEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEBUTTONDOWN or ::SDL_MOUSEBUTTONUP */
+    Uint32 timestamp;
     Uint32 windowID;    /**< The window with mouse focus, if any */
+    Uint32 which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
     Uint8 button;       /**< The mouse button index */
     Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
     Uint8 padding1;
     Uint8 padding2;
-    int x;              /**< X coordinate, relative to window */
-    int y;              /**< Y coordinate, relative to window */
+    Sint32 x;           /**< X coordinate, relative to window */
+    Sint32 y;           /**< Y coordinate, relative to window */
 } SDL_MouseButtonEvent;
 
 /**
@@ -217,9 +230,11 @@ typedef struct SDL_MouseButtonEvent
 typedef struct SDL_MouseWheelEvent
 {
     Uint32 type;        /**< ::SDL_MOUSEWHEEL */
+    Uint32 timestamp;
     Uint32 windowID;    /**< The window with mouse focus, if any */
-    int x;              /**< The amount scrolled horizontally */
-    int y;              /**< The amount scrolled vertically */
+    Uint32 which;       /**< The mouse instance id, or SDL_TOUCH_MOUSEID */
+    Sint32 x;           /**< The amount scrolled horizontally */
+    Sint32 y;           /**< The amount scrolled vertically */
 } SDL_MouseWheelEvent;
 
 /**
@@ -281,24 +296,25 @@ typedef struct SDL_JoyButtonEvent
 
 
 /**
- *  \brief Touch finger motion/finger event structure (event.tmotion.*)
+ *  \brief Touch finger motion/finger event structure (event.tfinger.*)
  */
+
+/*================================= IMPORTANT ================================
+   The version of SDL_TouchFingerEvent that comes in these (emscripten)
+   headers is taken from the finalized version of SDL2
+  ============================================================================*/  
+
 typedef struct SDL_TouchFingerEvent
 {
-    Uint32 type;        /**< ::SDL_FINGERMOTION OR 
-			   SDL_FINGERDOWN OR SDL_FINGERUP*/
-    Uint32 windowID;    /**< The window with mouse focus, if any */
-    SDL_TouchID touchId;        /**< The touch device id */
+    Uint32 type;        /**< ::SDL_FINGERMOTION or ::SDL_FINGERDOWN or ::SDL_FINGERUP */
+    Uint32 timestamp;
+    SDL_TouchID touchId; /**< The touch device id */
     SDL_FingerID fingerId;
-    Uint8 state;        /**< The current button state */
-    Uint8 padding1;
-    Uint8 padding2;
-    Uint8 padding3;
-    Uint16 x;
-    Uint16 y;
-    Sint16 dx;
-    Sint16 dy;
-    Uint16 pressure;
+    float x;            /**< Normalized in the range 0...1 */
+    float y;            /**< Normalized in the range 0...1 */
+    float dx;           /**< Normalized in the range 0...1 */
+    float dy;           /**< Normalized in the range 0...1 */
+    float pressure;     /**< Normalized in the range 0...1 */
 } SDL_TouchFingerEvent;
 
 
@@ -434,7 +450,7 @@ typedef union SDL_Event
     SDL_QuitEvent quit;             /**< Quit request event data */
     SDL_UserEvent user;             /**< Custom event data */
     SDL_SysWMEvent syswm;           /**< System dependent window event data */
-    SDL_TouchFingerEvent tfinger;   /**< Touch finger event data */
+    SDL_TouchFingerEvent tfinger;   /**< SDL2 Touch finger event data */
     SDL_TouchButtonEvent tbutton;   /**< Touch button event data */
     SDL_MultiGestureEvent mgesture; /**< Multi Finger Gesture data */
     SDL_DollarGestureEvent dgesture; /**< Multi Finger Gesture data */
@@ -598,6 +614,14 @@ extern DECLSPEC void SDLCALL SDL_DelEventWatch(SDL_EventFilter filter,
  */
 extern DECLSPEC void SDLCALL SDL_FilterEvents(SDL_EventFilter filter,
                                               void *userdata);
+
+/**
+ *  An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
+ *  Allow recording a callback that will be called for each received event. This is used in place of SDL_PollEvent.
+ *  Your application will be called whenever there are events available.
+ */
+extern DECLSPEC void SDLCALL emscripten_SDL_SetEventHandler(SDL_EventFilter handler,
+                                                            void *userdata);
 
 /*@{*/
 #define SDL_QUERY	-1

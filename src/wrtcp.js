@@ -378,6 +378,7 @@ THE SOFTWARE.
         return
       }
       that.peerConnection.addIceCandidate(new RTCIceCandidate(candidate),
+        function() {},
         function(error) {
           fail(that, 'onerror', error);
         }

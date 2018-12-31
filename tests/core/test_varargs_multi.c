@@ -1,0 +1,34 @@
+#include <stdarg.h>
+#include <stdio.h>
+
+void print_vararg(int n, va_list v) {
+  for (int i = 0; i < n; ++i) {
+    if (i > 0) {
+      printf(", ");
+    }
+    printf("%d", va_arg(v, int));
+  }
+  printf("\n");
+}
+
+void multi_vararg(int n, ...) {
+  va_list v;
+
+  va_start(v, n);
+  print_vararg(n, v);
+  print_vararg(n, v); // the value of v is undefined for this call
+  va_end(v);
+
+  va_start(v, n);
+  print_vararg(n, v);
+  va_end(v);
+}
+
+int main() {
+  multi_vararg(5,
+               8, 6, 4, 2, 0,
+               1, 3, 5, 7, 9,
+               4, 5, 6, 7, 8
+               );
+  return 0;
+}

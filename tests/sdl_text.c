@@ -16,7 +16,7 @@ void one() {
         if (!strcmp("a", event.text.text)) {
           result = 1;
         } else if (!strcmp("A", event.text.text)) {
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'");
         }
         break;

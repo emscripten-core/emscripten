@@ -1,5 +1,5 @@
-#ifndef _ARPA_FTP_H_
-#define _ARPA_FTP_H_
+#ifndef _ARPA_FTP_H
+#define _ARPA_FTP_H
 #define PRELIM 1
 #define COMPLETE 2
 #define CONTINUE 3

@@ -21,8 +21,7 @@ int play() {
 void done(int channel) {
   assert(channel == 1);
 
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 }
 
 int play2() {
@@ -42,9 +41,13 @@ int main(int argc, char **argv) {
   int ret = Mix_OpenAudio(0, 0, 0, 0); // we ignore all these..
   assert(ret == 0);
 
-  sound = Mix_LoadWAV("sound.ogg");
-  assert(sound);
-  
+  {
+      SDL_RWops * ops = SDL_RWFromFile("sound.ogg", "r");
+      sound = Mix_LoadWAV_RW(ops, 0);
+      SDL_FreeRW(ops);
+      assert(sound);
+  }
+
   {
       struct stat info;
       int result = stat("noise.ogg", &info);
@@ -52,7 +55,7 @@ int main(int argc, char **argv) {
       FILE * f = fopen( "noise.ogg", "rb" );
       fread( bytes, 1, info.st_size, f  );
       fclose(f);
-  
+
       SDL_RWops * ops = SDL_RWFromConstMem(bytes, info.st_size);
       sound3 = Mix_LoadWAV_RW(ops, 0);
       SDL_FreeRW(ops);
@@ -65,7 +68,7 @@ int main(int argc, char **argv) {
   
   
   sound2 = Mix_LoadWAV("sound2.wav");
-  assert(sound);
+  assert(sound2);
 
   int channel = play();
   printf( "Pausing Channel %d", channel );
@@ -90,4 +93,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-

@@ -58,8 +58,9 @@ mergeInto(LibraryManager.library, {
     var obj = EmJVM.objects[string];
     assert(obj.name == 'string');
     if (isCopy) setValue(isCopy, 'i8', 1);
-    var buffer = _malloc(obj.value.length+1);
-    writeStringToMemory(obj.value, buffer);
+    var len = lengthBytesUTF8(obj.value) + 1;
+    var buffer = _malloc(len);
+    stringToUTF8(obj.value, buffer, len);
     return buffer;
   },
 

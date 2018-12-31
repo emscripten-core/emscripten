@@ -12,9 +12,8 @@ int main(int argc, char** argv) {
 
   SDL_Quit();
 
-#if EMSCRIPTEN
-  int result = 1;
-  REPORT_RESULT();
+#ifdef __EMSCRIPTEN__
+  REPORT_RESULT(1);
 #endif
 
   return 0;

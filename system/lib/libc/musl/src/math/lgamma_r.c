@@ -82,7 +82,6 @@
 #include "libc.h"
 
 static const double
-two52= 4.50359962737049600000e+15, /* 0x43300000, 0x00000000 */
 pi  =  3.14159265358979311600e+00, /* 0x400921FB, 0x54442D18 */
 a0  =  7.72156649015328655494e-02, /* 0x3FB3C467, 0xE37DB0C8 */
 a1  =  3.22467033424113591611e-01, /* 0x3FD4A34C, 0xC4A60FAD */
@@ -147,91 +146,62 @@ w4  = -5.95187557450339963135e-04, /* 0xBF4380CB, 0x8C0FE741 */
 w5  =  8.36339918996282139126e-04, /* 0x3F4B67BA, 0x4CDAD5D1 */
 w6  = -1.63092934096575273989e-03; /* 0xBF5AB89D, 0x0B9E43E4 */
 
+/* sin(pi*x) assuming x > 2^-100, if sin(pi*x)==0 the sign is arbitrary */
 static double sin_pi(double x)
 {
-	double y,z;
-	int n,ix;
+	int n;
 
-	GET_HIGH_WORD(ix, x);
-	ix &= 0x7fffffff;
+	/* spurious inexact if odd int */
+	x = 2.0*(x*0.5 - floor(x*0.5));  /* x mod 2.0 */
 
-	if (ix < 0x3fd00000)
-		return __sin(pi*x, 0.0, 0);
+	n = (int)(x*4.0);
+	n = (n+1)/2;
+	x -= n*0.5f;
+	x *= pi;
 
-	y = -x;  /* negative x is assumed */
-
-	/*
-	 * argument reduction, make sure inexact flag not raised if input
-	 * is an integer
-	 */
-	z = floor(y);
-	if (z != y) {    /* inexact anyway */
-		y *= 0.5;
-		y  = 2.0*(y - floor(y));   /* y = |x| mod 2.0 */
-		n  = (int)(y*4.0);
-	} else {
-		if (ix >= 0x43400000) {
-			y = 0.0;    /* y must be even */
-			n = 0;
-		} else {
-			if (ix < 0x43300000)
-				z = y + two52;  /* exact */
-			GET_LOW_WORD(n, z);
-			n &= 1;
-			y = n;
-			n <<= 2;
-		}
-	}
 	switch (n) {
-	case 0:  y =  __sin(pi*y, 0.0, 0); break;
-	case 1:
-	case 2:  y =  __cos(pi*(0.5-y), 0.0); break;
-	case 3:
-	case 4:  y =  __sin(pi*(1.0-y), 0.0, 0); break;
-	case 5:
-	case 6:  y = -__cos(pi*(y-1.5), 0.0); break;
-	default: y =  __sin(pi*(y-2.0), 0.0, 0); break;
+	default: /* case 4: */
+	case 0: return __sin(x, 0.0, 0);
+	case 1: return __cos(x, 0.0);
+	case 2: return __sin(-x, 0.0, 0);
+	case 3: return -__cos(x, 0.0);
 	}
-	return -y;
 }
-
 
 double __lgamma_r(double x, int *signgamp)
 {
-	double t,y,z,nadj,p,p1,p2,p3,q,r,w;
-	int32_t hx;
-	int i,lx,ix;
-
-	EXTRACT_WORDS(hx, lx, x);
+	union {double f; uint64_t i;} u = {x};
+	double_t t,y,z,nadj,p,p1,p2,p3,q,r,w;
+	uint32_t ix;
+	int sign,i;
 
 	/* purge off +-inf, NaN, +-0, tiny and negative arguments */
 	*signgamp = 1;
-	ix = hx & 0x7fffffff;
+	sign = u.i>>63;
+	ix = u.i>>32 & 0x7fffffff;
 	if (ix >= 0x7ff00000)
 		return x*x;
-	if ((ix|lx) == 0)
-		return 1.0/0.0;
-	if (ix < 0x3b900000) {  /* |x|<2**-70, return -log(|x|) */
-		if(hx < 0) {
+	if (ix < (0x3ff-70)<<20) {  /* |x|<2**-70, return -log(|x|) */
+		if(sign) {
+			x = -x;
 			*signgamp = -1;
-			return -log(-x);
 		}
 		return -log(x);
 	}
-	if (hx < 0) {
-		if (ix >= 0x43300000)  /* |x|>=2**52, must be -integer */
-			return 1.0/0.0;
+	if (sign) {
+		x = -x;
 		t = sin_pi(x);
 		if (t == 0.0) /* -integer */
-			return 1.0/0.0;
-		nadj = log(pi/fabs(t*x));
-		if (t < 0.0)
+			return 1.0/(x-x);
+		if (t > 0.0)
 			*signgamp = -1;
-		x = -x;
+		else
+			t = -t;
+		nadj = log(pi/(t*x));
 	}
 
 	/* purge off 1 and 2 */
-	if (((ix - 0x3ff00000)|lx) == 0 || ((ix - 0x40000000)|lx) == 0)
+	if ((ix == 0x3ff00000 || ix == 0x40000000) && (uint32_t)u.i == 0)
 		r = 0;
 	/* for x < 2.0 */
 	else if (ix < 0x40000000) {
@@ -306,7 +276,7 @@ double __lgamma_r(double x, int *signgamp)
 		r = (x-0.5)*(t-1.0)+w;
 	} else                         /* 2**58 <= x <= inf */
 		r =  x*(log(x)-1.0);
-	if (hx < 0)
+	if (sign)
 		r = nadj - r;
 	return r;
 }

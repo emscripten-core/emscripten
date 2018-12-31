@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <EGL/egl.h>
 
+#include <GLES2/gl2.h>
+
 int result = 1; // Success
 #define assert(x) do { if (!(x)) {result = 0; printf("Assertion failure: %s in %s:%d!\n", #x, __FILE__, __LINE__); } } while(0)
 
@@ -46,6 +48,43 @@ int main(int argc, char *argv[])
     EGLContext context = eglCreateContext(display, config, NULL, contextAttribsOld);
     assert(eglGetError() != EGL_SUCCESS);
 
+    //Test for invalid attribs
+    EGLint contextInvalidAttribs[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        0xFFFF, -1,
+        EGL_NONE
+    };
+    context = eglCreateContext(display, config, NULL, contextInvalidAttribs);
+    assert(eglGetError() != EGL_SUCCESS);
+    assert(context == 0);
+    //Test for missing terminator
+    EGLint contextAttribsMissingTerm[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+    };
+    context = eglCreateContext(display, config, NULL, contextAttribsMissingTerm);
+    assert(eglGetError() != EGL_SUCCESS);
+    assert(context == 0);
+    //Test for null terminator
+    EGLint contextAttribsNullTerm[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        0
+    };
+    context = eglCreateContext(display, config, NULL, contextAttribsNullTerm);
+    assert(eglGetError() != EGL_SUCCESS);
+    assert(context == 0);
+    //Test for invalid and null terminator
+    EGLint contextAttribsNullTermInvalid[] =
+    {
+        0,
+    };
+    context = eglCreateContext(display, config, NULL, contextAttribsNullTermInvalid);
+    assert(eglGetError() != EGL_SUCCESS);
+    assert(context == 0);
+
+    // The correct attributes, should create a good EGL context
     EGLint contextAttribs[] =
     {
         EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -65,6 +104,9 @@ int main(int argc, char *argv[])
     assert(eglGetCurrentSurface(EGL_READ) == surface);
     assert(eglGetCurrentSurface(EGL_DRAW) == surface);
 
+    glClearColor(1.0,0.0,0.0,0.5);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     ret = eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
@@ -72,14 +114,26 @@ int main(int argc, char *argv[])
     assert(eglGetCurrentSurface(EGL_READ) == EGL_NO_SURFACE);
     assert(eglGetCurrentSurface(EGL_DRAW) == EGL_NO_SURFACE);
 
+    assert(eglSwapInterval(display, 0) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(eglSwapInterval(display, 1) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+    assert(eglSwapInterval(display, 2) == EGL_TRUE);
+    assert(eglGetError() == EGL_SUCCESS);
+
     ret = eglTerminate(display);
     assert(eglGetError() == EGL_SUCCESS);
     assert(ret == EGL_TRUE);
 
+    // eglGetProcAddress() without active GL context and/or connected EGL display (after eglTerminate) is required to work, even though the returned function
+    // pointers cannot be called unless an active context is available:
+    // "return value of NULL indicates that the specified function does not exist for the implementation."
+    // "Client API function pointers returned by eglGetProcAddress are independent of the display and the currently bound client API context, and may be used by any client API context which supports the function."
+    // At https://www.khronos.org/registry/EGL/specs/eglspec.1.5.pdf, pages 82-32.
     assert(eglGetProcAddress("glClear") != 0);
     assert(eglGetProcAddress("glWakaWaka") == 0);
 
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

@@ -1,6 +1,6 @@
-#include <wchar.h>
 #include <wctype.h>
 #include <string.h>
+#include "libc.h"
 
 #define WCTYPE_ALNUM  1
 #define WCTYPE_ALPHA  2
@@ -61,3 +61,16 @@ wctype_t wctype(const char *s)
 			return i;
 	return 0;
 }
+
+int __iswctype_l(wint_t c, wctype_t t, locale_t l)
+{
+	return iswctype(c, t);
+}
+
+wctype_t __wctype_l(const char *s, locale_t l)
+{
+	return wctype(s);
+}
+
+weak_alias(__iswctype_l, iswctype_l);
+weak_alias(__wctype_l, wctype_l);

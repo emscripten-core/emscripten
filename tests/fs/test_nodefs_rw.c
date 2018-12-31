@@ -1,6 +1,13 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <emscripten.h>
+
+#ifdef NODERAWFS
+#define CWD ""
+#else
+#define CWD "/working/"
+#endif
 
 int main() {
   FILE *file;
@@ -13,15 +20,17 @@ int main() {
     fs.writeFileSync('foobar.txt', 'yeehaw');
   );
 
+#ifndef NODERAWFS
   // mount the current folder as a NODEFS instance
   // inside of emscripten
   EM_ASM(
     FS.mkdir('/working');
     FS.mount(NODEFS, { root: '.' }, '/working');
   );
+#endif
 
   // read and validate the contents of the file
-  file = fopen("/working/foobar.txt", "r");
+  file = fopen(CWD "foobar.txt", "r");
   assert(file);
   res = fread(buffer, sizeof(char), 6, file);
   assert(res == 6);
@@ -30,7 +39,7 @@ int main() {
   assert(!strcmp(buffer, "yeehaw"));
 
   // write out something new
-  file = fopen("/working/foobar.txt", "w");
+  file = fopen(CWD "foobar.txt", "w");
   assert(file);
   res = fwrite("cheez", sizeof(char), 5, file);
   assert(res == 5);

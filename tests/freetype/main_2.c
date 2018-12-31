@@ -89,7 +89,7 @@ main( int     argc,
   }
 
   // Only test the character 'w'
-  text = "w";
+  text = (char*)"w";
   
   filename      = argv[1];                           /* first argument     */
   WIDTH         = atoi(argv[3]);

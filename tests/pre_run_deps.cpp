@@ -4,7 +4,7 @@
 int main() {
   printf("main() called.\n");
   int result = emscripten_run_script_int("Module.okk");
-  REPORT_RESULT();
+  REPORT_RESULT(result);
   return 1;
 }
 

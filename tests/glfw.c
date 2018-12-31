@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <GL/glfw.h>
 #include <stdio.h>
+#include <assert.h>
 #include <emscripten/emscripten.h>
 
 void Init(void);
@@ -26,6 +27,9 @@ unsigned int nb_params = sizeof(params) / sizeof(int);
 int features[] = {GLFW_MOUSE_CURSOR, GLFW_STICKY_KEYS, GLFW_STICKY_MOUSE_BUTTONS, GLFW_SYSTEM_KEYS, GLFW_KEY_REPEAT, GLFW_AUTO_POLL_EVENTS};
 unsigned int nb_features = sizeof(features) / sizeof(int);
 
+// Will be set to 1 as soon as OnResize callback is called
+int on_resize_called = 0;
+
 float rotate_y = 0,
       rotate_z = 0;
 const float rotations_per_tick = .2;
@@ -47,16 +51,29 @@ void Init()
  
   if (glfwInit() != GL_TRUE)
     Shut_Down(1);
+
+  glfwEnable(GLFW_KEY_REPEAT); // test for issue #3059
+
+  int red_bits = glfwGetWindowParam(GLFW_RED_BITS);
+  glfwOpenWindowHint(GLFW_RED_BITS, 8);
+  assert(glfwGetWindowParam(GLFW_RED_BITS) == 8);
+  glfwOpenWindowHint(GLFW_RED_BITS, red_bits);
+
   // 800 x 600, 16 bit color, no depth, alpha or stencil buffers, windowed
   if (glfwOpenWindow(window_width, window_height, 5, 6, 5,
                   0, 0, 0, GLFW_WINDOW) != GL_TRUE)
     Shut_Down(1);
   glfwSetWindowTitle("The GLFW Window");
  
-  glfwSetKeyCallback( OnKeyPressed );
-  glfwSetCharCallback( OnCharPressed );
+  glfwSetKeyCallback(OnKeyPressed);
+  glfwSetCharCallback(OnCharPressed);
   glfwSetWindowCloseCallback(OnClose);
   glfwSetWindowSizeCallback(OnResize);
+  if (!on_resize_called)
+  {
+    Shut_Down(1);
+  }
+
   glfwSetWindowRefreshCallback(OnRefresh);
   glfwSetMouseWheelCallback(OnMouseWheel);
   glfwSetMousePosCallback(OnMouseMove);
@@ -95,6 +112,12 @@ void Iteration()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     // draw the figure
     Draw();
+
+    // Test that glfwSwapInterval doesn't crash (although we don't test actual timings)
+    static int i = 0;
+    glfwSwapInterval(i);
+    if (i < 2) ++i;
+
     // swap back and front buffers
     glfwSwapBuffers();
 }
@@ -304,6 +327,7 @@ void OnRefresh(){
 }
 
 void OnResize( int width, int height ){
+  on_resize_called = 1;
   printf("Resizing to %i %i\n", width, height);
 }
 
@@ -370,11 +394,15 @@ void PullInfo(){
   for(i = 0; i<nb_params; i++)
     printf(" - %-27s : %i\n", GetParamName(params[i]), glfwGetWindowParam(params[i]));
   
-  const char* extension = "MOZ_WEBGL_compressed_texture_s3tc";
+  const char* extension = "WEBGL_compressed_texture_s3tc";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");  
   
   extension = "GL_EXT_framebuffer_object";
   printf("'%s' extension is %s.\n", extension, glfwExtensionSupported(extension) ? "supported" : "not supported");
+  
+  extension = "glBindBuffer";
+  void* proc_addr = glfwGetProcAddress(extension);
+  printf("'%s' extension proc address is %p.\n", extension, proc_addr);
   
   printf("Sleeping 1 sec...\n");
   glfwSleep(1);
@@ -383,7 +411,6 @@ void PullInfo(){
   printf("================================================================================\n");
   
 #ifdef REPORT_RESULT  
-  int result = 1;
-  REPORT_RESULT();
+  REPORT_RESULT(1);
 #endif
 }

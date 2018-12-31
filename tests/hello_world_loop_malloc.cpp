@@ -1,6 +1,6 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 extern "C" {
   void dump(char *s) {
@@ -16,6 +16,6 @@ int main() {
   }
   copy[strlen(copy)+1] = (int)&original; // force original to be on the stack
   dump(copy);
-  return 1;
+  return 0;
 }
 
