@@ -427,7 +427,7 @@ function loadWebAssemblyModule(binary, flags) {
           var name = prop.substr(2); // without g$ prefix
           return env[prop] = function() {
 #if ASSERTIONS
-            assert(Module[name], 'missing linked global ' + name);
+            assert(Module[name], 'missing linked global ' + name + '. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
             return Module[name];
           };
@@ -442,7 +442,7 @@ function loadWebAssemblyModule(binary, flags) {
         // if not a global, then a function - call it indirectly
         return env[prop] = function() {
 #if ASSERTIONS
-          assert(Module[prop], 'missing linked function ' + prop);
+          assert(Module[prop], 'missing linked function ' + prop + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
           return Module[prop].apply(null, arguments);
         };

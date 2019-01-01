@@ -502,15 +502,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       filenames=['emscripten_memcpy.c'])
     return create_wasm_rt_lib(libname, math_files + string_files + other_files)
 
-  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
-  # You can provide 1 to include everything, or a comma-separated list with the ones you want
-  force = os.environ.get('EMCC_FORCE_STDLIBS')
-  force_all = force == '1'
-  force_include = set((force.split(',') if force else []) + forced)
-  if force_include:
-    logging.debug('forcing stdlibs: ' + str(force_include))
-
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
   always_include = set()
@@ -616,15 +607,28 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   libs_to_link = []
   already_included = set()
-
   system_libs_map = {l.shortname: l for l in system_libs}
+
+  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
+  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
+  # You can provide 1 to include everything, or a comma-separated list with the ones you want
+  force = os.environ.get('EMCC_FORCE_STDLIBS')
+  if force == '1':
+    force_all = True
+    force = ','.join(system_libs_map.keys())
+  else:
+    force_all = False
+  force_include = set((force.split(',') if force else []) + forced)
+  if force_include:
+    logging.debug('forcing stdlibs: ' + str(force_include))
 
   for lib in always_include:
     assert lib in system_libs_map
 
-  for lib in force_include:
-    if lib not in system_libs_map:
-      shared.exit_with_error('invalid forced library: %s', lib)
+  if not force_all:
+    for lib in force_include:
+      if lib not in system_libs_map:
+        shared.exit_with_error('invalid forced library: %s', lib)
 
   def maybe_noexcept(name):
     if shared.Settings.DISABLE_EXCEPTION_CATCHING:
