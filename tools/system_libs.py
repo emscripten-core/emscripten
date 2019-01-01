@@ -615,7 +615,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
     force_all = True
-    force = ','.join(system_libs_map.keys())
+    #force = ','.join(system_libs_map.keys())
   else:
     force_all = False
   force_include = set((force.split(',') if force else []) + forced)

@@ -3875,6 +3875,7 @@ ok
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
     print('waka syslibs 1')
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('waka syslibs 2')
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
