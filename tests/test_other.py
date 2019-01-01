@@ -7956,7 +7956,7 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      19, ['assert'], ['waka'], 33171, 11,  15, 70), # noqa
+        ([],      19, ['assert'], ['waka'], 33171, 11,  15, 69), # noqa
         (['-O1'], 17, ['assert'], ['waka'], 14720,  9,  14, 28), # noqa
         (['-O2'], 17, ['assert'], ['waka'], 14569,  9,  14, 24), # noqa
         (['-O3'],  6, [],         [],        3395,  8,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
