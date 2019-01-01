@@ -1478,7 +1478,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       table = table.replace('var ' + tableName, 'var ' + tableName + ' = Module["' + tableName + '"]')
       receiving += table + '\n'
 
-  if shared.Settings.EMULATED_FUNCTION_POINTERS:
+  # in asm.js emulated function tables, emit the table on the outside, where
+  # JS can manage it (for wasm, a native wasm Table is used directly, and we
+  # don't need this)
+  if shared.Settings.EMULATED_FUNCTION_POINTERS and not shared.Settings.WASM:
     receiving += '\n' + function_tables_defs.replace('// EMSCRIPTEN_END_FUNCS\n', '') + '\n' + ''.join(['Module["dynCall_%s"] = dynCall_%s\n' % (sig, sig) for sig in function_table_data])
     if not shared.Settings.WASM:
       for sig in function_table_data.keys():

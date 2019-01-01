@@ -3874,10 +3874,8 @@ ok
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    print('waka syslibs 1')
 
     def test(syslibs, expect_pass=True, need_reverse=True):
-      print('waka syslibs 2')
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
       try:
@@ -3892,9 +3890,7 @@ ok
             #include <iostream>
             void side() { std::cout << "cout hello from side\n"; }
           ''', expected=['cout hello from side\n'], need_reverse=need_reverse)
-        print('waka syslibs 3')
       except Exception as e:
-        print('waka syslibs 4')
         if expect_pass:
           raise
         print('(seeing expected fail)')
@@ -3906,22 +3902,15 @@ ok
           self.assertNotContained(assertion, str(e))
       assert passed == expect_pass, ['saw', passed, 'but expected', expect_pass]
 
-    print('waka syslibs a')
     test('libc++')
-    print('waka syslibs b')
     test('1')
-    print('waka syslibs c')
     if 'ASSERTIONS=1' not in self.emcc_args:
       self.set_setting('ASSERTIONS', 0)
-      print('waka syslibs d')
       test('', expect_pass=False, need_reverse=False)
     else:
-      print('waka syslibs e')
       print('(skip ASSERTIONS == 0 part)')
-    print('waka syslibs f')
     self.set_setting('ASSERTIONS', 1)
     test('', expect_pass=False, need_reverse=False)
-    print('waka syslibs g')
 
   @needs_dlfcn
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
