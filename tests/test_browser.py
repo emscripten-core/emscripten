@@ -3068,6 +3068,11 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), 'sound.ogg')
     self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
 
+  @requires_sound_hardware
+  def test_sdl2_mixer_wav(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
+    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
+
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')

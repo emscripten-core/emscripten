@@ -178,7 +178,7 @@ Emscripten has partial support for SDL1 and 2 audio, and OpenAL.
 
 To use SDL1 audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
 
-To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-s SDL_MIXER=2`. Format support is currently limited to OGG.
+To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-s USE_SDL_MIXER=2`. Format support is currently limited to OGG and WAV.
 
 How can my compiled program access files?
 =========================================
