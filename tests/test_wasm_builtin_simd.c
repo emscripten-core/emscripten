@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include <emscripten.h>
 
 typedef char i8x16 __attribute((vector_size(16)));
@@ -494,16 +495,18 @@ static int failures = 0;
   }                                                                     \
 })
 
-#define formatter(x) _Generic((x),              \
-                              int64_t: "%ld",   \
-                              int: "%d",        \
-                              float: "%f"       \
+#define formatter(x) _Generic((x),                      \
+                              int64_t: "%ld",           \
+                              int32_t: "%d",            \
+                              uint32_t: "%d",           \
+                              float: "%f",              \
+                              double: "%f"              \
     )
 
 #define err(x) fprintf(stderr, formatter(x), x)
 
 #define expect_eq(_a, _b) ({                                            \
-  int64_t a = (_a), b = (_b);                                           \
+  __typeof__(_a) a = (_a), b = (_b);                                    \
   if (a != b) {                                                         \
     failures++;                                                         \
     fprintf(stderr, "line %d: expected ", __LINE__);                    \
@@ -548,6 +551,308 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
     i8x16_replace_lane_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
     ((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7})
   );
+
+  // i16x8 lane accesses
+  expect_vec(i16x8_splat(5), ((i16x8){5, 5, 5, 5, 5, 5, 5, 5}));
+  expect_vec(i16x8_splat(65537), ((i16x8){1, 1, 1, 1, 1, 1, 1, 1}));
+  expect_eq(i16x8_extract_lane_s_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), -1);
+  expect_eq(i16x8_extract_lane_s_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), -1);
+  expect_eq(i16x8_extract_lane_u_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), 65535);
+  expect_eq(i16x8_extract_lane_u_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), 65535);
+  expect_vec(i16x8_replace_lane_first((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){7, 0, 0, 0, 0, 0, 0, 0}));
+  expect_vec(i16x8_replace_lane_last((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){0, 0, 0, 0, 0, 0, 0, 7}));
+
+  // i32x4 lane accesses
+  expect_vec(i32x4_splat(-5), ((i32x4){-5, -5, -5, -5}));
+  expect_eq(i32x4_extract_lane_first((i32x4){-5, 0, 0, 0}), -5);
+  expect_eq(i32x4_extract_lane_last((i32x4){0, 0, 0, -5}), -5);
+  expect_vec(i32x4_replace_lane_first((i32x4){0, 0, 0, 0}, 53), ((i32x4){53, 0, 0, 0}));
+  expect_vec(i32x4_replace_lane_last((i32x4){0, 0, 0, 0}, 53), ((i32x4){0, 0, 0, 53}));
+
+  // i64x2 lane accesses
+  expect_vec(i64x2_splat(-5), ((i64x2){-5, -5}));
+  expect_eq(i64x2_extract_lane_first((i64x2){-5, 0}), -5);
+  expect_eq(i64x2_extract_lane_last((i64x2){0, -5}), -5);
+  expect_vec(i64x2_replace_lane_first((i64x2){0, 0}, 53), ((i64x2){53, 0}));
+  expect_vec(i64x2_replace_lane_last((i64x2){0, 0}, 53), ((i64x2){0, 53}));
+
+  // f32x4 lane accesses
+  expect_vec(f32x4_splat(-5), ((f32x4){-5, -5, -5, -5}));
+  expect_eq(f32x4_extract_lane_first((f32x4){-5, 0, 0, 0}), -5);
+  expect_eq(f32x4_extract_lane_last((f32x4){0, 0, 0, -5}), -5);
+  expect_vec(f32x4_replace_lane_first((f32x4){0, 0, 0, 0}, 53), ((f32x4){53, 0, 0, 0}));
+  expect_vec(f32x4_replace_lane_last((f32x4){0, 0, 0, 0}, 53), ((f32x4){0, 0, 0, 53}));
+
+  // f64x2 lane accesses
+  expect_vec(f64x2_splat(-5), ((f64x2){-5, -5}));
+  expect_eq(f64x2_extract_lane_first((f64x2){-5, 0}), -5);
+  expect_eq(f64x2_extract_lane_last((f64x2){0, -5}), -5);
+  expect_vec(f64x2_replace_lane_first((f64x2){0, 0}, 53), ((f64x2){53, 0}));
+  expect_vec(f64x2_replace_lane_last((f64x2){0, 0}, 53), ((f64x2){0, 53}));
+
+  // i8x16 comparisons
+  expect_vec(
+    i8x16_eq(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){-1, 0, -1, 0, 0, 0, 0, 0, -1, 0, 0, -1, 0, 0, 0, 0})
+  );
+  expect_vec(
+    i8x16_ne(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){0, -1, 0, -1, -1, -1, -1, -1, 0, -1, -1, 0, -1, -1, -1, -1})
+  );
+  expect_vec(
+    i8x16_lt_s(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){0, 0, 0, -1, 0, -1, -1, 0, 0, 0, -1, 0, 0, -1, -1, 0})
+  );
+  expect_vec(
+    i8x16_lt_u(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){0, -1, 0, 0, -1, -1, 0, -1, 0, -1, 0, 0, -1, -1, 0, -1})
+  );
+  expect_vec(
+    i8x16_gt_s(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){0, -1, 0, 0, -1, 0, 0, -1, 0, -1, 0, 0, -1, 0, 0, -1})
+  );
+  expect_vec(
+    i8x16_gt_u(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){0, 0, 0, -1, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0})
+  );
+  expect_vec(
+    i8x16_le_s(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){-1, 0, -1, -1, 0, -1, -1, 0, -1, 0, -1, -1, 0, -1, -1, 0})
+  );
+
+  // expected {0x00ffffff, 0xff00ffff, 0xff00ffff, 0xff00ffff},
+  //      got {0x0000ffff, 0xffffffff, 0x0000ffff, 0xffffffff}
+  expect_vec(
+    i8x16_le_u(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){-1, -1, -1, 0, -1, -1, 0, -1, -1, -1, 0, -1, -1, -1, 0, -1})
+  );
+  expect_vec(
+    i8x16_ge_s(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){-1, -1, -1, 0, -1, 0, 0, -1, -1, -1, 0, -1, -1, 0, 0, -1})
+  );
+  // expected {0x00ffffff, 0xff00ffff, 0xff00ffff, 0xff00ffff},
+  //      got {0x0000ffff, 0xffffffff, 0x0000ffff, 0xffffffff}
+  expect_vec(
+    i8x16_ge_u(
+      (i8x16){0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42},
+      (i8x16){0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128}
+    ),
+    ((i8x16){-1, 0, -1, -1, 0, 0, -1, 0, -1, 0, -1, -1, 0, 0, -1, 0})
+  );
+
+  // i16x8 comparisons
+  expect_vec(
+    i16x8_eq(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){-1, 0, 0, 0, 0, 0, 0, 0})
+  );
+  expect_vec(
+    i16x8_ne(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){0, -1, -1, -1, -1, -1, -1, -1})
+  );
+  expect_vec(
+    i16x8_lt_s(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){0, 0, 0, -1, 0, -1, 0, -1})
+  );
+  expect_vec(
+    i16x8_lt_u(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){0, 0, 0, 0, -1, 0, -1, 0})
+  );
+  expect_vec(
+    i16x8_gt_s(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){0, -1, -1, 0, -1, 0, -1, 0})
+  );
+  expect_vec(
+    i16x8_gt_u(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){0, -1, -1, -1, 0, -1, 0, -1})
+  );
+  expect_vec(
+    i16x8_le_s(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){-1, 0, 0, -1, 0, -1, 0, -1})
+  );
+  expect_vec(
+    i16x8_le_u(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){-1, 0, 0, 0, -1, 0, -1, 0})
+  );
+  expect_vec(
+    i16x8_ge_s(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){-1, -1, -1, 0, -1, 0, -1, 0})
+  );
+  expect_vec(
+    i16x8_ge_u(
+      (i16x8){0, 32767, 13, -32768,      1, -32767,     42, -25536},
+      (i16x8){0,    13,  1,  32767, -32767,     42, -25536,  32767}
+    ),
+    ((i16x8){-1, -1, -1, -1, 0, -1, 0, -1})
+  );
+
+  // i342x4 comparisons
+  expect_vec(
+    i32x4_eq((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){-1, 0, 0, 0})
+  );
+  expect_vec(
+    i32x4_ne((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){0, -1, -1, -1})
+  );
+  expect_vec(
+    i32x4_lt_s((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){0, -1, 0, -1})
+  );
+  expect_vec(
+    i32x4_lt_u((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){0, 0, -1, -1})
+  );
+  expect_vec(
+    i32x4_gt_s((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){0, 0, -1, 0})
+  );
+  expect_vec(
+    i32x4_gt_u((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){0, -1, 0, 0})
+  );
+  expect_vec(
+    i32x4_le_s((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){-1, -1, 0, -1})
+  );
+  expect_vec(
+    i32x4_le_u((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){-1, 0, -1, -1})
+  );
+  expect_vec(
+    i32x4_ge_s((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){-1, 0, -1, 0})
+  );
+  expect_vec(
+    i32x4_ge_u((i32x4){0, -1, 53, -7}, (i32x4){0, 53, -7, -1}), ((i32x4){-1, -1, 0, 0})
+  );
+
+  // f32x4 comparisons
+  expect_vec(
+    f32x4_eq((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){-1, 0, 0, 0})
+  );
+  expect_vec(
+    f32x4_ne((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){0, -1, -1, -1})
+  );
+  expect_vec(
+    f32x4_lt((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){0, -1, 0, -1})
+  );
+  expect_vec(
+    f32x4_gt((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){0, 0, -1, 0})
+  );
+  expect_vec(
+    f32x4_le((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){-1, -1, 0, -1})
+  );
+  expect_vec(
+    f32x4_ge((f32x4){0, -1, 1, 0}, (f32x4){0, 0, -1, 1}), ((i32x4){-1, 0, -1, 0})
+  );
+  expect_vec(
+    f32x4_eq((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){0, 0, 0, -1})
+  );
+  expect_vec(
+    f32x4_ne((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){-1, -1, -1, 0})
+  );
+  expect_vec(
+    f32x4_lt((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){0, 0, 0, 0})
+  );
+  expect_vec(
+    f32x4_gt((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){0, 0, 0, 0})
+  );
+  expect_vec(
+    f32x4_le((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){0, 0, 0, -1})
+  );
+  expect_vec(
+    f32x4_ge((f32x4){NAN, 0, NAN, INFINITY}, (f32x4){0, NAN, NAN, INFINITY}),
+    ((i32x4){0, 0, 0, -1})
+  );
+  expect_vec(
+    f32x4_eq((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){0, 0, 0, 0})
+  );
+  expect_vec(
+    f32x4_ne((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){-1, -1, -1, -1})
+  );
+  expect_vec(
+    f32x4_lt((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){-1, -1, 0, 0})
+  );
+  expect_vec(
+    f32x4_gt((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){0, 0, 0, 0})
+  );
+  expect_vec(
+    f32x4_le((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){-1, -1, 0, 0})
+  );
+  expect_vec(
+    f32x4_ge((f32x4){-INFINITY, 0, NAN, -INFINITY}, (f32x4){0, INFINITY, INFINITY, NAN}),
+    ((i32x4){0, 0, 0, 0})
+  );
+
+  // f64x2 comparisons
+  expect_vec(f64x2_eq((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){-1, 0}));
+  expect_vec(f64x2_ne((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){0, -1}));
+  expect_vec(f64x2_lt((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){0, 0}));
+  expect_vec(f64x2_gt((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){0, -1}));
+  expect_vec(f64x2_le((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){-1, 0}));
+  expect_vec(f64x2_ge((f64x2){0, 1}, (f64x2){0, 0}), ((i64x2){-1, -1}));
+  expect_vec(f64x2_eq((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, 0}));
+  expect_vec(f64x2_ne((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){-1, -1}));
+  expect_vec(f64x2_lt((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, -1}));
+  expect_vec(f64x2_gt((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, 0}));
+  expect_vec(f64x2_le((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, -1}));
+  expect_vec(f64x2_ge((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, 0}));
+
 
   if (failures == 0) {
     printf("Success!\n");
