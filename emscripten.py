@@ -289,6 +289,11 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   # we must also emit the full list if we are emitting code that can be linked later
   if 'invokeFuncs' in metadata and not shared.Settings.LINKABLE:
     invoke_function_names = metadata['invokeFuncs']
+
+    if shared.Settings.WASM:
+      invoke_function_names.append('invoke_X')
+      # Remove duplicates by converting it into a set because set don't allow duplicates
+      invoke_function_names = list(set(invoke_function_names))
   else:
     invoke_function_names = ['invoke_' + x for x in function_table_sigs]
 
