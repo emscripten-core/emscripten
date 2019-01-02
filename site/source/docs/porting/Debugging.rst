@@ -41,7 +41,7 @@ The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug 
 
 .. code-block:: bash
 
-  # Linux or Mac OS X
+  # Linux or macOS
   EMCC_DEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
 
   # Windows
@@ -155,13 +155,14 @@ Emscripten-specific issues
 Memory Alignment Issues
 -----------------------
 
-The :ref:`Emscripten memory representation <emscripten-memory-model>` assumes loads and stores are aligned. Performing a normal load or store on an unaligned address can fail.
+The :ref:`Emscripten memory representation <emscripten-memory-model>` is compatible with C and C++. However, when undefined behavior is involved you may see differences with native architectures, and also differences between Emscripten's output for asm.js and WebAssembly:
+
+- In asm.js, loads and stores must be aligned, and performing a normal load or store on an unaligned address can fail silently (access the wrong address). If the compiler knows a load or store is unaligned, it can emulate it in a way that works but is slow.
+- In WebAssembly, unaligned loads and stores will work. Each one is annotated with its expected alignment. If the actual alignment does not match, it will still work, but may be slow on some CPU architectures.
 
 .. tip:: :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` can be used to reveal memory alignment issues.
 
-Generally it is best to avoid unaligned reads and writes — often they occur as the result of undefined behavior. In some cases, however, they are unavoidable — for example if the code to be ported reads an ``int`` from a packed structure in some pre-existing data format.
-
-Emscripten supports unaligned reads and writes, but they will be much slower, and should be used only when absolutely necessary.  To force an unaligned read or write you can:
+Generally it is best to avoid unaligned reads and writes — often they occur as the result of undefined behavior, as mentioned above. In some cases, however, they are unavoidable — for example if the code to be ported reads an ``int`` from a packed structure in some pre-existing data format. In that case, to make things work properly in asm.js, and be fast in WebAssembly, you must be sure that the compiler knows the load or store is unaligned. To do so you can:
 
 - Manually read individual bytes and reconstruct the full value
 - Use the :c:type:`emscripten_align* <emscripten_align1_short>` typedefs, which define unaligned versions of the basic types (``short``, ``int``, ``float``, ``double``). All operations on those types are not fully aligned (use the ``1`` variants in most cases, which mean no alignment whatsoever).
@@ -226,7 +227,7 @@ To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBU
 
 .. code-block:: bash
 
-  # Linux or Mac OS X
+  # Linux or macOS
   EMCC_AUTODEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
 
   # Windows

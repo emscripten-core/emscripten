@@ -39,9 +39,9 @@ Check out the rest of this article for instructions on how to :ref:`build the si
 Building the site
 =================
 
-The site sources are stored on `Github <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
+The site sources are stored on `GitHub <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
-The site is published to the **kripken/emscripten-site** *gh-pages* branch (Github pages).
+The site is published to the **kripken/emscripten-site** *gh-pages* branch (GitHub pages).
 
 .. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 

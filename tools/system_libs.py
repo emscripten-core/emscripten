@@ -452,7 +452,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         musl_internal_includes() +
         # TODO(sbc): Remove this once we fix https://bugs.llvm.org/show_bug.cgi?id=38711
         ['-fno-slp-vectorize'] +
-        shared.EMSDK_OPTS)
+        shared.COMPILER_OPTS)
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -496,8 +496,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-      filenames=['memcpy.c', 'memset.c', 'memmove.c'])
-    return create_wasm_rt_lib(libname, math_files + string_files)
+      filenames=['memset.c', 'memmove.c'])
+    other_files = files_in_path(
+      path_components=['system', 'lib', 'libc'],
+      filenames=['emscripten_memcpy.c'])
+    return create_wasm_rt_lib(libname, math_files + string_files + other_files)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)

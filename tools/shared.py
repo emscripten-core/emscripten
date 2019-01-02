@@ -1394,6 +1394,10 @@ class Building(object):
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
       cores = Building.get_num_cores()
+      if DEBUG:
+        # When in EMCC_DEBUG mode, only use a single core in the pool, so that
+        # logging is not all jumbled up.
+        cores = 1
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
@@ -1404,6 +1408,21 @@ class Building(object):
             for t in tasks:
               results += [func(t)]
             return results
+
+          def map_async(self, func, tasks, **kwargs):
+            class Result:
+              def __init__(self, func, tasks):
+                self.func = func
+                self.tasks = tasks
+
+              def get(self, timeout):
+                results = []
+                for t in tasks:
+                  results += [func(t)]
+                return results
+
+            return Result(func, tasks)
+
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [

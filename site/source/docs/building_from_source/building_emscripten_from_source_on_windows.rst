@@ -42,16 +42,16 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
 
-#. Install `Github for Windows <http://windows.github.com/>`_ (or any other git client).
+#. Install `GitHub for Windows <http://windows.github.com/>`_ (or any other git client).
 
 #. Install `Java <http://java.com/en/download/index.jsp>`_ (Java is optional, you only need it for Closure Compiler minification).
 
 #. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`.
 
-#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from Github. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
+#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from GitHub. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
-  - Using *Github for Windows*:
-    -  Launch the *GitHub for Windows* client. Click **Skip Setup** if you don't have a Github account.
+  - Using *GitHub for Windows*:
+    -  Launch the *GitHub for Windows* client. Click **Skip Setup** if you don't have a GitHub account.
     -  (optional) Select **Options** from the gear menu, and customize the default storage directory. Ensure the path has no spaces.
     -  In your web browser, open https://github.com/kripken/emscripten and press the **Clone in Windows** button.
 
@@ -76,7 +76,7 @@ Instructions for creating and manually configuring this file are given in :ref:`
 Validating the environment
 ===============================
 
-The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory — the directory that contains *emcc* (if you installed using *Github for Windows* this will be **C:/Users/username/Documents/GitHub/emscripten**) and enter: ::
+The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory — the directory that contains *emcc* (if you installed using *GitHub for Windows* this will be **C:/Users/username/Documents/GitHub/emscripten**) and enter: ::
 
   ./emcc tests/hello_world.cpp
 

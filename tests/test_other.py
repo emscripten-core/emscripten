@@ -28,7 +28,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, TEMP_DIR, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
@@ -43,15 +43,18 @@ scons_path = Building.which('scons')
 
 
 class temp_directory(object):
+  def __init__(self, dirname):
+    self.dir = dirname
+
   def __enter__(self):
-    self.directory = tempfile.mkdtemp(prefix='emtest_temp_', dir=TEMP_DIR)
+    self.directory = tempfile.mkdtemp(prefix='emtest_temp_', dir=self.dir)
     self.prev_cwd = os.getcwd()
     os.chdir(self.directory)
+    print('temp_directory: ' + self.directory)
     return self.directory
 
   def __exit__(self, type, value, traceback):
-    os.chdir(self.prev_cwd) # On Windows, we can't have CWD in the directory we're deleting
-    try_delete(self.directory)
+    os.chdir(self.prev_cwd)
 
 
 def uses_canonical_tmp(func):
@@ -82,6 +85,9 @@ def is_python3_version_supported():
   if not python3:
     return False
   output = run_process([python3, '--version'], stdout=PIPE).stdout
+  # strip out 'rc1' etc., we don't care about release candidates
+  if 'rc' in output:
+    output = output.split('rc')[0]
   version = [int(x) for x in output.split(' ')[1].split('.')]
   return version >= [3, 5, 0]
 
@@ -464,58 +470,51 @@ f.close()
   # cache on demand, that exactly one of the processes will, and the other
   # processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    with temp_directory() as tempdirname:
-      c_file = os.path.join(tempdirname, 'test.c')
-      with open(c_file, 'w') as f:
-        f.write(r'''
-        #include <stdio.h>
-        int main() {
-          printf("hello, world!\n");
-          return 0;
-        }
-        ''')
-      cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
-      tasks = []
-      num_times_libc_was_built = 0
-      for i in range(3):
-        p = run_process([PYTHON, EMCC, c_file, '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
-        tasks += [p]
-      for p in tasks:
-        print('stdout:\n', p.stdout)
-        if 'generating system library: libc' in p.stdout:
-          num_times_libc_was_built += 1
-      # The cache directory must exist after the build
-      self.assertTrue(os.path.exists(cache_dir_name))
-      # The cache directory must contain a built libc
-      if self.is_wasm_backend():
-        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
-      else:
-        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
-      # Exactly one child process should have triggered libc build!
-      self.assertEqual(num_times_libc_was_built, 1)
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    cache_dir_name = self.in_dir('emscripten_cache')
+    tasks = []
+    num_times_libc_was_built = 0
+    for i in range(3):
+      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+      tasks += [p]
+    for p in tasks:
+      print('stdout:\n', p.stdout)
+      if 'generating system library: libc' in p.stdout:
+        num_times_libc_was_built += 1
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    # Exactly one child process should have triggered libc build!
+    self.assertEqual(num_times_libc_was_built, 1)
 
   def test_emcc_cache_flag(self):
-    with temp_directory() as tempdirname:
-      c_file = os.path.join(tempdirname, 'test.c')
-      cache_dir_name = os.path.join(tempdirname, 'emscripten_cache')
-      self.assertFalse(os.path.exists(cache_dir_name))
-
-      with open(c_file, 'w') as f:
-        f.write(r'''
-        #include <stdio.h>
-        int main() {
-          printf("hello, world!\n");
-          return 0;
-        }
-        ''')
-      run_process([PYTHON, EMCC, c_file, '--cache', cache_dir_name], stderr=PIPE)
-      # The cache directory must exist after the build
-      self.assertTrue(os.path.exists(cache_dir_name))
-      # The cache directory must contain a built libc'
-      if self.is_wasm_backend():
-        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
-      else:
-        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc'
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
   @uses_canonical_tmp
   def test_emcc_cflags(self):
@@ -595,9 +594,11 @@ f.close()
         print(error)
         continue
 
-      # ('directory to the test', 'output filename', ['extra args to pass to CMake'])
-      # Testing all combinations would be too much work and the test would take 10 minutes+ to finish (CMake feature detection is slow),
-      # so combine multiple features into one to try to cover as much as possible while still keeping this test in sensible time limit.
+      # ('directory to the test', 'output filename', ['extra args to pass to
+      # CMake']) Testing all combinations would be too much work and the test
+      # would take 10 minutes+ to finish (CMake feature detection is slow), so
+      # combine multiple features into one to try to cover as much as possible
+      # while still keeping this test in sensible time limit.
       cases = [
         ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
         ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release',        '-DBUILD_SHARED_LIBS=OFF']),
@@ -609,7 +610,7 @@ f.close()
       ]
       for test_dir, output_file, cmake_args in cases:
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
-        with temp_directory() as tempdirname:
+        with temp_directory(self.get_dir()) as tempdirname:
           # Run Cmake
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
@@ -651,7 +652,7 @@ f.close()
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang and place them to cmake/Modules/Platform/Emscripten.cmake.
   @no_windows('Skipped on Windows because CMake does not configure native Clang builds well on Windows.')
   def test_cmake_compile_features(self):
-    with temp_directory():
+    with temp_directory(self.get_dir()):
       cmd = ['cmake', '-DCMAKE_C_COMPILER=' + CLANG_CC, '-DCMAKE_CXX_COMPILER=' + CLANG_CPP, path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       native_features = run_process(cmd, stdout=PIPE).stdout
@@ -661,7 +662,7 @@ f.close()
     else:
       emconfigure = path_from_root('emcmake')
 
-    with temp_directory():
+    with temp_directory(self.get_dir()):
       cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
@@ -673,7 +674,7 @@ f.close()
   # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that needs C++11 (embind)
   def test_cmake_with_embind_cpp11_mode(self):
     for args in [[], ['-DNO_GNU_EXTENSIONS=1']]:
-      with temp_directory() as tempdirname:
+      with temp_directory(self.get_dir()) as tempdirname:
         configure = [path_from_root('emcmake.bat' if WINDOWS else 'emcmake'), 'cmake', path_from_root('tests', 'cmake', 'cmake_with_emval')] + args
         print(str(configure))
         run_process(configure)
@@ -695,14 +696,14 @@ f.close()
       emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    with temp_directory() as tempdirname:
+    with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
       assert Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
       assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
-    with temp_directory() as tempdirname:
+    with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
       assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
@@ -710,7 +711,7 @@ f.close()
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
-    with temp_directory() as tempdirname:
+    with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
       assert Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
@@ -1049,6 +1050,7 @@ int main() {
            expected_ranges,
            args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
 
+  @no_wasm_backend('outlining is an asmjs only feature')
   def test_outline_stack(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
@@ -3525,21 +3527,6 @@ int main() {
             assert 'hello' in output, output
             assert ('world' in output) == (exit or flush), 'unflushed content is shown only when exiting the runtime'
             assert (no_exit and assertions and not flush) == ('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1' in output), 'warning should be shown'
-
-  def test_no_exit_runtime_warnings_atexit(self):
-    create_test_file('code.cpp', r'''
-#include <stdlib.h>
-void bye() {}
-int main() {
-  atexit(bye);
-}
-''')
-    for no_exit in [0, 1]:
-      for assertions in [0, 1]:
-        print(no_exit, assertions)
-        run_process([PYTHON, EMCC, 'code.cpp', '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions])
-        output = run_js('a.out.js', stderr=PIPE, full_output=True)
-        assert (no_exit and assertions) == ('atexit() called, but EXIT_RUNTIME is not set, so atexits() will not be called. set EXIT_RUNTIME to 1' in output), 'warning should be shown'
 
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
@@ -7673,7 +7660,7 @@ int main() {
       (['-s', 'BINARYEN_METHOD="native-wasm"'], False),
       (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
     ]:
-      with temp_directory() as temp_dir:
+      with temp_directory(self.get_dir()) as temp_dir:
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
         print(' '.join(cmd))
         run_process(cmd)
@@ -7682,7 +7669,7 @@ int main() {
 
     # Test that outputting to .wasm does not nuke an existing .asm.js file, if
     # user wants to manually dual-deploy both to same directory.
-    with temp_directory() as temp_dir:
+    with temp_directory(self.get_dir()) as temp_dir:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
       print(' '.join(cmd))
       run_process(cmd)
@@ -7928,8 +7915,7 @@ int main() {
 
     if not self.is_wasm_backend():
       # fastcomp
-
-      size_slack = 0.05
+      size_slack = 0.05  # changes very little
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
@@ -7966,17 +7952,16 @@ int main() {
       ], size_slack) # noqa
     else:
       # wasm-backend
-
-      size_slack = 0.5
+      size_slack = 0.5  # for now, don't look carefully at code size
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      19, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
-        (['-O1'], 17, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
-        (['-O2'], 17, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
+        ([],      19, ['assert'], ['waka'], 33171, 11,  15, 69), # noqa
+        (['-O1'], 17, ['assert'], ['waka'], 14720,  9,  14, 28), # noqa
+        (['-O2'], 17, ['assert'], ['waka'], 14569,  9,  14, 24), # noqa
+        (['-O3'],  6, [],         [],        3395,  8,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  6, [],         [],        3350,  8,   3, 15), # noqa
+        (['-Oz'],  6, [],         [],        3309,  8,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],         [],          61,  0,   1,  1), # noqa; almost totally empty!

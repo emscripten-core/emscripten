@@ -6,7 +6,7 @@ Emscripten SDK (emsdk)
 
 ** Emscripten SDK (** ``emsdk`` **) is used to perform all SDK maintenance. You only need to install the SDK once; after that emsdk can do all further updates!**
 
-With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on Github. To access the *emsdk* on Windows, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
+With *emsdk* you can download, install or remove *any* :term:`SDK` or :term:`Tool`, and even use the :ref:`bleeding edge versions <emsdk-master-or-incoming-sdk>` in development on GitHub. To access the *emsdk* on Windows, first launch the :ref:`Emscripten Command Prompt <emcmdprompt>`. Most operations are of the form ``./emsdk command``.
 
 This document provides the command syntax, and a :ref:`set of guides <emsdk_howto>` explaining how to perform both common and advanced maintenance operations.
 
@@ -42,7 +42,7 @@ Arguments
 
 .. note::
 
-  - For Linux and Mac OSX the commands are called with **./emsdk**. On Windows use **emsdk**.
+  - For Linux and macOS the commands are called with **./emsdk**. On Windows use **emsdk**.
 
 .. _emsdk-specified-tool-sdk:
 
@@ -119,9 +119,9 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 "How to" guides
 =========================
 
-The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from Github.
+The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from GitHub.
 
-.. note:: The examples below show the commands for Linux and Mac OS X. The commands are the same on Windows, but you need to replace **./emsdk** with **emsdk**.
+.. note:: The examples below show the commands for Linux and macOS. The commands are the same on Windows, but you need to replace **./emsdk** with **emsdk**.
 
 .. _emsdk-get-latest-sdk:
 
@@ -201,10 +201,10 @@ Toggle between different tools and SDK versions using the :term:`activate <Activ
 
   ./emsdk activate <tool/sdk name>
 
-  # On Linux and OSX, also set the environment variables.
+  # On Linux and macOS, also set the environment variables.
   source ./emsdk_env.sh
 
-.. note:: On Linux and Mac OS X, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call ``source ./emsdk_env.sh`` after calling ``activate``. The use of ``source`` is a security feature of Unix shells.
+.. note:: On Linux and macOS, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call ``source ./emsdk_env.sh`` after calling ``activate``. The use of ``source`` is a security feature of Unix shells.
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
 
@@ -235,7 +235,7 @@ On Windows, you can directly install an old SDK version by using one of :ref:`th
 How do I track the latest Emscripten development with the SDK?
 ------------------------------------------------------------------------------------------------
 
-It is also possible to use the latest and greatest versions of the tools on the Github repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to Github, without having to wait for release to be tagged. **No Github account or fork of Emscripten is required.**
+It is also possible to use the latest and greatest versions of the tools on the GitHub repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to GitHub, without having to wait for release to be tagged. **No GitHub account or fork of Emscripten is required.**
 
 To switch to using the latest upstream git development branch (``incoming``), run the following:
 
@@ -254,7 +254,7 @@ If you want to use the upstream stable branch ``master``, then replace ``-incomi
 
 .. _emsdk-howto-use-own-fork:
 
-How do I use my own Emscripten Github fork with the SDK?
+How do I use my own Emscripten GitHub fork with the SDK?
 ----------------------------------------------------------------
 
 It is also possible to use your own fork of the Emscripten repository via the SDK. This is useful in the case when you want to make your own modifications to the Emscripten toolchain, but still keep using the SDK environment and tools.

@@ -20,7 +20,7 @@ What you'll need
 Emscripten tools and dependencies
 ---------------------------------
 
-A complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`. Then install any missing tools using the instructions in the appropriate platform-specific build topic (:ref:`building-emscripten-on-linux`, :ref:`building-emscripten-on-windows-from-source`, :ref:`building-emscripten-on-mac-osx-from-source`):
+A complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`. Then install any missing tools using the instructions in the appropriate platform-specific build topic (:ref:`building-emscripten-on-linux`, :ref:`building-emscripten-on-windows-from-source`, :ref:`building-emscripten-on-macos-from-source`):
 
   - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
   - :term:`Python` 2.7.12 or above (Python 3.* may also work, work is ongoing)
@@ -61,10 +61,10 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
     # Install cmake
     sudo apt-get install cmake
 
-- Mac OS X: Install the *XCode Command Line Tools*:
+- macOS: Install the *Xcode Command Line Tools*:
 
-  -  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-  -  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+  -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+  -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 .. note:: Building LLVM and Clang from source can require a lot of memory and hard drive space. The specific requirements change from LLVM version to another, but you probably need at least 2GB of RAM, preferably 4GB or more. Debug builds or builds with assertions can require even more memory.
 
@@ -88,7 +88,7 @@ You can check which tools are already present using the following commands:
   # Check for node.js on Windows
   node --version
 
-  # Check for node.js on Mac OS X
+  # Check for node.js on macOS
   node -v
 
   # Check for git
