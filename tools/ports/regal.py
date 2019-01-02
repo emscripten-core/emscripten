@@ -5,7 +5,7 @@
 
 import os, shutil, logging, subprocess, sys, stat
 
-TAG = 'version_2'
+TAG = 'version_3'
 
 
 def get(ports, settings, shared):
