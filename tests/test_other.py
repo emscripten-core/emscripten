@@ -6357,15 +6357,8 @@ int main(int argc, char** argv) {
         print('  sizes:', size, side_size)
         return (size, side_size)
 
-      def percent_diff(x, y):
-        small = min(x, y)
-        large = max(x, y)
-        return float(100 * large) / small - 100
-
-      # main module tests
-
-      full = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts", "__Z3fooii"]'])
-      # printf is not used in main, but libc was linked in, so it's there
+      # test invoke calls
+      test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts", "__Z3fooii"]'])
 
   @no_wasm_backend('uses SIDE_MODULE')
   def test_ld_library_path(self):
