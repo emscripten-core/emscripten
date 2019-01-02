@@ -11,7 +11,7 @@ def get(ports, settings, shared):
     def create():
       cwd = os.getcwd()
       commonflags = ['--disable-shared', '--disable-music-cmd', '--enable-sdltest', '--disable-smpegtest']
-      formatflags = ['--disable-music-wave', '--disable-music-mod', '--disable-music-midi', '--enable-music-ogg', '--disable-music-ogg-shared', '--disable-music-flac', '--disable-music-mp3']
+      formatflags = ['--enable-music-wave', '--disable-music-mod', '--disable-music-midi', '--enable-music-ogg', '--disable-music-ogg-shared', '--disable-music-flac', '--disable-music-mp3']
       configure = os.path.join(ports.get_dir(), 'sdl2-mixer', 'SDL2_mixer-' + TAG, 'configure')
       build_dir = os.path.join(ports.get_build_dir(), 'sdl2-mixer')
       dist_dir = os.path.join(ports.get_build_dir(), 'sdl2-mixer', 'dist')
