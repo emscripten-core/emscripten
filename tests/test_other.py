@@ -6302,7 +6302,8 @@ int main(int argc, char** argv) {
 
       assert side_dce_fail[1] < 0.95 * side_dce_work[1] # removing that function saves a chunk
 
-  def test_mainmodule_exports(self):
+  @no_wasm_backend()
+  def test_mainmodule_invoke(self):
     # for wasm in (1, 0):
       wasm = 1
       print('wasm?', wasm)
