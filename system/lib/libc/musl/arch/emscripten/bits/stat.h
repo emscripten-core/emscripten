@@ -1,3 +1,9 @@
+/*
+ * This definition happens to match the x32 and x86-64 stat layouts.
+ * Direct compatibility with them isn't essential, but they are good
+ * examples to follow. Note that there's no implicit padding, and
+ * there's room for future expansion.
+ */
 struct stat
 {
 	dev_t st_dev;
