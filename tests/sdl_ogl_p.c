@@ -24,12 +24,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 
 #include "SDL/SDL.h"
 #include "SDL/SDL_image.h"
-
-#ifndef USE_REGAL
 #include "SDL/SDL_opengl.h"
-#else
-#include "GL/Regal.h"
-#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -51,10 +46,6 @@ int main(int argc, char *argv[])
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
-
-#if USE_REGAL
-    RegalMakeCurrent((void*)1);
-#endif
 
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
 
