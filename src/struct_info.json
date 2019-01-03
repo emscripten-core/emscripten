@@ -47,14 +47,13 @@
         "structs": {
             "stat": [
                 "st_dev", 
-                "__st_dev_padding", 
-                "__st_ino_truncated", 
-                "st_mode", 
+                "st_ino",
                 "st_nlink", 
+                "st_mode",
                 "st_uid", 
                 "st_gid", 
+                "__pad0",
                 "st_rdev", 
-                "__st_rdev_padding", 
                 "st_size", 
                 "st_blksize", 
                 "st_blocks", 
@@ -75,8 +74,8 @@
                         "tv_sec", 
                         "tv_nsec"
                     ]
-                }, 
-                "st_ino"
+                },
+                "__unused"
             ]
         }
     }, 

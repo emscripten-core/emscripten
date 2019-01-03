@@ -48,25 +48,26 @@ var SyscallsLibrary = {
         }
         throw e;
       }
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_dev_padding, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_ino_truncated, 'stat.ino', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.__st_rdev_padding, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__pad0, '0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, '(stat.atime.getTime() / 1000)|0', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, '(stat.mtime.getTime() / 1000)|0', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, '(stat.ctime.getTime() / 1000)|0', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '0', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__unused, '0', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__unused+8, '0', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.__unused+16, '0', 'i64') }}};
       return 0;
     },
     doMsync: function(addr, stream, len, flags) {
@@ -434,10 +435,10 @@ var SyscallsLibrary = {
 #endif
     var who = SYSCALLS.get(), usage = SYSCALLS.get();
     _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
-    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i32') }}}; // fake some values
-    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i32') }}};
-    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i32') }}};
-    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}};
+    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_sec, '1', 'i64') }}}; // fake some values
+    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_utime.tv_usec, '2', 'i64') }}};
+    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_sec, '3', 'i64') }}};
+    {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i64') }}};
     return 0;
   },
   __syscall83: function(which, varargs) { // symlink
@@ -718,9 +719,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall140: function(which, varargs) { // llseek
-    var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-    // NOTE: offset_high is unused - Emscripten's off_t is 32-bit
-    var offset = offset_low;
+    var stream = SYSCALLS.getStreamFromFD(), offset = SYSCALLS.get64(), result = SYSCALLS.get(), whence = SYSCALLS.get();
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
@@ -926,7 +925,7 @@ var SyscallsLibrary = {
     return 0; // just report no limits
   },
   __syscall192: function(which, varargs) { // mmap2
-    var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
+    var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get64()
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
@@ -1259,11 +1258,11 @@ var SyscallsLibrary = {
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), times = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(flags === 0);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+    var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i64') }}};
     var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var atime = (seconds*1000) + (nanoseconds/(1000*1000));
     times += {{{ C_STRUCTS.timespec.__size__ }}};
-    seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+    seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i64') }}};
     nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     var mtime = (seconds*1000) + (nanoseconds/(1000*1000));
     FS.utime(path, atime, mtime);
@@ -1291,14 +1290,14 @@ var SyscallsLibrary = {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
+    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get64();
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
   },
   __syscall334: function(which, varargs) { // pwritev
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
+    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get64();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
   __syscall337: function(which, varargs) { // recvmmsg
