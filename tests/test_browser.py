@@ -1459,14 +1459,6 @@ keydown(100);keyup(100); // trigger the end
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
-  def test_sdl_ogl_p_regal(self):
-    # Immediate mode with pointers
-    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('sdl_ogl_p.c', reference='screenshot-gray.png', reference_slack=1,
-               args=['--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
-
-  @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_proc_alias.c', reference='screenshot-gray-purple.png', reference_slack=1,
@@ -1911,6 +1903,10 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_graphics_hardware
+  def test_cubegeom_regal(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
