@@ -7919,12 +7919,12 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      23, ['assert'], ['waka'], 46505,  24,   16, 59), # noqa
-        (['-O1'], 18, ['assert'], ['waka'], 12630,  16,   14, 31), # noqa
-        (['-O2'], 18, ['assert'], ['waka'], 12616,  16,   14, 31), # noqa
-        (['-O3'],  7, [],         [],        2690,  10,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  7, [],         [],        2690,  10,    2, 21), # noqa
-        (['-Oz'],  7, [],         [],        2690,  10,    2, 21), # noqa
+        ([],      24, ['assert'], ['waka'], 46505,  26,   17, 62), # noqa
+        (['-O1'], 18, ['assert'], ['waka'], 12630,  17,   15, 34), # noqa
+        (['-O2'], 18, ['assert'], ['waka'], 12616,  17,   15, 34), # noqa
+        (['-O3'],  7, [],         [],        2706,  10,    2, 22), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  7, [],         [],        2706,  10,    2, 22), # noqa
+        (['-Oz'],  7, [],         [],        2706,  10,    2, 22), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
@@ -7935,7 +7935,7 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      23, ['assert'], ['waka'], 22712, 24, 15, 28), # noqa
+        ([],      24, ['assert'], ['waka'], 22712, 26, 16, 31), # noqa
         (['-O1'], 13, ['assert'], ['waka'], 10450,  9, 12, 12), # noqa
         (['-O2'], 13, ['assert'], ['waka'], 10440,  9, 12, 12), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7946,9 +7946,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 36, ['assert'], ['waka'], 196709,  30,   41, 659), # noqa
+        (['-O2'], 36, ['assert'], ['waka'], 202325,  31,   42, 662), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  36, ['assert'], ['waka'], 196709,  30,   22, 620), # noqa
+                  36, ['assert'], ['waka'], 202325,  30,   22, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend
