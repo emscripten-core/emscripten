@@ -227,7 +227,7 @@ var SyscallsLibrary = {
       return low;
     },
     // Like get64, but read high first and low second.
-    get64hilo: function() {
+    get64reversed: function() {
       var high = SYSCALLS.get(), low = SYSCALLS.get();
       if (low >= 0) assert(high === 0);
       else assert(high === -1);
@@ -731,8 +731,8 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     // Note that the llseek system call passes the offset with the high part
     // before the low part, which differs from how 64-bit arguments are handled
-    // elsewhere, so we use get64hilo instead of plain get64.
-    var stream = SYSCALLS.getStreamFromFD(), offset = SYSCALLS.get64hilo(), result = SYSCALLS.get(), whence = SYSCALLS.get();
+    // elsewhere, so we use get64reversed instead of plain get64.
+    var stream = SYSCALLS.getStreamFromFD(), offset = SYSCALLS.get64reversed(), result = SYSCALLS.get(), whence = SYSCALLS.get();
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
