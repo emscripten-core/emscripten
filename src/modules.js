@@ -129,14 +129,21 @@ var LibraryManager = {
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
       if (!STRICT) {
         libraries = libraries.concat([
-          'library_idbfs.js',
-          'library_nodefs.js',
-          'library_proxyfs.js',
-          'library_sockfs.js',
-          'library_workerfs.js',
           'library_lz4.js',
         ]);
-
+        if (ENVIRONMENT_MAY_BE_WEB) {
+          libraries = libraries.concat([
+            'library_idbfs.js',
+            'library_proxyfs.js',
+            'library_sockfs.js',
+            'library_workerfs.js',
+          ]);
+        }
+        if (ENVIRONMENT_MAY_BE_NODE) {
+          libraries = libraries.concat([
+            'library_nodefs.js',
+          ]);
+        }
         if (NODERAWFS) {
           libraries.push('library_noderawfs.js')
         }
