@@ -290,7 +290,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   if 'invokeFuncs' in metadata and not shared.Settings.LINKABLE:
     invoke_function_names = metadata['invokeFuncs']
 
-    if shared.Settings.WASM:
+    if shared.Settings.WASM and shared.Settings.EMULATED_FUNCTION_POINTERS:
       invoke_function_names.append('invoke_X')
       # Remove duplicates by converting it into a set because set don't allow duplicates
       invoke_function_names = list(set(invoke_function_names))
