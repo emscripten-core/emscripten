@@ -219,8 +219,7 @@ var SyscallsLibrary = {
 #endif // FILESYSTEM
     get64: function() {
       var low = SYSCALLS.get(), high = SYSCALLS.get();
-      if (low >= 0) assert(high === 0);
-      else assert(high === -1);
+      assert(high == (low >> 31));
 #if SYSCALL_DEBUG
       err('    (i64: "' + low + '")');
 #endif
@@ -229,8 +228,7 @@ var SyscallsLibrary = {
     // Like get64, but read high first and low second.
     get64reversed: function() {
       var high = SYSCALLS.get(), low = SYSCALLS.get();
-      if (low >= 0) assert(high === 0);
-      else assert(high === -1);
+      assert(high == (low >> 31));
 #if SYSCALL_DEBUG
       err('    (i64: "' + low + '")');
 #endif
