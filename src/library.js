@@ -1917,13 +1917,16 @@ LibraryManager.library = {
   time: function(ptr) {
     var ret = (Date.now()/1000)|0;
     if (ptr) {
-      {{{ makeSetValue('ptr', 0, 'ret', 'i32') }}};
+      {{{ makeSetValue('ptr', 0, 'ret', 'i64') }}};
     }
     return ret;
   },
 
-  difftime: function(time1, time0) {
-    return time1 - time0;
+  difftime: function(time1lo, time1hi, time0lo, time0hi) {
+    // For now, just support 32-bit time values.
+    assert(time0hi == (time1lo >> 31));
+    assert(time1hi == (time1lo >> 31));
+    return time1lo - time0lo;
   },
 
   // Statically allocated time struct.
