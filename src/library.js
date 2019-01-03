@@ -1922,11 +1922,11 @@ LibraryManager.library = {
     return ret;
   },
 
-  difftime: function(time1lo, time1hi, time0lo, time0hi) {
+  difftime: function(time1l, time1h, time0l, time0h) {
     // For now, just support 32-bit time values.
-    assert(time0hi == (time1lo >> 31));
-    assert(time1hi == (time1lo >> 31));
-    return time1lo - time0lo;
+    assert(time0h == (time1l >> 31));
+    assert(time1h == (time1l >> 31));
+    return time1l - time0l;
   },
 
   // Statically allocated time struct.
