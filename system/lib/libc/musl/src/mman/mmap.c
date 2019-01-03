@@ -26,7 +26,9 @@ void *__mmap(void *start, size_t len, int prot, int flags, int fd, off_t off)
 		__vm_wait();
 	}
 #ifdef SYS_mmap2
-	return (void *)syscall(SYS_mmap2, start, len, prot, flags, fd, off/UNIT);
+        off_t pgoffset = off / UNIT;
+	return (void *)syscall(SYS_mmap2, start, len, prot, flags, fd,
+                               (int32_t)pgoffset, ((int32_t)(pgoffset >> 32)));
 #else
 	return (void *)syscall(SYS_mmap, start, len, prot, flags, fd, off);
 #endif
