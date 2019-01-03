@@ -72,12 +72,12 @@ typedef long double double_t;
 #endif
 
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
-typedef long time_t;
+typedef long long time_t;
 #define __DEFINED_time_t
 #endif
 
 #if defined(__NEED_suseconds_t) && !defined(__DEFINED_suseconds_t)
-typedef long suseconds_t;
+typedef long long suseconds_t;
 #define __DEFINED_suseconds_t
 #endif
 
