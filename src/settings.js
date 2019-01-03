@@ -471,7 +471,8 @@ var LEGACY_VM_SUPPORT = 0;
 //    'worker' - a web worker environment.
 //    'node'   - Node.js.
 //    'shell'  - a JS shell like d8, js, or jsc.
-// Or it can be a comma-separated list of them, e.g., "web,worker".
+// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
+// the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
 var ENVIRONMENT = '';

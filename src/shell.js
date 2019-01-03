@@ -317,7 +317,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   Module['setWindowTitle'] = function(title) { document.title = title };
 } else
-#endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+#endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
 #if ASSERTIONS
   throw new Error('environment detection error');
