@@ -106,9 +106,9 @@ LibraryManager.library = {
     var time;
     if (times) {
       var offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_sec }}};
-      time = {{{ makeGetValue('times', 'offset', 'i32') }}} * 1000;
+      time = {{{ makeGetValue('times', 'offset', 'i64') }}} * 1000;
       offset = {{{ C_STRUCTS.timeval.__size__ }}} + {{{ C_STRUCTS.timeval.tv_usec }}};
-      time += {{{ makeGetValue('times', 'offset', 'i32') }}} / 1000;
+      time += {{{ makeGetValue('times', 'offset', 'i64') }}} / 1000;
     } else {
       time = Date.now();
     }
@@ -2786,7 +2786,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     }
-    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
+    {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i64') }}}; // seconds
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
@@ -2811,7 +2811,7 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.EINVAL);
       return -1;
     }
-    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
+    {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i64') }}};
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
@@ -2825,8 +2825,8 @@ LibraryManager.library = {
   // http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/time.h.html
   gettimeofday: function(ptr) {
     var now = Date.now();
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
-    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i32') }}}; // microseconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_sec, '(now/1000)|0', 'i64') }}}; // seconds
+    {{{ makeSetValue('ptr', C_STRUCTS.timeval.tv_usec, '((now % 1000)*1000)|0', 'i64') }}}; // microseconds
     return 0;
   },
 
