@@ -7893,10 +7893,12 @@ extern "C" {
 
   def test_environment(self):
     self.set_setting('ASSERTIONS', 1)
+
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
       js = open('src.cpp.o.js').read()
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
+
     for engine in JS_ENGINES:
       print(engine)
       # set us to test in just this engine
