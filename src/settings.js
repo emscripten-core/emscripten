@@ -1204,6 +1204,12 @@ var BUNDLED_CD_DEBUG_FILE = "";
 // Enabled by default, set this to 0 to disable.
 var TEXTDECODER = 1;
 
+// Is enabled, we assume TextDecoder is present and usable, and do not emit
+// any JS code to fall back if it is missing.
+// TODO: when all modern browsers support it, and also node.js, the fallback
+//       code can be in LEGACY_VM_SUPPORT
+var FORCE_TEXTDECODER = 0;
+
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
 // Disable this to support binary data transfer.
 var EMBIND_STD_STRING_IS_UTF8 = 1;

@@ -3924,6 +3924,16 @@ window.close = function() {
   def test_utf16_textdecoder(self):
     self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
 
+  def test_TextDecoder(self):
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
+    just_fallback = os.path.getsize('test.js')
+    self.btest('browser_test_hello_world.c', '0')
+    td_with_fallback = os.path.getsize('test.js')
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'FORCE_TEXTDECODER=1'])
+    td_without_fallback = os.path.getsize('test.js')
+    self.assertLess(td_without_fallback, just_fallback)
+    self.assertLess(just_fallback, td_with_fallback)
+
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
   @no_chrome('see #7374')

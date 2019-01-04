@@ -1084,6 +1084,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
+    if shared.Settings.FORCE_TEXTDECODER:
+      shared.Settings.TEXTDECODER = 1
+
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
@@ -1186,6 +1189,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('MODULARIZE is not yet supported with pthreads')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
+      shared.Settings.FORCE_TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
       shared.Settings.FORCE_FILESYSTEM = 1 # proxying of utime requires the filesystem
