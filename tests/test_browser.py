@@ -1437,6 +1437,13 @@ keydown(100);keyup(100); // trigger the end
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
+  def test_sdl_ogl_regal(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
+    self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
+               message='You should see an image with gray at the top.')
+
+  @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
@@ -1874,6 +1881,11 @@ keydown(100);keyup(100); // trigger the end
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
+  def test_cubegeom_pre_regal(self):
+    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
   @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
@@ -1891,6 +1903,10 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_graphics_hardware
+  def test_cubegeom_regal(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -1961,6 +1977,11 @@ void *getBindBuffer() {
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
     self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
+  @no_swiftshader
+  def test_cubegeom_pre_vao_regal(self):
+    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader

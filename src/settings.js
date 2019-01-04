@@ -1057,6 +1057,9 @@ var USE_ZLIB = 0;
 // 1 = use libpng from emscripten-ports
 var USE_LIBPNG = 0;
 
+// 1 = use Regal from emscripten-ports
+var USE_REGAL = 0;
+
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
 
