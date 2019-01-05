@@ -507,6 +507,19 @@ def get_emscripten_version(path):
 EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
 parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
 EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
+# For the Emscripten-specific WASM metadata section, follows semver, changes
+# whenever metadata section changes structure
+# NB: major version 0 implies no compatibility
+(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 0)
+# For the JS/WASM ABI, specifies the minimum ABI version required of
+# the WASM runtime implementation by the generated WASM binary. It follows
+# semver and changes whenever C types change size/signedness or
+# syscalls change signature. By semver, the maximum ABI version is
+# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
+# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
+# or the ABI change is backwards compatible, otherwise increment
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 0)
 
 
 def generate_sanity():
@@ -2974,16 +2987,77 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
-  def make_shared_library(js_file, wasm_file, needed_dynlibs):
-    # a wasm shared library has a special "dylink" section, see tools-conventions repo
+  def delebify(buf, offset):
+    result = 0
+    shift = 0
+    while True:
+      byte = bytearray(buf[offset:offset + 1])[0]
+      offset += 1
+      result |= (byte & 0x7f) << shift
+      if not (byte & 0x80):
+        break
+      shift += 7
+    return (result, offset)
+
+  @staticmethod
+  def get_js_data(js_file, shared=False):
     js = open(js_file).read()
     m = re.search("var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
     m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
-    m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
-    assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
-    mem_align = int(m.group(1))
+    if shared:
+      m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
+      assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
+      mem_align = int(m.group(1))
+    else:
+      mem_align = None
+    return (mem_size, table_size, mem_align)
+
+  @staticmethod
+  def add_emscripten_metadata(js_file, wasm_file):
+    (mem_size, table_size, _) = WebAssembly.get_js_data(js_file)
+    logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
+    wso = js_file + '.wso'
+    wasm = open(wasm_file, 'rb').read()
+    f = open(wso, 'wb')
+    f.write(wasm[0:8]) # copy magic number and version
+    # write the special section
+    f.write(b'\0') # user section is code 0
+    # need to find the size of this section
+    name = b'\x13emscripten_metadata' # section name, including prefixed size
+    contents = (
+      # metadata section version
+      WebAssembly.lebify(EMSCRIPTEN_METADATA_MAJOR) +
+      WebAssembly.lebify(EMSCRIPTEN_METADATA_MINOR) +
+
+      # NB: The structure of the following should only be changed
+      #     if EMSCRIPTEN_METADATA_MAJOR is incremented
+      # Minimum ABI version
+      WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
+      WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
+
+      # static bump
+      WebAssembly.lebify(mem_size) +
+
+      # table size
+      WebAssembly.lebify(table_size)
+      # NB: more data can be appended here as long as you increase
+      #     the EMSCRIPTEN_METADATA_MINOR
+    )
+
+    size = len(name) + len(contents)
+    f.write(WebAssembly.lebify(size))
+    f.write(name)
+    f.write(contents)
+    f.write(wasm[8:])
+    f.close()
+    return wso
+
+  @staticmethod
+  def make_shared_library(js_file, wasm_file, needed_dynlibs):
+    # a wasm shared library has a special "dylink" section, see tools-conventions repo
+    (mem_size, table_size, mem_align) = WebAssembly.get_js_data(js_file, True)
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
     wso = js_file + '.wso'
