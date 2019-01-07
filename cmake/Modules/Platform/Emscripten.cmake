@@ -179,13 +179,24 @@ endif()
 
 # To find programs to execute during CMake run time with find_program(), e.g. 'git' or so, we allow looking
 # into system paths.
-set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+# Still, allow users to set these variables beforehand.
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_PROGRAM)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+endif()
 
 # Since Emscripten is a cross-compiler, we should never look at the system-provided directories like /usr/include and so on.
 # Therefore only CMAKE_FIND_ROOT_PATH should be used as a find directory. See http://www.cmake.org/cmake/help/v3.0/variable/CMAKE_FIND_ROOT_PATH_MODE_INCLUDE.html
-set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_LIBRARY)
+  set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+endif()
+
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_INCLUDE)
+  set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+endif()
+
+if (NOT CMAKE_FIND_ROOT_PATH_MODE_PACKAGE)
+  set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+endif()
 
 set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 
