@@ -13,23 +13,22 @@ typedef unsigned int u32x4 __attribute((vector_size(16)));
 typedef unsigned long long u64x2 __attribute((vector_size(16)));
 typedef float f32x4 __attribute((vector_size(16)));
 typedef double f64x2 __attribute((vector_size(16)));
-typedef u8x16 v128;
 
 #define TESTFN EMSCRIPTEN_KEEPALIVE __attribute__((noinline))
 
-v128 TESTFN v128_load(v128 *ptr) {
+i8x16 TESTFN i8x16_load(i8x16 *ptr) {
   return *ptr;
 }
-void TESTFN v128_store(v128 *ptr, v128 vec) {
+void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
   *ptr = vec;
 }
 i32x4 TESTFN i32x4_const(void) {
   return (i32x4) {1, 2, 3, 4};
 }
-// v128 TESTFN v128_shuffle_interleave_bytes(v128 x, v128 y) {
+// i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
 //   return __builtin_shufflevector(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
 // }
-// i32x4 TESTFN v128_shuffle_reverse_i32s(i32x4 vec) {
+// i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
 //   return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
 // }
 i8x16 TESTFN i8x16_splat(int32_t x) {
@@ -48,10 +47,10 @@ uint32_t TESTFN i8x16_extract_lane_u_last(i8x16 vec) {
   return __builtin_wasm_extract_lane_u_i8x16(vec, 15);
 }
 i8x16 TESTFN i8x16_replace_lane_first(i8x16 vec, int32_t val) {
-  return __builtin_wasm_replace_lane_i8x16(vec, 0, val);
+  return (i8x16){__builtin_wasm_replace_lane_i8x16(vec, 0, val)};
 }
 i8x16 TESTFN i8x16_replace_lane_last(i8x16 vec, int32_t val) {
-  return __builtin_wasm_replace_lane_i8x16(vec, 15, val);
+  return (i8x16){__builtin_wasm_replace_lane_i8x16(vec, 15, val)};
 }
 i16x8 TESTFN i16x8_splat(int32_t x) {
   return (i16x8) {x, x, x, x, x, x, x, x};
@@ -260,20 +259,20 @@ i64x2 TESTFN f64x2_le(f64x2 x, f64x2 y) {
 i64x2 TESTFN f64x2_ge(f64x2 x, f64x2 y) {
   return (i64x2)(x >= y);
 }
-v128 TESTFN v128_not(v128 vec) {
+i8x16 TESTFN i8x16_not(i8x16 vec) {
   return ~vec;
 }
-v128 TESTFN v128_and(v128 x, v128 y) {
+i8x16 TESTFN i8x16_and(i8x16 x, i8x16 y) {
   return x & y;
 }
-v128 TESTFN v128_or(v128 x, v128 y) {
+i8x16 TESTFN i8x16_or(i8x16 x, i8x16 y) {
   return x | y;
 }
-v128 TESTFN v128_xor(v128 x, v128 y) {
+i8x16 TESTFN i8x16_xor(i8x16 x, i8x16 y) {
   return x ^ y;
 }
-v128 TESTFN v128_bitselect(v128 x, v128 y, v128 cond) {
-  return (v128)__builtin_wasm_bitselect((i32x4)x, (i32x4)y, (i32x4)cond);
+i8x16 TESTFN i8x16_bitselect(i8x16 x, i8x16 y, i8x16 cond) {
+  return (i8x16)__builtin_wasm_bitselect((i32x4)x, (i32x4)y, (i32x4)cond);
 }
 i8x16 TESTFN i8x16_neg(i8x16 vec) {
   return -vec;
@@ -485,77 +484,104 @@ f64x2 TESTFN f64x2_convert_u_i64x2(i64x2 vec) {
 
 static int failures = 0;
 
-// #define expect_vec(_a, _b) ({                                           \
-//    i32x4 a = (i32x4)_a, b = (i32x4)_b;                                   \
-//    if (a[0] != b[0] || a[1] != b[1] || a[2] != b[2] || a[3] != b[3]) {   \
-//      failures++;                                                         \
-//      fprintf(stderr, "line %d: expected {0x%08x, 0x%08x, 0x%08x, 0x%08x}, " \
-//              "got {0x%08x, 0x%08x, 0x%08x, 0x%08x}\n",                   \
-//              __LINE__, b[0], b[1], b[2], b[3], a[0], a[1], a[2], a[3]);  \
-//    }                                                                     \
-//  })
-
-#define expect_vec(_a, _b) ({                                                \
-   i8x16 a = (i8x16)_a, b = (i8x16)_b;                                        \
-   for (size_t i = 0; i < 16; i++) {                                          \
-     if (a[i] != b[i]) {                                                      \
-       failures++;                                                            \
-       fprintf(stderr, "line %d: expected {0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x}, " \
-               "got {0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x}\n",                 \
-               __LINE__, b[0] & 255, b[1] & 255, b[2] & 255, b[3] & 255, b[4] & 255, b[5] & 255, b[6] & 255, b[7] & 255, b[8] & 255, b[9] & 255, b[10] & 255, b[11] & 255, b[12] & 255, b[13] & 255, b[14] & 255, b[15] & 255, a[0] & 255, a[1] & 255, a[2] & 255, a[3] & 255, a[4] & 255, a[5] & 255, a[6] & 255, a[7] & 255, a[8] & 255, a[9] & 255, a[10] & 255, a[11] & 255, a[12] & 255, a[13] & 255, a[14] & 255, a[15] & 255); \
-       break;                                                            \
-     }                                                                   \
-   }                                                                     \
- })
-
 #define formatter(x) _Generic((x),                      \
+                              char: "%d",               \
+                              unsigned char: "%d",      \
+                              short: "%d",              \
                               int64_t: "%ld",           \
                               int32_t: "%d",            \
                               uint32_t: "%d",           \
                               float: "%f",              \
                               double: "%f"              \
-    )
+  )
 
 #define err(x) fprintf(stderr, formatter(x), x)
 
-#define expect_eq(_a, _b) ({                                            \
-  __typeof__(_a) a = (_a), b = (_b);                                    \
-  if (a != b) {                                                         \
-    failures++;                                                         \
-    fprintf(stderr, "line %d: expected ", __LINE__);                    \
-    err(b);                                                             \
-    fprintf(stderr, ", got ");                                          \
-    err(a);                                                             \
-    fprintf(stderr, "\n");                                              \
-  }                                                                     \
-})
+#define eq(a, b) ({                             \
+      bool anan = _Generic((a),                 \
+                           float: isnan(a),     \
+                           double: isnan(a),    \
+                           default: false);     \
+      bool bnan = _Generic((b),                 \
+                           float: isnan(b),     \
+                           double: isnan(b),    \
+                           default: false);     \
+      ((anan && bnan) || (!anan && a == b));    \
+    })
+
+#define expect_eq(_a, _b) ({                                    \
+      __typeof__(_a) a = (_a), b = (_b);                        \
+      if (!eq(a, b)) {                                          \
+        failures++;                                             \
+        fprintf(stderr, "line %d: expected ", __LINE__);        \
+        err(b);                                                 \
+        fprintf(stderr, ", got ");                              \
+        err(a);                                                 \
+        fprintf(stderr, "\n");                                  \
+      }                                                         \
+    })
+
+#define expect_vec(_a, _b) ({                                   \
+      __typeof__(_a) a = (_a), b = (_b);                        \
+      bool err = false;                                         \
+      size_t lanes = _Generic((a),                              \
+                              u8x16: 16,                        \
+                              i8x16: 16,                        \
+                              i16x8: 8,                         \
+                              i32x4: 4,                         \
+                              i64x2: 2,                         \
+                              f32x4: 4,                         \
+                              f64x2: 2);                        \
+      for (size_t i = 0; i < lanes; i++) {                      \
+        if (!eq(a[i], b[i])) {                                  \
+          err = true;                                           \
+          break;                                                \
+        }                                                       \
+      }                                                         \
+      if (err) {                                                \
+        failures++;                                             \
+        fprintf(stderr, "line %d: expected {", __LINE__);       \
+        for (size_t i = 0; i < lanes - 1; i++) {                \
+          err(b[i]);                                            \
+          fprintf(stderr, ", ");                                \
+        }                                                       \
+        err(b[lanes - 1]);                                      \
+        fprintf(stderr, "}, got {");                            \
+        for (size_t i = 0; i < lanes - 1; i++) {                \
+          err(a[i]);                                            \
+          fprintf(stderr, ", ");                                \
+        }                                                       \
+        err(a[lanes - 1]);                                      \
+        fprintf(stderr, "}\n");                                 \
+      }                                                         \
+    })
 
 int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   {
-    v128 vec = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-    expect_vec(v128_load(&vec),
-              ((v128){3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}));
-    v128_store(&vec, (v128){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7});
-    expect_vec(v128_load(&vec),
-              ((v128){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
+    i8x16 vec = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+    expect_vec(i8x16_load(&vec),
+              ((i8x16){3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}));
+    i8x16_store(&vec, (i8x16){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7});
+    expect_vec(i8x16_load(&vec),
+              ((i8x16){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
   }
   expect_vec(i32x4_const(), ((i32x4){1, 2, 3, 4}));
   // expect_vec(
-  //   v128_shuffle_interleave_bytes(
-  //     (v128){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
-  //     (v128){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
+  //   i8x16_shuffle_interleave_bytes(
+  //     (i8x16){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
+  //     (i8x16){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
   //   ),
-  //   ((v128){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+  //   ((i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
   // );
-  // expect_vec(v128_shuffle_reverse_i32s((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
+  // expect_vec(i8x16_shuffle_reverse((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), ((i8x16){5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}));
   expect_vec(i8x16_splat(257), ((i8x16){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
-  expect_eq(i8x16_extract_lane_s_first((i8x16){255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), -1);
-  expect_eq(i8x16_extract_lane_s_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255}), -1);
-  expect_eq(i8x16_extract_lane_u_first((i8x16){255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
-  expect_eq(i8x16_extract_lane_u_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255}), 255);
+  expect_eq(i8x16_extract_lane_s_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), -1);
+  expect_eq(i8x16_extract_lane_s_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), -1);
+  expect_eq(i8x16_extract_lane_u_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
+  expect_eq(i8x16_extract_lane_u_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), 255);
   expect_vec(
     i8x16_replace_lane_first((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
     ((i8x16){7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
@@ -866,6 +892,28 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f64x2_le((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, -1}));
   expect_vec(f64x2_ge((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((i64x2){0, 0}));
 
+  // bitwise operations
+  expect_vec(i8x16_not((i8x16)(i32x4){0, -1, 0, -1}), (i8x16)((i32x4){-1, 0, -1, 0}));
+  expect_vec(
+    i8x16_and((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
+    (i8x16)((i32x4){0, 0, 0, -1})
+  );
+  expect_vec(
+    i8x16_or((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
+    (i8x16)((i32x4){0, -1, -1, -1})
+  );
+  expect_vec(
+    i8x16_xor((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
+    (i8x16)((i32x4){0, -1, -1, 0})
+  );
+  // expect_vec(
+  //   i8x16_bitselect(
+  //     (i8x16)(i32x4){0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA},
+  //     (i8x16)(i32x4){0xBBBBBBBB, 0xBBBBBBBB, 0xBBBBBBBB, 0xBBBBBBBB},
+  //     (i8x16)(i32x4){0xF0F0F0F0, 0xFFFFFFFF, 0x00000000, 0xFF00FF00}
+  //   ),
+  //   (i8x16)((i32x4){0xABABABAB, 0xAAAAAAAA, 0xBBBBBBBB, 0xAABBAABB})
+  // );
 
   // i8x16 arithmetic
   expect_vec(
@@ -1106,9 +1154,9 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f64x2_div((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
   expect_vec(f64x2_div((f64x2){INFINITY, 42}, (f64x2){2, 2}), ((f64x2){INFINITY, 21}));
   expect_vec(f64x2_min((f64x2){-0., 0}, (f64x2){0, -0}), ((f64x2){-0., -0}));
-  // expect_vec(f64x2_min((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
+  expect_vec(f64x2_min((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
   expect_vec(f64x2_max((f64x2){-0., 0}, (f64x2){0, -0}), ((f64x2){0, 0}));
-  // expect_vec(f64x2_max((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
+  expect_vec(f64x2_max((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
 
   // conversions
   expect_vec(i32x4_trunc_s_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((i32x4){42, 0, 2147483647, -2147483648ll}));
