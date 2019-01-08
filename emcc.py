@@ -1166,7 +1166,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
     if shared.Settings.FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
-      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
+      if shared.Settings.SUPPORT_ERRNO:
+        shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
       # to flush streams on FS exit, we need to be able to call fflush
       # we only include it if the runtime is exitable, or when ASSERTIONS
       # (ASSERTIONS will check that streams do not need to be flushed,

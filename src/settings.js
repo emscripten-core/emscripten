@@ -1316,3 +1316,11 @@ var MINIFY_ASMJS_IMPORT_NAMES = 0;
 // "emscripten_metadata" section that contains information necessary
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Tracks whether we are building with errno support enabled. Set to 0
+// to disable compiling errno support in altogether. This saves a little
+// bit of generated code size in applications that do not care about
+// POSIX errno variable. Setting this to 0 also requires using --closure
+// for effective code size optimizations to take place.
+var SUPPORT_ERRNO = 1;
+
