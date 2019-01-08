@@ -1614,7 +1614,7 @@ var LibraryOpenAL = {
 
     // NULL is a valid device name here (resolves to default);
     if (pDeviceName !== 0) {
-      resolvedDeviceName = Pointer_stringify(pDeviceName);
+      resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
         console.error('alcCaptureOpenDevice() with invalid device name \''+resolvedDeviceName+'\'');
@@ -2054,7 +2054,7 @@ var LibraryOpenAL = {
   alcOpenDevice__sig: 'ii',
   alcOpenDevice: function(pDeviceName) {
     if (pDeviceName) {
-      var name = Pointer_stringify(pDeviceName);
+      var name = UTF8ToString(pDeviceName);
       if (name !== AL.DEVICE_NAME) {
         return 0;
       }
@@ -2306,7 +2306,7 @@ var LibraryOpenAL = {
   alcIsExtensionPresent__proxy: 'sync',
   alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
-    name = Pointer_stringify(pExtName);
+    name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2342,7 +2342,7 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
     switch(name) {
     case 'ALC_NO_ERROR': return 0;
@@ -2924,7 +2924,7 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = Pointer_stringify(pExtName);
+    name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2966,7 +2966,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
 
     switch(name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to

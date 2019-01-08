@@ -936,6 +936,7 @@ var LibraryGL = {
   },
 
   glGetString__sig: 'ii',
+  glGetString__deps: ['$stringToNewUTF8'],
   glGetString: function(name_) {
     if (GL.stringCache[name_]) return GL.stringCache[name_];
     var ret;
@@ -949,7 +950,7 @@ var LibraryGL = {
           gl_exts.push("GL_" + exts[i]);
 #endif
         }
-        ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
+        ret = stringToNewUTF8(gl_exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -966,7 +967,7 @@ var LibraryGL = {
           err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
 #endif
         }
-        ret = allocate(intArrayFromString(s), 'i8', ALLOC_NORMAL);
+        ret = stringToNewUTF8(s);
         break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
@@ -980,7 +981,7 @@ var LibraryGL = {
         {
           glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
         }
-        ret = allocate(intArrayFromString(glVersion), 'i8', ALLOC_NORMAL);
+        ret = stringToNewUTF8(glVersion);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
@@ -991,7 +992,7 @@ var LibraryGL = {
           if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
           glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
         }
-        ret = allocate(intArrayFromString(glslVersion), 'i8', ALLOC_NORMAL);
+        ret = stringToNewUTF8(glslVersion);
         break;
 #endif
       default:
@@ -1151,6 +1152,7 @@ var LibraryGL = {
   },
 
 #if USE_WEBGL2
+  glGetStringi__deps: ['$stringToNewUTF8'],
   glGetStringi__sig: 'iii',
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
@@ -1172,10 +1174,10 @@ var LibraryGL = {
       case 0x1F03 /* GL_EXTENSIONS */:
         var exts = GLctx.getSupportedExtensions();
         var gl_exts = [];
-        // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
         for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(allocate(intArrayFromString(exts[i]), 'i8', ALLOC_NORMAL));
-          gl_exts.push(allocate(intArrayFromString("GL_" + exts[i]), 'i8', ALLOC_NORMAL));
+          gl_exts.push(stringToNewUTF8(exts[i]));
+          // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+          gl_exts.push(stringToNewUTF8('GL_' + exts[i]));
         }
         stringiCache = GL.stringiCache[name] = gl_exts;
         if (index < 0 || index >= stringiCache.length) {
@@ -2350,7 +2352,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var vars = [];
     for (var i = 0; i < count; i++)
-      vars.push(Pointer_stringify({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
 
     GLctx['transformFeedbackVaryings'](program, vars, bufferMode);
   },
@@ -2488,7 +2490,7 @@ var LibraryGL = {
     program = GL.programs[program];
     var names = [];
     for (var i = 0; i < uniformCount; i++)
-      names.push(Pointer_stringify({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
 
     var result = GLctx['getUniformIndices'](program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
@@ -2538,7 +2540,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformBlockIndex', 'program');
 #endif
     program = GL.programs[program];
-    uniformBlockName = Pointer_stringify(uniformBlockName);
+    uniformBlockName = UTF8ToString(uniformBlockName);
     return GLctx['getUniformBlockIndex'](program, uniformBlockName);
   },
 
@@ -2850,7 +2852,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
 #endif
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
 
     var arrayOffset = 0;
     // If user passed an array accessor "[index]", parse the array index off the accessor.
@@ -2885,7 +2887,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetFragDataLocation', 'program');
 #endif
-    return GLctx['getFragDataLocation'](GL.programs[program], Pointer_stringify(name));
+    return GLctx['getFragDataLocation'](GL.programs[program], UTF8ToString(name));
   },
 #endif
 
@@ -3649,7 +3651,7 @@ var LibraryGL = {
 
   glGetAttribLocation__sig: 'iii',
   glGetAttribLocation: function(program, name) {
-    return GLctx.getAttribLocation(GL.programs[program], Pointer_stringify(name));
+    return GLctx.getAttribLocation(GL.programs[program], UTF8ToString(name));
   },
 
   glGetActiveAttrib__sig: 'viiiiiii',
@@ -4039,7 +4041,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glBindAttribLocation', 'program');
 #endif
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
     GLctx.bindAttribLocation(GL.programs[program], index, name);
   },
 
