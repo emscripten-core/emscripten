@@ -394,6 +394,32 @@ var FULL_ES2 = 0;
 // from the output.
 var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
 
+// If true, all GL extensions are advertised in both unprefixed WebGL extension
+// format, but also in desktop/mobile GLES/GL extension format with "GL_" prefix.
+var GL_EXTENSIONS_IN_PREFIXED_FORMAT = 1;
+
+// If true, adds support for automatically enabling all GL extensions for
+// GLES/GL emulation purposes. This takes up code size. If you set this to 0,
+// you will need to manually enable the extensions you need.
+var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
+
+// If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
+// of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
+// saves code size. (Good to keep at 1 for development)
+var GL_TRACK_ERRORS = 1;
+
+// If true, GL contexts support the explicitSwapControl context creation flag.
+// Set to 0 to save a little bit of space on projects that do not need it.
+var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = 0;
+
+// If true, calls to glUniform*fv and glUniformMatrix*fv utilize a pool of
+// preallocated temporary buffers for common small sizes to avoid generating
+// temporary garbage for WebGL 1. Disable this to optimize generated size of the
+// GL library a little bit, at the expense of generating garbage in WebGL 1. If
+// you are only using WebGL 2 and do not support WebGL 1, this is not needed and
+// you can turn it off.
+var GL_POOL_TEMP_BUFFERS = 1;
+
 // Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
 // the offset of a typed array view pointing to an ArrayBuffer. Set this to
 // 1 to enable a polyfill that works around the issue when it appears. This
