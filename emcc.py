@@ -1313,8 +1313,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
       options.memory_init_file = True
-      # async compilation requires not interpreting (the interpreter modes needs sync input)
-      if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1 and 'interpret' not in shared.Settings.BINARYEN_METHOD:
+      if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
         # async compilation requires a swappable module - we swap it in when it's ready
         shared.Settings.SWAPPABLE_ASM_MODULE = 1
       else:
@@ -1343,7 +1342,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we will include the mem init data in the wasm, when we don't need the
       # mem init file to be loadable by itself
       shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
-                                         'interpret-asm2wasm' not in shared.Settings.BINARYEN_METHOD and \
                                          not shared.Settings.USE_PTHREADS
 
       # wasm side modules have suffix .wasm
@@ -1364,10 +1362,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
         # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
         shared.Settings.RUNNING_JS_OPTS = 1
-      else:
-        if 'interpret' in shared.Settings.BINARYEN_METHOD:
-          logger.warning('disabling EVAL_CTORS as the bundled interpreter confuses the ctor tool')
-          shared.Settings.EVAL_CTORS = 0
 
     # memory growth does not work in dynamic linking, except for wasm
     if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
@@ -2466,7 +2460,7 @@ def separate_asm_js(final, asm_target):
 def binaryen_method_sanity_check():
   if shared.Settings.BINARYEN_METHOD:
     methods = shared.Settings.BINARYEN_METHOD.split(',')
-    valid_methods = ['asmjs', 'native-wasm', 'interpret-s-expr', 'interpret-binary', 'interpret-asm2wasm']
+    valid_methods = ['asmjs', 'native-wasm']
     for m in methods:
       if m.strip() not in valid_methods:
         exit_with_error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
@@ -2477,25 +2471,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   global final
   logger.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = shared.Building.get_binaryen_bin()
-  binaryen_lib = shared.Building.get_binaryen_lib()
-  # Emit wasm.js at the top of the js. This is *not* optimized with the rest of the code, since
-  # (1) it contains asm.js, whose validation would be broken, and (2) it's very large so it would
-  # be slow in cleanup/JSDCE etc.
-  # TODO: for html, it could be a separate script tag
-  # We need wasm.js if there is a chance the polyfill will be used. If the user sets
-  # BINARYEN_METHOD with something that doesn't use the polyfill, then we don't need it.
-  if not shared.Settings.BINARYEN_METHOD or 'interpret' in shared.Settings.BINARYEN_METHOD:
-    logger.debug('integrating wasm.js polyfill interpreter')
-    wasm_js = open(os.path.join(binaryen_lib, 'wasm.js')).read()
-    wasm_js = wasm_js.replace('EMSCRIPTEN_', 'emscripten_') # do not confuse the markers
-    js = open(final).read()
-    combined = open(final, 'w')
-    combined.write(wasm_js)
-    combined.write('\n//^wasm.js\n')
-    combined.write(js)
-    combined.close()
   # normally we emit binary, but for debug info, we might emit text first
-  wrote_wasm_text = False
   debug_info = options.debug_level >= 2 or options.profiling_funcs
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
@@ -2545,7 +2521,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['-o', wasm_binary_target]
     else:
       cmd += ['-o', wasm_text_target, '-S']
-      wrote_wasm_text = True
     cmd += shared.Building.get_binaryen_feature_flags()
     logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
@@ -2577,10 +2552,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if debug_info:
       cmd += ['-g'] # preserve the debug info
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
-    shared.check_call(cmd)
-  if not wrote_wasm_text and 'interpret-s-expr' in shared.Settings.BINARYEN_METHOD:
-    cmd = [os.path.join(binaryen_bin, 'wasm-dis'), wasm_binary_target, '-o', wasm_text_target]
-    logger.debug('wasm-dis (binary => text): ' + ' '.join(cmd))
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
@@ -2625,15 +2596,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     f.close()
     f = open(final, 'w')
     for target, replacement_string, should_embed in (
-        (wasm_text_target,
-         shared.FilenameReplacementStrings.WASM_TEXT_FILE,
-         'interpret-s-expr' in shared.Settings.BINARYEN_METHOD),
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
-         'native-wasm' in shared.Settings.BINARYEN_METHOD or 'interpret-binary' in shared.Settings.BINARYEN_METHOD),
+         'native-wasm' in shared.Settings.BINARYEN_METHOD),
         (asm_target,
          shared.FilenameReplacementStrings.ASMJS_CODE_FILE,
-         'asmjs' in shared.Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in shared.Settings.BINARYEN_METHOD),
+         'asmjs' in shared.Settings.BINARYEN_METHOD),
       ):
       if should_embed and os.path.isfile(target):
         js = js.replace(replacement_string, shared.JS.get_subresource_location(target))

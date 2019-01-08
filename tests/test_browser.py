@@ -3848,10 +3848,6 @@ window.close = function() {
       print('default html')
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
 
-  def test_binaryen_interpreter(self):
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
-
   @requires_sync_compilation
   def test_binaryen_async(self):
     # notice when we use async compilation
@@ -3888,7 +3884,6 @@ window.close = function() {
       (['-O3'], 1),
       (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
       (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
-      (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="interpret-binary"'], 0), # try to force it on, but have it disabled
     ]:
       print(opts, expect)
       self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
@@ -4175,7 +4170,7 @@ window.close = function() {
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
-    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='interpret-binary'"]
+    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1']
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>

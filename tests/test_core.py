@@ -8021,7 +8021,6 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
 binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
 binaryen2s = make_run('binaryen2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
-binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2'], settings={'BINARYEN_METHOD', 'interpret-binary'})
 
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})
