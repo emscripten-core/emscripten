@@ -9,6 +9,12 @@
  */
 
 var LibraryGL = {
+
+  // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
+  // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
+  _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; i++) __tempFixedLengthArray.push(new Array(i));',
+  _tempFixedLengthArray: [],
+
   $GL__postset: 'var GLctx; GL.init()',
   $GL: {
 #if GL_DEBUG
@@ -19,7 +25,9 @@ var LibraryGL = {
 #endif
 
     counter: 1, // 0 is reserved as 'null' in gl
+#if GL_TRACK_ERRORS
     lastError: 0,
+#endif
     buffers: [],
     mappedBuffers: {},
     programs: [],
@@ -43,7 +51,6 @@ var LibraryGL = {
 #if FULL_ES2 || LEGACY_GL_EMULATION
     currArrayBuffer: 0,
     currElementArrayBuffer: 0,
-#endif
 
     byteSizeByTypeRoot: 0x1400, // GL_BYTE
     byteSizeByType: [
@@ -59,6 +66,7 @@ var LibraryGL = {
       4, // GL_4_BYTES
       8  // GL_DOUBLE
     ],
+#endif
 
     programInfos: {}, // Stores additional information needed for each shader program. Each entry is of form:
     /* { uniforms: {}, // Maps ints back to the opaque WebGLUniformLocation objects.
@@ -71,7 +79,6 @@ var LibraryGL = {
 #if USE_WEBGL2
     stringiCache: {},
 #endif
-    tempFixedLengthArray: [],
 
     unpackAlignment: 4, // default alignment is 4 bytes
 
@@ -79,24 +86,22 @@ var LibraryGL = {
 #if FULL_ES2 || LEGACY_GL_EMULATION
       GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
 #endif
+#if GL_POOL_TEMP_BUFFERS
       GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
       for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
         GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
       }
-
-      // For functions such as glDrawBuffers, glInvalidateFramebuffer and glInvalidateSubFramebuffer that need to pass a short array to the WebGL API,
-      // create a set of short fixed-length arrays to avoid having to generate any garbage when calling those functions.
-      for (var i = 0; i < 32; i++) {
-        GL.tempFixedLengthArray.push(new Array(i));
-      }
+#endif
     },
 
     // Records a GL error condition that occurred, stored until user calls glGetError() to fetch it. As per GLES2 spec, only the first error
     // is remembered, and subsequent errors are discarded until the user has cleared the stored error by a call to glGetError().
     recordError: function recordError(errorCode) {
+#if GL_TRACK_ERRORS
       if (!GL.lastError) {
         GL.lastError = errorCode;
       }
+#endif
     },
     // Get a new ID for a texture/buffer/etc., while keeping the table dense and fast. Creation is fairly rare so it is worth optimizing lookups later.
     getNewId: function(table) {
@@ -107,10 +112,12 @@ var LibraryGL = {
       return ret;
     },
 
+#if GL_POOL_TEMP_BUFFERS
     // Mini temp buffer
     MINI_TEMP_BUFFER_SIZE: 256,
     miniTempBuffer: null,
     miniTempBufferViews: [0], // index i has the view of size i+1
+#endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to upload the vertex data to a temp VBO
@@ -704,7 +711,9 @@ var LibraryGL = {
 
     registerContext: function(ctx, webGLContextAttributes) {
       var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes["explicitSwapControl"]', 'i32')}}}; // explicitSwapControl
+#endif
 #if USE_PTHREADS
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
 #endif
@@ -751,9 +760,11 @@ var LibraryGL = {
       // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
+#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
       if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes['enableExtensionsByDefault']) {
         GL.initExtensions(context);
       }
+#endif
 
 #if FULL_ES2
       context.maxVertexAttribs = context.GLctx.getParameter(context.GLctx.MAX_VERTEX_ATTRIBS);
@@ -968,7 +979,9 @@ var LibraryGL = {
         var gl_exts = [];
         for (var i = 0; i < exts.length; ++i) {
           gl_exts.push(exts[i]);
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
           gl_exts.push("GL_" + exts[i]);
+#endif
         }
         ret = allocate(intArrayFromString(gl_exts.join(' ')), 'i8', ALLOC_NORMAL);
         break;
@@ -1070,7 +1083,11 @@ var LibraryGL = {
           return;
         }
         var exts = GLctx.getSupportedExtensions();
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
         ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+#else
+        ret = exts.length;
+#endif
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
@@ -1351,14 +1368,13 @@ var LibraryGL = {
   },
 #endif
 
-  $emscriptenWebGLComputeImageSize: function(width, height, sizePerPixel, alignment) {
+  _computeUnpackAlignedImageSize: function(width, height, sizePerPixel, alignment) {
     function roundedToNextMultipleOf(x, y) {
-      return Math.floor((x + y - 1) / y) * y
+      return Math.ceil(x/y)*y;
     }
     var plainRowSize = width * sizePerPixel;
     var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
-    return (height <= 0) ? 0 :
-             ((height - 1) * alignedRowSize + plainRowSize);
+    return height * alignedRowSize;
   },
 
   _colorChannelsInGlTextureFormat: {
@@ -1402,7 +1418,7 @@ var LibraryGL = {
 #endif
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$emscriptenWebGLComputeImageSize', '_colorChannelsInGlTextureFormat', '_sizeOfGlTextureElementType'],
+  $emscriptenWebGLGetTexPixelData__deps: ['_computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '_sizeOfGlTextureElementType'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
     var sizePerPixel = __colorChannelsInGlTextureFormat[format] * __sizeOfGlTextureElementType[type];
     if (!sizePerPixel) {
@@ -1413,31 +1429,32 @@ var LibraryGL = {
 #endif
       return;
     }
-    var bytes = emscriptenWebGLComputeImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    var bytes = __computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    var end = pixels + bytes;
     switch(type) {
 #if USE_WEBGL2
       case 0x1400 /* GL_BYTE */:
-        return {{{ makeHEAPView('8', 'pixels', 'pixels+bytes') }}};
+        return HEAP8.subarray(pixels, end);
 #endif
       case 0x1401 /* GL_UNSIGNED_BYTE */:
-        return {{{ makeHEAPView('U8', 'pixels', 'pixels+bytes') }}};
+        return HEAPU8.subarray(pixels, end);
 #if USE_WEBGL2
       case 0x1402 /* GL_SHORT */:
 #if GL_ASSERTIONS
         assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
 #endif
-        return {{{ makeHEAPView('16', 'pixels', 'pixels+bytes') }}};
+        return HEAP16.subarray(pixels>>1, end>>1);
       case 0x1404 /* GL_INT */:
 #if GL_ASSERTIONS
         assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
 #endif
-        return {{{ makeHEAPView('32', 'pixels', 'pixels+bytes') }}};
+        return HEAP32.subarray(pixels>>2, end>>2);
 #endif
       case 0x1406 /* GL_FLOAT */:
 #if GL_ASSERTIONS
         assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
 #endif
-        return {{{ makeHEAPView('F32', 'pixels', 'pixels+bytes') }}};
+        return HEAPF32.subarray(pixels>>2, end>>2);
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
 #if USE_WEBGL2
@@ -1449,7 +1466,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
 #endif
-        return {{{ makeHEAPView('U32', 'pixels', 'pixels+bytes') }}};
+        return HEAPU32.subarray(pixels>>2, end>>2);
       case 0x1403 /* GL_UNSIGNED_SHORT */:
       case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
       case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
@@ -1461,7 +1478,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
         assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
 #endif
-        return {{{ makeHEAPView('U16', 'pixels', 'pixels+bytes') }}};
+        return HEAPU16.subarray(pixels>>1, end>>1);
       default:
         GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
@@ -2086,12 +2103,13 @@ var LibraryGL = {
 #endif
 
 #if USE_WEBGL2
+  glInvalidateFramebuffer__deps: ['_tempFixedLengthArray'],
   glInvalidateFramebuffer__sig: 'viii',
   glInvalidateFramebuffer: function(target, numAttachments, attachments) {
 #if GL_ASSERTIONS
-    assert(numAttachments < GL.tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < __tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
 #endif
-    var list = GL.tempFixedLengthArray[numAttachments];
+    var list = __tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
@@ -2099,12 +2117,13 @@ var LibraryGL = {
     GLctx['invalidateFramebuffer'](target, list);
   },
 
+  glInvalidateSubFramebuffer__deps: ['_tempFixedLengthArray'],
   glInvalidateSubFramebuffer__sig: 'viiiiiii',
   glInvalidateSubFramebuffer: function(target, numAttachments, attachments, x, y, width, height) {
 #if GL_ASSERTIONS
-    assert(numAttachments < GL.tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < __tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
 #endif
-    var list = GL.tempFixedLengthArray[numAttachments];
+    var list = __tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
       list[i] = {{{ makeGetValue('attachments', 'i*4', 'i32') }}};
     }
@@ -3158,15 +3177,17 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[count-1];
+      var view = GL.miniTempBufferViews[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3188,16 +3209,18 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[2*count-1];
+      var view = GL.miniTempBufferViews[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3219,17 +3242,19 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[3*count-1];
+      var view = GL.miniTempBufferViews[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3251,18 +3276,20 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[4*count-1];
+      var view = GL.miniTempBufferViews[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
         view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3370,18 +3397,20 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[4*count-1];
+      var view = GL.miniTempBufferViews[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
         view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3403,10 +3432,10 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[9*count-1];
+      var view = GL.miniTempBufferViews[9*count-1];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -3418,8 +3447,10 @@ var LibraryGL = {
         view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
         view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -3441,10 +3472,10 @@ var LibraryGL = {
     }
 #endif
 
-    var view;
+#if GL_POOL_TEMP_BUFFERS
     if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      view = GL.miniTempBufferViews[16*count-1];
+      var view = GL.miniTempBufferViews[16*count-1];
       for (var i = 0; i < 16*count; i += 16) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -3463,8 +3494,10 @@ var LibraryGL = {
         view[i+14] = {{{ makeGetValue('value', '4*i+56', 'float') }}};
         view[i+15] = {{{ makeGetValue('value', '4*i+60', 'float') }}};
       }
-    } else {
-      view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
 #endif
@@ -7788,11 +7821,14 @@ var LibraryGL = {
   glGetError__sig: 'i',
   glGetError: function() {
     // First return any GL error generated by the emscripten library_gl.js interop layer.
+#if GL_TRACK_ERRORS
     if (GL.lastError) {
       var error = GL.lastError;
       GL.lastError = 0/*GL_NO_ERROR*/;
       return error;
-    } else { // If there were none, return the GL error from the browser GL context.
+    } else
+#endif
+    { // If there were none, return the GL error from the browser GL context.
       return GLctx.getError();
     }
   },
@@ -7839,16 +7875,17 @@ var LibraryGL = {
   glDrawElementsInstancedANGLE: 'glDrawElementsInstanced',
 
 
+  glDrawBuffers__deps: ['_tempFixedLengthArray'],
   glDrawBuffers__sig: 'vii',
   glDrawBuffers: function(n, bufs) {
 #if GL_ASSERTIONS
     assert(GLctx['drawBuffers'], 'Must have WebGL2 or WEBGL_draw_buffers extension to use drawBuffers');
 #endif
 #if GL_ASSERTIONS
-    assert(n < GL.tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
+    assert(n < __tempFixedLengthArray.length, 'Invalid count of numBuffers=' + n + ' passed to glDrawBuffers (that many draw buffer points do not exist in GL)');
 #endif
 
-    var bufArray = GL.tempFixedLengthArray[n];
+    var bufArray = __tempFixedLengthArray[n];
     for (var i = 0; i < n; i++) {
       bufArray[i] = {{{ makeGetValue('bufs', 'i*4', 'i32') }}};
     }
