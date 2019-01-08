@@ -975,7 +975,7 @@ var WASM_BACKEND = 0;
 var WASM_OBJECT_FILES = 0;
 
 // How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/js/wasm.js-post.js for more details and options.
+// See binaryen's src/preamble.js for more details and options.
 var BINARYEN_METHOD = "native-wasm";
 
 // An optional comma-separated list of script hooks to run after binaryen,
