@@ -452,7 +452,7 @@ mergeInto(LibraryManager.library, {
   },
   puts: function(s) {
     // extra effort to support puts, even without a filesystem. very partial, very hackish
-    var result = Pointer_stringify(s);
+    var result = UTF8ToString(s);
     var string = result.substr(0);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
     out(string);

@@ -10,7 +10,7 @@
 
 var LibraryGLEmulation = {
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
-  $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable', 'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString', 'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader', 'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation', 'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint', 'glEnableVertexAttribArray', 'glDisableVertexAttribArray', 'glVertexAttribPointer', 'glActiveTexture'],
+  $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable', 'glIsEnabled', 'glGetBooleanv', 'glGetIntegerv', 'glGetString', 'glCreateShader', 'glShaderSource', 'glCompileShader', 'glAttachShader', 'glDetachShader', 'glUseProgram', 'glDeleteProgram', 'glBindAttribLocation', 'glLinkProgram', 'glBindBuffer', 'glGetFloatv', 'glHint', 'glEnableVertexAttribArray', 'glDisableVertexAttribArray', 'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8'],
   $GLEmulation__postset: 'GLEmulation.init();',
   $GLEmulation: {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
@@ -252,11 +252,11 @@ var LibraryGLEmulation = {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
         switch(name_) {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
-            var ret = allocate(intArrayFromString(GLctx.getSupportedExtensions().join(' ') +
+            var ret = stringToNewUTF8(GLctx.getSupportedExtensions().join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
-            ), 'i8', ALLOC_NORMAL);
+            );
             GL.stringCache[name_] = ret;
             return ret;
         }

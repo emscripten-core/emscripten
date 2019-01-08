@@ -7848,7 +7848,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1506, [],         [],      226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1507, [],         [],      226057,  30,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')

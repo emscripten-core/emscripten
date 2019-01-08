@@ -648,7 +648,7 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      win.title = Pointer_stringify(title);
+      win.title = UTF8ToString(title);
       if (GLFW.active.id == win.id) {
         document.title = win.title;
       }
@@ -1169,7 +1169,7 @@ var LibraryGLFW = {
 
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
-      GLFW.extensions = Pointer_stringify(_glGetString(0x1F03)).split(' ');
+      GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
     }
 
     if (GLFW.extensions.indexOf(extension) != -1) return 1;

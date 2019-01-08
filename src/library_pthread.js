@@ -562,7 +562,7 @@ var LibraryPThread = {
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
     var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0; // Comma-delimited list of IDs "canvas1, canvas2, ..."
-    if (transferredCanvasNames) transferredCanvasNames = Pointer_stringify(transferredCanvasNames).trim();
+    if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
     console.log('pthread_create: transferredCanvasNames="' + transferredCanvasNames + '"');
