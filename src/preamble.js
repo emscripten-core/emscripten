@@ -439,13 +439,13 @@ function stringToAscii(str, outPtr) {
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
-#if FORCE_TEXTDECODER
+#if TEXTDECODER == 2
 var UTF8Decoder = new TextDecoder('utf8');
-#else // FORCE_TEXTDECODER
+#else // TEXTDECODER == 2
 #if TEXTDECODER
 var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
 #endif // TEXTDECODER
-#endif // FORCE_TEXTDECODER
+#endif // TEXTDECODER == 2
 
 function UTF8ArrayToString(u8Array, idx) {
 #if TEXTDECODER
@@ -455,11 +455,11 @@ function UTF8ArrayToString(u8Array, idx) {
   while (u8Array[endPtr]) ++endPtr;
 #endif // TEXTDECODER
 
-#if FORCE_TEXTDECODER
+#if TEXTDECODER == 2
   return UTF8Decoder.decode(
     u8Array.subarray ? u8Array.subarray(idx, endPtr) : new Uint8Array(u8Array.slice(idx, endPtr))
   );
-#else // FORCE_TEXTDECODER
+#else // TEXTDECODER == 2
 #if TEXTDECODER
   if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
     return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
@@ -505,7 +505,7 @@ function UTF8ArrayToString(u8Array, idx) {
 #if TEXTDECODER
   }
 #endif // TEXTDECODER
-#endif // FORCE_TEXTDECODER
+#endif // TEXTDECODER == 2
 }
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
@@ -624,13 +624,13 @@ function lengthBytesUTF8(str) {
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
-#if FORCE_TEXTDECODER
+#if TEXTDECODER == 2
 var UTF16Decoder = new TextDecoder('utf-16le');
-#else // FORCE_TEXTDECODER
+#else // TEXTDECODER == 2
 #if TEXTDECODER
 var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
 #endif // TEXTDECODER
-#endif // FORCE_TEXTDECODER
+#endif // TEXTDECODER == 2
 function UTF16ToString(ptr) {
 #if ASSERTIONS
   assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
@@ -643,13 +643,13 @@ function UTF16ToString(ptr) {
   while (HEAP16[idx]) ++idx;
   endPtr = idx << 1;
 
-#if !FORCE_TEXTDECODER
+#if TEXTDECODER != 2
   if (endPtr - ptr > 32 && UTF16Decoder) {
-#endif // !FORCE_TEXTDECODER
+#endif // TEXTDECODER != 2
     return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
-#if !FORCE_TEXTDECODER
+#if TEXTDECODER != 2
   } else {
-#endif // FORCE_TEXTDECODER
+#endif // TEXTDECODER != 2
 #endif // TEXTDECODER
     var i = 0;
 
@@ -661,7 +661,7 @@ function UTF16ToString(ptr) {
       // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);
     }
-#if TEXTDECODER && !FORCE_TEXTDECODER
+#if TEXTDECODER && TEXTDECODER != 2
   }
 #endif // TEXTDECODER
 }
