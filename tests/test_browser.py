@@ -3929,7 +3929,7 @@ window.close = function() {
     just_fallback = os.path.getsize('test.js')
     self.btest('browser_test_hello_world.c', '0')
     td_with_fallback = os.path.getsize('test.js')
-    self.btest('browser_test_hello_world.c', '0', args=['-s', 'FORCE_TEXTDECODER=1'])
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=2'])
     td_without_fallback = os.path.getsize('test.js')
     self.assertLess(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
