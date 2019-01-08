@@ -8223,7 +8223,6 @@ int main() {
         expect_emterpretify_file = False
         expect_meminit = False
         expect_wasm = False
-        expect_wast = False
         cmd += ['-s', 'SINGLE_FILE=1']
       if meminit1_enabled:
         cmd += ['--memory-init-file', '1']
@@ -8250,11 +8249,12 @@ int main() {
       if expect_success and proc.returncode != 0:
         print(proc.stdout)
       assert expect_success == (proc.returncode == 0)
-      assert expect_asmjs_code == os.path.exists('a.out.asm.js')
-      assert expect_emterpretify_file == os.path.exists('a.out.dat')
-      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-      assert expect_wasm == os.path.exists('a.out.wasm')
-      assert expect_wast == os.path.exists('a.out.wast')
+      if proc.returncode == 0:
+        assert expect_asmjs_code == os.path.exists('a.out.asm.js')
+        assert expect_emterpretify_file == os.path.exists('a.out.dat')
+        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+        assert expect_wasm == os.path.exists('a.out.wasm')
+        assert expect_wast == os.path.exists('a.out.wast')
       if should_run_js:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
