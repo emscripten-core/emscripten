@@ -2472,7 +2472,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   logger.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
   binaryen_bin = shared.Building.get_binaryen_bin()
   # normally we emit binary, but for debug info, we might emit text first
-  wrote_wasm_text = False
   debug_info = options.debug_level >= 2 or options.profiling_funcs
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
@@ -2522,7 +2521,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['-o', wasm_binary_target]
     else:
       cmd += ['-o', wasm_text_target, '-S']
-      wrote_wasm_text = True
     cmd += shared.Building.get_binaryen_feature_flags()
     logger.debug('asm2wasm (asm.js => WebAssembly): ' + ' '.join(cmd))
     TimeLogger.update()
