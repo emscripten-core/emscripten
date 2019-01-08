@@ -2399,6 +2399,7 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('ASSERTIONS', 1)
     src = r'''
       #include <dlfcn.h>
       #include <stdio.h>
@@ -2412,6 +2413,9 @@ The current type of b is: 9
       }
       '''
     self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: No such file or directory')
+    print('without assertions, the error is less clear')
+    self.set_setting('ASSERTIONS', 0)
+    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: FS error')
 
   @needs_dlfcn
   def test_dlfcn_basic(self):

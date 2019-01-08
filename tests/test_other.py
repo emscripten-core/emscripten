@@ -6143,7 +6143,7 @@ int main(int argc, char** argv) {
 
     self.assertGreater(vector, 1000)
     # we can strip out almost all of libcxx when just using vector
-    self.assertLess(2.4 * vector, iostream)
+    self.assertLess(2.25 * vector, iostream)
 
   @no_wasm_backend('relies on EMULATED_FUNCTION_POINTERS')
   def test_emulated_function_pointers(self):
