@@ -1296,6 +1296,9 @@ var WASM_TEXT_FILE = '';
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
+// name of the file containing asm.js code, if relevant
+var ASMJS_CODE_FILE = '';
+
 // name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
