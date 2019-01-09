@@ -549,7 +549,7 @@ var LibraryBrowser = {
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
-    // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and OSX without 'natural scroll' enabled)
+    // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and macOS without 'natural scroll' enabled)
     // is the positive wheel direction. Scrolling mouse wheel up (towards the screen) is the negative wheel direction.
     // This function returns the wheel direction in the browser page coordinate system (+: down, -: up). Note that this is often the
     // opposite of native code: In native APIs the positive scroll direction is to scroll up (away from the user).

@@ -1738,9 +1738,6 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 function integrateWasmJS() {
   // wasm.js has several methods for creating the compiled code module here:
   //  * 'native-wasm' : use native WebAssembly support in the browser
-  //  * 'interpret-s-expr': load s-expression code from a .wast and interpret
-  //  * 'interpret-binary': load binary wasm and interpret
-  //  * 'interpret-asm2wasm': load asm.js code, translate to wasm, and interpret
   //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
   // The method is set at compile time (BINARYEN_METHOD)
   // The method can be a comma-separated list, in which case, we will try the
@@ -1751,13 +1748,9 @@ function integrateWasmJS() {
 
   var method = '{{{ BINARYEN_METHOD }}}';
 
-  var wasmTextFile = '{{{ WASM_TEXT_FILE }}}';
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
 
-  if (!isDataURI(wasmTextFile)) {
-    wasmTextFile = locateFile(wasmTextFile);
-  }
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
@@ -1777,26 +1770,6 @@ function integrateWasmJS() {
   };
 
   var exports = null;
-
-#if BINARYEN_METHOD != 'native-wasm'
-  function lookupImport(mod, base) {
-    var lookup = info;
-    if (mod.indexOf('.') < 0) {
-      lookup = (lookup || {})[mod];
-    } else {
-      var parts = mod.split('.');
-      lookup = (lookup || {})[parts[0]];
-      lookup = (lookup || {})[parts[1]];
-    }
-    if (base) {
-      lookup = (lookup || {})[base];
-    }
-    if (lookup === undefined) {
-      abort('bad lookupImport to (' + mod + ').' + base);
-    }
-    return lookup;
-  }
-#endif // BINARYEN_METHOD != 'native-wasm'
 
   function mergeMemory(newBuffer) {
     // The wasm instance creates its memory. But static init code might have written to
@@ -2011,74 +1984,6 @@ function integrateWasmJS() {
 #endif
   }
 
-#if BINARYEN_METHOD != 'native-wasm'
-  function doWasmPolyfill(global, env, providedBuffer, method) {
-    if (typeof WasmJS !== 'function') {
-      err('WasmJS not detected - polyfill not bundled?');
-      return false;
-    }
-
-    // Use wasm.js to polyfill and execute code in a wasm interpreter.
-    var wasmJS = WasmJS({});
-
-    // XXX don't be confused. Module here is in the outside program. wasmJS is the inner wasm-js.cpp.
-    wasmJS['outside'] = Module; // Inside wasm-js.cpp, Module['outside'] reaches the outside module.
-
-    // Information for the instance of the module.
-    wasmJS['info'] = info;
-
-    wasmJS['lookupImport'] = lookupImport;
-
-    assert(providedBuffer === Module['buffer']); // we should not even need to pass it as a 3rd arg for wasm, but that's the asm.js way.
-
-    info.global = global;
-    info.env = env;
-
-    // polyfill interpreter expects an ArrayBuffer
-    assert(providedBuffer === Module['buffer']);
-    env['memory'] = providedBuffer;
-    assert(env['memory'] instanceof ArrayBuffer);
-
-    wasmJS['providedTotalMemory'] = Module['buffer'].byteLength;
-
-    // Prepare to generate wasm, using either asm2wasm or s-exprs
-    var code;
-    if (method === 'interpret-binary') {
-      code = getBinary();
-    } else {
-      code = Module['read'](method == 'interpret-asm2wasm' ? asmjsCodeFile : wasmTextFile);
-    }
-    var temp;
-    if (method == 'interpret-asm2wasm') {
-      temp = wasmJS['_malloc'](code.length + 1);
-      wasmJS['writeAsciiToMemory'](code, temp);
-      wasmJS['_load_asm2wasm'](temp);
-    } else if (method === 'interpret-s-expr') {
-      temp = wasmJS['_malloc'](code.length + 1);
-      wasmJS['writeAsciiToMemory'](code, temp);
-      wasmJS['_load_s_expr2wasm'](temp);
-    } else if (method === 'interpret-binary') {
-      temp = wasmJS['_malloc'](code.length);
-      wasmJS['HEAPU8'].set(code, temp);
-      wasmJS['_load_binary2wasm'](temp, code.length);
-    } else {
-      throw 'what? ' + method;
-    }
-    wasmJS['_free'](temp);
-
-    wasmJS['_instantiate'](temp);
-
-    if (Module['newBuffer']) {
-      mergeMemory(Module['newBuffer']);
-      Module['newBuffer'] = null;
-    }
-
-    exports = wasmJS['asmExports'];
-
-    return exports;
-  }
-#endif // BINARYEN_METHOD != 'native-wasm'
-
   // We may have a preloaded value in Module.asm, save it
   Module['asmPreload'] = Module['asm'];
 
@@ -2108,14 +2013,6 @@ function integrateWasmJS() {
         return null;
       }
     }
-#if BINARYEN_METHOD != 'native-wasm'
-    else {
-      // wasm interpreter support
-      exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
-      // in interpreter, we replace Module.buffer if we allocate
-      return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
-    }
-#endif // BINARYEN_METHOD != 'native-wasm'
   };
 
   Module['reallocBuffer'] = function(size) {
@@ -2131,7 +2028,7 @@ function integrateWasmJS() {
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
-  // doesn't need to care that it is wasm or polyfilled wasm or asm.js.
+  // doesn't need to care that it is wasm or asm.js.
 
   Module['asm'] = function(global, env, providedBuffer) {
     // import table
@@ -2184,8 +2081,6 @@ function integrateWasmJS() {
         if (exports = doNativeWasm(global, env, providedBuffer)) break;
       } else if (curr === 'asmjs') {
         if (exports = doJustAsm(global, env, providedBuffer)) break;
-      } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
-        if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
       } else {
         abort('bad method: ' + curr);
       }

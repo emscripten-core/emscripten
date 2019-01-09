@@ -53,7 +53,7 @@ The :ref:`emsdk` is used to manage multiple SDKs and tools, and to specify the p
 
 A number of other tools are not shown — for example, Java can optionally be used by *emcc* to run the :term:`closure compiler`, which can further decrease code size.
 
-The whole toolchain is delivered in the :ref:`Emscripten SDK <sdk-download-and-install>`, and can be used on Linux, Windows or Mac OS X.
+The whole toolchain is delivered in the :ref:`Emscripten SDK <sdk-download-and-install>`, and can be used on Linux, Windows or macOS.
 
 .. _about-emscripten-porting-code:
 

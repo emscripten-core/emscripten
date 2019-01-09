@@ -42,7 +42,7 @@ Arguments
 
 .. note::
 
-  - For Linux and Mac OSX the commands are called with **./emsdk**. On Windows use **emsdk**.
+  - For Linux and macOS the commands are called with **./emsdk**. On Windows use **emsdk**.
 
 .. _emsdk-specified-tool-sdk:
 
@@ -121,7 +121,7 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
 
 The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from GitHub.
 
-.. note:: The examples below show the commands for Linux and Mac OS X. The commands are the same on Windows, but you need to replace **./emsdk** with **emsdk**.
+.. note:: The examples below show the commands for Linux and macOS. The commands are the same on Windows, but you need to replace **./emsdk** with **emsdk**.
 
 .. _emsdk-get-latest-sdk:
 
@@ -201,10 +201,10 @@ Toggle between different tools and SDK versions using the :term:`activate <Activ
 
   ./emsdk activate <tool/sdk name>
 
-  # On Linux and OSX, also set the environment variables.
+  # On Linux and macOS, also set the environment variables.
   source ./emsdk_env.sh
 
-.. note:: On Linux and Mac OS X, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call ``source ./emsdk_env.sh`` after calling ``activate``. The use of ``source`` is a security feature of Unix shells.
+.. note:: On Linux and macOS, ``activate`` writes the required information to the configuration file, but cannot automatically set up the environment variables in the current terminal. To do this you need to call ``source ./emsdk_env.sh`` after calling ``activate``. The use of ``source`` is a security feature of Unix shells.
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
 

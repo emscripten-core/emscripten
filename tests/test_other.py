@@ -31,6 +31,7 @@ from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
+from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
@@ -3428,7 +3429,7 @@ int main() {
     self.assertEqual(out.count(expected_output), 2)
 
     # test an abort during startup
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_METHOD="interpret-binary"'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     os.remove('a.out.wasm') # trigger onAbort by intentionally causing startup to fail
     add_on_abort_and_verify()
 
@@ -6143,7 +6144,7 @@ int main(int argc, char** argv) {
 
     self.assertGreater(vector, 1000)
     # we can strip out almost all of libcxx when just using vector
-    self.assertLess(2.4 * vector, iostream)
+    self.assertLess(2.25 * vector, iostream)
 
   @no_wasm_backend('relies on EMULATED_FUNCTION_POINTERS')
   def test_emulated_function_pointers(self):
@@ -7536,20 +7537,20 @@ int main() {
           (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
           (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, True, False), # option forced
           (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', "BINARYEN_METHOD='interpret-s-expr,asmjs'"], True, True, False), # asmjs in methods means we need good asm.js
+          (['-O2', '-s', "BINARYEN_METHOD='native-wasm,asmjs'"], True, True, False), # asmjs in methods means we need good asm.js
           (['-O3'], False, True, True),
           (['-Os'], False, True, True),
           (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
         ]:
         try_delete('a.out.js')
         try_delete('a.out.wast')
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c'), '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c')] + args
         print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
         assert expect_js_opts == ('applying js optimization passes:' in err), err
         if not self.is_wasm_backend():
           assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-        wast = open('a.out.wast').read()
+        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         # i64s
         i64s = wast.count('(i64.')
         print('    seen i64s:', i64s)
@@ -7585,7 +7586,7 @@ int main() {
         ]:
         print(args, expect)
         try_delete('a.out.js')
-        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'] + args, stdout=PIPE, stderr=PIPE).stderr
+        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1'] + args, stdout=PIPE, stderr=PIPE).stderr
         assert expect == (' -emscripten-precise-f32' in err), err
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -7632,8 +7633,8 @@ int main() {
 
   @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
   def test_binaryen_warn_sync(self):
-    # interpreting will disable async
-    for method in ['interpret-binary', 'native-wasm', None]:
+    # non-native wasm will disable async
+    for method in ['asmjs', 'native-wasm', None]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')]
       if method is not None:
         cmd += ['-s', 'BINARYEN_METHOD="' + method + '"']
@@ -7641,7 +7642,7 @@ int main() {
       err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
       print(err)
       warning = 'BINARYEN_ASYNC_COMPILATION disabled due to user options. This will reduce performance and compatibility'
-      if method and 'interpret' in method:
+      if method:
         self.assertContained(warning, err)
       else:
         self.assertNotContained(warning, err)
@@ -7690,10 +7691,11 @@ int main() {
         (['-s', 'TOTAL_MEMORY=20971520',                                '-s', 'WASM_MEM_MAX=41943040'], 320, 640),
         (['-s', 'TOTAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_MEM_MAX=41943040'], 320, 640),
       ]:
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2', '-s', 'BINARYEN_METHOD="interpret-s-expr"'] + args
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2'] + args
       print(' '.join(cmd))
       run_process(cmd)
-      for line in open('a.out.wast').readlines():
+      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+      for line in wast:
         if '(import "env" "memory" (memory ' in line:
           parts = line.strip().replace('(', '').replace(')', '').split(' ')
           print(parts)
@@ -7815,7 +7817,7 @@ int main() {
     print('sizes:', sizes)
 
   def test_binaryen_methods(self):
-    for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
+    for method_init in ['asmjs', 'asmjs,native-wasm', 'native-wasm,asmjs']:
       # check success and failure for simple modes, only success for combined/fallback ones
       for success in [1, 0] if ',' not in method_init else [1]:
         method = method_init
@@ -7828,7 +7830,7 @@ int main() {
 
         see_polyfill = 'var WasmJS = ' in open('a.wasm.js').read()
 
-        if method and 'interpret' not in method:
+        if method:
           assert not see_polyfill, 'verify polyfill was not added - we specified a method, and it does not need it'
         else:
           assert see_polyfill, 'we need the polyfill'
@@ -7841,24 +7843,16 @@ int main() {
           with open('a.wasm.asm.js', 'w') as o:
             o.write(asm)
 
-        if method.startswith('interpret-asm2wasm'):
+        if method.startswith('native-wasm'):
           try_delete('a.wasm.wast') # we should not need the .wast
+          break_cashew() # we don't use cashew, so ok to break it
           if not success:
-            break_cashew() # we need cashew
-        elif method.startswith('interpret-s-expr'):
-          try_delete('a.wasm.asm.js') # we should not need the .asm.js
-          if not success:
-            try_delete('a.wasm.wast')
+            try_delete('a.wasm.wasm')
         elif method.startswith('asmjs'):
           try_delete('a.wasm.wast') # we should not need the .wast
           break_cashew() # we don't use cashew, so ok to break it
           if not success:
             try_delete('a.wasm.js')
-        elif method.startswith('interpret-binary'):
-          try_delete('a.wasm.wast') # we should not need the .wast
-          try_delete('a.wasm.asm.js') # we should not need the .asm.js
-          if not success:
-            try_delete('a.wasm.wasm')
         else:
           raise Exception('internal test error')
 
@@ -8050,12 +8044,12 @@ int main() {
         (['-s', 'TOTAL_MEMORY=32MB'], 2048),
         (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384),
         (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024 - 16777216) // 16384),
-        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], 2048),
-        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"'], (2 * 1024 * 1024 * 1024 - 65536) // 16384),
-        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-asm2wasm"', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'BINARYEN=1'], 2048),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384),
+        (['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
       ]:
       if self.is_wasm_backend():
-        if 'WASM=0' in args or 'BINARYEN_METHOD="interpret-asm2wasm"' in args:
+        if 'WASM=0' in args:
           continue
       cmd = [PYTHON, EMCC, path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')] + args
       print(str(cmd))
@@ -8251,7 +8245,6 @@ int main() {
         expect_emterpretify_file = False
         expect_meminit = False
         expect_wasm = False
-        expect_wast = False
         cmd += ['-s', 'SINGLE_FILE=1']
       if meminit1_enabled:
         cmd += ['--memory-init-file', '1']
@@ -8278,11 +8271,12 @@ int main() {
       if expect_success and proc.returncode != 0:
         print(proc.stdout)
       assert expect_success == (proc.returncode == 0)
-      assert expect_asmjs_code == os.path.exists('a.out.asm.js')
-      assert expect_emterpretify_file == os.path.exists('a.out.dat')
-      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-      assert expect_wasm == os.path.exists('a.out.wasm')
-      assert expect_wast == os.path.exists('a.out.wast')
+      if proc.returncode == 0:
+        assert expect_asmjs_code == os.path.exists('a.out.asm.js')
+        assert expect_emterpretify_file == os.path.exists('a.out.dat')
+        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+        assert expect_wasm == os.path.exists('a.out.wasm')
+        assert expect_wast == os.path.exists('a.out.wast')
       if should_run_js:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -8832,3 +8826,50 @@ int main () {
       self.assertContained('invoke_i', output)
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
+
+  def test_add_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                 '-s', 'EMIT_EMSCRIPTEN_METADATA',
+                 '-o', 'hello_world.js'])
+    wasm = open('hello_world.wasm', 'rb').read()
+    # emscripten_metadata should be in the wasm data
+    offset = 8 # skip magic + header
+    for _ in range(100):
+      section = wasm[offset:offset + 1]
+      self.assertEqual(section, b'\0', 'No emscripten_metadata section found before standard wasm sections')
+      offset += 1
+      (section_size, offset) = WebAssembly.delebify(wasm, offset)
+      end_offset = offset + section_size
+      (name_len, offset) = WebAssembly.delebify(wasm, offset)
+      name = wasm[offset:offset + name_len]
+      if name == b'emscripten_metadata':
+        break
+      offset = end_offset
+    else:
+      self.assertFalse("No emscripten_metadata section found in first 100 custom sections")
+
+    # make sure wasm executes correctly
+    ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
+    self.assertTextDataIdentical('hello, world!\n', ret)
+
+  def test_add_emscripten_metadata_not_emitted(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                 '-o', 'hello_world.js'])
+    wasm = open('hello_world.wasm', 'rb').read()
+    # emscripten_metadata should be in the wasm data
+    offset = 8 # skip magic + header
+    for _ in range(100):
+      if offset >= len(wasm):
+        break
+      section = wasm[offset:offset + 1]
+      offset += 1
+      (section_size, offset) = WebAssembly.delebify(wasm, offset)
+      end_offset = offset + section_size
+      # if this is a custom section
+      if section == b'\0':
+        (name_len, offset) = WebAssembly.delebify(wasm, offset)
+        name = wasm[offset:offset + name_len]
+        self.assertNotEqual(name, b'emscripten_metadata')
+      offset = end_offset
+    else:
+      self.assertFalse("wasm file had too many sections")

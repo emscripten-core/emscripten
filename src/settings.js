@@ -559,7 +559,7 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 var FS_LOG = 0;
 
 // If set to nonzero, the provided virtual filesystem if treated
-// case-insensitive, like Windows and OSX do. If set to 0, the VFS is
+// case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
 var CASE_INSENSITIVE_FS = 0;
 
@@ -738,7 +738,7 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // EXPORTED_FUNCTIONS will also be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
-// If set to 1, any -lfoo directives pointing to nonexisting library files will
+// If set to 1, any -lfoo directives pointing to nonexistent library files will
 // issue a linker error.
 
 // The default value for this is currently 0, but will be transitioned to 1 in
@@ -826,7 +826,7 @@ var MODULARIZE = 0;
 // EXPORT_NAME() to create the instance manually.
 //
 // Note that the promise-like API MODULARIZE provides isn't available here
-// (since you arean't creating the instance yourself).
+// (since you aren't creating the instance yourself).
 var MODULARIZE_INSTANCE = 0;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
@@ -978,7 +978,7 @@ var WASM_BACKEND = 0;
 var WASM_OBJECT_FILES = 0;
 
 // How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/js/wasm.js-post.js for more details and options.
+// See binaryen's src/preamble.js for more details and options.
 var BINARYEN_METHOD = "native-wasm";
 
 // An optional comma-separated list of script hooks to run after binaryen,
@@ -1059,6 +1059,9 @@ var USE_ZLIB = 0;
 
 // 1 = use libpng from emscripten-ports
 var USE_LIBPNG = 0;
+
+// 1 = use Regal from emscripten-ports
+var USE_REGAL = 0;
 
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
@@ -1285,3 +1288,8 @@ var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 // JS -> asm.js import names. Controlled by optimization level, enabled
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
+
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
