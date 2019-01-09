@@ -5521,6 +5521,9 @@ return malloc(size);
   def test_wasm_builtin_simd(self, js_engines):
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
+    self.emcc_args.append('-munimplemented-simd128')
+    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
+                js_engines=[])
 
   @ASM_SIMD
   def test_sse1(self):
