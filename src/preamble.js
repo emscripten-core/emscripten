@@ -918,12 +918,13 @@ function updateGlobalBufferViews() {
 
 var STATIC_BASE, STATICTOP; // static area
 var STACK_BASE, STACKTOP, STACK_MAX; // stack area
-var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
+var DYNAMIC_BASE, // dynamic area handled by sbrk
+    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
 
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
-  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
+  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE;
 #if USE_PTHREADS
 }
 #endif

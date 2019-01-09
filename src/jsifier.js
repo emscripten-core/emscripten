@@ -543,7 +543,6 @@ function JSify(data, functionsOnly) {
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
         print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in worker.js)');
       }
-      print('DYNAMICTOP_PTR = ' + makeStaticAlloc(4) + '');
       print('STACK_BASE = STACKTOP = alignMemory(STATICTOP);\n');
       if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = alignMemory(' + STACK_START + ');\n');
       print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
