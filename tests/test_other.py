@@ -8119,23 +8119,18 @@ int main() {
          emterpreter_enabled,
          emterpreter_file_enabled,
          closure_enabled,
-         wasm_enabled,
-         asmjs_fallback_enabled) in itertools.product([True, False], repeat=8):
+         wasm_enabled) in itertools.product([True, False], repeat=7):
       # skip unhelpful option combinations
-      if (
-          (asmjs_fallback_enabled and not wasm_enabled) or
-          (emterpreter_file_enabled and not emterpreter_enabled)
-      ):
+      if emterpreter_file_enabled and not emterpreter_enabled:
         continue
 
       expect_wasm = wasm_enabled
       expect_emterpretify_file = emterpreter_file_enabled
-      expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
+      expect_meminit = meminit1_enabled and not wasm_enabled
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
-      expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled and not self.is_wasm_backend()
       expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
-      if self.is_wasm_backend() and (asmjs_fallback_enabled or emterpreter_enabled or not wasm_enabled):
+      if self.is_wasm_backend() and (emterpreter_enabled or not wasm_enabled):
         continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
@@ -8144,7 +8139,6 @@ int main() {
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
       if single_file_enabled:
-        expect_asmjs_code = False
         expect_emterpretify_file = False
         expect_meminit = False
         expect_wasm = False
@@ -8170,7 +8164,6 @@ int main() {
         print(proc.stdout)
       assert expect_success == (proc.returncode == 0)
       if proc.returncode == 0:
-        assert expect_asmjs_code == os.path.exists('a.out.asm.js')
         assert expect_emterpretify_file == os.path.exists('a.out.dat')
         assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
         assert expect_wasm == os.path.exists('a.out.wasm')
