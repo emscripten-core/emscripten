@@ -23,7 +23,6 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var TOTAL_MEMORY = 0;
 var STATICTOP = 0;
-var staticSealed = true; // When threads are being initialized, the static memory area has been already sealed a long time ago.
 var DYNAMIC_BASE = 0;
 
 var ENVIRONMENT_IS_PTHREAD = true;

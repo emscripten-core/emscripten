@@ -3057,6 +3057,14 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   return level
 
 
+'''
+TODO: search and remove as needed all of
+  staticSealed
+  staticAlloc
+  ALLOC_STATIC
+'''
+
+
 if __name__ == '__main__':
   try:
     sys.exit(run())
