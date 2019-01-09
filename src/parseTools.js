@@ -1445,7 +1445,12 @@ function makeStaticAlloc(size) {
   STATIC_BUMP += size;
   var ret = GLOBAL_BASE + STATIC_BUMP;
   assert(!(ret & (STACK_ALIGN - 1)));
-  return '/* waka */' + ret;
+  return ret;
+}
+
+function makeStaticString(string) {
+  var len = string.length + 1;
+  return 'stringToUTF8("' + string + '", ' + makeStaticAlloc(len) + ', ' + len + ')';
 }
 
 function makeRetainedCompilerSettings() {
