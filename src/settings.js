@@ -1228,6 +1228,8 @@ var BUNDLED_CD_DEBUG_FILE = "";
 
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
+// If set to 2, we assume TextDecoder is present and usable, and do not emit
+// any JS code to fall back if it is missing.
 var TEXTDECODER = 1;
 
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
