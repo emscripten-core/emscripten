@@ -25,12 +25,12 @@ void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
 i32x4 TESTFN i32x4_const(void) {
   return (i32x4) {1, 2, 3, 4};
 }
-// i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
-//   return __builtin_shufflevector(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
-// }
-// i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
-//   return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
-// }
+i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
+  return __builtin_shufflevector(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
+}
+i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
+  return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
+}
 i8x16 TESTFN i8x16_splat(int32_t x) {
   return (i8x16) {x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x};
 }
@@ -586,14 +586,14 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
               ((i8x16){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
   }
   expect_vec(i32x4_const(), ((i32x4){1, 2, 3, 4}));
-  // expect_vec(
-  //   i8x16_shuffle_interleave_bytes(
-  //     (i8x16){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
-  //     (i8x16){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
-  //   ),
-  //   ((i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
-  // );
-  // expect_vec(i8x16_shuffle_reverse((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
+  expect_vec(
+    i8x16_shuffle_interleave_bytes(
+      (i8x16){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
+      (i8x16){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
+    ),
+    ((i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+  );
+  expect_vec(i32x4_shuffle_reverse((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), ((i8x16){5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}));
