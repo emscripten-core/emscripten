@@ -1444,7 +1444,7 @@ function makeStaticAlloc(size) {
   size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
   STATIC_BUMP += size;
   var ret = GLOBAL_BASE + STATIC_BUMP;
-  assert(!(ret & (STACK_ALIGN - 1)));
+  assert(!(ret & (STACK_ALIGN - 1)), 'bad alignment');
   return ret;
 }
 

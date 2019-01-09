@@ -321,7 +321,7 @@ function JSify(data, functionsOnly) {
           }
         });
       });
-      if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
+      if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + JSON.stringify(deps) + ' : ' + (snippet + '').substr(0, 40));
       var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {

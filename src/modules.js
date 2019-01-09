@@ -211,6 +211,7 @@ var LibraryManager = {
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
+        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];

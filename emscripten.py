@@ -527,6 +527,14 @@ def is_int(x):
     return False
 
 
+def align_static_bump(metadata):
+  staticbump = metadata['staticBump']
+  while staticbump % 16 != 0:
+    staticbump += 1
+  metadata['staticBump'] = staticbump
+  return staticbump
+
+
 def update_settings_glue(metadata):
   if shared.Settings.CYBERDWARF:
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append("cyberdwarf_Debugger")
@@ -581,7 +589,7 @@ def update_settings_glue(metadata):
   if not shared.Settings.WASM_BACKEND:
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
-  shared.Settings.STATIC_BUMP = metadata['staticBump']
+  shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
 
 def compile_settings(compiler_engine, libraries, temp_files):
@@ -608,8 +616,7 @@ def memory_and_global_initializers(pre, metadata, mem_init):
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
   staticbump = metadata['staticBump']
-  while staticbump % 16 != 0:
-    staticbump += 1
+
   pthread = ''
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
@@ -1880,8 +1887,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
   staticbump = metadata['staticBump']
-  while staticbump % 16 != 0:
-    staticbump += 1
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
 /* global initializers */ %s __ATINIT__.push(%s);
 ''' % (staticbump,
