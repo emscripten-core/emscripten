@@ -394,7 +394,6 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
-    'staticAlloc',
     'dynamicAlloc',
     'warnOnce',
     'loadDynamicLibrary',

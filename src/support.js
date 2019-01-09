@@ -13,19 +13,11 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
-#endif
 
 function staticAlloc(size) {
-#if ASSERTIONS
-  assert(!staticSealed);
-#endif
-  var ret = STATICTOP;
-  STATICTOP = (STATICTOP + size + 15) & -16;
-#if ASSERTIONS
-  assert(STATICTOP < TOTAL_MEMORY, 'not enough memory for static allocation - increase TOTAL_MEMORY');
-#endif
-  return ret;
+  abort('staticAlloc is no longer available at runtime; instead, perform static allocations at compile time (using makeStaticAlloc)');
 }
+#endif
 
 function dynamicAlloc(size) {
 #if ASSERTIONS

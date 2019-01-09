@@ -1284,12 +1284,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
         shared.Settings.WASM_TEXT_FILE = shared.FilenameReplacementStrings.WASM_TEXT_FILE
         shared.Settings.WASM_BINARY_FILE = shared.FilenameReplacementStrings.WASM_BINARY_FILE
-        shared.Settings.ASMJS_CODE_FILE = shared.FilenameReplacementStrings.ASMJS_CODE_FILE
       else:
         # set file locations, so that JS glue can find what it needs
         shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
-        shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
 
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
       shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
@@ -2605,9 +2603,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
          'native-wasm' in shared.Settings.BINARYEN_METHOD),
-        (asm_target,
-         shared.FilenameReplacementStrings.ASMJS_CODE_FILE,
-         'asmjs' in shared.Settings.BINARYEN_METHOD),
       ):
       if should_embed and os.path.isfile(target):
         js = js.replace(replacement_string, shared.JS.get_subresource_location(target))

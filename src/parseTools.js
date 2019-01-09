@@ -1442,7 +1442,10 @@ function makeEval(code) {
 
 function makeStaticAlloc(size) {
   size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
-  return 'STATICTOP; STATICTOP += ' + size + ';';
+  STATIC_BUMP += size;
+  var ret = GLOBAL_BASE + STATIC_BUMP;
+  assert(!(ret & (STACK_ALIGN - 1)));
+  return '/* waka */' + ret;
 }
 
 function makeRetainedCompilerSettings() {

@@ -581,6 +581,8 @@ def update_settings_glue(metadata):
   if not shared.Settings.WASM_BACKEND:
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
+  shared.Settings.STATIC_BUMP = metadata['staticBump']
+
 
 def compile_settings(compiler_engine, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579
