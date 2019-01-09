@@ -2575,7 +2575,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shutil.move(wso, wasm_binary_target)
     if not shared.Settings.WASM_BACKEND and not DEBUG:
       os.unlink(asm_target) # we don't need the asm.js, it can just confuse
+
+  if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
+    wso = shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
+    shutil.move(wso, wasm_binary_target)
+
+  if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
+
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify

@@ -31,6 +31,7 @@ from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
+from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
@@ -8805,3 +8806,50 @@ int main () {
       self.assertContained('invoke_i', output)
       self.assertNotContained('invoke_ii', output)
       self.assertNotContained('invoke_v', output)
+
+  def test_add_emscripten_metadata(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                 '-s', 'EMIT_EMSCRIPTEN_METADATA',
+                 '-o', 'hello_world.js'])
+    wasm = open('hello_world.wasm', 'rb').read()
+    # emscripten_metadata should be in the wasm data
+    offset = 8 # skip magic + header
+    for _ in range(100):
+      section = wasm[offset:offset + 1]
+      self.assertEqual(section, b'\0', 'No emscripten_metadata section found before standard wasm sections')
+      offset += 1
+      (section_size, offset) = WebAssembly.delebify(wasm, offset)
+      end_offset = offset + section_size
+      (name_len, offset) = WebAssembly.delebify(wasm, offset)
+      name = wasm[offset:offset + name_len]
+      if name == b'emscripten_metadata':
+        break
+      offset = end_offset
+    else:
+      self.assertFalse("No emscripten_metadata section found in first 100 custom sections")
+
+    # make sure wasm executes correctly
+    ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
+    self.assertTextDataIdentical('hello, world!\n', ret)
+
+  def test_add_emscripten_metadata_not_emitted(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                 '-o', 'hello_world.js'])
+    wasm = open('hello_world.wasm', 'rb').read()
+    # emscripten_metadata should be in the wasm data
+    offset = 8 # skip magic + header
+    for _ in range(100):
+      if offset >= len(wasm):
+        break
+      section = wasm[offset:offset + 1]
+      offset += 1
+      (section_size, offset) = WebAssembly.delebify(wasm, offset)
+      end_offset = offset + section_size
+      # if this is a custom section
+      if section == b'\0':
+        (name_len, offset) = WebAssembly.delebify(wasm, offset)
+        name = wasm[offset:offset + name_len]
+        self.assertNotEqual(name, b'emscripten_metadata')
+      offset = end_offset
+    else:
+      self.assertFalse("wasm file had too many sections")
