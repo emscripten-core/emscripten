@@ -3876,9 +3876,9 @@ ok
       int global_var = 12345;
     ''', expected=['12345\n'])
 
-  @no_wasm # todo
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
