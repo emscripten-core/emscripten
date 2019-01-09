@@ -445,10 +445,11 @@ Options that are modified or new in *emcc* are listed below:
 ``-o <target>``
   The ``target`` file name extension defines the output type to be generated:
 
-    - <name> **.js** : JavaScript.
-    - <name> **.html** : HTML + separate JavaScript file (**<name>.js**). Having the separate JavaScript file improves page load time.
-    - <name> **.bc** : LLVM bitcode (default).
-    - <name> **.o** : LLVM bitcode (same as .bc).
+    - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
+    - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
+    - <name> **.bc** : LLVM bitcode.
+    - <name> **.o** : LLVM bitcode (same as .bc), unless in `WASM_OBJECT_FILES` mode, in which case it will contain a WebAssembly object.
+    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm").
 
   .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 

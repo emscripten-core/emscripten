@@ -971,6 +971,9 @@ var EMTERPRETIFY_SYNCLIST = [];
 // whether js opts will be run, after the main compiler
 var RUNNING_JS_OPTS = 0;
 
+// whether we are emitting JS glue code
+var EMITTING_JS = 1;
+
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
