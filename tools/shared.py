@@ -2262,9 +2262,6 @@ class Building(object):
     # Explicitly separate asm.js requires it
     if Settings.SEPARATE_ASM:
       return True
-    # A binaryen method may require it.
-    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
-      return True
     return False
 
   @staticmethod
@@ -2283,9 +2280,6 @@ class Building(object):
       # emitting code compatible with JS, and there is no reason not to
       # be wasm-only, regardless of everything else
       return True
-    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
-      # code compatible with asm.js cannot be wasm-only
-      return False
     if Settings.RUNNING_JS_OPTS:
       # if the JS optimizer runs, it must run on valid asm.js
       return False

@@ -8018,8 +8018,6 @@ asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_
 asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
-binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
 binaryen2s = make_run('binaryen2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 
 # emterpreter

@@ -1456,3 +1456,10 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+
+function getPageSize() {
+  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
+}
+
