@@ -1461,7 +1461,8 @@ assert(!(size & (STATIC_ALIGN - 1)), 'bad alignment-3: ' + size);
 
 function makeStaticString(string) {
   var len = string.length + 1;
-  return 'stringToUTF8("' + string + '", ' + makeStaticAlloc(len) + ', ' + len + ')';
+  var ptr = makeStaticAlloc(len);
+  return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
 // We emit the dynamic and stack bases as strings that need to be further
