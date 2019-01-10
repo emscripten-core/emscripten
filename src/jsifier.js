@@ -487,7 +487,7 @@ function JSify(data, functionsOnly) {
       if (!SIDE_MODULE) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(staticAlloc(12), 8);');
         } else {
           print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
         }
