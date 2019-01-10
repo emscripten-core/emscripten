@@ -7843,8 +7843,6 @@ extern "C" {
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
-    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Stack cookie has been overwritten' if not self.get_setting('SAFE_HEAP') else 'segmentation fault')
 
     self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
