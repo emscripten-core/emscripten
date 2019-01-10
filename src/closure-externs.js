@@ -836,11 +836,6 @@ SIMD.Bool32x4.fromFloat64x2 = function() {};
 SIMD.Bool64x2.fromFloat64x2 = function() {};
 
 /**
- * @suppress {duplicate}
- */
-var GLctx = {};
-
-/**
  * @const
  */
 var WebAssembly = {};
