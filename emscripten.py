@@ -616,7 +616,6 @@ def compile_settings(compiler_engine, libraries, temp_files):
 
   apply_forwarded_data(forwarded_data)
 
-  logging.error(forwarded_data) # FIXME
   return glue, forwarded_data
 
 
@@ -631,9 +630,6 @@ def apply_memory(pre, metadata):
   stack_start = align_memory(global_start + static_bump)
   #  * then dynamic memory begins
   dynamic_start = align_memory(stack_start + shared.Settings.TOTAL_STACK)
-
-  # FIXME
-  logging.error('global_start: %d stack_start: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, dynamic_start, static_bump)
 
   # Write it all out
   pre = pre.replace('{{{ STATIC_BUMP }}}', str(static_bump))
