@@ -432,7 +432,6 @@ function JSify(data, functionsOnly) {
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
           print('STATIC_BASE = GLOBAL_BASE;\n');
-          print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
           // The static area consists of explicitly initialized data, followed by zero-initialized data.
@@ -441,7 +440,6 @@ function JSify(data, functionsOnly) {
           // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
           // from uninitialized memory.
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
-          print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
         if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
