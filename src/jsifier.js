@@ -326,18 +326,23 @@ function JSify(data, functionsOnly) {
       if (isFunction) {
         // Emit the body of a JS library function.
         var proxyingMode = LibraryManager.library[ident + '__proxy'];
-        if (proxyingMode && proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
-        }
-
         if (USE_PTHREADS && proxyingMode) {
           var sig = LibraryManager.library[ident + '__sig'];
           if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
           sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
-          var synchronousCall = (proxyingMode === 'sync');
+          var synchronousCall = (proxyingMode === 'sync' || proxyingMode === 'newsync');
           var invokerKey = sig + (synchronousCall ? '_sync' : '_async');
           if (!proxiedFunctionInvokers[invokerKey]) proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig, synchronousCall);
-          var proxyingFunc = synchronousCall ? '_emscripten_sync_run_in_browser_thread_' : '_emscripten_async_run_in_browser_thread_';
+          var proxyingFunc;
+          if (proxyingMode === 'sync') {
+            proxyingFunc = '_emscripten_sync_run_in_browser_thread_';
+          } else if (proxyingMode === 'async') {
+            proxyingFunc = '_emscripten_async_run_in_browser_thread_';
+          } else if (proxyingMode === 'newsync') {
+            proxyingFunc = '_emscripten_sync_run_in_main_runtime_thread_js_';
+          } else {
+            throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
+          }
           if (sig.length > 1) {
             // If the function takes parameters, forward those to the proxied function call
             var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return ' + proxyingFunc + sig + '(' + proxiedFunctionTable.length + ', $2);');

@@ -117,6 +117,9 @@ typedef struct em_queued_call
   // this em_queued_call object after it has been executed. If
   // false, the caller is in control of the memory.
   int calleeDelete;
+
+  // If != 0, this is a JS call, to this index in the proxied function table.
+  int js;
 } em_queued_call;
 
 void emscripten_sync_run_in_main_thread(em_queued_call *call);
