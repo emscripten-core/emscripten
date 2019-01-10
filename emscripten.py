@@ -626,16 +626,23 @@ def apply_memory(pre, metadata):
   #  * first the static globals
   global_start = shared.Settings.GLOBAL_BASE
   static_bump = shared.Settings.STATIC_BUMP
-  #  * then the stack
-  stack_start = align_memory(global_start + static_bump)
+  #  * then the stack (up on fastcomp, down on upstream)
+  stack_low = align_memory(global_start + static_bump)
+  stack_high = stack_low + shared.Settings.TOTAL_STACK
+  if shared.Settings.WASM_BACKEND:
+    stack_start = stack_high
+  else:
+    stack_start = stack_low
   #  * then dynamic memory begins
-  dynamic_start = align_memory(stack_start + shared.Settings.TOTAL_STACK)
+  dynamic_start = align_memory(stack_high)
 
   # Write it all out
   pre = pre.replace('{{{ STATIC_BUMP }}}', str(static_bump))
   pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
   pre = pre.replace('{{{ STACK_MAX }}}', str(dynamic_start))
   pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
+
+  logging.error('global_start: %d stack_start: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, dynamic_start, static_bump)
 
   return pre
 
