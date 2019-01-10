@@ -1438,7 +1438,7 @@ def function_tables(function_table_data):
 
 def create_the_global(metadata):
   # the global is only needed for asm.js
-  if shared.Settings.WASM and shared.Settings.BINARYEN_METHOD == 'native-wasm':
+  if shared.Settings.WASM:
     return '{}'
   fundamentals = ['Math']
   fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']

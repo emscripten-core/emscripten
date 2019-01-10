@@ -1299,10 +1299,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.OUTLINING_LIMIT:
         logger.warning('for wasm there is usually no need to set OUTLINING_LIMIT, as VMs can handle large functions well anyhow')
       # default precise-f32 to on, since it works well in wasm
-      # also always use f32s when asm.js is not in the picture
-      if ('PRECISE_F32=0' not in settings_changes and 'PRECISE_F32=2' not in settings_changes) or 'asmjs' not in shared.Settings.BINARYEN_METHOD:
-        shared.Settings.PRECISE_F32 = 1
-      if options.js_opts and not options.force_js_opts and 'asmjs' not in shared.Settings.BINARYEN_METHOD:
+      shared.Settings.PRECISE_F32 = 1
+      if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
       if options.use_closure_compiler == 2:
@@ -1341,8 +1339,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # we will include the mem init data in the wasm, when we don't need the
       # mem init file to be loadable by itself
-      shared.Settings.MEM_INIT_IN_WASM = 'asmjs' not in shared.Settings.BINARYEN_METHOD and \
-                                         not shared.Settings.USE_PTHREADS
+      shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -1368,7 +1365,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
       # this is an issue in asm.js, but not wasm
-      if not shared.Settings.WASM or 'asmjs' in shared.Settings.BINARYEN_METHOD:
+      if not shared.Settings.WASM:
         shared.WarningManager.warn('ALMOST_ASM')
         shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
@@ -1413,7 +1410,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append('-disable-llvm-optzns')
 
     if not shared.Settings.LEGALIZE_JS_FFI:
-      assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS and non-wasm BINARYEN_METHOD.'
+      assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = options.opt_level
@@ -2062,7 +2059,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         generated_text_files_with_native_eols += [asm_target]
 
       if shared.Settings.WASM:
-        binaryen_method_sanity_check()
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                     wasm_text_target, misc_temp_files, optimizer)
 
@@ -2456,19 +2452,10 @@ def separate_asm_js(final, asm_target):
     shutil.move(temp, asm_target)
 
 
-def binaryen_method_sanity_check():
-  if shared.Settings.BINARYEN_METHOD:
-    methods = shared.Settings.BINARYEN_METHOD.split(',')
-    valid_methods = ['asmjs', 'native-wasm']
-    for m in methods:
-      if m.strip() not in valid_methods:
-        exit_with_error('Unrecognized BINARYEN_METHOD "' + m.strip() + '" specified! Please pass a comma-delimited list containing one or more of: ' + ','.join(valid_methods))
-
-
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, misc_temp_files, optimizer):
   global final
-  logger.debug('using binaryen, with method: ' + shared.Settings.BINARYEN_METHOD)
+  logger.debug('using binaryen')
   binaryen_bin = shared.Building.get_binaryen_bin()
   # normally we emit binary, but for debug info, we might emit text first
   debug_info = options.debug_level >= 2 or options.profiling_funcs
@@ -2604,10 +2591,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     for target, replacement_string, should_embed in (
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
-         'native-wasm' in shared.Settings.BINARYEN_METHOD),
+         True),
         (asm_target,
          shared.FilenameReplacementStrings.ASMJS_CODE_FILE,
-         'asmjs' in shared.Settings.BINARYEN_METHOD),
+         False),
       ):
       if should_embed and os.path.isfile(target):
         js = js.replace(replacement_string, shared.JS.get_subresource_location(target))
@@ -2776,7 +2763,7 @@ def generate_html(target, options, js_target, target_basename,
 
     # Download .asm.js if --separate-asm was passed in an asm.js build, or if 'asmjs' is one
     # of the wasm run methods.
-    if not options.separate_asm or (shared.Settings.WASM and 'asmjs' not in shared.Settings.BINARYEN_METHOD):
+    if not options.separate_asm or shared.Settings.WASM:
       if len(asm_mods):
          exit_with_error('no --separate-asm means no client code mods are possible')
     else:

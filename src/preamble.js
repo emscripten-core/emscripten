@@ -880,8 +880,8 @@ function stackTrace() {
 // Memory management
 
 var PAGE_SIZE = 16384;
-var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
+var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
+var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 var MIN_TOTAL_MEMORY = 16777216;
 
 function alignUp(x, multiple) {
@@ -1025,7 +1025,7 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
-  var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+  var PAGE_MULTIPLE = {{{ getPageSize() }}};
   var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
   if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
@@ -1093,10 +1093,8 @@ function enlargeMemory() {
   updateGlobalBuffer(replacement);
   updateGlobalBufferViews();
 
-#if ASSERTIONS
-  if (!Module["usingWasm"]) {
-    err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
-  }
+#if ASSERTIONS && !WASM
+  err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
 #endif
 
 #if EMSCRIPTEN_TRACING
@@ -1757,26 +1755,9 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 
 #if WASM
 function integrateWasmJS() {
-  // wasm.js has several methods for creating the compiled code module here:
-  //  * 'native-wasm' : use native WebAssembly support in the browser
-  //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
-  // The method is set at compile time (BINARYEN_METHOD)
-  // The method can be a comma-separated list, in which case, we will try the
-  // options one by one. Some of them can fail gracefully, and then we can try
-  // the next.
-
-  // inputs
-
-  var method = '{{{ BINARYEN_METHOD }}}';
-
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-  var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
-
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
-  }
-  if (!isDataURI(asmjsCodeFile)) {
-    asmjsCodeFile = locateFile(asmjsCodeFile);
   }
 
   // utilities
@@ -1861,35 +1842,12 @@ function integrateWasmJS() {
     });
   }
 
-  // do-method functions
-
-#if BINARYEN_METHOD != 'native-wasm'
-  function doJustAsm(global, env, providedBuffer) {
-    // if no Module.asm, or it's the method handler helper (see below), then apply
-    // the asmjs
-    if (typeof Module['asm'] !== 'function' || Module['asm'] === methodHandler) {
-      if (!Module['asmPreload']) {
-        // you can load the .asm.js file before this, to avoid this sync xhr and eval
-        {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
-      } else {
-        Module['asm'] = Module['asmPreload'];
-      }
-    }
-    if (typeof Module['asm'] !== 'function') {
-      err('asm evalling did not set the module properly');
-      return false;
-    }
-    return Module['asm'](global, env, providedBuffer);
-  }
-#endif // BINARYEN_METHOD != 'native-wasm'
-
-  function doNativeWasm(global, env, providedBuffer) {
+  // Create the wasm instance.
+  // Receives the wasm imports, returns the exports.
+  function createWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
-#if BINARYEN_METHOD == 'native-wasm'
 #if ASSERTIONS
-      // when the method is just native-wasm, our error message can be very specific
       abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#endif
 #endif
       err('no native wasm support detected');
       return false;
@@ -1913,7 +1871,6 @@ function integrateWasmJS() {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
-      Module["usingWasm"] = true;
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;
@@ -2010,42 +1967,31 @@ function integrateWasmJS() {
 
   // Memory growth integration code
 
-  var asmjsReallocBuffer = Module['reallocBuffer'];
-
   var wasmReallocBuffer = function(size) {
-    var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var old = Module['buffer'];
     var oldSize = old.byteLength;
-    if (Module["usingWasm"]) {
-      // native wasm support
-      try {
-        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
-        if (result !== (-1 | 0)) {
-          // success in native wasm memory growth, get the buffer from the memory
-          return Module['buffer'] = Module['wasmMemory'].buffer;
-        } else {
-          return null;
-        }
-      } catch(e) {
-#if ASSERTIONS
-        console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
-#endif
+    // native wasm support
+    try {
+      var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
+      if (result !== (-1 | 0)) {
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = Module['wasmMemory'].buffer;
+      } else {
         return null;
       }
+    } catch(e) {
+#if ASSERTIONS
+      console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+      return null;
     }
   };
 
   Module['reallocBuffer'] = function(size) {
-    if (finalMethod === 'asmjs') {
-      return asmjsReallocBuffer(size);
-    } else {
-      return wasmReallocBuffer(size);
-    }
+    return wasmReallocBuffer(size);
   };
-
-  // we may try more than one; this is the final one, that worked and we are using
-  var finalMethod = '';
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
@@ -2078,51 +2024,14 @@ function integrateWasmJS() {
       env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
     }
 
-    // try the methods. each should return the exports if it succeeded
-
-    var exports;
-#if BINARYEN_METHOD == 'native-wasm'
-    exports = doNativeWasm(global, env, providedBuffer);
-#else // native-wasm
-#if BINARYEN_METHOD == 'asmjs'
-    exports = doJustAsm(global, env, providedBuffer);
-#else
-    var methods = method.split(',');
-
-    for (var i = 0; i < methods.length; i++) {
-      var curr = methods[i];
-
-#if RUNTIME_LOGGING
-      err('trying binaryen method: ' + curr);
-#endif
-
-      finalMethod = curr;
-
-      if (curr === 'native-wasm') {
-        if (exports = doNativeWasm(global, env, providedBuffer)) break;
-      } else if (curr === 'asmjs') {
-        if (exports = doJustAsm(global, env, providedBuffer)) break;
-      } else {
-        abort('bad method: ' + curr);
-      }
-    }
-#endif // asmjs
-#endif // native-wasm
+    var exports = createWasm(global, env, providedBuffer);
 
 #if ASSERTIONS
-    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: http://kripken.github.io/emscripten-site/docs/compiling/WebAssembly.html#binaryen-methods');
-#else
-    assert(exports, 'no binaryen method succeeded.');
-#endif
-
-#if RUNTIME_LOGGING
-    err('binaryen method succeeded.');
+    assert(exports, 'binaryen setup failed (no wasm support?)');
 #endif
 
     return exports;
   };
-
-  var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
 }
 
 integrateWasmJS();

@@ -3433,10 +3433,6 @@ int main() {
     os.remove('a.out.wasm') # trigger onAbort by intentionally causing startup to fail
     add_on_abort_and_verify()
 
-    # test an abort due to lack of a working binaryen method
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'BINARYEN_METHOD="asmjs"'])
-    add_on_abort_and_verify(extra='Module.asm = "string-instead-of-code, asmjs method will fail";')
-
   def test_no_exit_runtime(self):
     create_test_file('code.cpp', r'''
 #include <stdio.h>
@@ -7537,7 +7533,6 @@ int main() {
           (['-O2', '-s', 'EVAL_CTORS=1'], False, True, True), # ctor evaller turned off since only-wasm
           (['-O2', '-s', 'OUTLINING_LIMIT=1000'], True, True, False), # option forced
           (['-O2', '-s', 'OUTLINING_LIMIT=1000', '-s', 'ALLOW_MEMORY_GROWTH=1'], True, True, False), # option forced, and also check growth does not interfere
-          (['-O2', '-s', "BINARYEN_METHOD='native-wasm,asmjs'"], True, True, False), # asmjs in methods means we need good asm.js
           (['-O3'], False, True, True),
           (['-Os'], False, True, True),
           (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
@@ -7580,7 +7575,6 @@ int main() {
       for args, expect in [
           ([], True),
           (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
-          (['-s', 'PRECISE_F32=0', '-s', 'BINARYEN_METHOD="asmjs"'], False), # disabled, and we need the asm.js
           (['-s', 'PRECISE_F32=1'], True),
           (['-s', 'PRECISE_F32=2'], True),
         ]:
@@ -7622,35 +7616,14 @@ int main() {
   def test_binaryen_warn_mem(self):
     # if user changes TOTAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
     create_test_file('pre.js', 'var Module = { TOTAL_MEMORY: 50 * 1024 * 1024 };\n')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
     self.assertContained('imported Memory with incompatible size', out)
     self.assertContained('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).', out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN_METHOD="native-wasm"', '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', run_js('a.out.js', engine=SPIDERMONKEY_ENGINE))
-
-  @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
-  def test_binaryen_warn_sync(self):
-    # non-native wasm will disable async
-    for method in ['asmjs', 'native-wasm', None]:
-      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')]
-      if method is not None:
-        cmd += ['-s', 'BINARYEN_METHOD="' + method + '"']
-      print(' '.join(cmd))
-      err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-      print(err)
-      warning = 'BINARYEN_ASYNC_COMPILATION disabled due to user options. This will reduce performance and compatibility'
-      if method:
-        self.assertContained(warning, err)
-      else:
-        self.assertNotContained(warning, err)
-
-  def test_binaryen_invalid_method(self):
-    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'test.js', '-s', "BINARYEN_METHOD='invalid'"], stderr=PIPE, check=False)
-    self.assertContained('Unrecognized BINARYEN_METHOD', proc.stderr)
-    assert proc.returncode != 0
 
   @no_wasm_backend()
   def test_binaryen_asmjs_outputs(self):
@@ -7658,8 +7631,6 @@ int main() {
     for args, output_asmjs in [
       ([], False),
       (['-s', 'MAIN_MODULE=2'], False),
-      (['-s', 'BINARYEN_METHOD="native-wasm"'], False),
-      (['-s', 'BINARYEN_METHOD="native-wasm,asmjs"'], True)
     ]:
       with temp_directory(self.get_dir()) as temp_dir:
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
@@ -7815,53 +7786,6 @@ int main() {
         assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
-
-  def test_binaryen_methods(self):
-    for method_init in ['asmjs', 'asmjs,native-wasm', 'native-wasm,asmjs']:
-      # check success and failure for simple modes, only success for combined/fallback ones
-      for success in [1, 0] if ',' not in method_init else [1]:
-        method = method_init
-        if self.is_wasm_backend() and ('asmjs' in method or 'asm2wasm' in method):
-          continue
-        command = [PYTHON, EMCC, '-o', 'a.wasm.js', '-s', 'BINARYEN=1', path_from_root('tests', 'hello_world.c')]
-        command += ['-s', 'BINARYEN_METHOD="' + method + '"']
-        print(method, ' : ', ' '.join(command), ' => ', success)
-        run_process(command)
-
-        see_polyfill = 'var WasmJS = ' in open('a.wasm.js').read()
-
-        if method:
-          assert not see_polyfill, 'verify polyfill was not added - we specified a method, and it does not need it'
-        else:
-          assert see_polyfill, 'we need the polyfill'
-
-        def break_cashew():
-          with open('a.wasm.asm.js') as f:
-            asm = f.read()
-          asm = asm.replace('"almost asm"', '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
-          asm = asm.replace("'almost asm'", '"use asm"; var not_in_asm = [].length + (true || { x: 5 }.x);')
-          with open('a.wasm.asm.js', 'w') as o:
-            o.write(asm)
-
-        if method.startswith('native-wasm'):
-          try_delete('a.wasm.wast') # we should not need the .wast
-          break_cashew() # we don't use cashew, so ok to break it
-          if not success:
-            try_delete('a.wasm.wasm')
-        elif method.startswith('asmjs'):
-          try_delete('a.wasm.wast') # we should not need the .wast
-          break_cashew() # we don't use cashew, so ok to break it
-          if not success:
-            try_delete('a.wasm.js')
-        else:
-          raise Exception('internal test error')
-
-        proc = run_process(NODE_JS + ['a.wasm.js'], stdout=PIPE, check=success)
-        if success:
-          self.assertIn('hello, world!', proc.stdout)
-        else:
-          assert proc.returncode != 0, proc.stderr
-          self.assertNotIn('hello, world!', proc.stdout)
 
   def test_binaryen_metadce(self):
     def test(filename, expectations, size_slack):
@@ -8216,23 +8140,18 @@ int main() {
          emterpreter_enabled,
          emterpreter_file_enabled,
          closure_enabled,
-         wasm_enabled,
-         asmjs_fallback_enabled) in itertools.product([True, False], repeat=8):
+         wasm_enabled) in itertools.product([True, False], repeat=7):
       # skip unhelpful option combinations
-      if (
-          (asmjs_fallback_enabled and not wasm_enabled) or
-          (emterpreter_file_enabled and not emterpreter_enabled)
-      ):
+      if emterpreter_file_enabled and not emterpreter_enabled:
         continue
 
       expect_wasm = wasm_enabled
       expect_emterpretify_file = emterpreter_file_enabled
-      expect_meminit = (meminit1_enabled and not wasm_enabled) or (wasm_enabled and asmjs_fallback_enabled)
+      expect_meminit = meminit1_enabled and not wasm_enabled
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
-      expect_asmjs_code = asmjs_fallback_enabled and wasm_enabled and not self.is_wasm_backend()
       expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
-      if self.is_wasm_backend() and (asmjs_fallback_enabled or emterpreter_enabled or not wasm_enabled):
+      if self.is_wasm_backend() and (emterpreter_enabled or not wasm_enabled):
         continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
@@ -8241,7 +8160,6 @@ int main() {
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c')]
 
       if single_file_enabled:
-        expect_asmjs_code = False
         expect_emterpretify_file = False
         expect_meminit = False
         expect_wasm = False
@@ -8256,12 +8174,7 @@ int main() {
         cmd += ['-s', "EMTERPRETIFY_FILE='a.out.dat'"]
       if closure_enabled:
         cmd += ['--closure', '1']
-      if wasm_enabled:
-        method = 'native-wasm'
-        if asmjs_fallback_enabled:
-          method += ',asmjs'
-        cmd += ['-s', 'WASM=1', '-s', "BINARYEN_METHOD='" + method + "'"]
-      else:
+      if not wasm_enabled:
         cmd += ['-s', 'WASM=0']
 
       print(' '.join(cmd))
@@ -8272,7 +8185,6 @@ int main() {
         print(proc.stdout)
       assert expect_success == (proc.returncode == 0)
       if proc.returncode == 0:
-        assert expect_asmjs_code == os.path.exists('a.out.asm.js')
         assert expect_emterpretify_file == os.path.exists('a.out.dat')
         assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
         assert expect_wasm == os.path.exists('a.out.wasm')

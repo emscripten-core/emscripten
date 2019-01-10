@@ -4208,7 +4208,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"], also_proxied=True)
+    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
 
   # Tests that SINGLE_FILE works as intended with locateFile
@@ -4243,7 +4243,7 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"])
+    run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     assert os.path.exists('test.js') and not os.path.exists('test.worker.js')

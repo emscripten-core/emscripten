@@ -1003,10 +1003,6 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 var WASM_OBJECT_FILES = 0;
 
-// How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/preamble.js for more details and options.
-var BINARYEN_METHOD = "native-wasm";
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1054,8 +1050,7 @@ var BINARYEN_ROOT = "";
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using non-wasm
-// BINARYEN_METHOD settings.
+// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
