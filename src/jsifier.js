@@ -441,6 +441,8 @@ function JSify(data, functionsOnly) {
           // from uninitialized memory.
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
         }
+        // emit "metadata" in a comment. FIXME make this nicer
+        print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
