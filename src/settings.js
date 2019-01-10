@@ -141,9 +141,6 @@ var GLOBAL_BASE = -1;
 // allocations, by forcing the stack to start in the same place their
 // memory usage patterns would be the same.
 
-// Code embetterments
-var STACK_START = -1;
-
 // How to load and store 64-bit doubles.  A potential risk is that doubles may
 // be only 32-bit aligned. Forcing 64-bit alignment in Clang itself should be
 // able to solve that, or as a workaround in DOUBLE_MODE 1 we will carefully

@@ -543,17 +543,6 @@ function JSify(data, functionsOnly) {
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
         print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in worker.js)');
       }
-      print('STACK_BASE = STACKTOP = alignMemory(STATICTOP);\n');
-      if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = alignMemory(' + STACK_START + ');\n');
-      print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-      print('DYNAMIC_BASE = alignMemory(STACK_MAX);\n');
-      if (WASM_BACKEND) {
-        // wasm backend stack goes down
-        print('STACKTOP = STACK_BASE + TOTAL_STACK;');
-        print('STACK_MAX = STACK_BASE;');
-      }
-      print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
-      if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       if (USE_PTHREADS) print('}\n');
     }
 

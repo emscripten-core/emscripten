@@ -916,15 +916,17 @@ function updateGlobalBufferViews() {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
 }
 
-var STATIC_BASE, STATICTOP; // static area
-var STACK_BASE, STACKTOP, STACK_MAX; // stack area
-var DYNAMIC_BASE, // dynamic area handled by sbrk
-    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
-
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
-  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE;
+
+var STATIC_BASE = {{{ GLOBAL_BASE }}},
+    STACK_BASE = {{{ getStackBase() }}},
+    STACKTOP = STACK_BASE;
+    STACK_MAX = {{{ getStackMax() }}},
+    DYNAMIC_BASE = {{{ getDynamicBase() }}},
+    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
+
 #if USE_PTHREADS
 }
 #endif
@@ -1109,7 +1111,11 @@ try {
 }
 #endif
 
-var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
+var TOTAL_STACK = {{{ TOTAL_STACK }}};
+#if ASSERTIONS
+if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
+#endif
+
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
@@ -1249,6 +1255,14 @@ if (Module['buffer']) {
 updateGlobalBufferViews();
 
 #endif // USE_PTHREADS
+
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
+#endif
+HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
+#if USE_PTHREADS
+}
+#endif
 
 function getTotalMemory() {
   return TOTAL_MEMORY;

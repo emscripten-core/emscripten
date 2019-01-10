@@ -527,12 +527,13 @@ def is_int(x):
     return False
 
 
+def align_memory(addr):
+  return (addr + 15) & -16
+
+
 def align_static_bump(metadata):
-  staticbump = metadata['staticBump']
-  while staticbump % 16 != 0:
-    staticbump += 1
-  metadata['staticBump'] = staticbump
-  return staticbump
+  metadata['staticBump'] = align_memory(metadata['staticBump'])
+  return metadata['staticBump']
 
 
 def update_settings_glue(metadata):
@@ -609,6 +610,26 @@ def compile_settings(compiler_engine, libraries, temp_files):
   return glue, forwarded_data
 
 
+def apply_memory(pre, metadata):
+  # Apply the statically-at-compile-time computed memory locations.
+
+  # Memory layout:
+  #  * first the static globals
+  global_start = shared.Settings.GLOBAL_BASE
+  #  * then the stack
+  stack_start = align_memory(global_start + metadata['staticBump'])
+  #  * then dynamic memory begins
+  dynamic_start = align_memory(stack_start + shared.Settings.TOTAL_STACK)
+
+  # Write it all out
+  pre = pre.replace('{{{ STATIC_BUMP }}}', str(metadata['staticBump']))
+  pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
+  pre = pre.replace('{{{ STACK_MAX }}}', str(dynamic_start))
+  pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
+
+  return pre
+
+
 def memory_and_global_initializers(pre, metadata, mem_init):
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
@@ -630,8 +651,8 @@ STATICTOP = STATIC_BASE + {staticbump};
 
   if shared.Settings.SIDE_MODULE:
     pre = pre.replace('GLOBAL_BASE', 'gb')
-  if shared.Settings.SIDE_MODULE or shared.Settings.WASM:
-    pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+  pre = apply_memory(pre, metadata)
 
   return pre
 
@@ -1894,7 +1915,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
-  pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+  pre = apply_memory(pre, metadata)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
