@@ -1000,10 +1000,6 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 var WASM_OBJECT_FILES = 0;
 
-// How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/preamble.js for more details and options.
-var BINARYEN_METHOD = "native-wasm";
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1051,8 +1047,7 @@ var BINARYEN_ROOT = "";
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using non-wasm
-// BINARYEN_METHOD settings.
+// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1324,4 +1319,16 @@ var MINIFY_ASMJS_IMPORT_NAMES = 0;
 // for static globals. received from the backend, and possibly increased due
 // to JS static allocations
 var STATIC_BUMP = -1;
+
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Tracks whether we are building with errno support enabled. Set to 0
+// to disable compiling errno support in altogether. This saves a little
+// bit of generated code size in applications that do not care about
+// POSIX errno variable. Setting this to 0 also requires using --closure
+// for effective code size optimizations to take place.
+var SUPPORT_ERRNO = 1;
 

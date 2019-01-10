@@ -15,6 +15,8 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Remove BINARYEN_METHOD: no more support for interpret modes, and if you want
+   non-wasm, use WASM=0.
 
 v1.38.22: 01/08/2019
 --------------------

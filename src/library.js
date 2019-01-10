@@ -3227,11 +3227,15 @@ LibraryManager.library = {
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
   __setErrNo: function(value) {
+#if SUPPORT_ERRNO
     if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
 #if ASSERTIONS
     else err('failed to set errno from JS');
 #endif
     return value;
+#else
+    return 0;
+#endif
   },
 
   // ==========================================================================
