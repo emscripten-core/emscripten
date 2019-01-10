@@ -7862,7 +7862,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1524, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1526, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -7878,9 +7878,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
+        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
+                  35, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend

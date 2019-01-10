@@ -1169,6 +1169,7 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+  $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
     last: 0,
     caught: [],

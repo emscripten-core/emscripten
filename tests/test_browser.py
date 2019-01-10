@@ -4421,3 +4421,12 @@ window.close = function() {
 
   def test_emscripten_throw_string(self):
     self.btest(path_from_root('tests', 'emscripten_throw_string.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_string_pre.js')])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a minimal console.log() application
+  def test_closure_in_web_only_target_environment_console_log(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a small WebGL application
+  @requires_graphics_hardware
+  def test_closure_in_web_only_target_environment_webgl(self):
+    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
