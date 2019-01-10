@@ -1145,10 +1145,6 @@ var MozBlobBuilder;
 /**
  * @suppress {duplicate, undefinedVars}
  */
-var GL;
-/**
- * @suppress {duplicate, undefinedVars}
- */
 var WebGLClient;
 /**
  * @suppress {duplicate, undefinedVars}
