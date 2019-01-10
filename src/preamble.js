@@ -1830,7 +1830,7 @@ function integrateWasmJS() {
 
   // Create the wasm instance.
   // Receives the wasm imports, returns the exports.
-  function createWasm(global, env, providedBuffer) {
+  function createWasm(env) {
     if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
       abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
@@ -1903,7 +1903,13 @@ function integrateWasmJS() {
       assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
       trueModule = null;
 #endif
+#if USE_PTHREADS
       receiveInstance(output['instance'], output['module']);
+#else
+      // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
+      // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
+      receiveInstance(output['instance']);
+#endif
     }
     function instantiateArrayBuffer(receiver) {
       getBinaryPromise().then(function(binary) {
@@ -2010,7 +2016,7 @@ function integrateWasmJS() {
       env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
     }
 
-    var exports = createWasm(global, env, providedBuffer);
+    var exports = createWasm(env);
 
 #if ASSERTIONS
     assert(exports, 'binaryen setup failed (no wasm support?)');

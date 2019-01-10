@@ -478,7 +478,7 @@ EMSCRIPTEN_FUNCS();
       # run on the shell code, everything but what we js-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
-      cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
+      cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'
 
       with temp_files.get_file('.cl.js') as cle:
         pre_1, pre_2 = pre.split(start_asm)

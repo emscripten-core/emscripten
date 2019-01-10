@@ -509,7 +509,7 @@ var LibraryGL = {
             ctx = canvas.getContext("webgl2", webGLContextAttributes);
 #endif
           } else {
-            throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
+            throw 'Unsupported WebGL context version ' + webGLContextAttributes['majorVersion'] + '.' + webGLContextAttributes['minorVersion'] + '!'
           }
         } finally {
           canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
