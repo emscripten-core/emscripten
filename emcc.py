@@ -1103,8 +1103,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       next_arg_index += 1
       shared.Settings.FILESYSTEM = 0
       shared.Settings.FETCH = 1
-      if not shared.Settings.USE_PTHREADS:
-        exit_with_error('-s ASMFS=1 requires -s USE_PTHREADS=1 to be set!')
+      options.js_libraries.append(shared.path_from_root('src', 'library_asmfs.js'))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_SUFFIXES:
       input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
@@ -1200,15 +1199,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # may need, including filesystem usage from standalone file packager output (i.e.
       # file packages not built together with emcc, but that are loaded at runtime
       # separately, and they need emcc's output to contain the support they need)
+      if not shared.Settings.ASMFS:
+        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+          'FS_createFolder',
+          'FS_createPath',
+          'FS_createDataFile',
+          'FS_createPreloadedFile',
+          'FS_createLazyFile',
+          'FS_createLink',
+          'FS_createDevice',
+          'FS_unlink'
+        ]
+
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
-        'FS_createFolder',
-        'FS_createPath',
-        'FS_createDataFile',
-        'FS_createPreloadedFile',
-        'FS_createLazyFile',
-        'FS_createLink',
-        'FS_createDevice',
-        'FS_unlink',
         'getMemory',
         'addRunDependency',
         'removeRunDependency',
