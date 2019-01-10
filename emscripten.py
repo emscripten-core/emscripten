@@ -644,7 +644,7 @@ def apply_memory(pre, metadata):
   pre = pre.replace('{{{ STACK_MAX }}}', str(stack_max))
   pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
 
-  logging.error('global_start: %d stack_start: %d, stack_max: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, stack_max, dynamic_start, static_bump)
+  logger.debug('global_start: %d stack_start: %d, stack_max: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, stack_max, dynamic_start, static_bump)
 
   return pre
 
