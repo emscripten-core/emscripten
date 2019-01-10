@@ -1159,10 +1159,6 @@ var SDL;
  */
 var SDL2;
 /**
- * @suppress {duplicate, undefinedVars}
- */
-var JSEvents;
-/**
  * @suppress {undefinedVars}
  */
 var i64Math;
