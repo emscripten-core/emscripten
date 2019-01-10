@@ -1440,22 +1440,10 @@ function makeEval(code) {
   return ret;
 }
 
-var STATIC_ALIGN = 8; // matches GLOBAL_BASE, which is 8. TODO do we need SIMD?
-
 function makeStaticAlloc(size) {
-  size = (size + (STATIC_ALIGN-1)) & -STATIC_ALIGN;
-
-
-
-assert(!(STATIC_BUMP & (STATIC_ALIGN - 1)), 'bad alignment-1: ' + STATIC_BUMP);
-assert(!(GLOBAL_BASE & (STATIC_ALIGN - 1)), 'bad alignment-2: ' + GLOBAL_BASE);
-assert(!(size & (STATIC_ALIGN - 1)), 'bad alignment-3: ' + size);
-
-
-
-  var ret = GLOBAL_BASE + STATIC_BUMP;
-  STATIC_BUMP += size;
-  assert(!(ret & (STATIC_ALIGN - 1)), 'bad alignment');
+  size = alignMemory(size);
+  var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
+  STATIC_BUMP = ret + size - GLOBAL_BASE;
   return ret;
 }
 
