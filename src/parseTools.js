@@ -1453,8 +1453,8 @@ assert(!(size & (STATIC_ALIGN - 1)), 'bad alignment-3: ' + size);
 
 
 
-  STATIC_BUMP += size;
   var ret = GLOBAL_BASE + STATIC_BUMP;
+  STATIC_BUMP += size;
   assert(!(ret & (STATIC_ALIGN - 1)), 'bad alignment');
   return ret;
 }

@@ -621,6 +621,9 @@ def apply_memory(pre, metadata):
   #  * then dynamic memory begins
   dynamic_start = align_memory(stack_start + shared.Settings.TOTAL_STACK)
 
+  # FIXME
+  logging.error('global_start: %d stack_start: %d, dynamic_start: %d', global_start, stack_start, dynamic_start)
+
   # Write it all out
   pre = pre.replace('{{{ STATIC_BUMP }}}', str(metadata['staticBump']))
   pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
