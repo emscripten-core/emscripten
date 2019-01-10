@@ -7811,7 +7811,6 @@ extern "C" {
         check_memprof_requirements: function() {
           if (typeof TOTAL_MEMORY === 'number' &&
               typeof STATIC_BASE === 'number' &&
-              typeof STATICTOP === 'number' &&
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
