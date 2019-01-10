@@ -400,6 +400,7 @@ var LibraryPThread = {
 #endif
             tempDoublePtr: tempDoublePtr,
             TOTAL_MEMORY: TOTAL_MEMORY,
+            STATICTOP: STATICTOP,
             DYNAMIC_BASE: DYNAMIC_BASE,
             DYNAMICTOP_PTR: DYNAMICTOP_PTR,
             PthreadWorkerInit: PthreadWorkerInit

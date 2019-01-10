@@ -34,7 +34,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
   assert(DYNAMICTOP_PTR);
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
@@ -46,7 +46,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
   assert(DYNAMICTOP_PTR);
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
@@ -922,7 +922,7 @@ if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variab
 
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getStackBase() }}},
-    STACKTOP = STACK_BASE,
+    STACKTOP = STACK_BASE;
     STACK_MAX = {{{ getStackMax() }}},
     DYNAMIC_BASE = {{{ getDynamicBase() }}},
     DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
