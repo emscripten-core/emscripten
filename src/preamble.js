@@ -1025,7 +1025,6 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
- // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
   var PAGE_MULTIPLE = {{{ getPageSize() }}};
   var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
@@ -1843,9 +1842,9 @@ function integrateWasmJS() {
     });
   }
 
-  // do-method functions
-
-  function doNativeWasm(global, env, providedBuffer) {
+  // Create the wasm instance.
+  // Receives the wasm imports, returns the exports.
+  function createWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
       abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
@@ -2025,8 +2024,7 @@ function integrateWasmJS() {
       env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
     }
 
-    var exports;
-    exports = doNativeWasm(global, env, providedBuffer);
+    var exports = createWasm(global, env, providedBuffer);
 
 #if ASSERTIONS
     assert(exports, 'binaryen setup failed (no wasm support?)');
