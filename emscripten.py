@@ -593,6 +593,12 @@ def update_settings_glue(metadata):
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
 
+def apply_forwarded_data(forwarded_data):
+  forwarded_json = json.loads(forwarded_data)
+  # Be aware of JS static allocations
+  shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
+
+
 def compile_settings(compiler_engine, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
@@ -607,6 +613,10 @@ def compile_settings(compiler_engine, libraries, temp_files):
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
+
+  apply_forwarded_data(forwarded_data)
+
+  logging.error(forwarded_data) # FIXME
   return glue, forwarded_data
 
 
@@ -616,16 +626,17 @@ def apply_memory(pre, metadata):
   # Memory layout:
   #  * first the static globals
   global_start = shared.Settings.GLOBAL_BASE
+  static_bump = shared.Settings.STATIC_BUMP
   #  * then the stack
-  stack_start = align_memory(global_start + metadata['staticBump'])
+  stack_start = align_memory(global_start + static_bump)
   #  * then dynamic memory begins
   dynamic_start = align_memory(stack_start + shared.Settings.TOTAL_STACK)
 
   # FIXME
-  logging.error('global_start: %d stack_start: %d, dynamic_start: %d', global_start, stack_start, dynamic_start)
+  logging.error('global_start: %d stack_start: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, dynamic_start, static_bump)
 
   # Write it all out
-  pre = pre.replace('{{{ STATIC_BUMP }}}', str(metadata['staticBump']))
+  pre = pre.replace('{{{ STATIC_BUMP }}}', str(static_bump))
   pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
   pre = pre.replace('{{{ STACK_MAX }}}', str(dynamic_start))
   pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
@@ -639,7 +650,7 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   if shared.Settings.SIMD == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
-  staticbump = metadata['staticBump']
+  staticbump = shared.Settings.STATIC_BUMP
 
   pthread = ''
   if shared.Settings.USE_PTHREADS:
@@ -1910,7 +1921,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
-  staticbump = metadata['staticBump']
+  staticbump = shared.Settings.STATIC_BUMP
 
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
 /* global initializers */ %s __ATINIT__.push(%s);
