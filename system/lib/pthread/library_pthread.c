@@ -240,7 +240,7 @@ static void _do_call(em_queued_call *q)
 			default: assert(0 && "Invalid Emscripten pthread _do_call opcode!");
 		}
 	} else {
-		// JS function index (negated)
+		// JS function index
 		int index = q->js;
 		EM_ASM({
 			var sig = $0;
