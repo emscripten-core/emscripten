@@ -497,6 +497,8 @@ var LEGACY_VM_SUPPORT = 0;
 //    'worker' - a web worker environment.
 //    'node'   - Node.js.
 //    'shell'  - a JS shell like d8, js, or jsc.
+// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
+// the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
 var ENVIRONMENT = '';
@@ -1305,7 +1307,6 @@ var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
-var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
 // Internal: passes information to emscripten.py about whether to minify
 // JS -> asm.js import names. Controlled by optimization level, enabled
