@@ -813,7 +813,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii
   return q.returnValue.i;
 }
 
-EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8)
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8)
 {
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIIIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 }, { .i = a6 }, { .i = a7 }, { .i = a8 } } };
