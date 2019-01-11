@@ -218,6 +218,10 @@ def use_source_map(options):
   return options.debug_level >= 4
 
 
+def will_metadce(options):
+  return options.opt_level >= 3 or options.shrink_level >= 1
+
+
 class JSOptimizer(object):
   def __init__(self, target, options, js_transform_tempfiles, in_temp):
     self.queue = []
@@ -1283,6 +1287,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # to bootstrap struct_info, we need binaryen
       os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
+    # When MODULARIZE option is used, currently declare all module exports individually - TODO: this could be optimized
+    if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+      shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
+      logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1, since MODULARIZE currently requires declaring asm.js/wasm module exports in full')
+
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
@@ -1330,6 +1339,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logger.warning('BINARYEN_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
         elif 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
           logger.warning('BINARYEN_ASYNC_COMPILATION disabled due to user options. ' + warning)
+
+      if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+        # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
+        # function generated to each function export from wasm module, so cannot use the
+        # concise form of grabbing exports that does not need to refer to each export individually.
+        if shared.Settings.SWAPPABLE_ASM_MODULE == 1:
+          shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
+          logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -s SWAPPABLE_ASM_MODULE=1 is used')
+        # Wasm -O3 builds use Meta-DCE which is currently not compatible with -s DECLARE_ASM_MODULE_EXPORTS=0 option.
+        if will_metadce(options):
+          shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
+          logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -O3/-Os build with Wasm meta-DCE is used')
+
       # run safe-heap as a binaryen pass
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
         if shared.Settings.BINARYEN_PASSES:
@@ -2583,7 +2605,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       save_intermediate_with_wasm('preclean', wasm_binary_target)
       final = shared.Building.minify_wasm_js(js_file=final,
                                              wasm_file=wasm_binary_target,
-                                             expensive_optimizations=options.opt_level >= 3 or options.shrink_level > 0,
+                                             expensive_optimizations=will_metadce(options),
                                              minify_whitespace=optimizer.minify_whitespace,
                                              use_closure_compiler=options.use_closure_compiler,
                                              debug_info=debug_info,
