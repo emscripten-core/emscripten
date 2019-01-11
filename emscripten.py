@@ -621,6 +621,9 @@ def compile_settings(compiler_engine, libraries, temp_files):
 
 def apply_memory(pre, metadata):
   # Apply the statically-at-compile-time computed memory locations.
+  # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
+  #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
+  #       does not exist, etc.)
 
   # Memory layout:
   #  * first the static globals
@@ -628,7 +631,7 @@ def apply_memory(pre, metadata):
   static_bump = shared.Settings.STATIC_BUMP
   #  * then the stack (up on fastcomp, down on upstream)
   stack_low = align_memory(global_start + static_bump)
-  stack_high = stack_low + shared.Settings.TOTAL_STACK
+  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
   if shared.Settings.WASM_BACKEND:
     stack_start = stack_high
     stack_max = stack_low
