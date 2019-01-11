@@ -5119,17 +5119,24 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
-  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
+    is_lock_free = self.is_wasm_backend()
+    Building.COMPILER_TEST_OPTS += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_from_file(src, output)
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_from_file(src, output)
+    # TODO
+    # elif self.is_wasm_backend():
+    #   print('pthreads')
+    #   self.set_setting('USE_PTHREADS', 1)
+    #   self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
