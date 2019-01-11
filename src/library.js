@@ -894,11 +894,6 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
-
   memmove__sig: 'iiii',
   memmove__asm: true,
   memmove__deps: ['memcpy'],
@@ -922,10 +917,6 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -993,10 +984,53 @@ LibraryManager.library = {
     }
     return (end-num)|0;
   },
+
+#if DECLARE_ASM_MODULE_EXPORTS
+  llvm_memcpy_i32: 'memcpy',
+  llvm_memcpy_i64: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
+
+  llvm_memmove_i32: 'memmove',
+  llvm_memmove_i64: 'memmove',
+  llvm_memmove_p0i8_p0i8_i32: 'memmove',
+  llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
+#else
+  // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
+  // functions, so use an intermediate function as a pass-through.
+  _memcpy_js__deps: ['memcpy'],
+  _memcpy_js: function(dst, src, num) {
+    return _memcpy(dst, src, num);
+  },
 
+  _memmove_js__deps: ['memmove'],
+  _memmove_js: function(dst, src, num) {
+    return _memmove(dst, src, num);
+  },
+
+  _memset_js__deps: ['memset'],
+  _memset_js: function(ptr, value, num) {
+    return _memset(ptr, value, num);
+  },
+
+  llvm_memcpy_i32: '_memcpy_js',
+  llvm_memcpy_i64: '_memcpy_js',
+  llvm_memcpy_p0i8_p0i8_i32: '_memcpy_js',
+  llvm_memcpy_p0i8_p0i8_i64: '_memcpy_js',
+
+  llvm_memmove_i32: '_memmove_js',
+  llvm_memmove_i64: '_memmove_js',
+  llvm_memmove_p0i8_p0i8_i32: '_memmove_js',
+  llvm_memmove_p0i8_p0i8_i64: '_memmove_js',
+
+  llvm_memset_i32: '_memset_js',
+  llvm_memset_p0i8_i32: '_memset_js',
+  llvm_memset_p0i8_i64: '_memset_js',
+#endif // ~DECLARE_ASM_MODULE_EXPORTS
   // ==========================================================================
   // GCC/LLVM specifics
   // ==========================================================================

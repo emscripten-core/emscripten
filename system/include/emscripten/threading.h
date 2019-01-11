@@ -34,7 +34,7 @@ void emscripten_force_num_logical_cores(int cores);
 uint8_t emscripten_atomic_exchange_u8(void/*uint8_t*/ *addr, uint8_t newVal);
 uint16_t emscripten_atomic_exchange_u16(void/*uint16_t*/ *addr, uint16_t newVal);
 uint32_t emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal);
-uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
+uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In asm.js/asm2wasm this is emulated with locks, very slow!
 
 // CAS returns the *old* value that was in the memory location before the operation took place.
 // That is, if the return value when calling this function equals to 'oldVal', then the operation succeeded,

@@ -2459,6 +2459,18 @@ class Building(object):
       for extern in BROWSER_EXTERNS:
         args.append('--externs')
         args.append(extern)
+      # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
+      # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
+      # externs file for the exports, Closure is able to reason about the exports.
+      if Settings.MODULE_EXPORTS:
+        # Generate an exports file that records all the exported symbols from asm.js/wasm module.
+        module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i in Settings.MODULE_EXPORTS])
+        exports_file = configuration.get_temp_files().get('_module_exports.js')
+        exports_file.write(module_exports_suppressions.encode())
+        exports_file.close()
+
+        args.append('--externs')
+        args.append(exports_file.name)
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
       if pretty:
@@ -2502,10 +2514,12 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-        # also minify the names used between js and wasm, if we emitting JS (then the JS knows
-        # how to load the minified names)
+        # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
+        # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
+        # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
+        # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
         if Settings.EMITTING_JS:
-          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
         logger.debug('running closure on shell code')
@@ -2516,10 +2530,24 @@ class Building(object):
   @staticmethod
   def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     logger.debug('running meta-DCE')
+    assert Settings.DECLARE_ASM_MODULE_EXPORTS, 'Internal error: Meta-DCE is currently not compatible with -s DECLARE_ASM_MODULE_EXPORTS=0, build should have occurred with -s DECLARE_ASM_MODULE_EXPORTS=1 if we reach here!'
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     graph = json.loads(txt)
+    # add exports based on the backend output, that are not present in the JS
+    if not Settings.DECLARE_ASM_MODULE_EXPORTS:
+      exports = set()
+      for item in graph:
+        if 'export' in item:
+          exports.add(item['export'])
+      for export in Settings.MODULE_EXPORTS:
+        if export not in exports:
+          graph.append({
+            'export': export,
+            'name': 'emcc$export$' + export,
+            'reaches': []
+          })
     # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
@@ -2566,10 +2594,10 @@ class Building(object):
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, debug_info):
+  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports' if minify_exports else '--minify-imports', wasm_file, '-o', wasm_file]
     cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd.append('-g')

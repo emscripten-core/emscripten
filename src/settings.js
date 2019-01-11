@@ -217,6 +217,18 @@ var SIMD = 0;
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
+// If set to 1, each asm.js/wasm module export is individually declared with a
+// JavaScript "var" definition. This is the simple and recommended approach.
+// However, this does increase code size (especially if you have many such
+// exports), which can be avoided in an unsafe way by setting this to 0. In that
+// case, no "var" is created for each export, and instead a loop (of small
+// constant code size, no matter how many exports you have) writes all the
+// exports received into the global scope. Doing so is dangerous since such
+// modifications of the global scope can confuse external JS minifer tools, and
+// also things can break if the scope the code is in is not the global scope
+// (e.g. if you manually enclose them in a function scope).
+var DECLARE_ASM_MODULE_EXPORTS = 1;
+
 // Ignore closure warnings and errors (like on duplicate definitions)
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 
@@ -497,6 +509,8 @@ var LEGACY_VM_SUPPORT = 0;
 //    'worker' - a web worker environment.
 //    'node'   - Node.js.
 //    'shell'  - a JS shell like d8, js, or jsc.
+// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
+// the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
 var ENVIRONMENT = '';
@@ -1305,7 +1319,6 @@ var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
-var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
 // Internal: passes information to emscripten.py about whether to minify
 // JS -> asm.js import names. Controlled by optimization level, enabled
@@ -1323,4 +1336,10 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
+
+
+// Internal: points to a file that lists all asm.js/wasm module exports, annotated
+// with suppressions for Closure compiler, that can be passed as an --externs file
+// to Closure.
+var MODULE_EXPORTS = [];
 

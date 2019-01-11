@@ -5119,17 +5119,24 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
-  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
+    is_lock_free = self.is_wasm_backend()
+    Building.COMPILER_TEST_OPTS += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_from_file(src, output)
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_from_file(src, output)
+    # TODO
+    # elif self.is_wasm_backend():
+    #   print('pthreads')
+    #   self.set_setting('USE_PTHREADS', 1)
+    #   self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -7897,25 +7904,39 @@ extern "C" {
 
   def test_environment(self):
     self.set_setting('ASSERTIONS', 1)
+
+    def test():
+      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+      js = open('src.cpp.o.js').read()
+      assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
+
     for engine in JS_ENGINES:
-      for work in (1, 0):
-        # set us to test in just this engine
-        self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
-        # tell the compiler to build with just that engine
-        if engine == NODE_JS and work:
-          self.set_setting('ENVIRONMENT', 'node')
-        else:
-          self.set_setting('ENVIRONMENT', 'shell')
-        print(engine, work, self.get_setting('ENVIRONMENT'))
-        try:
-          self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-        except Exception as e:
-          if not work:
-            self.assertContained('not compiled for this environment', str(e))
-          else:
-            raise
-        js = open('src.cpp.o.js').read()
-        assert ('require(' in js) == (self.get_setting('ENVIRONMENT') == 'node'), 'we should have require() calls only if node js specified'
+      print(engine)
+      # set us to test in just this engine
+      self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+      # tell the compiler to build with just that engine
+      if engine == NODE_JS:
+        right = 'node'
+        wrong = 'shell'
+      else:
+        right = 'shell'
+        wrong = 'node'
+      # test with the right env
+      self.set_setting('ENVIRONMENT', right)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      test()
+      # test with the wrong env
+      self.set_setting('ENVIRONMENT', wrong)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      try:
+        test()
+        raise Exception('unexpected success')
+      except Exception as e:
+        self.assertContained('not compiled for this environment', str(e))
+      # test with a combined env
+      self.set_setting('ENVIRONMENT', right + ',' + wrong)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      test()
 
   def test_dfe(self):
     if not self.supports_js_dfe():
