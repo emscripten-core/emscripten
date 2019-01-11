@@ -930,6 +930,11 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     DYNAMIC_BASE = {{{ getDynamicBase() }}},
     DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
 
+#if ASSERTIONS
+assert(STACK_BASE % 16 === 0, 'stack must start aligned');
+assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
+#endif
+
 #if USE_PTHREADS
 }
 #endif
