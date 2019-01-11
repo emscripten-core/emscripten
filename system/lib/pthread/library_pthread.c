@@ -652,11 +652,173 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 	return q.returnValue.i;
 }
 
+// emscripten_sync_run_in_main_runtime_thread_js: proxying for JS library methods.
+
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_v(int index)
 {
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_V;
 	em_queued_call q = { .functionEnum = sig, .js = index };
 	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_i(int index)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_I;
+	em_queued_call q = { .functionEnum = sig, .js = index };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_d(int index)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_D;
+	em_queued_call q = { .functionEnum = sig, .js = index };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.d;
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vi(int index, int a0)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VI;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_ii(int index, int a0)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_II;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE float emscripten_sync_run_in_main_runtime_thread_js_fi(int index, int a0)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_FI;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.f;
+}
+
+EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_di(int index, int a0)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_DI;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.d;
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vii(int index, int a0, int a1)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vif(int index, int a0, float a1)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIF;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .f = a1 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iii(int index, int a0, int a1)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_III;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viii(int index, int a0, int a1, int a2)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viif(int index, int a0, int a1, float a2)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIIF;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .f = a2 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiii(int index, int a0, int a1, int a2)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viiii(int index, int a0, int a1, int a2, int a3)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vifff(int index, int a0, float a1, float a2, float a3)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIFFF;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .f = a1 }, { .f = a2 }, { .f = a3 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiii(int index, int a0, int a1, int a2, int a3)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iifff(int index, int a0, float a1, float a2, float a3)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIFFF;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .f = a1 }, { .f = a2 }, { .f = a3 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiii(int index, int a0, int a1, int a2, int a3, int a4)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_VIIIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 } } };
+	emscripten_sync_run_in_main_thread(&q);
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 }, { .i = a6 }, { .i = a7 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
+}
+
+EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8)
+{
+	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIIIIII;
+	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 }, { .i = a6 }, { .i = a7 }, { .i = a8 } } };
+	emscripten_sync_run_in_main_thread(&q);
+  return q.returnValue.i;
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
