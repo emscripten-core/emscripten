@@ -130,7 +130,7 @@ function JSify(data, functionsOnly) {
   }
 
   // Generates a function that invokes a proxied function call from the calling thread to the main browser thread.
-  function generateProxiedCallInvoker(sig, sync /*async if false*/) {
+  function generateProxiedCallInvoker(sig) {
     if (sig.length == 0) throw 'Function signature cannot be empty!';
     function argsList(num) { // ", p0, p1, p2, p3, p4"
       var s = '';
@@ -138,8 +138,7 @@ function JSify(data, functionsOnly) {
       return s;
     }
 
-    var func = "function _emscripten_" + (sync ? '' : 'a') + 'sync_run_in_browser_thread_' + sig + '(func' + argsList(sig.length-1) + ') {\n';
-    if (sync) func += '  var waitAddress = stackSave();\n';
+    var func = 'function _emscripten_async_run_in_browser_thread_' + sig + '(func' + argsList(sig.length-1) + ') {\n';
 
     function sizeofType(t) {
       switch(t) {
@@ -154,12 +153,6 @@ function JSify(data, functionsOnly) {
     }
 
     var sizeofReturn = sizeofType(sig[0]);
-    if (sync) {
-      if (sizeofReturn == 4) func += '  var returnValue = waitAddress + 4;\n';
-      else if (sizeofReturn == 8) func += '  var returnValue = waitAddress + 8;\n'; // Retain alignment of each type
-    }
-
-    if (sync) func += '  Atomics.store(HEAP32, waitAddress >> 2, 0);\n';
 
     function argsDict(num) { // ", p0: p0, p1: p1, p2: p2, p3: p3, p4: p4"
       var s = '';
@@ -175,17 +168,7 @@ function JSify(data, functionsOnly) {
     if (sig.length > 10) throw 'Proxying functions with 10 or more function parameters is not supported!';
 
     // next line generates a form: "postMessage({ proxiedCall: 9, func: func, waitAddress: waitAddress, returnValue: returnValue, p0: p0, p1: p1, p2: p2, p3: p3, p4: p4, p5: p5, p6: p6, p7: p7 });"
-    func += '  postMessage({ proxiedCall: ' + functionCallOrdinal + ', func: func' + (sync ? ', waitAddress: waitAddress' : '') + (sync && sizeofReturn > 0 ? ', returnValue: returnValue' : '') + argsDict(sig.length-1) + ' });\n';
-    if (sync) {
-      func += '  Atomics.wait(HEAP32, waitAddress >> 2, 0);\n';
-      switch(sig[0]) {
-        case 'i': func += '  return HEAP32[returnValue >> 2];\n'; break;
-        case 'f': func += '  return HEAPF32[returnValue >> 2];\n'; break;
-        case 'd': func += '  return HEAPF64[returnValue >> 3];\n'; break;
-        //case 'I': func += '  return HEAP64[returnValue >> 3];\n'; // TODO: For wasm
-        // TODO: Smaller sizes?
-      }
-    }
+    func += '  postMessage({ proxiedCall: ' + functionCallOrdinal + ', func: func' + argsDict(sig.length-1) + ' });\n';
     func += '}';
     return func;
   }
@@ -330,9 +313,11 @@ function JSify(data, functionsOnly) {
           var sig = LibraryManager.library[ident + '__sig'];
           if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
           sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
-          var synchronousCall = proxyingMode === 'sync';
-          var invokerKey = sig + (synchronousCall ? '_sync' : '_async');
-          if (!proxiedFunctionInvokers[invokerKey]) proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig, synchronousCall);
+          var sync = proxyingMode === 'sync';
+          var invokerKey = sig + (sync ? '_sync' : '_async');
+          if (!sync && !proxiedFunctionInvokers[invokerKey]) {
+            proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig);
+          }
           var proxyingFunc;
           if (proxyingMode === 'sync') {
             proxyingFunc = '_emscripten_sync_run_in_main_runtime_thread_js_';
@@ -537,9 +522,10 @@ function JSify(data, functionsOnly) {
         // Generate worker->main thread proxy function invokers for MAIN_THREAD_EM_ASM() signatures.
         for (var i in PROXIED_FUNCTION_SIGNATURES) {
           var invokerKey = PROXIED_FUNCTION_SIGNATURES[i];
-          if (!proxiedFunctionInvokers[invokerKey]) {
-            var sig_sync = invokerKey.split('_');
-            proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig_sync[0], sig_sync[1] === 'sync');
+          var sig_sync = invokerKey.split('_');
+          var sync = sig_sync[1] === 'sync';
+          if (!sync && !proxiedFunctionInvokers[invokerKey]) {
+            proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig_sync[0]);
           }
         }
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');

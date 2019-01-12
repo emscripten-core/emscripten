@@ -733,7 +733,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
     proxy_function = ''
     if shared.Settings.USE_PTHREADS:
       if call_type == 'sync_on_main_thread_':
-        proxy_function = '_emscripten_sync_run_in_browser_thread_' + sig
+        proxy_function = '_emscripten_sync_run_in_main_runtime_thread_js_' + sig
       elif call_type == 'async_on_main_thread_':
         proxy_function = '_emscripten_async_run_in_browser_thread_' + sig
 
