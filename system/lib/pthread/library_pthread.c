@@ -393,6 +393,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id()
 static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(pthread_t target_thread, em_queued_call *call)
 {
 	assert(call);
+
 // #if PTHREADS_DEBUG // TODO: Create a debug version of pthreads library
 //	EM_ASM_INT({dump('thread ' + _pthread_self() + ' (ENVIRONMENT_IS_WORKER: ' + ENVIRONMENT_IS_WORKER + '), queueing call of function enum=' + $0 + '/ptr=' + $1 + ' on thread ' + $2 + '\n' + new Error().stack)}, call->functionEnum, call->functionPtr, target_thread);
 // #endif
