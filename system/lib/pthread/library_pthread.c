@@ -266,30 +266,30 @@ static void _do_call(em_queued_call *q)
 		// JS function index
 		switch(q->functionEnum)
 		{
-      case EM_FUNC_SIG_V: _emscripten_pthread_do_call_js_v(q->js); break;
-      case EM_FUNC_SIG_I: q->returnValue.i = _emscripten_pthread_do_call_js_i(q->js); break;
-      case EM_FUNC_SIG_D: q->returnValue.d = _emscripten_pthread_do_call_js_d(q->js); break;
-      case EM_FUNC_SIG_VI: _emscripten_pthread_do_call_js_vi(q->js, q->args[0].i); break;
-      case EM_FUNC_SIG_II: q->returnValue.i = _emscripten_pthread_do_call_js_ii(q->js, q->args[0].i); break;
-      case EM_FUNC_SIG_FI: q->returnValue.f = _emscripten_pthread_do_call_js_fi(q->js, q->args[0].i); break;
-      case EM_FUNC_SIG_DI: q->returnValue.d = _emscripten_pthread_do_call_js_di(q->js, q->args[0].i); break;
-      case EM_FUNC_SIG_VII: _emscripten_pthread_do_call_js_vii(q->js, q->args[0].i, q->args[1].i); break;
-      case EM_FUNC_SIG_VIF: _emscripten_pthread_do_call_js_vif(q->js, q->args[0].i, q->args[1].f); break;
-      case EM_FUNC_SIG_III: q->returnValue.i = _emscripten_pthread_do_call_js_iii(q->js, q->args[0].i, q->args[1].i); break;
-      case EM_FUNC_SIG_VIII: _emscripten_pthread_do_call_js_viii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
-      case EM_FUNC_SIG_VIIF: _emscripten_pthread_do_call_js_viif(q->js, q->args[0].i, q->args[1].i, q->args[2].f); break;
-      case EM_FUNC_SIG_IIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
-      case EM_FUNC_SIG_VIIII: _emscripten_pthread_do_call_js_viiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
-      case EM_FUNC_SIG_VIFFF: _emscripten_pthread_do_call_js_vifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
-      case EM_FUNC_SIG_IIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
-      case EM_FUNC_SIG_IIFFF: q->returnValue.i = _emscripten_pthread_do_call_js_iifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
-      case EM_FUNC_SIG_IIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
-      case EM_FUNC_SIG_IIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
-      case EM_FUNC_SIG_VIIIIII: _emscripten_pthread_do_call_js_viiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
-      case EM_FUNC_SIG_IIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
-      case EM_FUNC_SIG_IIIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
+			case EM_FUNC_SIG_V: _emscripten_pthread_do_call_js_v(q->js); break;
+			case EM_FUNC_SIG_I: q->returnValue.i = _emscripten_pthread_do_call_js_i(q->js); break;
+			case EM_FUNC_SIG_D: q->returnValue.d = _emscripten_pthread_do_call_js_d(q->js); break;
+			case EM_FUNC_SIG_VI: _emscripten_pthread_do_call_js_vi(q->js, q->args[0].i); break;
+			case EM_FUNC_SIG_II: q->returnValue.i = _emscripten_pthread_do_call_js_ii(q->js, q->args[0].i); break;
+			case EM_FUNC_SIG_FI: q->returnValue.f = _emscripten_pthread_do_call_js_fi(q->js, q->args[0].i); break;
+			case EM_FUNC_SIG_DI: q->returnValue.d = _emscripten_pthread_do_call_js_di(q->js, q->args[0].i); break;
+			case EM_FUNC_SIG_VII: _emscripten_pthread_do_call_js_vii(q->js, q->args[0].i, q->args[1].i); break;
+			case EM_FUNC_SIG_VIF: _emscripten_pthread_do_call_js_vif(q->js, q->args[0].i, q->args[1].f); break;
+			case EM_FUNC_SIG_III: q->returnValue.i = _emscripten_pthread_do_call_js_iii(q->js, q->args[0].i, q->args[1].i); break;
+			case EM_FUNC_SIG_VIII: _emscripten_pthread_do_call_js_viii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
+			case EM_FUNC_SIG_VIIF: _emscripten_pthread_do_call_js_viif(q->js, q->args[0].i, q->args[1].i, q->args[2].f); break;
+			case EM_FUNC_SIG_IIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
+			case EM_FUNC_SIG_VIIII: _emscripten_pthread_do_call_js_viiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+			case EM_FUNC_SIG_VIFFF: _emscripten_pthread_do_call_js_vifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
+			case EM_FUNC_SIG_IIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+			case EM_FUNC_SIG_IIFFF: q->returnValue.i = _emscripten_pthread_do_call_js_iifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
+			case EM_FUNC_SIG_IIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
+			case EM_FUNC_SIG_IIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+			case EM_FUNC_SIG_VIIIIII: _emscripten_pthread_do_call_js_viiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+			case EM_FUNC_SIG_IIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
+			case EM_FUNC_SIG_IIIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
 			default: assert(0 && "Invalid Emscripten pthread _do_call (js) opcode!");
-    }
+		}
 	}
 
 	// If the caller is detached from this operation, it is the main thread's responsibility to free up the call object.
@@ -704,7 +704,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_i(int ind
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_I;
 	em_queued_call q = { .functionEnum = sig, .js = index };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_d(int index)
@@ -712,7 +712,7 @@ EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_d(int 
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_D;
 	em_queued_call q = { .functionEnum = sig, .js = index };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.d;
+	return q.returnValue.d;
 }
 
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vi(int index, int a0)
@@ -727,7 +727,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_ii(int in
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_II;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE float emscripten_sync_run_in_main_runtime_thread_js_fi(int index, int a0)
@@ -735,7 +735,7 @@ EMSCRIPTEN_KEEPALIVE float emscripten_sync_run_in_main_runtime_thread_js_fi(int 
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_FI;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.f;
+	return q.returnValue.f;
 }
 
 EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_di(int index, int a0)
@@ -743,7 +743,7 @@ EMSCRIPTEN_KEEPALIVE double emscripten_sync_run_in_main_runtime_thread_js_di(int
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_DI;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.d;
+	return q.returnValue.d;
 }
 
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_vii(int index, int a0, int a1)
@@ -765,7 +765,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iii(int i
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_III;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viii(int index, int a0, int a1, int a2)
@@ -787,7 +787,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiii(int 
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viiii(int index, int a0, int a1, int a2, int a3)
@@ -809,7 +809,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiii(int
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iifff(int index, int a0, float a1, float a2, float a3)
@@ -817,7 +817,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iifff(int
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIFFF;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .f = a1 }, { .f = a2 }, { .f = a3 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiii(int index, int a0, int a1, int a2, int a3, int a4)
@@ -825,7 +825,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiii(in
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5)
@@ -833,7 +833,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiii(i
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE void emscripten_sync_run_in_main_runtime_thread_js_viiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5)
@@ -848,7 +848,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 }, { .i = a6 }, { .i = a7 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiiii(int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8)
@@ -856,7 +856,7 @@ EMSCRIPTEN_KEEPALIVE int emscripten_sync_run_in_main_runtime_thread_js_iiiiiiiii
 	EM_FUNC_SIGNATURE sig = EM_FUNC_SIG_IIIIIIIIII;
 	em_queued_call q = { .functionEnum = sig, .js = index, .args = { { .i = a0 }, { .i = a1 }, { .i = a2 }, { .i = a3 }, { .i = a4 }, { .i = a5 }, { .i = a6 }, { .i = a7 }, { .i = a8 } } };
 	emscripten_sync_run_in_main_thread(&q);
-  return q.returnValue.i;
+	return q.returnValue.i;
 }
 
 void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr, ...)
