@@ -330,16 +330,14 @@ function JSify(data, functionsOnly) {
           var sig = LibraryManager.library[ident + '__sig'];
           if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
           sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
-          var synchronousCall = (proxyingMode === 'sync' || proxyingMode === 'newsync');
+          var synchronousCall = proxyingMode === 'sync';
           var invokerKey = sig + (synchronousCall ? '_sync' : '_async');
           if (!proxiedFunctionInvokers[invokerKey]) proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig, synchronousCall);
           var proxyingFunc;
           if (proxyingMode === 'sync') {
-            proxyingFunc = '_emscripten_sync_run_in_browser_thread_';
+            proxyingFunc = '_emscripten_sync_run_in_main_runtime_thread_js_';
           } else if (proxyingMode === 'async') {
             proxyingFunc = '_emscripten_async_run_in_browser_thread_';
-          } else if (proxyingMode === 'newsync') {
-            proxyingFunc = '_emscripten_sync_run_in_main_runtime_thread_js_';
           } else {
             throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
           }

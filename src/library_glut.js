@@ -333,12 +333,12 @@ var LibraryGLUT = {
     }
   },
 
-  glutGetModifiers__proxy: 'newsync',
+  glutGetModifiers__proxy: 'sync',
   glutGetModifiers__sig: 'i',
   glutGetModifiers: function() { return GLUT.modifiers; },
 
   glutInit__deps: ['$Browser'],
-  glutInit__proxy: 'newsync',
+  glutInit__proxy: 'sync',
   glutInit__sig: 'vii',
   glutInit: function(argcp, argv) {
     // Ignore arguments
@@ -397,14 +397,14 @@ var LibraryGLUT = {
     });
   },
 
-  glutInitWindowSize__proxy: 'newsync',
+  glutInitWindowSize__proxy: 'sync',
   glutInitWindowSize__sig: 'vii',
   glutInitWindowSize: function(width, height) {
     Browser.setCanvasSize( GLUT.initWindowWidth = width,
                            GLUT.initWindowHeight = height );
   },
 
-  glutInitWindowPosition__proxy: 'newsync',
+  glutInitWindowPosition__proxy: 'sync',
   glutInitWindowPosition__sig: 'vii',
   glutInitWindowPosition: function(x, y) {
     // Ignore for now
@@ -449,7 +449,7 @@ var LibraryGLUT = {
     }
   },
 
-  glutIdleFunc__proxy: 'newsync',
+  glutIdleFunc__proxy: 'sync',
   glutIdleFunc__sig: 'vi',
   glutIdleFunc: function(func) {
     function callback() {
@@ -464,67 +464,67 @@ var LibraryGLUT = {
     GLUT.idleFunc = func;
   },
 
-  glutTimerFunc__proxy: 'newsync',
+  glutTimerFunc__proxy: 'sync',
   glutTimerFunc__sig: 'viii',
   glutTimerFunc: function(msec, func, value) {
     Browser.safeSetTimeout(function() { Module['dynCall_vi'](func, value); }, msec);
   },
 
-  glutDisplayFunc__proxy: 'newsync',
+  glutDisplayFunc__proxy: 'sync',
   glutDisplayFunc__sig: 'vi',
   glutDisplayFunc: function(func) {
     GLUT.displayFunc = func;
   },
 
-  glutKeyboardFunc__proxy: 'newsync',
+  glutKeyboardFunc__proxy: 'sync',
   glutKeyboardFunc__sig: 'vi',
   glutKeyboardFunc: function(func) {
     GLUT.keyboardFunc = func;
   },
 
-  glutKeyboardUpFunc__proxy: 'newsync',
+  glutKeyboardUpFunc__proxy: 'sync',
   glutKeyboardUpFunc__sig: 'vi',
   glutKeyboardUpFunc: function(func) {
     GLUT.keyboardUpFunc = func;
   },
 
-  glutSpecialFunc__proxy: 'newsync',
+  glutSpecialFunc__proxy: 'sync',
   glutSpecialFunc__sig: 'vi',
   glutSpecialFunc: function(func) {
     GLUT.specialFunc = func;
   },
 
-  glutSpecialUpFunc__proxy: 'newsync',
+  glutSpecialUpFunc__proxy: 'sync',
   glutSpecialUpFunc__sig: 'vi',
   glutSpecialUpFunc: function(func) {
     GLUT.specialUpFunc = func;
   },
 
-  glutReshapeFunc__proxy: 'newsync',
+  glutReshapeFunc__proxy: 'sync',
   glutReshapeFunc__sig: 'vi',
   glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
   },
 
-  glutMotionFunc__proxy: 'newsync',
+  glutMotionFunc__proxy: 'sync',
   glutMotionFunc__sig: 'vi',
   glutMotionFunc: function(func) {
     GLUT.motionFunc = func;
   },
 
-  glutPassiveMotionFunc__proxy: 'newsync',
+  glutPassiveMotionFunc__proxy: 'sync',
   glutPassiveMotionFunc__sig: 'vi',
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
 
-  glutMouseFunc__proxy: 'newsync',
+  glutMouseFunc__proxy: 'sync',
   glutMouseFunc__sig: 'vi',
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
 
-  glutSetCursor__proxy: 'newsync',
+  glutSetCursor__proxy: 'sync',
   glutSetCursor__sig: 'vi',
   glutSetCursor: function(cursor) {
     var cursorStyle = 'auto';
@@ -601,7 +601,7 @@ var LibraryGLUT = {
     Module['canvas'].style.cursor = cursorStyle;
   },
   
-  glutCreateWindow__proxy: 'newsync',
+  glutCreateWindow__proxy: 'sync',
   glutCreateWindow__deps: ['$Browser'],
   glutCreateWindow__sig: 'ii',
   glutCreateWindow: function(name) {
@@ -619,7 +619,7 @@ var LibraryGLUT = {
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },
 
-  glutDestroyWindow__proxy: 'newsync',
+  glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow__sig: 'ii',
   glutDestroyWindow: function(name) {
@@ -627,7 +627,7 @@ var LibraryGLUT = {
     return 1;
   },
 
-  glutReshapeWindow__proxy: 'newsync',
+  glutReshapeWindow__proxy: 'sync',
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutReshapeWindow__sig: 'vi',
   glutReshapeWindow: function(width, height) {
@@ -640,7 +640,7 @@ var LibraryGLUT = {
     _glutPostRedisplay();
   },
 
-  glutPositionWindow__proxy: 'newsync',
+  glutPositionWindow__proxy: 'sync',
   glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
   glutPositionWindow__sig: 'vii',
   glutPositionWindow: function(x, y) {
@@ -649,7 +649,7 @@ var LibraryGLUT = {
     _glutPostRedisplay();
   },
 
-  glutFullScreen__proxy: 'newsync',
+  glutFullScreen__proxy: 'sync',
   glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
   glutFullScreen__sig: 'v',
   glutFullScreen: function() {
@@ -663,17 +663,17 @@ var LibraryGLUT = {
     GLUT.requestFullscreen();
   },
 
-  glutInitDisplayMode__proxy: 'newsync',
+  glutInitDisplayMode__proxy: 'sync',
   glutInitDisplayMode__sig: 'vi',
   glutInitDisplayMode: function(mode) {
     GLUT.initDisplayMode = mode;
   },
 
-  glutSwapBuffers__proxy: 'newsync',
+  glutSwapBuffers__proxy: 'sync',
   glutSwapBuffers__sig: 'v',
   glutSwapBuffers: function() {},
 
-  glutPostRedisplay__proxy: 'newsync',
+  glutPostRedisplay__proxy: 'sync',
   glutPostRedisplay__sig: 'v',
   glutPostRedisplay: function() {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
@@ -687,7 +687,7 @@ var LibraryGLUT = {
     }
   },
 
-  glutMainLoop__proxy: 'newsync',
+  glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop__sig: 'v',
   glutMainLoop: function() {

@@ -1325,7 +1325,7 @@ var LibrarySDL = {
     },
   },
 
-  SDL_Linked_Version__proxy: 'newsync',
+  SDL_Linked_Version__proxy: 'sync',
   SDL_Linked_Version__sig: 'i',
   SDL_Linked_Version: function() {
     if (SDL.version === null) {
@@ -1337,7 +1337,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__proxy: 'newsync',
+  SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
@@ -1384,7 +1384,7 @@ var LibrarySDL = {
   },
 
   SDL_WasInit__deps: ['SDL_Init'],
-  SDL_WasInit__proxy: 'newsync',
+  SDL_WasInit__proxy: 'sync',
   SDL_WasInit__sig: 'i',
   SDL_WasInit: function() {
     if (SDL.startTime === null) {
@@ -1393,7 +1393,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  SDL_GetVideoInfo__proxy: 'newsync',
+  SDL_GetVideoInfo__proxy: 'sync',
   SDL_GetVideoInfo__sig: 'i',
   SDL_GetVideoInfo: function() {
     // %struct.SDL_VideoInfo = type { i32, i32, %struct.SDL_PixelFormat*, i32, i32 } - 5 fields of quantum size
@@ -1421,7 +1421,7 @@ var LibrarySDL = {
     return _SDL_VideoDriverName(buf, max_size);
   },
 
-  SDL_VideoDriverName__proxy: 'newsync',
+  SDL_VideoDriverName__proxy: 'sync',
   SDL_VideoDriverName__sig: 'iii',
   SDL_VideoDriverName: function(buf, max_size) {
     if (SDL.startTime === null) {
@@ -1449,7 +1449,7 @@ var LibrarySDL = {
   },
 
   SDL_SetVideoMode__deps: ['$GL'],
-  SDL_SetVideoMode__proxy: 'newsync',
+  SDL_SetVideoMode__proxy: 'sync',
   SDL_SetVideoMode__sig: 'iiiii',
   SDL_SetVideoMode: function(width, height, depth, flags) {
     ['touchstart', 'touchend', 'touchmove', 'mousedown', 'mouseup', 'mousemove', 'DOMMouseScroll', 'mousewheel', 'wheel', 'mouseout'].forEach(function(event) {
@@ -1494,13 +1494,13 @@ var LibrarySDL = {
     return SDL.screen;
   },
 
-  SDL_GetVideoSurface__proxy: 'newsync',
+  SDL_GetVideoSurface__proxy: 'sync',
   SDL_GetVideoSurface__sig: 'i',
   SDL_GetVideoSurface: function() {
     return SDL.screen;
   },
 
-  SDL_AudioQuit__proxy: 'newsync',
+  SDL_AudioQuit__proxy: 'sync',
   SDL_AudioQuit__sig: 'v',
   SDL_AudioQuit: function() {
     for (var i = 0; i < SDL.numChannels; ++i) {
@@ -1528,7 +1528,7 @@ var LibrarySDL = {
   },
 
   // Copy data from the canvas backing to a C++-accessible storage
-  SDL_LockSurface__proxy: 'newsync',
+  SDL_LockSurface__proxy: 'sync',
   SDL_LockSurface__sig: 'ii',
   SDL_LockSurface: function(surf) {
     var surfData = SDL.surfaces[surf];
@@ -1598,7 +1598,7 @@ var LibrarySDL = {
   },
 
   // Copy data from the C++-accessible storage to the canvas backing
-  SDL_UnlockSurface__proxy: 'newsync',
+  SDL_UnlockSurface__proxy: 'sync',
   SDL_UnlockSurface__sig: 'vi',
   SDL_UnlockSurface: function(surf) {
     assert(!SDL.GL); // in GL mode we do not keep around 2D canvases and contexts
@@ -1732,7 +1732,7 @@ var LibrarySDL = {
   },
 #endif
 
-  SDL_WM_SetCaption__proxy: 'newsync',
+  SDL_WM_SetCaption__proxy: 'sync',
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
     if (title && typeof Module['setWindowTitle'] !== 'undefined') {
@@ -1745,7 +1745,7 @@ var LibrarySDL = {
     // TODO
   },
 
-  SDL_GetKeyboardState__proxy: 'newsync',
+  SDL_GetKeyboardState__proxy: 'sync',
   SDL_GetKeyboardState__sig: 'ii',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
@@ -1759,7 +1759,7 @@ var LibrarySDL = {
     return _SDL_GetKeyboardState();
   },
 
-  SDL_GetKeyName__proxy: 'newsync',
+  SDL_GetKeyName__proxy: 'sync',
   SDL_GetKeyName__sig: 'ii',
   SDL_GetKeyName: function(key) {
     if (!SDL.keyName) {
@@ -1768,13 +1768,13 @@ var LibrarySDL = {
     return SDL.keyName;
   },
 
-  SDL_GetModState__proxy: 'newsync',
+  SDL_GetModState__proxy: 'sync',
   SDL_GetModState__sig: 'i',
   SDL_GetModState: function() {
     return SDL.modState;
   },
 
-  SDL_GetMouseState__proxy: 'newsync',
+  SDL_GetMouseState__proxy: 'sync',
   SDL_GetMouseState__sig: 'iii',
   SDL_GetMouseState: function(x, y) {
     if (x) {{{ makeSetValue('x', '0', 'Browser.mouseX', 'i32') }}};
@@ -1782,7 +1782,7 @@ var LibrarySDL = {
     return SDL.buttonState;
   },
 
-  SDL_WarpMouse__proxy: 'newsync',
+  SDL_WarpMouse__proxy: 'sync',
   SDL_WarpMouse__sig: 'vii',
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
@@ -1796,7 +1796,7 @@ var LibrarySDL = {
     */
   },
 
-  SDL_ShowCursor__proxy: 'newsync',
+  SDL_ShowCursor__proxy: 'sync',
   SDL_ShowCursor__sig: 'ii',
   SDL_ShowCursor: function(toggle) {
     switch (toggle) {
@@ -1821,7 +1821,7 @@ var LibrarySDL = {
     }
   },
 
-  SDL_GetError__proxy: 'newsync',
+  SDL_GetError__proxy: 'sync',
   SDL_GetError__sig: 'i',
   SDL_GetError: function() {
     if (!SDL.errorMessage) {
@@ -1835,13 +1835,13 @@ var LibrarySDL = {
   SDL_malloc: 'malloc',
   SDL_free: 'free',
 
-  SDL_CreateRGBSurface__proxy: 'newsync',
+  SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface__sig: 'iiiiiiiii',
   SDL_CreateRGBSurface: function(flags, width, height, depth, rmask, gmask, bmask, amask) {
     return SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask);
   },
 
-  SDL_CreateRGBSurfaceFrom__proxy: 'newsync',
+  SDL_CreateRGBSurfaceFrom__proxy: 'sync',
   SDL_CreateRGBSurfaceFrom__sig: 'iiiiiiiiii',
   SDL_CreateRGBSurfaceFrom: function(pixels, width, height, depth, pitch, rmask, gmask, bmask, amask) {
     var surf = SDL.makeSurface(width, height, 0, false, 'CreateRGBSurfaceFrom', rmask, gmask, bmask, amask);
@@ -1871,7 +1871,7 @@ var LibrarySDL = {
     return surf;
   },
 
-  SDL_ConvertSurface__proxy: 'newsync',
+  SDL_ConvertSurface__proxy: 'sync',
   SDL_ConvertSurface__sig: 'iiii',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
@@ -1893,19 +1893,19 @@ var LibrarySDL = {
     return _SDL_ConvertSurface(surf);
   },
 
-  SDL_FreeSurface__proxy: 'newsync',
+  SDL_FreeSurface__proxy: 'sync',
   SDL_FreeSurface__sig: 'vi',
   SDL_FreeSurface: function(surf) {
     if (surf) SDL.freeSurface(surf);
   },
 
-  SDL_UpperBlit__proxy: 'newsync',
+  SDL_UpperBlit__proxy: 'sync',
   SDL_UpperBlit__sig: 'iiiii',
   SDL_UpperBlit: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, false);
   },
 
-  SDL_UpperBlitScaled__proxy: 'newsync',
+  SDL_UpperBlitScaled__proxy: 'sync',
   SDL_UpperBlitScaled__sig: 'iiiii',
   SDL_UpperBlitScaled: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, true);
@@ -1914,7 +1914,7 @@ var LibrarySDL = {
   SDL_LowerBlit: 'SDL_UpperBlit',
   SDL_LowerBlitScaled: 'SDL_UpperBlitScaled',
 
-  SDL_GetClipRect__proxy: 'newsync',
+  SDL_GetClipRect__proxy: 'sync',
   SDL_GetClipRect__sig: 'vii',
   SDL_GetClipRect: function(surf, rect) {
     assert(rect);
@@ -1924,7 +1924,7 @@ var LibrarySDL = {
     SDL.updateRect(rect, r);
   },
 
-  SDL_SetClipRect__proxy: 'newsync',
+  SDL_SetClipRect__proxy: 'sync',
   SDL_SetClipRect__sig: 'vii',
   SDL_SetClipRect: function(surf, rect) {
     var surfData = SDL.surfaces[surf];
@@ -1936,7 +1936,7 @@ var LibrarySDL = {
     }
   },
 
-  SDL_FillRect__proxy: 'newsync',
+  SDL_FillRect__proxy: 'sync',
   SDL_FillRect__sig: 'iiii',
   SDL_FillRect: function(surf, rect, color) {
     var surfData = SDL.surfaces[surf];
@@ -1966,13 +1966,13 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_BlitSurface__proxy: 'newsync',
+  SDL_BlitSurface__proxy: 'sync',
   SDL_BlitSurface__sig: 'iiiii',
   SDL_BlitSurface: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, false);
   },
 
-  SDL_BlitScaled__proxy: 'newsync',
+  SDL_BlitScaled__proxy: 'sync',
   SDL_BlitScaled__sig: 'iiiii',
   SDL_BlitScaled: function(src, srcrect, dst, dstrect) {
     return SDL.blitSurface(src, srcrect, dst, dstrect, true);
@@ -2013,7 +2013,7 @@ var LibrarySDL = {
     return ret;
   },
 
-  SDL_SetAlpha__proxy: 'newsync',
+  SDL_SetAlpha__proxy: 'sync',
   SDL_SetAlpha__sig: 'iiii',
   SDL_SetAlpha: function(surf, flag, alpha) {
     var surfData = SDL.surfaces[surf];
@@ -2032,19 +2032,19 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_GetTicks__proxy: 'newsync',
+  SDL_GetTicks__proxy: 'sync',
   SDL_GetTicks__sig: 'i',
   SDL_GetTicks: function() {
     return (Date.now() - SDL.startTime)|0;
   },
 
-  SDL_PollEvent__proxy: 'newsync',
+  SDL_PollEvent__proxy: 'sync',
   SDL_PollEvent__sig: 'ii',
   SDL_PollEvent: function(ptr) {
     return SDL.pollEvent(ptr);
   },
 
-  SDL_PushEvent__proxy: 'newsync',
+  SDL_PushEvent__proxy: 'sync',
   SDL_PushEvent__sig: 'ii',
   SDL_PushEvent: function(ptr) {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2053,7 +2053,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_PeepEvents__proxy: 'newsync',
+  SDL_PeepEvents__proxy: 'sync',
   SDL_PeepEvents__sig: 'iiiiii',
   SDL_PeepEvents: function(events, requestedEventCount, action, from, to) {
     switch(action) {
@@ -2085,7 +2085,7 @@ var LibrarySDL = {
     }
   },
 
-  SDL_PumpEvents__proxy: 'newsync',
+  SDL_PumpEvents__proxy: 'sync',
   SDL_PumpEvents__sig: 'v',
   SDL_PumpEvents: function(){
     SDL.events.forEach(function(event) {
@@ -2095,7 +2095,7 @@ var LibrarySDL = {
 
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
   // Allow recording a callback that will be called for each received event.
-  emscripten_SDL_SetEventHandler__proxy: 'newsync',
+  emscripten_SDL_SetEventHandler__proxy: 'sync',
   emscripten_SDL_SetEventHandler__sig: 'vii',
   emscripten_SDL_SetEventHandler: function(handler, userdata) {
     SDL.eventHandler = handler;
@@ -2105,7 +2105,7 @@ var LibrarySDL = {
     if (!SDL.eventHandlerTemp) SDL.eventHandlerTemp = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
   },
 
-  SDL_SetColors__proxy: 'newsync',
+  SDL_SetColors__proxy: 'sync',
   SDL_SetColors__sig: 'iiiii',
   SDL_SetColors: function(surf, colors, firstColor, nColors) {
     var surfData = SDL.surfaces[surf];
@@ -2136,7 +2136,7 @@ var LibrarySDL = {
     return _SDL_SetColors(surf, colors, firstColor, nColors);
   },
 
-  SDL_MapRGB__proxy: 'newsync',
+  SDL_MapRGB__proxy: 'sync',
   SDL_MapRGB__sig: 'iiiii',
   SDL_MapRGB: function(fmt, r, g, b) {
     SDL.checkPixelFormat(fmt);
@@ -2144,7 +2144,7 @@ var LibrarySDL = {
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|0xff000000;
   },
 
-  SDL_MapRGBA__proxy: 'newsync',
+  SDL_MapRGBA__proxy: 'sync',
   SDL_MapRGBA__sig: 'iiiiii',
   SDL_MapRGBA: function(fmt, r, g, b, a) {
     SDL.checkPixelFormat(fmt);
@@ -2152,7 +2152,7 @@ var LibrarySDL = {
     return r&0xff|(g&0xff)<<8|(b&0xff)<<16|(a&0xff)<<24;
   },
 
-  SDL_GetRGB__proxy: 'newsync',
+  SDL_GetRGB__proxy: 'sync',
   SDL_GetRGB__sig: 'viiiii',
   SDL_GetRGB: function(pixel, fmt, r, g, b) {
     SDL.checkPixelFormat(fmt);
@@ -2168,7 +2168,7 @@ var LibrarySDL = {
     }
   },
 
-  SDL_GetRGBA__proxy: 'newsync',
+  SDL_GetRGBA__proxy: 'sync',
   SDL_GetRGBA__sig: 'viiiiii',
   SDL_GetRGBA: function(pixel, fmt, r, g, b, a) {
     SDL.checkPixelFormat(fmt);
@@ -2187,7 +2187,7 @@ var LibrarySDL = {
     }
   },
 
-  SDL_GetAppState__proxy: 'newsync',
+  SDL_GetAppState__proxy: 'sync',
   SDL_GetAppState__sig: 'i',
   SDL_GetAppState: function() {
     var state = 0;
@@ -2205,7 +2205,7 @@ var LibrarySDL = {
 
   SDL_WM_GrabInput: function() {},
 
-  SDL_WM_ToggleFullScreen__proxy: 'newsync',
+  SDL_WM_ToggleFullScreen__proxy: 'sync',
   SDL_WM_ToggleFullScreen__sig: 'ii',
   SDL_WM_ToggleFullScreen: function(surf) {
     if (Browser.isFullscreen) {
@@ -2227,7 +2227,7 @@ var LibrarySDL = {
   },
 
   IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW'],
-  IMG_Load_RW__proxy: 'newsync',
+  IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW__sig: 'iii',
   IMG_Load_RW: function(rwopsID, freeSrc) {
     try {
@@ -2379,7 +2379,7 @@ var LibrarySDL = {
   SDL_LoadBMP_RW: 'IMG_Load_RW',
 
   IMG_Load__deps: ['IMG_Load_RW', 'SDL_RWFromFile'],
-  IMG_Load__proxy: 'newsync',
+  IMG_Load__proxy: 'sync',
   IMG_Load__sig: 'ii',
   IMG_Load: function(filename){
     var rwops = _SDL_RWFromFile(filename);
@@ -2396,7 +2396,7 @@ var LibrarySDL = {
 #if EMTERPRETIFY_ASYNC
   SDL_OpenAudio__deps: ['$EmterpreterAsync'],
 #endif
-  SDL_OpenAudio__proxy: 'newsync',
+  SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
     try {
@@ -2613,7 +2613,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_PauseAudio__proxy: 'newsync',
+  SDL_PauseAudio__proxy: 'sync',
   SDL_PauseAudio__sig: 'vi',
   SDL_PauseAudio: function(pauseOn) {
     if (!SDL.audio) {
@@ -2634,7 +2634,7 @@ var LibrarySDL = {
   },
 
   SDL_CloseAudio__deps: ['SDL_PauseAudio', 'free'],
-  SDL_CloseAudio__proxy: 'newsync',
+  SDL_CloseAudio__proxy: 'sync',
   SDL_CloseAudio__sig: 'v',
   SDL_CloseAudio: function() {
     if (SDL.audio) {
@@ -2665,12 +2665,12 @@ var LibrarySDL = {
   SDL_CondWait: function() {},
   SDL_DestroyCond: function() {},
 
-  SDL_StartTextInput__proxy: 'newsync',
+  SDL_StartTextInput__proxy: 'sync',
   SDL_StartTextInput__sig: 'v',
   SDL_StartTextInput: function() {
     SDL.textInput = true;
   },
-  SDL_StopTextInput__proxy: 'newsync',
+  SDL_StopTextInput__proxy: 'sync',
   SDL_StopTextInput__sig: 'v',
   SDL_StopTextInput: function() {
     SDL.textInput = false;
@@ -2684,7 +2684,7 @@ var LibrarySDL = {
   },
   Mix_Quit: function(){},
 
-  Mix_OpenAudio__proxy: 'newsync',
+  Mix_OpenAudio__proxy: 'sync',
   Mix_OpenAudio__sig: 'iiiii',
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.openAudioContext();
@@ -2699,20 +2699,20 @@ var LibrarySDL = {
 
   Mix_CloseAudio: 'SDL_CloseAudio',
 
-  Mix_AllocateChannels__proxy: 'newsync',
+  Mix_AllocateChannels__proxy: 'sync',
   Mix_AllocateChannels__sig: 'ii',
   Mix_AllocateChannels: function(num) {
     SDL.allocateChannels(num);
     return num;
   },
 
-  Mix_ChannelFinished__proxy: 'newsync',
+  Mix_ChannelFinished__proxy: 'sync',
   Mix_ChannelFinished__sig: 'vi',
   Mix_ChannelFinished: function(func) {
     SDL.channelFinished = func;
   },
 
-  Mix_Volume__proxy: 'newsync',
+  Mix_Volume__proxy: 'sync',
   Mix_Volume__sig: 'iii',
   Mix_Volume: function(channel, volume) {
     if (channel == -1) {
@@ -2725,7 +2725,7 @@ var LibrarySDL = {
   },
 
   // Note: Mix_SetPanning requires WebAudio (file loaded from memory).
-  Mix_SetPanning__proxy: 'newsync',
+  Mix_SetPanning__proxy: 'sync',
   Mix_SetPanning__sig: 'iiii',
   Mix_SetPanning: function(channel, left, right) {
     // SDL API uses [0-255], while PannerNode has an (x, y, z) position.
@@ -2740,7 +2740,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__proxy: 'newsync',
+  Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
@@ -2847,7 +2847,7 @@ var LibrarySDL = {
   },
 
   Mix_LoadWAV__deps: ['Mix_LoadWAV_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
-  Mix_LoadWAV__proxy: 'newsync',
+  Mix_LoadWAV__proxy: 'sync',
   Mix_LoadWAV__sig: 'ii',
   Mix_LoadWAV: function(filename) {
     var rwops = _SDL_RWFromFile(filename);
@@ -2856,7 +2856,7 @@ var LibrarySDL = {
     return result;
   },
 
-  Mix_QuickLoad_RAW__proxy: 'newsync',
+  Mix_QuickLoad_RAW__proxy: 'sync',
   Mix_QuickLoad_RAW__sig: 'iii',
   Mix_QuickLoad_RAW: function(mem, len) {
     var audio;
@@ -2890,17 +2890,17 @@ var LibrarySDL = {
     return id;
   },
 
-  Mix_FreeChunk__proxy: 'newsync',
+  Mix_FreeChunk__proxy: 'sync',
   Mix_FreeChunk__sig: 'vi',
   Mix_FreeChunk: function(id) {
     SDL.audios[id] = null;
   },
-  Mix_ReserveChannels__proxy: 'newsync',
+  Mix_ReserveChannels__proxy: 'sync',
   Mix_ReserveChannels__sig: 'ii',
   Mix_ReserveChannels: function(num) {
     SDL.channelMinimumNumber = num;
   },
-  Mix_PlayChannel__proxy: 'newsync',
+  Mix_PlayChannel__proxy: 'sync',
   Mix_PlayChannel__sig: 'iiii',
   Mix_PlayChannel: function(channel, id, loops) {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
@@ -2959,7 +2959,7 @@ var LibrarySDL = {
     return 0; // MIX_NO_FADING, TODO
   },
 
-  Mix_HaltChannel__proxy: 'newsync',
+  Mix_HaltChannel__proxy: 'sync',
   Mix_HaltChannel__sig: 'ii',
   Mix_HaltChannel: function(channel) {
     function halt(channel) {
@@ -2981,7 +2981,7 @@ var LibrarySDL = {
   },
 
   Mix_HookMusicFinished__deps: ['Mix_HaltMusic'],
-  Mix_HookMusicFinished__proxy: 'newsync',
+  Mix_HookMusicFinished__proxy: 'sync',
   Mix_HookMusicFinished__sig: 'vi',
   Mix_HookMusicFinished: function(func) {
     SDL.hookMusicFinished = func;
@@ -2990,7 +2990,7 @@ var LibrarySDL = {
     }
   },
 
-  Mix_VolumeMusic__proxy: 'newsync',
+  Mix_VolumeMusic__proxy: 'sync',
   Mix_VolumeMusic__sig: 'ii',
   Mix_VolumeMusic: function(volume) {
     return SDL.setGetVolume(SDL.music, volume);
@@ -2998,7 +2998,7 @@ var LibrarySDL = {
 
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
-  Mix_LoadMUS__proxy: 'newsync',
+  Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS__sig: 'ii',
   Mix_LoadMUS: function(filename) {
     var rwops = _SDL_RWFromFile(filename);
@@ -3010,7 +3010,7 @@ var LibrarySDL = {
   Mix_FreeMusic: 'Mix_FreeChunk',
 
   Mix_PlayMusic__deps: ['Mix_HaltMusic'],
-  Mix_PlayMusic__proxy: 'newsync',
+  Mix_PlayMusic__proxy: 'sync',
   Mix_PlayMusic__sig: 'iii',
   Mix_PlayMusic: function(id, loops) {
     // Pause old music if it exists.
@@ -3039,21 +3039,21 @@ var LibrarySDL = {
     return 0;
   },
 
-  Mix_PauseMusic__proxy: 'newsync',
+  Mix_PauseMusic__proxy: 'sync',
   Mix_PauseMusic__sig: 'v',
   Mix_PauseMusic: function() {
     var audio = SDL.music.audio;
     if (audio) audio.pause();
   },
 
-  Mix_ResumeMusic__proxy: 'newsync',
+  Mix_ResumeMusic__proxy: 'sync',
   Mix_ResumeMusic__sig: 'v',
   Mix_ResumeMusic: function() {
     var audio = SDL.music.audio;
     if (audio) audio.play();
   },
 
-  Mix_HaltMusic__proxy: 'newsync',
+  Mix_HaltMusic__proxy: 'sync',
   Mix_HaltMusic__sig: 'i',
   Mix_HaltMusic: function() {
     var audio = SDL.music.audio;
@@ -3073,7 +3073,7 @@ var LibrarySDL = {
 
   Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
 
-  Mix_PlayingMusic__proxy: 'newsync',
+  Mix_PlayingMusic__proxy: 'sync',
   Mix_PlayingMusic__sig: 'i',
   Mix_PlayingMusic: function() {
     return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
@@ -3081,7 +3081,7 @@ var LibrarySDL = {
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
   // "Note: Does not check if the channel has been paused."
-  Mix_Playing__proxy: 'newsync',
+  Mix_Playing__proxy: 'sync',
   Mix_Playing__sig: 'ii',
   Mix_Playing: function(channel) {
     if (channel === -1) {
@@ -3098,7 +3098,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  Mix_Pause__proxy: 'newsync',
+  Mix_Pause__proxy: 'sync',
   Mix_Pause__sig: 'vi',
   Mix_Pause: function(channel) {
     if (channel === -1) {
@@ -3116,7 +3116,7 @@ var LibrarySDL = {
   },
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_39.html#SEC39
-  Mix_Paused__proxy: 'newsync',
+  Mix_Paused__proxy: 'sync',
   Mix_Paused__sig: 'ii',
   Mix_Paused: function(channel) {
     if (channel === -1) {
@@ -3133,14 +3133,14 @@ var LibrarySDL = {
     return 0;
   },
 
-  Mix_PausedMusic__proxy: 'newsync',
+  Mix_PausedMusic__proxy: 'sync',
   Mix_PausedMusic__sig: 'i',
   Mix_PausedMusic: function() {
     return (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0;
   },
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
-  Mix_Resume__proxy: 'newsync',
+  Mix_Resume__proxy: 'sync',
   Mix_Resume__sig: 'vi',
   Mix_Resume: function(channel) {
     if (channel === -1) {
@@ -3155,7 +3155,7 @@ var LibrarySDL = {
 
   // SDL TTF
 
-  TTF_Init__proxy: 'newsync',
+  TTF_Init__proxy: 'sync',
   TTF_Init__sig: 'i',
   TTF_Init: function() {
     var canvas = document.createElement('canvas');
@@ -3163,7 +3163,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  TTF_OpenFont__proxy: 'newsync',
+  TTF_OpenFont__proxy: 'sync',
   TTF_OpenFont__sig: 'iii',
   TTF_OpenFont: function(filename, size) {
     filename = PATH.normalize(Pointer_stringify(filename));
@@ -3175,13 +3175,13 @@ var LibrarySDL = {
     return id;
   },
 
-  TTF_CloseFont__proxy: 'newsync',
+  TTF_CloseFont__proxy: 'sync',
   TTF_CloseFont__sig: 'vi',
   TTF_CloseFont: function(font) {
     SDL.fonts[font] = null;
   },
 
-  TTF_RenderText_Solid__proxy: 'newsync',
+  TTF_RenderText_Solid__proxy: 'sync',
   TTF_RenderText_Solid__sig: 'iiii',
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
@@ -3209,7 +3209,7 @@ var LibrarySDL = {
   TTF_RenderUTF8_Solid: 'TTF_RenderText_Solid',
   TTF_SizeUTF8: 'TTF_SizeText',
 
-  TTF_SizeText__proxy: 'newsync',
+  TTF_SizeText__proxy: 'sync',
   TTF_SizeText__sig: 'iiiii',
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
@@ -3222,7 +3222,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  TTF_GlyphMetrics__proxy: 'newsync',
+  TTF_GlyphMetrics__proxy: 'sync',
   TTF_GlyphMetrics__sig: 'iiiiiiii',
   TTF_GlyphMetrics: function(font, ch, minx, maxx, miny, maxy, advance) {
     var fontData = SDL.fonts[font];
@@ -3245,21 +3245,21 @@ var LibrarySDL = {
     }
   },
 
-  TTF_FontAscent__proxy: 'newsync',
+  TTF_FontAscent__proxy: 'sync',
   TTF_FontAscent__sig: 'ii',
   TTF_FontAscent: function(font) {
     var fontData = SDL.fonts[font];
     return (fontData.size*0.98)|0; // XXX
   },
 
-  TTF_FontDescent__proxy: 'newsync',
+  TTF_FontDescent__proxy: 'sync',
   TTF_FontDescent__sig: 'ii',
   TTF_FontDescent: function(font) {
     var fontData = SDL.fonts[font];
     return (fontData.size*0.02)|0; // XXX
   },
 
-  TTF_FontHeight__proxy: 'newsync',
+  TTF_FontHeight__proxy: 'sync',
   TTF_FontHeight__sig: 'ii',
   TTF_FontHeight: function(font) {
     var fontData = SDL.fonts[font];
@@ -3392,7 +3392,7 @@ var LibrarySDL = {
 
   // GL
 
-  SDL_GL_SetAttribute__proxy: 'newsync',
+  SDL_GL_SetAttribute__proxy: 'sync',
   SDL_GL_SetAttribute__sig: 'iii',
   SDL_GL_SetAttribute: function(attr, value) {
     if (!(attr in SDL.glAttributes)) {
@@ -3402,7 +3402,7 @@ var LibrarySDL = {
     SDL.glAttributes[attr] = value;
   },
 
-  SDL_GL_GetAttribute__proxy: 'newsync',
+  SDL_GL_GetAttribute__proxy: 'sync',
   SDL_GL_GetAttribute__sig: 'iii',
   SDL_GL_GetAttribute: function(attr, value) {
     if (!(attr in SDL.glAttributes)) {
@@ -3419,7 +3419,7 @@ var LibrarySDL = {
     return _emscripten_GetProcAddress(name_);
   },
 
-  SDL_GL_SwapBuffers__proxy: 'newsync',
+  SDL_GL_SwapBuffers__proxy: 'sync',
   SDL_GL_SwapBuffers__sig: 'v',
   SDL_GL_SwapBuffers: function() {
     if (Browser.doSwapBuffers) Browser.doSwapBuffers(); // in workers, this is used to send out a buffered frame
@@ -3427,7 +3427,7 @@ var LibrarySDL = {
 
   // SDL 2
 
-  SDL_GL_ExtensionSupported__proxy: 'newsync',
+  SDL_GL_ExtensionSupported__proxy: 'sync',
   SDL_GL_ExtensionSupported__sig: 'ii',
   SDL_GL_ExtensionSupported: function(extension) {
     return Module.ctx.getExtension(extension) | 0;
@@ -3437,7 +3437,7 @@ var LibrarySDL = {
 
   SDL_DestroyRenderer: function(renderer) {},
 
-  SDL_GetWindowFlags__proxy: 'newsync',
+  SDL_GetWindowFlags__proxy: 'sync',
   SDL_GetWindowFlags__sig: 'iii',
   SDL_GetWindowFlags: function(x, y) {
     if (Browser.isFullscreen) {
@@ -3453,7 +3453,7 @@ var LibrarySDL = {
 
   SDL_GL_DeleteContext: function(context) {},
 
-  SDL_GL_GetSwapInterval__proxy: 'newsync',
+  SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval__sig: 'ii',
   SDL_GL_GetSwapInterval: function(state) {
     if (Browser.mainLoop.timingMode == 1/*EM_TIMING_RAF*/) return Browser.mainLoop.timingValue;
@@ -3465,13 +3465,13 @@ var LibrarySDL = {
     _emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, state);
   },
 
-  SDL_SetWindowTitle__proxy: 'newsync',
+  SDL_SetWindowTitle__proxy: 'sync',
   SDL_SetWindowTitle__sig: 'vii',
   SDL_SetWindowTitle: function(window, title) {
     if (title) document.title = Pointer_stringify(title);
   },
 
-  SDL_GetWindowSize__proxy: 'newsync',
+  SDL_GetWindowSize__proxy: 'sync',
   SDL_GetWindowSize__sig: 'viii',
   SDL_GetWindowSize: function(window, width, height){
     var w = Module['canvas'].width;
@@ -3482,7 +3482,7 @@ var LibrarySDL = {
 
   SDL_LogSetOutputFunction: function(callback, userdata) {},
 
-  SDL_SetWindowFullscreen__proxy: 'newsync',
+  SDL_SetWindowFullscreen__proxy: 'sync',
   SDL_SetWindowFullscreen__sig: 'iii',
   SDL_SetWindowFullscreen: function(window, fullscreen) {
     if (Browser.isFullscreen) {
@@ -3513,7 +3513,7 @@ var LibrarySDL = {
 
   // Joysticks
 
-  SDL_NumJoysticks__proxy: 'newsync',
+  SDL_NumJoysticks__proxy: 'sync',
   SDL_NumJoysticks__sig: 'i',
   SDL_NumJoysticks: function() {
     var count = 0;
@@ -3525,7 +3525,7 @@ var LibrarySDL = {
     return count;
   },
 
-  SDL_JoystickName__proxy: 'newsync',
+  SDL_JoystickName__proxy: 'sync',
   SDL_JoystickName__sig: 'ii',
   SDL_JoystickName: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
@@ -3539,7 +3539,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_JoystickOpen__proxy: 'newsync',
+  SDL_JoystickOpen__proxy: 'sync',
   SDL_JoystickOpen__sig: 'ii',
   SDL_JoystickOpen: function(deviceIndex) {
     var gamepad = SDL.getGamepad(deviceIndex);
@@ -3552,7 +3552,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_JoystickOpened__proxy: 'newsync',
+  SDL_JoystickOpened__proxy: 'sync',
   SDL_JoystickOpened__sig: 'ii',
   SDL_JoystickOpened: function(deviceIndex) {
     return SDL.lastJoystickState.hasOwnProperty(deviceIndex+1) ? 1 : 0;
@@ -3563,7 +3563,7 @@ var LibrarySDL = {
     return joystick - 1;
   },
 
-  SDL_JoystickNumAxes__proxy: 'newsync',
+  SDL_JoystickNumAxes__proxy: 'sync',
   SDL_JoystickNumAxes__sig: 'ii',
   SDL_JoystickNumAxes: function(joystick) {
     var gamepad = SDL.getGamepad(joystick - 1);
@@ -3577,7 +3577,7 @@ var LibrarySDL = {
 
   SDL_JoystickNumHats: function(joystick) { return 0; },
 
-  SDL_JoystickNumButtons__proxy: 'newsync',
+  SDL_JoystickNumButtons__proxy: 'sync',
   SDL_JoystickNumButtons__sig: 'ii',
   SDL_JoystickNumButtons: function(joystick) {
     var gamepad = SDL.getGamepad(joystick - 1);
@@ -3587,13 +3587,13 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_JoystickUpdate__proxy: 'newsync',
+  SDL_JoystickUpdate__proxy: 'sync',
   SDL_JoystickUpdate__sig: 'v',
   SDL_JoystickUpdate: function() {
     SDL.queryJoysticks();
   },
 
-  SDL_JoystickEventState__proxy: 'newsync',
+  SDL_JoystickEventState__proxy: 'sync',
   SDL_JoystickEventState__sig: 'ii',
   SDL_JoystickEventState: function(state) {
     if (state < 0) {
@@ -3603,7 +3603,7 @@ var LibrarySDL = {
     return SDL.joystickEventState = state;
   },
 
-  SDL_JoystickGetAxis__proxy: 'newsync',
+  SDL_JoystickGetAxis__proxy: 'sync',
   SDL_JoystickGetAxis__sig: 'iii',
   SDL_JoystickGetAxis: function(joystick, axis) {
     var gamepad = SDL.getGamepad(joystick - 1);
@@ -3617,7 +3617,7 @@ var LibrarySDL = {
 
   SDL_JoystickGetBall: function(joystick, ball, dxptr, dyptr) { return -1; },
 
-  SDL_JoystickGetButton__proxy: 'newsync',
+  SDL_JoystickGetButton__proxy: 'sync',
   SDL_JoystickGetButton__sig: 'iii',
   SDL_JoystickGetButton: function(joystick, button) {
     var gamepad = SDL.getGamepad(joystick - 1);
@@ -3627,7 +3627,7 @@ var LibrarySDL = {
     return 0;
   },
 
-  SDL_JoystickClose__proxy: 'newsync',
+  SDL_JoystickClose__proxy: 'sync',
   SDL_JoystickClose__sig: 'vi',
   SDL_JoystickClose: function(joystick) {
     delete SDL.lastJoystickState[joystick];
@@ -3637,7 +3637,7 @@ var LibrarySDL = {
 
   SDL_InitSubSystem: function(flags) { return 0 },
 
-  SDL_RWFromConstMem__proxy: 'newsync',
+  SDL_RWFromConstMem__proxy: 'sync',
   SDL_RWFromConstMem__sig: 'iii',
   SDL_RWFromConstMem: function(mem, size) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
@@ -3646,7 +3646,7 @@ var LibrarySDL = {
   },
   SDL_RWFromMem: 'SDL_RWFromConstMem',
 
-  SDL_RWFromFile__proxy: 'newsync',
+  SDL_RWFromFile__proxy: 'sync',
   SDL_RWFromFile__sig: 'iii',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
@@ -3655,7 +3655,7 @@ var LibrarySDL = {
     return id;
   },
 
-  SDL_FreeRW__proxy: 'newsync',
+  SDL_FreeRW__proxy: 'sync',
   SDL_FreeRW__sig: 'vi',
   SDL_FreeRW: function(rwopsID) {
     SDL.rwops[rwopsID] = null;
@@ -3672,7 +3672,7 @@ var LibrarySDL = {
   SDL_GetAudioDriver__deps: ['SDL_GetCurrentAudioDriver'],
   SDL_GetAudioDriver: function(index) { return _SDL_GetCurrentAudioDriver() },
 
-  SDL_EnableUNICODE__proxy: 'newsync',
+  SDL_EnableUNICODE__proxy: 'sync',
   SDL_EnableUNICODE__sig: 'ii',
   SDL_EnableUNICODE: function(on) {
     var ret = SDL.unicode || 0;
@@ -3680,14 +3680,14 @@ var LibrarySDL = {
     return ret;
   },
 
-  SDL_AddTimer__proxy: 'newsync',
+  SDL_AddTimer__proxy: 'sync',
   SDL_AddTimer__sig: 'iiii',
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
       Module['dynCall_iii'](callback, interval, param);
     }, interval);
   },
-  SDL_RemoveTimer__proxy: 'newsync',
+  SDL_RemoveTimer__proxy: 'sync',
   SDL_RemoveTimer__sig: 'ii',
   SDL_RemoveTimer: function(id) {
     window.clearTimeout(id);
