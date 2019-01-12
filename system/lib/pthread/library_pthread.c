@@ -193,6 +193,29 @@ void emscripten_async_waitable_close(em_queued_call *call)
 	em_queued_call_free(call);
 }
 
+EM_JS(void, _emscripten_pthread_do_call_js_v, (int index), { proxiedFunctionTable[index](); });
+EM_JS(int, _emscripten_pthread_do_call_js_i, (int index), { return proxiedFunctionTable[index](); });
+EM_JS(double, _emscripten_pthread_do_call_js_d, (int index), { return proxiedFunctionTable[index](); });
+EM_JS(void, _emscripten_pthread_do_call_js_vi, (int index, int a0), { proxiedFunctionTable[index](a0); });
+EM_JS(int, _emscripten_pthread_do_call_js_ii, (int index, int a0), { return proxiedFunctionTable[index](a0); });
+EM_JS(float, _emscripten_pthread_do_call_js_fi, (int index, int a0), { return proxiedFunctionTable[index](a0); });
+EM_JS(double, _emscripten_pthread_do_call_js_di, (int index, int a0), { return proxiedFunctionTable[index](a0); });
+EM_JS(void, _emscripten_pthread_do_call_js_vii, (int index, int a0, int a1), { proxiedFunctionTable[index](a0, a1); });
+EM_JS(void, _emscripten_pthread_do_call_js_vif, (int index, int a0, float a1), { proxiedFunctionTable[index](a0, a1); });
+EM_JS(int, _emscripten_pthread_do_call_js_iii, (int index, int a0, int a1), { return proxiedFunctionTable[index](a0, a1); });
+EM_JS(void, _emscripten_pthread_do_call_js_viii, (int index, int a0, int a1, int a2), { proxiedFunctionTable[index](a0, a1, a2); });
+EM_JS(void, _emscripten_pthread_do_call_js_viif, (int index, int a0, int a1, float a2), { proxiedFunctionTable[index](a0, a1, a2); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiii, (int index, int a0, int a1, int a2), { return proxiedFunctionTable[index](a0, a1, a2); });
+EM_JS(void, _emscripten_pthread_do_call_js_viiii, (int index, int a0, int a1, int a2, int a3), { proxiedFunctionTable[index](a0, a1, a2, a3); });
+EM_JS(void, _emscripten_pthread_do_call_js_vifff, (int index, int a0, float a1, float a2, float a3), { proxiedFunctionTable[index](a0, a1, a2, a3); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiiii, (int index, int a0, int a1, int a2, int a3), { return proxiedFunctionTable[index](a0, a1, a2, a3); });
+EM_JS(int, _emscripten_pthread_do_call_js_iifff, (int index, int a0, float a1, float a2, float a3), { return proxiedFunctionTable[index](a0, a1, a2, a3); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiiiii, (int index, int a0, int a1, int a2, int a3, int a4), { return proxiedFunctionTable[index](a0, a1, a2, a3, a4); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiiiiii, (int index, int a0, int a1, int a2, int a3, int a4, int a5), { return proxiedFunctionTable[index](a0, a1, a2, a3, a4, a5); });
+EM_JS(int, _emscripten_pthread_do_call_js_viiiiii, (int index, int a0, int a1, int a2, int a3, int a4, int a5), { proxiedFunctionTable[index](a0, a1, a2, a3, a4, a5); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiiiiiiii, (int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7), { return proxiedFunctionTable[index](a0, a1, a2, a3, a4, a5, a6, a7); });
+EM_JS(int, _emscripten_pthread_do_call_js_iiiiiiiiii, (int index, int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7, int a8), { return proxiedFunctionTable[index](a0, a1, a2, a3, a4, a5, a6, a7, a8); });
+
 static void _do_call(em_queued_call *q)
 {
 	assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
@@ -241,17 +264,32 @@ static void _do_call(em_queued_call *q)
 		}
 	} else {
 		// JS function index
-		int index = q->js;
-		EM_ASM({
-			var sig = $0;
-			var index = $1;
-			var EM_FUNC_SIG_V = $2;
-			switch(sig)
-			{
-				case EM_FUNC_SIG_V: proxiedFunctionTable[index](); break;
-				default: assert(0 && "Invalid Emscripten pthread _do_call js opcode!");
-			}
-		}, q->functionEnum, index, EM_FUNC_SIG_V);
+		switch(q->functionEnum)
+		{
+      case EM_FUNC_SIG_V: _emscripten_pthread_do_call_js_v(q->js); break;
+      case EM_FUNC_SIG_I: q->returnValue.i = _emscripten_pthread_do_call_js_i(q->js); break;
+      case EM_FUNC_SIG_D: q->returnValue.d = _emscripten_pthread_do_call_js_d(q->js); break;
+      case EM_FUNC_SIG_VI: _emscripten_pthread_do_call_js_vi(q->js, q->args[0].i); break;
+      case EM_FUNC_SIG_II: q->returnValue.i = _emscripten_pthread_do_call_js_ii(q->js, q->args[0].i); break;
+      case EM_FUNC_SIG_FI: q->returnValue.f = _emscripten_pthread_do_call_js_fi(q->js, q->args[0].i); break;
+      case EM_FUNC_SIG_DI: q->returnValue.d = _emscripten_pthread_do_call_js_di(q->js, q->args[0].i); break;
+      case EM_FUNC_SIG_VII: _emscripten_pthread_do_call_js_vii(q->js, q->args[0].i, q->args[1].i); break;
+      case EM_FUNC_SIG_VIF: _emscripten_pthread_do_call_js_vif(q->js, q->args[0].i, q->args[1].f); break;
+      case EM_FUNC_SIG_III: q->returnValue.i = _emscripten_pthread_do_call_js_iii(q->js, q->args[0].i, q->args[1].i); break;
+      case EM_FUNC_SIG_VIII: _emscripten_pthread_do_call_js_viii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
+      case EM_FUNC_SIG_VIIF: _emscripten_pthread_do_call_js_viif(q->js, q->args[0].i, q->args[1].i, q->args[2].f); break;
+      case EM_FUNC_SIG_IIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i); break;
+      case EM_FUNC_SIG_VIIII: _emscripten_pthread_do_call_js_viiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+      case EM_FUNC_SIG_VIFFF: _emscripten_pthread_do_call_js_vifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
+      case EM_FUNC_SIG_IIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i); break;
+      case EM_FUNC_SIG_IIFFF: q->returnValue.i = _emscripten_pthread_do_call_js_iifff(q->js, q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f); break;
+      case EM_FUNC_SIG_IIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i); break;
+      case EM_FUNC_SIG_IIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+      case EM_FUNC_SIG_VIIIIII: _emscripten_pthread_do_call_js_viiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i); break;
+      case EM_FUNC_SIG_IIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i); break;
+      case EM_FUNC_SIG_IIIIIIIIII: q->returnValue.i = _emscripten_pthread_do_call_js_iiiiiiiiii(q->js, q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i, q->args[6].i, q->args[7].i, q->args[8].i); break;
+			default: assert(0 && "Invalid Emscripten pthread _do_call (js) opcode!");
+    }
 	}
 
 	// If the caller is detached from this operation, it is the main thread's responsibility to free up the call object.
