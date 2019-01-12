@@ -2763,12 +2763,12 @@ class FilenameReplacementStrings:
 
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
-  no_memory_initializer_pattern = '/\* no memory initializer \*/'
+  memory_initializer_pattern = r'/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
+  no_memory_initializer_pattern = r'/\* no memory initializer \*/'
 
-  memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
+  memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
-  global_initializers_pattern = '/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+  global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
   module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
 
@@ -3014,12 +3014,12 @@ class WebAssembly(object):
   @staticmethod
   def get_js_data(js_file, shared=False):
     js = open(js_file).read()
-    m = re.search("var STATIC_BUMP = (\d+);", js)
+    m = re.search(r"var STATIC_BUMP = (\d+);", js)
     mem_size = int(m.group(1))
-    m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
+    m = re.search(r"Module\['wasmTableSize'\] = (\d+);", js)
     table_size = int(m.group(1))
     if shared:
-      m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
+      m = re.search(r'gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
       assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
       mem_align = int(m.group(1))
     else:

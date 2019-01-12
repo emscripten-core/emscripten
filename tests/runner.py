@@ -553,7 +553,7 @@ class RunnerCore(unittest.TestCase):
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    m = re.search("asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
+    m = re.search(r"asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
     if m:
       # Bug numbers for missing SIMD types:
       bugs = {

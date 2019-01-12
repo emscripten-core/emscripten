@@ -33,7 +33,7 @@ for i in range(len(lines)):
     in_func = False
     continue
   if in_func:
-    m = re.match('^ +([$_\w\d \[\]]+) = +([^;]+);$', lines[i])
+    m = re.match(r'^ +([$_\w\d \[\]]+) = +([^;]+);$', lines[i])
     if m and (' if ' not in lines[i-1] or '{' in lines[i-1]) and \
              (' if ' not in lines[i+1] or '{' in lines[i+1]) and \
              (' else' not in lines[i-1] or '{' in lines[i-1]) and \

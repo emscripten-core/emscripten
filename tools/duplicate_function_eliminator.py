@@ -359,7 +359,7 @@ def get_func_names(javascript_file):
     end_off = blob.find(end_tok)
     asm_chunk = blob[start_off:end_off]
 
-    for match in re.finditer('function (\S+?)\s*\(', asm_chunk):
+    for match in re.finditer(r'function (\S+?)\s*\(', asm_chunk):
       func_names.append(match.groups(1)[0])
 
   return func_names

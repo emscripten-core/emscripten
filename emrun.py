@@ -628,7 +628,7 @@ def get_cpu_info():
   try:
     if WINDOWS:
       import_win32api_modules()
-      root_winmgmts = GetObject("winmgmts:root\cimv2")
+      root_winmgmts = GetObject("winmgmts:root\\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
       physical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
@@ -646,9 +646,9 @@ def get_cpu_info():
           cpu_name = re.sub( ".*model name.*:", "", line, 1).strip()
       lscpu = check_output(['lscpu'])
       frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
-      sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
-      physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
-      logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+      sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
+      physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
+      logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
   except Exception as e:
     import traceback
     print(traceback.format_exc())
@@ -695,7 +695,7 @@ def win_get_gpu_info():
       hHardwareReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "HARDWARE")
       hDeviceMapReg = winreg.OpenKey(hHardwareReg, "DEVICEMAP")
       hVideoReg = winreg.OpenKey(hDeviceMapReg, "VIDEO")
-      VideoCardString = winreg.QueryValueEx(hVideoReg,"\Device\Video"+str(i))[0]
+      VideoCardString = winreg.QueryValueEx(hVideoReg,"\\Device\\Video"+str(i))[0]
       #Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split("\\")
       ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
@@ -758,7 +758,7 @@ def linux_get_gpu_info():
   ram = 0
   try:
     vgainfo = check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
-    ram = int(re.search("\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
+    ram = int(re.search(r"\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
   except Exception as e:
     logv(e)
 
