@@ -3137,11 +3137,6 @@ def asbytes(s):
   return s.encode('utf-8')
 
 
-def suffix(name):
-  """Return the file extension *not* including the '.'."""
-  return os.path.splitext(name)[1][1:]
-
-
 def unsuffixed(name):
   """Return the filename without the extention.
 
