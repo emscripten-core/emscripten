@@ -2427,15 +2427,13 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  emscripten_set_offscreencanvas_size_on_target_thread_js: ['$stringToNewUTF8'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
     var targetCanvasPtr = 0;
     if (targetCanvas) {
-      // TODO: use stringToNewUTF8 from #7822 when available
-      var len = targetCanvas.length + 1;
-      targetCanvasPtr = _malloc(len);
-      stringToUTF8(targetCanvas, targetCanvasPtr, len);
+      targetCanvasPtr = stringToNewUTF8(targetCanvas);
     }
     {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
     {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
