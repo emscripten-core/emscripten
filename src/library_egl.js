@@ -162,10 +162,10 @@ var LibraryEGL = {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     switch(attribute) {
     case 0x3020: // EGL_BUFFER_SIZE
-      {{{ makeSetValue('value', '0', '32' /* 8 bits for each A,R,G,B. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 32 : 24' /* 8 bits for each R,G,B. 8 bits for alpha if enabled*/, 'i32') }}};
       return 1;
     case 0x3021: // EGL_ALPHA_SIZE
-      {{{ makeSetValue('value', '0', '8' /* 8 bits for alpha channel. */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.alpha ? 8 : 0' /* 8 bits for alpha channel if enabled. */, 'i32') }}};
       return 1;
     case 0x3022: // EGL_BLUE_SIZE
       {{{ makeSetValue('value', '0', '8' /* 8 bits for blue channel. */, 'i32') }}};
@@ -177,10 +177,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '8' /* 8 bits for red channel. */, 'i32') }}};
       return 1;
     case 0x3025: // EGL_DEPTH_SIZE
-      {{{ makeSetValue('value', '0', '24' /* 24 bits for depth buffer. TODO: This is hardcoded, add support for this! */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.depth ? 24 : 0' /* 24 bits for depth buffer if enabled. */, 'i32') }}};
       return 1;
     case 0x3026: // EGL_STENCIL_SIZE
-      {{{ makeSetValue('value', '0', '8' /* 8 bits for stencil buffer. TODO: This is hardcoded, add support for this! */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.stencil ? 8 : 0' /* 8 bits for stencil buffer if enabled. */, 'i32') }}};
       return 1;
     case 0x3027: // EGL_CONFIG_CAVEAT
       // We can return here one of EGL_NONE (0x3038), EGL_SLOW_CONFIG (0x3050) or EGL_NON_CONFORMANT_CONFIG (0x3051).
@@ -211,10 +211,10 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0x3038' /* EGL_NONE */, 'i32') }}};
       return 1;
     case 0x3031: // EGL_SAMPLES
-      {{{ makeSetValue('value', '0', '4' /* 2x2 Multisampling */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 4 : 0' /* 2x2 Multisampling */, 'i32') }}};
       return 1;
     case 0x3032: // EGL_SAMPLE_BUFFERS
-      {{{ makeSetValue('value', '0', '1' /* Multisampling enabled */, 'i32') }}};
+      {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
       {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
@@ -234,6 +234,8 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', '0' /* Only pbuffers would be bindable, but these are not supported. */, 'i32') }}};
       return 1;
     case 0x303B: // EGL_MIN_SWAP_INTERVAL
+      {{{ makeSetValue('value', '0', '0', 'i32') }}};
+    return 1;
     case 0x303C: // EGL_MAX_SWAP_INTERVAL
       {{{ makeSetValue('value', '0', '1' /* TODO: Currently this is not strictly true, since user can specify custom presentation interval in JS requestAnimationFrame/emscripten_set_main_loop. */, 'i32') }}};
       return 1;
