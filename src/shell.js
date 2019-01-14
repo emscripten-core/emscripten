@@ -54,7 +54,7 @@ Module['postRun'] = [];
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT
+#if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
@@ -100,12 +100,12 @@ function locateFile(path) {
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  scriptDirectory = __dirname + '/';
 #if ENVIRONMENT
 #if ASSERTIONS
   if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 #endif
+  scriptDirectory = __dirname + '/';
 
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
@@ -220,7 +220,7 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
-#if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
     scriptDirectory = self.location.href;
@@ -317,7 +317,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   Module['setWindowTitle'] = function(title) { document.title = title };
 } else
-#endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+#endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
 #if ASSERTIONS
   throw new Error('environment detection error');

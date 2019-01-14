@@ -11,6 +11,9 @@
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 #include <math.h>
+#include <bits/errno.h>
+
+extern "C" {
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to enable internal debugging.
 // #define FETCH_DEBUG
@@ -172,12 +175,13 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 #ifdef FETCH_DEBUG
 	EM_ASM(console.log('fetch: emscripten_fetch_wait..'));
 #endif
-	// TODO: timeoutMsecs is currently ignored. Return EMSCRIPTEN_RESULT_TIMED_OUT on timeout.
+	if (timeoutMsecs <= 0) return EMSCRIPTEN_RESULT_TIMED_OUT;
 	while(proxyState == 1/*sent to proxy worker*/)
 	{
 		if (!emscripten_is_main_browser_thread())
 		{
-			emscripten_futex_wait(&fetch->__proxyState, proxyState, 100 /*TODO HACK:Sleep sometimes doesn't wake up?*/);//timeoutMsecs);
+			int ret = emscripten_futex_wait(&fetch->__proxyState, proxyState, timeoutMsecs);
+			if (ret == -ETIMEDOUT) return EMSCRIPTEN_RESULT_TIMED_OUT;
 			proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
 		}
 		else 
@@ -193,11 +197,15 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS;
 	else return EMSCRIPTEN_RESULT_FAILED;
 #else
-
+	if (fetch->readyState >= 4/*XMLHttpRequest.readyState.DONE*/) return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
+	if (timeoutMsecs == 0) return EMSCRIPTEN_RESULT_TIMED_OUT/*Main thread testing completion with sleep=0msecs*/;
+	else
+	{
 #ifdef FETCH_DEBUG
-	EM_ASM(console.error('fetch: emscripten_fetch_wait is not available when building without pthreads!'));
+		EM_ASM(console.error('fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!'));
 #endif
-	return EMSCRIPTEN_RESULT_FAILED;
+		return EMSCRIPTEN_RESULT_FAILED/*Main thread cannot block to wait*/;
+	}
 #endif
 }
 
@@ -242,3 +250,5 @@ static void fetch_free(emscripten_fetch_t *fetch)
 	free((void*)fetch->__attributes.overriddenMimeType);
 	free(fetch);
 }
+
+} // extern "C"

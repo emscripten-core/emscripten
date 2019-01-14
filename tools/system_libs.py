@@ -156,6 +156,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       assert '-mt' not in libname
       return []
 
+  def legacy_gl_emulation_flags(libname):
+    if shared.Settings.LEGACY_GL_EMULATION:
+      assert '-emu' in libname
+      return ['-DLEGACY_GL_EMULATION=1']
+    else:
+      assert '-emu' not in libname
+      return []
+
   # libc
   def create_libc(libname):
     logging.debug(' building libc for cache')
@@ -361,6 +369,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       files += map(lambda f: os.path.join(src_dir, f), filenames)
     flags = ['-Oz']
     flags += threading_flags(libname)
+    flags += legacy_gl_emulation_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -602,10 +611,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
-                    Library('libgl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
+    if shared.Settings.LEGACY_GL_EMULATION:
+      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    else:
+      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
-    system_libs += [Library('libgl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    if shared.Settings.LEGACY_GL_EMULATION:
+      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    else:
+      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 

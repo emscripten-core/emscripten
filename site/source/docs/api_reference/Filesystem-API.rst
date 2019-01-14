@@ -27,6 +27,8 @@ Emscripten decides whether to include file system support automatically. Many pr
 
 However, if your C/C++ code doesn't use files, but you want to use them from JavaScript, then you can build with ``-s FORCE_FILESYSTEM=1``, which will make the compiler include file system support even though it doesn't see it being used.
 
+On the other hand, if you want to **not** include any filesystem support code (which may be included even due to printf or iostreams, due to how musl and libc++ are structured), you can build with ``-s FILESYSTEM=0``. Very simple stdout support will be included if necessary in such a case, enough for printf and such to work, but no filesystem code will be added, which can save a significant amount of code size.
+
 
 .. _filesystem-api-persist-data:
 

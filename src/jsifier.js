@@ -30,11 +30,10 @@ var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*
 // map: pair(sig, syncOrAsync) -> function body
 var proxiedFunctionInvokers = {};
 
-// We include asm2wasm imports if we may interpret (where we call out to JS to do some math stuff)
-// or if the trap mode is 'js' (where we do the same). However, we always need some of them (like
-// the frem import because % is in asm.js but not in wasm). But we can avoid emitting all the others
-// in many cases.
-var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_METHOD != 'native-wasm' || BINARYEN_TRAP_MODE == 'js';
+// We include asm2wasm imports if the trap mode is 'js' (to call out to JS to do some math stuff).
+// However, we always need some of them (like the frem import because % is in asm.js but not in wasm).
+// But we can avoid emitting all the others in many cases.
+var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 
 // used internally. set when there is a main() function.
 // also set when in a linkable module, as the main() function might
@@ -432,7 +431,6 @@ function JSify(data, functionsOnly) {
         // Globals are done, here is the rest of static memory
         if (!SIDE_MODULE) {
           print('STATIC_BASE = GLOBAL_BASE;\n');
-          print('STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         } else {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
           // The static area consists of explicitly initialized data, followed by zero-initialized data.
@@ -441,8 +439,9 @@ function JSify(data, functionsOnly) {
           // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
           // from uninitialized memory.
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
-          print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n'); // comment as metadata only
         }
+        // emit "metadata" in a comment. FIXME make this nicer
+        print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
         if (WASM) {
           // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
           print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
@@ -488,7 +487,7 @@ function JSify(data, functionsOnly) {
       if (!SIDE_MODULE) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = alignMemory(allocate(12, "i8", ALLOC_STATIC), 8);');
+          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
         } else {
           print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
         }
@@ -543,19 +542,6 @@ function JSify(data, functionsOnly) {
         for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
         print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in worker.js)');
       }
-      print('DYNAMICTOP_PTR = staticAlloc(4);\n');
-      print('STACK_BASE = STACKTOP = alignMemory(STATICTOP);\n');
-      if (STACK_START > 0) print('if (STACKTOP < ' + STACK_START + ') STACK_BASE = STACKTOP = alignMemory(' + STACK_START + ');\n');
-      print('STACK_MAX = STACK_BASE + TOTAL_STACK;\n');
-      print('DYNAMIC_BASE = alignMemory(STACK_MAX);\n');
-      if (WASM_BACKEND) {
-        // wasm backend stack goes down
-        print('STACKTOP = STACK_BASE + TOTAL_STACK;');
-        print('STACK_MAX = STACK_BASE;');
-      }
-      print('HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;\n');
-      print('staticSealed = true; // seal the static portion of memory\n');
-      if (ASSERTIONS) print('assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");\n');
       if (USE_PTHREADS) print('}\n');
     }
 

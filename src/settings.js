@@ -141,9 +141,6 @@ var GLOBAL_BASE = -1;
 // allocations, by forcing the stack to start in the same place their
 // memory usage patterns would be the same.
 
-// Code embetterments
-var STACK_START = -1;
-
 // How to load and store 64-bit doubles.  A potential risk is that doubles may
 // be only 32-bit aligned. Forcing 64-bit alignment in Clang itself should be
 // able to solve that, or as a workaround in DOUBLE_MODE 1 we will carefully
@@ -216,6 +213,18 @@ var SIMD = 0;
 
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
+
+// If set to 1, each asm.js/wasm module export is individually declared with a
+// JavaScript "var" definition. This is the simple and recommended approach.
+// However, this does increase code size (especially if you have many such
+// exports), which can be avoided in an unsafe way by setting this to 0. In that
+// case, no "var" is created for each export, and instead a loop (of small
+// constant code size, no matter how many exports you have) writes all the
+// exports received into the global scope. Doing so is dangerous since such
+// modifications of the global scope can confuse external JS minifer tools, and
+// also things can break if the scope the code is in is not the global scope
+// (e.g. if you manually enclose them in a function scope).
+var DECLARE_ASM_MODULE_EXPORTS = 1;
 
 // Ignore closure warnings and errors (like on duplicate definitions)
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
@@ -497,6 +506,8 @@ var LEGACY_VM_SUPPORT = 0;
 //    'worker' - a web worker environment.
 //    'node'   - Node.js.
 //    'shell'  - a JS shell like d8, js, or jsc.
+// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
+// the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
 var ENVIRONMENT = '';
@@ -1003,10 +1014,6 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 var WASM_OBJECT_FILES = 0;
 
-// How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/preamble.js for more details and options.
-var BINARYEN_METHOD = "native-wasm";
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1054,8 +1061,7 @@ var BINARYEN_ROOT = "";
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using non-wasm
-// BINARYEN_METHOD settings.
+// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1126,12 +1132,6 @@ var SDL2_IMAGE_FORMATS = [];
 //    metadata
 //    legalizer
 var DEBUG_TAGS_SHOWING = [];
-
-// Internal: tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
-// For internal use only
-var ORIGINAL_EXPORTED_FUNCTIONS = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
@@ -1283,41 +1283,71 @@ var ASMFS = 0;
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
 
-// For internal use only (name of the file containing wasm text, if relevant).
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+
+// Internal use only, from here
+
+// tracks the list of EM_ASM signatures that are proxied between threads.
+var PROXIED_FUNCTION_SIGNATURES = [];
+
+var ORIGINAL_EXPORTED_FUNCTIONS = [];
+
+// name of the file containing wasm text, if relevant
 var WASM_TEXT_FILE = '';
 
-// For internal use only (name of the file containing wasm binary, if relevant).
+// name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// For internal use only (name of the file containing asm.js, if relevant).
+// name of the file containing asm.js code, if relevant
 var ASMJS_CODE_FILE = '';
 
-// For internal use only (name of the file containing the pthread *.worker.js, if relevant).
+// name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// for internal use only
 var MEM_INIT_IN_WASM = 0;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
 
-// For internal use only, the possible environments the code may run in.
+// the possible environments the code may run in.
 var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
-var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
-// Internal: passes information to emscripten.py about whether to minify
+// passes information to emscripten.py about whether to minify
 // JS -> asm.js import names. Controlled by optimization level, enabled
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
+
+// the total static allocation, that is, how much to bump the start of memory
+// for static globals. received from the backend, and possibly increased due
+// to JS static allocations
+var STATIC_BUMP = -1;
 
 // if set to 1, then generated WASM files will contain a custom
 // "emscripten_metadata" section that contains information necessary
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Tracks whether we are building with errno support enabled. Set to 0
+// to disable compiling errno support in altogether. This saves a little
+// bit of generated code size in applications that do not care about
+// POSIX errno variable. Setting this to 0 also requires using --closure
+// for effective code size optimizations to take place.
+var SUPPORT_ERRNO = 1;
+
+
+// Internal: points to a file that lists all asm.js/wasm module exports, annotated
+// with suppressions for Closure compiler, that can be passed as an --externs file
+// to Closure.
+var MODULE_EXPORTS = [];
+

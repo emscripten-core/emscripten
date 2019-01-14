@@ -1289,14 +1289,6 @@ var _emscripten_glVertexAttribPointer;
 /**
  * @suppress {duplicate, undefinedVars}
  */
-var _glDrawArrays;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glDrawElements;
-/**
- * @suppress {duplicate, undefinedVars}
- */
 var _glTexEnvf;
 /**
  * @suppress {duplicate, undefinedVars}

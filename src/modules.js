@@ -129,14 +129,21 @@ var LibraryManager = {
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
       if (!STRICT) {
         libraries = libraries.concat([
-          'library_idbfs.js',
-          'library_nodefs.js',
-          'library_proxyfs.js',
-          'library_sockfs.js',
-          'library_workerfs.js',
           'library_lz4.js',
         ]);
-
+        if (ENVIRONMENT_MAY_BE_WEB) {
+          libraries = libraries.concat([
+            'library_idbfs.js',
+            'library_proxyfs.js',
+            'library_sockfs.js',
+            'library_workerfs.js',
+          ]);
+        }
+        if (ENVIRONMENT_MAY_BE_NODE) {
+          libraries = libraries.concat([
+            'library_nodefs.js',
+          ]);
+        }
         if (NODERAWFS) {
           libraries.push('library_noderawfs.js')
         }
@@ -161,6 +168,9 @@ var LibraryManager = {
       ]);
     }
 
+    if (LEGACY_GL_EMULATION) {
+      libraries.push('library_glemu.js');
+    }
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
@@ -211,6 +221,7 @@ var LibraryManager = {
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
+        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
@@ -394,7 +405,6 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
-    'staticAlloc',
     'dynamicAlloc',
     'warnOnce',
     'loadDynamicLibrary',
@@ -435,7 +445,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_STATIC',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
   ];
@@ -459,7 +468,8 @@ var PassManager = {
   serialize: function() {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       Functions: Functions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
+      STATIC_BUMP: STATIC_BUMP // updated with info from JS
     }));
   },
   load: function(json) {

@@ -34,13 +34,9 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (staticSealed) {
-    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
-    assert(DYNAMICTOP_PTR);
-    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
-  } else {
-    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP);
-  }
+  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  assert(DYNAMICTOP_PTR);
+  assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -50,13 +46,9 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (staticSealed) {
-    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
-    assert(DYNAMICTOP_PTR);
-    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
-  } else {
-    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP);
-  }
+  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  assert(DYNAMICTOP_PTR);
+  assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
@@ -286,9 +278,8 @@ function getValue(ptr, type, noSafe) {
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
-var ALLOC_STATIC = 2; // Cannot be freed
-var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
-var ALLOC_NONE = 4; // Do not allocate
+var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
+var ALLOC_NONE = 3; // Do not allocate
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -304,6 +295,9 @@ var ALLOC_NONE = 4; // Do not allocate
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
+#if DECLARE_ASM_MODULE_EXPORTS == 0
+var stackAlloc; // Statically reference stackAlloc function that will be exported later from asm.js/wasm so that allocate() function below will see it.
+#endif
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
@@ -320,7 +314,7 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [typeof _malloc === 'function' ? _malloc : staticAlloc, stackAlloc, staticAlloc, dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [_malloc, stackAlloc, dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -377,7 +371,6 @@ function allocate(slab, types, allocator, ptr) {
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
-  if (!staticSealed) return staticAlloc(size);
   if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
 }
@@ -596,30 +589,7 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 }
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
-
-function lengthBytesUTF8(str) {
-  var len = 0;
-  for (var i = 0; i < str.length; ++i) {
-    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
-    // See http://unicode.org/faq/utf_bom.html#utf16-3
-    var u = str.charCodeAt(i); // possibly a lead surrogate
-    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
-    if (u <= 0x7F) {
-      ++len;
-    } else if (u <= 0x7FF) {
-      len += 2;
-    } else if (u <= 0xFFFF) {
-      len += 3;
-    } else if (u <= 0x1FFFFF) {
-      len += 4;
-    } else if (u <= 0x3FFFFFF) {
-      len += 5;
-    } else {
-      len += 6;
-    }
-  }
-  return len;
-}
+{{{ lengthBytesUTF8 }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -880,8 +850,8 @@ function stackTrace() {
 // Memory management
 
 var PAGE_SIZE = 16384;
-var WASM_PAGE_SIZE = 65536;
-var ASMJS_PAGE_SIZE = 16777216;
+var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
+var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 var MIN_TOTAL_MEMORY = 16777216;
 
 function alignUp(x, multiple) {
@@ -926,22 +896,28 @@ function updateGlobalBufferViews() {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
 }
 
-var STATIC_BASE, STATICTOP, staticSealed; // static area
-var STACK_BASE, STACKTOP, STACK_MAX; // stack area
-var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
-
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
-  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
-  staticSealed = false;
+
+var STATIC_BASE = {{{ GLOBAL_BASE }}},
+    STACK_BASE = {{{ getStackBase() }}},
+    STACKTOP = STACK_BASE,
+    STACK_MAX = {{{ getStackMax() }}},
+    DYNAMIC_BASE = {{{ getDynamicBase() }}},
+    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
+
+#if ASSERTIONS
+assert(STACK_BASE % 16 === 0, 'stack must start aligned');
+assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
+#endif
+
 #if USE_PTHREADS
 }
 #endif
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-  staticSealed = true; // The static memory area has been initialized already in the main thread, pthreads skip this.
 #if SEPARATE_ASM != 0
   importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
 #endif
@@ -1025,7 +1001,7 @@ function enlargeMemory() {
   _emscripten_trace_report_memory_layout();
 #endif
 
-  var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+  var PAGE_MULTIPLE = {{{ getPageSize() }}};
   var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
   if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
@@ -1093,10 +1069,8 @@ function enlargeMemory() {
   updateGlobalBuffer(replacement);
   updateGlobalBufferViews();
 
-#if ASSERTIONS
-  if (!Module["usingWasm"]) {
-    err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
-  }
+#if ASSERTIONS && !WASM
+  err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
 #endif
 
 #if EMSCRIPTEN_TRACING
@@ -1120,7 +1094,11 @@ try {
 }
 #endif
 
-var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
+var TOTAL_STACK = {{{ TOTAL_STACK }}};
+#if ASSERTIONS
+if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
+#endif
+
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
 if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
@@ -1260,6 +1238,14 @@ if (Module['buffer']) {
 updateGlobalBufferViews();
 
 #endif // USE_PTHREADS
+
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
+#endif
+HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
+#if USE_PTHREADS
+}
+#endif
 
 function getTotalMemory() {
   return TOTAL_MEMORY;
@@ -1726,8 +1712,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
-#if ASSERTIONS
-#if FILESYSTEM == 0
+#if ASSERTIONS && FILESYSTEM == 0 && !ASMFS
 var /* show errors on likely calls to FS when it was not included */ FS = {
   error: function() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
@@ -1747,7 +1732,6 @@ var /* show errors on likely calls to FS when it was not included */ FS = {
 Module['FS_createDataFile'] = FS.createDataFile;
 Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
-#endif
 
 #if CYBERDWARF
 var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
@@ -1757,26 +1741,9 @@ var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
 
 #if WASM
 function integrateWasmJS() {
-  // wasm.js has several methods for creating the compiled code module here:
-  //  * 'native-wasm' : use native WebAssembly support in the browser
-  //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
-  // The method is set at compile time (BINARYEN_METHOD)
-  // The method can be a comma-separated list, in which case, we will try the
-  // options one by one. Some of them can fail gracefully, and then we can try
-  // the next.
-
-  // inputs
-
-  var method = '{{{ BINARYEN_METHOD }}}';
-
   var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-  var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
-
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
-  }
-  if (!isDataURI(asmjsCodeFile)) {
-    asmjsCodeFile = locateFile(asmjsCodeFile);
   }
 
   // utilities
@@ -1861,35 +1828,12 @@ function integrateWasmJS() {
     });
   }
 
-  // do-method functions
-
-#if BINARYEN_METHOD != 'native-wasm'
-  function doJustAsm(global, env, providedBuffer) {
-    // if no Module.asm, or it's the method handler helper (see below), then apply
-    // the asmjs
-    if (typeof Module['asm'] !== 'function' || Module['asm'] === methodHandler) {
-      if (!Module['asmPreload']) {
-        // you can load the .asm.js file before this, to avoid this sync xhr and eval
-        {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
-      } else {
-        Module['asm'] = Module['asmPreload'];
-      }
-    }
-    if (typeof Module['asm'] !== 'function') {
-      err('asm evalling did not set the module properly');
-      return false;
-    }
-    return Module['asm'](global, env, providedBuffer);
-  }
-#endif // BINARYEN_METHOD != 'native-wasm'
-
-  function doNativeWasm(global, env, providedBuffer) {
+  // Create the wasm instance.
+  // Receives the wasm imports, returns the exports.
+  function createWasm(global, env, providedBuffer) {
     if (typeof WebAssembly !== 'object') {
-#if BINARYEN_METHOD == 'native-wasm'
 #if ASSERTIONS
-      // when the method is just native-wasm, our error message can be very specific
       abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#endif
 #endif
       err('no native wasm support detected');
       return false;
@@ -1913,7 +1857,6 @@ function integrateWasmJS() {
       exports = instance.exports;
       if (exports.memory) mergeMemory(exports.memory);
       Module['asm'] = exports;
-      Module["usingWasm"] = true;
 #if USE_PTHREADS
       // Keep a reference to the compiled module so we can post it to the workers.
       Module['wasmModule'] = module;
@@ -2010,42 +1953,31 @@ function integrateWasmJS() {
 
   // Memory growth integration code
 
-  var asmjsReallocBuffer = Module['reallocBuffer'];
-
   var wasmReallocBuffer = function(size) {
-    var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var old = Module['buffer'];
     var oldSize = old.byteLength;
-    if (Module["usingWasm"]) {
-      // native wasm support
-      try {
-        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
-        if (result !== (-1 | 0)) {
-          // success in native wasm memory growth, get the buffer from the memory
-          return Module['buffer'] = Module['wasmMemory'].buffer;
-        } else {
-          return null;
-        }
-      } catch(e) {
-#if ASSERTIONS
-        console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
-#endif
+    // native wasm support
+    try {
+      var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
+      if (result !== (-1 | 0)) {
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = Module['wasmMemory'].buffer;
+      } else {
         return null;
       }
+    } catch(e) {
+#if ASSERTIONS
+      console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+      return null;
     }
   };
 
   Module['reallocBuffer'] = function(size) {
-    if (finalMethod === 'asmjs') {
-      return asmjsReallocBuffer(size);
-    } else {
-      return wasmReallocBuffer(size);
-    }
+    return wasmReallocBuffer(size);
   };
-
-  // we may try more than one; this is the final one, that worked and we are using
-  var finalMethod = '';
 
   // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
   // the wasm module at that time, and it receives imports and provides exports and so forth, the app
@@ -2078,51 +2010,14 @@ function integrateWasmJS() {
       env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
     }
 
-    // try the methods. each should return the exports if it succeeded
-
-    var exports;
-#if BINARYEN_METHOD == 'native-wasm'
-    exports = doNativeWasm(global, env, providedBuffer);
-#else // native-wasm
-#if BINARYEN_METHOD == 'asmjs'
-    exports = doJustAsm(global, env, providedBuffer);
-#else
-    var methods = method.split(',');
-
-    for (var i = 0; i < methods.length; i++) {
-      var curr = methods[i];
-
-#if RUNTIME_LOGGING
-      err('trying binaryen method: ' + curr);
-#endif
-
-      finalMethod = curr;
-
-      if (curr === 'native-wasm') {
-        if (exports = doNativeWasm(global, env, providedBuffer)) break;
-      } else if (curr === 'asmjs') {
-        if (exports = doJustAsm(global, env, providedBuffer)) break;
-      } else {
-        abort('bad method: ' + curr);
-      }
-    }
-#endif // asmjs
-#endif // native-wasm
+    var exports = createWasm(global, env, providedBuffer);
 
 #if ASSERTIONS
-    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: http://kripken.github.io/emscripten-site/docs/compiling/WebAssembly.html#binaryen-methods');
-#else
-    assert(exports, 'no binaryen method succeeded.');
-#endif
-
-#if RUNTIME_LOGGING
-    err('binaryen method succeeded.');
+    assert(exports, 'binaryen setup failed (no wasm support?)');
 #endif
 
     return exports;
   };
-
-  var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
 }
 
 integrateWasmJS();
