@@ -332,6 +332,9 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
+    EGL.contextAttributes.majorVersion = glesContextVersion - 1; // WebGL 1 is GLES 2, WebGL2 is GLES3
+    EGL.contextAttributes.minorVersion = 0;
+
     EGL.context = GL.createContext(Module['canvas'], EGL.contextAttributes);
 
     if (EGL.context != 0) {
@@ -471,7 +474,7 @@ var LibraryEGL = {
         {{{ makeSetValue('value', '0', '0x30A0' /* EGL_OPENGL_ES_API */, 'i32') }}};
         return 1;
       case 0x3098: // EGL_CONTEXT_CLIENT_VERSION
-        {{{ makeSetValue('value', '0', '2' /* GLES2 context */, 'i32') }}}; // We always report the context to be a GLES2 context (and not a GLES1 context)
+        {{{ makeSetValue('value', '0', 'EGL.contextAttributes.majorVersion + 1', 'i32') }}};
         return 1;
       case 0x3086: // EGL_RENDER_BUFFER
         // The context is bound to the visible canvas window - it's always backbuffered. 
