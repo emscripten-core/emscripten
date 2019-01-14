@@ -1330,20 +1330,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
           logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -O3/-Os build with Wasm meta-DCE is used')
 
-      # run safe-heap as a binaryen pass
-      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'safe-heap'
-      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-        # emulated function pointer casts is emulated in wasm using a binaryen pass
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
-
       # we will include the mem init data in the wasm, when we don't need the
       # mem init file to be loadable by itself
       shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
@@ -1375,6 +1361,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
+
+      # run safe-heap as a binaryen pass
+      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
+        if shared.Settings.BINARYEN_PASSES:
+          shared.Settings.BINARYEN_PASSES += ','
+        shared.Settings.BINARYEN_PASSES += 'safe-heap'
+      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+        # emulated function pointer casts is emulated in wasm using a binaryen pass
+        if shared.Settings.BINARYEN_PASSES:
+          shared.Settings.BINARYEN_PASSES += ','
+        shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
+        # we also need emulated function pointers for that, as we need a single flat
+        # table, as is standard in wasm, and not asm.js split ones.
+        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
