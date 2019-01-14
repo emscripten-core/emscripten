@@ -141,9 +141,6 @@ var GLOBAL_BASE = -1;
 // allocations, by forcing the stack to start in the same place their
 // memory usage patterns would be the same.
 
-// Code embetterments
-var STACK_START = -1;
-
 // How to load and store 64-bit doubles.  A potential risk is that doubles may
 // be only 32-bit aligned. Forcing 64-bit alignment in Clang itself should be
 // able to solve that, or as a workaround in DOUBLE_MODE 1 we will carefully
@@ -1136,12 +1133,6 @@ var SDL2_IMAGE_FORMATS = [];
 //    legalizer
 var DEBUG_TAGS_SHOWING = [];
 
-// Internal: tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
-// For internal use only
-var ORIGINAL_EXPORTED_FUNCTIONS = [];
-
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should
@@ -1292,38 +1283,55 @@ var ASMFS = 0;
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
 
-// For internal use only (name of the file containing wasm text, if relevant).
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+
+// Internal use only, from here
+
+// tracks the list of EM_ASM signatures that are proxied between threads.
+var PROXIED_FUNCTION_SIGNATURES = [];
+
+var ORIGINAL_EXPORTED_FUNCTIONS = [];
+
+// name of the file containing wasm text, if relevant
 var WASM_TEXT_FILE = '';
 
-// For internal use only (name of the file containing wasm binary, if relevant).
+// name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// For internal use only (name of the file containing asm.js, if relevant).
+// name of the file containing asm.js code, if relevant
 var ASMJS_CODE_FILE = '';
 
-// For internal use only (name of the file containing the pthread *.worker.js, if relevant).
+// name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// for internal use only
 var MEM_INIT_IN_WASM = 0;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
 
-// For internal use only, the possible environments the code may run in.
+// the possible environments the code may run in.
 var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
 
-// Internal: passes information to emscripten.py about whether to minify
+// passes information to emscripten.py about whether to minify
 // JS -> asm.js import names. Controlled by optimization level, enabled
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
+
+// the total static allocation, that is, how much to bump the start of memory
+// for static globals. received from the backend, and possibly increased due
+// to JS static allocations
+var STATIC_BUMP = -1;
 
 // if set to 1, then generated WASM files will contain a custom
 // "emscripten_metadata" section that contains information necessary

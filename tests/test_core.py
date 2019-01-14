@@ -3790,7 +3790,7 @@ ok
   def test_dylink_global_var_jslib(self):
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
-        jslib_x: 'allocate(1, "i32*", ALLOC_STATIC)',
+        jslib_x: '{{{ makeStaticAlloc(4) }}}',
         jslib_x__postset: 'HEAP32[_jslib_x>>2] = 148;',
       });
     ''')
@@ -7818,7 +7818,6 @@ extern "C" {
         check_memprof_requirements: function() {
           if (typeof TOTAL_MEMORY === 'number' &&
               typeof STATIC_BASE === 'number' &&
-              typeof STATICTOP === 'number' &&
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
@@ -7851,8 +7850,6 @@ extern "C" {
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
-    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Stack cookie has been overwritten' if not self.get_setting('SAFE_HEAP') else 'segmentation fault')
 
     self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')

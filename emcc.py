@@ -1305,7 +1305,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
 
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
+      # for asm2wasm, a higher global base is useful for optimizing load/store offsets
+      # (and historically for mapping asm.js globals)
+      # TODO: for the wasm backend, we don't need this?
+      shared.Settings.GLOBAL_BASE = 1024
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0

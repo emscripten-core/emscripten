@@ -262,7 +262,6 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
         'static_base':  STATIC_BASE,
-        'static_top':   STATICTOP,
         'stack_base':   STACK_BASE,
         'stack_top':    STACKTOP,
         'stack_max':    STACK_MAX,
