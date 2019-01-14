@@ -3790,7 +3790,7 @@ ok
   def test_dylink_global_var_jslib(self):
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
-        jslib_x: '{{{ makeStaticAlloc(1) }}}',
+        jslib_x: '{{{ makeStaticAlloc(4) }}}',
         jslib_x__postset: 'HEAP32[_jslib_x>>2] = 148;',
       });
     ''')
