@@ -23,10 +23,13 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
-    alpha: false,
-    depth:     true, /*not EGL default, compat with earlier emscripten*/
-    stencil:   true, /*not EGL default, compat with earlier emscripten*/
-    antialias: true, /*not EGL default, compat with earlier emscripten*/
+
+    contextAttributes: {
+      alpha: false,
+      depth:     true, /*not EGL default, compat with earlier emscripten*/
+      stencil:   true, /*not EGL default, compat with earlier emscripten*/
+      antialias: true, /*not EGL default, compat with earlier emscripten*/
+    },
 
     stringCache: {},
     
@@ -46,19 +49,19 @@ var LibraryEGL = {
           var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
           if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
             var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.alpha = (alphaSize > 0);
+            EGL.contextAttributes.alpha = (alphaSize > 0);
           } else if (param == 0x3025 /*EGL_DEPTH_SIZE*/) {
             var depthSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.depth = (depthSize > 0);
+            EGL.contextAttributes.depth = (depthSize > 0);
           } else if (param == 0x3026 /*EGL_STENCIL_SIZE*/) {
             var stencilSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.stencil = (stencilSize > 0);
+            EGL.contextAttributes.stencil = (stencilSize > 0);
           } else if (param == 0x3031 /*EGL_SAMPLES*/) {
             var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.antialias = (samples > 0);
+            EGL.contextAttributes.antialias = (samples > 0);
           } else if (param == 0x3032 /*EGL_SAMPLE_BUFFERS*/) {
             var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.antialias = (samples == 1);
+            EGL.contextAttributes.antialias = (samples == 1);
           } else if (param == 0x3038 /*EGL_NONE*/) {
               break;
           }
@@ -294,7 +297,7 @@ var LibraryEGL = {
     return 1; /* Magic ID for Emscripten 'default surface' */
   },
 
-  eglCreateContext__deps: ['glutInitDisplayMode', 'glutCreateWindow', '$GL'],
+  eglCreateContext__deps: ['$GL'],
   
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
   eglCreateContext: function(display, config, hmm, contextAttribs) {
@@ -327,17 +330,9 @@ var LibraryEGL = {
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    // convert configuration to GLUT flags
-    var displayMode = 0x0000; /*GLUT_RGB/GLUT_RGBA*/
-    displayMode |= 0x0002; /*GLUT_DOUBLE*/
-    if (EGL.alpha)     displayMode |= 0x0008; /*GLUT_ALPHA*/
-    if (EGL.depth)     displayMode |= 0x0010; /*GLUT_DEPTH*/
-    if (EGL.stencil)   displayMode |= 0x0020; /*GLUT_STENCIL*/
-    if (EGL.antialias) displayMode |= 0x0080; /*GLUT_MULTISAMPLE*/
+    EGL.context = GL.createContext(Module['canvas'], EGL.contextAttributes);
 
-    _glutInitDisplayMode(displayMode);
-    EGL.windowID = _glutCreateWindow();
-    if (EGL.windowID != 0) {
+    if (EGL.context != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
       // Note: This function only creates a context, but it shall not make it active.
       return 62004; // Magic ID for Emscripten EGLContext
@@ -347,7 +342,7 @@ var LibraryEGL = {
     }
   },
 
-  eglDestroyContext__deps: ['glutDestroyWindow', '$GL'],
+  eglDestroyContext__deps: ['$GL'],
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
   eglDestroyContext: function(display, context) {
@@ -360,7 +355,7 @@ var LibraryEGL = {
       return 0;
     }
 
-    _glutDestroyWindow(EGL.windowID);
+    GL.destroyContext(EGL.context);
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     if (EGL.currentContext == context) {
       EGL.currentContext = 0;
@@ -563,6 +558,7 @@ var LibraryEGL = {
   },
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
+  eglMakeCurrent__deps: ['$GL'],
   eglMakeCurrent: function(display, draw, read, context) { 
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -577,6 +573,9 @@ var LibraryEGL = {
       EGL.setErrorCode(0x300D /* EGL_BAD_SURFACE */);
       return 0;
     }
+
+    GL.makeContextCurrent(context ? EGL.context : null);
+
     EGL.currentContext = context;
     EGL.currentDrawSurface = draw;
     EGL.currentReadSurface = read;
