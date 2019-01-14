@@ -25,10 +25,10 @@ var LibraryEGL = {
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
 
     contextAttributes: {
-      alpha: false,
-      depth:     true, /*not EGL default, compat with earlier emscripten*/
-      stencil:   true, /*not EGL default, compat with earlier emscripten*/
-      antialias: true, /*not EGL default, compat with earlier emscripten*/
+      alpha:     false,
+      depth:     false,
+      stencil:   false,
+      antialias: false
     },
 
     stringCache: {},
