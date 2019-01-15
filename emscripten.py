@@ -395,7 +395,7 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n', metadata)
+    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n')
   else:
     stack = ''
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
@@ -624,37 +624,42 @@ def compile_settings(compiler_engine, libraries, temp_files):
   return glue, forwarded_data
 
 
-def apply_memory(pre, metadata):
-  # Apply the statically-at-compile-time computed memory locations.
-  # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
-  #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
-  #       does not exist, etc.)
+class Memory():
+  def __init__(self):
+    # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
+    #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
+    #       does not exist, etc.)
 
-  # Memory layout:
-  #  * first the static globals
-  global_start = shared.Settings.GLOBAL_BASE
-  static_bump = shared.Settings.STATIC_BUMP
-  #  * then the stack (up on fastcomp, down on upstream)
-  stack_low = align_memory(global_start + static_bump)
-  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
-  if shared.Settings.WASM_BACKEND:
-    stack_start = stack_high
-    stack_max = stack_low
-  else:
-    stack_start = stack_low
-    stack_max = stack_high
-  #  * then dynamic memory begins
-  dynamic_start = align_memory(stack_high)
+    # Memory layout:
+    #  * first the static globals
+    self.global_base = shared.Settings.GLOBAL_BASE
+    self.static_bump = shared.Settings.STATIC_BUMP
+    #  * then the stack (up on fastcomp, down on upstream)
+    self.stack_low = align_memory(self.global_base + self.static_bump)
+    self.stack_high = align_memory(self.stack_low + shared.Settings.TOTAL_STACK)
+    if shared.Settings.WASM_BACKEND:
+      self.stack_base = self.stack_high
+      self.stack_max = self.stack_low
+    else:
+      self.stack_base = self.stack_low
+      self.stack_max = self.stack_high
+    #  * then dynamic memory begins
+    self.dynamic_base = align_memory(self.stack_high)
+
+
+def apply_memory(js):
+  # Apply the statically-at-compile-time computed memory locations.
+  memory = Memory()
 
   # Write it all out
-  pre = pre.replace('{{{ STATIC_BUMP }}}', str(static_bump))
-  pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
-  pre = pre.replace('{{{ STACK_MAX }}}', str(stack_max))
-  pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
+  js = js.replace('{{{ STATIC_BUMP }}}', str(memory.static_bump))
+  js = js.replace('{{{ STACK_BASE }}}', str(memory.stack_base))
+  js = js.replace('{{{ STACK_MAX }}}', str(memory.stack_max))
+  js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
 
-  logger.debug('global_start: %d stack_start: %d, stack_max: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, stack_max, dynamic_start, static_bump)
+  logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
-  return pre
+  return js
 
 
 def memory_and_global_initializers(pre, metadata, mem_init):
@@ -679,7 +684,7 @@ STATICTOP = STATIC_BASE + {staticbump};
   if shared.Settings.SIDE_MODULE:
     pre = pre.replace('GLOBAL_BASE', 'gb')
 
-  pre = apply_memory(pre, metadata)
+  pre = apply_memory(pre)
 
   return pre
 
@@ -1950,7 +1955,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
-  pre = apply_memory(pre, metadata)
+  pre = apply_memory(pre)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -2033,6 +2038,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     cmd.append('--separate-data-segments=' + memfile)
+  if not shared.Settings.SIDE_MODULE:
+    cmd.append('--stack-base=%d' % Memory().stack_base)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
@@ -2133,7 +2140,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  basic_vars = ['STACKTOP', 'STACK_MAX', 'DYNAMICTOP_PTR']
+  basic_vars = ['DYNAMICTOP_PTR']
 
   if not shared.Settings.RELOCATABLE:
     global_vars = metadata['externs']
