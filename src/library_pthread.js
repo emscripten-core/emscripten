@@ -276,41 +276,6 @@ var LibraryPThread = {
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
-            // TODO: Move the proxied call mechanism into a queue inside heap.
-            if (d.proxiedCall) {
-              var returnValue;
-              var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
-              var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
-              switch(d.proxiedCall & 31) {
-                case 1: returnValue = funcTable[funcIdx](); break;
-                case 2: returnValue = funcTable[funcIdx](d.p0); break;
-                case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
-                case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
-                case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
-                case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
-                case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
-                case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
-                case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
-                case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
-                default:
-                  if (d.proxiedCall) {
-                    err("worker sent an unknown proxied call idx " + d.proxiedCall);
-                    console.error(e.data);
-                  }
-                  break;
-              }
-              if (d.returnValue) {
-                if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
-                else HEAPF64[d.returnValue >> 3] = returnValue;
-              }
-              var waitAddress = d.waitAddress;
-              if (waitAddress) {
-                Atomics.store(HEAP32, waitAddress >> 2, 1);
-                Atomics.wake(HEAP32, waitAddress >> 2, 1);
-              }
-              PThread.currentProxiedOperationCallerThread = undefined;
-              return;
-            }
 
             // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
             if (d.targetThread && d.targetThread != _pthread_self()) {
