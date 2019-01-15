@@ -1674,14 +1674,15 @@ var memoryInitializer = null;
 
 function proxyToMainThread() {
   var args = Array.prototype.slice.call(arguments);
-  // arguments are:
+  // Arguments are:
   //   * the index of the function
   //   * the call args
   //   * whether it is sync
   var sync = args[args.length - 1];
-  // the serialization buffer contains the number of call params, and then
+  // The serialization buffer contains the number of call params, and then
   // all the args here.
-  // we also pass 'sync' to C separately, since C needs to look at it
+  // We also pass 'sync' to C separately, since C needs to look at it.
+  // The buffer remains alive until receiveOnMainThread frees it.
   var bufferLen = args.length + 1;
   var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
   var numCallArgs = args.length - 2;
@@ -1689,11 +1690,7 @@ function proxyToMainThread() {
   for (var i = 0; i < bufferLen - 1; i++) {
     HEAPF64[(buffer >> 3) + 1 + i] = args[i];
   }
-  var ret = _emscripten_run_in_main_runtime_thread_js(buffer, sync);
-  if (sync) {
-    _free(buffer);
-  }
-  return ret;
+  return _emscripten_run_in_main_runtime_thread_js(buffer, sync);
 }
 
 function receiveOnMainThread(buffer) {
@@ -1701,16 +1698,15 @@ function receiveOnMainThread(buffer) {
   var index = HEAPF64[(buffer >> 3) + 1];
   var callArgs = HEAPF64.subarray((buffer >> 3) + 2, (buffer >> 3) + 2 + numCallArgs);
   var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
-  // proxied JS library funcs are encoded as positive values, and
+  // Proxied JS library funcs are encoded as positive values, and
   // EM_ASMs as negative values (see include_asm_consts)
-#if ASSERTIONS
-  assert(index);
-#endif
   if (index > 0) {
-    return proxiedFunctionTable[index].apply(null, callArgs);
+    ret = proxiedFunctionTable[index].apply(null, callArgs);
   } else {
-    return ASM_CONSTS[-index - 1].apply(null, callArgs);
+    ret = ASM_CONSTS[-index - 1].apply(null, callArgs);
   }
+  _free(buffer);
+  return ret;
 }
 
 #if PTHREAD_HINT_NUM_CORES < 0
