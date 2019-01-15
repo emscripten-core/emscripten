@@ -347,7 +347,14 @@ var LibraryEGL = {
 
     if (EGL.context != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
+
+      // Run callbacks so that GL emulation works
+      GL.makeContextCurrent(EGL.context);
+      Module.useWebGL = true;
+      Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+
       // Note: This function only creates a context, but it shall not make it active.
+      GL.makeContextCurrent(null);
       return 62004; // Magic ID for Emscripten EGLContext
     } else {
       EGL.setErrorCode(0x3009 /* EGL_BAD_MATCH */); // By the EGL 1.4 spec, an implementation that does not support GLES2 (WebGL in this case), this error code is set.
