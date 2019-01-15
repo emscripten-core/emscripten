@@ -793,7 +793,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
 
     if shared.Settings.USE_PTHREADS:
       sync = call_type == 'sync_on_main_thread_'
-      async = call_type == 'sync_on_main_thread_'
+      async = call_type == 'async_on_main_thread_'
       proxied = sync or async
       if proxied:
         pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync) + 'return proxyToMainThread(' + proxy_args + ', %d); } \n' % sync

@@ -269,7 +269,7 @@ function JSify(data, functionsOnly) {
           var sig = LibraryManager.library[ident + '__sig'];
           if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
           sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
-          if (proxyingMode !== 'sync' && proxyingMode === 'async') {
+          if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
             throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
           }
           var sync = proxyingMode === 'sync';
