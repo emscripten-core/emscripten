@@ -2039,7 +2039,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   if not shared.Settings.MEM_INIT_IN_WASM:
     cmd.append('--separate-data-segments=' + memfile)
   if not shared.Settings.SIDE_MODULE:
-    cmd.append('--stack-base=%d' % Memory().stack_base)
+    cmd.append('--initial-stack-pointer=%d' % Memory().stack_base)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
