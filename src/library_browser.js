@@ -1321,12 +1321,6 @@ var LibraryBrowser = {
     exit(status);
   },
 
-  emscripten_get_device_pixel_ratio__proxy: 'sync',
-  emscripten_get_device_pixel_ratio__sig: 'd',
-  emscripten_get_device_pixel_ratio: function() {
-    return window.devicePixelRatio || 1.0;
-  },
-
   emscripten_hide_mouse__proxy: 'sync',
   emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
