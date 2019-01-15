@@ -394,7 +394,10 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
   asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
-  stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n', metadata)
+  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
+    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n', metadata)
+  else:
+    stack = ''
   temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
   async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
