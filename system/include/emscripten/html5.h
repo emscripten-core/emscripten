@@ -426,6 +426,11 @@ typedef int EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE;
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK 1
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS   2
 
+typedef int EM_WEBGL_POWER_PREFERENCE;
+#define EM_WEBGL_POWER_PREFERENCE_DEFAULT 0
+#define EM_WEBGL_POWER_PREFERENCE_LOW_POWER 1
+#define EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE 2
+
 typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL alpha;
   EM_BOOL depth;
@@ -433,7 +438,10 @@ typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL antialias;
   EM_BOOL premultipliedAlpha;
   EM_BOOL preserveDrawingBuffer;
-  EM_BOOL preferLowPowerToHighPerformance;
+  union {
+    EM_BOOL preferLowPowerToHighPerformance; // DEPRECATED: do not access. (though aliases to same set of values as EM_WEBGL_POWER_PREFERENCE (false:EM_WEBGL_POWER_PREFERENCE_DEFAULT, true:EM_WEBGL_POWER_PREFERENCE_LOW_POWER) for backwards compatibility)
+    EM_WEBGL_POWER_PREFERENCE powerPreference;
+  };
   EM_BOOL failIfMajorPerformanceCaveat;
 
   int majorVersion;
@@ -454,6 +462,8 @@ extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height);
+
+extern EMSCRIPTEN_RESULT emscripten_webgl_get_context_attributes(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, EmscriptenWebGLContextAttributes *outAttributes);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
