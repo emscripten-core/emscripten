@@ -221,6 +221,7 @@ var LibraryManager = {
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
+        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
@@ -404,7 +405,6 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
-    'staticAlloc',
     'dynamicAlloc',
     'warnOnce',
     'loadDynamicLibrary',
@@ -445,7 +445,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_STATIC',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
   ];
@@ -469,7 +468,8 @@ var PassManager = {
   serialize: function() {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       Functions: Functions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
+      STATIC_BUMP: STATIC_BUMP // updated with info from JS
     }));
   },
   load: function(json) {

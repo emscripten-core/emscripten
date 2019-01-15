@@ -527,6 +527,15 @@ def is_int(x):
     return False
 
 
+def align_memory(addr):
+  return (addr + 15) & -16
+
+
+def align_static_bump(metadata):
+  metadata['staticBump'] = align_memory(metadata['staticBump'])
+  return metadata['staticBump']
+
+
 def update_settings_glue(metadata):
   if shared.Settings.CYBERDWARF:
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append("cyberdwarf_Debugger")
@@ -581,6 +590,14 @@ def update_settings_glue(metadata):
   if not shared.Settings.WASM_BACKEND:
     shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
+  shared.Settings.STATIC_BUMP = align_static_bump(metadata)
+
+
+def apply_forwarded_data(forwarded_data):
+  forwarded_json = json.loads(forwarded_data)
+  # Be aware of JS static allocations
+  shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
+
 
 def compile_settings(compiler_engine, libraries, temp_files):
   # Save settings to a file to work around v8 issue 1579
@@ -596,7 +613,43 @@ def compile_settings(compiler_engine, libraries, temp_files):
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
+
+  apply_forwarded_data(forwarded_data)
+
   return glue, forwarded_data
+
+
+def apply_memory(pre, metadata):
+  # Apply the statically-at-compile-time computed memory locations.
+  # Note: if RELOCATABLE, then only relative sizes can be computed, and we don't
+  #       actually write out any absolute memory locations ({{{ STACK_BASE }}}
+  #       does not exist, etc.)
+
+  # Memory layout:
+  #  * first the static globals
+  global_start = shared.Settings.GLOBAL_BASE
+  static_bump = shared.Settings.STATIC_BUMP
+  #  * then the stack (up on fastcomp, down on upstream)
+  stack_low = align_memory(global_start + static_bump)
+  stack_high = align_memory(stack_low + shared.Settings.TOTAL_STACK)
+  if shared.Settings.WASM_BACKEND:
+    stack_start = stack_high
+    stack_max = stack_low
+  else:
+    stack_start = stack_low
+    stack_max = stack_high
+  #  * then dynamic memory begins
+  dynamic_start = align_memory(stack_high)
+
+  # Write it all out
+  pre = pre.replace('{{{ STATIC_BUMP }}}', str(static_bump))
+  pre = pre.replace('{{{ STACK_BASE }}}', str(stack_start))
+  pre = pre.replace('{{{ STACK_MAX }}}', str(stack_max))
+  pre = pre.replace('{{{ DYNAMIC_BASE }}}', str(dynamic_start))
+
+  logger.debug('global_start: %d stack_start: %d, stack_max: %d, dynamic_start: %d, static bump: %d', global_start, stack_start, stack_max, dynamic_start, static_bump)
+
+  return pre
 
 
 def memory_and_global_initializers(pre, metadata, mem_init):
@@ -605,9 +658,8 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   if shared.Settings.SIMD == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
-  staticbump = metadata['staticBump']
-  while staticbump % 16 != 0:
-    staticbump += 1
+  staticbump = shared.Settings.STATIC_BUMP
+
   pthread = ''
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
@@ -621,8 +673,8 @@ STATICTOP = STATIC_BASE + {staticbump};
 
   if shared.Settings.SIDE_MODULE:
     pre = pre.replace('GLOBAL_BASE', 'gb')
-  if shared.Settings.SIDE_MODULE or shared.Settings.WASM:
-    pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+
+  pre = apply_memory(pre, metadata)
 
   return pre
 
@@ -1887,16 +1939,15 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
 
-  staticbump = metadata['staticBump']
-  while staticbump % 16 != 0:
-    staticbump += 1
+  staticbump = shared.Settings.STATIC_BUMP
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
 /* global initializers */ %s __ATINIT__.push(%s);
 ''' % (staticbump,
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
-  pre = pre.replace('{{{ STATIC_BUMP }}}', str(staticbump))
+  pre = apply_memory(pre, metadata)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']

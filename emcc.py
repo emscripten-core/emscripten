@@ -1268,25 +1268,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
       exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
-    if shared.Settings.WASM_BACKEND:
-      options.js_opts = None
-
-      # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-      # we run the optimizer during asm2wasm itself). use it, if not overridden
-      if 'BINARYEN_PASSES' not in settings_key_changes:
-        passes = []
-        if not shared.Settings.EXIT_RUNTIME:
-          passes += ['--no-exit-runtime']
-        if options.opt_level > 0 or options.shrink_level > 0:
-          passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
-        if options.debug_level < 3:
-          passes += ['--strip']
-        if passes:
-          shared.Settings.BINARYEN_PASSES = ','.join(passes)
-
-      # to bootstrap struct_info, we need binaryen
-      os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
-
     # When MODULARIZE option is used, currently declare all module exports individually - TODO: this could be optimized
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
@@ -1303,9 +1284,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_TEXT_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_text_target))
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
-
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      shared.Settings.GLOBAL_BASE = 1024 # leave some room for mapping global vars
+      # a higher global base is useful for optimizing load/store offsets, as it enables the --post-emscripten pass
+      shared.Settings.GLOBAL_BASE = 1024
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1349,6 +1330,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
           logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -O3/-Os build with Wasm meta-DCE is used')
 
+      # we will include the mem init data in the wasm, when we don't need the
+      # mem init file to be loadable by itself
+      shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
+
+      # wasm side modules have suffix .wasm
+      if shared.Settings.SIDE_MODULE and target.endswith('.js'):
+        logger.warning('output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
+
+      if options.separate_asm:
+        exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
+
+      if shared.Settings.WASM_BACKEND:
+        options.js_opts = None
+
+        # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
+        # we run the optimizer during asm2wasm itself). use it, if not overridden
+        if 'BINARYEN_PASSES' not in settings_key_changes:
+          passes = []
+          if not shared.Settings.EXIT_RUNTIME:
+            passes += ['--no-exit-runtime']
+          if options.opt_level > 0 or options.shrink_level > 0:
+            passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
+            passes += ['--post-emscripten']
+          if options.debug_level < 3:
+            passes += ['--strip']
+          if passes:
+            shared.Settings.BINARYEN_PASSES = ','.join(passes)
+
+        # to bootstrap struct_info, we need binaryen
+        os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
+
       # run safe-heap as a binaryen pass
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
         if shared.Settings.BINARYEN_PASSES:
@@ -1362,17 +1375,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # we also need emulated function pointers for that, as we need a single flat
         # table, as is standard in wasm, and not asm.js split ones.
         shared.Settings.EMULATED_FUNCTION_POINTERS = 1
-
-      # we will include the mem init data in the wasm, when we don't need the
-      # mem init file to be loadable by itself
-      shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
-
-      # wasm side modules have suffix .wasm
-      if shared.Settings.SIDE_MODULE and target.endswith('.js'):
-        logger.warning('output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
-
-      if options.separate_asm:
-        exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):

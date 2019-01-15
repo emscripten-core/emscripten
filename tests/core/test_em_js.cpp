@@ -18,7 +18,7 @@ EM_JS(double, noarg_double, (void), {
 EM_JS(void, intarg, (int x), { out("  takes ints: " + x);});
 EM_JS(void, doublearg, (double d), { out("  takes doubles: " + d);});
 EM_JS(double, stringarg, (char* str), {
-  out("  takes strings: " + Pointer_stringify(str));
+  out("  takes strings: " + UTF8ToString(str));
   return 7.75;
 });
 EM_JS(int, multi_intarg, (int x, int y), {
@@ -26,7 +26,7 @@ EM_JS(int, multi_intarg, (int x, int y), {
   return 6;
 });
 EM_JS(double, multi_mixedarg, (int x, const char* str, double d), {
-  out("  mixed arg types: " + x + ", " + Pointer_stringify(str) + ", " + d);
+  out("  mixed arg types: " + x + ", " + UTF8ToString(str) + ", " + d);
   return 8.125;
 });
 EM_JS(int, unused_args, (int unused), {

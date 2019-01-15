@@ -181,7 +181,7 @@ var SyscallsLibrary = {
       return ret;
     },
     getStr: function() {
-      var ret = Pointer_stringify(SYSCALLS.get());
+      var ret = UTF8ToString(SYSCALLS.get());
 #if SYSCALL_DEBUG
       err('    (str: "' + ret + '")');
 #endif
