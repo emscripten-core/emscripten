@@ -235,7 +235,7 @@ var LibraryEGL = {
       return 1;
     case 0x303B: // EGL_MIN_SWAP_INTERVAL
       {{{ makeSetValue('value', '0', '0', 'i32') }}};
-    return 1;
+      return 1;
     case 0x303C: // EGL_MAX_SWAP_INTERVAL
       {{{ makeSetValue('value', '0', '1' /* TODO: Currently this is not strictly true, since user can specify custom presentation interval in JS requestAnimationFrame/emscripten_set_main_loop. */, 'i32') }}};
       return 1;
