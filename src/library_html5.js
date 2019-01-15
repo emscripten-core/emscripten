@@ -2427,7 +2427,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js: ['$stringToNewUTF8'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
