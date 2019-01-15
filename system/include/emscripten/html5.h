@@ -518,6 +518,31 @@ extern void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_webglcontextlost_callback(target, userData, useCapture, callback)      emscripten_set_webglcontextlost_callback_on_thread(     (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_webglcontextrestored_callback(target, userData, useCapture, callback)  emscripten_set_webglcontextrestored_callback_on_thread( (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 
+extern long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData);
+extern void emscripten_clear_timeout(long setTimeoutId);
+extern void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData);
+
+extern long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
+extern void emscripten_cancel_animation_frame(long requestAnimationFrameId);
+extern void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData);
+
+extern long emscripten_set_immediate(void (*cb)(void *userData), void *userData);
+extern void emscripten_clear_immediate(long setImmediateId);
+extern void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData);
+
+extern long emscripten_set_interval(void (*cb)(void *userData), double intervalMsecs, void *userData);
+extern void emscripten_clear_interval(long setIntervalId);
+
+extern double emscripten_date_now(void);
+extern double emscripten_performance_now(void);
+
+extern void emscripten_console_log(const char *utf8String);
+extern void emscripten_console_warn(const char *utf8String);
+extern void emscripten_console_error(const char *utf8String);
+
+extern void emscripten_throw_number(double number);
+extern void emscripten_throw_string(const char *utf8String);
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif

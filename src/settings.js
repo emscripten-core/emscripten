@@ -1350,7 +1350,6 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
-
 // Internal: points to a file that lists all asm.js/wasm module exports, annotated
 // with suppressions for Closure compiler, that can be passed as an --externs file
 // to Closure.

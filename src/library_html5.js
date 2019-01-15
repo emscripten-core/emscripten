@@ -2598,6 +2598,163 @@ var LibraryJSEvents = {
 
   emscripten_html5_remove_all_event_listeners: function() {
     JSEvents.removeAllEventListeners();
+  },
+
+  emscripten_request_animation_frame: function(cb, userData) {
+    return requestAnimationFrame(function(timeStamp) {
+      Module['dynCall_idi'](cb, timeStamp, userData);
+    });
+  },
+
+  emscripten_cancel_animation_frame: function(id) {
+    cancelAnimationFrame(id);
+  },
+
+  emscripten_request_animation_frame_loop: function(cb, userData) {
+    function tick(timeStamp) {
+      if (Module['dynCall_idi'](cb, timeStamp, userData)) {
+        requestAnimationFrame(tick);
+      }
+    }
+    return requestAnimationFrame(tick);
+  },
+
+  _polyfill_set_immediate__postset:
+    'var __setImmediate_id_counter = 0;\n' +
+    'var __setImmediate_queue = [];\n' +
+    'var __setImmediate_message_id = "_si";\n' +
+    'function __setImmediate_cb(e) {\n' +
+      'if (e.data === __setImmediate_message_id) {\n' +
+        'e.stopPropagation();\n' +
+        '__setImmediate_queue.shift()();\n' +
+        '++__setImmediate_id_counter;\n' +
+      '}\n' +
+    '}\n' +
+    'if (typeof setImmediate === "undefined") {\n' +
+      'addEventListener("message", __setImmediate_cb, true);\n' +
+      'setImmediate = function(func) {\n' +
+        'postMessage(__setImmediate_message_id, "*");\n' +
+        'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
+      '}\n' +
+      'clearImmediate = function(id) {\n' +
+        'var index = id - __setImmediate_id_counter;\n' +
+        'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function(){};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
+      '}\n' +
+    '}',
+
+  _polyfill_set_immediate: function() { /* nop, used for its postset to ensure setImmediate() polyfill is not duplicated between emscripten_set_immediate() and emscripten_set_immediate_loop() if application links to both of them.*/ },
+
+  emscripten_set_immediate__deps: ['_polyfill_set_immediate'],
+  emscripten_set_immediate: function(cb, userData) {
+    __polyfill_set_immediate();
+    return setImmediate(function() {
+      Module['dynCall_vi'](cb, userData);
+    });
+  },
+
+  emscripten_clear_immediate: function(id) {
+    clearImmediate(id);
+  },
+
+  emscripten_set_immediate_loop__deps: ['_polyfill_set_immediate'],
+  emscripten_set_immediate_loop: function(cb, userData) {
+    __polyfill_set_immediate();
+    function tick() {
+      if (Module['dynCall_ii'](cb, userData)) {
+        setImmediate(tick);
+      }
+    }
+    return setImmediate(tick);
+  },
+
+  emscripten_set_timeout: function(cb, msecs, userData) {
+    return setTimeout(function() {
+      Module['dynCall_vi'](cb, userData);
+    }, msecs);
+  },
+
+  emscripten_clear_timeout: function(id) {
+    clearTimeout(id);
+  },
+
+  emscripten_set_timeout_loop: function(cb, msecs, userData) {
+    function tick() {
+      var t = performance.now();
+      var n = t + msecs;
+      if (Module['dynCall_idi'](cb, t, userData)) {
+        setTimeout(tick,
+#if WASM
+          // Save a little bit of code space: modern browsers should treat negative setTimeout as timeout of 0 (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
+          t - performance.now()
+#else
+          // For old browsers, cap the timeout to zero.
+          Math.max(0, t - performance.now())
+#endif
+          );
+      }
+    }
+    return setTimeout(tick, 0);
+  },
+
+  emscripten_set_interval: function(cb, msecs, userData) {
+    return setInterval(function() {
+      Module['dynCall_vi'](cb, userData)
+    }, msecs);
+  },
+
+  emscripten_clear_interval: function(id) {
+    clearInterval(id);
+  },
+
+  emscripten_date_now: function() {
+    return Date.now();
+  },
+
+  emscripten_performance_now: function() {
+    return performance.now();
+  },
+
+  emscripten_console_log: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.log(UTF8ToString(str));
+  },
+
+  emscripten_console_warn: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.warn(UTF8ToString(str));
+  },
+
+  emscripten_console_error: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    console.error(UTF8ToString(str));
+  },
+
+  emscripten_throw_number: function(number) {
+    throw number;
+  },
+
+  emscripten_throw_string: function(str) {
+#if ASSERTIONS
+    assert(typeof str === 'number');
+#endif
+    throw UTF8ToString(str);
+  },
+
+  emscripten_get_device_pixel_ratio__proxy: 'sync',
+  emscripten_get_device_pixel_ratio__sig: 'd',
+  emscripten_get_device_pixel_ratio: function() {
+#if WASM && ENVIRONMENT == 'web'
+    // Save a little bit of code space: all Wasm-capable browsers support window.devicePixelRatio.
+    return window.devicePixelRatio;
+#else
+    return window.devicePixelRatio || 1.0;
+#endif
   }
 };
 

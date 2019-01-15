@@ -4374,3 +4374,38 @@ window.close = function() {
 
   def test_modularize_Module_input(self):
     self.btest(path_from_root('tests', 'browser', 'modularize_Module_input.cpp'), '0', args=['--shell-file', path_from_root('tests', 'browser', 'modularize_Module_input.html'), '-s', 'MODULARIZE_INSTANCE=1'])
+
+  def test_emscripten_request_animation_frame(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame.c'), '0')
+
+  def test_emscripten_request_animation_frame_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
+
+  def test_emscripten_set_timeout(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_timeout_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_immediate(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate.c'), '0')
+
+  def test_emscripten_set_immediate_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate_loop.c'), '0')
+
+  def test_emscripten_set_interval(self):
+    self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_performance_now() and emscripten_date_now()
+  def test_emscripten_performance_now(self):
+    self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
+  def test_emscripten_console_log(self):
+    self.btest(path_from_root('tests', 'emscripten_console_log.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_console_log_pre.js')])
+
+  def test_emscripten_throw_number(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_number.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_number_pre.js')])
+
+  def test_emscripten_throw_string(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_string.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_string_pre.js')])
