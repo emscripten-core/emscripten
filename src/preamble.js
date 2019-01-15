@@ -1685,11 +1685,11 @@ function proxyToMainThread() {
   var bufferLen = args.length + 1;
   var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
   var numCallArgs = args.length - 2;
-  HEAPf64[buffer >> 3] = numCallArgs; // num of call args
+  HEAPF64[buffer >> 3] = numCallArgs; // num of call args
   for (var i = 0; i < bufferLen - 1; i++) {
-    HEAP64[(buffer >> 3) + 1 + i] = args[i];
+    HEAPF64[(buffer >> 3) + 1 + i] = args[i];
   }
-  var ret = emscripten_run_in_main_runtime_thread_js(buffer, sync);
+  var ret = _emscripten_run_in_main_runtime_thread_js(buffer, sync);
   if (sync) {
     _free(buffer);
   }
