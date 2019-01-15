@@ -1669,6 +1669,50 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 var memoryInitializer = null;
 
 #if USE_PTHREADS
+
+// JS library / EM_ASM proxying
+
+function proxyToMainThread() {
+  var args = Array.prototype.slice.call(arguments);
+  // arguments are:
+  //   * the index of the function
+  //   * the call args
+  //   * whether it is sync
+  var sync = args[args.length - 1];
+  // the serialization buffer contains the number of call params, and then
+  // all the args here.
+  // we also pass 'sync' to C separately, since C needs to look at it
+  var bufferLen = args.length + 1;
+  var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
+  var numCallArgs = args.length - 2;
+  HEAPf64[buffer >> 3] = numCallArgs; // num of call args
+  for (var i = 0; i < bufferLen - 1; i++) {
+    HEAP64[(buffer >> 3) + 1 + i] = args[i];
+  }
+  var ret = emscripten_run_in_main_runtime_thread_js(buffer, sync);
+  if (sync) {
+    _free(buffer);
+  }
+  return ret;
+}
+
+function receiveOnMainThread(buffer) {
+  var numCallArgs = HEAPF64[buffer >> 3];
+  var index = HEAPF64[(buffer >> 3) + 1];
+  var callArgs = HEAPF64.subarray((buffer >> 3) + 2, (buffer >> 3) + 2 + numCallArgs);
+  var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
+  // proxied JS library funcs are encoded as positive values, and
+  // EM_ASMs as negative values (see include_asm_consts)
+#if ASSERTIONS
+  assert(index);
+#endif
+  if (index > 0) {
+    return proxiedFunctionTable[index].apply(null, callArgs);
+  } else {
+    return ASM_CONSTS[-index - 1].apply(null, callArgs);
+  }
+}
+
 #if PTHREAD_HINT_NUM_CORES < 0
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');
@@ -1704,8 +1748,8 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
     document.body.removeChild(div);
   }
 });
-#endif
-#endif
+#endif // PTHREAD_HINT_NUM_CORES < 0
+#endif // PTHREADS
 
 #if PTHREAD_POOL_SIZE > 0
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
