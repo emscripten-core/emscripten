@@ -1669,50 +1669,6 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 var memoryInitializer = null;
 
 #if USE_PTHREADS
-
-// JS library / EM_ASM proxying
-
-function proxyToMainThread() {
-  // Arguments are:
-  //   * the index of the function
-  //   * the call args
-  //   * whether it is sync
-  var sync = arguments[arguments.length - 1];
-  // The serialization buffer contains the number of call params, and then
-  // all the args here.
-  // We also pass 'sync' to C separately, since C needs to look at it.
-  // The buffer remains alive until receiveOnMainThread frees it.
-  var bufferLen = arguments.length + 1;
-  var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
-  var numCallArgs = arguments.length - 2;
-  HEAPF64[buffer >> 3] = numCallArgs; // num of call args
-  for (var i = 0; i < bufferLen - 1; i++) {
-    HEAPF64[(buffer >> 3) + 1 + i] = arguments[i];
-  }
-  return _emscripten_run_in_main_runtime_thread_js(buffer, sync);
-}
-
-var _receiveOnMainThread_tempArray = [];
-
-function receiveOnMainThread(buffer) {
-  var numCallArgs = HEAPF64[buffer >> 3];
-  var index = HEAPF64[(buffer >> 3) + 1];
-  _receiveOnMainThread_tempArray.length = numCallArgs;
-  for (var i = 0; i < numCallArgs; i++) {
-    _receiveOnMainThread_tempArray[i] = HEAPF64[(buffer >> 3) + 2 + i];
-  }
-  var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
-  // Proxied JS library funcs are encoded as positive values, and
-  // EM_ASMs as negative values (see include_asm_consts)
-  if (index > 0) {
-    ret = proxiedFunctionTable[index].apply(null, _receiveOnMainThread_tempArray);
-  } else {
-    ret = ASM_CONSTS[-index - 1].apply(null, _receiveOnMainThread_tempArray);
-  }
-  _free(buffer);
-  return ret;
-}
-
 #if PTHREAD_HINT_NUM_CORES < 0
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');

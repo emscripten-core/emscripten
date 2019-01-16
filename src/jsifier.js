@@ -275,10 +275,10 @@ function JSify(data, functionsOnly) {
           var sync = proxyingMode === 'sync';
           if (sig.length > 1) {
             // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(' + proxiedFunctionTable.length + ', $2, ' + (+sync) + ');');
+            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', $2, ' + (+sync) + ');');
           } else {
             // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return proxyToMainThread(' + proxiedFunctionTable.length + ', ' + (+sync) + ');');
+            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');');
           }
           if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
           contentText = processedSnippet;

@@ -796,7 +796,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
       async_proxy = call_type == 'async_on_main_thread_'
       proxied = sync_proxy or async_proxy
       if proxied:
-        pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync_proxy) + 'return proxyToMainThread(' + proxy_args + ', %d); } \n' % sync_proxy
+        pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync_proxy) + 'return _emscripten_proxy_to_main_thread_js(' + proxy_args + ', %d); } \n' % sync_proxy
 
     if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
       # we cannot have an EM_ASM on the stack when saving/loading

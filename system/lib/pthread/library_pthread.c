@@ -193,6 +193,8 @@ void emscripten_async_waitable_close(em_queued_call *call)
 	em_queued_call_free(call);
 }
 
+extern double emscripten_receive_on_main_thread_js(void*);
+
 static void _do_call(em_queued_call *q)
 {
 	if (!q->js) {
@@ -240,9 +242,7 @@ static void _do_call(em_queued_call *q)
 		}
 	} else {
 		// JS call
-		q->returnValue.d = EM_ASM_DOUBLE({
-			return receiveOnMainThread($0);
-		}, q->js);
+		q->returnValue.d = emscripten_receive_on_main_thread_js(q->js);
 	}
 
 	// If the caller is detached from this operation, it is the main thread's responsibility to free up the call object.
