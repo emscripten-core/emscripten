@@ -1692,17 +1692,22 @@ function proxyToMainThread() {
   return _emscripten_run_in_main_runtime_thread_js(buffer, sync);
 }
 
+var _receiveOnMainThread_tempArray = [];
+
 function receiveOnMainThread(buffer) {
   var numCallArgs = HEAPF64[buffer >> 3];
   var index = HEAPF64[(buffer >> 3) + 1];
-  var callArgs = HEAPF64.subarray((buffer >> 3) + 2, (buffer >> 3) + 2 + numCallArgs);
+  _receiveOnMainThread_tempArray.length = numCallArgs;
+  for (var i = 0; i < numCallArgs; i++) {
+    _receiveOnMainThread_tempArray[i] = HEAPF64[(buffer >> 3) + 2 + i];
+  }
   var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
   // Proxied JS library funcs are encoded as positive values, and
   // EM_ASMs as negative values (see include_asm_consts)
   if (index > 0) {
-    ret = proxiedFunctionTable[index].apply(null, callArgs);
+    ret = proxiedFunctionTable[index].apply(null, _receiveOnMainThread_tempArray);
   } else {
-    ret = ASM_CONSTS[-index - 1].apply(null, callArgs);
+    ret = ASM_CONSTS[-index - 1].apply(null, _receiveOnMainThread_tempArray);
   }
   _free(buffer);
   return ret;
