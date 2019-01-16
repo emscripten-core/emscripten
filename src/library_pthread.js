@@ -1167,7 +1167,7 @@ var LibraryPThread = {
     }
     var numCallArgs = HEAPF64[buffer >> 3];
     var index = HEAPF64[(buffer >> 3) + 1];
-    var callArgs = emscripten_receive_on_main_thread_js.callArgs;
+    var callArgs = _emscripten_receive_on_main_thread_js.callArgs;
     callArgs.length = numCallArgs;
     for (var i = 0; i < numCallArgs; i++) {
       callArgs[i] = HEAPF64[(buffer >> 3) + 2 + i];
