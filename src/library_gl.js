@@ -547,6 +547,14 @@ var LibraryGL = {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       context.defaultFbo = fbo;
 
+      // The WebGL 2 blit path doesn't work in Firefox currently (except in
+      // fullscreen). The bug has not been identified yet.
+      // https://bugzilla.mozilla.org/show_bug.cgi?id=1519571
+#if USE_WEBGL2
+      var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+      context.defaultFboForbidBlitFramebuffer = isFirefox;
+#endif
+
       // Create render targets to the FBO
       context.defaultColorTarget = gl.createTexture();
       context.defaultDepthTarget = gl.createRenderbuffer();
@@ -606,6 +614,14 @@ var LibraryGL = {
       gl.useProgram(blitProgram);
       gl.uniform1i(gl.getUniformLocation(blitProgram, "sampler"), 0);
       gl.useProgram(null);
+
+      context.defaultVao = undefined;
+      if (gl.createVertexArray) {
+        context.defaultVao = gl.createVertexArray();
+        gl.bindVertexArray(context.defaultVao);
+        gl.enableVertexAttribArray(context.blitPosLoc);
+        gl.bindVertexArray(null);
+      }
     },
 
     resizeOffscreenFramebuffer: function(context) {
@@ -632,46 +648,119 @@ var LibraryGL = {
     blitOffscreenFramebuffer: function(context) {
       var gl = context.GLctx;
 
+      var prevScissorTest = gl.getParameter(gl.SCISSOR_TEST);
+      if (prevScissorTest) gl.disable(gl.SCISSOR_TEST);
+
       var prevFbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-      var prevProgram = gl.getParameter(gl.CURRENT_PROGRAM);
-      gl.useProgram(context.blitProgram);
+#if USE_WEBGL2
+      if (gl.blitFramebuffer && !context.defaultFboForbidBlitFramebuffer) {
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER, context.defaultFbo);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+        gl.blitFramebuffer(0, 0, gl.canvas.width, gl.canvas.height,
+                           0, 0, gl.canvas.width, gl.canvas.height,
+                           gl.COLOR_BUFFER_BIT, gl.NEAREST);
+      }
+      else
+#endif
+      {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-      var prevVB = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
-      gl.bindBuffer(gl.ARRAY_BUFFER, context.blitVB);
+        var prevProgram = gl.getParameter(gl.CURRENT_PROGRAM);
+        gl.useProgram(context.blitProgram);
 
-      gl.vertexAttribPointer(context.blitPosLoc, 2, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(context.blitPosLoc);
+        var prevVB = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+        gl.bindBuffer(gl.ARRAY_BUFFER, context.blitVB);
 
-      var prevActiveTexture = gl.getParameter(gl.ACTIVE_TEXTURE);
-      gl.activeTexture(gl.TEXTURE0);
+        var prevActiveTexture = gl.getParameter(gl.ACTIVE_TEXTURE);
+        gl.activeTexture(gl.TEXTURE0);
 
-      var prevTextureBinding = gl.getParameter(gl.TEXTURE_BINDING_2D);
-      gl.bindTexture(gl.TEXTURE_2D, context.defaultColorTarget);
+        var prevTextureBinding = gl.getParameter(gl.TEXTURE_BINDING_2D);
+        gl.bindTexture(gl.TEXTURE_2D, context.defaultColorTarget);
 
-      var prevBlend = gl.getParameter(gl.BLEND);
-      if (prevBlend) gl.disable(gl.BLEND);
+        var prevBlend = gl.getParameter(gl.BLEND);
+        if (prevBlend) gl.disable(gl.BLEND);
 
-      var prevCullFace = gl.getParameter(gl.CULL_FACE);
-      if (prevCullFace) gl.disable(gl.CULL_FACE);
+        var prevCullFace = gl.getParameter(gl.CULL_FACE);
+        if (prevCullFace) gl.disable(gl.CULL_FACE);
 
-      var prevDepthTest = gl.getParameter(gl.DEPTH_TEST);
-      if (prevDepthTest) gl.disable(gl.DEPTH_TEST);
+        var prevDepthTest = gl.getParameter(gl.DEPTH_TEST);
+        if (prevDepthTest) gl.disable(gl.DEPTH_TEST);
 
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        var prevStencilTest = gl.getParameter(gl.STENCIL_TEST);
+        if (prevStencilTest) gl.disable(gl.STENCIL_TEST);
 
-      if (prevDepthTest) gl.enable(gl.DEPTH_TEST);
-      if (prevCullFace) gl.enable(gl.CULL_FACE);
-      if (prevBlend) gl.enable(gl.BLEND);
+        function draw() {
+          gl.vertexAttribPointer(context.blitPosLoc, 2, gl.FLOAT, false, 0, 0);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
 
-      gl.bindTexture(gl.TEXTURE_2D, prevTextureBinding);
-      gl.activeTexture(prevActiveTexture);
-      // prevEnableVertexAttribArray?
-      // prevVertexAttribPointer?
-      gl.bindBuffer(gl.ARRAY_BUFFER, prevVB);
-      gl.useProgram(prevProgram);
+#if !OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH
+        if (context.defaultVao) {
+          // WebGL 2 or OES_vertex_array_object
+          var prevVAO = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
+          gl.bindVertexArray(context.defaultVao);
+          draw();
+          gl.bindVertexArray(prevVAO);
+        }
+        else
+#endif
+        {
+          var prevVertexAttribPointer = {
+            buffer: gl.getVertexAttrib(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING),
+            size: gl.getVertexAttrib(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_SIZE),
+            stride: gl.getVertexAttrib(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_STRIDE),
+            type: gl.getVertexAttrib(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_TYPE),
+            normalized: gl.getVertexAttrib(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_NORMALIZED),
+            pointer: gl.getVertexAttribOffset(context.blitPosLoc, gl.VERTEX_ATTRIB_ARRAY_POINTER),
+          };
+          var maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
+          var prevVertexAttribEnables = [];
+          for (var i = 0; i < maxVertexAttribs; ++i) {
+            var prevEnabled = gl.getVertexAttrib(i, gl.VERTEX_ATTRIB_ARRAY_ENABLED);
+            var wantEnabled = i == context.blitPosLoc;
+            if (prevEnabled && !wantEnabled) {
+              gl.disableVertexAttribArray(i);
+            }
+            if (!prevEnabled && wantEnabled) {
+              gl.enableVertexAttribArray(i);
+            }
+            prevVertexAttribEnables[i] = prevEnabled;
+          }
+
+          draw();
+
+          for (var i = 0; i < maxVertexAttribs; ++i) {
+            var prevEnabled = prevVertexAttribEnables[i];
+            var nowEnabled = i == context.blitPosLoc;
+            if (prevEnabled && !nowEnabled) {
+              gl.enableVertexAttribArray(i);
+            }
+            if (!prevEnabled && nowEnabled) {
+              gl.disableVertexAttribArray(i);
+            }
+          }
+          gl.bindBuffer(gl.ARRAY_BUFFER, prevVertexAttribPointer.buffer);
+          gl.vertexAttribPointer(context.blitPosLoc,
+                                 prevVertexAttribPointer.size,
+                                 prevVertexAttribPointer.type,
+                                 prevVertexAttribPointer.normalized,
+                                 prevVertexAttribPointer.stride,
+                                 prevVertexAttribPointer.offset);
+        }
+
+        if (prevStencilTest) gl.enable(gl.STENCIL_TEST);
+        if (prevDepthTest) gl.enable(gl.DEPTH_TEST);
+        if (prevCullFace) gl.enable(gl.CULL_FACE);
+        if (prevBlend) gl.enable(gl.BLEND);
+
+        gl.bindTexture(gl.TEXTURE_2D, prevTextureBinding);
+        gl.activeTexture(prevActiveTexture);
+        gl.bindBuffer(gl.ARRAY_BUFFER, prevVB);
+        gl.useProgram(prevProgram);
+      }
       gl.bindFramebuffer(gl.FRAMEBUFFER, prevFbo);
+      if (prevScissorTest) gl.enable(gl.SCISSOR_TEST);
     },
 #endif
 

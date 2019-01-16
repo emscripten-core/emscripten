@@ -1356,3 +1356,5 @@ var SUPPORT_ERRNO = 1;
 // to Closure.
 var MODULE_EXPORTS = [];
 
+// Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
+var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;

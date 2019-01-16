@@ -3960,6 +3960,20 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
 
+  # Tests that offscreen framebuffer state restoration works
+  @requires_graphics_hardware
+  def test_webgl_offscreen_framebuffer_state_restoration(self):
+    for args in [
+        # full state restoration path
+        ['-s', 'USE_WEBGL2=0', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        # VAO path
+        ['-s', 'USE_WEBGL2=0'],
+        # blitFramebuffer path
+        ['-s', 'USE_WEBGL2=1'],
+      ]:
+      cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
+      self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
+
   # Tests that -s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_workaround_webgl_uniform_upload_bug(self):
