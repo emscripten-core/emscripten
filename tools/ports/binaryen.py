@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'stack' # FIXME temp
+TAG = 'version_64'
 
 def needed(settings, shared, ports):
   if not settings.WASM:
