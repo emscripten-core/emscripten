@@ -148,6 +148,12 @@ class other(RunnerCore):
       self.assertContained('LLVM_ROOT', config_contents)
       os.remove(config_path)
 
+  def test_emcc_output_mjs(self):
+    run_process([PYTHON, EMCC, '-o', 'hello_world.mjs', path_from_root('tests', 'hello_world.c')])
+    with open('hello_world.mjs') as f:
+      output = f.read()
+    self.assertContained('The Module object', output)
+
   def test_emcc_1(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
       # --version
