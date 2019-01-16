@@ -1411,7 +1411,7 @@ int main() {
 
   def test_stack_varargs(self):
     self.set_setting('INLINING_LIMIT', 50)
-    self.set_setting('TOTAL_STACK', 2048)
+    self.set_setting('TOTAL_STACK', 4096)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
