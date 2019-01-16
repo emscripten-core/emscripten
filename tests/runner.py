@@ -207,7 +207,7 @@ def chdir(dir):
 def limit_size(string, MAX=800 * 20):
   if len(string) < MAX:
     return string
-  return string[0:MAX / 2] + '\n[..]\n' + string[-MAX / 2:]
+  return string[0:MAX // 2] + '\n[..]\n' + string[-MAX // 2:]
 
 
 def create_test_file(name, contents, binary=False):
