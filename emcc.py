@@ -1878,12 +1878,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             options.pre_js = options.pre_js.replace('\r\n', '\n')
           if options.post_js:
             options.post_js = options.post_js.replace('\r\n', '\n')
-        outfile = open(final, 'w')
-        # pre-js code goes right after the Module integration code (so it
-        # can use Module), we have a marker for it
-        outfile.write(src.replace('// {{PRE_JSES}}', options.pre_js))
-        outfile.write(options.post_js)
-        outfile.close()
+        with open(final, 'w') as f:
+          # pre-js code goes right after the Module integration code (so it
+          # can use Module), we have a marker for it
+          f.write(src.replace('// {{PRE_JSES}}', options.pre_js))
+          f.write(options.post_js)
         options.pre_js = src = options.post_js = None
         save_intermediate('pre-post')
 
@@ -2612,10 +2611,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       save_intermediate_with_wasm('postclean', wasm_binary_target)
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    f = open(final, 'r')
-    js = f.read()
-    f.close()
-    f = open(final, 'w')
+    js = open(final).read()
     for target, replacement_string, should_embed in (
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
@@ -2629,16 +2625,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         js = js.replace(replacement_string, '')
       shared.try_delete(target)
-    f.write(js)
-    f.close()
+    with open(final, 'w') as f:
+      f.write(js)
 
 
 def modularize():
   global final
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
-  final = final + '.modular.js'
-  f = open(final, 'w')
 
   src = '''
 function(%(EXPORT_NAME)s) {
@@ -2680,23 +2674,24 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
       'src': src
     }
 
-  f.write(src)
+  final = final + '.modular.js'
+  with open(final, 'w') as f:
+    f.write(src)
 
-  # Export using a UMD style export, or ES6 exports if selected
-  if shared.Settings.EXPORT_ES6:
-    f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
-  else:
-    f.write('''if (typeof exports === 'object' && typeof module === 'object')
-    module.exports = %(EXPORT_NAME)s;
-  else if (typeof define === 'function' && define['amd'])
-    define([], function() { return %(EXPORT_NAME)s; });
-  else if (typeof exports === 'object')
-    exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
-  ''' % {
-      'EXPORT_NAME': shared.Settings.EXPORT_NAME
-    })
+    # Export using a UMD style export, or ES6 exports if selected
+    if shared.Settings.EXPORT_ES6:
+      f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
+    else:
+      f.write('''if (typeof exports === 'object' && typeof module === 'object')
+      module.exports = %(EXPORT_NAME)s;
+    else if (typeof define === 'function' && define['amd'])
+      define([], function() { return %(EXPORT_NAME)s; });
+    else if (typeof exports === 'object')
+      exports["%(EXPORT_NAME)s"] = %(EXPORT_NAME)s;
+    ''' % {
+        'EXPORT_NAME': shared.Settings.EXPORT_NAME
+      })
 
-  f.close()
   save_intermediate('modularized')
 
 
@@ -2705,10 +2700,9 @@ def module_export_name_substitution():
   logger.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
   final = final + '.module_export_name_substitution.js'
-  f = open(final, 'w')
   replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
-  f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
-  f.close()
+  with open(final, 'w') as f:
+    f.write(src.replace(shared.JS.module_export_name_substitution_pattern, replacement))
   save_intermediate('module_export_name_substitution')
 
 
@@ -2871,10 +2865,9 @@ def generate_html(target, options, js_target, target_basename,
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
-    for file in ['arrayUtils.js', 'base64Utils.js', 'URIUtils.js']:
-      f = open(shared.path_from_root('src', file), 'r')
-      script.inline = f.read() + script.inline
-      f.close()
+    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
+      content = open(shared.path_from_root('src', filename)).read()
+      script.inline = content + script.inline
 
     script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)
 
@@ -2882,18 +2875,15 @@ def generate_html(target, options, js_target, target_basename,
   if shared.Settings.SINGLE_FILE:
     js_contents = script.inline or ''
     if script.src:
-      js = open(js_target, 'r')
-      js_contents += js.read()
-      js.close()
+      js_contents += open(js_target).read()
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
 
-  html = open(target, 'wb')
   html_contents = shell.replace('{{{ SCRIPT }}}', script.replacement())
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
-  html.write(asbytes(html_contents))
-  html.close()
+  with open(target, 'wb') as f:
+    f.write(asbytes(html_contents))
 
 
 def generate_worker_js(target, js_target, target_basename):

@@ -59,7 +59,7 @@ class Benchmarker(object):
       output = self.run(args)
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
         if IGNORE_COMPILATION:
-          curr = float(re.search('took +([\d\.]+) milliseconds', output).group(1)) / 1000
+          curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
         else:
           curr = time.time() - start
       else:
@@ -836,7 +836,7 @@ class benchmark(RunnerCore):
 
   def test_linpack(self):
     def output_parser(output):
-      mflops = re.search('Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
+      mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 100.0 / float(mflops)
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
@@ -844,86 +844,86 @@ class benchmark(RunnerCore):
   @non_core
   def test_native_functions(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling function pointers.
   @non_core
   def test_native_function_pointers(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('native_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DBENCHMARK_FUNCTION_POINTER=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   # Benchmarks the synthetic performance of calling "foreign" JavaScript functions.
   @non_core
   def test_foreign_functions(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('foreign_functions', open(path_from_root('tests', 'benchmark_ffis.cpp')).read(), 'Total time:', output_parser=output_parser, emcc_args=['--js-library', path_from_root('tests/benchmark_ffis.js')], shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memcpy_128b(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_128b', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memcpy_4k(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_4k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memcpy_16k(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16k', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memcpy_1mb(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_1mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memcpy_16mb(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memcpy_16mb', open(path_from_root('tests', 'benchmark_memcpy.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memset_128b(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_128b', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMAX_COPY=128', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memset_4k(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_4k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=128', '-DMAX_COPY=4096', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memset_16k(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16k', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=4096', '-DMAX_COPY=16384', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memset_1mb(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_1mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=16384', '-DMAX_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   @non_core
   def test_memset_16mb(self):
     def output_parser(output):
-      return float(re.search('Total time: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', open(path_from_root('tests', 'benchmark_memset.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + path_from_root('tests')])
 
   def test_matrix_multiply(self):
     def output_parser(output):
-      return float(re.search('Total elapsed: ([\d\.]+)', output).group(1))
+      return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
     self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
 
   @non_core
@@ -952,7 +952,7 @@ class benchmark(RunnerCore):
 
   def test_zzz_lua_scimark(self):
     def output_parser(output):
-      return 100.0 / float(re.search('\nSciMark +([\d\.]+) ', output).group(1))
+      return 100.0 / float(re.search(r'\nSciMark +([\d\.]+) ', output).group(1))
 
     self.lua('scimark', '[small problem sizes]', output_parser=output_parser)
 

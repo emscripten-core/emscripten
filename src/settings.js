@@ -370,6 +370,11 @@ var WEBSOCKET_SUBPROTOCOL = 'binary';
 // Print out debugging information from our OpenAL implementation.
 var OPENAL_DEBUG = 0;
 
+// If 1, prints out debugging related to calls from emscripten_web_socket_* functions
+// in emscripten/websocket.h.
+// If 2, additionally traces bytes communicated via the sockets.
+var WEBSOCKET_DEBUG = 0;
+
 // Adds extra checks for error situations in the GL library. Can impact
 // performance.
 var GL_ASSERTIONS = 0;
