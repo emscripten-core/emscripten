@@ -45,9 +45,9 @@ WINDOWS = sys.platform.startswith('win')
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-func_sig = re.compile('function ([_\w$]+)\(')
-func_sig_json = re.compile('\["defun", ?"([_\w$]+)",')
-import_sig = re.compile('(var|const) ([_\w$]+ *=[^;]+);')
+func_sig = re.compile(r'function ([_\w$]+)\(')
+func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
+import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
 NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
 
@@ -241,11 +241,10 @@ class Minifier(object):
       self.globs = []
 
     with temp_files.get_file('.minifyglobals.js') as temp_file:
-      f = open(temp_file, 'w')
-      f.write(shell)
-      f.write('\n')
-      f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
-      f.close()
+      with open(temp_file, 'w') as f:
+        f.write(shell)
+        f.write('\n')
+        f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
       output = shared.run_process(self.js_engine +
           [JS_OPTIMIZER, temp_file, 'minifyGlobals', 'noPrintMetadata'] +
@@ -259,10 +258,9 @@ class Minifier(object):
     self.globs = json.loads(metadata)
 
     if self.symbols_file:
-      mapfile = open(self.symbols_file, 'w')
-      for key, value in self.globs.items():
-        mapfile.write(value + ':' + key + '\n')
-      mapfile.close()
+      with open(self.symbols_file, 'w') as f:
+        for key, value in self.globs.items():
+          f.write(value + ':' + key + '\n')
       print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
 
     return code.replace('13371337', '0.0')
@@ -296,9 +294,8 @@ def run_on_chunk(command):
     assert proc.returncode == 0, 'Error in optimizer (return code ' + str(proc.returncode) + '): ' + output
     assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.jo.js').name
-    f = open(filename, 'w')
-    f.write(output)
-    f.close()
+    with open(filename, 'w') as f:
+      f.write(output)
     if DEBUG and not shared.WINDOWS: print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
     return filename
   except KeyboardInterrupt:
@@ -439,10 +436,9 @@ EMSCRIPTEN_FUNCS();
       with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
         def write_chunk(chunk, i):
           temp_file = temp_files.get('.jsfunc_%d.js' % i).name
-          f = open(temp_file, 'w')
-          f.write(chunk)
-          f.write(serialized_extra_info)
-          f.close()
+          with open(temp_file, 'w') as f:
+            f.write(chunk)
+            f.write(serialized_extra_info)
           return temp_file
         filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
     else:
@@ -485,20 +481,18 @@ EMSCRIPTEN_FUNCS();
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(global,env,buffer)\n'
 
       with temp_files.get_file('.cl.js') as cle:
-        c = open(cle, 'w')
         pre_1, pre_2 = pre.split(start_asm)
         post_1, post_2 = post.split(end_asm)
-        c.write(pre_1)
-        c.write(cl_sep)
-        c.write(post_2)
-        c.close()
+        with open(cle, 'w') as f:
+          f.write(pre_1)
+          f.write(cl_sep)
+          f.write(post_2)
         cld = cle
         if split_memory:
           if DEBUG: print('running splitMemory on shell code', file=sys.stderr)
           cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
-          f = open(cld, 'a')
-          f.write(suffix_marker)
-          f.close()
+          with open(cld, 'a') as f:
+            f.write(suffix_marker)
         if closure:
           if DEBUG: print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)

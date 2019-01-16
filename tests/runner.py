@@ -475,9 +475,8 @@ class RunnerCore(unittest.TestCase):
 
     # Copy over necessary files for compiling the source
     if main_file is None:
-      f = open(filename, 'w')
-      f.write(src)
-      f.close()
+      with open(filename, 'w') as f:
+        f.write(src)
       final_additional_files = []
       for f in additional_files:
         final_additional_files.append(os.path.join(dirname, os.path.basename(f)))
@@ -553,7 +552,7 @@ class RunnerCore(unittest.TestCase):
       assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
   def validate_asmjs(self, err):
-    m = re.search("asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
+    m = re.search(r"asm.js type error: '(\w+)' is not a (standard|supported) SIMD type", err)
     if m:
       # Bug numbers for missing SIMD types:
       bugs = {
@@ -735,9 +734,8 @@ class RunnerCore(unittest.TestCase):
         generated_libs = []
         for basename, contents in self.library_cache[cache_name]:
           bc_file = os.path.join(build_dir, cache_name + '_' + basename)
-          f = open(bc_file, 'wb')
-          f.write(contents)
-          f.close()
+          with open(bc_file, 'wb') as f:
+            f.write(contents)
           generated_libs.append(bc_file)
         return generated_libs
 
