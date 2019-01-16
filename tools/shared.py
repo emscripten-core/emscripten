@@ -1416,13 +1416,13 @@ class Building(object):
       # actually spawn any new subprocesses. Very useful for internal debugging.
       if cores == 1:
         class FakeMultiprocessor(object):
-          def map(self, func, tasks):
+          def map(self, func, tasks, *args, **kwargs):
             results = []
             for t in tasks:
               results += [func(t)]
             return results
 
-          def map_async(self, func, tasks, **kwargs):
+          def map_async(self, func, tasks, *args, **kwargs):
             class Result:
               def __init__(self, func, tasks):
                 self.func = func
