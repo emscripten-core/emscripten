@@ -1673,22 +1673,21 @@ var memoryInitializer = null;
 // JS library / EM_ASM proxying
 
 function proxyToMainThread() {
-  var args = Array.prototype.slice.call(arguments);
   // Arguments are:
   //   * the index of the function
   //   * the call args
   //   * whether it is sync
-  var sync = args[args.length - 1];
+  var sync = arguments[arguments.length - 1];
   // The serialization buffer contains the number of call params, and then
   // all the args here.
   // We also pass 'sync' to C separately, since C needs to look at it.
   // The buffer remains alive until receiveOnMainThread frees it.
-  var bufferLen = args.length + 1;
+  var bufferLen = arguments.length + 1;
   var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
-  var numCallArgs = args.length - 2;
+  var numCallArgs = arguments.length - 2;
   HEAPF64[buffer >> 3] = numCallArgs; // num of call args
   for (var i = 0; i < bufferLen - 1; i++) {
-    HEAPF64[(buffer >> 3) + 1 + i] = args[i];
+    HEAPF64[(buffer >> 3) + 1 + i] = arguments[i];
   }
   return _emscripten_run_in_main_runtime_thread_js(buffer, sync);
 }
