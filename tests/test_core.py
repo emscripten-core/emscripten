@@ -1289,7 +1289,9 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
-  def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
+  def test_iostream_ctors(self):
+    # iostream stuff must be globally constructed before user global
+    # constructors, so iostream works in global constructors
     self.do_run(r'''
 #include <iostream>
 
@@ -1302,7 +1304,7 @@ int main() {
   std::cout << "free code" << std::endl;
   return 0;
 }
-''', "bugfree code")
+''', 'bugfree code')
 
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
@@ -7892,7 +7894,8 @@ extern "C" {
     self.emcc_args += ['-DTEST_BRK=1']
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
-  # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  # Tests that we can use the dlmalloc mallinfo() function to obtain information
+  # about malloc()ed blocks and compute how much memory is used/freed.
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 

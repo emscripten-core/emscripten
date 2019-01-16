@@ -2249,7 +2249,7 @@ class Building(object):
     # Run Emscripten
     outfile = infile + '.o.js'
     with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.main(infile, outfile, memfile, js_libraries)
+      emscripten.run(infile, outfile, memfile, js_libraries)
 
     # Detect compilation crashes and errors
     assert os.path.exists(outfile), 'Emscripten failed to generate .js'
