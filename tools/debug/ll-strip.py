@@ -21,7 +21,7 @@ try:
 except:
   print_usage()
 
-func_start = re.compile("^define\s")
+func_start = re.compile(r"^define\s")
 func_end = re.compile("^}$")
 
 function_counter = 0

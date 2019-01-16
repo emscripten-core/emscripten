@@ -164,9 +164,9 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
   parse_pos = 0
   prev_end_pos = 0
   file_len = len(file_contents)
-  func_regex = re.compile('function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{') # Search for "function foo (param1, param2, ..., paranN) {"
-  var_block_regex = re.compile('var\s+(\w+)\s*=\s*([{\[\(])') # Search for "var foo = {"
-  var_regex = re.compile('var\s+([\w]+)\s*=\s*[\w\s,]*?;') # Search for "var foo = .... ;"
+  func_regex = re.compile(r'function\s+([\w$]+)\s*\(([\w\s$,]*?)\)\s*{') # Search for "function foo (param1, param2, ..., paranN) {"
+  var_block_regex = re.compile(r'var\s+(\w+)\s*=\s*([{\[\(])') # Search for "var foo = {"
+  var_regex = re.compile(r'var\s+([\w]+)\s*=\s*[\w\s,]*?;') # Search for "var foo = .... ;"
   unaccounted_bytes = 0
   unaccounted_lines = 0
 
