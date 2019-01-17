@@ -266,14 +266,12 @@ function JSify(data, functionsOnly) {
         // Emit the body of a JS library function.
         var proxyingMode = LibraryManager.library[ident + '__proxy'];
         if (USE_PTHREADS && proxyingMode) {
-          var sig = LibraryManager.library[ident + '__sig'];
-          if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
-          sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
           if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
             throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
           }
           var sync = proxyingMode === 'sync';
-          if (sig.length > 1) {
+          var hasArgs = snippet.match(/function\s+.*?\s*\((.*?)\)\s*{/)[1].length > 0;
+          if (hasArgs) {
             // If the function takes parameters, forward those to the proxied function call
             var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
           } else {

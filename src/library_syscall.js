@@ -1686,9 +1686,6 @@ for (var x in SyscallsLibrary) {
   if (typeof t === 'string') continue;
   t = t.toString();
   var pre = '', post = '';
-#if USE_PTHREADS
-  pre += 'if (ENVIRONMENT_IS_PTHREAD) { return _emscripten_sync_run_in_main_thread_2({{{ cDefine("EM_PROXIED_SYSCALL") }}}, ' + which + ', varargs) }\n';
-#endif
   pre += 'SYSCALLS.varargs = varargs;\n';
 #if SYSCALL_DEBUG
   pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
@@ -1726,6 +1723,9 @@ for (var x in SyscallsLibrary) {
   SyscallsLibrary[x] = eval('(' + t + ')');
   if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
   SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
+#if USE_PTHREADS
+  SyscallsLibrary[x + '__proxy'] = 'sync';
+#endif
 }
 
 #if USE_PTHREADS
