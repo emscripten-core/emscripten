@@ -148,6 +148,15 @@ class other(RunnerCore):
       self.assertContained('LLVM_ROOT', config_contents)
       os.remove(config_path)
 
+  def test_emcc_output_mjs(self):
+    run_process([PYTHON, EMCC, '-o', 'hello_world.mjs', path_from_root('tests', 'hello_world.c')])
+    with open('hello_world.mjs') as f:
+      output = f.read()
+    self.assertContained('export default Module;', output)
+    # TODO(sbc): Test that this is actually runnable.  We currently don't have
+    # any tests for EXPORT_ES6 but once we do this should be enabled.
+    # self.assertContained('hello, world!', run_js('hello_world.mjs'))
+
   def test_emcc_1(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
       # --version

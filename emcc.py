@@ -79,7 +79,7 @@ SUPPORTED_LINKER_FLAGS = (
 
 LIB_PREFIXES = ('', 'lib')
 
-JS_CONTAINING_SUFFIXES = ('js', 'html')
+JS_CONTAINING_SUFFIXES = ('js', 'mjs', 'html')
 EXECUTABLE_SUFFIXES = JS_CONTAINING_SUFFIXES + ('wasm',)
 
 DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
@@ -917,7 +917,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     final_ending = ('.' + final_suffix) if len(final_suffix) else ''
 
     # target is now finalized, can finalize other _target s
-    js_target = unsuffixed(target) + '.js'
+    if final_suffix == 'mjs':
+      shared.Settings.EXPORT_ES6 = 1
+      shared.Settings.MODULARIZE = 1
+      js_target = target
+    else:
+      js_target = unsuffixed(target) + '.js'
 
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
@@ -1268,7 +1273,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
       exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
-    # When MODULARIZE option is used, currently declare all module exports individually - TODO: this could be optimized
+    if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
+      exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
+
+    # When MODULARIZE option is used, currently declare all module exports
+    # individually - TODO: this could be optimized
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
       logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1, since MODULARIZE currently requires declaring asm.js/wasm module exports in full')

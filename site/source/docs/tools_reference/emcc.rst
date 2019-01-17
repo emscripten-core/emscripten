@@ -446,6 +446,7 @@ Options that are modified or new in *emcc* are listed below:
   The ``target`` file name extension defines the output type to be generated:
 
     - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
+    - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.bc** : LLVM bitcode.
     - <name> **.o** : LLVM bitcode (same as .bc), unless in `WASM_OBJECT_FILES` mode, in which case it will contain a WebAssembly object.
