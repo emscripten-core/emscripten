@@ -106,8 +106,9 @@ typedef struct em_queued_call
   int functionEnum;
   void *functionPtr;
   int operationDone;
-  // If set, this is a JS call.
-  void* js; // TODO
+  // If set, this is a JS call: number of arguments are in functionEnum, the index in functionPtr,
+  // and args in args.
+  int js;
   em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
   em_variant_val returnValue;
 
