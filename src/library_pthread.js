@@ -1151,11 +1151,15 @@ var LibraryPThread = {
     // We also pass 'sync' to C separately, since C needs to look at it.
     // The buffer remains alive until receiveOnMainThread frees it.
     var numCallArgs = arguments.length - 2;
-    var buffer = _malloc(numCallArgs * 8); // TODO: stackAlloc if sync?
+    // Allocate a buffer, which will be copied by the C code.
+    var stack = stackSave();
+    var buffer = stackAlloc(numCallArgs * 8);
     for (var i = 0; i < numCallArgs; i++) {
       HEAPF64[(buffer >> 3) + i] = arguments[1 + i];
     }
-    return _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
+    stackRestore(stack);
+    return ret;
   },
 
   emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js'],
