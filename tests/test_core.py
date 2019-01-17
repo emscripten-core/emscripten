@@ -5529,7 +5529,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp')).read(), 'Success!')
 
   # ignore nans in some simd tests due to an LLVM regression still being investigated,
-  # https://github.com/kripken/emscripten/issues/4435
+  # https://github.com/emscripten-core/emscripten/issues/4435
   # https://llvm.org/bugs/show_bug.cgi?id=28510
   @staticmethod
   def ignore_nans(out, err=''):
@@ -5665,7 +5665,7 @@ return malloc(size);
 
   @SIMD
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
+    # test_simd7 is to test negative zero handling: https://github.com/emscripten-core/emscripten/issues/2791
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -7782,7 +7782,7 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_cxx_self_assign(self):
-    # See https://github.com/kripken/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
+    # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     create_test_file('src.cpp', r'''
       #include <map>
       #include <stdio.h>

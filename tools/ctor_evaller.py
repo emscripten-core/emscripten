@@ -281,7 +281,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     err_result = read_and_delete(err_file)
     if proc.returncode != 0:
       # TODO(sbc): This should never happen under normal circumstances.
-      # switch to exit_with_error once we fix https://github.com/kripken/emscripten/issues/7463
+      # switch to exit_with_error once we fix https://github.com/emscripten-core/emscripten/issues/7463
       logging.debug('unexpected error while trying to eval ctors:\n' + out_result + '\n' + err_result)
       return (0, 0, 0, 0)
 

@@ -792,7 +792,7 @@ window.close = function() {
 
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
-    # See https://github.com/kripken/emscripten/issues/4069.
+    # See https://github.com/emscripten-core/emscripten/issues/4069.
     create_test_file('flag_0.js', '''
       Module['arguments'] = ['-0'];
     ''')
@@ -1252,7 +1252,7 @@ keydown(100);keyup(100); // trigger the end
     for args in [[], ['-s', 'USE_PTHREADS=1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
-  @unittest.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
+  @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['--shell-file', path_from_root('tests', 'test_fflush.html')])
 
@@ -2496,7 +2496,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
   @requires_graphics_hardware
-  # Verify bug https://github.com/kripken/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   def test_html5_webgl_create_context2(self):
     self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL'], expected='0', timeout=20)
 
@@ -2513,7 +2513,7 @@ Module["preRun"].push(function () {
       self.skipTest('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest(path_from_root('tests', 'webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0', timeout=20)
 
-  # Test for PR#5373 (https://github.com/kripken/emscripten/pull/5373)
+  # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   def test_webgl_shader_source_length(self):
     for opts in [[], ['-s', 'FULL_ES2=1']]:
       print(opts)

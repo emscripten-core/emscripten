@@ -6,7 +6,7 @@ Manually Building Emscripten on Windows
 
 This page contains basic instructions on how to manually build and configure Emscripten from source on a clean Windows box.
 
-.. note:: The instructions clone from the main Emscripten repository (https://github.com/kripken/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
+.. note:: The instructions clone from the main Emscripten repository (https://github.com/emscripten-core/emscripten). :ref:`Contributors <contributing>` should instead clone from their own Emscripten fork, and submit changes as pull requests.
 
 .. tip:: You can also build Emscripten from source :ref:`using the SDK <building-emscripten-from-source-using-the-sdk>`. This is recommended if you need to easily switch between SDK and source builds.
 
@@ -48,18 +48,18 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Build :ref:`Fastcomp <LLVM-Backend>` (LLVM + Clang) from source using :ref:`these instructions <building-fastcomp-from-source>`.
 
-#. Clone the `kripken/emscripten <https://github.com/kripken/emscripten>`_ repository from GitHub. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
+#. Clone the `emscripten-core/emscripten <https://github.com/emscripten-core/emscripten>`_ repository from GitHub. This repository contains the main compiler tool for compiling C/C++ programs to JavaScript:
 
   - Using *GitHub for Windows*:
     -  Launch the *GitHub for Windows* client. Click **Skip Setup** if you don't have a GitHub account.
     -  (optional) Select **Options** from the gear menu, and customize the default storage directory. Ensure the path has no spaces.
-    -  In your web browser, open https://github.com/kripken/emscripten and press the **Clone in Windows** button.
+    -  In your web browser, open https://github.com/emscripten-core/emscripten and press the **Clone in Windows** button.
 
   - Using the command line:
     -  Create a directory (with no spaces in the name) to contain the clone.
     -  Enter the following command into the terminal: ::
 
-      git clone https://github.com/kripken/emscripten.git
+      git clone https://github.com/emscripten-core/emscripten.git
 
 
 

@@ -71,7 +71,7 @@ The mapping between the IDL definition and the C++ is fairly obvious. The main t
 Generating the bindings glue code
 ---------------------------------
 
-The *bindings generator* (`tools/webidl_binder.py <https://github.com/kripken/emscripten/blob/master/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
+The *bindings generator* (`tools/webidl_binder.py <https://github.com/emscripten-core/emscripten/blob/master/tools/webidl_binder.py>`_) takes a Web IDL file name and an output file name as inputs, and creates C++ and JavaScript glue code files.
 
 For example, to create the glue code files **glue.cpp** and **glue.js** for the IDL file **my_classes.idl**, you would use the following command:
 
@@ -487,6 +487,6 @@ The type names in WebIDL are not identical to those in C++. This section shows t
 Test and example code
 =====================
 
-For a complete working example, see `test_webidl <https://github.com/kripken/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/kripken/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
+For a complete working example, see `test_webidl <https://github.com/emscripten-core/emscripten/tree/master/tests/webidl>`_ in the `test suite <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_. The test suite code is guaranteed to work and covers more cases than this article alone.
 
 Another good example is `ammo.js <https://github.com/kripken/ammo.js/tree/master>`_, which uses the *WebIDL Binder* to port the `Bullet Physics engine <http://bulletphysics.org/wordpress/>`_ to the Web.

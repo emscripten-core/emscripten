@@ -157,7 +157,7 @@ int main()
     assert(!!numSamples == !!antialias);
     printf("\n");
 
-    // Test bug https://github.com/kripken/emscripten/issues/1330:
+    // Test bug https://github.com/emscripten-core/emscripten/issues/1330:
     unsigned vb;
     glGenBuffers(1, &vb);
     glBindBuffer(GL_ARRAY_BUFFER, vb);
@@ -178,7 +178,7 @@ int main()
     if (vb2 != vb4) printf("Index 1: Generated VB: %d, read back VB: %d\n", vb2, vb4);
     assert(vb2 == vb4);
 
-    // Test bug https://github.com/kripken/emscripten/issues/7472:
+    // Test bug https://github.com/emscripten-core/emscripten/issues/7472:
     GLint enabled = 0;
     glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
     assert(enabled == 0);

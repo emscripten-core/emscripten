@@ -55,14 +55,14 @@ Platform-specific notes
 Windows
 +++++++
 
-#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
   .. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
 
 macOS
 +++++
 
-If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
+If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
@@ -106,7 +106,7 @@ Linux
     # Install Java (optional, only needed for Closure Compiler minification)
     sudo apt-get install default-jre
 
-.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 
@@ -191,5 +191,5 @@ On Windows, you can also install one of the **old versions** via an offline NSIS
 - `emsdk-1.5.6.1-full.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.1-full.exe)>`_ (32-bit, first emsdk release)
 
 
-A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/kripken/emscripten/releases>`_.
+A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/emscripten-core/emscripten/releases>`_.
 

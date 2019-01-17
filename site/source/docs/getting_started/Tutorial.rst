@@ -80,7 +80,7 @@ You can now open ``hello.html`` in a web browser.
 
 Once you have the HTML loaded in your browser, you'll see a text area for displaying the output of the ``printf()`` calls in the native code.
 
-The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
+The HTML output isn't limited just to just displaying text. You can also use the SDL API to show a colored cube in a ``<canvas>`` element (on browsers that support it). For an example, build the `hello_world_sdl.cpp <https://github.com/emscripten-core/emscripten/blob/master/tests/hello_world_sdl.cpp>`_ test code and then refresh the browser: ::
 
     ./emcc tests/hello_world_sdl.cpp -o hello.html
 
@@ -102,7 +102,7 @@ JavaScript is usually run in the sandboxed environment of a web browser, without
 Files that you want to access should be :ref:`preloaded <emcc-preload-file>` or :ref:`embedded <emcc-embed-file>` into the virtual file system. Preloading (or embedding) generates a virtual file system that corresponds to the file system structure at *compile* time, *relative to the current directory*.
 
 
-The `hello_world_file.cpp <https://github.com/kripken/emscripten/blob/master/tests/hello_world_file.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
+The `hello_world_file.cpp <https://github.com/emscripten-core/emscripten/blob/master/tests/hello_world_file.cpp>`_ example shows how to load a file (both the test code and the file to be loaded shown below):
 
 .. include:: ../../../../tests/hello_world_file.cpp
    :literal:
