@@ -106,8 +106,8 @@ typedef struct em_queued_call
   int functionEnum;
   void *functionPtr;
   int operationDone;
-  // If != 0, this is a JS call, and this has a pointer to a buffer with the info.
-  void* js;
+  // If set, this is a JS call.
+  void* js; // TODO
   em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
   em_variant_val returnValue;
 

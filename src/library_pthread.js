@@ -1144,33 +1144,30 @@ var LibraryPThread = {
     //   * the index of the function
     //   * the call args
     //   * whether it is sync
+    var index = arguments[0];
     var sync = arguments[arguments.length - 1];
     // The serialization buffer contains the number of call params, and then
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     // The buffer remains alive until receiveOnMainThread frees it.
-    var bufferLen = arguments.length + 1;
-    var buffer = _malloc(bufferLen * 8); // TODO: stackAlloc if sync?
     var numCallArgs = arguments.length - 2;
-    HEAPF64[buffer >> 3] = numCallArgs; // num of call args
-    for (var i = 0; i < bufferLen - 1; i++) {
-      HEAPF64[(buffer >> 3) + 1 + i] = arguments[i];
+    var buffer = _malloc(numCallArgs * 8); // TODO: stackAlloc if sync?
+    for (var i = 0; i < numCallArgs; i++) {
+      HEAPF64[(buffer >> 3) + i] = arguments[1 + i];
     }
-    return _emscripten_run_in_main_runtime_thread_js(buffer, sync);
+    return _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
   },
 
   emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js'],
-  emscripten_receive_on_main_thread_js: function(buffer) {
+  emscripten_receive_on_main_thread_js: function(index, numCallArgs, buffer) {
     // Avoid garbage by reusing a single JS array for call arguments.
     if (!_emscripten_receive_on_main_thread_js.callArgs) {
       _emscripten_receive_on_main_thread_js.callArgs = [];
     }
-    var numCallArgs = HEAPF64[buffer >> 3];
-    var index = HEAPF64[(buffer >> 3) + 1];
     var callArgs = _emscripten_receive_on_main_thread_js.callArgs;
     callArgs.length = numCallArgs;
     for (var i = 0; i < numCallArgs; i++) {
-      callArgs[i] = HEAPF64[(buffer >> 3) + 2 + i];
+      callArgs[i] = HEAPF64[(buffer >> 3) + i];
     }
     var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
     // Proxied JS library funcs are encoded as positive values, and

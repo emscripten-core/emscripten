@@ -193,7 +193,7 @@ void emscripten_async_waitable_close(em_queued_call *call)
 	em_queued_call_free(call);
 }
 
-extern double emscripten_receive_on_main_thread_js(void*);
+extern double emscripten_receive_on_main_thread_js(int, int, void*);
 
 static void _do_call(em_queued_call *q)
 {
@@ -242,7 +242,7 @@ static void _do_call(em_queued_call *q)
 		}
 	} else {
 		// JS call
-		q->returnValue.d = emscripten_receive_on_main_thread_js(q->js);
+		q->returnValue.d = emscripten_receive_on_main_thread_js((int)q->functionPtr, EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum), q->js);
 	}
 
 	// If the caller is detached from this operation, it is the main thread's responsibility to free up the call object.
@@ -646,17 +646,25 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 
 // emscripten_sync_run_in_main_runtime_thread_js: proxying for JS library methods.
 
-EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(void* buffer, int sync)
+static void prepare_js_proxying(em_queued_call* q, int index, int num_args, void* buffer)
+{
+	q->functionEnum = EM_FUNC_SIG_WITH_N_PARAMETERS(num_args);
+	q->functionPtr = (void*)index;
+	q->js = buffer; // TODO: write into args
+}
+
+EMSCRIPTEN_KEEPALIVE double emscripten_run_in_main_runtime_thread_js(int index, int num_args, void* buffer, int sync)
 {
 	if (sync) {
-		em_queued_call q = { .js = buffer };
+		em_queued_call q = {};
+		prepare_js_proxying(&q, index, num_args, buffer);
 		emscripten_sync_run_in_main_thread(&q);
 		return q.returnValue.d;
 	} else {
 		// 'async' runs are fire and forget, where the caller detaches itself from the call object after returning here,
 		// and it is the callee's responsibility to free up the memory after the call has been performed.
 		em_queued_call *q = em_queued_call_malloc();
-		q->js = buffer;
+		prepare_js_proxying(q, index, num_args, buffer);
 		q->calleeDelete = 1;
 		emscripten_async_run_in_main_thread(q);
 		return 0;
