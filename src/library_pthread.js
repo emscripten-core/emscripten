@@ -1176,13 +1176,16 @@ var LibraryPThread = {
     var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
+    var func;
     if (index > 0) {
-      ret = proxiedFunctionTable[index].apply(null, callArgs);
+      func = proxiedFunctionTable[index];
     } else {
-      ret = ASM_CONSTS[-index - 1].apply(null, callArgs);
+      func = ASM_CONSTS[-index - 1];
     }
-    _free(buffer);
-    return ret;
+#if ASSERTIONS
+    assert(func.length == numCallArgs);
+#endif
+    return func.apply(null, callArgs);
   },
 };
 
