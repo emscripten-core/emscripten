@@ -1818,7 +1818,7 @@ function getBinaryPromise() {
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-function createWasm(global, env, providedBuffer) {
+function createWasm(env) {
   if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
     abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
@@ -2001,7 +2001,7 @@ Module['asm'] = function(global, env, providedBuffer) {
     env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
   }
 
-  var exports = createWasm(global, env, providedBuffer);
+  var exports = createWasm(env);
 
 #if ASSERTIONS
   assert(exports, 'binaryen setup failed (no wasm support?)');
