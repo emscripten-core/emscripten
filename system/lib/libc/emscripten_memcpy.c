@@ -19,7 +19,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   unsigned char *d_end;
 
   if (n >= 8192) {
-    return emscripten_memcpy_big(dest, src, n);
+    emscripten_memcpy_big(dest, src, n);
+    return dest;
   }
 
   d_end = d + n;

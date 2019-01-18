@@ -818,7 +818,6 @@ LibraryManager.library = {
 
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
-    return dest;
   },
 
   memcpy__asm: true,
@@ -838,7 +837,8 @@ LibraryManager.library = {
       8192
 #endif
     ) {
-      return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+      _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+      return dest|0;
     }
 
     ret = dest|0;
