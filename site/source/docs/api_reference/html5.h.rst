@@ -2097,7 +2097,7 @@ Functions
   Fetches the context creation attributes that were used to initialize the given WebGL context.
 
   :param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to query.
-  :param EmscriptenWebGLContextAttributes *outAttributes: The context creation attributes of the specified context will be filled in here. This pointer cannot be null.
+  :param EmscriptenWebGLContextAttributes \*outAttributes: The context creation attributes of the specified context will be filled in here. This pointer cannot be null.
   :returns: On success, EMSCRIPTEN_RESULT_SUCCESS.
 
 

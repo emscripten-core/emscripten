@@ -960,6 +960,7 @@ LibraryManager.library = {
         num = (num-1)|0;
       }
       aligned_dest_end = (dest_end & -4)|0;
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_dest_end = (aligned_dest_end - 64)|0;
       while ((dest|0) <= (block_aligned_dest_end|0) ) {
 #if SIMD
@@ -988,6 +989,7 @@ LibraryManager.library = {
         dest = (dest+64)|0;
         src = (src+64)|0;
       }
+#endif
       while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
@@ -1059,8 +1061,11 @@ LibraryManager.library = {
       }
 
       aligned_end = (end & -4)|0;
-      block_aligned_end = (aligned_end - 64)|0;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
+
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
+      block_aligned_end = (aligned_end - 64)|0;
+
 #if SIMD
       value16 = SIMD_Int32x4_splat(value4);
 #endif
@@ -1091,6 +1096,7 @@ LibraryManager.library = {
 #endif
         ptr = (ptr + 64)|0;
       }
+#endif
 
       while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};

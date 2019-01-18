@@ -113,6 +113,11 @@ var MALLOC = "dlmalloc";
 // returning NULL (0) when it fails.
 var ABORTING_MALLOC = 1;
 
+// If 1, generated a version of memcpy() and memset() that unroll their
+// copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
+// This flag only has effect when targeting asm.js.
+var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
+
 // If false, we abort with an error if we try to allocate more memory than
 // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
 // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
