@@ -90,7 +90,7 @@ The most important settings are:
 
     Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic token value at the end of the stack, which is checked in certain locations to verify that the user code does not accidentally write past the end of the stack. While overrunning the Emscripten stack is not a security issue (JavaScript is sandboxed already), writing past the stack causes memory corruption in global data and dynamically allocated memory sections in the Emscripten HEAP, which makes the application fail in unexpected ways. The value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard checks, which can give a more precise callstack at the expense of some performance. Default value is 2 if ``ASSERTIONS=1`` is set, and disabled otherwise.
 
-A number of other useful debug settings are defined in `src/settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
+A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
 
 .. _debugging-emcc-v:
@@ -257,7 +257,7 @@ You can also make native builds using the :term:`LLVM Nativizer` tool. This can 
 .. note::
 
   - The native build created using the :term:`LLVM Nativizer` will use native system libraries. Direct comparisons of output with Emscripten-compiled code can therefore be misleading.
-  - Attempting to interpret code compiled with ``-g`` using the *LLVM Nativizer* or :term:`lli` may crash, so you may need to build once without ``-g`` for these tools, then build again with ``-g``. Another option is to use `tools/exec_llvm.py <https://github.com/kripken/emscripten/blob/master/tools/exec_llvm.py>`_ in Emscripten, which will run *lli* after cleaning out debug info.
+  - Attempting to interpret code compiled with ``-g`` using the *LLVM Nativizer* or :term:`lli` may crash, so you may need to build once without ``-g`` for these tools, then build again with ``-g``. Another option is to use `tools/exec_llvm.py <https://github.com/emscripten-core/emscripten/blob/master/tools/exec_llvm.py>`_ in Emscripten, which will run *lli* after cleaning out debug info.
 
 
 Useful Links

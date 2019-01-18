@@ -41,7 +41,7 @@ void RunTest(int testVariant)
     glBindAttribLocation(program, 0, "pos");
     glLinkProgram(program);
 
-    // Also test that GL_ACTIVE_ATTRIBUTE_MAX_LENGTH and GL_ACTIVE_UNIFORM_MAX_LENGTH work. See https://github.com/kripken/emscripten/issues/1796.
+    // Also test that GL_ACTIVE_ATTRIBUTE_MAX_LENGTH and GL_ACTIVE_UNIFORM_MAX_LENGTH work. See https://github.com/emscripten-core/emscripten/issues/1796.
     GLint param;
     glGetProgramiv(program, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &param);
     printf("active attrib max length: %d\n", param);

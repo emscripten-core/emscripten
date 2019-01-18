@@ -4,7 +4,7 @@
 vr.h
 ====
 
-The C APIs in `vr.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/vr.h>`_ provide basic interfaces for interacting with WebVR from Emscripten.
+The C APIs in `vr.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/vr.h>`_ provide basic interfaces for interacting with WebVR from Emscripten.
 
 .. contents:: Table of Contents
   :local:
@@ -17,7 +17,7 @@ Test/Example code
 
 The vr test code demonstrates how to use this API:
 
-  - `test_vr.c <https://github.com/kripken/emscripten/blob/master/tests/test_vr.c>`_
+  - `test_vr.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_vr.c>`_
 
 .. _functions-vr-api:
 

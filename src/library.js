@@ -1763,7 +1763,7 @@ LibraryManager.library = {
 
 #if MAIN_MODULE == 0
   dlopen: function(/* ... */) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
   dlclose: 'dlopen',
   dlsym:   'dlopen',

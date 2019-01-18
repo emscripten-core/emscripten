@@ -6,7 +6,7 @@
  *
  * This file contains definitions for things that we'd really rather the closure compiler *didn't* minify.
  * See http://code.google.com/p/closure-compiler/wiki/FAQ#How_do_I_write_an_externs_file
- * See also the discussion here: https://github.com/kripken/emscripten/issues/1979
+ * See also the discussion here: https://github.com/emscripten-core/emscripten/issues/1979
  *
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
@@ -1175,7 +1175,7 @@ var i64Math;
 var define = function (wrapper) {};
 
 /**
- * GL functions (https://github.com/kripken/emscripten/commit/97a464a654fdadf5dfb8aa082b48516e6bf8d402#commitcomment-25520648)
+ * GL functions (https://github.com/emscripten-core/emscripten/commit/97a464a654fdadf5dfb8aa082b48516e6bf8d402#commitcomment-25520648)
  */
 /**
  * @suppress {duplicate, undefinedVars}
@@ -1337,7 +1337,7 @@ var addEventListener = function (type, listener) {};
  * @param {HTMLCanvasElement} canvas
  *
  * @suppress {duplicate}
- * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
+ * @todo: https://github.com/emscripten-core/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
  */
 var __registerRestoreOldStyle = function(canvas) {};
 
@@ -1347,7 +1347,7 @@ var __registerRestoreOldStyle = function(canvas) {};
  * @param {number} leftRight
  *
  * @suppress {duplicate}
- * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
+ * @todo: https://github.com/emscripten-core/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
  */
 var __setLetterbox = function(element, topBottom, leftRight) {};
 
