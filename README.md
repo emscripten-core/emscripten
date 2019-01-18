@@ -1,6 +1,5 @@
 ![emscripten logo](media/switch_logo.png)
 
-[![Build Status](https://travis-ci.org/emscripten-core/emscripten.svg?branch=incoming)](https://travis-ci.org/emscripten-core/emscripten/branches)
 [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/incoming)
 
 Emscripten is an [LLVM](https://en.wikipedia.org/wiki/LLVM)-to-JavaScript compiler. It takes LLVM bitcode - which can be generated
