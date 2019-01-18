@@ -27,7 +27,7 @@ A complete Emscripten environment requires the following tools. First test to se
   - :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`Fastcomp` (Emscripten's fork of LLVM and Clang)
-  - The `Emscripten code <https://github.com/kripken/emscripten>`_, from GitHub
+  - The `Emscripten code <https://github.com/emscripten-core/emscripten>`_, from GitHub
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 

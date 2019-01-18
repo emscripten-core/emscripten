@@ -39,9 +39,9 @@ Check out the rest of this article for instructions on how to :ref:`build the si
 Building the site
 =================
 
-The site sources are stored on `GitHub <https://github.com/kripken/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
+The site sources are stored on `GitHub <https://github.com/emscripten-core/emscripten/tree/incoming/site>`_. Edits and additions should be submitted to this branch in the same way as any other change to the tool.
 
-The site is published to the **kripken/emscripten-site** *gh-pages* branch (GitHub pages).
+The site is published to the **emscripten-core/emscripten-site** *gh-pages* branch (GitHub pages).
 
 .. note:: Remember to update the :ref:`about-build-versions` for *public* builds.
 
@@ -93,7 +93,7 @@ SDK builds are enabled by enabling the ``sdkbuild`` tag. This is done through th
 Build version
 -------------
 
-The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/kripken/emscripten/blob/incoming/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
+The documentation version should match the Emscripten version for the current build. For a general site build this will be the latest tagged release as defined in `Emscripten version <https://github.com/emscripten-core/emscripten/blob/incoming/emscripten-version.txt>`_. For an SDK build it will be the Emscripten version for the SDK.
 
 The version and release information is used in a few places in the documentation, for example :ref:`emscripten-authors`.
 
@@ -202,7 +202,7 @@ Different punctuation characters are used to specify nested sections. Although t
 Working in markdown
 -------------------
 
-New articles may be authored and discussed on the `wiki <https://github.com/kripken/emscripten/wiki>`_ using Markdown syntax before being included in the documentation set. The easiest way to convert these to restructured text is to use a tool like `Pandoc <http://johnmacfarlane.net/pandoc/try/?text=&from=markdown_github&to=rst>`_.
+New articles may be authored and discussed on the `wiki <https://github.com/emscripten-core/emscripten/wiki>`_ using Markdown syntax before being included in the documentation set. The easiest way to convert these to restructured text is to use a tool like `Pandoc <http://johnmacfarlane.net/pandoc/try/?text=&from=markdown_github&to=rst>`_.
 
 .. note:: The *get_wiki.py* tool (**/site/source/get_wiki.py**) can be used to automate getting a snapshot of the wiki. It clones the wiki and calls *pandoc* on each file. The output is copied to a folder **wiki_static**. The tool also adds a heading, a note stating that the file is a "wiki snapshot", and fixes up links marked as "inline code" to matching links in the API Reference.
 

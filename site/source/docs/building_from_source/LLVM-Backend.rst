@@ -20,8 +20,8 @@ Fastcomp overview
 
 Fastcomp is maintained in two repositories:
 
-- https://github.com/kripken/emscripten-fastcomp (LLVM)
-- https://github.com/kripken/emscripten-fastcomp-clang (Clang)
+- https://github.com/emscripten-core/emscripten-fastcomp (LLVM)
+- https://github.com/emscripten-core/emscripten-fastcomp-clang (Clang)
 
 Getting Fastcomp
 ================

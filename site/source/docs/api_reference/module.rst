@@ -33,7 +33,7 @@ When generating only JavaScript (as opposed to HTML), no ``Module`` object is cr
 
 .. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``-pre-js`` file.
 
-When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
+When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
 
   .. code-block:: javascript
 
@@ -134,5 +134,5 @@ Other methods
 
 .. js:function:: Module.onCustomMessage
 
-  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyWorker.js>`_).
 

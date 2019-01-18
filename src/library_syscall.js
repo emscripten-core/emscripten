@@ -554,7 +554,7 @@ var SyscallsLibrary = {
       }
       case 15: { // getsockopt
         var sock = SYSCALLS.getSocketFromFD(), level = SYSCALLS.get(), optname = SYSCALLS.get(), optval = SYSCALLS.get(), optlen = SYSCALLS.get();
-        // Minimal getsockopt aimed at resolving https://github.com/kripken/emscripten/issues/2211
+        // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
         // so only supports SOL_SOCKET with SO_ERROR.
         if (level === {{{ cDefine('SOL_SOCKET') }}}) {
           if (optname === {{{ cDefine('SO_ERROR') }}}) {

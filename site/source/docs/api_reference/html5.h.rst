@@ -4,7 +4,7 @@
 html5.h
 =======
 
-The C++ APIs in `html5.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
+The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
 
 .. tip:: The C++ APIs map closely to their :ref:`equivalent HTML5 JavaScript APIs <specifications-html5-api>`. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
 
@@ -117,9 +117,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5.c>`_
-  - `test_html5_fullscreen.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5_mouse.c>`_
+  - `test_html5.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_mouse.c>`_
 
 
 General types
@@ -226,7 +226,7 @@ Struct
 
   The event structure passed in `keyboard events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_: ``keypress``, ``keydown`` and ``keyup``.
 
-  Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/kripken/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
+  Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
 
 
   .. c:member:: EM_UTF8 key
@@ -287,7 +287,7 @@ Struct
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
-    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/kripken/emscripten/issues/2817 for more information.
+    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
 
 
 Callback functions
@@ -330,7 +330,7 @@ Functions
     - https://developer.mozilla.org/en/DOM/Event/UIEvent/KeyEvent
     - http://www.javascriptkit.com/jsref/eventkeyboardmouse.shtml
 
-    .. note:: To receive events, the element must be focusable, see https://github.com/kripken/emscripten/pull/7484#issuecomment-437887001
+    .. note:: To receive events, the element must be focusable, see https://github.com/emscripten-core/emscripten/pull/7484#issuecomment-437887001
 
 Mouse
 =====
@@ -1029,7 +1029,7 @@ Defines
 
     Specifies that the DOM element should not be resized by Emscripten runtime when transitioning between fullscreen and windowed modes. The browser will be responsible for
     scaling the DOM element to the fullscreen size. The proper browser behavior in this mode is to stretch the element to fit the full display ignoring aspect ratio, but at the
-    time of writing, browsers implement different behavior here. See the discussion at https://github.com/kripken/emscripten/issues/2556 for more information.
+    time of writing, browsers implement different behavior here. See the discussion at https://github.com/emscripten-core/emscripten/issues/2556 for more information.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
@@ -1201,7 +1201,7 @@ Functions
 
   .. note:: This function can be called anywhere, but for web security reasons its associated *request* can only be raised inside the event handler for a user-generated event (for example a key, mouse or touch press/release). This has implications for porting and the value of ``deferUntilInEventHandler``  — see :ref:`web-security-functions-html5-api` for more information.
 
-  .. note:: This function only performs a fullscreen request without changing any parameters of the DOM element that is to be displayed in fullscreen mode. At the time of writing, there are differences in how browsers present elements in fullscreen mode. For more information, read the discussion at https://github.com/kripken/emscripten/issues/2556. To display an element in fullscreen mode in a way that is consistent across browsers, prefer calling the function :c:func:`emscripten_request_fullscreen_strategy` instead. This function is best called only in scenarios where the preconfigured presets defined by :c:func:`emscripten_request_fullscreen_strategy` conflict with the developer's use case in some way.
+  .. note:: This function only performs a fullscreen request without changing any parameters of the DOM element that is to be displayed in fullscreen mode. At the time of writing, there are differences in how browsers present elements in fullscreen mode. For more information, read the discussion at https://github.com/emscripten-core/emscripten/issues/2556. To display an element in fullscreen mode in a way that is consistent across browsers, prefer calling the function :c:func:`emscripten_request_fullscreen_strategy` instead. This function is best called only in scenarios where the preconfigured presets defined by :c:func:`emscripten_request_fullscreen_strategy` conflict with the developer's use case in some way.
 
   :param target: |target-parameter-doc|
   :type target: const char*

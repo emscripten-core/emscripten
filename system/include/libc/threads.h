@@ -20,7 +20,7 @@ typedef void (*tss_dtor_t)(void *);
 #define __NEED_cnd_t
 #define __NEED_mtx_t
 
-// XXX Emscripten: Fix musl libc issue, where the above defines are wrong, but instead should be the following: (https://github.com/kripken/emscripten/issues/5343)
+// XXX Emscripten: Fix musl libc issue, where the above defines are wrong, but instead should be the following: (https://github.com/emscripten-core/emscripten/issues/5343)
 #define __NEED_pthread_cond_t
 #define __NEED_pthread_mutex_t
 // XXX

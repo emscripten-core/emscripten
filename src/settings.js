@@ -13,7 +13,7 @@
 // and `-s NO_OPTION` expands to `-s OPTION=0` (assuming OPTION is a valid
 // option).
 //
-// See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+// See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
 // Note that the values here are the defaults in -O0, that is, unoptimized
 // mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
@@ -557,7 +557,7 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // or programs that don't need exit() to work.
 
 // For more explanations of this option, please visit
-// https://github.com/kripken/emscripten/wiki/Asyncify
+// https://github.com/emscripten-core/emscripten/wiki/Asyncify
 var NODEJS_CATCH_EXIT = 1;
 
 // Whether to enable asyncify transformation

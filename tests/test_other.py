@@ -625,7 +625,7 @@ f.close()
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
           env = os.environ.copy()
-          # https://github.com/kripken/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
+          # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
           if test_dir == 'target_html':
             env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print(str(cmd))
@@ -7906,7 +7906,7 @@ int main() {
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  0, [],         [],          61,  0,  1,  1), # noqa
         (['-Os'],  0, [],         [],          61,  0,  1,  1), # noqa
-        (['-Oz'],  0, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/kripken/emscripten/issues/6233
+        (['-Oz'],  0, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
       ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')

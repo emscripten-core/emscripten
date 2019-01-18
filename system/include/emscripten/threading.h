@@ -286,7 +286,7 @@ int emscripten_is_main_runtime_thread(void);
 // Returns 1 if the current thread is the main browser thread.
 int emscripten_is_main_browser_thread(void);
 
-// A temporary workaround to issue https://github.com/kripken/emscripten/issues/3495:
+// A temporary workaround to issue https://github.com/emscripten-core/emscripten/issues/3495:
 // Call this in the body of all lock-free atomic (cas) loops that the main thread might enter
 // which don't otherwise call to any pthread api calls (mutexes) or C runtime functions
 // that are considered cancellation points.
