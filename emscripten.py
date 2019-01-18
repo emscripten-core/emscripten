@@ -670,11 +670,16 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   pthread = ''
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
+
+  if len(global_initializers) > 0:
+    global_initializers = '/* global initializers */ {pthread} __ATINIT__.push({global_initializers});'.format(pthread=pthread, global_initializers=global_initializers)
+  else:
+    global_initializers = '/* global initializers */ /*__ATINIT__.push();*/'
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''\
 STATICTOP = STATIC_BASE + {staticbump};
-/* global initializers */ {pthread} __ATINIT__.push({global_initializers});
+{global_initializers}
 {mem_init}'''.format(staticbump=staticbump,
-                     pthread=pthread,
                      global_initializers=global_initializers,
                      mem_init=mem_init))
 
