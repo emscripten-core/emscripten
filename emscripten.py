@@ -1755,10 +1755,10 @@ function SAFE_FT_MASK(value, mask) {
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   shared_array_buffer = ''
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
+    shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
 
   module_get = 'Module{access} = {val};'
-  module_global = module_get.format(access=access_quote('asmGlobalArg'), val=the_global)
+  module_global = 'var asmGlobalArg = ' + the_global
   module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
@@ -1832,8 +1832,8 @@ def create_asm_end(exports):
   return %s;
 })
 // EMSCRIPTEN_END_ASM
-(Module%s, Module%s, buffer);
-''' % (exports, access_quote('asmGlobalArg'), access_quote('asmLibraryArg'))
+(%s, Module%s, buffer);
+''' % (exports, 'asmGlobalArg', access_quote('asmLibraryArg'))
 
 
 def create_first_in_asm():
@@ -2201,13 +2201,13 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
   module = []
-  module.append('Module%s = {};\n' % access_quote('asmGlobalArg'))
+  module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;\n")
+    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append("Module['wasmTableSize'] = %s;\n" % metadata['tableSize'])
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
-  module.append("var asm = Module['asm'](Module%s, Module%s, buffer);\n" % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg')))
+  module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
 
   module.append(receiving)
   module.append(invoke_wrappers)
