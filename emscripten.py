@@ -1539,7 +1539,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 #      receiving += ''.join(['var ' + s + ' = asm["' + s + '"];\n' for s in module_exports])
 #      receiving += 'for(var module_exported_function in asm) Module[module_exported_function] = asm[module_exported_function];\n'
     else:
-      receiving += '(function() { for(var i in asm) this[i] = Module[i] = asm[i]; }());\n'
+      receiving += 'for(var i in asm) this[i] = Module[i] = asm[i];\n'
   else:
     receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in module_exports])
   receiving += ';\n'
