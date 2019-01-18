@@ -30,9 +30,6 @@ from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
 logger = logging.getLogger('emscripten')
 
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
 if STDERR_FILE:
   STDERR_FILE = os.path.abspath(STDERR_FILE)
@@ -2308,7 +2305,7 @@ def normalize_line_endings(text):
   return text
 
 
-def main(infile, outfile, memfile, libraries):
+def run(infile, outfile, memfile, libraries):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
