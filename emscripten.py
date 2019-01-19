@@ -1405,7 +1405,7 @@ function ftCall_%s(%s) {%s
 
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory', 'setTempRet0', 'getTempRet0']
+  basic_funcs = ['abort', 'assert', 'setTempRet0', 'getTempRet0']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -2136,7 +2136,7 @@ def create_em_js(forwarded_json, metadata):
 
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
-  basic_funcs = ['assert', 'enlargeMemory', 'getTotalMemory']
+  basic_funcs = ['assert']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.SAFE_HEAP:
