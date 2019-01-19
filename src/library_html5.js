@@ -2428,13 +2428,13 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$allocateUTF8'],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
     var targetCanvasPtr = 0;
     if (targetCanvas) {
-      targetCanvasPtr = stringToNewUTF8(targetCanvas);
+      targetCanvasPtr = allocateUTF8(targetCanvas);
     }
     {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
     {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};

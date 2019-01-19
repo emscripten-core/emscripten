@@ -173,6 +173,11 @@ Module['callMain'] = function callMain(args) {
 
   ensureInitRuntime();
 
+#if BOOTSTRAPPING_STRUCT_INFO
+  // When bootstrapping struct info, allocateUTF8OnStack() is not included in build (and not used)
+  var argc = 0;
+  var argv = 0;
+#else
   var argc = args.length+1;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
   HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
@@ -180,6 +185,7 @@ Module['callMain'] = function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
+#endif
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['emtStackSave']();

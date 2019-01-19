@@ -1025,7 +1025,7 @@ var LibraryGL = {
   },
 
   glGetString__sig: 'ii',
-  glGetString__deps: ['$stringToNewUTF8'],
+  glGetString__deps: ['$allocateUTF8'],
   glGetString: function(name_) {
     if (GL.stringCache[name_]) return GL.stringCache[name_];
     var ret;
@@ -1039,7 +1039,7 @@ var LibraryGL = {
           gl_exts.push("GL_" + exts[i]);
 #endif
         }
-        ret = stringToNewUTF8(gl_exts.join(' '));
+        ret = allocateUTF8(gl_exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -1056,7 +1056,7 @@ var LibraryGL = {
           err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
 #endif
         }
-        ret = stringToNewUTF8(s);
+        ret = allocateUTF8(s);
         break;
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
@@ -1070,7 +1070,7 @@ var LibraryGL = {
         {
           glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
         }
-        ret = stringToNewUTF8(glVersion);
+        ret = allocateUTF8(glVersion);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
         var glslVersion = GLctx.getParameter(GLctx.SHADING_LANGUAGE_VERSION);
@@ -1081,7 +1081,7 @@ var LibraryGL = {
           if (ver_num[1].length == 3) ver_num[1] = ver_num[1] + '0'; // ensure minor version has 2 digits
           glslVersion = 'OpenGL ES GLSL ES ' + ver_num[1] + ' (' + glslVersion + ')';
         }
-        ret = stringToNewUTF8(glslVersion);
+        ret = allocateUTF8(glslVersion);
         break;
 #endif
       default:
@@ -1241,7 +1241,7 @@ var LibraryGL = {
   },
 
 #if USE_WEBGL2
-  glGetStringi__deps: ['$stringToNewUTF8'],
+  glGetStringi__deps: ['$allocateUTF8'],
   glGetStringi__sig: 'iii',
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
@@ -1264,9 +1264,9 @@ var LibraryGL = {
         var exts = GLctx.getSupportedExtensions();
         var gl_exts = [];
         for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(stringToNewUTF8(exts[i]));
+          gl_exts.push(allocateUTF8(exts[i]));
           // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-          gl_exts.push(stringToNewUTF8('GL_' + exts[i]));
+          gl_exts.push(allocateUTF8('GL_' + exts[i]));
         }
         stringiCache = GL.stringiCache[name] = gl_exts;
         if (index < 0 || index >= stringiCache.length) {

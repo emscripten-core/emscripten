@@ -7851,9 +7851,9 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      21, ['assert'], ['waka'], 46505,  22,   16, 59), # noqa
-        (['-O1'], 16, ['assert'], ['waka'], 12630,  14,   14, 31), # noqa
-        (['-O2'], 16, ['assert'], ['waka'], 12616,  14,   14, 31), # noqa
+        ([],      22, ['assert'], ['waka'], 46505,  22,   16, 59), # noqa
+        (['-O1'], 17, ['assert'], ['waka'], 12630,  14,   14, 31), # noqa
+        (['-O2'], 17, ['assert'], ['waka'], 12616,  14,   14, 31), # noqa
         (['-O3'],  6, [],         [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  6, [],         [],        2690,   9,    2, 21), # noqa
         (['-Oz'],  6, [],         [],        2690,   9,    2, 21), # noqa
@@ -7862,14 +7862,14 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1526, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1527, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      21, ['assert'], ['waka'], 22712, 22, 15, 28), # noqa
-        (['-O1'], 11, ['assert'], ['waka'], 10450,  7, 12, 12), # noqa
-        (['-O2'], 11, ['assert'], ['waka'], 10440,  7, 12, 12), # noqa
+        ([],      22, ['assert'], ['waka'], 22712, 22, 15, 28), # noqa
+        (['-O1'], 12, ['assert'], ['waka'], 10450,  7, 12, 12), # noqa
+        (['-O2'], 12, ['assert'], ['waka'], 10440,  7, 12, 12), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  0, [],         [],          55,  0,  1, 1), # noqa
         (['-Os'],  0, [],         [],          55,  0,  1, 1), # noqa
@@ -7878,9 +7878,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
+        (['-O2'], 37, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
+                  37, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend

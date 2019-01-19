@@ -738,23 +738,6 @@ function lengthBytesUTF32(str) {
   return len;
 }
 
-// Allocate heap space for a JS string, and write it there.
-// It is the responsibility of the caller to free() that memory.
-function allocateUTF8(str) {
-  var size = lengthBytesUTF8(str) + 1;
-  var ret = _malloc(size);
-  if (ret) stringToUTF8Array(str, HEAP8, ret, size);
-  return ret;
-}
-
-// Allocate stack space for a JS string, and write it there.
-function allocateUTF8OnStack(str) {
-  var size = lengthBytesUTF8(str) + 1;
-  var ret = stackAlloc(size);
-  stringToUTF8Array(str, HEAP8, ret, size);
-  return ret;
-}
-
 function demangle(func) {
 #if DEMANGLE_SUPPORT
   var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];

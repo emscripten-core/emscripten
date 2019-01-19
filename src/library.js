@@ -75,12 +75,22 @@ LibraryManager.library = {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8__deps: ['malloc'],
-  $stringToNewUTF8: function(jsString) {
-    var length = lengthBytesUTF8(jsString)+1;
-    var cString = _malloc(length);
-    stringToUTF8(jsString, cString, length);
-    return cString;
+  // Allocate heap space for a JS string, and write it there.
+  // It is the responsibility of the caller to free() that memory.
+  $allocateUTF8__deps: ['malloc'],
+  $allocateUTF8: function(str) {
+    var size = lengthBytesUTF8(str)+1;
+    var ptr = _malloc(size);
+    if (ptr) stringToUTF8(str, ptr, size);
+    return ptr;
+  },
+
+  // Allocate stack space for a JS string, and write it there.
+  $allocateUTF8OnStack: function(str) {
+    var size = lengthBytesUTF8(str) + 1;
+    var ptr = stackAlloc(size);
+    stringToUTF8(str, ptr, size);
+    return ptr;
   },
 
   // ==========================================================================
@@ -804,7 +814,7 @@ LibraryManager.library = {
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   $ENV: {},
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV', '$allocateUTF8'],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -2019,7 +2029,7 @@ LibraryManager.library = {
   },
 
   // char* dlerror(void);
-  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
+  dlerror__deps: ['$DLFCN', '$allocateUTF8'],
   dlerror__proxy: 'sync',
   dlerror__sig: 'i',
   dlerror: function() {
@@ -2029,18 +2039,18 @@ LibraryManager.library = {
       return 0;
     } else {
       if (DLFCN.error) _free(DLFCN.error);
-      DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
+      DLFCN.error = allocateUTF8(DLFCN.errorMsg);
       DLFCN.errorMsg = null;
       return DLFCN.error;
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8'],
+  dladdr__deps: ['$allocateUTF8'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
+    var fname = allocateUTF8(Module['thisProgram'] || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
