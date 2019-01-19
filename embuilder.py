@@ -42,6 +42,10 @@ Available operations and tasks:
         dlmalloc_debug
         dlmalloc_threadsafe
         dlmalloc_threadsafe_debug
+        dlmalloc_noerrno
+        dlmalloc_debug_noerrno
+        dlmalloc_threadsafe_noerrno
+        dlmalloc_threadsafe_debug_noerrno
         pthreads
         libc++
         libc++_noexcept
@@ -108,6 +112,8 @@ SYSTEM_TASKS = [
     'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
     'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
     'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++', 'libc++_noexcept',
+    'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
+    'dlmalloc_noerrno', 'dlmalloc_threadsafe_noerrno',
     'libc++abi', 'html5'
 ]
 USER_TASKS = [
@@ -201,6 +207,14 @@ def main():
       build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
     elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
       build(C_WITH_MALLOC, ['libc-mt.bc', 'libdlmalloc_threadsafe.bc', 'libpthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'dlmalloc_noerrno':
+      build(C_WITH_MALLOC, ['libdlmalloc_noerrno.bc'], ['-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
+    elif what == 'dlmalloc_debug_noerrno':
+      build(C_WITH_MALLOC, ['libdlmalloc_debug_noerrno.bc'], ['-g', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
+    elif what == 'dlmalloc_threadsafe_debug_noerrno':
+      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_debug_noerrno.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
+    elif what == 'dlmalloc_threadsafe_noerrno':
+      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_noerrno.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
     elif what == 'libc-wasm':
       build(C_WITH_STDLIB, ['libc-wasm.bc'], ['-s', 'WASM=1'])
     elif what == 'libc++':
