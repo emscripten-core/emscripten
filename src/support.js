@@ -25,22 +25,16 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-#if ALLOW_MEMORY_GROWTH
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  if (end >= TOTAL_MEMORY) {
-    var success = enlargeMemory();
-    if (!success) {
-      HEAP32[DYNAMICTOP_PTR>>2] = ret;
-      return 0;
-    }
-  }
-#else
-  if (end < TOTAL_MEMORY) {
+  if (end <= _emscripten_get_heap_size()) {
     HEAP32[DYNAMICTOP_PTR>>2] = end;
   } else {
+#if ALLOW_MEMORY_GROWTH
+    var success = _emscripten_resize_heap(end);
+    if (!success) return 0;
+#else
     return 0;
-  }
 #endif
+  }
   return ret;
 }
 
