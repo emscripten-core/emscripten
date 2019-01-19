@@ -431,6 +431,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
+
+      # Only dlmalloc interacts with errno, emmalloc does not
+      if not shared.Settings.SUPPORT_ERRNO:
+        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -453,6 +457,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
+    if not shared.Settings.SUPPORT_ERRNO:
+      cflags += ['-DMALLOC_FAILURE_ACTION=']
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
