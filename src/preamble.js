@@ -1745,8 +1745,6 @@ if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
-// utilities waka waka
-
 function mergeMemory(newBuffer) {
   // The wasm instance creates its memory. But static init code might have written to
   // buffer already, including the mem init file, and we must copy it over in a proper merge.
