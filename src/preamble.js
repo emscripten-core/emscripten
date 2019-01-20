@@ -1810,16 +1810,16 @@ function createWasm(env) {
   }
   env['memory'] = Module['wasmMemory'];
   var info = {
+    'env': env
+#if WASM_BACKEND == 0
+    ,
     'global': {
       'NaN': NaN,
       'Infinity': Infinity
     },
-#if WASM_BACKEND == 0
     'global.Math': Math,
+    'asm2wasm': asm2wasmImports
 #endif
-    'env': env,
-    'asm2wasm': asm2wasmImports,
-    'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -1972,9 +1972,10 @@ Module['asm'] = function(global, env, providedBuffer) {
         env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
       }
     } else {
-      env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
+// TODO      env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
     }
     Module['wasmTable'] = env['table'];
+// TODO
   }
 
   if (!env['__memory_base']) {
