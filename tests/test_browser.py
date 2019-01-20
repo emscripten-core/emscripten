@@ -81,8 +81,18 @@ def is_chrome():
   return EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower()
 
 
-def no_chrome(note='chome is not supported'):
+def no_chrome(note='chrome is not supported'):
   if is_chrome():
+    return unittest.skip(note)
+  return lambda f: f
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+
+
+def no_firefox(note='firefox is not supported'):
+  if is_firefox():
     return unittest.skip(note)
   return lambda f: f
 
@@ -4221,6 +4231,7 @@ window.close = function() {
     self.run_browser('a.html', '...', '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
+  @no_firefox('see #1521239')
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
@@ -4255,6 +4266,7 @@ window.close = function() {
       self.run_browser('test.html', None, '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
+  @no_firefox('see #1521239')
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
@@ -4374,3 +4386,47 @@ window.close = function() {
 
   def test_modularize_Module_input(self):
     self.btest(path_from_root('tests', 'browser', 'modularize_Module_input.cpp'), '0', args=['--shell-file', path_from_root('tests', 'browser', 'modularize_Module_input.html'), '-s', 'MODULARIZE_INSTANCE=1'])
+
+  def test_emscripten_request_animation_frame(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame.c'), '0')
+
+  def test_emscripten_request_animation_frame_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
+
+  def test_emscripten_set_timeout(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_timeout_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_immediate(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate.c'), '0')
+
+  def test_emscripten_set_immediate_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate_loop.c'), '0')
+
+  def test_emscripten_set_interval(self):
+    self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_performance_now() and emscripten_date_now()
+  def test_emscripten_performance_now(self):
+    self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
+  def test_emscripten_console_log(self):
+    self.btest(path_from_root('tests', 'emscripten_console_log.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_console_log_pre.js')])
+
+  def test_emscripten_throw_number(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_number.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_number_pre.js')])
+
+  def test_emscripten_throw_string(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_string.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_string_pre.js')])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a minimal console.log() application
+  def test_closure_in_web_only_target_environment_console_log(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a small WebGL application
+  @requires_graphics_hardware
+  def test_closure_in_web_only_target_environment_webgl(self):
+    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])

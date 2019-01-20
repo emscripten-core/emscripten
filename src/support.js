@@ -25,6 +25,7 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
+#if ALLOW_MEMORY_GROWTH
   HEAP32[DYNAMICTOP_PTR>>2] = end;
   if (end >= TOTAL_MEMORY) {
     var success = enlargeMemory();
@@ -33,6 +34,13 @@ function dynamicAlloc(size) {
       return 0;
     }
   }
+#else
+  if (end < TOTAL_MEMORY) {
+    HEAP32[DYNAMICTOP_PTR>>2] = end;
+  } else {
+    return 0;
+  }
+#endif
   return ret;
 }
 

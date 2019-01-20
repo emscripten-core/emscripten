@@ -318,9 +318,14 @@ var LibraryBrowser = {
           }
         }
 
-        contextHandle = GL.createContext(canvas, contextAttributes);
-        if (contextHandle) {
-          ctx = GL.getContext(contextHandle).GLctx;
+        // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
+        // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
+        // Browser.createContext() should not even be emitted.
+        if (typeof GL !== 'undefined') {
+          contextHandle = GL.createContext(canvas, contextAttributes);
+          if (contextHandle) {
+            ctx = GL.getContext(contextHandle).GLctx;
+          }
         }
       } else {
         ctx = canvas.getContext('2d');
@@ -1093,7 +1098,7 @@ var LibraryBrowser = {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = 'setimmediate';
-        function Browser_setImmediate_messageHandler(event) {
+        var Browser_setImmediate_messageHandler = function(event) {
           // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
           // so check for both cases.
           if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
@@ -1319,12 +1324,6 @@ var LibraryBrowser = {
 #endif
     Module['noExitRuntime'] = false;
     exit(status);
-  },
-
-  emscripten_get_device_pixel_ratio__proxy: 'sync',
-  emscripten_get_device_pixel_ratio__sig: 'd',
-  emscripten_get_device_pixel_ratio: function() {
-    return window.devicePixelRatio || 1.0;
   },
 
   emscripten_hide_mouse__proxy: 'sync',
