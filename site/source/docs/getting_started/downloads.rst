@@ -18,12 +18,12 @@ The core Emscripten SDK (emsdk) driver is a Python script. You can get it for th
   ::
 
     # Get the emsdk repo
-    git clone https://github.com/juj/emsdk.git
+    git clone https://github.com/emscripten-core/emsdk.git
 
     # Enter that directory
     cd emsdk
 
-.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/juj/emsdk>`_.
+.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/emscripten-core/emsdk>`_.
 
 Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>`:
 
