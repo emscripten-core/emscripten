@@ -278,6 +278,7 @@ void webMain() {
     })
     cheerp_args = [
       '-target', 'cheerp',
+      '-fno-math-errno',
       '-Wno-c++11-narrowing',
       '-cheerp-mode=wasm'
     ]
