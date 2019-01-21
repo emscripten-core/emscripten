@@ -304,6 +304,7 @@ void webMain() {
     final = final.replace('.cpp', '')
     try_delete(final)
     dirs_to_delete = []
+    cheerp_args += ['-cheerp-preexecute']
     try:
       # print(cheerp_args)
       if filename.endswith('.c'):
