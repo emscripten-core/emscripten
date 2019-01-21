@@ -1,3 +1,8 @@
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os
 import shutil
 import logging
@@ -95,13 +100,13 @@ def make_source_list(cocos2d_root, cocos2dx_root):
       add_next = False
       for line in infile:
         if line.startswith('SOURCES'):
-          file = re.search('=\s*(.*?)(\s*\\\\$|\s*$)', line, re.IGNORECASE).group(1)
+          file = re.search(r'=\s*(.*?)(\s*\\$|\s*$)', line, re.IGNORECASE).group(1)
           absfile = os.path.abspath(os.path.join(os.path.dirname(makefile), file))
           sources.append(absfile)
           add_next = line.endswith('\\\n')
           continue
         if add_next:
-          file = re.search('\s*(.*?)(\s*\\\\$|\s*$)', line, re.IGNORECASE).group(1)
+          file = re.search(r'\s*(.*?)(\s*\\$|\s*$)', line, re.IGNORECASE).group(1)
           absfile = os.path.abspath(os.path.join(os.path.dirname(makefile), file))
           sources.append(absfile)
           add_next = line.endswith('\\\n')

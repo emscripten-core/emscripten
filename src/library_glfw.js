@@ -1,4 +1,9 @@
-/*******************************************************************************
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
  * EMSCRIPTEN GLFW 2.x-3.x emulation.
  * It tries to emulate the behavior described in
  * http://www.glfw.org/docs/latest/
@@ -27,8 +32,7 @@
  * - Jari Vetoniemi <mailroxas@gmail.com>
  * - Éloi Rivard <eloi.rivard@gmail.com>
  * - Thomas Borsos <thomasborsos@gmail.com>
- *
- ******************************************************************************/
+ */
 
 var LibraryGLFW = {
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser'],
@@ -610,7 +614,7 @@ var LibraryGLFW = {
     },
 
     requestFullScreen: function() {
-      Module.printErr('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
+      err('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
       GLFW.requestFullScreen = function() {
         return GLFW.requestFullscreen();
       }
@@ -627,7 +631,7 @@ var LibraryGLFW = {
     },
 
     cancelFullScreen: function() {
-      Module.printErr('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
+      err('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
       GLFW.cancelFullScreen = function() {
         return GLFW.exitFullscreen();
       }
@@ -644,7 +648,7 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      win.title = Pointer_stringify(title);
+      win.title = UTF8ToString(title);
       if (GLFW.active.id == win.id) {
         document.title = win.title;
       }
@@ -996,6 +1000,10 @@ var LibraryGLFW = {
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
           alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
         }
+#if OFFSCREEN_FRAMEBUFFER
+        // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+        GL.enableOffscreenFramebufferAttributes(contextAttributes);
+#endif
         Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
       }
 
@@ -1161,7 +1169,7 @@ var LibraryGLFW = {
 
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
-      GLFW.extensions = Pointer_stringify(_glGetString(0x1F03)).split(' ');
+      GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
     }
 
     if (GLFW.extensions.indexOf(extension) != -1) return 1;
@@ -1551,7 +1559,7 @@ var LibraryGLFW = {
   glfwMakeContextCurrent: function(winid) {},
 
   glfwGetCurrentContext: function() {
-    return GLFW.active.id;
+    return GLFW.active ? GLFW.active.id : 0;
   },
 
   glfwSwapBuffers: function(winid) {

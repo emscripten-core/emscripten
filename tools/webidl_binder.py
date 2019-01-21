@@ -1,3 +1,7 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 WebIDL binder
@@ -27,6 +31,9 @@ CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
 DEBUG = os.environ.get('IDL_VERBOSE') is '1'
 
 if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
+
+# We need to avoid some closure errors on the constructors we define here.
+CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} */'
 
 class Dummy(object):
   def __init__(self, init):
@@ -330,7 +337,7 @@ def deref_if_nonpointer(m):
 def type_to_cdec(raw):
   name = ret = type_to_c(raw.type.name, non_pointing=True)
   if raw.getExtendedAttribute('Const'): ret = 'const ' + ret
-  if name not in interfaces: return ret
+  if raw.type.name not in interfaces: return ret
   if raw.getExtendedAttribute('Ref'):
     return ret + '&'
   if raw.getExtendedAttribute('Value'):
@@ -469,9 +476,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js += [r'''/** @suppress {undefinedVars, duplicate} */function%s(%s) {
+  mid_js += [r'''%sfunction%s(%s) {
 %s
-};''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
+};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1])]
 
   # C
 
@@ -504,7 +511,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
-      maybe_deref = '*' if sig[0] in interfaces else ''
+      maybe_deref = deref_if_nonpointer(raw[0])
       if '=' in operator:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
@@ -525,24 +532,25 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       return_postfix += ', &temp)'
 
     c_return_type = type_to_c(return_type)
+    maybe_const = 'const ' if const else ''
     mid_c += [r'''
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % ('const ' if const else '', type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
         js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
-        js_impl_methods += [r'''  %s %s(%s) {
+        js_impl_methods += [r'''  %s %s(%s) %s {
     %sEM_ASM_%s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (int)this%s);
-  }''' % (c_return_type, func_name, dec_args,
+  }''' % (c_return_type, func_name, dec_args, maybe_const,
           basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
           class_name,
           func_name, class_name, func_name,
@@ -600,7 +608,7 @@ for name in names:
 
   # Ensure a constructor even if one is not specified.
   if not any(m.identifier.name == name for m in interface.members):
-    mid_js += ['function %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (name, name)]
+    mid_js += ['%sfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     mid_js += build_constructor(name)
 
   for m in interface.members:
@@ -675,7 +683,10 @@ for name in names:
                     const=m.getExtendedAttribute('Const'),
                     array_attribute=m.type.isArray())
 
-    if not m.readonly:
+    if m.readonly:
+      mid_js += [r'''
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });''' % (name, attr, name, get_name)]
+    else:
       set_name = 'set_' + attr
       mid_js += [r'''
     %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
@@ -689,6 +700,9 @@ for name in names:
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
                       array_attribute=m.type.isArray())
+      mid_js += [r'''
+    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
+
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''

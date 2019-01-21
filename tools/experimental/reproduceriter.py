@@ -1,4 +1,8 @@
 #!/usr/bin/env python2
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 Reproducer Rewriter
@@ -141,8 +145,8 @@ for parent, dirs, files in os.walk(out_dir):
       fullname = os.path.join(parent, filename)
       print('   ', fullname)
       js = open(fullname).read()
-      js = re.sub('document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
-      js = re.sub('''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
+      js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
+      js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
       open(fullname, 'w').write(js)
 
 # Add our boilerplate

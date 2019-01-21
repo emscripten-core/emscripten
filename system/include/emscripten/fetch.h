@@ -1,3 +1,10 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_fetch_h__
 #define __emscripten_fetch_h__
 
@@ -93,8 +100,10 @@ typedef struct emscripten_fetch_attr_t
 
 	// If non-zero, specifies a pointer to the data that is to be passed as the body (payload) of the request
 	// that is being performed. Leave as zero if no request body needs to be sent.
-	// The memory pointed to by this field is provided by the user, and needs to be valid only until the call to
-	// emscripten_fetch() returns.
+	// The memory pointed to by this field is provided by the user, and needs to be valid throughout the
+	// duration of the fetch operation. If passing a non-zero pointer into this field, make sure to implement
+	// *both* the onsuccess and onerror handlers to be notified when the fetch finishes to know when this memory
+	// block can be freed. Do not pass a pointer to memory on the stack or other temporary area here.
 	const char *requestData;
 
 	// Specifies the length of the buffer pointed by 'requestData'. Leave as 0 if no request body needs to be sent.
@@ -171,6 +180,51 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // Closes a finished or an executing fetch operation and frees up all memory. If the fetch operation was still executing, the
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
+
+#define emscripten_asmfs_open_t int
+
+// The following flags specify how opening files for reading works (from strictest behavior to most flexible)
+
+// When a file is opened for reading, the file data must already fully reside in memory. (most similar to MEMFS behavior)
+#define EMSCRIPTEN_ASMFS_OPEN_MEMORY    0
+
+// The file data does not need to be already in memory, but can reside in IndexedDB.
+#define EMSCRIPTEN_ASMFS_OPEN_INDEXEDDB 1
+
+// The file will be downloaded from remote server, as long as it has an index entry in local filesystem.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE    2
+
+// A file entry does not need to exist on the local filesystem, but discovery will be attempted from remote server via an XHR first.
+#define EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER 3
+
+// Specifies how calls to non-truncating open(), fopen(), std::ifstream etc. behave on the calling thread.
+void emscripten_asmfs_set_file_open_behavior(emscripten_asmfs_open_t behavior);
+
+// Returns the current file open behavior modein the calling thread.
+emscripten_asmfs_open_t emscripten_asmfs_get_file_open_behavior();
+
+// Records the URL from where the given file on the ASMFS filesystem can be obtained from.
+void emscripten_asmfs_set_remote_url(const char *filename, const char *remoteUrl);
+
+// Given a filename, outputs the remote URL address that file can be located in.
+void emscripten_asmfs_remote_url(const char *filename, char *outRemoteUrl, int maxBytesToWrite);
+
+// Unloads the given file from the ASMFS filesystem. Call this function to save memory from files that have been already loaded
+// in to memory and will no longer be needed.
+void emscripten_asmfs_unload_data(const char *pathname);
+
+// Starts an asynchronous preload of a file from the given URL to the local filesystem to destination path 'pathname' for synchronous
+// access on the main thread. Specify a onsuccess callback in options structure to be notified of when the transfer finishes.
+// The resulting download will always be performed with the flag EMSCRIPTEN_FETCH_LOAD_TO_MEMORY and without the flags
+// EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_WAITABLE | EMSCRIPTEN_FETCH_STREAM_DATA. The remaining flags
+// EMSCRIPTEN_FETCH_NO_DOWNLOAD, EMSCRIPTEN_FETCH_PERSIST_FILE, EMSCRIPTEN_FETCH_APPEND/REPLACE are
+// customizable in the options field. In particular, if EMSCRIPTEN_FETCH_NO_DOWNLOAD is passed, then the file is loaded to memory for
+// synchronous access by looking at IndexedDB only.
+EMSCRIPTEN_RESULT emscripten_asmfs_preload_file(const char *url, const char *pathname, int mode, emscripten_fetch_attr_t *options);
+
+// Computes the total amount of bytes in memory utilized by the filesystem at the moment.
+// Note: This function can be slow since it walks through the whole filesystem.
+uint64_t emscripten_asmfs_compute_memory_usage();
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2017 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <math.h>
 #include <stdio.h>
 
@@ -27,7 +34,7 @@ void test_exp_log(double x) {
     double b = log10(x);
     float c = log10f(x);
     double d = acos(x);
-    printf("%f : %f : %f : %f\n", a, b, c, d);
+    printf("%f : %f : %f : %d\n", a, b, c, isnan(d));
 }
 
 int main() {

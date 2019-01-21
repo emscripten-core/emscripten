@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <emscripten/bind.h>
 #ifdef USE_CXA_DEMANGLE
 #include <../lib/libcxxabi/include/cxxabi.h>
@@ -14,7 +19,7 @@
 using namespace emscripten;
 
 extern "C" {
-    const char* __attribute__((used)) __getTypeName(const std::type_info* ti) {
+    const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
         if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
             int stat;

@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # This is a helper script to validate a file for asm.js.
 
@@ -32,9 +36,9 @@ def validate_asmjs_jsfile(filename, muteOutput):
   stdout = process.stdout
   stderr = process.stderr
   if not muteOutput:
-    if len(stdout.strip()) > 0:
+    if len(stdout.strip()):
       print(stdout.strip())
-    if len(stderr.strip()) > 0:
+    if len(stderr.strip()):
       # Pretty-print the output not to contain a spurious warning.
       warning_re = re.compile(re.escape('warning: successfully compiled asm.js'), re.IGNORECASE)
       stderr = warning_re.sub(' successfully compiled asm.js', stderr)
@@ -50,7 +54,7 @@ def validate_asmjs_jsfile(filename, muteOutput):
 def validate_asmjs(filename, muteOutput):
   if filename.endswith('.html'):
     html = open(filename, 'r').read()
-    matches = re.findall('''<\w*script\w*.*?>(.*?)<\w*/script\w*>''', html, re.DOTALL | re.MULTILINE)
+    matches = re.findall(r'''<\w*script\w*.*?>(.*?)<\w*/script\w*>''', html, re.DOTALL | re.MULTILINE)
     numAsmJsBlocks = 0
     for match in matches:
       if '"use asm"' in match:

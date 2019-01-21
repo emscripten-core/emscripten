@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -14,13 +19,13 @@ pthread_t thread;
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
 
-int threadRunning = 0;
 int numThreadsCreated = 0;
 
 int result = 0;
 
 void *ThreadMain(void *arg)
 {
+  printf("ThreadMain\n");
   switch(numThreadsCreated)
   {
     case 1: printf("Thread 1 started: you should see the WebGL canvas fade from black to red.\n"); break;
@@ -53,7 +58,6 @@ void *ThreadMain(void *arg)
 
   emscripten_webgl_make_context_current(0);
   emscripten_webgl_destroy_context(ctx);
-  emscripten_atomic_store_u32(&threadRunning, 0);
   printf("Thread quit\n");
   pthread_exit(0);
 }
@@ -63,6 +67,7 @@ void CreateThread()
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   int rc = pthread_create(&thread, &attr, ThreadMain, 0);
   if (rc == ENOSYS)
   {
@@ -72,40 +77,35 @@ void CreateThread()
 #endif
     exit(0);
   }  
-  pthread_attr_destroy(&attr);
-  emscripten_atomic_store_u32(&threadRunning, 1);
-  ++numThreadsCreated;
-}
-
-void PollThreadExit(void *)
-{
-  if (!emscripten_atomic_load_u32(&threadRunning))
+  if (rc)
   {
-    if (numThreadsCreated >= 3)
-    {
-      emscripten_atomic_store_u32(&result, 1);
-#ifdef REPORT_RESULT
-      REPORT_RESULT(result);
-#endif
-      return;
-    }
-    else
-    {
-      CreateThread();
-    }
+    printf("Failed to create thread! error: %d\n", rc);
+    exit(0);
   }
-  emscripten_async_call(PollThreadExit, 0, 1000);
+  pthread_attr_destroy(&attr);
+  ++numThreadsCreated;
 }
 
 void *mymain(void*)
 {
-  EM_ASM(Module['noExitRuntime'] = true;);
-  CreateThread();
-  emscripten_async_call(PollThreadExit, 0, 1000);
+  for(int i = 0; i < 3; ++i)
+  {
+    printf("Creating thread %d\n", i+1);
+    CreateThread();
+    printf("Waiting for thread to finish.\n");
+    pthread_join(thread, 0);
+    thread = 0;
+  }
+  printf("All done!\n");
   return 0;
 }
 
+// Tests that the OffscreenCanvas context can travel from main thread -> thread 1 -> thread 2
 // #define TEST_CHAINED_WEBGL_CONTEXT_PASSING
+
+// If set, the OffscreenCanvas is transferred from the main thread directly to thread 2, without giving it to thread 1
+// in between.
+// #define TRANSFER_TO_CHAINED_THREAD_FROM_MAIN_THREAD
 
 int main()
 {
@@ -113,7 +113,9 @@ int main()
   EM_ASM(Module['noExitRuntime'] = true;);
   pthread_attr_t attr;
   pthread_attr_init(&attr);
+#ifndef TRANSFER_TO_CHAINED_THREAD_FROM_MAIN_THREAD
   emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
+#endif
   int rc = pthread_create(&thread, &attr, mymain, 0);
   if (rc == ENOSYS)
   {

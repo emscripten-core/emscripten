@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include "Fetch.js"
 
 if (typeof Atomics === 'undefined') {
@@ -39,9 +44,6 @@ var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
 var DYNAMICTOP_PTR = 0;
 var TOTAL_MEMORY = 0;
-function enlargeMemory() {
-  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
-}
 var nan = NaN;
 var inf = Infinity;
 

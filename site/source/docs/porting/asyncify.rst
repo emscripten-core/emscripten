@@ -57,11 +57,11 @@ Specifically, a number of aspects should be taken into consideration:
  - Split the function when an async function is called, and the second function should be registered as the callback for the async function
  - Any function that calls an async function also becomes an async function.
  - Keep all local variables available to the callback
- - Closure cannot be used in order to make asm.js validated code. 
+ - Closure cannot be used in order to make asm.js validated code.
  - Take care of loops and branches
  - Make the return value available to the callee
  - Some functions could be both sync or async, depending on the input.
- 
+
 And the ``ASYNCIFY`` option does all above automatically, through a number of transformations on LLVM IR.
 
 
@@ -90,7 +90,7 @@ Limitations
 ===========
 
 Code size increase should be expected, depending on the specific input.
-``-Os`` (or ``-Oz`` for linking) is recommended when ``ASYNCIFY`` is turned on. 
+``-Os`` (or ``-Oz`` for linking) is recommended when ``ASYNCIFY`` is turned on.
 E.g. usually the following loop is expanded to speed up::
 
     for(int i = 0; i < 3; ++i) {
@@ -99,7 +99,7 @@ E.g. usually the following loop is expanded to speed up::
       // do something else
     }
 
-However by expanding the loop, two more async calls are introduced, such that more callback functions will be produced during the asyncify transformation. 
+However by expanding the loop, two more async calls are introduced, such that more callback functions will be produced during the asyncify transformation.
 
 **Asyncify can make performance much slower, if it ends up splitting a function which you need to be fast.**
 

@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var Fetch = {
   attr_t_offset_requestMethod: 0,
   attr_t_offset_userData: 32,
@@ -81,14 +86,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = db;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#else
-      if (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' || !ENVIRONMENT_IS_FETCH_WORKER) removeRunDependency('library_fetch_init');
-#endif
     };
     var onerror = function() {
 #if FETCH_DEBUG
@@ -96,12 +99,12 @@ var Fetch = {
 #endif
       Fetch.dbInstance = false;
 
-#if USE_PTHREADS
       if (isMainThread) {
+#if USE_PTHREADS
         if (typeof SharedArrayBuffer !== 'undefined') Fetch.initFetchWorker();
+#endif
         removeRunDependency('library_fetch_init');
       }
-#endif
     };
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 
@@ -110,17 +113,16 @@ var Fetch = {
       addRunDependency('library_fetch_init');
 
       var fetchJs = 'fetch-worker.js';
-      // Allow HTML module to configure the location where the 'pthread-main.js' file will be loaded from,
-      // either via Module.locateFile() function, or via Module.pthreadMainPrefixURL string. If neither
-      // of these are passed, then the default URL 'pthread-main.js' relative to the main html file is loaded.
-      if (typeof Module['locateFile'] === 'function') fetchJs = Module['locateFile'](fetchJs);
-      else if (Module['pthreadMainPrefixURL']) fetchJs = Module['pthreadMainPrefixURL'] + fetchJs;
+      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
+      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
+      // to the main html file is loaded.
+      fetchJs = locateFile(fetchJs);
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
-        Module['print']('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
       Fetch.worker.onerror = function(e) {
-        Module['printErr']('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+        err('fetch-worker sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
       };
     }
 #else
@@ -398,7 +400,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress) {
     }
     HEAPU16[fetch + Fetch.fetch_t_offset_status >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + Fetch.fetch_t_offset_statusText, 64);
-    if (xhr.status == 200) {
+    if (xhr.status >= 200 && xhr.status < 300) {
 #if FETCH_DEBUG
       console.log('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" succeeded with status 200');
 #endif
@@ -557,15 +559,15 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
     } else if (fetchAttrNoDownload) {
       __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, reportError);
     } else if (fetchAttrPersistFile) {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performCachedXhr);
     } else {
-      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);        
+      __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, performUncachedXhr);
     }
   } else if (!fetchAttrNoDownload) {
     if (fetchAttrPersistFile) {
       __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress);
     } else {
-      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);        
+      __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress);
     }
   } else {
 #if FETCH_DEBUG

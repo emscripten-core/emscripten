@@ -1,3 +1,8 @@
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 /* The Computer Language Benchmarks Game
    http://shootout.alioth.debian.org/
    contributed by Andrew Moon
@@ -106,7 +111,7 @@ struct RotatingString {
       temp[bytes] = '\n';
       temp[bytes] = '\0';
       puts_limited(temp);
-      delete temp;
+      delete[] temp;
       pos += bytes;
       if ( pos > size )
          pos -= size;

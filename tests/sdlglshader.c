@@ -1,4 +1,11 @@
 /*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
 THIS WORK, INCLUDING THE SOURCE CODE, DOCUMENTATION
 AND RELATED MEDIA AND DATA, IS PLACED INTO THE PUBLIC DOMAIN.
 
@@ -146,7 +153,7 @@ int main(int argc, char *argv[])
         glTexCoord2f(1, 1  ); glVertex3f(630, 400, 0);
     glEnd();
 
-    // Test https://github.com/kripken/emscripten/issues/3693
+    // Test https://github.com/emscripten-core/emscripten/issues/3693
     glBegin( GL_TRIANGLES );
     glEnd();
 

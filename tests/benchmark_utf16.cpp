@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
@@ -10,7 +15,7 @@ double test(const unsigned short *str) {
     var t0 = _emscripten_get_now();
     var str = Module.UTF16ToString($0);
     var t1 = _emscripten_get_now();
-    Module.print('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
+    out('t: ' + (t1 - t0) + ', len(result): ' + str.length + ', result: ' + str.slice(0, 100));
     return (t1-t0);
   }, str);
   return res;

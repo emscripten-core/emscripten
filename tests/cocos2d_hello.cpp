@@ -1,3 +1,8 @@
+// Copyright 2017 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -163,7 +168,7 @@ bool HelloWorld::init()
     closeItem->setPosition(origin + Point(visibleSize) - Point(closeItem->getContentSize() / 2));
 
     // create menu, it's an autorelease object
-    Menu* menu = Menu::create(closeItem, NULL);
+    Menu* menu = Menu::create(closeItem, nullptr);
     menu->setPosition(Point::ZERO);
     this->addChild(menu, 1);
 

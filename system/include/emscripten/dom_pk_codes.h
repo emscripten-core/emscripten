@@ -1,10 +1,17 @@
-/* This file was automatically generated from script
-tools/create_dom_pk_codes.py. Edit that file to make changes here.
-Run
-
-  python tools/create_dom_pk_codes.py
-
-in Emscripten root directory to regenerate this file. */
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * This file was automatically generated from script
+ * tools/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Run
+ *
+ *   tools/create_dom_pk_codes.py
+ *
+ * in Emscripten root directory to regenerate this file.
+ */
 
 #pragma once
 

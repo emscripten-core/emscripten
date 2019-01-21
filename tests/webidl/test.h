@@ -15,7 +15,7 @@ public:
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
   bool getBoolean() { return true; }
-
+  int attr;
   const int immutableAttr;
 };
 
@@ -41,10 +41,21 @@ public:
   static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
   virtual void virtualFunc3(int x) { printf("*virtualf3: %d*\n", x); }
   virtual void virtualFunc4(int x) { printf("*virtualf4: %d*\n", x); }
-  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); };
+  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); }
 
 private:
   void doSomethingSecret() { printf("security breached!\n"); }; // we should not be able to do this
+};
+
+// We test compilation here: abstract base classes must be handled properly,
+// and in particular the const property may matter (if not overridden as
+// const, compilation will fail).
+class VirtualBase {
+public:
+  virtual ~VirtualBase() {};
+
+  virtual void func() = 0;
+  virtual void constFunc() const = 0;
 };
 
 // Part 2
@@ -82,10 +93,23 @@ struct VoidPointerUser {
 
 namespace Space {
   struct Inner {
-    Inner() {}
+    int value;
+    Inner() : value(1) {}
     int get() { return 198; }
     Inner& operator*=(float x) { return *this; }
     int operator[](int x) { return x*2; }
+    void operator+=(const Inner& other) {
+      value += other.value;
+      printf("Inner::+= => %d\n", value);
+    }
+  };
+
+  // We test compilation of abstract base classes in a namespace here.
+  class InnerUserBase {
+  public:
+    virtual ~InnerUserBase() {};
+
+    virtual void Callback(Inner *inner) = 0;
   };
 }
 

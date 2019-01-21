@@ -1,3 +1,8 @@
+# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 '''
 Processes an LLVM assembly (.ll) file, adding debugging information.
 
@@ -118,7 +123,7 @@ f = open(filename, 'r')
 data = f.read()
 f.close()
 
-if not re.search('(declare.*@printf\(|define.*@printf\()', data):
+if not re.search(r'(declare.*@printf\(|define.*@printf\()', data):
   POSTAMBLE += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
@@ -213,7 +218,7 @@ for i in range(len(lines)):
       pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
 
     if in_func:
-      m = re.match('  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
+      m = re.match(r'  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
       if m:
         index = i+1+lines_added
         if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
@@ -224,7 +229,7 @@ for i in range(len(lines)):
           lines[i] += '\n  call void @emscripten_autodebug_i32(i32 %d, i32 %%ead.%d)' % (index, index)
           lines_added += 2
         continue
-      m = re.match('  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
+      m = re.match(r'  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
       if m:
         index = i+1+lines_added
         lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
@@ -232,14 +237,14 @@ for i in range(len(lines)):
         continue
       if ALLOW_MISC:
         # call is risky - return values can be i32 (i8*) (i16)
-        m = re.match('  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
+        m = re.match(r'  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
         if m:
           index = i+1+lines_added
           lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
           lines_added += 1
           continue
         if MEMCPY2:
-          m = re.match('  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
+          m = re.match(r'  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
           if m:
             index = i+1+lines_added
             lines[i] += '\n  %%adtemp%d = load i8* %%%s, align 1' % (index, m.group('src')) + \
@@ -255,7 +260,7 @@ for i in range(len(lines)):
           continue
 
   finally:
-    if len(pre) > 0:
+    if len(pre):
       lines[i] = pre + '\n' + lines[i]
       lines_added += 1
 

@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //'use strict';
 
 var LibraryOpenAL = {
@@ -539,14 +544,24 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
+        function inverseMagnitude(x, y, z) {
+          var length = Math.sqrt(x * x + y * y + z * z);
+
+          if (length < Number.EPSILON) {
+            return 0.0;
+          }
+
+          return 1.0 / length;
+        }
+
         // Normalize the Back vector
-        var invMag = 1.0 / Math.sqrt(lBackX * lBackX + lBackY * lBackY + lBackZ * lBackZ);
+        var invMag = inverseMagnitude(lBackX, lBackY, lBackZ);
         lBackX *= invMag;
         lBackY *= invMag;
         lBackZ *= invMag;
 
         // ...and the Up vector
-        var invMag = 1.0 / Math.sqrt(lUpX * lUpX + lUpY * lUpY + lUpZ * lUpZ);
+        var invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
         lUpX *= invMag;
         lUpY *= invMag;
         lUpZ *= invMag;
@@ -557,7 +572,7 @@ var LibraryOpenAL = {
         var lRightZ = (lUpX * lBackY - lUpY * lBackX);
 
         // Back and Up might not be exactly perpendicular, so the cross product also needs normalization
-        var invMag = 1.0 / Math.sqrt(lRightX * lRightX + lRightY * lRightY + lRightZ * lRightZ);
+        var invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
         lRightX *= invMag;
         lRightY *= invMag;
         lRightZ *= invMag;
@@ -701,13 +716,16 @@ var LibraryOpenAL = {
         AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
       }
 
-      src.bufsProcessed = 0;
-      while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-        offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
-        src.bufsProcessed++;
+      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
+        src.bufsProcessed = 0;
+        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
+          offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
+          src.bufsProcessed++;
+        }
+
+        src.bufOffset = offset;
       }
 
-      src.bufOffset = offset;
       if (playing) {
         AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
       }
@@ -1596,7 +1614,7 @@ var LibraryOpenAL = {
 
     // NULL is a valid device name here (resolves to default);
     if (pDeviceName !== 0) {
-      resolvedDeviceName = Pointer_stringify(pDeviceName);
+      resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
         console.error('alcCaptureOpenDevice() with invalid device name \''+resolvedDeviceName+'\'');
@@ -1628,7 +1646,7 @@ var LibraryOpenAL = {
       || (navigator.mediaDevices 
       &&  navigator.mediaDevices.getUserMedia);
 
-    if (!has_getUserMedia) {
+    if (!has_getUserMedia) {
 #if OPENAL_DEBUG
       console.error('alcCaptureOpenDevice() cannot capture audio, because your browser lacks a `getUserMedia()` implementation');
 #endif
@@ -2036,7 +2054,7 @@ var LibraryOpenAL = {
   alcOpenDevice__sig: 'ii',
   alcOpenDevice: function(pDeviceName) {
     if (pDeviceName) {
-      var name = Pointer_stringify(pDeviceName);
+      var name = UTF8ToString(pDeviceName);
       if (name !== AL.DEVICE_NAME) {
         return 0;
       }
@@ -2054,7 +2072,7 @@ var LibraryOpenAL = {
   alcCloseDevice__proxy: 'sync',
   alcCloseDevice__sig: 'ii',
   alcCloseDevice: function(deviceId) {
-    if (!deviceId in AL.deviceRefCounts || AL.deviceRefCounts[deviceId] > 0) {
+    if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
       return 0 /* ALC_FALSE */;
     }
 
@@ -2066,7 +2084,7 @@ var LibraryOpenAL = {
   alcCreateContext__proxy: 'sync',
   alcCreateContext__sig: 'iii',
   alcCreateContext: function(deviceId, pAttrList) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcCreateContext() called with an invalid device');
 #endif
@@ -2288,7 +2306,7 @@ var LibraryOpenAL = {
   alcIsExtensionPresent__proxy: 'sync',
   alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
-    name = Pointer_stringify(pExtName);
+    name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2324,7 +2342,7 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
     switch(name) {
     case 'ALC_NO_ERROR': return 0;
@@ -2629,6 +2647,7 @@ var LibraryOpenAL = {
 
   emscripten_alcGetStringiSOFT__proxy: 'sync',
   emscripten_alcGetStringiSOFT__sig: 'iiii',
+  emscripten_alcGetStringiSOFT__deps: ['alcGetString'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
     if (!deviceId in AL.deviceRefCounts) {
 #if OPENAL_DEBUG
@@ -2656,7 +2675,7 @@ var LibraryOpenAL = {
       }
     default:
       if (index === 0) {
-        return alcGetString(deviceId, param);
+        return _alcGetString(deviceId, param);
       } else {
 #if OPENAL_DEBUG
         console.log('alcGetStringiSOFT() with param 0x' + param.toString(16) + ' not implemented yet');
@@ -2905,7 +2924,7 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = Pointer_stringify(pExtName);
+    name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2947,7 +2966,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
 
     switch(name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
@@ -3087,7 +3106,7 @@ var LibraryOpenAL = {
       break;
     case 0xB004 /* AL_EXTENSIONS */:
       ret = '';
-      for (ext in AL.AL_EXTENSIONS) {
+      for (var ext in AL.AL_EXTENSIONS) {
         ret = ret.concat(ext);
         ret = ret.concat(' ');
       }

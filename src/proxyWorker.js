@@ -1,3 +1,7 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 if (typeof console === 'undefined') {
   // we can't call Module.printErr because that might be circular
@@ -129,7 +133,7 @@ window.close = function window_close() {
 };
 
 window.alert = function(text) {
-  Module.printErr('alert forever: ' + text);
+  err('alert forever: ' + text);
   while (1){};
 };
 
@@ -346,11 +350,11 @@ Module.canvas = document.createElement('canvas');
 
 Module.setStatus = function(){};
 
-Module.print = function Module_print(x) {
+out = function Module_print(x) {
   //dump('OUT: ' + x + '\n');
   postMessage({ target: 'stdout', content: x });
 };
-Module.printErr = function Module_printErr(x) {
+err = function Module_printErr(x) {
   //dump('ERR: ' + x + '\n');
   postMessage({ target: 'stderr', content: x });
 };

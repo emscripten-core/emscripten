@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <emscripten.h>
 #include <stdio.h>
 
@@ -24,11 +29,11 @@ bool device_CON::Read(unsigned char * data,unsigned short * size) {
     printf("device_CON::Read (this = %i) Sleep--> \n", (int)this);
     EM_ASM({
       Module.the_this = $0;
-      Module.print('first this ' + Module.the_this);
+      out('first this ' + Module.the_this);
     }, this);
     emscripten_sleep(1000);
     EM_ASM({
-      Module.print('second this ' + $0);
+      out('second this ' + $0);
       assert(Module.the_this === $0, 'this must be unchanged');
     }, this);
     printf("<--Sleep (this = %i)\n", (int)this);

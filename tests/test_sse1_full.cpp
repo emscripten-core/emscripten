@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // This file uses SSE1 by calling different functions with different interesting inputs and prints the results.
 // Use a diff tool to compare the results between platforms.
 
@@ -25,7 +30,7 @@ int main()
 	Ret_M128_M128(__m128, _mm_sub_ss);
 
 	// SSE1 Elementary Math functions:
-#if 0 // TODO: Precision differs in SIMD.js and native. Test differently. See https://github.com/kripken/emscripten/issues/3049
+#if 0 // TODO: Precision differs in SIMD.js and native. Test differently. See https://github.com/emscripten-core/emscripten/issues/3049
 	Ret_M128(__m128, _mm_rcp_ps);
 	Ret_M128(__m128, _mm_rcp_ss);
 	Ret_M128(__m128, _mm_rsqrt_ps);

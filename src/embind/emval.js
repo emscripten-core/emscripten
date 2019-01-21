@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 /*global Module:true, Runtime*/
 /*global HEAP32*/
 /*global new_*/
@@ -146,7 +151,7 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argsList = new Array(argCount + 1);
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
@@ -169,7 +174,7 @@ var LibraryEmVal = {
 
     for(var i = 0; i < argCount; ++i) {
         functionBody +=
-            "var argType"+i+" = requireRegisteredType(HEAP32[(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
+            "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
             "args += argType"+i+"['argPackAdvance'];\n";
     }
@@ -179,8 +184,8 @@ var LibraryEmVal = {
         "}\n";
 
     /*jshint evil:true*/
-    return (new Function("requireRegisteredType", "HEAP32", "__emval_register", functionBody))(
-        requireRegisteredType, HEAP32, __emval_register);
+    return (new Function("requireRegisteredType", "Module", "__emval_register", functionBody))(
+        requireRegisteredType, Module, __emval_register);
 #endif
   },
 
@@ -197,7 +202,7 @@ var LibraryEmVal = {
     return newer(handle, argTypes, args);
   },
 
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
@@ -265,18 +270,38 @@ var LibraryEmVal = {
     return returnType['toWireType'](destructors, handle);
   },
 
-  _emval_equals__deps: ['_emval_register', '$requireHandle'],
-  _emval_equals: function(first, second ){
+  _emval_equals__deps: ['$requireHandle'],
+  _emval_equals: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
-    return first==second;
+    return first == second;
   },
 
-  _emval_strictly_equals__deps: ['_emval_register', '$requireHandle'],
-  _emval_strictly_equals: function(first, second ){
+  _emval_strictly_equals__deps: ['$requireHandle'],
+  _emval_strictly_equals: function(first, second) {
     first = requireHandle(first);
     second = requireHandle(second);
-    return first===second;
+    return first === second;
+  },
+
+  _emval_greater_than__deps: ['$requireHandle'],
+  _emval_greater_than: function(first, second) {
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first > second;
+  },
+
+  _emval_less_than__deps: ['$requireHandle'],
+  _emval_less_than: function(first, second) {
+    first = requireHandle(first);
+    second = requireHandle(second);
+    return first < second;
+  },
+
+  _emval_not__deps: ['$requireHandle'],
+  _emval_not: function(object) {
+    object = requireHandle(object);
+    return !object;
   },
 
   _emval_call__deps: ['_emval_lookupTypes', '_emval_register', '$requireHandle'],
@@ -329,7 +354,7 @@ var LibraryEmVal = {
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var retType = types[0];
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
     var invokerFunction = function(handle, name, destructors, args) {
       var offset = 0;
@@ -412,6 +437,34 @@ var LibraryEmVal = {
     handle = requireHandle(handle);
     return __emval_register(typeof handle);
   },
+
+  _emval_instanceof__deps: ['$requireHandle'],
+  _emval_instanceof: function(object, constructor) {
+    object = requireHandle(object);
+    constructor = requireHandle(constructor);
+    return object instanceof constructor;
+  },
+  
+  _emval_in__deps: ['$requireHandle'],
+  _emval_in: function(item, object) {
+    item = requireHandle(item);
+    object = requireHandle(object);
+    return item in object;
+  },
+
+  _emval_delete__deps: ['$requireHandle'],
+  _emval_delete: function(object, property) {
+    object = requireHandle(object);
+    property = requireHandle(property);
+    return delete object[property];
+  },
+
+  _emval_throw__deps: ['$requireHandle'],
+  _emval_throw: function(object) {
+    object = requireHandle(object);
+    throw object;
+  },
+
 };
 
 mergeInto(LibraryManager.library, LibraryEmVal);

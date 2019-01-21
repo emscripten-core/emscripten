@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <emscripten.h>
@@ -28,10 +33,10 @@ struct Class {
 
     EM_ASM({
       var initial = stackSave();
-      Module.print('seeing initial stack of ' + initial);
+      out('seeing initial stack of ' + initial);
       setTimeout(function() {
         var current = stackSave();
-        Module.print('seeing later stack of   ' + current);
+        out('seeing later stack of   ' + current);
         assert(current === initial);
       }, 0);
     });

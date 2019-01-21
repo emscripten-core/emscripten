@@ -1,7 +1,12 @@
-//"use strict";
-
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Various tools for parsing LLVM. Utilities of various sorts, that are
 // specific to Emscripten (and hence not in utility.js).
+
+//"use strict";
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
@@ -37,37 +42,9 @@ function preprocess(text, filenameHint) {
         if (line[1] == 'i') {
           if (line[2] == 'f') { // if
             var parts = line.split(' ');
-            var ident = parts[1];
-            var op = parts[2];
-            var value = parts[3];
-            if (typeof value === 'string') {
-              // when writing
-              // #if option == 'stringValue'
-              // we need to get rid of the quotes
-              if (value[0] === '"' || value[0] === "'") {
-                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
-                value = value.substring(1, value.length - 1);
-              }
-            }
-            if (op) {
-              if (op === '==') {
-                showStack.push(ident in this && this[ident] == value);
-              } else if (op === '!=') {
-                showStack.push(!(ident in this && this[ident] == value));
-              } else if (op === '<') {
-                showStack.push(ident in this && this[ident] < value);
-              } else if (op === '>') {
-                showStack.push(ident in this && this[ident] > value);
-              } else {
-                error('unsupported preprocessor op ' + op);
-              }
-            } else {
-              if (ident[0] === '!') {
-                showStack.push(!(this[ident.substr(1)] > 0));
-              } else {
-                showStack.push(ident in this && this[ident] > 0);
-              }
-            }
+            var after = parts.slice(1).join(' ');
+            var truthy = !!eval(after);
+            showStack.push(truthy);
           } else if (line[2] == 'n') { // include
             var filename = line.substr(line.indexOf(' ')+1);
             if (filename.indexOf('"') === 0) {
@@ -77,13 +54,13 @@ function preprocess(text, filenameHint) {
             ret += '\n' + preprocess(included, filename) + '\n'
           }
         } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
           showStack.push(!showStack.pop());
         } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command: " + line;
+          throw "Unclear preprocessor command on line " + i + ': ' + line;
         }
       }
     } catch(e) {
@@ -91,7 +68,7 @@ function preprocess(text, filenameHint) {
       throw e;
     }
   }
-  assert(showStack.length == 0);
+  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
   return ret;
 }
 
@@ -1297,15 +1274,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
 }
 
 function makeGetTempRet0() {
-  return RELOCATABLE ? "(getTempRet0() | 0)" : "tempRet0";
+  return "(getTempRet0() | 0)";
 }
 
 function makeSetTempRet0(value) {
-  if (WASM_BACKEND == 1) {
-    return 'Module["asm"]["setTempRet0"](' + value + ')';
-  } else {
-    return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
-  }
+  return "setTempRet0((" + value + ") | 0)";
 }
 
 function makeStructuralReturn(values, inAsm) {
@@ -1418,6 +1391,31 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
+function lengthBytesUTF8(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) {
+      ++len;
+    } else if (u <= 0x7FF) {
+      len += 2;
+    } else if (u <= 0xFFFF) {
+      len += 3;
+    } else if (u <= 0x1FFFFF) {
+      len += 4;
+    } else if (u <= 0x3FFFFFF) {
+      len += 5;
+    } else {
+      len += 6;
+    }
+  }
+  return len;
+}
+
 function getTypeFromHeap(suffix) {
   switch (suffix) {
     case '8': return 'i8';
@@ -1449,28 +1447,51 @@ function makeDynCall(sig) {
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  if (!SPLIT_MEMORY) return heap + ',' + ptr;
-  return heap + 's[(' + ptr + ') >> SPLIT_MEMORY_BITS], (' + ptr + ') & SPLIT_MEMORY_MASK'; 
+  return heap + ',' + ptr;
 }
 
 function makeEval(code) {
-  if (NO_DYNAMIC_EXECUTION == 1) {
+  if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
-    return "abort('NO_DYNAMIC_EXECUTION=1 was set, cannot eval');";
+    return "abort('DYNAMIC_EXECUTION=0 was set, cannot eval');";
   }
   var ret = '';
-  if (NO_DYNAMIC_EXECUTION == 2) {
+  if (DYNAMIC_EXECUTION == 2) {
     // Warn on evals, but proceed.
-    ret += "Module.printErr('Warning: NO_DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
-    ret += "Module.printErr(stackTrace());\n";
+    ret += "err('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret += "err(stackTrace());\n";
   }
   ret += code;
   return ret;
 }
 
 function makeStaticAlloc(size) {
-  size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
-  return 'STATICTOP; STATICTOP += ' + size + ';';
+  size = alignMemory(size);
+  var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
+  STATIC_BUMP = ret + size - GLOBAL_BASE;
+  return ret;
+}
+
+function makeStaticString(string) {
+  var len = lengthBytesUTF8(string) + 1;
+  var ptr = makeStaticAlloc(len);
+  return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
+}
+
+// We emit the dynamic and stack bases as strings that need to be further
+// preprocessed, since during JS compiler time here we are still computing
+// static allocations as we go.
+
+function getStackBase() {
+  return '{{{ STACK_BASE }}}';
+}
+
+function getStackMax() {
+  return '{{{ STACK_MAX }}}';
+}
+
+function getDynamicBase() {
+  return '{{{ DYNAMIC_BASE }}}';
 }
 
 function makeRetainedCompilerSettings() {
@@ -1482,5 +1503,14 @@ function makeRetainedCompilerSettings() {
     } catch(e){}
   }
   return ret;
+}
+
+// In wasm, the heap size must be a multiple of 64KB.
+// In asm.js, it must be a multiple of 16MB.
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+
+function getPageSize() {
+  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 

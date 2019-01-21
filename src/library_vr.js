@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryWebVR = {
   $WebVR: {
     EYE_LEFT: {{{ cDefine('VR_EYE_LEFT') }}},
@@ -190,7 +195,7 @@ var LibraryWebVR = {
         /* Prevent scheduler being called twice when loop is changed */
         display.mainLoop.running = true;
 
-#if USES_GL_EMULATION
+#if FULL_ES2 || LEGACY_GL_EMULATION
         GL.newRenderingFrameStarted();
 #endif
 
@@ -200,7 +205,7 @@ var LibraryWebVR = {
           if (e instanceof ExitStatus) {
             return;
           } else {
-            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown in render loop of VR display ' + displayHandle.toString() + ': ' + [e, e.stack]);
+            if (e && typeof e === 'object' && e.stack) err('exception thrown in render loop of VR display ' + displayHandle.toString() + ': ' + [e, e.stack]);
             throw e;
           }
         }

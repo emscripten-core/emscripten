@@ -1,4 +1,8 @@
 #!/usr/bin/env python2
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 emar - ar helper script
@@ -61,11 +65,12 @@ def run():
         i += 1
 
   if DEBUG:
-    print('Invoking ' + str(newargs))
-  subprocess.call(newargs, stdin=sys.stdin)
-  for d in to_delete:
-    shared.try_delete(d)
+    print('Invoking ' + str(newargs), file=sys.stderr)
+  try:
+    return subprocess.call(newargs, stdin=sys.stdin)
+  finally:
+    for d in to_delete:
+      shared.try_delete(d)
 
 if __name__ == '__main__':
-  run()
-  sys.exit(0)
+  sys.exit(run())

@@ -1,8 +1,15 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <math.h>
 
 // test copysign of 0
-int __attribute__((noinline,noclone))
+int __attribute__((noinline))
 copysign_bug (double x)
 {
   if (x != 0.0 && (x * 0.5 == x)) {

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -18,15 +23,15 @@ int fib(int n)
 static void *thread_start(void *arg)
 {
   int n = (int)arg;
-  EM_ASM(Module['print']('Thread: Computing fib('+$0+')...'), n);
+  EM_ASM(out('Thread: Computing fib('+$0+')...'), n);
   int fibn = fib(n);
-  EM_ASM(Module['print']('Thread: Computation done. fib('+$0+') = '+$1+'.'), n, fibn);
+  EM_ASM(out('Thread: Computation done. fib('+$0+') = '+$1+'.'), n, fibn);
   pthread_exit((void*)fibn);
 }
 
 int main()
 {
-  // Test existence of nanosleep(), https://github.com/kripken/emscripten/issues/4578
+  // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 
@@ -42,14 +47,14 @@ int main()
   pthread_t thr;
 
   int n = 20;
-  EM_ASM(Module['print']('Main: Spawning thread to compute fib('+$0+')...'), n);
+  EM_ASM(out('Main: Spawning thread to compute fib('+$0+')...'), n);
   int s = pthread_create(&thr, NULL, thread_start, (void*)n);
   assert(s == 0);
-  EM_ASM(Module['print']('Main: Waiting for thread to join.'));
+  EM_ASM(out('Main: Waiting for thread to join.'));
   int result = 0;
   s = pthread_join(thr, (void**)&result);
   assert(s == 0);
-  EM_ASM(Module['print']('Main: Thread joined with result: '+$0+'.'), result);
+  EM_ASM(out('Main: Thread joined with result: '+$0+'.'), result);
 #ifdef REPORT_RESULT
   REPORT_RESULT(result);
 #endif

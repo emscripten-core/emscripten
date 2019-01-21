@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -203,7 +210,7 @@ int main() {
     sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
     // TODO: This is not the correct result: We should have a auto-bound address
     char *correct = "0.0.0.0:0";
-    printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+    printf("got (expected) socket: %s (%s), size %lu (%lu)\n", buffer, correct, strlen(buffer), strlen(correct));
     assert(strlen(buffer) == strlen(correct));
     assert(strcmp(buffer, correct) == 0);
   }
@@ -221,7 +228,7 @@ int main() {
     sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
     char correct[1000];
     sprintf(correct, "127.0.0.1:%u", SOCKK);
-    printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+    printf("got (expected) socket: %s (%s), size %lu (%lu)\n", buffer, correct, strlen(buffer), strlen(correct));
     assert(strlen(buffer) == strlen(correct));
     assert(strcmp(buffer, correct) == 0);
   }

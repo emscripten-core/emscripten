@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
   $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
@@ -5,7 +10,7 @@ mergeInto(LibraryManager.library, {
   $TTY: {
     ttys: [],
     init: function () {
-      // https://github.com/kripken/emscripten/pull/1555
+      // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // currently, FS.init does not distinguish if process.stdin is a file or TTY
       //   // device, it always assumes it's a TTY device. because of this, we're forcing
@@ -15,7 +20,7 @@ mergeInto(LibraryManager.library, {
       // }
     },
     shutdown: function() {
-      // https://github.com/kripken/emscripten/pull/1555
+      // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
       //   // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation
@@ -73,12 +78,12 @@ mergeInto(LibraryManager.library, {
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
         }
-        for (var i = 0; i < length; i++) {
-          try {
+        try {
+          for (var i = 0; i < length; i++) {
             stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
-          } catch (e) {
-            throw new FS.ErrnoError(ERRNO_CODES.EIO);
           }
+        } catch (e) {
+          throw new FS.ErrnoError(ERRNO_CODES.EIO);
         }
         if (length) {
           stream.node.timestamp = Date.now();
@@ -151,7 +156,7 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
@@ -159,7 +164,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }
@@ -167,7 +172,7 @@ mergeInto(LibraryManager.library, {
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val);
@@ -175,7 +180,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }

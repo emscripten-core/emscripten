@@ -1,16 +1,12 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os, shutil, logging
 from subprocess import Popen
 
 TAG = 'version_1'
-
-def get_with_configure(ports, settings, shared):
-  if settings.USE_ZLIB == 1:
-    ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
-    return [ports.build_project('zlib', 'zlib-' + TAG,
-                                ['sh', './configure'],
-                                ['libz.a'])]
-  else:
-    return []
 
 def get(ports, settings, shared):
   if settings.USE_ZLIB == 1:

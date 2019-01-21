@@ -1,5 +1,10 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // cpuprofiler.js is an interactive CPU execution profiler which measures the time spent in executing code that utilizes requestAnimationFrame(), setTimeout() and/or setInterval() handlers to run.
-// Visit https://github.com/kripken/emscripten for the latest version.
+// Visit https://github.com/emscripten-core/emscripten for the latest version.
 
 // performance.now() might get faked later (this is done in the openwebgames.com test harness), so save the real one for cpu profiler.
 // However, in Safari, assigning to the performance object will mysteriously vanish in other imported .js <script>, so for that, replace
@@ -255,6 +260,19 @@ var emscriptenCpuProfiler = {
 
   // Installs the startup hooks and periodic UI update timer.
   initialize: function initialize() {
+    // Hook into requestAnimationFrame function to grab animation even if application did not use emscripten_set_main_loop() to drive animation, but e.g. used its own function that performs requestAnimationFrame().
+    if (!window.realRequestAnimationFrame) {
+      window.realRequestAnimationFrame = window.requestAnimationFrame;
+      window.requestAnimationFrame = function(cb) {
+        function hookedCb(p) {
+          emscriptenCpuProfiler.frameStart();
+          cb(performance.now());
+          emscriptenCpuProfiler.frameEnd();
+        }
+        return window.realRequestAnimationFrame(hookedCb);
+      }
+    }
+
     // Create the UI display if it doesn't yet exist. If you want to customize the location/style of the cpuprofiler UI,
     // you can manually create this beforehand.
     cpuprofiler = document.getElementById('cpuprofiler');
@@ -301,7 +319,7 @@ var emscriptenCpuProfiler = {
       helpText += "<br><div class='colorbox' style='background-color: " + this.colorWorseThan30FPS + ";'></div><b>Browser Execution (&lt; 30fps)</b>: Same as above, except that the frame completed slowly, so the browser time is drawn in this color. Long spikes of this color indicate that the browser is running some internal operations (e.g. garbage collection) that can cause stuttering.";
       helpText += "<br><div class='colorbox' style='background-color: " + this.colorSetIntervalSection + ";'></div><b>setInterval()</b>: Specifies the amount of time spent in executing user code in setInterval() handlers.";
       helpText += "<br><div class='colorbox' style='background-color: " + this.colorSetTimeoutSection + ";'></div><b>setTimeout()</b>: Specifies the amount of time spent in executing user code in setTimeout() handlers.";
-      helpText += "<p>For bugs and suggestions, visit <a href='https://github.com/kripken/emscripten/issues'>Emscripten bug tracker</a>.";
+      helpText += "<p>For bugs and suggestions, visit <a href='https://github.com/emscripten-core/emscripten/issues'>Emscripten bug tracker</a>.";
       helpText += "</div>";
 
       div.innerHTML = "<div style='color: black; border: 2px solid black; padding: 2px; margin-bottom: 10px; margin-left: 5px; margin-right: 5px; margin-top: 5px; background-color: #F0F0FF;'><span style='margin-left: 10px;'><b>Cpu Profiler</b><sup style='cursor: pointer;' onclick='emscriptenCpuProfiler.toggleHelpTextVisible();'>[?]</sup></span> <button style='display:inline; border: solid 1px #ADADAD; margin: 2px; background-color: #E1E1E1;' onclick='Module.noExitRuntime=false;Module.exit();'>Halt</button><button id='toggle_webgl_profile' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleHookWebGL()'>Profile WebGL</button><button id='toggle_webgl_trace' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleTraceWebGL()'>Trace Calls</button> slower than <input id='trace_limit' oninput='emscriptenCpuProfiler.disableTraceWebGL();' style='width:40px;' value='100'></input> msecs. <span id='fpsResult' style='margin-left: 5px;'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>" + helpText;

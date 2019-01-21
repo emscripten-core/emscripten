@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <string>
 #include <malloc.h>
 #include <functional>
@@ -120,13 +125,29 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
-std::string get_non_ascii_string() {
-    char c[128 + 1];
-    c[128] = 0;
-    for (int i = 0; i < 128; ++i) {
-        c[i] = 128 + i;
+std::string get_non_ascii_string(bool embindStdStringUTF8Support) {
+    if(embindStdStringUTF8Support) {
+        //ASCII
+        std::string testString{"aei"};
+        //Latin-1 Supplement
+        testString += "\u00E1\u00E9\u00ED";
+        //Greek
+        testString += "\u03B1\u03B5\u03B9";
+        //Cyrillic
+        testString += "\u0416\u041B\u0424";
+        //CJK
+        testString += "\u5F9E\u7345\u5B50";
+        //Euro sign
+        testString += "\u20AC";
+        return testString;
+    } else {
+        char c[128 + 1];
+        c[128] = 0;
+        for (int i = 0; i < 128; ++i) {
+            c[i] = 128 + i;
+        }
+        return c;
     }
-    return c;
 }
 
 std::wstring get_non_ascii_wstring() {
@@ -143,8 +164,9 @@ std::wstring get_literal_wstring() {
 }
 
 void force_memory_growth() {
-    auto heapu8 = val::global("Module")["HEAPU8"];
-    delete [] new char[heapu8["byteLength"].as<size_t>() + 1];
+    val module = val::global("Module");
+    std::size_t heap_size = module["HEAPU8"]["byteLength"].as<size_t>();
+    module.call<void>("_free", module.call<val>("_malloc", heap_size + 1));
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {
@@ -2326,6 +2348,15 @@ public:
     DummyForOverloads dummy(DummyForOverloads d) {
         return d;
     }
+
+    static DummyForOverloads staticDummy() {
+        return DummyForOverloads();
+    }
+
+    static DummyForOverloads staticDummy(DummyForOverloads d) {
+        return d;
+    }
+
 };
 
 DummyForOverloads getDummy() {
@@ -2386,6 +2417,8 @@ EMSCRIPTEN_BINDINGS(overloads) {
         .constructor()
         .function("dummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::dummy))
         .function("dummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::dummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads()>(&MultipleOverloadsDependingOnDummy::staticDummy))
+        .class_function("staticDummy", select_overload<DummyForOverloads(DummyForOverloads)>(&MultipleOverloadsDependingOnDummy::staticDummy))
         ;
 
     function("getDummy", select_overload<DummyForOverloads(void)>(&getDummy));
@@ -2694,10 +2727,21 @@ val construct_with_ints_and_float(val factory) {
     return factory.new_(65537, 4.0f, 65538);
 }
 
+val construct_with_arguments_before_and_after_memory_growth() {
+    auto out = val::array();
+    out.set(0, val::global("Uint8Array").new_(5));
+    force_memory_growth();
+    out.set(1, val::global("Uint8Array").new_(5));
+    return out;
+}
+
 EMSCRIPTEN_BINDINGS(val_new_) {
     function("construct_with_6_arguments", &construct_with_6);
     function("construct_with_memory_view", &construct_with_memory_view);
     function("construct_with_ints_and_float", &construct_with_ints_and_float);
+    function(
+            "construct_with_arguments_before_and_after_memory_growth",
+            &construct_with_arguments_before_and_after_memory_growth);
 }
 
 template <typename T>

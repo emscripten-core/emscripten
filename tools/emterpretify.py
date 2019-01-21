@@ -1,4 +1,8 @@
 #!/usr/bin/env python2
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 Processes asm.js code to make it run in an emterpreter.
@@ -468,7 +472,7 @@ def push_stacktop(zero):
   return (' sp = EMTSTACKTOP;' if not ASYNC else ' sp = EMTSTACKTOP + 8 | 0;') if not zero else ''
 
 def pop_stacktop(zero):
-  return '//Module.print("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
+  return '//out("exit");\n' + ((' EMTSTACKTOP = sp; ' if not ASYNC else 'EMTSTACKTOP = sp - 8 | 0; ') if not zero else '')
 
 def handle_async_pre_call():
   return 'HEAP32[sp - 4 >> 2] = pc;' if ASYNC else ''
@@ -479,8 +483,9 @@ def handle_async_post_call():
 
 CASES[ROPCODES['INTCALL']] = '''
     lz = HEAPU8[(HEAP32[pc + 4 >> 2] | 0) + 1 | 0] | 0; // FUNC inst, see definition above; we read params here
-    ly = 0;
-    assert(((EMTSTACKTOP + 8|0) <= (EMT_STACK_MAX|0))|0); // for return value
+    ly = 0;''' + ('''
+    if (((EMTSTACKTOP + 8|0) > (EMT_STACK_MAX|0))|0) // for return value
+      abortStackOverflowEmterpreter(); ''' if ASSERTIONS else '') + '''
     %s
      %s
       while ((ly|0) < (lz|0)) {
@@ -643,7 +648,7 @@ def make_emterpreter(zero=False):
   lx = (inst >> 8) & 255;
   ly = (inst >> 16) & 255;
   lz = inst >>> 24;
-  //Module.print([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
+  //out([pc, inst&255, ''' + json.dumps(OPCODES) + '''[inst&255], lx, ly, lz, HEAPU8[pc + 4],HEAPU8[pc + 5],HEAPU8[pc + 6],HEAPU8[pc + 7]]);
 '''
 
   if not INNERTERPRETER_LAST_OPCODE:
@@ -677,7 +682,7 @@ def make_emterpreter(zero=False):
 
   return process(r'''
 function emterpret%s(pc) {
- //Module.print('emterpret: ' + pc + ',' + EMTSTACKTOP);
+ //out('emterpret: ' + pc + ',' + EMTSTACKTOP);
  pc = pc | 0;
  var %sinst = 0, lx = 0, ly = 0, lz = 0;
 %s
@@ -701,8 +706,9 @@ function emterpret%s(pc) {
   '' if not ASYNC else 'HEAP32[EMTSTACKTOP>>2] = pc;\n',
   push_stacktop(zero),
   ROPCODES['FUNC'],
-  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;
- assert(((EMTSTACKTOP|0) <= (EMT_STACK_MAX|0))|0);\n''' + (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
+  (''' EMTSTACKTOP = EMTSTACKTOP + (lx ''' + (' + 1 ' if ASYNC else '') + '''<< 3) | 0;\n''' +
+    (''' if (((EMTSTACKTOP|0) > (EMT_STACK_MAX|0))|0) abortStackOverflowEmterpreter();\n''' if ASSERTIONS else '') +
+    (' if ((asyncState|0) != 2) {' if ASYNC else '')) if not zero else '',
   ' } else { pc = (HEAP32[sp - 4 >> 2] | 0) - 8 | 0; }' if ASYNC else '',
   main_loop,
 ))
@@ -774,7 +780,7 @@ if __name__ == '__main__':
     shared.logging.debug('saving original (non-emterpreted) code to ' + orig)
     shutil.copyfile(infile, orig)
 
-  if len(WHITELIST) > 0:
+  if len(WHITELIST):
     # we are using a whitelist: fill the blacklist with everything not whitelisted
     BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
 
@@ -911,7 +917,7 @@ if __name__ == '__main__':
         func, curr, absolute_targets = json.loads(line[len('// EMTERPRET_INFO '):])
       except Exception as e:
         print('failed to parse code from', line, file=sys.stderr)
-        raise e
+        raise
       assert len(curr) % 4 == 0, len(curr)
       funcs[func] = len(all_code) # no operation here should change the length
       if LOG_CODE: print('raw bytecode for %s:' % func, curr, 'insts:', len(curr)//4, file=sys.stderr)
@@ -980,7 +986,7 @@ if __name__ == '__main__':
         lines[i] = lines[i].replace(call, '(eb + %s | 0)' % (funcs[func]))
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
-  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line) > 0])]) + '\n'
+  asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line)])]) + '\n'
   lines = None
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)
@@ -1069,16 +1075,6 @@ __ATPRERUN__.push(function() {
     js = js.replace('assert(', '//assert(')
   assert '// {{PRE_LIBRARY}}' in asm.pre_js
   asm.pre_js = asm.pre_js.replace('// {{PRE_LIBRARY}}', '// {{PRE_LIBRARY}}\n' + js)
-
-  # send EMT vars into asm
-  asm.pre_js += "Module.asmLibraryArg['EMTSTACKTOP'] = EMTSTACKTOP; Module.asmLibraryArg['EMT_STACK_MAX'] = EMT_STACK_MAX; Module.asmLibraryArg['eb'] = eb;\n"
-  extra_vars = 'var EMTSTACKTOP = env.EMTSTACKTOP|0;\nvar EMT_STACK_MAX = env.EMT_STACK_MAX|0;\nvar eb = env.eb|0;\n'
-  first_func = asm.imports_js.find('function ')
-  if first_func < 0:
-    asm.imports_js += extra_vars
-  else:
-    # imports contains a function (not a true asm function, hidden from opt passes) that we must not be before
-    asm.imports_js = asm.imports_js[:first_func] + '\n' + extra_vars + '\n' + asm.imports_js[first_func:]
 
   asm.write(outfile)
 

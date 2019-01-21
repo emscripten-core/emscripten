@@ -1,4 +1,11 @@
 /*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+/*
 THIS WORK, INCLUDING THE SOURCE CODE, DOCUMENTATION
 AND RELATED MEDIA AND DATA, IS PLACED INTO THE PUBLIC DOMAIN.
 
@@ -21,11 +28,16 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #endif
 
 #include "SDL/SDL.h"
-#if !USE_GLEW
+#if !USE_GLEW && !USE_REGAL
 #include "SDL/SDL_opengl.h"
 #endif
 
+#if USE_REGAL
+#include "GL/Regal.h"
+#endif
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
@@ -48,13 +60,17 @@ int main(int argc, char *argv[])
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
-    
+
+#if USE_REGAL
+    RegalMakeCurrent((void*)1);
+#endif
+
     glClearColor( 0, 0, 0, 0 );
     glClear( GL_COLOR_BUFFER_BIT );
 
     // Create a texture
 
-    GLuint boundTex = 123;
+    GLint boundTex = 123;
     assert(!glGetError());
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
     assert(!glGetError());
@@ -127,9 +143,13 @@ int main(int argc, char *argv[])
 
     glActiveTexture(GL_TEXTURE0);
 
+#ifndef USE_REGAL
     glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(!tempBool);
+#endif
     glEnableClientState(GL_VERTEX_ARRAY);
+#ifndef USE_REGAL
     glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(tempBool);
+#endif
 
     GLuint arrayBuffer, elementBuffer;
     glGenBuffers(1, &arrayBuffer);
@@ -212,15 +232,19 @@ int main(int argc, char *argv[])
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &tempInt); assert(tempInt == 2);
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &tempInt); assert(tempInt == GL_SHORT);
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+#ifndef USE_REGAL
     glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)24);
+#endif
 
     glClientActiveTexture(GL_TEXTURE0); // likely not needed, it is a cleanup
     glNormalPointer(GL_BYTE, 32, (void*)12);
     glColorPointer(4, GL_UNSIGNED_BYTE, 32, (void*)28);
 
+#ifndef USE_REGAL
     glGetPointerv(GL_VERTEX_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)0);
     glGetPointerv(GL_COLOR_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)28);
     glGetPointerv(GL_TEXTURE_COORD_ARRAY_POINTER, &tempPtr); assert(tempPtr == (void *)16);
+#endif
     glGetIntegerv(GL_VERTEX_ARRAY_SIZE, &tempInt); assert(tempInt == 3);
     glGetIntegerv(GL_VERTEX_ARRAY_TYPE, &tempInt); assert(tempInt == GL_FLOAT);
     glGetIntegerv(GL_VERTEX_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
@@ -230,7 +254,9 @@ int main(int argc, char *argv[])
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_SIZE, &tempInt); assert(tempInt == 2);
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_TYPE, &tempInt); assert(tempInt == GL_FLOAT);
     glGetIntegerv(GL_TEXTURE_COORD_ARRAY_STRIDE, &tempInt); assert(tempInt == 32);
+#ifndef USE_REGAL
     glGetBooleanv(GL_VERTEX_ARRAY, &tempBool); assert(tempBool);
+#endif
 
     glBindTexture(GL_TEXTURE_2D, texture); // diffuse?
     glActiveTexture(GL_TEXTURE0);

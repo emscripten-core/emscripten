@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -30,6 +37,8 @@ void ready(const char *f) {
   testImage("screenshot.jpg"); // relative path
 
   SDL_Flip(screen);
+
+  EM_ASM({ doReftest() });
 }
 
 int main() {

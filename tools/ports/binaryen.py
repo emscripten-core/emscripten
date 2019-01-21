@@ -1,16 +1,19 @@
+# Copyright 2016 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os, shutil, logging
 
-TAG = 'version_48'
+TAG = 'version_64'
 
 def needed(settings, shared, ports):
-  if not settings.WASM: return False
-  try:
-    if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
-      logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)
-      settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
-      return False
-  except:
-    pass
+  if not settings.WASM:
+    return False
+  if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
+    logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)
+    settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
+    return False
   settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
   logging.debug('setting binaryen root to ' + settings.BINARYEN_ROOT)
   return True

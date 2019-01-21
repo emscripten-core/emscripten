@@ -1,18 +1,18 @@
-from __future__ import print_function
-import multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root
-from tools.shared import *
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
-# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
-# run using another browser command line than the default system browser.
-emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
-if emscripten_browser:
-  cmd = shlex.split(emscripten_browser)
-  def run_in_other_browser(url):
-    Popen(cmd + [url])
-  if EM_BUILD_VERBOSE_LEVEL >= 3:
-    print("using Emscripten browser: " + str(cmd), file=sys.stderr)
-  webbrowser.open_new = run_in_other_browser
+from __future__ import print_function
+import os
+import shutil
+
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py interactive')
+
+from runner import BrowserCore, path_from_root
+from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
+
 
 class interactive(BrowserCore):
   @classmethod
@@ -41,6 +41,9 @@ class interactive(BrowserCore):
   def test_sdl_wm_togglefullscreen(self):
     self.btest('sdl_wm_togglefullscreen.c', expected='1')
 
+  def test_sdl_fullscreen_samecanvassize(self):
+    self.btest('sdl_fullscreen_samecanvassize.c', expected='1')
+
   def test_sdl2_togglefullscreen(self):
     self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
 
@@ -56,14 +59,14 @@ class interactive(BrowserCore):
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
-    #print('SDL2')
+    # print('SDL2')
     # check sdl2 as well
     # FIXME: restore this test once we have proper SDL2 audio (existing test
     #        depended on fragile SDL1/SDL2 mixing, which stopped working with
     #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
     #        the existing problem)
-    #Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
-    #self.run_browser('page.html', '', '/report_result?1')
+    # Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix_channels(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -96,6 +99,20 @@ class interactive(BrowserCore):
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
+  def test_sdl2_mixer(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    open(os.path.join(self.get_dir(), 'sdl2_mixer.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432', '--preload-file', 'sound.ogg', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl2_mixer_wav(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'sound.wav'))
+    open(os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_wav.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432', '--preload-file', 'sound.wav', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
   def zzztest_sdl2_audio_beeps(self):
     open(os.path.join(self.get_dir(), 'sdl2_audio_beep.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_audio_beep.cpp')).read()))
 
@@ -107,8 +124,9 @@ class interactive(BrowserCore):
     shutil.copyfile(path_from_root('tests', 'sounds', 'audio.wav'), os.path.join(self.get_dir(), 'audio.wav'))
     open(os.path.join(self.get_dir(), 'openal_playback.cpp'), 'w').write(self.with_report_result(open(path_from_root('tests', 'openal_playback.cpp')).read()))
 
-    Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      Popen([PYTHON, EMCC, '-O2', os.path.join(self.get_dir(), 'openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args).communicate()
+      self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_buffers(self):
     self.btest('openal_buffers.c', '0', args=['--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
@@ -188,3 +206,28 @@ class interactive(BrowserCore):
 
   def test_threadprofiler(self):
     self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-msse', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
+
+  # Test that event backproxying works.
+  def test_html5_callbacks_on_calling_thread(self):
+    # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
+    for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
+  # and that the application can manually proxy the event from main browser thread to the application main thread, to
+  # implement event suppression capabilities.
+  def test_html5_callback_on_two_threads(self):
+    # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+      self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
+
+  # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
+  def test_emscripten_hide_mouse(self):
+    for args in [[], ['-s', 'USE_PTHREADS=1']]:
+      self.btest('emscripten_hide_mouse.c', expected='0', args=args)
+
+  # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
+  # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
+  def test_webgl_offscreen_canvas_in_two_pthreads(self):
+    for args in [['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-DTEST_OFFSCREENCANVAS=1'], ['-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
+      self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])

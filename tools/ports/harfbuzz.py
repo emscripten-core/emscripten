@@ -1,3 +1,8 @@
+# Copyright 2018 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os, logging
 
 TAG = '1.7.5'
@@ -18,11 +23,17 @@ def get(ports, settings, shared):
       freetype_include = os.path.join(freetype_dir, 'include')
       freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
-      shared.Building.configure(['cmake', '-H' + source_path, '-B' + dest_path,
-        '-DHB_HAVE_FREETYPE=ON', '-DFREETYPE_LIBRARY=' + freetype_lib,
+      shared.Building.configure([
+        'cmake',
+        '-B' + dest_path,
+        '-H' + source_path,
+        '-DCMAKE_BUILD_TYPE=Release',
+        '-DCMAKE_INSTALL_PREFIX=' + dest_path,
         '-DFREETYPE_INCLUDE_DIRS=' + freetype_include_dirs,
-        '-DCMAKE_BUILD_TYPE=Release'])
-      shared.Building.make(['make', '-C' + dest_path])
+        '-DFREETYPE_LIBRARY=' + freetype_lib,
+        '-DHB_HAVE_FREETYPE=ON'
+      ])
+      shared.Building.make(['make', '-C' + dest_path, 'install'])
       return os.path.join(dest_path, 'libharfbuzz.a')
     return [shared.Cache.get('harfbuzz', create, what='port')]
   else:
@@ -35,7 +46,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_HARFBUZZ == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'harfbuzz')]
+    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
   return args
 
 def show():

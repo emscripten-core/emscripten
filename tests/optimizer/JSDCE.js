@@ -87,4 +87,7 @@ function ___cxa_find_matching_catch_after() {
  if (!___cxa_find_matching_catch_after.buffer) ___cxa_find_matching_catch_after.buffer = {};
 }
 ___cxa_find_matching_catch_after();
+// dot stuff
+var dotMath = Math.something;
+var dotOther = Side.effect;
 

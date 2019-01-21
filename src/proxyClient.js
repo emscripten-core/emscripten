@@ -1,3 +1,7 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 // proxy to/from worker
 
@@ -141,11 +145,11 @@ worker.onmessage = function worker_onmessage(event) {
   var data = event.data;
   switch (data.target) {
     case 'stdout': {
-      Module.print(data.content);
+      Module['print'](data.content);
       break;
     }
     case 'stderr': {
-      Module.printErr(data.content);
+      Module['printErr'](data.content);
       break;
     }
     case 'window': {

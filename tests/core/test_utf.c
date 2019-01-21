@@ -1,3 +1,10 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -8,7 +15,7 @@ int main() {
   emscripten_run_script(
       "cheez = _malloc(100);"
       "Module.stringToUTF8(\"μ†ℱ ╋ℯ╳╋ 😇\", cheez, 100);"
-      "Module.print([Pointer_stringify(cheez), Module.getValue(cheez, "
+      "out([UTF8ToString(cheez), Module.getValue(cheez, "
       "'i8')&0xff, Module.getValue(cheez+1, 'i8')&0xff, "
       "Module.getValue(cheez+2, 'i8')&0xff, Module.getValue(cheez+3, "
       "'i8')&0xff].join(','));");

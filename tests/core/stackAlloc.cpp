@@ -1,3 +1,8 @@
+// Copyright 2018 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <emscripten.h>
 
 int main() {
@@ -25,6 +30,6 @@ int main() {
     notInRange(y, z, z + direction*size);
     notInRange(z, x, x + direction*size);
     notInRange(z, y, y + direction*size);
-    Module['print']('ok.');
+    out('ok.');
   });
 }

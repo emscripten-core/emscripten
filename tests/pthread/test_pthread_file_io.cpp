@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>
@@ -7,7 +12,7 @@
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(Module['print']('thread1_start!'));
+  EM_ASM(out('thread1_start!'));
 
   FILE *handle = fopen("file1.txt", "r");
   assert(handle);

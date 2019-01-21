@@ -1,3 +1,10 @@
+/*
+ * Copyright 2011 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -33,7 +40,7 @@ int main() {
       },
       write: function(stream, buffer, offset, length, pos) {
         for (var i = 0; i < length; i++) {
-          Module.print('TO DEVICE: ' + buffer[offset+i]);
+          out('TO DEVICE: ' + buffer[offset+i]);
         }
         return i;
       }

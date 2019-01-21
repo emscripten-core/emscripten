@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+//
 // Async support
 //
 // Two experiments in async support: ASYNCIFY, and EMTERPRETIFY_ASYNC
@@ -9,7 +14,7 @@ mergeInto(LibraryManager.library, {
  *
  * ---------------------  <-- saved sp for the current function
  * <last normal stack frame>
- * --------------------- 
+ * ---------------------
  * pointer to the previous frame <-- __async_cur_frame
  * saved sp
  * callback function   <-- ctx, returned by alloc/reallloc, used by the program
@@ -74,7 +79,7 @@ mergeInto(LibraryManager.library, {
     ___async_cur_frame = new_frame;
     return (___async_cur_frame + 8)|0;
   },
-  
+
   emscripten_realloc_async_context__deps: ['__async_cur_frame'],
   emscripten_realloc_async_context__sig: 'ii',
   emscripten_realloc_async_context__asm: true,
@@ -132,7 +137,7 @@ mergeInto(LibraryManager.library, {
     if ((stack_size|0) <= 0) stack_size = 4096;
 
     coroutine = _malloc(stack_size + 32 | 0) | 0;
-    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}}; 
+    {{{ makeSetValueAsm('coroutine', 12, 0, 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 16, '(coroutine+32)', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 20, 'stack_size', 'i32') }}};
     {{{ makeSetValueAsm('coroutine', 24, 'f', 'i32') }}};
@@ -193,8 +198,8 @@ mergeInto(LibraryManager.library, {
 
   emscripten_wget__deps: ['emscripten_async_resume', '$PATH', '$Browser'],
   emscripten_wget: function(url, file) {
-    var _url = Pointer_stringify(url);
-    var _file = Pointer_stringify(file);
+    var _url = UTF8ToString(url);
+    var _file = UTF8ToString(file);
     _file = PATH.resolve(FS.cwd(), _file);
     Module['setAsync']();
     Module['noExitRuntime'] = true;
@@ -231,22 +236,36 @@ mergeInto(LibraryManager.library, {
   $EmterpreterAsync__deps: ['$Browser'],
   $EmterpreterAsync: {
     initted: false,
-    state: 0, // 0 - nothing/normal
-              // 1 - saving the stack: functions should all be in emterpreter, and should all save&exit/return
-              // 2 - restoring the stack: functions should all be in emterpreter, and should all restore&continue
-              // 3 - during sleep. this is between 1 and 2. at this time it is ok to call yield funcs
+    state: 0, // 0 - Nothing/normal.
+              // 1 - Sleeping: This is set when we start to save the stack, and continues through the
+              //     sleep, until we start to restore the stack.
+              //     If we enter a function while in this state - that is, before we
+              //     start to restore the stack, or in other words if we call a function while
+              //     sleeping - then we switch to state 3, "definitely sleeping". That lets us know
+              //     we are no longer saving the stack. How this works is that while we save the stack
+              //     we don't hit any function entries, so they are valid places to switch to state 3,
+              //     and then when we reach code later that checks if we need to save the stack, we
+              //     know we don't need to.
+              // 2 - Restoring the stack: On the way to resume normal execution.
+              // 3 - Definitely sleeping, that is, sleeping and after saving the stack.
     saveStack: '',
     yieldCallbacks: [],
     postAsync: null,
-    asyncFinalizers: [], // functions to run when all asynchronicity is done
+    restartFunc: null, // During an async call started with ccall, this contains the function generated
+                       // by the compiler that calls emterpret and returns the return value. If we call
+                       // emterpret directly, we don't get the return value back (and we can't just read
+                       // it from the stack because we don't know the correct type). Note that only
+                       // a single one (and not a stack) is required because only one async ccall can be
+                       // in flight at once.
+    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
 
     ensureInit: function() {
       if (this.initted) return;
       this.initted = true;
 #if ASSERTIONS
       abortDecorators.push(function(output, what) {
-        if (EmterpreterAsync.state !== 0) {
-          return output + '\nThis error happened during an emterpreter-async save or load of the stack. Was there non-emterpreted code on the stack during save (which is unallowed)? You may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST.\nThis is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
+        if (EmterpreterAsync.state === 1 || EmterpreterAsync.state === 2) {
+          return output + '\nThis error happened during an emterpreter-async operation. Was there non-emterpreted code on the stack during save (which is unallowed)? If so, you may want to adjust EMTERPRETIFY_BLACKLIST, EMTERPRETIFY_WHITELIST. For reference, this is what the stack looked like when we tried to save it: ' + [EmterpreterAsync.state, EmterpreterAsync.saveStack];
         }
         return output;
       });
@@ -263,7 +282,9 @@ mergeInto(LibraryManager.library, {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
         var stack = new Int32Array(HEAP32.subarray(EMTSTACKTOP>>2, Module['emtStackSave']()>>2));
+#if ASSERTIONS
         var stacktop = Module['stackSave']();
+#endif
 
         var resumedCallbacksForYield = false;
         function resumeCallbacksForYield() {
@@ -302,6 +323,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
           assert(stacktop === Module['stackSave']()); // nothing should have modified the stack meanwhile
 #endif
+          // we are now starting to restore the stack
           EmterpreterAsync.setState(2);
           // Resume the main loop
           if (Browser.mainLoop.func) {
@@ -309,16 +331,29 @@ mergeInto(LibraryManager.library, {
           }
           assert(!EmterpreterAsync.postAsync);
           EmterpreterAsync.postAsync = post || null;
-          Module['emterpret'](stack[0]); // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+          var asyncReturnValue;
+          if (!EmterpreterAsync.restartFunc) {
+            // pc of the first function, from which we can reconstruct the rest, is at position 0 on the stack
+            Module['emterpret'](stack[0]);
+          } else {
+            // the restartFunc knows how to emterpret the proper function, and also returns the return value
+            asyncReturnValue = EmterpreterAsync.restartFunc();
+          }
           if (!yieldDuring && EmterpreterAsync.state === 0) {
             // if we did *not* do another async operation, then we know that nothing is conceptually on the stack now, and we can re-allow async callbacks as well as run the queued ones right now
             Browser.resumeAsyncCallbacks();
           }
           if (EmterpreterAsync.state === 0) {
-            EmterpreterAsync.asyncFinalizers.forEach(function(func) {
-              func();
+            // All async operations have concluded.
+            // In particular, if we were in an async ccall, we have
+            // consumed the restartFunc and can reset it to null.
+            EmterpreterAsync.restartFunc = null;
+            // The async finalizers can run now, after all async operations.
+            var asyncFinalizers = EmterpreterAsync.asyncFinalizers;
+            EmterpreterAsync.asyncFinalizers = [];
+            asyncFinalizers.forEach(function(func) {
+              func(asyncReturnValue);
             });
-            EmterpreterAsync.asyncFinalizers.length = 0;
           }
         });
 
@@ -374,8 +409,8 @@ mergeInto(LibraryManager.library, {
   emscripten_wget__deps: ['$EmterpreterAsync', '$PATH', '$FS', '$Browser'],
   emscripten_wget: function(url, file) {
     EmterpreterAsync.handle(function(resume) {
-      var _url = Pointer_stringify(url);
-      var _file = Pointer_stringify(file);
+      var _url = UTF8ToString(url);
+      var _file = UTF8ToString(file);
       _file = PATH.resolve(FS.cwd(), _file);
       var destinationDirectory = PATH.dirname(_file);
       FS.createPreloadedFile(
@@ -397,7 +432,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data__deps: ['$EmterpreterAsync', '$Browser'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     EmterpreterAsync.handle(function(resume) {
-      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
         resume(function() {
           // can only allocate the buffer after the resume, not during an asyncing
           var buffer = _malloc(byteArray.length); // must be freed by caller!

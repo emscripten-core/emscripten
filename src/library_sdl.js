@@ -1,3 +1,8 @@
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //"use strict";
 
 // See browser tests for examples (tests/runner.py, search for sdl_). Run with
@@ -11,10 +16,11 @@
 
 var LibrarySDL = {
   $SDL__deps: [
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     '$FS',
 #endif
-    '$PATH', '$Browser', 'SDL_GetTicks'
+    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+
   ],
   $SDL: {
     defaults: {
@@ -394,6 +400,10 @@ var LibrarySDL = {
         alpha: (SDL.glAttributes[3 /*SDL_GL_ALPHA_SIZE*/] > 0)
       };
 
+#if OFFSCREEN_FRAMEBUFFER
+      // TODO: Make SDL explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+      GL.enableOffscreenFramebufferAttributes(webGLContextAttributes);
+#endif
       var ctx = Browser.createContext(canvas, is_SDL_OPENGL, usePageCanvas, webGLContextAttributes);
 
       SDL.surfaces[surf] = {
@@ -471,7 +481,6 @@ var LibrarySDL = {
         SDL.screen = null;
       }
     },
-    blitSurface__deps: ["SDL_LockSurface"],
     blitSurface: function(src, srcrect, dst, dstrect, scale) {
       var srcData = SDL.surfaces[src];
       var dstData = SDL.surfaces[dst];
@@ -779,7 +788,7 @@ var LibrarySDL = {
           break;
       }
       if (SDL.events.length >= 10000) {
-        Module.printErr('SDL event queue full, dropping events');
+        err('SDL event queue full, dropping events');
         SDL.events = SDL.events.slice(0, 10000);
       }
       // If we have a handler installed, this will push the events to the app
@@ -887,7 +896,7 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          //Module.print('Received key event: ' + event.keyCode);
+          //out('Received key event: ' + event.keyCode);
           var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
@@ -1078,7 +1087,7 @@ var LibrarySDL = {
             info.audio.volume = info.volume; // For <audio> element
             if (info.audio.webAudioGainNode) info.audio.webAudioGainNode['gain']['value'] = info.volume; // For WebAudio playback
           } catch(e) {
-            Module.printErr('setGetVolume failed to set audio volume: ' + e);
+            err('setGetVolume failed to set audio volume: ' + e);
           }
         }
       }
@@ -1130,7 +1139,7 @@ var LibrarySDL = {
         audio.webAudioNode['start'](0, audio.currentPosition);
         audio.startTime = SDL.audioContext['currentTime'] - audio.currentPosition;
       } catch(e) {
-        Module.printErr('playWebAudio failed: ' + e);
+        err('playWebAudio failed: ' + e);
       }
     },
 
@@ -1148,7 +1157,7 @@ var LibrarySDL = {
           audio.webAudioNode.stop(0); // 0 is a default parameter, but WebKit is confused by it #3861
           audio.webAudioNode = undefined;
         } catch(e) {
-          Module.printErr('pauseWebAudio failed: ' + e);
+          err('pauseWebAudio failed: ' + e);
         }
       }
       audio.paused = true;
@@ -1252,7 +1261,9 @@ var LibrarySDL = {
         if (state === null) return;
         // Check only if the timestamp has differed.
         // NOTE: Timestamp is not available in Firefox.
-        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp) {
+        // NOTE: Timestamp is currently not properly set for the GearVR controller
+        //       on Samsung Internet: it is always zero.
+        if (typeof state.timestamp !== 'number' || state.timestamp !== prevState.timestamp || !state.timestamp) {
           var i;
           for (i = 0; i < state.buttons.length; i++) {
             var buttonState = SDL.getJoystickButtonState(state.buttons[i]);
@@ -1466,11 +1477,9 @@ var LibrarySDL = {
       });
     }
 
-    if (width !== canvas.width || height !== canvas.height) {
-      SDL.settingVideoMode = true; // SetVideoMode itself should not trigger resize events
-      Browser.setCanvasSize(width, height);
-      SDL.settingVideoMode = false;
-    }
+    SDL.settingVideoMode = true; // SetVideoMode itself should not trigger resize events
+    Browser.setCanvasSize(width, height);
+    SDL.settingVideoMode = false;
 
     // Free the old surface first if there is one
     if (SDL.screen) {
@@ -1505,17 +1514,17 @@ var LibrarySDL = {
   },
 
   SDL_VideoQuit: function() {
-    Module.print('SDL_VideoQuit called (and ignored)');
+    out('SDL_VideoQuit called (and ignored)');
   },
 
   SDL_QuitSubSystem: function(flags) {
-    Module.print('SDL_QuitSubSystem called (and ignored)');
+    out('SDL_QuitSubSystem called (and ignored)');
   },
 
   SDL_Quit__deps: ['SDL_AudioQuit'],
   SDL_Quit: function() {
     _SDL_AudioQuit();
-    Module.print('SDL_Quit called (and ignored)');
+    out('SDL_Quit called (and ignored)');
   },
 
   // Copy data from the canvas backing to a C++-accessible storage
@@ -1727,9 +1736,9 @@ var LibrarySDL = {
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
     if (title && typeof Module['setWindowTitle'] !== 'undefined') {
-      Module['setWindowTitle'](Pointer_stringify(title));
+      Module['setWindowTitle'](UTF8ToString(title));
     }
-    icon = icon && Pointer_stringify(icon);
+    icon = icon && UTF8ToString(icon);
   },
 
   SDL_EnableKeyRepeat: function(delay, interval) {
@@ -1777,12 +1786,14 @@ var LibrarySDL = {
   SDL_WarpMouse__sig: 'vii',
   SDL_WarpMouse: function(x, y) {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
+    /*
     var rect = Module["canvas"].getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
       pageX: x + (window.scrollX + rect.left),
       pageY: y + (window.scrollY + rect.top)
     });
+    */
   },
 
   SDL_ShowCursor__proxy: 'sync',
@@ -2273,7 +2284,7 @@ var LibrarySDL = {
         filename = PATH.resolve(filename);
         var raw = Module["preloadedImages"][filename];
         if (!raw) {
-          if (raw === null) Module.printErr('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
+          if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
           var lengthBytes = lengthBytesUTF8(filename)+1;
           var name = Module['_malloc'](lengthBytes);
@@ -2343,7 +2354,7 @@ var LibrarySDL = {
             data[destPtr++] = 255;
           }
         } else {
-          Module.printErr('cannot handle bpp ' + raw.bpp);
+          err('cannot handle bpp ' + raw.bpp);
           return 0;
         }
         surfData.ctx.putImageData(imageData, 0, 0);
@@ -2377,7 +2388,7 @@ var LibrarySDL = {
   },
 
   IMG_Quit: function() {
-    Module.print('IMG_Quit called (and ignored)');
+    out('IMG_Quit called (and ignored)');
   },
 
   // SDL_Audio
@@ -2767,14 +2778,14 @@ var LibrarySDL = {
       filename = PATH.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
-        if (raw === null) Module.printErr('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
+        if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
         if (!Module.noAudioDecoding) warnOnce('Cannot find preloaded audio ' + filename);
 
         // see if we can read the file-contents from the in-memory FS
         try {
           bytes = FS.readFile(filename);
         } catch (e) {
-          Module.printErr('Couldn\'t find file for: ' + filename);
+          err('Couldn\'t find file for: ' + filename);
           return 0;
         }
       }
@@ -2909,7 +2920,7 @@ var LibrarySDL = {
         }
       }
       if (channel == -1) {
-        Module.printErr('All ' + SDL.numChannels + ' channels in use!');
+        err('All ' + SDL.numChannels + ' channels in use!');
         return -1;
       }
     }
@@ -3004,7 +3015,7 @@ var LibrarySDL = {
   Mix_PlayMusic: function(id, loops) {
     // Pause old music if it exists.
     if (SDL.music.audio) {
-      if (!SDL.music.audio.paused) Module.printErr('Music is already playing. ' + SDL.music.source);
+      if (!SDL.music.audio.paused) err('Music is already playing. ' + SDL.music.source);
       SDL.music.audio.pause();
     }
     var info = SDL.audios[id];
@@ -3100,7 +3111,7 @@ var LibrarySDL = {
     if (info && info.audio) {
       info.audio.pause();
     } else {
-      //Module.printErr('Mix_Pause: no sound found for channel: ' + channel);
+      //err('Mix_Pause: no sound found for channel: ' + channel);
     }
   },
 
@@ -3155,7 +3166,7 @@ var LibrarySDL = {
   TTF_OpenFont__proxy: 'sync',
   TTF_OpenFont__sig: 'iii',
   TTF_OpenFont: function(filename, size) {
-    filename = PATH.normalize(Pointer_stringify(filename));
+    filename = PATH.normalize(UTF8ToString(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
       name: filename, // but we don't actually do anything with it..
@@ -3174,7 +3185,7 @@ var LibrarySDL = {
   TTF_RenderText_Solid__sig: 'iiii',
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
-    text = Pointer_stringify(text) || ' '; // if given an empty string, still return a valid surface
+    text = UTF8ToString(text) || ' '; // if given an empty string, still return a valid surface
     var fontData = SDL.fonts[font];
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
@@ -3203,7 +3214,7 @@ var LibrarySDL = {
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
     if (w) {
-      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, Pointer_stringify(text))', 'i32') }}};
+      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, UTF8ToString(text))', 'i32') }}};
     }
     if (h) {
       {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
@@ -3258,7 +3269,7 @@ var LibrarySDL = {
   TTF_FontLineSkip: 'TTF_FontHeight', // XXX
 
   TTF_Quit: function() {
-    Module.print('TTF_Quit called (and ignored)');
+    out('TTF_Quit called (and ignored)');
   },
 
   // SDL gfx
@@ -3457,7 +3468,7 @@ var LibrarySDL = {
   SDL_SetWindowTitle__proxy: 'sync',
   SDL_SetWindowTitle__sig: 'vii',
   SDL_SetWindowTitle: function(window, title) {
-    if (title) document.title = Pointer_stringify(title);
+    if (title) document.title = UTF8ToString(title);
   },
 
   SDL_GetWindowSize__proxy: 'sync',
@@ -3639,7 +3650,7 @@ var LibrarySDL = {
   SDL_RWFromFile__sig: 'iii',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
-    var name = Pointer_stringify(_name)
+    var name = UTF8ToString(_name)
     SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
     return id;
   },

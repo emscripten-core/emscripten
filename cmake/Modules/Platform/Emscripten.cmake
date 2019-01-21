@@ -49,7 +49,7 @@ endif()
 # Disable wasm in cmake checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
 # to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
 # on the side, async startup, etc..
-set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1 -s WASM=0")
+set(CMAKE_REQUIRED_FLAGS "-s WASM=0")
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
@@ -123,6 +123,20 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
 		if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS 3.9.0)
 			message(WARNING "CMAKE_C_COMPILER version looks too old. Was ${CMAKE_C_COMPILER_VERSION}, should be at least 3.9.0.")
 		endif()
+	endif()
+
+	# Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
+	if (NOT EMSCRIPTEN_VERSION)
+		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		if (NOT _cmake_compiler_result EQUAL 0)
+			message(FATAL_ERROR "Failed to fetch Emscripten version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
+		endif()
+		string(REGEX MATCH "emcc \\(.*\\) ([0-9\\.]+)" _dummy_unused "${_cmake_compiler_output}")
+		if (NOT CMAKE_MATCH_1)
+			message(FATAL_ERROR "Failed to regex parse Emscripten compiler version from version string: ${_cmake_compiler_output}")
+		endif()
+
+		set(EMSCRIPTEN_VERSION "${CMAKE_MATCH_1}")
 	endif()
 
 	set(CMAKE_C_COMPILER_ID_RUN TRUE)

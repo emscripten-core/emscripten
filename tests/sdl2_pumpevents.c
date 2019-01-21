@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL2/SDL.h>
@@ -63,8 +70,7 @@ int main(int argc, char *argv[])
 {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window;
-  SDL_Renderer *renderer;
-  SDL_CreateWindowAndRenderer(600, 450, 0, &window, &renderer);
+  SDL_CreateWindow("window", 0, 0, 600, 450, 0);
     
   emscripten_run_script("keydown(37);"); // left
   result += loop1();

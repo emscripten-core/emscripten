@@ -1,13 +1,18 @@
+// Copyright 2017 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include<emscripten.h>
 
 int main() {
 #ifdef DIRECT
   EM_ASM({
-    Module['print']('|' + ALLOC_DYNAMIC + '|');
+    out('|' + ALLOC_DYNAMIC + '|');
   });
 #else
   EM_ASM({
-    Module['print']('|' + Module['ALLOC_DYNAMIC'] + '|');
+    out('|' + Module['ALLOC_DYNAMIC'] + '|');
   });
 #endif
 }

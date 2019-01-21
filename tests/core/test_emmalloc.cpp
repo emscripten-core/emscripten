@@ -1,3 +1,8 @@
+// Copyright 2018 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,7 +33,7 @@ void check_where_we_would_malloc(size_t size, void* expected) {
 
 void stage(const char* name) {
   EM_ASM({
-    Module.print('\n>> ' + Pointer_stringify($0) + '\n');
+    out('\n>> ' + UTF8ToString($0) + '\n');
   }, name);
 }
 

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // This file uses SSE2 by calling different functions with different interesting inputs and prints the results.
 // Use a diff tool to compare the results between platforms.
 
@@ -9,14 +14,14 @@
 // the PNaCl ExpandI64.cpp path fails to expand our emulated code when LLVM wants to pack or
 // unpack the 64bit elements to/from vectors. Therefore skip that path for now in release builds.
 // (debug builds work ok, since they avoid optimized smartness)
-// See https://github.com/kripken/emscripten/issues/3788
+// See https://github.com/emscripten-core/emscripten/issues/3788
 #ifndef _DEBUG
 #define NO_INT64X2
 #endif
 
 #ifndef _DEBUG
 // The following tests break when optimizer is applied, so disable them for now. Baby steps.
-// See https://github.com/kripken/emscripten/issues/3789
+// See https://github.com/emscripten-core/emscripten/issues/3789
 #define BREAKS_UNDER_OPTIMIZATION
 #endif
 

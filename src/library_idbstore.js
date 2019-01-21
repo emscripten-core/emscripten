@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryIDBStore = {
   // A simple IDB-backed storage mechanism. Suitable for saving and loading large files asynchronously. This does
   // *NOT* use the emscripten filesystem, intentionally, to avoid overhead. It lets you application define whatever
@@ -9,7 +14,7 @@ var LibraryIDBStore = {
   ,
 
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
-    IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, byteArray) {
+    IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
       if (error) {
         if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
@@ -22,7 +27,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_async_store: function(db, id, ptr, num, arg, onstore, onerror) {
     // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
-    IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
+    IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
       if (error) {
         if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
@@ -31,7 +36,7 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
-    IDBStore.deleteFile(Pointer_stringify(db), Pointer_stringify(id), function(error) {
+    IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
       if (error) {
         if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
@@ -40,7 +45,7 @@ var LibraryIDBStore = {
     });
   },
   emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
-    IDBStore.existsFile(Pointer_stringify(db), Pointer_stringify(id), function(error, exists) {
+    IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
       if (error) {
         if (onerror) Module['dynCall_vi'](onerror, arg);
         return;
@@ -53,7 +58,7 @@ var LibraryIDBStore = {
   emscripten_idb_load__deps: ['$EmterpreterAsync'],
   emscripten_idb_load: function(db, id, pbuffer, pnum, perror) {
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, byteArray) {
+      IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
         if (error) {
           {{{ makeSetValueAsm('perror', 0, '1', 'i32') }}};
           resume();
@@ -71,7 +76,7 @@ var LibraryIDBStore = {
   emscripten_idb_store__deps: ['$EmterpreterAsync'],
   emscripten_idb_store: function(db, id, ptr, num, perror) {
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
+      IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
         {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
         resume();
       });
@@ -80,7 +85,7 @@ var LibraryIDBStore = {
   emscripten_idb_delete__deps: ['$EmterpreterAsync'],
   emscripten_idb_delete: function(db, id, perror) {
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.deleteFile(Pointer_stringify(db), Pointer_stringify(id), function(error) {
+      IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
         {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
         resume();
       });
@@ -89,7 +94,7 @@ var LibraryIDBStore = {
   emscripten_idb_exists__deps: ['$EmterpreterAsync'],
   emscripten_idb_exists: function(db, id, pexists, perror) {
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.existsFile(Pointer_stringify(db), Pointer_stringify(id), function(error, exists) {
+      IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
         {{{ makeSetValueAsm('pexists', 0, '!!exists', 'i32') }}};
         {{{ makeSetValueAsm('perror',  0, '!!error', 'i32') }}};
         resume();
@@ -118,13 +123,13 @@ var LibraryIDBStore = {
       postMessage({
         target: 'IDBStore',
         method: 'loadBlob',
-        db: Pointer_stringify(db),
-        id: Pointer_stringify(id)
+        db: UTF8ToString(db),
+        id: UTF8ToString(id)
       });
     });
     /*
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.getFile(Pointer_stringify(db), Pointer_stringify(id), function(error, blob) {
+      IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, blob) {
         if (error) {
           {{{ makeSetValueAsm('perror', 0, '1', 'i32') }}};
           resume();
@@ -151,14 +156,14 @@ var LibraryIDBStore = {
       postMessage({
         target: 'IDBStore',
         method: 'storeBlob',
-        db: Pointer_stringify(db),
-        id: Pointer_stringify(id),
+        db: UTF8ToString(db),
+        id: UTF8ToString(id),
         blob: new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))])
       });
     });
     /*
     EmterpreterAsync.handle(function(resume) {
-      IDBStore.setFile(Pointer_stringify(db), Pointer_stringify(id), new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))]), function(error) {
+      IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))]), function(error) {
         {{{ makeSetValueAsm('perror', 0, '!!error', 'i32') }}};
         resume();
       });

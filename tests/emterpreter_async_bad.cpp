@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <assert.h>
@@ -22,7 +27,7 @@ void __attribute__((noinline)) run_loop() {
   }
 }
 
-void __attribute__((noinline)) middle() {
+void __attribute__((noinline)) middle() { // not emterpreted, so sleeping in run_loop is bad
   run_loop();
   printf("after run_loop, counter: %d\n", counter);
   assert(counter == 10);
@@ -32,7 +37,7 @@ void __attribute__((noinline)) middle() {
 int main() {
   EM_ASM({
     window.onerror = function(err) {
-      assert(err.toString().indexOf('This error happened during an emterpreter-async save or load of the stack') > 0, 'expect good error message');
+      assert(err.toString().indexOf("This error happened during an emterpreter-async operation") > 0, "expect good error message");
       // manually REPORT_RESULT; we can't call back into native code at this point, assertions would trigger
       var xhr = new XMLHttpRequest();
       xhr.open("GET", "http://localhost:8888/report_result?1");

@@ -1,3 +1,8 @@
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 from __future__ import print_function
 import multiprocessing
 import os
@@ -5,14 +10,8 @@ import subprocess
 import sys
 import unittest
 import tempfile
-import shutil
 
-__rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-sys.path.append(path_from_root('tools'))
-
-from tempfiles import try_delete
+from tools.tempfiles import try_delete
 
 try:
   import queue
@@ -20,15 +19,19 @@ except ImportError:
   # Python 2 compatibility
   import Queue as queue
 
+
 def g_testing_thread(work_queue, result_queue, temp_dir):
   for test in iter(lambda: get_from_queue(work_queue), None):
     result = BufferedParallelTestResult()
     test.set_temp_dir(temp_dir)
     try:
       test(result)
+    except unittest.SkipTest as e:
+      result.addSkip(test, e)
     except Exception as e:
       result.addError(test, e)
     result_queue.put(result)
+
 
 class ParallelTestSuite(unittest.BaseTestSuite):
   """Runs a suite of tests in parallel.
@@ -81,7 +84,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
   def collect_results(self):
     buffered_results = []
-    while len(self.processes) > 0:
+    while len(self.processes):
       res = get_from_queue(self.result_queue)
       if res is not None:
         buffered_results.append(res)
@@ -100,7 +103,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     print()
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
-    results = sorted(buffered_results, key=lambda res:str(res.test))
+    results = sorted(buffered_results, key=lambda res: str(res.test))
     for r in results:
       r.updateResult(result)
     return result
@@ -125,12 +128,17 @@ class BufferedParallelTestResult(object):
 
   def startTest(self, test):
     pass
+
   def stopTest(self, test):
     pass
 
   def addSuccess(self, test):
     print(test, '... ok', file=sys.stderr)
     self.buffered_result = BufferedTestSuccess(test)
+
+  def addSkip(self, test, reason):
+    print(test, "... skipped '%s'" % reason, file=sys.stderr)
+    self.buffered_result = BufferedTestSkip(test, reason)
 
   def addFailure(self, test, err):
     print(test, '... FAIL', file=sys.stderr)
@@ -143,7 +151,7 @@ class BufferedParallelTestResult(object):
 
 class BufferedTestBase(object):
   """Abstract class that holds test result data, split by type of result."""
-  def __init__(self, test, err = None):
+  def __init__(self, test, err=None):
     self.test = test
     if err:
       exctype, value, tb = err
@@ -161,6 +169,15 @@ class BufferedTestBase(object):
 class BufferedTestSuccess(BufferedTestBase):
   def updateResult(self, result):
     result.addSuccess(self.test)
+
+
+class BufferedTestSkip(BufferedTestBase):
+  def __init__(self, test, reason):
+    self.test = test
+    self.reason = reason
+
+  def updateResult(self, result):
+    result.addSkip(self.test, self.reason)
 
 
 class BufferedTestFailure(BufferedTestBase):
@@ -189,11 +206,15 @@ class FakeTraceback(object):
     self.tb_frame = FakeFrame(tb.tb_frame)
     self.tb_lineno = tb.tb_lineno
     self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
+
+
 class FakeFrame(object):
   def __init__(self, f):
     self.f_code = FakeCode(f.f_code)
     # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
     self.f_globals = []
+
+
 class FakeCode(object):
   def __init__(self, co):
     self.co_filename = co.co_filename

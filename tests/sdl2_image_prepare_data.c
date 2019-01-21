@@ -1,3 +1,10 @@
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -49,6 +56,8 @@ void ready(void *arg, const char *fileName) {
     free((void*)seenName); // As the API docs say, we are responsible for freeing the 'fake' names we are given
 
     SDL_RenderPresent(renderer);
+
+    EM_ASM({ doReftest() });
   }
 }
 

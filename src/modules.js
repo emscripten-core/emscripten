@@ -1,3 +1,8 @@
+// Copyright 2011 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //"use strict";
 
 // Various namespace-like modules
@@ -92,6 +97,11 @@ var LibraryManager = {
   library: null,
   structs: {},
   loaded: false,
+  libraries: [],
+
+  has: function(name) {
+    return this.libraries.indexOf(name) >= 0;
+  },
 
   load: function() {
     if (this.library) return;
@@ -107,8 +117,8 @@ var LibraryManager = {
       'library_html5.js'
     ];
 
-    if (!NO_FILESYSTEM) {
-      // Core filesystem libraries (always linked against, unless -s NO_FILESYSTEM=1 is specified)
+    if (FILESYSTEM) {
+      // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',
         'library_memfs.js',
@@ -119,14 +129,21 @@ var LibraryManager = {
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
       if (!STRICT) {
         libraries = libraries.concat([
-          'library_idbfs.js',
-          'library_nodefs.js',
-          'library_proxyfs.js',
-          'library_sockfs.js',
-          'library_workerfs.js',
           'library_lz4.js',
         ]);
-
+        if (ENVIRONMENT_MAY_BE_WEB) {
+          libraries = libraries.concat([
+            'library_idbfs.js',
+            'library_proxyfs.js',
+            'library_sockfs.js',
+            'library_workerfs.js',
+          ]);
+        }
+        if (ENVIRONMENT_MAY_BE_NODE) {
+          libraries = libraries.concat([
+            'library_nodefs.js',
+          ]);
+        }
         if (NODERAWFS) {
           libraries.push('library_noderawfs.js')
         }
@@ -151,6 +168,9 @@ var LibraryManager = {
       ]);
     }
 
+    if (LEGACY_GL_EMULATION) {
+      libraries.push('library_glemu.js');
+    }
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
@@ -158,17 +178,14 @@ var LibraryManager = {
 
     libraries = libraries.concat(additionalLibraries);
 
-    // For each JS library library_xxx.js, add a preprocessor token __EMSCRIPTEN_HAS_xxx_js__ so that code can conditionally dead code eliminate out
-    // if a particular feature is not being linked in.
-    for (var i = 0; i < libraries.length; ++i) {
-      global['__EMSCRIPTEN_HAS_' + libraries[i].replace('.', '_').replace('library_', '') + '__'] = 1
-    }
-
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
     if (ONLY_MY_CODE) {
-      libraries = [];
+      libraries.length = 0;
       LibraryManager.library = {};
     }
+
+    // Save the list for has() queries later.
+    this.libraries = libraries;
 
     for (var i = 0; i < libraries.length; i++) {
       var filename = libraries[i];
@@ -204,6 +221,7 @@ var LibraryManager = {
           target = lib[target];
         }
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
+        if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
@@ -305,9 +323,14 @@ function exportRuntime() {
     // if requested to be exported, export it
     if (name in EXPORTED_RUNTIME_METHODS_SET) {
       var exported = name;
+      // the exported name may differ from the internal name
       if (isFSPrefixed(exported)) {
         // this is a filesystem value, FS.x exported as FS_x
         exported = 'FS.' + exported.substr(3);
+      } else if (exported === 'print') {
+        exported = 'out';
+      } else if (exported === 'printErr') {
+        exported = 'err';
       }
       return 'Module["' + name + '"] = ' + exported + ';';
     }
@@ -371,6 +394,7 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
+    'ENV',
     'FS',
     'FS_createFolder',
     'FS_createPath',
@@ -381,7 +405,6 @@ function exportRuntime() {
     'FS_createDevice',
     'FS_unlink',
     'GL',
-    'staticAlloc',
     'dynamicAlloc',
     'warnOnce',
     'loadDynamicLibrary',
@@ -400,6 +423,11 @@ function exportRuntime() {
     'stackSave',
     'stackRestore',
     'stackAlloc',
+    'establishStackSpace',
+    'print',
+    'printErr',
+    'getTempRet0',
+    'setTempRet0',
   ];
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
@@ -417,7 +445,6 @@ function exportRuntime() {
   var runtimeNumbers = [
     'ALLOC_NORMAL',
     'ALLOC_STACK',
-    'ALLOC_STATIC',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
   ];
@@ -441,7 +468,8 @@ var PassManager = {
   serialize: function() {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       Functions: Functions,
-      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS
+      EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
+      STATIC_BUMP: STATIC_BUMP // updated with info from JS
     }));
   },
   load: function(json) {

@@ -2,6 +2,7 @@ module({
     Emscripten: '../../../../build/embind_test.js',
 }, function(imports) {
     /*jshint sub:true */
+    /* global console */
     var cm = imports.Emscripten;
 
     var CheckForLeaks = fixture("check for leaks", function() {
@@ -161,7 +162,7 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = Module['NO_DYNAMIC_EXECUTION'] ? '' : 'HasTwoBases';
+            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
@@ -378,20 +379,38 @@ module({
     });
 
     BaseFixture.extend("string", function() {
+        var stdStringIsUTF8 = (cm['EMBIND_STD_STRING_IS_UTF8'] === true);
+
         test("non-ascii strings", function() {
+
             var expected = '';
-            for (var i = 0; i < 128; ++i) {
-                expected += String.fromCharCode(128 + i);
+            if(stdStringIsUTF8) {
+                //ASCII
+                expected = 'aei';
+                //Latin-1 Supplement
+                expected += '\u00E1\u00E9\u00ED';
+                //Greek
+                expected += '\u03B1\u03B5\u03B9';
+                //Cyrillic
+                expected += '\u0416\u041B\u0424';
+                //CJK
+                expected += '\u5F9E\u7345\u5B50';
+                //Euro sign
+                expected += '\u20AC';
+            } else {
+                for (var i = 0; i < 128; ++i) {
+                    expected += String.fromCharCode(128 + i);
+                }
             }
-            assert.equal(expected, cm.get_non_ascii_string());
+            assert.equal(expected, cm.get_non_ascii_string(stdStringIsUTF8));
         });
-
-        test("passing non-8-bit strings from JS to std::string throws", function() {
-            assert.throws(cm.BindingError, function() {
-                cm.emval_test_take_and_return_std_string("\u1234");
+        if(!stdStringIsUTF8) {
+            test("passing non-8-bit strings from JS to std::string throws", function() {
+                assert.throws(cm.BindingError, function() {
+                    cm.emval_test_take_and_return_std_string("\u1234");
+                });
             });
-        });
-
+        }
         test("can't pass integers as strings", function() {
             var e = assert.throws(cm.BindingError, function() {
                 cm.emval_test_take_and_return_std_string(10);
@@ -437,6 +456,13 @@ module({
         test("can pass ArrayBuffer to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char((new Int8Array([65, 66, 67, 68])).buffer);
             assert.equal('ABCD', e);
+        });
+
+        test("can pass string to std::string", function() {
+            var string = stdStringIsUTF8?"aeiáéíαειЖЛФ從獅子€":"ABCD";
+
+            var e = cm.emval_test_take_and_return_std_string(string);
+            assert.equal(string, e);
         });
 
         test("non-ascii wstrings", function() {
@@ -897,12 +923,24 @@ module({
                 assert.false(dummy_overloads.overloadTable.hasOwnProperty('undefined'));
             }
 
+            var dummy_static_overloads = cm.MultipleOverloadsDependingOnDummy.staticDummy;
+            // check if the overloadTable is correctly named
+            // it can be minimized if using closure compiler
+            if (dummy_static_overloads.hasOwnProperty('overloadTable')) {
+                assert.false(dummy_static_overloads.overloadTable.hasOwnProperty('undefined'));
+            }
+
             // this part should fail anyway if there is no overloadTable
             var dependOnDummy = new cm.MultipleOverloadsDependingOnDummy();
             var dummy = dependOnDummy.dummy();
             dependOnDummy.dummy(dummy);
             dummy.delete();
             dependOnDummy.delete();
+
+            // this part should fail anyway if there is no overloadTable
+            var dummy = cm.MultipleOverloadsDependingOnDummy.staticDummy();
+            cm.MultipleOverloadsDependingOnDummy.staticDummy(dummy);
+            dummy.delete();
         });
 
         test("no undefined entry in overload table for free functions", function() {
@@ -1023,6 +1061,18 @@ module({
            assert.equal(2, map.size());
            assert.equal(1, map.get("one"));
            assert.equal(2, map.get("two"));
+
+           map.delete();
+       });
+
+       test("std::map can get keys", function() {
+           var map = cm.embind_test_get_string_int_map();
+
+           var keys = map.keys();
+           assert.equal(map.size(), keys.size());
+           assert.equal("one", keys.get(0));
+           assert.equal("two", keys.get(1));
+           keys.delete();
 
            map.delete();
        });
@@ -1548,7 +1598,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = Module['NO_DYNAMIC_EXECUTION'] ? "" : "HeldBySmartPtr";
+            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
             assert.equal(expectedName, e.constructor.name);
             e.delete();
         });
@@ -2292,7 +2342,7 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        if (Module['NO_DYNAMIC_EXECUTION']) {
+        if (!cm['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.name);
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);
@@ -2566,6 +2616,14 @@ module({
             assert.equal(4.0, instance.b);
             assert.equal(65538, instance.c);
         });
+
+        if (cm.isMemoryGrowthEnabled) {
+            test("before and after memory growth", function() {
+                var array = cm.construct_with_arguments_before_and_after_memory_growth();
+                assert.equal(array[0].byteLength, 5);
+                assert.equal(array[0].byteLength, array[1].byteLength);
+            });
+        }
     });
 
     BaseFixture.extend("intrusive pointers", function() {

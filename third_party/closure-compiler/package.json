@@ -1,0 +1,61 @@
+{
+  "_from": "google-closure-compiler-java",
+  "_id": "google-closure-compiler-java@20190106.0.0",
+  "_inBundle": false,
+  "_integrity": "sha512-M/mrssfSTY7CQLzW9Zc1voGHvPCxMG2MK7Y1USY9/oBHBVzYRxDac3k0icjpglPu9/uIDw4BwpKTrGYfvv3O1Q==",
+  "_location": "/google-closure-compiler-java",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "google-closure-compiler-java",
+    "name": "google-closure-compiler-java",
+    "escapedName": "google-closure-compiler-java",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER",
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/google-closure-compiler-java/-/google-closure-compiler-java-20190106.0.0.tgz",
+  "_shasum": "10b89c17901bece749bc6f7f5ea5cfdedb0374ff",
+  "_spec": "google-closure-compiler-java",
+  "_where": "C:\\code\\emsdk\\emscripten\\incoming",
+  "author": {
+    "name": "Chad Killingsworth",
+    "email": "chadkillingsworth@gmail.com"
+  },
+  "bundleDependencies": false,
+  "deprecated": false,
+  "description": "Check, compile, optimize and compress Javascript with Closure-Compiler using Java",
+  "files": [
+    "compiler.jar",
+    "index.js",
+    "package.json",
+    "readme.md"
+  ],
+  "gitHead": "9187e0ebd3baf93635363bc09a32931499bba8f2",
+  "homepage": "https://developers.google.com/closure/compiler/",
+  "keywords": [
+    "javascript",
+    "compiler",
+    "optimizer",
+    "minifier",
+    "closure",
+    "java"
+  ],
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "name": "google-closure-compiler-java",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/google/closure-compiler-npm/tree/master/packages/google-closure-compiler-java"
+  },
+  "scripts": {
+    "build": "echo \"google-closure-compiler-java build\"",
+    "test": "./test.js"
+  },
+  "version": "20190106.0.0"
+}

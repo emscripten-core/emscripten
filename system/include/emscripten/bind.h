@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #pragma once
 
 #if __cplusplus < 201103L
@@ -222,7 +229,7 @@ namespace emscripten {
             void _embind_register_constant(
                 const char* name,
                 TYPEID constantType,
-                uintptr_t value);
+                double value);
         }
     }
 }
@@ -1524,6 +1531,17 @@ namespace emscripten {
             ) {
                 m[k] = v;
             }
+
+            static std::vector<typename MapType::key_type> keys(
+                const MapType& m
+            ) {
+              std::vector<typename MapType::key_type> keys;
+              keys.reserve(m.size());
+              for (const auto& pair : m) {
+                keys.push_back(pair.first);
+              }
+              return keys;
+            }
         };
     }
 
@@ -1536,6 +1554,7 @@ namespace emscripten {
             .function("size", &MapType::size)
             .function("get", internal::MapAccess<MapType>::get)
             .function("set", internal::MapAccess<MapType>::set)
+            .function("keys", internal::MapAccess<MapType>::keys)
             ;
     }
 
@@ -1578,8 +1597,8 @@ namespace emscripten {
 
     namespace internal {
         template<typename T>
-        uintptr_t asGenericValue(T t) {
-            return static_cast<uintptr_t>(t);
+        double asGenericValue(T t) {
+            return static_cast<double>(t);
         }
 
         template<typename T>
@@ -1595,7 +1614,7 @@ namespace emscripten {
         _embind_register_constant(
             name,
             TypeID<const ConstantType&>::get(),
-            asGenericValue(BT::toWireType(v)));
+            static_cast<double>(asGenericValue(BT::toWireType(v))));
     }
 }
 

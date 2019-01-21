@@ -22,31 +22,33 @@
       flex: 1;
     }
   </style>
+  <script>
+    var counter = 0;
+    function check() {
+      var request = new XMLHttpRequest();
+      request.open('GET', '/check');
+      request.send(null);
+      request.addEventListener("load", function() {
+        if (request.responseText != 'False') {
+          iframe.src = request.responseText;
+          document.getElementById('count').textContent = counter++;
+        }
+        setTimeout(check, 333);
+      });
+      request.addEventListener("error", function() {
+        document.body.innerHTML = 'Tests complete. View log in console.';
+        // Attempt to close the main window.  This works on chrome
+        // but fails on firefox with: `Scripts may not close windows that
+        // were not opened by script.`
+        window.close();
+      });
+    }
+    document.addEventListener('DOMContentLoaded', check);
+  </script>
 </head>
 <body>
-<span class="topbar">Running test <span id="count"></span>...</span>
-<iframe class="full" id="iframe" allowfullscreen="true"></iframe>
-<script>
-  var counter = 0;
-  function check() {
-    var request = new XMLHttpRequest();
-    request.open('GET', '/check');
-    request.send(null);
-    request.addEventListener("load", function() {
-      if (request.responseText != 'False') {
-        iframe.src = request.responseText;
-        document.getElementById('count').textContent = counter++;
-      }
-      setTimeout(check, 333);
-    });
-    request.addEventListener("error", function() {
-      document.write('Tests complete. View log in console.');
-      window.close();
-      return;
-    });
-  }
-  check();
-</script>
+  <span class="topbar">Running test <span id="count"></span>...</span>
+  <iframe class="full" id="iframe" allowfullscreen="true"></iframe>
 </body>
 </html>
 

@@ -9,7 +9,7 @@ interface Parent {
   [Const] Parent getAsConst();
   VoidPtr voidStar(VoidPtr something);
   boolean getBoolean();
-
+  attribute long attr;
   readonly attribute long immutableAttr;
 };
 
@@ -45,6 +45,18 @@ interface Child2JS {
   void virtualFunc4(long x);
 };
 
+interface VirtualBase {
+  void func();
+  void constFunc();
+};
+
+[JSImplementation="VirtualBase"]
+interface ConcreteJS {
+  void ConcreteJS();
+  void func();
+  [Const] void constFunc();
+};
+
 // Part 2
 
 interface StringUser {
@@ -77,6 +89,17 @@ interface Inner {
   long get();
   [Operator="*=", Ref] Inner mul(float x);
   [Operator="[]"] long getAsArray(long x);
+  [Operator="+="] void incInPlace([Const, Ref] Inner i);
+};
+
+[Prefix = "Space::"]
+interface InnerUserBase {
+};
+
+[JSImplementation = "InnerUserBase"]
+interface InnerUser {
+  void InnerUser();
+  void Callback(Inner inner);
 };
 
 enum AnEnum {

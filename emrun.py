@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Copyright 2017 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 # emrun: Implements machinery that allows running a .html page as if it was a standard executable file.
 # Usage: emrun <options> filename.html <args to program>
@@ -202,8 +206,8 @@ def delete_emrun_safe_firefox_profile():
 def create_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  f = open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w')
-  f.write('''
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
+    f.write('''
 // Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
 user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
@@ -257,18 +261,18 @@ user_pref("browser.tabs.warnOnClose", false);
 user_pref("dom.allow_scripts_to_close_windows", true);
 // Set various update timers to a large value in the future in order to not
 // trigger a large mass of update HTTP traffic on each Firefox run on the clean profile.
-// "01/01/2100" is 4102437600 as seconds since Unix epoch.
-user_pref("app.update.lastUpdateTime.addon-background-update-timer", 4102437600);
-user_pref("app.update.lastUpdateTime.background-update-timer", 4102437600);
-user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 4102437600);
-user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 4102437600);
-user_pref("app.update.lastUpdateTime.experiments-update-timer", 4102437600);
-user_pref("app.update.lastUpdateTime.search-engine-update-timer", 4102437600);
-user_pref("app.update.lastUpdateTime.xpi-signature-verification", 4102437600);
-user_pref("extensions.getAddons.cache.lastUpdate", 4102437600);
-user_pref("media.gmp-eme-adobe.lastUpdate", 4102437600);
-user_pref("media.gmp-gmpopenh264.lastUpdate", 4102437600);
-user_pref("datareporting.healthreport.nextDataSubmissionTime", 4102437600439);
+// 2147483647 seconds since Unix epoch is sometime in the year 2038, and this is the max integer accepted by Firefox.
+user_pref("app.update.lastUpdateTime.addon-background-update-timer", 2147483647);
+user_pref("app.update.lastUpdateTime.background-update-timer", 2147483647);
+user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 2147483647);
+user_pref("app.update.lastUpdateTime.browser-cleanup-thumbnails", 2147483647);
+user_pref("app.update.lastUpdateTime.experiments-update-timer", 2147483647);
+user_pref("app.update.lastUpdateTime.search-engine-update-timer", 2147483647);
+user_pref("app.update.lastUpdateTime.xpi-signature-verification", 2147483647);
+user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
+user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
+user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
+user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
 // Detect directly when executing if asm.js does not validate by throwing an error.
 user_pref("javascript.options.throw_on_asmjs_validation_failure", true);
 // Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
@@ -289,7 +293,6 @@ user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
 ''')
-  f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
   return temp_firefox_profile_dir
 
@@ -313,7 +316,7 @@ def kill_browser_process():
     browser_process = None
     processname_killed_atexit = ''
     return
-  if len(processname_killed_atexit) > 0:
+  if len(processname_killed_atexit):
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
@@ -374,26 +377,26 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     with http_mutex:
       now = tick()
       max_message_queue_time = 5
-      if len(self.http_message_queue) > 0 and now - last_message_time > max_message_queue_time:
+      if len(self.http_message_queue) and now - last_message_time > max_message_queue_time:
         self.print_next_message()
   
   # Skips to printing the next message in queue now, independent of whether there was missed messages in the sequence numbering.
   def print_next_message(self):
     with http_mutex:
-      if len(self.http_message_queue) > 0:
+      if len(self.http_message_queue):
         self.expected_http_seq_num = self.http_message_queue[0][0]
         self.print_messages_due()
 
   # Completely flushes all out-of-order messages in the queue.
   def print_all_messages(self):
     with http_mutex:
-      while len(self.http_message_queue) > 0:
+      while len(self.http_message_queue):
         self.print_next_message()
 
   # Prints any messages that are now due after we logged some other previous messages.
   def print_messages_due(self):
     with http_mutex:
-      while len(self.http_message_queue) > 0:
+      while len(self.http_message_queue):
         msg = self.http_message_queue[0]
         if msg[0] == self.expected_http_seq_num:
           msg[2](msg[1])
@@ -418,7 +421,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
               emrun_options.serve_after_close = True
               logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
               if not emrun_options.browser:
-                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
             else:
               self.shutdown()
               logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
@@ -624,7 +627,7 @@ def get_cpu_info():
   try:
     if WINDOWS:
       import_win32api_modules()
-      root_winmgmts = GetObject("winmgmts:root\cimv2")
+      root_winmgmts = GetObject("winmgmts:root\\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
       physical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
@@ -642,9 +645,9 @@ def get_cpu_info():
           cpu_name = re.sub( ".*model name.*:", "", line, 1).strip()
       lscpu = check_output(['lscpu'])
       frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
-      sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
-      physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
-      logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+      sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
+      physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
+      logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
   except Exception as e:
     import traceback
     print(traceback.format_exc())
@@ -691,7 +694,7 @@ def win_get_gpu_info():
       hHardwareReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "HARDWARE")
       hDeviceMapReg = winreg.OpenKey(hHardwareReg, "DEVICEMAP")
       hVideoReg = winreg.OpenKey(hDeviceMapReg, "VIDEO")
-      VideoCardString = winreg.QueryValueEx(hVideoReg,"\Device\Video"+str(i))[0]
+      VideoCardString = winreg.QueryValueEx(hVideoReg,"\\Device\\Video"+str(i))[0]
       #Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split("\\")
       ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
@@ -754,7 +757,7 @@ def linux_get_gpu_info():
   ram = 0
   try:
     vgainfo = check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
-    ram = int(re.search("\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
+    ram = int(re.search(r"\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
   except Exception as e:
     logv(e)
 
@@ -1002,7 +1005,7 @@ def win_get_default_browser():
       cmd = winreg.QueryValue(key, None)
       if cmd:
         parts = shlex.split(cmd)
-        if len(parts) > 0:
+        if len(parts):
           return [parts[0]]
   except WindowsError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
@@ -1382,7 +1385,7 @@ def run():
     logi('Type emrun --help for a detailed list of available options.')
     return
 
-  file_to_serve = args[0] if len(args) > 0 else '.'
+  file_to_serve = args[0] if len(args) else '.'
   file_to_serve_is_url = file_to_serve.startswith('file://') or file_to_serve.startswith('http://') or file_to_serve.startswith('https://')
   
   if options.serve_root:
@@ -1394,7 +1397,7 @@ def run():
     url = file_to_serve
   else:
     url = os.path.relpath(os.path.abspath(file_to_serve), serve_dir)
-    if len(cmdlineparams) > 0:
+    if len(cmdlineparams):
       url += '?' + '&'.join(cmdlineparams)
     hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
     url = 'http://' + hostname + ':' + str(options.port)+'/'+url
@@ -1561,7 +1564,7 @@ def run():
       options.serve_after_close = True
       logv('Warning: emrun got immediately detached from the target browser process (the process quit with exit code ' + str(premature_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
       if not options.browser:
-        logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+        logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
   
   if not options.no_server:
     try:

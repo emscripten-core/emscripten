@@ -1,3 +1,8 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 '''
 Gets the core asm module out of an emscripten output file.
 
@@ -24,7 +29,7 @@ module = asm_module.AsmModule(infile).asm_js
 
 if extra == 'swap-in':
   # we do |var asm = | just like the original codebase, so that gets overridden anyhow (assuming global scripts).
-  extra = r''' (Module.asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
+  extra = r''' (asmGlobalArg, Module.asmLibraryArg, Module['buffer']);
  // special fixups
  asm.stackRestore(Module['asm'].stackSave()); // if this fails, make sure the original was built to be swappable (-s SWAPPABLE_ASM_MODULE=1)
  // Finish swap

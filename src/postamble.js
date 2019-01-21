@@ -40,11 +40,7 @@ if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
 if (memoryInitializer) {
 #endif
   if (!isDataURI(memoryInitializer)) {
-    if (typeof Module['locateFile'] === 'function') {
-      memoryInitializer = Module['locateFile'](memoryInitializer);
-    } else if (Module['memoryInitializerPrefixURL']) {
-      memoryInitializer = Module['memoryInitializerPrefixURL'] + memoryInitializer;
-    }
+    memoryInitializer = locateFile(memoryInitializer);
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
     var data = Module['readBinary'](memoryInitializer);
@@ -65,7 +61,7 @@ if (memoryInitializer) {
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     }
-    function doBrowserLoad() {
+    var doBrowserLoad = function() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
@@ -78,7 +74,7 @@ if (memoryInitializer) {
 #endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
-      function useRequest() {
+      var useRequest = function() {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {
@@ -88,8 +84,8 @@ if (memoryInitializer) {
             response = data.buffer;
           } else {
 #endif
-            // If you see this warning, the issue may be that you are using locateFile or memoryInitializerPrefixURL, and defining them in JS. That
-            // means that the HTML file doesn't know about them, and when it tries to create the mem init request early, does it to the wrong place.
+            // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That
+            // means that the HTML file doesn't know about it, and when it tries to create the mem init request early, does it to the wrong place.
             // Look in your browser's devtools network console to see what's going on.
             console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
             doBrowserLoad();
@@ -158,7 +154,6 @@ function ExitStatus(status) {
 ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
-var initialStackTop;
 var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
@@ -236,7 +231,7 @@ Module['callMain'] = function callMain(args) {
       if (e && typeof e === 'object' && e.stack) {
         toLog = [e, e.stack];
       }
-      Module.printErr('exception thrown: ' + toLog);
+      err('exception thrown: ' + toLog);
       Module['quit'](1, e);
     }
   } finally {
@@ -253,7 +248,7 @@ function run(args) {
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
-    Module.printErr('run() called, but dependencies remain, so not running');
+    err('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -308,7 +303,7 @@ function run(args) {
 Module['run'] = run;
 
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
 function checkUnflushedContent() {
   // Compiler settings do not allow exiting the runtime, so flushing
   // the streams is not possible. but in ASSERTIONS mode we check
@@ -318,23 +313,23 @@ function checkUnflushedContent() {
   // builds we do so just for this check, and here we see if there is any
   // content to flush, that is, we check if there would have been
   // something a non-ASSERTIONS build would have not seen.
-  // How we flush the streams depends on whether we are in NO_FILESYSTEM
+  // How we flush the streams depends on whether we are in FILESYSTEM=0
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
-  var print = Module['print'];
-  var printErr = Module['printErr'];
+  var print = out;
+  var printErr = err;
   var has = false;
-  Module['print'] = Module['printErr'] = function(x) {
+  out = err = function(x) {
     has = true;
   }
   try { // it doesn't matter if it fails
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
 #else
     var flush = Module['_fflush'];
 #endif
     if (flush) flush(0);
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     // also flush in the JS FS layer
     var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
     if (hasFS) {
@@ -351,20 +346,23 @@ function checkUnflushedContent() {
     }
 #endif
   } catch(e) {}
-  Module['print'] = print;
-  Module['printErr'] = printErr;
+  out = print;
+  err = printErr;
   if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.');
+    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
+#if FILESYSTEM == 0
+    warnOnce('(this may also be due to not including full filesystem support - try building with -s FORCE_FILESYSTEM=1)');
+#endif
   }
 }
-#endif // NO_EXIT_RUNTIME
+#endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
 function exit(status, implicit) {
 #if ASSERTIONS
-#if NO_EXIT_RUNTIME
+#if EXIT_RUNTIME == 0
   checkUnflushedContent();
-#endif // NO_EXIT_RUNTIME
+#endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
   // if this is just main exit-ing implicitly, and the status is 0, then we
@@ -379,11 +377,11 @@ function exit(status, implicit) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
-#if NO_EXIT_RUNTIME
-      Module.printErr('exit(' + status + ') called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)');
+#if EXIT_RUNTIME == 0
+      err('exit(' + status + ') called, but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)');
 #else
-      Module.printErr('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
-#endif // NO_EXIT_RUNTIME
+      err('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+#endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
   } else {
@@ -393,19 +391,14 @@ function exit(status, implicit) {
 
     ABORT = true;
     EXITSTATUS = status;
-    STACKTOP = initialStackTop;
 
     exitRuntime();
 
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  if (ENVIRONMENT_IS_NODE) {
-    process['exit'](status);
-  }
   Module['quit'](status, new ExitStatus(status));
 }
-Module['exit'] = exit;
 
 var abortDecorators = [];
 
@@ -418,8 +411,8 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   if (what !== undefined) {
-    Module.print(what);
-    Module.printErr(what);
+    out(what);
+    err(what);
     what = JSON.stringify(what)
   } else {
     what = '';
@@ -443,8 +436,6 @@ function abort(what) {
 }
 Module['abort'] = abort;
 
-// {{PRE_RUN_ADDITIONS}}
-
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
@@ -464,8 +455,11 @@ if (Module['noInitialRun']) {
 }
 #endif // HAS_MAIN
 
-#if NO_EXIT_RUNTIME
-Module["noExitRuntime"] = true;
+#if EXIT_RUNTIME == 0
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
+#endif
+  Module["noExitRuntime"] = true;
 #endif
 
 #if USE_PTHREADS
@@ -473,8 +467,6 @@ if (!ENVIRONMENT_IS_PTHREAD) run();
 #else
 run();
 #endif
-
-// {{POST_RUN_ADDITIONS}}
 
 #if BUILD_AS_WORKER
 

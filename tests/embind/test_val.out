@@ -1,0 +1,251 @@
+start
+test:
+val array()
+pass
+pass
+pass
+test:
+template<typename T> val array(const std::vector<T> vec)
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+val object()
+pass
+test:
+val undefined()
+pass
+pass
+test:
+val null()
+pass
+pass
+test:
+val global(const char* name = 0)
+pass
+pass
+test:
+template<typename T> explicit val(T&& value)
+pass
+pass
+pass
+pass
+test:
+val(const char* v)
+pass
+test:
+bool isNull()
+pass
+pass
+test:
+bool isUndefined()
+pass
+pass
+test:
+bool isTrue()
+pass
+pass
+pass
+test:
+bool isFalse()
+pass
+pass
+pass
+test:
+bool isNumber()
+pass
+pass
+pass
+test:
+bool isString()
+pass
+pass
+pass
+test:
+bool isArray()
+pass
+pass
+pass
+pass
+test:
+bool equals(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator==(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator!=(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool strictlyEquals(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator>(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator>= (const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator<(const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator<= (const val& v)
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool operator!()
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+template<typename... Args> val new_(Args&&... args)
+pass
+pass
+pass
+pass
+pass
+test:
+template<typename T> val operator[](const T& key)
+pass
+pass
+test:
+template<typename K> void set(const K& key, const val& v)
+pass
+pass
+test:
+template<typename K, typename V> void set(const K& key, const V& value)
+pass
+pass
+pass
+pass
+test:
+template<typename... Args> val operator()(Args&&... args)
+pass
+pass
+pass
+pass
+test:
+template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)
+pass
+pass
+test:
+template<typename T, typename ...Policies> T as(Policies...)
+pass
+pass
+pass
+pass
+test:
+val typeOf()
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+bool instanceof(const val& v)
+pass
+pass
+test:
+bool in(const val& v)
+pass
+pass
+test:
+template<typename T> bool delete_(const T& property)
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+pass
+test:
+void throw_() const
+pass
+pass
+pass
+pass
+pass
+test:
+template<typename T> std::vector<T> vecFromJSArray(val v)
+pass
+pass
+pass
+end

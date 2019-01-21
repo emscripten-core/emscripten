@@ -1,3 +1,8 @@
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <memory.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +11,12 @@
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 #include <math.h>
+#include <bits/errno.h>
+
+extern "C" {
+
+// Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to enable internal debugging.
+// #define FETCH_DEBUG
 
 struct __emscripten_fetch_queue
 {
@@ -13,6 +24,8 @@ struct __emscripten_fetch_queue
 	int numQueuedItems;
 	int queueSize;
 };
+
+static void fetch_free( emscripten_fetch_t *fetch );
 
 extern "C" {
 	void emscripten_start_fetch(emscripten_fetch_t *fetch);
@@ -37,8 +50,10 @@ void emscripten_proxy_fetch(emscripten_fetch_t *fetch)
 	__emscripten_fetch_queue *queue = _emscripten_get_fetch_queue();
 //	TODO handle case when queue->numQueuedItems >= queue->queueSize
 	queue->queuedOperations[queue->numQueuedItems++] = fetch;
+#ifdef FETCH_DEBUG
 	EM_ASM(console.log('Queued fetch to fetch-worker to process. There are now ' + $0 + ' operations in the queue.'),
 		queue->numQueuedItems);
+#endif
 	// TODO: mutex unlock
 }
 
@@ -60,22 +75,75 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	const bool isMainBrowserThread = emscripten_is_main_browser_thread() != 0;
 	if (isMainBrowserThread && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB))
 	{
-		EM_ASM(Module['printErr']('emscripten_fetch("' + Pointer_stringify($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
+#ifdef FETCH_DEBUG
+		EM_ASM(err('emscripten_fetch("' + Pointer_stringify($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
 			url);
+#endif
 		return 0;
 	}
 
 	emscripten_fetch_t *fetch = (emscripten_fetch_t *)malloc(sizeof(emscripten_fetch_t));
+	if (!fetch) return 0;
 	memset(fetch, 0, sizeof(emscripten_fetch_t));
 	fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
 	fetch->userData = fetch_attr->userData;
-	fetch->url = strdup(url); // TODO: free
-	fetch->__attributes = *fetch_attr;
-	fetch->__attributes.destinationPath = fetch->__attributes.destinationPath ? strdup(fetch->__attributes.destinationPath) : 0; // TODO: free
-	fetch->__attributes.userName = fetch->__attributes.userName ? strdup(fetch->__attributes.userName) : 0; // TODO: free
-	fetch->__attributes.password = fetch->__attributes.password ? strdup(fetch->__attributes.password) : 0; // TODO: free
-	fetch->__attributes.requestHeaders = 0;// TODO:strdup(fetch->__attributes.requestHeaders);
-	fetch->__attributes.overriddenMimeType = fetch->__attributes.overriddenMimeType ? strdup(fetch->__attributes.overriddenMimeType) : 0; // TODO: free
+	fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
+	fetch->__attributes.attributes = fetch_attr->attributes;
+	fetch->__attributes.withCredentials = fetch_attr->withCredentials;
+	fetch->__attributes.requestData = fetch_attr->requestData;
+	fetch->__attributes.requestDataSize = fetch_attr->requestDataSize;
+	strcpy(fetch->__attributes.requestMethod, fetch_attr->requestMethod);
+	fetch->__attributes.onerror = fetch_attr->onerror;
+	fetch->__attributes.onsuccess = fetch_attr->onsuccess;
+	fetch->__attributes.onprogress = fetch_attr->onprogress;
+#define STRDUP_OR_ABORT(s, str_to_dup)		\
+	if (str_to_dup)							\
+	{										\
+		s = strdup(str_to_dup);				\
+		if (!s)								\
+		{									\
+			fetch_free(fetch);				\
+			return 0;						\
+		}									\
+	}
+	STRDUP_OR_ABORT(fetch->url, url);
+	STRDUP_OR_ABORT(fetch->__attributes.destinationPath, fetch_attr->destinationPath);
+	STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
+	STRDUP_OR_ABORT(fetch->__attributes.password,fetch_attr->password);
+	STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
+	if (fetch_attr->requestHeaders)
+	{
+		size_t headersCount = 0;
+		while (fetch_attr->requestHeaders[headersCount]) ++headersCount;
+		const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
+		if (!headers)
+		{
+			fetch_free(fetch);
+			return 0;
+		}
+		memset((void*)headers, 0, (headersCount + 1) * sizeof(const char*));
+
+		for (size_t i = 0; i < headersCount; ++i)
+		{
+			headers[i] = strdup(fetch_attr->requestHeaders[i]);
+			if (!headers[i])
+
+			{
+				for (size_t j = 0; j < i; ++j)
+				{
+					free((void*)headers[j]);
+				}
+				free((void*)headers);
+				fetch_free(fetch);
+				return 0;
+			}
+		}
+		headers[headersCount] = 0;
+		fetch->__attributes.requestHeaders = headers;
+	}
+
+#undef STRDUP_OR_ABORT
+
 
 #if __EMSCRIPTEN_PTHREADS__
 	const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
@@ -104,24 +172,40 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 	uint32_t proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
 	if (proxyState != 1) return EMSCRIPTEN_RESULT_INVALID_PARAM; // the fetch should be ongoing?
-// #ifdef FETCH_DEBUG
+#ifdef FETCH_DEBUG
 	EM_ASM(console.log('fetch: emscripten_fetch_wait..'));
-// #endif
-	// TODO: timeoutMsecs is currently ignored. Return EMSCRIPTEN_RESULT_TIMED_OUT on timeout.
+#endif
+	if (timeoutMsecs <= 0) return EMSCRIPTEN_RESULT_TIMED_OUT;
 	while(proxyState == 1/*sent to proxy worker*/)
 	{
-		emscripten_futex_wait(&fetch->__proxyState, proxyState, 100 /*TODO HACK:Sleep sometimes doesn't wake up?*/);//timeoutMsecs);
-		proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+		if (!emscripten_is_main_browser_thread())
+		{
+			int ret = emscripten_futex_wait(&fetch->__proxyState, proxyState, timeoutMsecs);
+			if (ret == -ETIMEDOUT) return EMSCRIPTEN_RESULT_TIMED_OUT;
+			proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
+		}
+		else 
+		{
+			EM_ASM({ console.error('fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.') });
+			return EMSCRIPTEN_RESULT_FAILED;
+		}
 	}
-// #ifdef FETCH_DEBUG
+#ifdef FETCH_DEBUG
 	EM_ASM(console.log('fetch: emscripten_fetch_wait done..'));
-// #endif
+#endif
 
 	if (proxyState == 2) return EMSCRIPTEN_RESULT_SUCCESS;
 	else return EMSCRIPTEN_RESULT_FAILED;
 #else
-	EM_ASM(console.error('fetch: emscripten_fetch_wait is not available when building without pthreads!'));
-	return EMSCRIPTEN_RESULT_FAILED;
+	if (fetch->readyState >= 4/*XMLHttpRequest.readyState.DONE*/) return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
+	if (timeoutMsecs == 0) return EMSCRIPTEN_RESULT_TIMED_OUT/*Main thread testing completion with sleep=0msecs*/;
+	else
+	{
+#ifdef FETCH_DEBUG
+		EM_ASM(console.error('fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!'));
+#endif
+		return EMSCRIPTEN_RESULT_FAILED/*Main thread cannot block to wait*/;
+	}
 #endif
 }
 
@@ -144,8 +228,27 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 		strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
 		fetch->__attributes.onerror(fetch);
 	}
-	fetch->id = 0;
-	free((void*)fetch->data);
-	free(fetch);
+
+	fetch_free(fetch);
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
+
+static void fetch_free(emscripten_fetch_t *fetch)
+{
+	fetch->id = 0;
+	free((void*)fetch->data);
+	free((void*)fetch->url);
+	free((void*)fetch->__attributes.destinationPath);
+	free((void*)fetch->__attributes.userName);
+	free((void*)fetch->__attributes.password);
+	if(fetch->__attributes.requestHeaders)
+	{
+		for(size_t i = 0; fetch->__attributes.requestHeaders[i]; ++i)
+			free((void*)fetch->__attributes.requestHeaders[i]);
+		free((void*)fetch->__attributes.requestHeaders);
+	}
+	free((void*)fetch->__attributes.overriddenMimeType);
+	free(fetch);
+}
+
+} // extern "C"
