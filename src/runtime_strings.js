@@ -119,7 +119,7 @@ function UTF8ArrayToString(u8Array, idx) {
 // a copy of that string as a Javascript String object.
 
 function UTF8ToString(ptr) {
-  return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
+  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}) : '';
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',

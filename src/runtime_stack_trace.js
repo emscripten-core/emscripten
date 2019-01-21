@@ -12,7 +12,7 @@ function demangle(func) {
     var status = _malloc(4);
     var ret = __cxa_demangle_func(buf, 0, 0, status);
     if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
-      return Pointer_stringify(ret);
+      return UTF8ToString(ret);
     }
     // otherwise, libcxxabi failed
   } catch(e) {
