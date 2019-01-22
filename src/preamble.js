@@ -1856,17 +1856,12 @@ Module['asm'] = function(global, env, providedBuffer) {
 #endif
     var TABLE_SIZE = Module['wasmTableSize'];
     var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
-    if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {
-      if (MAX_TABLE_SIZE !== undefined) {
-        env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
-      } else {
-        env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
-      }
+    if (MAX_TABLE_SIZE !== undefined) {
+      env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
     } else {
-// TODO      env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
+      env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
     }
     Module['wasmTable'] = env['table'];
-// TODO
   }
 
   if (!env['__memory_base']) {
