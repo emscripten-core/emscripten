@@ -1298,14 +1298,21 @@ mergeInto(LibraryManager.library, {
       FS.mkdev('/dev/tty1', FS.makedev(6, 0));
       // setup /dev/[u]random
       var random_device;
-      if (typeof crypto !== 'undefined') {
+      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
       } else if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_NODE
-        // for nodejs
-        random_device = function() { return require('crypto')['randomBytes'](1)[0]; };
+        // for nodejs with or without crypto support included
+        try {
+            var crypto = require('crypto');
+            // nodejs has crypto support
+            random_device = function() { return crypto['randomBytes'](1)[0]; };
+        } catch (e) {
+            // nodejs doesn't have crypto support so fallback to Math.random
+            random_device = function() { return (Math.random()*256)|0; };
+        }
 #endif // ENVIRONMENT_MAY_BE_NODE
       } else {
         // default for ES5 platforms

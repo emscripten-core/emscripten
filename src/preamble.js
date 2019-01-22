@@ -831,7 +831,6 @@ function stackTrace() {
 var PAGE_SIZE = 16384;
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
-var MIN_TOTAL_MEMORY = 16777216;
 
 function alignUp(x, multiple) {
   if (x % multiple > 0) {
@@ -958,110 +957,6 @@ if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
 };
 #endif // ALLOW_MEMORY_GROWTH
 #endif // WASM == 0
-
-function enlargeMemory() {
-#if USE_PTHREADS
-  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
-#else
-#if ALLOW_MEMORY_GROWTH == 0
-#if ABORTING_MALLOC
-  abortOnCannotGrowMemory();
-#else
-  return false; // malloc will report failure
-#endif
-#else
-  // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
-#if ASSERTIONS
-  assert(HEAP32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
-#endif
-
-#if EMSCRIPTEN_TRACING
-  // Report old layout one last time
-  _emscripten_trace_report_memory_layout();
-#endif
-
-  var PAGE_MULTIPLE = {{{ getPageSize() }}};
-  var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
-
-  if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
-#if ASSERTIONS
-    err('Cannot enlarge memory, asked to go up to ' + HEAP32[DYNAMICTOP_PTR>>2] + ' bytes, but the limit is ' + LIMIT + ' bytes!');
-#endif
-    return false;
-  }
-
-  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
-  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
-
-  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
-    if (TOTAL_MEMORY <= 536870912) {
-      TOTAL_MEMORY = alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
-    } else {
-      // ..., but after that, add smaller increments towards 2GB, which we cannot reach
-      TOTAL_MEMORY = Math.min(alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-#if ASSERTIONS
-      if (TOTAL_MEMORY === OLD_TOTAL_MEMORY) {
-        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
-      }
-#endif
-    }
-  }
-
-#if WASM_MEM_MAX != -1
-  // A limit was set for how much we can grow. We should not exceed that
-  // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
-  // if we are at say 64MB, and the max is 100MB, then we should *not* try to
-  // grow 64->128MB which is the default behavior (doubling), as 128MB will
-  // fail because of the max limit. Instead, we should only try to grow
-  // 64->100MB in this example, which has a chance of succeeding (but may
-  // still fail for another reason, of actually running out of memory).
-  TOTAL_MEMORY = Math.min(TOTAL_MEMORY, {{{ WASM_MEM_MAX }}});
-  if (TOTAL_MEMORY == OLD_TOTAL_MEMORY) {
-#if ASSERTIONS
-    err('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
-#endif
-    // restore the state to before this call, we failed
-    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
-    return false;
-  }
-#endif
-
-#if ASSERTIONS
-  var start = Date.now();
-#endif
-
-  var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
-  if (!replacement || replacement.byteLength != TOTAL_MEMORY) {
-#if ASSERTIONS
-    err('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
-    if (replacement) {
-      err('Expected to get back a buffer of size ' + TOTAL_MEMORY + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
-    }
-#endif
-    // restore the state to before this call, we failed
-    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
-    return false;
-  }
-
-  // everything worked
-
-  updateGlobalBuffer(replacement);
-  updateGlobalBufferViews();
-
-#if ASSERTIONS && !WASM
-  err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
-#endif
-
-#if EMSCRIPTEN_TRACING
-  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
-  // And now report the new layout
-  _emscripten_trace_report_memory_layout();
-#endif
-
-  return true;
-#endif // ALLOW_MEMORY_GROWTH
-#endif // USE_PTHREADS
-}
 
 #if ALLOW_MEMORY_GROWTH
 var byteLength;
@@ -1225,10 +1120,6 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #if USE_PTHREADS
 }
 #endif
-
-function getTotalMemory() {
-  return TOTAL_MEMORY;
-}
 
 // Endianness check (note: assumes compiler arch was little-endian)
 #if STACK_OVERFLOW_CHECK
