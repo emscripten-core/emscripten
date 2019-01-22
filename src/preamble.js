@@ -1851,17 +1851,7 @@ Module['reallocBuffer'] = function(size) {
 Module['asm'] = function(global, env, providedBuffer) {
   // import table
   if (!env['table']) {
-#if ASSERTIONS
-   assert(Module['wasmTableSize'] !== undefined);
-#endif
-    var TABLE_SIZE = Module['wasmTableSize'];
-    var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
-    if (MAX_TABLE_SIZE !== undefined) {
-      env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
-    } else {
-      env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
-    }
-    Module['wasmTable'] = env['table'];
+    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': wasmTableSize, 'maximum': wasmTableSize, 'element': 'anyfunc' });
   }
 
   if (!env['__memory_base']) {
