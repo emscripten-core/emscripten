@@ -8154,6 +8154,17 @@ function emitDCEGraph(ast) {
   var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   var foundAsmLibraryArgAssign = false;
   var graph = [];
+
+  function saveAsmExport(name, asmName) {
+    var graphName = getGraphName(name, 'export');
+    nameToGraphName[name] = graphName;
+    modulePropertyToGraphName[name] = graphName;
+    exportNameToGraphName[asmName] = graphName;
+    if (/^dynCall_/.test(name) && dynCallNames.indexOf(name) < 0) {
+      dynCallNames.push(graphName);
+    }
+  }
+
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
       var items = asmLibraryArgs(node)[1];
@@ -8186,13 +8197,7 @@ function emitDCEGraph(ast) {
               // this is indeed an export
               // the asmName is what the wasm provides directly; the outside JS
               // name may be slightly different (extra "_" in wasm backend)
-              var graphName = getGraphName(name, 'export');
-              nameToGraphName[name] = graphName;
-              modulePropertyToGraphName[name] = graphName;
-              exportNameToGraphName[asmName] = graphName;
-              if (/^dynCall_/.test(name)) {
-                dynCallNames.push(graphName);
-              }
+              saveAsmExport(name, asmName);
               return emptyNode(); // ignore this in the second pass; this does not root
             }
           }
@@ -8209,6 +8214,15 @@ function emitDCEGraph(ast) {
   });
   // must find the info we need
   assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
+
+  // Read exports that were declared in extraInfo:
+  if (extraInfo) {
+    for(var e in extraInfo.exports) {
+      var exp = extraInfo.exports[e];
+      saveAsmExport(exp[0], exp[1]);
+    }
+  }
+
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {
@@ -8359,7 +8373,17 @@ function applyImportAndExportNameChanges(ast) {
         }
         return item;
       });
-    } else if (type === 'assign') {
+    } else if (type === 'var') { // var foo = asm["foo"];
+      var children = node[1];
+      var target = children[0][0];
+      var value = children[0][1];
+      if (value && isAsmUse(value)) {
+        var name = value[2][1];
+        if (mapping[name]) {
+          value[2][1] = mapping[name];
+        }
+      }
+    } else if (type === 'assign') { // foo = asm["foo"];
       var target = node[2];
       var value = node[3];
       if (isAsmUse(value)) {
@@ -8368,7 +8392,15 @@ function applyImportAndExportNameChanges(ast) {
           value[2][1] = mapping[name];
         }
       }
-    } else if (isModuleAsmUse(node)) {
+    } else if (type === 'call') { // asm["foo"]();
+      var target = node[1];
+      if (isAsmUse(target)) {
+        var name = target[2][1];
+        if (mapping[name]) {
+          target[2][1] = mapping[name];
+        }
+      }
+    } else if (isModuleAsmUse(node)) { // Module["asm"]["foo"]
       var prop = node[2];
       var name = prop[1];
       if (mapping[name]) {

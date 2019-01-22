@@ -4528,3 +4528,12 @@ window.close = function() {
     subprocess.check_call(cmd)
 
     self.run_browser('main.html', None, '/report_result?1')
+
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_no_declare_asm_module_exports_asmjs(self):
+    for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)
+
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
+    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME=1'])
