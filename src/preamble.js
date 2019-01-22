@@ -1863,7 +1863,7 @@ Module['asm'] = function(global, env, providedBuffer) {
   if (!env['__table_base']) {
     env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
   }
-
+// FIXME: binaryen1.test_dylink_dot_a
   var exports = createWasm(env);
 
 #if ASSERTIONS
