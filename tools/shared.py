@@ -3040,7 +3040,6 @@ class WebAssembly(object):
 
   @staticmethod
   def get_js_data(js_file, shared=False):
-    js = open(js_file).read()
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
     if shared:
