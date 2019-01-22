@@ -1334,6 +1334,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     table_total_size = sum(table_size(s) for s in function_table_data.values())
     asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    shared.Settings.WASM_TABLE_SIZE = table_total_size
     if not shared.Settings.EMULATED_FUNCTION_POINTERS:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
 
@@ -2210,7 +2211,9 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
-  module.append("Module['wasmTableSize'] = %s;\n" % metadata['tableSize'])
+  table_total_size = metadata['tableSize']
+  module.append("Module['wasmTableSize'] = %s;\n" % table_total_size)
+  shared.Settings.WASM_TABLE_SIZE = table_total_size
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
   module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
 

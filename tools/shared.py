@@ -3041,14 +3041,10 @@ class WebAssembly(object):
   @staticmethod
   def get_js_data(js_file, shared=False):
     js = open(js_file).read()
-    m = re.search(r"var STATIC_BUMP = (\d+);", js)
-    mem_size = int(m.group(1))
-    m = re.search(r"Module\['wasmTableSize'\] = (\d+);", js)
-    table_size = int(m.group(1))
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
     if shared:
-      m = re.search(r'gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
-      assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
-      mem_align = int(m.group(1))
+      mem_align = Settings.MAX_GLOBAL_ALIGN
     else:
       mem_align = None
     return (mem_size, table_size, mem_align)
