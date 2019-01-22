@@ -1333,7 +1333,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
       return table_contents.count(',') + 1
 
     table_total_size = sum(table_size(s) for s in function_table_data.values())
-    asm_setup += "\var wasmTableSize = %d;\n" % table_total_size
+    asm_setup += "\nvar wasmTableSize = %d;\n" % table_total_size
 
   if shared.Settings.RELOCATABLE:
     if not shared.Settings.SIDE_MODULE:

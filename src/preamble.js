@@ -1844,6 +1844,9 @@ Module['reallocBuffer'] = function(size) {
   return wasmReallocBuffer(size);
 };
 
+// Potentially used for direct table calls.
+var wasmTable;
+
 // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
 // the wasm module at that time, and it receives imports and provides exports and so forth, the app
 // doesn't need to care that it is wasm or asm.js.
