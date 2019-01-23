@@ -1150,8 +1150,8 @@ Module['asm'] = function(global, env, providedBuffer) {
   if (!env['table']) {
     wasmTable = env['table'] = new WebAssembly.Table({
       'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH || !WASM_BACKEND
-      'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}, // asm2wasm can't predict table sizes at compile time; asm2wasm runs later and adds padding etc.
+#if !ALLOW_TABLE_GROWTH
+      'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #endif // WASM_BACKEND
       'element': 'anyfunc'
     });
