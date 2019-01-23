@@ -4834,7 +4834,6 @@ name: .
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out, js_engines=js_engines)
 
-  @also_with_noderawfs
   def test_fs_write(self, js_engines=None):
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
