@@ -1148,11 +1148,17 @@ var wasmTable;
 Module['asm'] = function(global, env, providedBuffer) {
   // import table
   if (!env['table']) {
-#if ALLOW_TABLE_GROWTH
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'element': 'anyfunc' });
-#else
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'element': 'anyfunc' });
+    wasmTable = env['table'] = new WebAssembly.Table({
+#if WASM_BACKEND
+      'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+      'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #endif
+#else // asm2wasm can't predict table sizes at compile time; asm2wasm runs later and adds padding etc.
+      'initial': 0,
+#endif // WASM_BACKEND
+      'element': 'anyfunc'
+    });
   }
 
   if (!env['__memory_base']) {

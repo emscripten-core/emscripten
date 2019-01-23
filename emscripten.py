@@ -254,7 +254,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   check_all_implemented(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
-  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
@@ -1331,17 +1330,6 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
   if shared.Settings.ASSERTIONS:
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs) + 'abort(x) }\n'
-
-  if shared.Settings.WASM:
-    def table_size(table):
-      table_contents = table[table.index('[') + 1: table.index(']')]
-      if len(table_contents) == 0: # empty table
-        return 0
-      return table_contents.count(',') + 1
-
-    table_total_size = sum(table_size(s) for s in function_table_data.values())
-    shared.Settings.WASM_TABLE_SIZE = table_total_size
-    logging.error(str(shared.Settings.WASM_TABLE_SIZE))
 
   if shared.Settings.RELOCATABLE:
     if not shared.Settings.SIDE_MODULE:
