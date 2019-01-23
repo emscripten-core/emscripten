@@ -231,6 +231,17 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   return glue, forwarded_data
 
 
+def analyze_table(function_table_data):
+  def table_size(table):
+    table_contents = table[table.index('[') + 1: table.index(']')]
+    if len(table_contents) == 0: # empty table
+      return 0
+    return table_contents.count(',') + 1
+  # note that this is a minimal estimate, as when asm2wasm lays out tables it adds padding
+  table_total_size = sum(table_size(s) for s in function_table_data.values())
+  shared.Settings.WASM_TABLE_SIZE = table_total_size
+
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
@@ -241,6 +252,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   # merge in information from llvm backend
 
   function_table_data = metadata['tables']
+
+  if shared.Settings.WASM:
+    analyze_table(function_table_data)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -254,6 +268,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   check_all_implemented(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
+  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
