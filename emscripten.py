@@ -1333,7 +1333,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
       return table_contents.count(',') + 1
 
     table_total_size = sum(table_size(s) for s in function_table_data.values())
-    asm_setup += "\nvar wasmTableSize = %d;\n" % table_total_size
+    logging.error('total' + str(table_total_size))
     shared.Settings.WASM_TABLE_SIZE = table_total_size
 
   if shared.Settings.RELOCATABLE:
@@ -2206,7 +2206,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   table_total_size = metadata['tableSize']
-  module.append("var wasmTableSize = %s;\n" % table_total_size)
   shared.Settings.WASM_TABLE_SIZE = table_total_size
 
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))

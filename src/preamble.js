@@ -1149,9 +1149,9 @@ Module['asm'] = function(global, env, providedBuffer) {
   // import table
   if (!env['table']) {
 #if ALLOW_TABLE_GROWTH
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': wasmTableSize, 'element': 'anyfunc' });
+    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ WASM_TABLE_SIZE }}}, 'element': 'anyfunc' });
 #else
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': wasmTableSize, 'maximum': wasmTableSize, 'element': 'anyfunc' });
+    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ WASM_TABLE_SIZE }}}, 'maximum': {{{ WASM_TABLE_SIZE }}}, 'element': 'anyfunc' });
 #endif
   }
 
