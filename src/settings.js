@@ -1350,6 +1350,9 @@ var MINIFY_ASMJS_IMPORT_NAMES = 0;
 // to JS static allocations
 var STATIC_BUMP = -1;
 
+// the total initial wasm table size.
+var WASM_TABLE_SIZE = 0;
+
 // if set to 1, then generated WASM files will contain a custom
 // "emscripten_metadata" section that contains information necessary
 // to execute the file without the accompanying JS file.
