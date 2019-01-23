@@ -1139,23 +1139,18 @@ var LibraryPThread = {
 #endif
   },
 
-  emscripten_proxy_to_main_thread_js: function() {
-    // Arguments are:
-    //   * the index of the function
-    //   * the call args
-    //   * whether it is sync
-    var index = arguments[0];
-    var sync = arguments[arguments.length - 1];
+  emscripten_proxy_to_main_thread_js: function(index, sync) {
+    // Additional arguments are passed after those two, which are the actual
+    // function arguments.
     // The serialization buffer contains the number of call params, and then
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
-    // The buffer remains alive until receiveOnMainThread frees it.
     var numCallArgs = arguments.length - 2;
     // Allocate a buffer, which will be copied by the C code.
     var stack = stackSave();
     var buffer = stackAlloc(numCallArgs * 8);
     for (var i = 0; i < numCallArgs; i++) {
-      HEAPF64[(buffer >> 3) + i] = arguments[1 + i];
+      HEAPF64[(buffer >> 3) + i] = arguments[2 + i];
     }
     var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
     stackRestore(stack);
@@ -1173,7 +1168,6 @@ var LibraryPThread = {
     for (var i = 0; i < numCallArgs; i++) {
       callArgs[i] = HEAPF64[(buffer >> 3) + i];
     }
-    var sync = HEAPF64[(buffer >> 3) + 2 + numCallArgs];
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
     var func;
