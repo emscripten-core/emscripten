@@ -4231,7 +4231,6 @@ window.close = function() {
     self.run_browser('a.html', '...', '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
-  @no_firefox('see #1521239')
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
@@ -4266,7 +4265,6 @@ window.close = function() {
       self.run_browser('test.html', None, '/report_result?0')
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
-  @no_firefox('see #1521239')
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
