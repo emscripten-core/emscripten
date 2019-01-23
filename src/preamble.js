@@ -13,6 +13,16 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if WASM
+if (typeof WebAssembly !== 'object') {
+#if ASSERTIONS
+  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
+#else
+  err('no native wasm support detected');
+#endif
+}
+#endif
+
 #include "runtime_safe_heap.js"
 
 //========================================
@@ -981,13 +991,6 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-  if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-    abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#endif
-    err('no native wasm support detected');
-    return false;
-  }
   // prepare imports
   if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
     err('no native wasm Memory in use');
