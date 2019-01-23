@@ -76,7 +76,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	if (isMainBrowserThread && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB))
 	{
 #ifdef FETCH_DEBUG
-		EM_ASM(err('emscripten_fetch("' + Pointer_stringify($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
+		EM_ASM(err('emscripten_fetch("' + UTF8ToString($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
 			url);
 #endif
 		return 0;

@@ -3040,15 +3040,10 @@ class WebAssembly(object):
 
   @staticmethod
   def get_js_data(js_file, shared=False):
-    js = open(js_file).read()
-    m = re.search(r"var STATIC_BUMP = (\d+);", js)
-    mem_size = int(m.group(1))
-    m = re.search(r"Module\['wasmTableSize'\] = (\d+);", js)
-    table_size = int(m.group(1))
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
     if shared:
-      m = re.search(r'gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
-      assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
-      mem_align = int(m.group(1))
+      mem_align = Settings.MAX_GLOBAL_ALIGN
     else:
       mem_align = None
     return (mem_size, table_size, mem_align)
@@ -3237,7 +3232,7 @@ def read_and_preprocess(filename):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);

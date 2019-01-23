@@ -1331,6 +1331,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     table_total_size = sum(table_size(s) for s in function_table_data.values())
     asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
+    shared.Settings.WASM_TABLE_SIZE = table_total_size
     if not shared.Settings.EMULATED_FUNCTION_POINTERS:
       asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
 
@@ -1403,8 +1404,6 @@ function ftCall_%s(%s) {%s
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = ['abort', 'assert', 'setTempRet0', 'getTempRet0']
-  if shared.Settings.ABORTING_MALLOC:
-    basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.STACK_OVERFLOW_CHECK:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.EMTERPRETIFY:
@@ -2134,8 +2133,6 @@ def create_em_js(forwarded_json, metadata):
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   basic_funcs = ['assert']
-  if shared.Settings.ABORTING_MALLOC:
-    basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
@@ -2207,7 +2204,9 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
-  module.append("Module['wasmTableSize'] = %s;\n" % metadata['tableSize'])
+  table_total_size = metadata['tableSize']
+  module.append("Module['wasmTableSize'] = %s;\n" % table_total_size)
+  shared.Settings.WASM_TABLE_SIZE = table_total_size
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
   module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
 

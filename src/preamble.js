@@ -81,7 +81,7 @@ var toC = {
 // C calling interface.
 function ccall(ident, returnType, argTypes, args, opts) {
   function convertReturnValue(ret) {
-    if (returnType === 'string') return Pointer_stringify(ret);
+    if (returnType === 'string') return UTF8ToString(ret);
     if (returnType === 'boolean') return Boolean(ret);
     return ret;
   }
@@ -393,16 +393,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if EMTERPRETIFY
 function abortStackOverflowEmterpreter() {
   abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
-}
-#endif
-
-#if ABORTING_MALLOC
-function abortOnCannotGrowMemory() {
-#if WASM
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#else
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
-#endif
 }
 #endif
 

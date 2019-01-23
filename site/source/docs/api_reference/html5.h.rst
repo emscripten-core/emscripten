@@ -1948,9 +1948,9 @@ Struct
     If ``true``, the contents of the drawing buffer are preserved between consecutive ``requestAnimationFrame()`` calls. If ``false``, color, depth and stencil are cleared at the beginning of each ``requestAnimationFrame()``. Generally setting this to ``false`` gives better performance. Default value: ``false``.
 
 
-  .. c:member:: EM_BOOL preferLowPowerToHighPerformance
+  .. c:member:: EM_WEBGL_POWER_PREFERENCE powerPreference
 
-    If ``true``, hints the browser to initialize a low-power GPU rendering context. If ``false``, prefers to initialize a high-performance rendering context. Default value: ``false``.
+    Specifies a hint to the WebGL canvas implementation to how it should choose the use of available GPU resources. One of EM_WEBGL_POWER_PREFERENCE_DEFAULT, EM_WEBGL_POWER_PREFERENCE_LOW_POWER, EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE.
 
   .. c:member:: EM_BOOL failIfMajorPerformanceCaveat
 
@@ -2090,6 +2090,15 @@ Functions
 
   :returns: The currently active WebGL rendering context, or 0 if no context is active.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_get_context_attributes(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, EmscriptenWebGLContextAttributes *outAttributes)
+
+  Fetches the context creation attributes that were used to initialize the given WebGL context.
+
+  :param EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context: The WebGL context to query.
+  :param EmscriptenWebGLContextAttributes \*outAttributes: The context creation attributes of the specified context will be filled in here. This pointer cannot be null.
+  :returns: On success, EMSCRIPTEN_RESULT_SUCCESS.
 
 
 .. c:function:: EMSCRIPTEN_RESULT emscripten_webgl_commit_frame()

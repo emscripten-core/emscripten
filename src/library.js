@@ -471,14 +471,22 @@ LibraryManager.library = {
     return TOTAL_MEMORY;
   },
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size'],
+  $abortOnCannotGrowMemory: function(requestedSize) {
+#if WASM
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#else
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#endif
+  },
+
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'],
   emscripten_resize_heap: function(requestedSize) {
 #if USE_PTHREADS
     abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
 #else
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
-    abortOnCannotGrowMemory();
+    abortOnCannotGrowMemory(requestedSize);
 #else
     return false; // malloc will report failure
 #endif
@@ -581,7 +589,7 @@ LibraryManager.library = {
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
   sbrk__asm: true,
   sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'],
+  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   sbrk: function(increment) {
     increment = increment|0;
     var oldDynamicTop = 0;
@@ -602,7 +610,7 @@ LibraryManager.library = {
         | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
         | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-        abortOnCannotGrowMemory()|0;
+        abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
@@ -619,7 +627,7 @@ LibraryManager.library = {
     if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
       | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
@@ -640,7 +648,7 @@ LibraryManager.library = {
 
   brk__asm: true,
   brk__sig: ['ii'],
-  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'],
+  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
     var totalMemory = 0;
@@ -650,7 +658,7 @@ LibraryManager.library = {
     // enlarge memory, so this needs to fail.
     if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
@@ -660,7 +668,7 @@ LibraryManager.library = {
 #else // singlethreaded build: (-s USE_PTHREADS=0)
     if ((newDynamicTop|0) < 0) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
@@ -960,6 +968,7 @@ LibraryManager.library = {
         num = (num-1)|0;
       }
       aligned_dest_end = (dest_end & -4)|0;
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_dest_end = (aligned_dest_end - 64)|0;
       while ((dest|0) <= (block_aligned_dest_end|0) ) {
 #if SIMD
@@ -988,6 +997,7 @@ LibraryManager.library = {
         dest = (dest+64)|0;
         src = (src+64)|0;
       }
+#endif
       while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
@@ -1059,8 +1069,11 @@ LibraryManager.library = {
       }
 
       aligned_end = (end & -4)|0;
-      block_aligned_end = (aligned_end - 64)|0;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
+
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
+      block_aligned_end = (aligned_end - 64)|0;
+
 #if SIMD
       value16 = SIMD_Int32x4_splat(value4);
 #endif
@@ -1091,6 +1104,7 @@ LibraryManager.library = {
 #endif
         ptr = (ptr + 64)|0;
       }
+#endif
 
       while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
