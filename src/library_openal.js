@@ -2306,7 +2306,7 @@ var LibraryOpenAL = {
   alcIsExtensionPresent__proxy: 'sync',
   alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
-    name = UTF8ToString(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
