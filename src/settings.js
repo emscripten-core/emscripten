@@ -610,12 +610,6 @@ var FS_LOG = 0;
 // case-sensitive, like on Linux.
 var CASE_INSENSITIVE_FS = 0;
 
-// If set to nonzero, MEMFS will always utilize typed arrays as the backing
-// store for appending data to files. The default behavior is to use typed
-// arrays for files when the file size doesn't change after initial creation,
-// and for files that do change size, use normal JS arrays instead.
-var MEMFS_APPEND_TO_TYPED_ARRAYS = 0;
-
 // If set to 0, does not build in any filesystem support. Useful if you are just
 // doing pure computation, but not reading files or using any streams (including
 // fprintf, and other stdio.h things) or anything related. The one exception is
