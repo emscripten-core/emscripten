@@ -1073,6 +1073,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'allocate',
         'getMemory',
       ]
+      shared.Settings.ALLOW_TABLE_GROWTH = 1
+
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
