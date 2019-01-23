@@ -1747,8 +1747,8 @@ var LibraryGL = {
   },
 
   glIsTexture__sig: 'ii',
-  glIsTexture: function(texture) {
-    var texture = GL.textures[texture];
+  glIsTexture: function(id) {
+    var texture = GL.textures[id];
     if (!texture) return 0;
     return GLctx.isTexture(texture);
   },
