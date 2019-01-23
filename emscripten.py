@@ -770,11 +770,11 @@ def get_implemented_functions(metadata):
   return set(metadata['implementedFunctions'])
 
 
-def proxy_debug_print(call_type):
+def proxy_debug_print(sync):
   if shared.Settings.PTHREADS_DEBUG:
-    if call_type == 'sync_on_main_thread_':
+    if sync:
       return 'warnOnce("sync proxying function " + code);'
-    if call_type == 'async_on_main_thread_':
+    else:
       return 'warnOnce("async proxying function " + code);'
   return ''
 
@@ -794,23 +794,20 @@ def include_asm_consts(pre, forwarded_json, metadata):
     forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + call_type + sig] = 1
     args = ['a%d' % i for i in range(len(sig) - 1)]
     all_args = ['code'] + args
-    proxy_function = ''
-    if shared.Settings.USE_PTHREADS:
-      if call_type == 'sync_on_main_thread_':
-        proxy_function = '_emscripten_sync_run_in_browser_thread_' + sig
-      elif call_type == 'async_on_main_thread_':
-        proxy_function = '_emscripten_async_run_in_browser_thread_' + sig
-
-    # In proxied function calls, positive integers 1, 2, 3, ... denote pointers
-    # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
-    # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
-    # ... over to the negative integers starting at -1.
-    proxy_args = '-1 - ' + ','.join(all_args)
 
     pre_asm_const = ''
 
-    if proxy_function:
-      pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(call_type) + 'return ' + proxy_function + '(' + proxy_args + '); } \n'
+    if shared.Settings.USE_PTHREADS:
+      sync_proxy = call_type == 'sync_on_main_thread_'
+      async_proxy = call_type == 'async_on_main_thread_'
+      proxied = sync_proxy or async_proxy
+      if proxied:
+        # In proxied function calls, positive integers 1, 2, 3, ... denote pointers
+        # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
+        # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
+        # ... over to the negative integers starting at -1.
+        proxy_args = ['-1 - code', str(int(sync_proxy))] + args
+        pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync_proxy) + 'return _emscripten_proxy_to_main_thread_js(' + ', '.join(proxy_args) + '); }\n'
 
     if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
       # we cannot have an EM_ASM on the stack when saving/loading
