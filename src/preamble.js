@@ -367,10 +367,10 @@ if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variab
 #endif
 
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
-    STACK_BASE = {{{ getStackBase() }}},
+    STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getStackMax() }}},
-    DYNAMIC_BASE = {{{ getDynamicBase() }}},
+    STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
+    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
     DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
 
 #if ASSERTIONS
@@ -1149,9 +1149,9 @@ Module['asm'] = function(global, env, providedBuffer) {
   // import table
   if (!env['table']) {
 #if ALLOW_TABLE_GROWTH
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ WASM_TABLE_SIZE }}}, 'element': 'anyfunc' });
+    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'element': 'anyfunc' });
 #else
-    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ WASM_TABLE_SIZE }}}, 'maximum': {{{ WASM_TABLE_SIZE }}}, 'element': 'anyfunc' });
+    wasmTable = env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}, 'element': 'anyfunc' });
 #endif
   }
 

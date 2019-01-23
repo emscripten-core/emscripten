@@ -254,6 +254,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   check_all_implemented(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
+  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
@@ -655,6 +656,12 @@ def apply_memory(js):
   js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+
+  return js
+
+
+def apply_table(js):
+  js = js.replace('{{{ WASM_TABLE_SIZE }}}', str(shared.Settings.WASM_TABLE_SIZE))
 
   return js
 
@@ -1333,8 +1340,8 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
       return table_contents.count(',') + 1
 
     table_total_size = sum(table_size(s) for s in function_table_data.values())
-    logging.error('total' + str(table_total_size))
     shared.Settings.WASM_TABLE_SIZE = table_total_size
+    logging.error(str(shared.Settings.WASM_TABLE_SIZE))
 
   if shared.Settings.RELOCATABLE:
     if not shared.Settings.SIDE_MODULE:
@@ -1969,7 +1976,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
      ',\n '.join(asm_consts) + '];\n' +
      asstr('\n'.join(asm_const_funcs)) +
      '\n'.join(em_js_funcs) + '\n'))
-
+  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
