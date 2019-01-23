@@ -1928,7 +1928,7 @@ var LibraryGL = {
 
   glIsQueryEXT__sig: 'ii',
   glIsQueryEXT: function(id) {
-    var query = GL.timerQueriesEXT[query];
+    var query = GL.timerQueriesEXT[id];
     if (!query) return 0;
     return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
   },
@@ -2236,7 +2236,7 @@ var LibraryGL = {
 
   glIsQuery__sig: 'ii',
   glIsQuery: function(id) {
-    var query = GL.queries[query];
+    var query = GL.queries[id];
     if (!query) return 0;
     return GLctx['isQuery'](query);
   },
