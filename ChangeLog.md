@@ -5,7 +5,7 @@ invalidate internal compiler caches, so version numbers do not necessarily
 reflect the amount of changes between versions.
 
 To browse or download snapshots of old tagged versions, visit
-https://github.com/kripken/emscripten/releases.
+https://github.com/emscripten-core/emscripten/releases.
 
 Not all changes are documented here. In particular, new features, user-oriented
 fixes, options, command-line parameters, usage changes, deprecations,
@@ -15,8 +15,18 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Move kripken/emscripten,emscripten-fastcomp,emscripten-fastcomp-clang to
+   emscripten-core/*
+
+v1.38.24: 01/17/2019
+--------------------
+ - Perform JS static allocations at compile time (#7850)
+
+v1.38.23: 01/10/2019
+--------------------
  - Remove BINARYEN_METHOD: no more support for interpret modes, and if you want
    non-wasm, use WASM=0.
+ - Support specifying multiple possible ENVIRONMENTs (#7809)
 
 v1.38.22: 01/08/2019
 --------------------
@@ -311,9 +321,9 @@ v1.37.17: 7/25/2017
    from previous versions will not be compatible.
  - To see a list of commits in the active development branch 'incoming', which
    have not yet been packaged in a release, see
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.13...incoming
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.13...incoming
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.37.13...incoming
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.13...incoming
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.13...incoming
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
 v1.37.13: 5/26/2017
 -------------------
@@ -325,7 +335,7 @@ v1.37.13: 5/26/2017
  - Fixed a bug with emcc --clear-ports command (#5248)
  - Updated Binaryen to version 33.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.12...1.37.13
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.12...1.37.13
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -333,8 +343,8 @@ v1.37.12: 5/1/2017
 ------------------
  - Added emscripten-legalize-javascript-ffi option to LLVM to allow disabling JS FFI mangling
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.11...1.37.12
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.11...1.37.12
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.11...1.37.12
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.11...1.37.12
     - Emscripten-Clang: no changes.
 
 v1.37.11: 5/1/2017
@@ -344,9 +354,9 @@ v1.37.11: 5/1/2017
  - Fix _mm_set_epi64x() function (#5103)
  - Fix issue with number of gamepads connected at initial page load (#5169, #5170)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.10...1.37.11
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.10...1.37.11
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.37.10...1.37.11
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.10...1.37.11
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.10...1.37.11
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.10...1.37.11
 
 v1.37.10: 4/20/2017
 -------------------
@@ -363,8 +373,8 @@ v1.37.10: 4/20/2017
    https://github.com/WebAssembly/design/pull/984 and
    https://github.com/WebAssembly/binaryen/pull/933.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.9...1.37.10
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.9...1.37.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.9...1.37.10
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.9...1.37.10
     - Emscripten-Clang: no changes.
 
 v1.37.9: 3/23/2017
@@ -378,15 +388,15 @@ v1.37.9: 3/23/2017
    code to allow user shell HTML file to manually download .data files for
    preloading and progress bar purposes.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.8...1.37.9
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.8...1.37.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.8...1.37.9
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.8...1.37.9
     - Emscripten-Clang: no changes.
 
 v1.37.8: 3/17/2017
 ------------------
  - Fixed a bug with robust_list initialization on pthreads build mode.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.7...1.37.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.7...1.37.8
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -394,16 +404,16 @@ v1.37.7: 3/15/2017
 ------------------
  - Updated to LLVM 4.0.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.6...1.37.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.6...1.37.7
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.37.6...1.37.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.6...1.37.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.6...1.37.7
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.6...1.37.7
 
 v1.37.6: 3/15/2017
 ------------------
  - Implemented readdir() function for WORKERFS.
  - Fixed bugs with Fetch API (#4995, #5027)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.5...1.37.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.5...1.37.6
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -411,7 +421,7 @@ v1.37.5: 3/13/2017
 ------------------
  - Updated musl to version 1.1.15 from earlier version 1.0.5.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.4...1.37.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.4...1.37.5
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -423,7 +433,7 @@ v1.37.4: 3/13/2017
  - Optimize alBufferData() operation.
  - Fixed a resource lookup issue with multiple OpenAL audio contexts.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.3...1.37.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.3...1.37.4
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -437,8 +447,8 @@ v1.37.3: 2/16/2017
  - Optimize Emscripten use of multiprocessing pools.
  - More WebGL 2 garbage free optimizations.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.2...1.37.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.2...1.37.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.2...1.37.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.2...1.37.3
     - Emscripten-Clang: no changes.
 
 v1.37.2: 1/31/2017
@@ -453,8 +463,8 @@ v1.37.2: 1/31/2017
  - Fixed array type issue that prevented glTexImage3D() and glTexSubImage3D()
    from working.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.1...1.37.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.37.1...1.37.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.1...1.37.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.1...1.37.2
     - Emscripten-Clang: no changes.
 
 v1.37.1: 12/26/2016
@@ -464,7 +474,7 @@ v1.37.1: 12/26/2016
  - Implemented initial version of new ASMFS filesystem for multithreaded
    filesystem operation.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.37.0...1.37.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.0...1.37.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -479,8 +489,8 @@ v1.37.0: 12/23/2016
  - Remove references to Web Audio .setVelocity() function, which has been
    removed from the spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.14...1.37.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.14...1.37.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.14...1.37.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.14...1.37.0
     - Emscripten-Clang: no changes.
 
 v1.36.14: 11/3/2016
@@ -499,7 +509,7 @@ v1.36.14: 11/3/2016
  - Updated Binaryen to version 18. (#4674)
  - Fixed dlopen with RTLD_GLOBAL parameter.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.13...1.36.14
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.13...1.36.14
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -509,7 +519,7 @@ v1.36.13: 10/21/2016
  - Fix to exporting emscripten_builtin_malloc() and emscripten_builtin_free()
    when heap is split to multiple parts.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.12...1.36.13
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.12...1.36.13
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -528,8 +538,8 @@ v1.36.12: 10/20/2016
  - Added support for int64 in wasm.
  - Optimize small constant length memcpys in wasm.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.11...1.36.12
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.11...1.36.12
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.11...1.36.12
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.11...1.36.12
     - Emscripten-Clang: no changes.
 
 v1.36.11: 9/24/2016
@@ -538,7 +548,7 @@ v1.36.11: 9/24/2016
    emscripten_sync/async/waitable_run_in_main_runtime_thread() for proxying
    calls with pthreads (#4569)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.10...1.36.11
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.10...1.36.11
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -555,8 +565,8 @@ v1.36.10: 9/24/2016
  - Implemented support for nanosleep() when building in pthreads mode (#4578)
  - Added support for  llvm_ceil_f64 and llvm_floor_f64 intrinsics.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.9...1.36.10
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.9...1.36.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.9...1.36.10
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.9...1.36.10
     - Emscripten-Clang: no changes.
 
 v1.36.9: 8/24/2016
@@ -570,8 +580,8 @@ v1.36.9: 8/24/2016
  - Fixed --output-eol to work with --proxy-to-worker mode.
  - Improved reported error message when execution fails to stack overflow.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.8...1.36.9
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.8...1.36.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.8...1.36.9
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.8...1.36.9
     - Emscripten-Clang: no changes.
 
 v1.36.8: 8/20/2016
@@ -593,7 +603,7 @@ v1.36.8: 8/20/2016
  - Deprecated unsafe function writeStringToMemory() from src/preamble.js. Using
    stringToUTF8() is recommended instead. (#4497)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.7...1.36.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.7...1.36.8
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -601,9 +611,9 @@ v1.36.7: 8/8/2016
 -----------------
  - Updated to latest upstream LLVM 3.9.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.6...1.36.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.6...1.36.7
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.36.6...1.36.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.6...1.36.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.6...1.36.7
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.36.6...1.36.7
 
 v1.36.6: 8/8/2016
 -----------------
@@ -636,8 +646,8 @@ v1.36.6: 8/8/2016
    to llvm-link must have forward slashes (#4434)
  - Fixed a memory leak in relooper in LLVM.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.5...1.36.6
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.5...1.36.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.5...1.36.6
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.5...1.36.6
     - Emscripten-Clang: no changes.
 
 v1.36.5: 5/24/2016
@@ -651,8 +661,8 @@ v1.36.5: 5/24/2016
  - Fixed an issue where pthreads enabled code did not correctly validate as asm.js
  - Fixed an issue with incorrect SIMD.js related imports (#4341)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.4...1.36.5
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.4...1.36.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.4...1.36.5
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.4...1.36.5
     - Emscripten-Clang: no changes.
 
 v1.36.4: 5/9/2016
@@ -667,7 +677,7 @@ v1.36.4: 5/9/2016
  - Automatically build Binaryen when needed.
  - Updated libc++ to SVN revision 268153. (#4288)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.3...1.36.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.3...1.36.4
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -677,7 +687,7 @@ v1.36.3: 4/27/2016
  - Remove sources from temporary garbage being generated in OpenAL code (#4275)
  - Added support for calling alert() from pthreads code.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.2...1.36.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.2...1.36.3
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -708,8 +718,8 @@ v1.36.2: 4/22/2016
    database name to use for the cache (#4219)
  - Added DWARF style debugging information.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.1...1.36.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.1...1.36.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.1...1.36.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.1...1.36.2
     - Emscripten-Clang: no changes.
 
 v1.36.1: 3/8/2016
@@ -734,8 +744,8 @@ v1.36.1: 3/8/2016
    access would come out as signed. (#4150)
  - Fixed asm.js validation in call handlers to llvm_powi_f*.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.36.0...1.36.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.36.0...1.36.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.36.0...1.36.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.36.0...1.36.1
     - Emscripten-Clang: no changes.
 
 v1.36.0: 2/23/2016
@@ -753,8 +763,8 @@ v1.36.0: 2/23/2016
  - Added support for -include-pch flag (#4086)
  - Fixed a regex syntax in ccall on Chrome Canary (#4111)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.23...1.36.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.23...1.36.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.23...1.36.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.23...1.36.0
     - Emscripten-Clang: no changes.
 
 v1.35.23: 2/9/2016
@@ -797,8 +807,8 @@ v1.35.23: 2/9/2016
  - Fixed an issue where Emscripten linker would redundantly generate missing
    function stubs for some functions that do exist.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.22...1.35.23
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.22...1.35.23
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.22...1.35.23
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.22...1.35.23
     - Emscripten-Clang: no changes.
 
 v1.35.22: 1/13/2016
@@ -806,9 +816,9 @@ v1.35.22: 1/13/2016
  - Updated to latest upstream LLVM trunk as of January 13th.
  - Bumped up the required LLVM version from LLVM 3.8 to LLVM 3.9.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.21...1.35.22
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.21...1.35.22
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.21...1.35.22
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.21...1.35.22
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.21...1.35.22
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.21...1.35.22
 
 v1.35.21: 1/13/2016
 -------------------
@@ -821,9 +831,9 @@ v1.35.21: 1/13/2016
  - Fixed an issue that prevented building LLVM on Visual Studio 2015
    (emscripten-fastcomp-clang #7)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.20...1.35.21
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.20...1.35.21
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.20...1.35.21
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.20...1.35.21
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.20...1.35.21
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.20...1.35.21
 
 v1.35.20: 1/10/2016
 -------------------
@@ -836,8 +846,8 @@ v1.35.20: 1/10/2016
  - Fixed a compiler crash when generating SIMD.js code that utilizes
    non-canonical length vectors (e.g. <float x 3>)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.19...1.35.20
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.19...1.35.20
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.19...1.35.20
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.19...1.35.20
     - Emscripten-Clang: no changes.
 
 v1.35.19: 1/7/2016
@@ -845,8 +855,8 @@ v1.35.19: 1/7/2016
  - Updated to latest upstream LLVM trunk as of January 7th.
  - Full list of changes:
     - Emscripten: no changes.
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.18...1.35.19
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.18...1.35.19
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.18...1.35.19
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.18...1.35.19
 
 v1.35.18: 1/7/2016
 ------------------
@@ -858,8 +868,8 @@ v1.35.18: 1/7/2016
  - Implemented llvm_bitreverse_i32() (#3976)
  - Fixed missing include header that affected building relooper on some compilers.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.17...1.35.18
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.17...1.35.18
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.17...1.35.18
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.17...1.35.18
     - Emscripten-Clang: no changes.
 
 v1.35.17: 1/4/2016
@@ -867,15 +877,15 @@ v1.35.17: 1/4/2016
  - Updated to latest upstream LLVM trunk as of January 4th.
  - Full list of changes:
     - Emscripten: no changes.
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.16...1.35.17
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp/compare/1.35.16...1.35.17
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.16...1.35.17
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.16...1.35.17
 
 v1.35.16: 1/4/2016
 ------------------
  - Improved support for -s USE_PTHREADS=2 build mode and added support for Atomics.exchange().
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.15...1.35.16
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.15...1.35.16
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.15...1.35.16
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.15...1.35.16
     - Emscripten-Clang: no changes.
 
 v1.35.15: 1/4/2016
@@ -894,17 +904,17 @@ v1.35.15: 1/4/2016
  - Fixed an asm.js validation issue when building against updated SIMD.js specification. (#3986)
  - Improved Rust support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.14...1.35.15
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.14...1.35.15
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.14...1.35.15
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.14...1.35.15
     - Emscripten-Clang: no changes.
 
 v1.35.14: 12/15/2015
 --------------------
  - Updated to latest upstream LLVM trunk as of December 15th.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.13...1.35.14
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.13...1.35.14
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.13...1.35.14
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.13...1.35.14
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.13...1.35.14
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.13...1.35.14
 
 v1.35.13: 12/15/2015
 --------------------
@@ -921,8 +931,8 @@ v1.35.13: 12/15/2015
  - Added new build option -s WASM_BACKEND=0/1 which controls whether to utilize
    the upstream LLVM wasm emitting codegen backend.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.12...1.35.13
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.12...1.35.13
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.12...1.35.13
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.12...1.35.13
     - Emscripten-Clang: no changes.
 
 v1.35.12: 11/28/2015
@@ -933,16 +943,16 @@ v1.35.12: 11/28/2015
    generation method to use.
  - Updates to Binaryen support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.11...1.35.12
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.11...1.35.12
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.11...1.35.12
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.11...1.35.12
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.11...1.35.12
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.11...1.35.12
 
 v1.35.11: 11/27/2015
 --------------------
  - Updated atomics test to stress 64-bit atomics better (#3892)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.10...1.35.11
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.10...1.35.11
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.10...1.35.11
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.10...1.35.11
     - Emscripten-Clang: no changes.
 
 v1.35.10: 11/25/2015
@@ -963,8 +973,8 @@ v1.35.10: 11/25/2015
  - When emitting NaN canonicalization warning, also print the location in code
    where it occurs.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.9...1.35.10
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.9...1.35.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.9...1.35.10
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.9...1.35.10
     - Emscripten-Clang: no changes.
 
 v1.35.9: 11/12/2015
@@ -974,8 +984,8 @@ v1.35.9: 11/12/2015
  - Make emcc explicitly reinvoke itself from python2 if called from python3.
  - Optimize memory initializer to omit zero-initialized values (#3907)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.8...1.35.9
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.8...1.35.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.8...1.35.9
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.8...1.35.9
     - Emscripten-Clang: no changes.
 
 v1.35.8: 11/10/2015
@@ -986,7 +996,7 @@ v1.35.8: 11/10/2015
  - Fixed round() and roundf() to work when building without -s PRECISE_F32=1 and
    optimize these to be faster (#3876)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.7...1.35.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.7...1.35.8
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -994,9 +1004,9 @@ v1.35.7: 11/4/2015
 ------------------
  - Updated to latest upstream LLVM trunk version as of November 4th.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.6...1.35.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.6...1.35.7
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.6...1.35.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.6...1.35.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.6...1.35.7
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.6...1.35.7
 
 v1.35.6: 11/4/2015
 ------------------
@@ -1014,7 +1024,7 @@ v1.35.5: 11/4/2015
  - Clarified error message that memory growth is not supported with shared modules (#3893)
  - Initial work on wasm support in optimizer
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.4...1.35.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.4...1.35.5
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1022,9 +1032,9 @@ v1.35.4: 10/26/2015
 -------------------
  - Move to legalization in the JS backend.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.3...1.35.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.3...1.35.4
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.3...1.35.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.3...1.35.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.3...1.35.4
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.3...1.35.4
 
 v1.35.3: 10/26/2015
 -------------------
@@ -1034,17 +1044,17 @@ v1.35.3: 10/26/2015
  - Add support to zext <4 x i1> to <4x i32>
  - Emit emscripten versions of llvm and clang in clang --version
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.2...1.35.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.2...1.35.3
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.2...1.35.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.2...1.35.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.2...1.35.3
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.2...1.35.3
 
 v1.35.2: 10/20/2015
 -------------------
  - Rebase against upstream LLVM "google/stable" branch, bringing us to LLVM 3.8.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.1...1.35.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.35.1...1.35.2
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.35.1...1.35.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.1...1.35.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.35.1...1.35.2
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.35.1...1.35.2
 
 v1.35.1: 10/20/2015
 -------------------
@@ -1052,7 +1062,7 @@ v1.35.1: 10/20/2015
  - Work around a WebAudio bug on WebKit "pauseWebAudio failed: TypeError: Not
    enough arguments" (#3861)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.35.0...1.35.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.35.0...1.35.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1060,7 +1070,7 @@ v1.35.0: 10/19/2015
 -------------------
  - Fixed out of memory abort message.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.12...1.35.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.12...1.35.0
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1083,8 +1093,8 @@ v1.34.12: 10/13/2015
    of the page on OOM) (#3822)
  - Removed the default behavior of automatically decoding all preloaded assets on page startup (#3785)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.11...1.34.12
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.11...1.34.12
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.11...1.34.12
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.11...1.34.12
     - Emscripten-Clang: no changes.
 
 v1.34.11: 9/29/2015
@@ -1093,8 +1103,8 @@ v1.34.11: 9/29/2015
  - Fix an issue with printing to iostream in global ctors (#3824)
  - Added support for LLVM pow intrinsics with integer exponent.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.10...1.34.11
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.10...1.34.11
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.10...1.34.11
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.10...1.34.11
     - Emscripten-Clang: no changes.
 
 v1.34.10: 9/25/2015
@@ -1108,8 +1118,8 @@ v1.34.10: 9/25/2015
  - Fixed multiple arities per EM_ASM block (#3804)
  - Fixed issues with SSE2 an NaN bit patterns. (emscripten-fastcomp #116)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.9...1.34.10
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.9...1.34.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.9...1.34.10
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.9...1.34.10
     - Emscripten-Clang: no changes.
 
 v1.34.9: 9/18/2015
@@ -1127,8 +1137,8 @@ v1.34.9: 9/18/2015
  - Fixed a breakage with -s USE_PTHREADS=2 (#3774)
  - Added support for GL_HALF_FLOAT in WebGL 2. (#3790)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.8...1.34.9
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.8...1.34.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.8...1.34.9
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.8...1.34.9
     - Emscripten-Clang: no changes.
 
 v1.34.8: 9/9/2015
@@ -1140,7 +1150,7 @@ v1.34.8: 9/9/2015
  - Added new linker flag --separate-asm that splits the asm.js module and the
    handwritten JS functions to separate files.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.7...1.34.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.7...1.34.8
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1161,9 +1171,9 @@ v1.34.7: 9/5/2015
  - Added exports for getting FS objects by their name (#3690)
  - Updated LLVM to latest upstream PNaCl version (Clang 3.7, July 29th).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.6...1.34.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.6...1.34.7
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.34.6...1.34.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.6...1.34.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.6...1.34.7
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.34.6...1.34.7
 
 v1.34.6: 8/20/2015
 ------------------
@@ -1174,8 +1184,8 @@ v1.34.6: 8/20/2015
  - Added new build option -s MAIN_MODULE=2.
  - Cleaned up a few redundant linker warnings (#3702, #3704)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.5...1.34.6
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.5...1.34.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.5...1.34.6
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.5...1.34.6
     - Emscripten-Clang: no changes.
 
 v1.34.5: 8/18/2015
@@ -1192,8 +1202,8 @@ v1.34.5: 8/18/2015
  - Added support for passing multiple input files to opt, to speed up
    optimization and linking in opt.  
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.4...1.34.5
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.4...1.34.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.4...1.34.5
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.4...1.34.5
     - Emscripten-Clang: no changes.
 
 v1.34.4: 8/4/2015
@@ -1212,15 +1222,15 @@ v1.34.4: 8/4/2015
  - Added new EXTRA_EXPORTED_RUNTIME_METHODS build option
  - Updated emrun to latest version
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.3...1.34.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.3...1.34.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.3...1.34.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.3...1.34.4
     - Emscripten-Clang: no changes.
 
 v1.34.3: 7/15/2015
 ------------------
  - Move libc to musl+syscalls
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.2...1.34.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.2...1.34.3
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1237,8 +1247,8 @@ v1.34.2: 7/14/2015
    linking large codebases, which was seen to cause a stack overflow crash on
    Windows.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.1...1.34.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.34.1...1.34.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.1...1.34.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.34.1...1.34.2
     - Emscripten-Clang: no changes.
 
 v1.34.1: 6/18/2015
@@ -1246,7 +1256,7 @@ v1.34.1: 6/18/2015
  - Fixed an issue with resize canvas not working with GLFW.
  - Fixed handling of empty else blocks.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.34.0...1.34.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.34.0...1.34.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1261,8 +1271,8 @@ v1.34.0: 6/16/2015
    inside the generated .js file.
  - Fixed a code miscompilation issue with a constexpr in fcmp.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.33.2...1.34.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.33.2...1.34.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.33.2...1.34.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.33.2...1.34.0
     - Emscripten-Clang: no changes.
 
 v1.33.2: 6/9/2015
@@ -1271,8 +1281,8 @@ v1.33.2: 6/9/2015
  - Added support for handling command line flags -M and -MM (#3518).
  - Fixed a code miscompilation issue with missing ';' character (#3520).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.33.1...1.33.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.33.1...1.33.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.33.1...1.33.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.33.1...1.33.2
     - Emscripten-Clang: no changes.
 
 v1.33.1: 6/3/2015
@@ -1280,8 +1290,8 @@ v1.33.1: 6/3/2015
  - Added support for multithreading with the POSIX threads API (pthreads), used
    when compiling and linking with the -s USE_PTHREADS=1 flag (#3266).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.33.0...1.33.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.33.0...1.33.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.33.0...1.33.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.33.0...1.33.1
     - Emscripten-Clang: no changes.
 
 v1.33.0: 5/29/2015
@@ -1293,8 +1303,8 @@ v1.33.0: 5/29/2015
    the WebGL ones.
  - Fixed LLVM/Clang to build again on Windows after previous LLVM upgrade.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.32.4...1.33.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.32.4...1.33.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.4...1.33.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.4...1.33.0
     - Emscripten-Clang: no changes.
 
 v1.32.4: 5/16/2015
@@ -1303,9 +1313,9 @@ v1.32.4: 5/16/2015
  - Added libpng to Emscripten-ports.
  - Added intrinsic llvm_fabs_f32.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.32.3...1.32.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.32.3...1.32.4
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.32.3...1.32.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.3...1.32.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.3...1.32.4
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.32.3...1.32.4
 
 v1.32.3: 5/15/2015
 ------------------
@@ -1314,8 +1324,8 @@ v1.32.3: 5/15/2015
  - Improved CMake support with CMAKE_CROSSCOMPILING_EMULATOR (#3447).
  - Added support for sysconf(_SC_PHYS_PAGES) (#3405, 3442).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.32.2...1.32.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.32.2...1.32.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.2...1.32.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.2...1.32.3
     - Emscripten-Clang: no changes.
 
 v1.32.2: 5/8/2015
@@ -1327,8 +1337,8 @@ v1.32.2: 5/8/2015
  - Improved emterpreter when doing dynamic linking.
  - Fixed an issue with source maps debug info containing zeroes as line numbers.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.32.1...1.32.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.32.1...1.32.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.1...1.32.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.1...1.32.2
     - Emscripten-Clang: no changes.
 
 v1.32.1: 5/2/2015
@@ -1339,8 +1349,8 @@ v1.32.1: 5/2/2015
  - Added support for dynamic linking and dlopen().
  - Fixed a compilation issue that affected -O2 builds and higher (#3430).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.32.0...1.32.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.32.0...1.32.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.32.0...1.32.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.32.0...1.32.1
     - Emscripten-Clang: no changes.
 
 v1.32.0: 4/28/2015
@@ -1355,8 +1365,8 @@ v1.32.0: 4/28/2015
  - Fixed an issue where emrun stripped some characters at output (#3394).
  - Fixed alignment issues with varargs.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.31.3...1.32.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.31.3...1.32.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.31.3...1.32.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.31.3...1.32.0
     - Emscripten-Clang: no changes.
 
 v1.31.3: 4/22/2015
@@ -1368,8 +1378,8 @@ v1.31.3: 4/22/2015
    EMULATED_FUNCTION_POINTERS.
  - Fixed an issue with -s PRECISE_I64_MATH=2 not working (#3374).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.31.2...1.31.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.31.2...1.31.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.31.2...1.31.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.31.2...1.31.3
     - Emscripten-Clang: no changes.
 
 v1.31.2: 4/20/2015
@@ -1378,7 +1388,7 @@ v1.31.2: 4/20/2015
  - Fixed an issue with embind and wide strings (#3299).
  - Removed more traces of the old non-fastcomp compiler code.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.31.1...1.31.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.31.1...1.31.2
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1389,16 +1399,16 @@ v1.31.1: 4/17/2015
  - Fixed an issue where exit() did not terminate execution of Emterpreter (#3360).
  - Removed traces of the old non-fastcomp compiler code.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.31.0...1.31.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.31.0...1.31.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.31.0...1.31.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.31.0...1.31.1
     - Emscripten-Clang: no changes.
 
 v1.31.0: 4/14/2015
 ------------------
  - Remove references to unsupported EMCC_FAST_COMPILER mode, fastcomp is always enabled (#3347).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.6...1.31.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.6...1.31.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.6...1.31.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.6...1.31.0
     - Emscripten-Clang: no changes.
 
 v1.30.6: 4/14/2015
@@ -1421,8 +1431,8 @@ v1.30.6: 4/14/2015
  - Removed support code for x86_fp80 type (#3341).
  - Optimize EM_ASM() calls even more (#2596).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.5...1.30.6
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.5...1.30.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.5...1.30.6
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.5...1.30.6
     - Emscripten-Clang: no changes.
 
 v1.30.5: 4/7/2015
@@ -1437,8 +1447,8 @@ v1.30.5: 4/7/2015
  - Fixed an issue with -s EMTERPRETIFY_ASYNC=1 and emscripten_sleep() not
    working (#3307).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.4...1.30.5
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.4...1.30.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.4...1.30.5
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.4...1.30.5
     - Emscripten-Clang: no changes.
 
 v1.30.4: 4/3/2015
@@ -1446,8 +1456,8 @@ v1.30.4: 4/3/2015
  - Optimized the performance and security of EM_ASM() blocks by avoiding the use
    of eval() (#2596).
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.3...1.30.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.3...1.30.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.3...1.30.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.3...1.30.4
     - Emscripten-Clang: no changes.
 
 v1.30.3: 4/3/2015
@@ -1457,9 +1467,9 @@ v1.30.3: 4/3/2015
  - Fixed Clang build by adding missing nacltransforms project after latest
    LLVM/Clang upstream merge.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.2...1.30.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.2...1.30.3
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.30.2...1.30.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.2...1.30.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.2...1.30.3
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.30.2...1.30.3
 
 v1.30.2: 4/1/2015
 -----------------
@@ -1470,17 +1480,17 @@ v1.30.2: 4/1/2015
  - Added support for asm.js/Emscripten arch in Clang.
  - Finished LLVM 3.6 upgrade merge.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.1...1.30.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.1...1.30.2
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.30.1...1.30.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.1...1.30.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.1...1.30.2
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.30.1...1.30.2
 
 v1.30.1: 3/24/2015
 ------------------
  - Upgraded LLVM+Clang from vrsion 3.5 to version 3.6.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.30.0...1.30.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.30.0...1.30.1
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.30.0...1.30.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.0...1.30.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.0...1.30.1
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.30.0...1.30.1
 
 v1.30.0: 3/24/2015
 ------------------
@@ -1506,8 +1516,8 @@ v1.30.0: 3/24/2015
  - Removed the obsolete FAST_MEMORY build option.
  - Added reciprocalApproximation and reciprocalSqrtApproximation SIMD intrinsics.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.12...1.30.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.12...1.30.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.12...1.30.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.12...1.30.0
     - Emscripten-Clang: no changes.
 
 v1.29.12: 3/15/2015
@@ -1517,7 +1527,7 @@ v1.29.12: 3/15/2015
  - Fixed an off-by-one memory access in native optimizer.
  - Improve emterpreter support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.11...1.29.12
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.11...1.29.12
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1535,8 +1545,8 @@ v1.29.11: 3/11/2015
  - Optimize code generation when multiple consecutive bitshifts are present.
  - Optimize redundant stack save and restores, and memcpy/memsets.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.10...1.29.11
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.10...1.29.11
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.10...1.29.11
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.10...1.29.11
     - Emscripten-Clang: no changes.
 
 v1.29.10: 2/19/2015
@@ -1557,8 +1567,8 @@ v1.29.10: 2/19/2015
  - Add support for SDL_WM_SetCaption(), which calls to Module['setWindowTitle'],
    or if not present, sets the web page title. (#3192)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.9...1.29.10
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.9...1.29.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.9...1.29.10
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.9...1.29.10
     - Emscripten-Clang: no changes.
 
 v1.29.9: 2/9/2015
@@ -1577,7 +1587,7 @@ v1.29.9: 2/9/2015
  - Add support for GL_RED with GLES3/WebGL2. (#3176)
  - Added basic WebVR support. (#3177)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.8...1.29.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.8...1.29.9
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1589,8 +1599,8 @@ v1.29.8: 1/31/2015
  - Add a warning if multiple .a files with same basename are being linked
    together. (#2619)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.7...1.29.8
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.7...1.29.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.7...1.29.8
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.7...1.29.8
     - Emscripten-Clang: no changes.
 
 v1.29.7: 1/28/2015
@@ -1603,8 +1613,8 @@ v1.29.7: 1/28/2015
    (#3154)
  - Optimize Math.clz32, Math.min, NaN, and inf handling in asm.js.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.6...1.29.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.6...1.29.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.6...1.29.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.6...1.29.7
     - Emscripten-Clang: no changes.
 
 v1.29.6: 1/23/2015
@@ -1613,7 +1623,7 @@ v1.29.6: 1/23/2015
    throw a JS exception, instead a GL_INVALID_OPERATION is now recorded.
  - Improve label handling in native optimizer.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.5...1.29.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.5...1.29.6
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1635,8 +1645,8 @@ v1.29.5: 1/23/2015
  - Improved output message from emconfigure and emmake when inputs are unexpected.
  - Added built-in asm handler for LLVM fabs operation.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.4...1.29.5
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.4...1.29.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.4...1.29.5
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.4...1.29.5
     - Emscripten-Clang: no changes.
 
 v1.29.4: 1/21/2015
@@ -1655,8 +1665,8 @@ v1.29.4: 1/21/2015
  - Fixed an issue with emterpreter parsing. (#3141)
  - Fixed an issue with native optimizer and -s PPRECISE_F32=1.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.3...1.29.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.3...1.29.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.3...1.29.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.3...1.29.4
     - Emscripten-Clang: no changes.
 
 v1.29.3: 1/16/2015
@@ -1664,7 +1674,7 @@ v1.29.3: 1/16/2015
  - Fixed a bug with OpenGL context initialization enableExtensionsByDefault. (#3135)
  - Fixed an issue with nested if parsing in native optimizer.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.2...1.29.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.2...1.29.3
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1683,23 +1693,23 @@ v1.29.2: 1/16/2015
  - Improved emterpreter support.
  - Fixed LLVM 3.5 to build with Visual Studio on Windows (emscripten-fastcomp #61)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.1...1.29.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.1...1.29.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.1...1.29.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.1...1.29.2
     - Emscripten-Clang: no changes.
 
 v1.29.1: 1/7/2015
 -------------------
  - Migrated to upstream PNaCl LLVM+Clang 3.5 from the previous 3.4.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.29.0...1.29.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.29.0...1.29.1
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.29.0...1.29.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.29.0...1.29.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.29.0...1.29.1
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.29.0...1.29.1
 
 v1.29.0: 1/7/2015
 -------------------
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.28.3...1.29.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.28.3...1.29.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.28.3...1.29.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.28.3...1.29.0
     - Emscripten-Clang: no changes.
 
 v1.28.3: 1/4/2015
@@ -1709,32 +1719,32 @@ v1.28.3: 1/4/2015
  - Perform LLVM LTO in a separate invocation of opt, so that it does not mix
    with legalization and other stuff we do at link time
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.28.2...1.28.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.28.2...1.28.3
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.28.2...1.28.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.28.2...1.28.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.28.2...1.28.3
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.28.2...1.28.3
 
 v1.28.2: 12/17/2014
 -------------------
  - Enable native optimizer by default
  - Disable slow2asm legacy testing (asm.js mode in pre-fastcomp)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.28.1...1.28.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.28.1...1.28.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.28.1...1.28.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.28.1...1.28.2
     - Emscripten-Clang: no changes.
 
 v1.28.1: 12/15/2014
 -------------------
  - Use a lot more MUSL math functions
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.28.0...1.28.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.28.0...1.28.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.28.0...1.28.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.28.0...1.28.1
     - Emscripten-Clang: no changes.
 
 v1.28.0: 12/12/2014
 -------------------
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.27.2...1.28.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.2...1.28.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.27.2...1.28.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.27.2...1.28.0
     - Emscripten-Clang: no changes.
 
 v1.27.2: 12/10/2014
@@ -1745,8 +1755,8 @@ v1.27.2: 12/10/2014
  - Fixed issues with IE when running closure minified pages. (#3012)
  - Enabled asm.js validation for SIMD compilation.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.27.1...1.27.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.1...1.27.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.27.1...1.27.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.27.1...1.27.2
     - Emscripten-Clang: no changes.
 
 v1.27.1: 11/20/2014
@@ -1754,9 +1764,9 @@ v1.27.1: 11/20/2014
  - Migrated to upstream PNaCl LLVM+Clang 3.4 from the previous 3.3.
  - Added a FindOpenGL.cmake to support find_package() for OpenGL in CMake scripts.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.27.0...1.27.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.27.0...1.27.1
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.27.0...1.27.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.27.0...1.27.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.27.0...1.27.1
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.27.0...1.27.1
 
 v1.27.0: 11/20/2014
 -------------------
@@ -1769,8 +1779,8 @@ v1.27.0: 11/20/2014
    has been freed.
  - Optimized embind operation in Chrome by avoiding using Function.prototype.bind().
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.26.1...1.27.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.26.1...1.27.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.26.1...1.27.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.26.1...1.27.0
     - Emscripten-Clang: no changes.
 
 v1.26.1: 11/7/2014
@@ -1786,9 +1796,9 @@ v1.26.1: 11/7/2014
    cross-browser issue #2556 (#2975)
  - Fixed an issue with using structs in va_args (#2923)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.26.0...1.26.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.26.0...1.26.1
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.26.0...1.26.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.26.0...1.26.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.26.0...1.26.1
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.26.0...1.26.1
 
 v1.26.0: 10/29/2014
 -------------------
@@ -1805,8 +1815,8 @@ v1.26.0: 10/29/2014
  - Use only minimum necessary digits to print floating point literals in
    generated JS code for smaller code output.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.2...1.26.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.2...1.26.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.25.2...1.26.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.25.2...1.26.0
     - Emscripten-Clang: no changes.
 
 v1.25.2: 10/16/2014
@@ -1841,7 +1851,7 @@ v1.25.2: 10/16/2014
    API.
  - Improved experimental SIMD support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.1...1.25.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.25.1...1.25.2
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1853,8 +1863,8 @@ v1.25.1: 10/1/2014
    incorrect syntax (emscripten-fastcomp #52)
  - Improved experimental SIMD support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.25.0...1.25.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.25.0...1.25.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.25.0...1.25.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.25.0...1.25.1
     - Emscripten-Clang: no changes.
 
 
@@ -1862,7 +1872,7 @@ v1.25.0: 9/30/2014
 ------------------
  - Fixed a warning message with -s EXPORTED_FUNCTIONS.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.24.1...1.25.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.24.1...1.25.0
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1891,8 +1901,8 @@ v1.24.1: 9/27/2014
  - Fixed a bug where Module['TOTAL_STACK'] was ignored (#2837).
  - Improved SIMD support for the experimental Ecmascript SIMD spec. Preliminary asm.js validation.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.24.0...1.24.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.24.0...1.24.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.24.0...1.24.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.24.0...1.24.1
     - Emscripten-Clang: no changes.
 
 v1.24.0: 9/16/2014
@@ -1904,8 +1914,8 @@ v1.24.0: 9/16/2014
  - Fixed and issue where one could not pass a null pointer to strftime() function.
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.5...1.24.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.5...1.24.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.5...1.24.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.5...1.24.0
     - Emscripten-Clang: no changes.
 
 v1.23.5: 9/12/2014
@@ -1927,7 +1937,7 @@ v1.23.5: 9/12/2014
  - Implemented SDL function SDL_BlitScaled.
  - Fixed a bug with right modifier keys in SDL.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.4...1.23.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.4...1.23.5
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -1937,8 +1947,8 @@ v1.23.4: 9/7/2014
    events (#2751)
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.3...1.23.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.3...1.23.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.3...1.23.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.3...1.23.4
     - Emscripten-Clang: no changes.
 
 v1.23.3: 9/7/2014
@@ -1959,8 +1969,8 @@ v1.23.3: 9/7/2014
  - Added functions glob and globfree from musl regex library.
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.2...1.23.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.2...1.23.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.2...1.23.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.2...1.23.3
     - Emscripten-Clang: no changes.
 
 v1.23.2: 9/2/2014
@@ -1989,8 +1999,8 @@ v1.23.2: 9/2/2014
  - Added Bessel math functions of the first kind  (j0, j1, jn) from musl.
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.1...1.23.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.1...1.23.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.1...1.23.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.1...1.23.2
     - Emscripten-Clang: no changes.
 
 v1.23.1: 8/26/2014
@@ -2011,8 +2021,8 @@ v1.23.1: 8/26/2014
  - Migrated to using musl PRNG functions. Fixes reported bugs about the quality of randomness (#2341)
  - Improved SIMD support for the experimental Ecmascript SIMD spec.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.23.0...1.23.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.23.0...1.23.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.23.0...1.23.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.23.0...1.23.1
     - Emscripten-Clang: no changes.
 
 v1.23.0: 8/21/2014
@@ -2022,7 +2032,7 @@ v1.23.0: 8/21/2014
    support for null in embind_repr().
  - Fixed possible issues with rounding and flooring operations.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.2...1.23.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.22.2...1.23.0
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2069,8 +2079,8 @@ v1.22.2: 8/19/2014
  - Allow using __asm__ __volatile__("": : :"memory") as a compile-time
    reordering barrier (#2647)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.1...1.22.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.22.1...1.22.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.22.1...1.22.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.22.1...1.22.2
     - Emscripten-Clang: no changes.
 
 v1.22.1: 8/7/2014
@@ -2091,7 +2101,7 @@ v1.22.1: 8/7/2014
  - Added no-op SDL IMG_Quit() and TTF_Quit() symbols.
  - Migrated to building libcxx and libcxxapi with -Oz optimization flags.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.22.0...1.22.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.22.0...1.22.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2103,8 +2113,8 @@ v1.22.0: 8/5/2014
  - Improved extension catching support (#2616)
  - Fixed .a link groups to also work when linking to bitcode. (#2568)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.10...1.22.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.10...1.22.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.10...1.22.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.21.10...1.22.0
     - Emscripten-Clang: no changes.
 
 v1.21.10: 7/29/2014
@@ -2116,7 +2126,7 @@ v1.21.10: 7/29/2014
  - Implemented new HTML5 API for direct WebGL context creation, emscripten_webgl_*().
  - Fixed a bug when loading in node.js and loaded by another module (#2586)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.9...1.21.10
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.9...1.21.10
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2124,7 +2134,7 @@ v1.21.9: 7/28/2014
 ------------------
  - Fixed issues with exception catching. (#2531)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.8...1.21.9
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.8...1.21.9
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2135,8 +2145,8 @@ v1.21.8: 7/28/2014
    off when the compilation ends in an error.
    (https://github.com/joyent/node/issues/1669)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.7...1.21.8
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.7...1.21.8
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.7...1.21.8
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.21.7...1.21.8
     - Emscripten-Clang: no changes.
 
 v1.21.7: 7/25/2014
@@ -2160,10 +2170,10 @@ v1.21.7: 7/25/2014
  - Fixed an issue with creating read-only files (#2573)
  - Added first implementation for the ASYNCIFY option, which splits up
    synchronous blocking loops to asynchronous execution. For more information on
-   this approach, see https://github.com/kripken/emscripten/wiki/Asyncify
+   this approach, see https://github.com/emscripten-core/emscripten/wiki/Asyncify
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.6...1.21.7
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.6...1.21.7
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.6...1.21.7
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.21.6...1.21.7
     - Emscripten-Clang: no changes.
 
 v1.21.6: 7/22/2014
@@ -2187,7 +2197,7 @@ v1.21.6: 7/22/2014
  - Fixed a bug with exception handling that resulted in an error unresolved
    symbol: _ZTISt13bad_exception (#2560)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.5...1.21.6
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.5...1.21.6
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2206,8 +2216,8 @@ v1.21.5: 7/21/2014
  - Fixed an issue with -s EXCEPTION_CATCHING_WHITELIST handling where an
    extension that was a substring of another might get erroneously handled.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.4...1.21.5
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.21.4...1.21.5
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.4...1.21.5
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.21.4...1.21.5
     - Emscripten-Clang: no changes.
 
 v1.21.4: 7/17/2014
@@ -2238,7 +2248,7 @@ v1.21.4: 7/17/2014
    a FFOS device DevTools port.
  - Implemented strsignal() function (#2532)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.3...1.21.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.3...1.21.4
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2257,7 +2267,7 @@ v1.21.3: 7/10/2014
  - Fixed an issue where the GL interop library could throw an exception in an
    error condition, instead of raising a GL error.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.2...1.21.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.2...1.21.3
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2272,7 +2282,7 @@ v1.21.2: 7/5/2014
  - Added support for the ffs libc function.
  - Re-enabled optimizeShifts optimization when not compiling for asm.js (#2481)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.1...1.21.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.1...1.21.2
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2282,7 +2292,7 @@ v1.21.1: 7/3/2014
    when both native and cygwin python were installed.
  - Updated musl from version 0.9.13 to version 1.0.3.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.21.0...1.21.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.21.0...1.21.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2310,7 +2320,7 @@ v1.21.0: 7/2/2014
  - Implemented support for accessing WebGL when building via the proxy to worker
    architecture.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.20.0...1.21.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.20.0...1.21.0
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2326,7 +2336,7 @@ v1.20.0: 6/13/2014
    application to perform SDL event handling inside a JS event handler to
    overcome browser security restrictions. (#2417)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.2...1.20.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.19.2...1.20.0
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2343,8 +2353,8 @@ v1.19.2: 6/9/2014
    temporary .rsp files that did not get cleaned up.
  - Improved SIMD support.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.1...1.19.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.19.1...1.19.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.19.1...1.19.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.19.1...1.19.2
     - Emscripten-Clang: no changes.
 
 v1.19.1: 6/3/2014
@@ -2358,7 +2368,7 @@ v1.19.1: 6/3/2014
    https://developer.chrome.com/extensions/contentSecurityPolicy .
  - Fixed a compiler issue when very large double constants are present. (#2392)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.19.0...1.19.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.19.0...1.19.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2377,8 +2387,8 @@ v1.19.0: 5/29/2014
    signaling the compiler that unaligned data is present. (#2378)
  - Fixed an embind issue with refcount tracking on smart pointers.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.4...1.19.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.4...1.19.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.4...1.19.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.18.4...1.19.0
     - Emscripten-Clang: no changes.
 
 v1.18.4: 5/27/2014
@@ -2389,8 +2399,8 @@ v1.18.4: 5/27/2014
  - Added a more descriptive error message to fastcomp when MAX_SETJMPS limit is
    violated. (#2379)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.3...1.18.4
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.3...1.18.4
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.3...1.18.4
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.18.3...1.18.4
     - Emscripten-Clang: no changes.
 
 v1.18.3: 5/21/2014
@@ -2404,8 +2414,8 @@ v1.18.3: 5/21/2014
    family) to use musl implementations.
  - Updated relooper to not optimize out breaks if it causes excessive nesting.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.2...1.18.3
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.2...1.18.3
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.2...1.18.3
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.18.2...1.18.3
     - Emscripten-Clang: no changes.
 
 v1.18.2: 5/19/2014
@@ -2422,8 +2432,8 @@ v1.18.2: 5/19/2014
  - Fixed a compiler miscompilation on unsigned i1 bitcasts (#2350)
  - Fixed a compiler bug where doubles in varargs might not get 8-byte aligned (#2358)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.1...1.18.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.18.1...1.18.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.1...1.18.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.18.1...1.18.2
     - Emscripten-Clang: no changes.
 
 v1.18.1: 5/12/2014
@@ -2435,7 +2445,7 @@ v1.18.1: 5/12/2014
  - Emscripten now issues a warning message when the EXPORTED_FUNCTIONS list
    contains invalid symbol names (#2338)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.18.0...1.18.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.18.0...1.18.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2447,8 +2457,8 @@ v1.18.0: 5/10/2014
    "(cannot enlarge memory arrays)" at startup. (#2334)
  - Fixed a crash issue with generated touch events that didn't correspond to a real touch.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.17.0...1.18.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.17.0...1.18.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.17.0...1.18.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.17.0...1.18.0
     - Emscripten-Clang: no changes.
 
 v1.17.0: 5/6/2014
@@ -2479,17 +2489,17 @@ v1.17.0: 5/6/2014
  - Added a new ABI to Clang that targets Emscripten specifically. Stop aligning
    member functions to save some space in the function table array.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.16.0...1.17.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.16.0...1.17.0
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.16.0...1.17.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.16.0...1.17.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.16.0...1.17.0
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.16.0...1.17.0
 
 v1.16.0: 4/16/2014
 ------------------
  - Removed browser warnings message in VFS library about replacing __proto__ performance issue. 
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.15.1...1.16.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.15.1...1.16.0
     - Emscripten-LLVM: no changes.
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.15.1...1.16.0
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.15.1...1.16.0
 
 v1.15.1: 4/15/2014
 ------------------
@@ -2500,7 +2510,7 @@ v1.15.1: 4/15/2014
  - Fixed issues with CMake support where CMAKE_AR and CMAKE_RANLIB were not
    accessible from CMakeLists.txt files.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.15.0...1.15.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.15.0...1.15.1
     - Emscripten-LLVM: no changes.
     - Emscripten-Clang: no changes.
 
@@ -2512,9 +2522,9 @@ v1.15.0: 4/11/2014
    always print out to both web page text log box, and the browser console.
  - Fixed an issue with loop variable optimization.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.14.1...1.15.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.14.1...1.15.0
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.14.1...1.15.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.14.1...1.15.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.14.1...1.15.0
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.14.1...1.15.0
 
 v1.14.1: 4/8/2014
 ------------------
@@ -2536,8 +2546,8 @@ v1.14.1: 4/8/2014
  - Fixed mouse button ordering issue in glfw.
  - Fixed an issue when creating a path name that ends in a slash (#2258, #2263)
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.14.0...1.14.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.14.0...1.14.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.14.0...1.14.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.14.0...1.14.1
     - Emscripten-Clang: no changes.
 
 v1.14.0: 3/25/2014
@@ -2553,8 +2563,8 @@ v1.14.0: 3/25/2014
  - Removed false positive messages on missing internal "emscripten_xxx" symbols at link stage.
  - Updated to latest relooper version.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.13.2...1.14.0
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.13.2...1.14.0
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.13.2...1.14.0
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.13.2...1.14.0
     - Emscripten-Clang: no changes.
 
 v1.13.2: 3/15/2014
@@ -2567,8 +2577,8 @@ v1.13.2: 3/15/2014
  - Further improved em_asm()-related error messages.
  - Updated to latest relooper version.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.13.1...1.13.2
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.13.1...1.13.2
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.13.1...1.13.2
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.13.1...1.13.2
     - Emscripten-Clang: no changes.
 
 v1.13.1: 3/10/2014
@@ -2592,12 +2602,12 @@ v1.13.1: 3/10/2014
  - Switched to using default function local stack alignment to 16 bytes to be SIMD-friendly.
  - Improved error messages when user code has a syntax error in em_asm() statements.
  - Switched to using a new custom LLVM datalayout format for Emscripten. See
-   https://github.com/kripken/emscripten-fastcomp/commit/65405351ba0b32a8658c65940e0b65ceb2601ad4
+   https://github.com/emscripten-core/emscripten-fastcomp/commit/65405351ba0b32a8658c65940e0b65ceb2601ad4
  - Optimized function local stack space to use fewer temporary JS variables.
  - Full list of changes:
-    - Emscripten: https://github.com/kripken/emscripten/compare/1.13.0...1.13.1
-    - Emscripten-LLVM: https://github.com/kripken/emscripten-fastcomp/compare/1.13.0...1.13.1
-    - Emscripten-Clang: https://github.com/kripken/emscripten-fastcomp-clang/compare/1.13.0...1.13.1
+    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.13.0...1.13.1
+    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.13.0...1.13.1
+    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.13.0...1.13.1
 
 v1.13.0: 3/3/2014
 ------------------
@@ -2611,7 +2621,7 @@ v1.13.0: 3/3/2014
    and adds support for IE11.
  - Improve debug messaging with bad function pointer calls when -s ASSERTIONS=2
    is set.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.3...1.13.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.12.3...1.13.0
 
 v1.12.3: 2/27/2014
 ------------------
@@ -2619,14 +2629,14 @@ v1.12.3: 2/27/2014
  - Improved the warning message on missing symbols to not show false positives (#2154).
  - Improved EmscriptenFullscreenChangeEvent HTML5 API structure to return
    information about HTML element and screen sizes for convenience.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.2...1.12.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.12.2...1.12.3
 
 v1.12.2: 2/25/2014
 ------------------
  - Added better warning message if Emscripten, LLVM and Clang versions don't match.
  - Introduced the asmjs-unknown-emscripten target triple that allows
    specializing LLVM codegen for Emscripten purposes.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.1...1.12.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.12.1...1.12.2
 
 v1.12.1: 2/25/2014
 ------------------
@@ -2646,7 +2656,7 @@ v1.12.1: 2/25/2014
  - Deprecated the jcache compiler option. It should not be needed anymore.
  - Added support for fetching callstack column information in Firefox 30 in emscripten_get_callstack.
  - Fix issues with missing exceptions-related symbols in fastcomp.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.12.0...1.12.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.12.0...1.12.1
 
 v1.12.0: 2/22/2014
 ------------------
@@ -2660,7 +2670,7 @@ v1.12.0: 2/22/2014
  - Fixed CMake MinSizeRel configuration type to actually optimize for minimal size with -Os.
  - Added support for GLES2 VAO extension OES_vertex_array_object for browsers that support it.
  - Fix issues with emscripten/html5.f when compiled with the SAFE_HEAP option.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.11.1...1.12.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.11.1...1.12.0
 
 v1.11.1: 2/19/2014
 ------------------
@@ -2670,7 +2680,7 @@ v1.11.1: 2/19/2014
  - Added new link-time compiler flag -s RETAIN_COMPILER_SETTINGS=1, which
    enables a runtime API for querying which Emscripten settings were used to
    compile the file.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.11.0...1.11.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.11.0...1.11.1
 
 v1.11.0: 2/14/2014
 ------------------
@@ -2688,19 +2698,19 @@ v1.11.0: 2/14/2014
    web audio graph sample rate.
  - Added an optimization that removes redundant Math.frounds in -O3.
  - Improved the default shell.html file.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.4...1.11.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.10.4...1.11.0
 
 v1.10.4: 2/10/2014
 ------------------
  - Added support for legacy GL emulation in fastcomp.
  - Deprecated the --split-js compiler option. This is not supported in fastcomp. 
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.3...1.10.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.10.3...1.10.4
 
 v1.10.3: 2/9/2014
 ------------------
  - Work on supporting GL/EGL GetProcAddress.
  - Fixed issues with shared lib linking support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.2...1.10.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.10.2...1.10.3
 
 v1.10.2: 2/7/2014
 ------------------
@@ -2715,14 +2725,14 @@ v1.10.2: 2/7/2014
    performance.
  - Optimized libc strcmp and memcmp with the implementations from musl libc.
  - Optimized libc memcpy and memset to back to native code for large buffer sizes.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.1...1.10.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.10.1...1.10.2
 
 v1.10.1: 1/31/2014
 ------------------
  - Improve srand() and rand() to be seedable and use a Linear Congruential
    Generator (LCG) for the rng generation for performance.
  - Improved OpenAL library support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.10.0...1.10.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.10.0...1.10.1
 
 v1.10.0: 1/29/2014
 ------------------
@@ -2734,12 +2744,12 @@ v1.10.0: 1/29/2014
  - Added new EM_ASM variants that return a value but do not receive any inputs
    (#2070).
  - Add support for simultaneously using setjmp and C++ exceptions in fastcomp.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.5...1.10.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.5...1.10.0
 
 v1.9.5: 1/25/2014
 ------------------
  - Added a spinner logo to default html shell.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.4...1.9.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.4...1.9.5
 
 v1.9.4: 1/24/2014
 ------------------
@@ -2765,37 +2775,37 @@ v1.9.4: 1/24/2014
  - Implemented glGetTexEnviv and glGetTexEnvfv in GL emulation mode.
  - Optimized the size of large memory initializer sections.
  - Fixed issues with the safe heap compilation option.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.3...1.9.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.3...1.9.4
 
 v1.9.3: 1/17/2014
 ------------------
  - re-merge split blocks in multiples
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.2...1.9.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.2...1.9.3
 
 v1.9.2: 1/16/2014
 ------------------
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.1...1.9.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.1...1.9.2
 
 v1.9.1: 1/16/2014
 ------------------
  - Optimize desktop GL fixed function pipeline emulation texture load
    instruction counts when GL_COMBINE is used.
  - fix Math_floor coercion in unrecommended codegen modes
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.9.0...1.9.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.9.0...1.9.1
 
 v1.9.0: 1/16/2014
 ------------------
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.14...1.9.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.14...1.9.0
 
 v1.8.14: 1/15/2014
 ------------------
  - add musl fputws and fix vswprintf.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.13...1.8.14
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.13...1.8.14
 
 v1.8.13: 1/15/2014
 ------------------
  - remove musl use of fwritex
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.12...1.8.13
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.12...1.8.13
 
 v1.8.12: 1/15/2014
 ------------------
@@ -2803,21 +2813,21 @@ v1.8.12: 1/15/2014
  - Fixed an issue where the runtime could start more than once when run in a
    browser (#1992)
  - Fix a regression in wprintf.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.11...1.8.12
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.11...1.8.12
 
 v1.8.11: 1/15/2014
 ------------------
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.10...1.8.11
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.10...1.8.11
 
 v1.8.10: 1/14/2014
 ------------------
  - Update libc implementation from musl libc.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.9...1.8.10
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.9...1.8.10
 
 v1.8.9: 1/14/2014
 ------------------
  - add fputwc, which enables wprintf.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.8...1.8.9
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.8...1.8.9
 
 v1.8.8: 1/14/2014
 ------------------
@@ -2825,7 +2835,7 @@ v1.8.8: 1/14/2014
  - Fix handling of floating point negative zero (#1898)
  - Fixed a memory leak in relooper in previous release.
  - Fixed an issue in previous release with VBO handling in GL optimizations.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.7...1.8.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.7...1.8.8
 
 v1.8.7: 1/13/2014
 ------------------
@@ -2841,7 +2851,7 @@ v1.8.7: 1/13/2014
  - Fix and issue where the run() function could be called multiple times at
    startup (#1992)
  - Removed a relooper limitation with fixed buffer size.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.6...1.8.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.6...1.8.7
 
 v1.8.6: 1/8/2014
 ------------------
@@ -2852,30 +2862,30 @@ v1.8.6: 1/8/2014
    that enables the aggressiveVariableElimination js optimizer pass, which tries
    to remove temporary variables in generated JS code at the expense of code
    size.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.5...1.8.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.5...1.8.6
 
 v1.8.5: 1/7/2014
 ------------------
  - Fixed compiler issues when used with LLVM 3.4.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.4...1.8.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.4...1.8.5
 
 v1.8.4: 1/6/2014
 ------------------
  - Added support to Return and Backspace keys to glut
  - Fixed compiler issues when used with LLVM 3.4.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.3...1.8.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.3...1.8.4
 
 v1.8.3: 1/5/2014
 ------------------
  - Improved SDL and page scroll pos handling support for IE10 and IE11.
  - Optimized SDL_UnlockSurface performance.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.2...1.8.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.2...1.8.3
 
 v1.8.2: 1/4/2014
 ------------------
  - Fixed glGetFramebufferAttachmentParameteriv and an issue with glGetXXX when
    the returned value was null.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.1...1.8.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.1...1.8.2
 
 v1.8.1: 1/3/2014
 ------------------
@@ -2885,12 +2895,12 @@ v1.8.1: 1/3/2014
  - Deprecated --compression emcc command line parameter that manually compressed
    output JS files, due to performance issues. Instead, it is best to rely on
    the web server to serve compressed JS files.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.8.0...1.8.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.8.0...1.8.1
 
 v1.8.0: 12/28/2013
 ------------------
  - Fix two issues with function outliner and relooper.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.9...1.8.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.9...1.8.0
 
 v1.7.9: 12/27/2013
 ------------------
@@ -2916,7 +2926,7 @@ v1.7.9: 12/27/2013
  - Improved BSD Sockets support. Implemented getprotobyname() for BSD Sockets library.
  - Fixed issues with simd support.
  - Various bugfixes: #1573, #1846, #1886, #1908, #1918, #1930, #1931, #1942, #1948, ..
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.8...1.7.9
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.8...1.7.9
 
 v1.7.8: 11/19/2013
 ------------------
@@ -2925,14 +2935,14 @@ v1.7.8: 11/19/2013
    https://groups.google.com/forum/#!topic/emscripten-discuss/BFGTJPCgO6Y .
  - Fixed --split parameter to also work on Windows.
  - Fixed issues with BSD sockets accept() call.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.7...1.7.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.7...1.7.8
 
 v1.7.7: 11/16/2013
 ------------------
  - Improve SDL audio buffer queue timing support.
  - Improved default precision of clock_gettime even when not using CLOCK_REALTIME.
  - Optimize and fix issues with LLVM IR processing.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.6...1.7.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.6...1.7.7
 
 v1.7.6: 11/15/2013
 ------------------
@@ -2948,17 +2958,17 @@ v1.7.6: 11/15/2013
  - Adjusted the default linker behavior to warn about all missing symbols,
    instead of silently ignoring them. Use -s WARN_ON_UNDEFINED_SYMBOLS=0 to
    suppress these warnings if necessary.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.5...1.7.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.5...1.7.6
 
 v1.7.5: 11/13/2013
 ------------------
  - Fix issues with the built-in C++ function name demangler.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.4...1.7.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.4...1.7.5
 
 v1.7.4: 11/12/2013
 ------------------
  - Fixed issues with BSD sockets code and SDL joystick implementation.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.3...1.7.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.3...1.7.4
 
 v1.7.3: 11/12/2013
 ------------------
@@ -2972,7 +2982,7 @@ v1.7.3: 11/12/2013
  - Converted return value of emscripten_get_now() from float to double, to not
    lose precision in the function call.
  - Added support for joysticks in SDL via the Gamepad API
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.2...1.7.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.2...1.7.3
  
 v1.7.2: 11/9/2013
 ------------------
@@ -2989,13 +2999,13 @@ v1.7.2: 11/9/2013
    packager that can be used to optimize VFS memory usage at startup.
  - Updated libcxx to revision 194185, 2013-11-07.
  - Improvements to various library support. 
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.1...1.7.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.1...1.7.2
 
 v1.7.1: 10/24/2013
 ------------------
  - Remove old call to Runtime.warn in file packager code
  - Fix bug with parsing of empty types.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.7.0...1.7.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.7.0...1.7.1
 
 v1.7.0: 10/23/2013
 ------------------
@@ -3038,7 +3048,7 @@ v1.7.0: 10/23/2013
  - Optimize application startup times of Emscripten-compiled programs by
    enabling the virtual filesystem XHR and asm.js compilation to proceed in
    parallel when opening a page.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.4...1.7.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.6.4...1.7.0
 
 v1.6.4: 9/30/2013
 ------------------
@@ -3050,7 +3060,7 @@ v1.6.4: 9/30/2013
  - Added support for new "NODEFS" filesystem that directly accesses files on the
    native filesystem. Only usable with node.js when compiling to JS.
  - Added support for new IDBFS filesystem for accessing files in IndexedDB storage (#1601.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.3...1.6.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.6.3...1.6.4
 
 v1.6.3: 9/26/2013
 ------------------
@@ -3060,7 +3070,7 @@ v1.6.3: 9/26/2013
  - Adds iconv library from the musl project to implement wide functions in C
    library (#1670).
  - Full list of changes:
-   https://github.com/kripken/emscripten/compare/1.6.2...1.6.3
+   https://github.com/emscripten-core/emscripten/compare/1.6.2...1.6.3
 
 v1.6.2: 9/25/2013
 ------------------
@@ -3073,12 +3083,12 @@ v1.6.2: 9/25/2013
    works in Chrome and new Opera as well.
  - Fixes an alpha blending issue with SDL_SetAlpha.
  - Implemented locale-related code in C library.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.1...1.6.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.6.1...1.6.2
 
 v1.6.1: 9/22/2013
 ------------------
  - Several optimizations to compiler link stage.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.6.0...1.6.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.6.0...1.6.1
 
 v1.6.0: 9/21/2013
 ------------------
@@ -3086,12 +3096,12 @@ v1.6.0: 9/21/2013
  - Added dependency tracking support to linked .js files in CMake toolchain.
  - The hex prefix 0x is now properly handled in sscanf (#1632).
  - Simplify internal compiler operations by removing the internal framework.js. 
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.9...1.6.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.9...1.6.0
 
 v1.5.9: 9/15/2013
 ------------------
  - Add support for SDL_Delay in web workers.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.8...1.5.9
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.8...1.5.9
 
 v1.5.8: 9/14/2013
 ------------------
@@ -3099,7 +3109,7 @@ v1.5.8: 9/14/2013
  - Update Emscripten libc headers to musl-0.9.13.
  - Added new utility function emscripten_async_load_script() to asynchronously
    load a new .js script URL.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.7...1.5.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.7...1.5.8
 
 v1.5.7: 8/30/2013
 ------------------
@@ -3131,7 +3141,7 @@ v1.5.7: 8/30/2013
    validation testing.
  - Improved stability with inline asm() syntax.
  - Updated libc headers to new version.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.6...1.5.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.6...1.5.7
 
 v1.5.6: 8/17/2013
 ------------------
@@ -3152,12 +3162,12 @@ v1.5.6: 8/17/2013
    inlining and to retain symbols in output without dead code elimination
    occurring.
  - Fix issues when marshalling UTF8 strings between C<->JS.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.5...1.5.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.5...1.5.6
 
 v1.5.5: 8/9/2013
 ------------------
  - Update libcxx to revision 187959, 2013-08-08.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.4...1.5.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.4...1.5.5
 
 v1.5.4: 8/9/2013
 ------------------
@@ -3171,14 +3181,14 @@ v1.5.4: 8/9/2013
    enable synchronous image loading support with SDL.
  - Several improvements on function outlining support.
  - Fix issues with GLES2 interop support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.3...1.5.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.3...1.5.4
 
 v1.5.3: 6/28/2013
 ------------------
  - Added new optimization level --llvm-lto 3 to run even more aggressive LTO
    optimizations.
  - Improve optimizations for libc and other libraries.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.2...1.5.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.2...1.5.3
 
 v1.5.2: 6/27/2013
 ------------------
@@ -3188,45 +3198,45 @@ v1.5.2: 6/27/2013
  - GLUT and SDL improvements.
  - Added new link option -g<level> where level=0-4, which allows controlling
    various levels of debuggability added to the output.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.1...1.5.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.1...1.5.2
 
 v1.5.1: 6/22/2013
 ------------------
  - File packager now skips all directories and files starting with '.', and hidden files on Windows.
  - Fix issues with strnlen, memmove, LDBL_ constants, va_args, float.h, and others.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.5.0...1.5.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.5.0...1.5.1
 
 v1.5.0: 6/17/2013
 ------------------
  - Several compiler optimizations.
  - Improve SDL key events support.
  - Increase debug logging when specifying emcc -v.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.9...1.5.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.9...1.5.0
 
 v1.4.9: 6/8/2013
 ------------------
  - Several compiler optimizations.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.8...1.4.9
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.8...1.4.9
 
 v1.4.8: 6/6/2013
 ------------------
  - Add support for webrtc-based sockets.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.7...1.4.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.7...1.4.8
 
 v1.4.7: 6/2/2013
 ------------------
  - Remove more unneeded break and continue statements in relooper.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.6...1.4.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.6...1.4.7
 
 v1.4.6: 6/2/2013
 ------------------
  - Improve relooper code.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.5...1.4.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.5...1.4.6
 
 v1.4.5: 6/1/2013
 ------------------
  - Improve relooper code.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.4...1.4.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.4...1.4.5
 
 v1.4.4: 6/1/2013
 ------------------
@@ -3241,7 +3251,7 @@ v1.4.4: 6/1/2013
  - Allow emscripten to compile .m and .mm files.
  - Added new syntax --preload-file src@dst to file packager command line to
    allow placing source files to custom destinations in the FS.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.3...1.4.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.3...1.4.4
 
 v1.4.3: 5/8/2013
 ------------------
@@ -3250,20 +3260,20 @@ v1.4.3: 5/8/2013
  - Switch to le32-unknown-nacl LLVM target triple as default build option
    instead of the old i386-pc-linux-gnu target triple.
  - Improve compiler logging behavior.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.2...1.4.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.2...1.4.3
 
 v1.4.2: 5/3/2013
 ------------------
  - Fix issues with le32-unknown-nacl LLVM target triple.
  - Add some GLEW support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.4.1...1.4.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.4.1...1.4.2
 
 v1.4.1: 4/28/2013
 ------------------
  - Implement support for le32-unknown-nacl LLVM target triple.
  - Added new cmdline option -s ERROR_ON_UNDEFINED_SYMBOLS=0/1 to give
    compile-time error on undefined symbols at link time. Default off.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.8...1.4.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.8...1.4.1
 
 v1.3.8: 4/29/2013
 ------------------
@@ -3274,7 +3284,7 @@ v1.3.8: 4/29/2013
  - Added --use-preload-cache command line option to emcc, to be used with the
    file packager.
  - Fixes to libcextra.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.7...1.3.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.7...1.3.8
 
 v1.3.7: 4/24/2013
 ------------------
@@ -3283,37 +3293,37 @@ v1.3.7: 4/24/2013
  - Enable asm.js compilation in -O1 and higher by default. Fix issues when
    compiling to asm.js.
  - Improve libc support with Emscripten with the musl libc headers.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.6...1.3.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.6...1.3.7
 
 v1.3.6: 4/2/2013
 ------------------
  - Fix hang issue with strtof.
  - Update libcxx to upstream r178253 from March 29, 2013.
  - Fix issues with GL emulation.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.5...1.3.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.5...1.3.6
 
 v1.3.5: 3/25/2013
 ------------------
  - Get exceptions working as they did before.
  - Remove symbol removing hack.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.4...1.3.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.4...1.3.5
 
 v1.3.4: 3/24/2013
 ------------------
  - Update to new libcxx and libcxxabi versions from upstream.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.3...1.3.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.3...1.3.4
 
 v1.3.3: 3/23/2013
 ------------------
  - Remove unneeded check from relooper.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.2...1.3.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.2...1.3.3
 
 v1.3.2: 3/22/2013
 ------------------
  - Fix issues with fgets. 
  - Add support for non-fullscreen pointer lock.
  - Improve OpenAL support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.1...1.3.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.1...1.3.2
 
 v1.3.1: 3/19/2013
 ------------------
@@ -3323,37 +3333,37 @@ v1.3.1: 3/19/2013
  - Add new -s OPENAL_DEBUG=0/1 link command line option.
  - Fixed an issue with mouse coordinate being offset with canvas.
  - Removed -s UTF_STRING_SUPPORT=0 parameter, this is now always on.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.3.0...1.3.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.3.0...1.3.1
 
 v1.3.0: 3/11/2013
 ------------------
  - Improve GLES2 emulation with -s FULL_ES2=1.
  - Deprecated -s USE_TYPED_ARRAYS=1 and -s QUANTUM_SIZE=1.
  - Implement a minifier infrastructure when compiling for asm.js.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.9...1.3.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.9...1.3.0
 
 v1.2.9: 3/7/2013
 ------------------
  - Improved canvas behavior when transitioning between fullscreen.
  - Added support for getopt().
  - Fixed several libc issues.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.8...1.2.9
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.8...1.2.9
 
 v1.2.8: 3/6/2013
 ------------------
  - Remove unnecessary recursion in relooper RemoveUnneededFlows.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.7...1.2.8
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.7...1.2.8
 
 v1.2.7: 3/6/2013
 ------------------
  - Added SDL_Mixer support.
  - Implemented stubs for several Unix and threading-related functions.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.6...1.2.7
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.6...1.2.7
 
 v1.2.6: 3/5/2013
 ------------------
  - Relooper updates.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.5...1.2.6
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.5...1.2.6
 
 v1.2.5: 3/5/2013
 ------------------
@@ -3363,33 +3373,33 @@ v1.2.5: 3/5/2013
  - Improve several compiler stability issues detected from fuzzing tests.
  - Implemented emscripten_jcache_printf.
  - Allow running emscripten.py outside emcc itself.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.4...1.2.5
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.4...1.2.5
 
 v1.2.4: 2/2/2013
 ------------------
  - Work on adding support for asm.js compilation.
  - Improve EGL support.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.3...1.2.4
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.3...1.2.4
 
 v1.2.3: 1/9/2013
 ------------------
  - Work on adding support for asm.js compilation.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.2...1.2.3
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.2...1.2.3
 
 v1.2.2: 1/8/2013
 ------------------
  - Work on adding support for asm.js compilation.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.1...1.2.2
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.1...1.2.2
 
 v1.2.1: 1/8/2013
 ------------------
  - Improvements to GLUT, SDL and BSD sockets headers.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.2.0...1.2.1
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.2.0...1.2.1
 
 v1.2.0: 1/1/2013
 ------------------
  - Work on adding support for asm.js compilation.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.1.0...1.2.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.1.0...1.2.0
 
 v1.1.0: 12/12/2012
 ------------------
@@ -3399,12 +3409,12 @@ v1.1.0: 12/12/2012
  - Optimize compilation times via threading.
  - Update to requiring Clang 3.2. Older versions may no longer work.
  - Several improvements to emscripten library support headers.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.0.1a...1.1.0
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.0.1a...1.1.0
 
 v1.0.1a: 11/11/2012
 ------------------
  - Add relooper code to repository.
- - Full list of changes: https://github.com/kripken/emscripten/compare/1.0.1...1.0.1a
+ - Full list of changes: https://github.com/emscripten-core/emscripten/compare/1.0.1...1.0.1a
 
 v1.0.1: 11/11/2012
 ------------------

@@ -639,7 +639,7 @@ var LibraryEGL = {
       EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
     } else {
       // According to documentation this does an implicit flush.
-      // Due to discussion at https://github.com/kripken/emscripten/pull/1871
+      // Due to discussion at https://github.com/emscripten-core/emscripten/pull/1871
       // the flush was removed since this _may_ result in slowing code down.
       //_glFlush();
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);

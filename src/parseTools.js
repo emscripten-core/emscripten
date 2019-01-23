@@ -54,13 +54,13 @@ function preprocess(text, filenameHint) {
             ret += '\n' + preprocess(included, filename) + '\n'
           }
         } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
           showStack.push(!showStack.pop());
         } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command: " + line;
+          throw "Unclear preprocessor command on line " + i + ': ' + line;
         }
       }
     } catch(e) {
@@ -68,7 +68,7 @@ function preprocess(text, filenameHint) {
       throw e;
     }
   }
-  assert(showStack.length == 0);
+  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
   return ret;
 }
 

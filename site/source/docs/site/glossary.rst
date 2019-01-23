@@ -18,7 +18,7 @@ General
     `Minification <http://en.wikipedia.org/wiki/Minification_(programming)>`_ in JavaScript is the process of removing all unnecessary characters from source code without changing its functionality. At higher optimisation levels Emscripten uses the :term:`Closure Compiler` to minify Emscripten code.
 
   Relooping
-    Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition taken from `this paper <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
+    Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition taken from `this paper <https://github.com/emscripten-core/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
 
   SDL
     `Simple DirectMedia Layer <https://www.libsdl.org/>`_ (SDL) is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
@@ -26,13 +26,13 @@ General
   Typed Arrays Mode 2
     *Typed Arrays Mode 2* is the name of the approach used for the current :ref:`emscripten-memory-model`. This is the only memory model supported by the (current) :ref:`Fastcomp <LLVM-Backend>` compiler and is the default memory model for the :ref:`old compiler <original-compiler-core>`.
 
-    The original compiler supported a number of other memory models and compilation modes (see `Code Generation Modes <https://github.com/kripken/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
+    The original compiler supported a number of other memory models and compilation modes (see `Code Generation Modes <https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
 
 
   Load-store consistency
     Load-Store Consistency (LSC), is the requirement that after a value with a specific type is written to a memory location, loads from that memory location will be of the same type. So if a variable contains a 32-bit floating point number, then both loads and stores to that variable will be of 32-bit floating point values, and not 16-bit unsigned integers or anything else.
 
-    .. note:: This definition is taken from `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (section 2.1.1). There is additional detail in that paper.
+    .. note:: This definition is taken from `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/emscripten-core/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (section 2.1.1). There is additional detail in that paper.
 
 
 Emscripten tools and dependencies
@@ -91,7 +91,7 @@ Emscripten tools and dependencies
     Emscripten provides an alternative tool, the :term:`LLVM Nativizer`.
 
   LLVM Nativizer
-    The LLVM Nativizer (`tools/nativize_llvm.py <https://github.com/kripken/emscripten/blob/master/tools/nativize_llvm.py>`_) compiles LLVM bitcode to a native executable. This links to the host libraries, so comparisons of output with Emscripten builds will not necessarily be identical.
+    The LLVM Nativizer (`tools/nativize_llvm.py <https://github.com/emscripten-core/emscripten/blob/master/tools/nativize_llvm.py>`_) compiles LLVM bitcode to a native executable. This links to the host libraries, so comparisons of output with Emscripten builds will not necessarily be identical.
 
     It performs a similar role to the :term:`LLVM Interpreter`.
 

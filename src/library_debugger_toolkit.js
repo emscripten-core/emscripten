@@ -463,7 +463,7 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
           cb();
         }
       }
-      function doBrowserLoad() {
+      var doBrowserLoad = function() {
         Module['readAsync'](cdFileLocation, applyCDFile, function() {
           throw 'could not load debug data ' + cdFileLocation;
         });

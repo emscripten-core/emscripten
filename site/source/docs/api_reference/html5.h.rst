@@ -4,7 +4,7 @@
 html5.h
 =======
 
-The C++ APIs in `html5.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
+The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
 
 .. tip:: The C++ APIs map closely to their :ref:`equivalent HTML5 JavaScript APIs <specifications-html5-api>`. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
 
@@ -24,7 +24,10 @@ The HTML5 specifications for APIs that are mapped by **html5.h** include:
   - `Touch Events <http://www.w3.org/TR/touch-events/>`_.
   - `Gamepad API <http://www.w3.org/TR/gamepad/>`_.
   - `Beforeunload event <http://www.whatwg.org/specs/web-apps/current-work/multipage/history.html#beforeunloadevent>`_.
-  - `WebGL context events <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2>`_
+  - `WebGL context events <http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2>`_.
+  - `Animation and timing <https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame>`_.
+  - `Console <https://developer.mozilla.org/en-US/docs/Web/API/console>`_.
+  - `Throw <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/throw>`_.
 
 
 .. contents:: Table of Contents
@@ -117,9 +120,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5.c>`_
-  - `test_html5_fullscreen.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/kripken/emscripten/blob/master/tests/test_html5_mouse.c>`_
+  - `test_html5.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_mouse.c>`_
 
 
 General types
@@ -226,7 +229,7 @@ Struct
 
   The event structure passed in `keyboard events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_: ``keypress``, ``keydown`` and ``keyup``.
 
-  Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/kripken/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
+  Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
 
 
   .. c:member:: EM_UTF8 key
@@ -287,7 +290,7 @@ Struct
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
-    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/kripken/emscripten/issues/2817 for more information.
+    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
 
 
 Callback functions
@@ -330,7 +333,7 @@ Functions
     - https://developer.mozilla.org/en/DOM/Event/UIEvent/KeyEvent
     - http://www.javascriptkit.com/jsref/eventkeyboardmouse.shtml
 
-    .. note:: To receive events, the element must be focusable, see https://github.com/kripken/emscripten/pull/7484#issuecomment-437887001
+    .. note:: To receive events, the element must be focusable, see https://github.com/emscripten-core/emscripten/pull/7484#issuecomment-437887001
 
 Mouse
 =====
@@ -1029,7 +1032,7 @@ Defines
 
     Specifies that the DOM element should not be resized by Emscripten runtime when transitioning between fullscreen and windowed modes. The browser will be responsible for
     scaling the DOM element to the fullscreen size. The proper browser behavior in this mode is to stretch the element to fit the full display ignoring aspect ratio, but at the
-    time of writing, browsers implement different behavior here. See the discussion at https://github.com/kripken/emscripten/issues/2556 for more information.
+    time of writing, browsers implement different behavior here. See the discussion at https://github.com/emscripten-core/emscripten/issues/2556 for more information.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH
 
@@ -1201,7 +1204,7 @@ Functions
 
   .. note:: This function can be called anywhere, but for web security reasons its associated *request* can only be raised inside the event handler for a user-generated event (for example a key, mouse or touch press/release). This has implications for porting and the value of ``deferUntilInEventHandler``  — see :ref:`web-security-functions-html5-api` for more information.
 
-  .. note:: This function only performs a fullscreen request without changing any parameters of the DOM element that is to be displayed in fullscreen mode. At the time of writing, there are differences in how browsers present elements in fullscreen mode. For more information, read the discussion at https://github.com/kripken/emscripten/issues/2556. To display an element in fullscreen mode in a way that is consistent across browsers, prefer calling the function :c:func:`emscripten_request_fullscreen_strategy` instead. This function is best called only in scenarios where the preconfigured presets defined by :c:func:`emscripten_request_fullscreen_strategy` conflict with the developer's use case in some way.
+  .. note:: This function only performs a fullscreen request without changing any parameters of the DOM element that is to be displayed in fullscreen mode. At the time of writing, there are differences in how browsers present elements in fullscreen mode. For more information, read the discussion at https://github.com/emscripten-core/emscripten/issues/2556. To display an element in fullscreen mode in a way that is consistent across browsers, prefer calling the function :c:func:`emscripten_request_fullscreen_strategy` instead. This function is best called only in scenarios where the preconfigured presets defined by :c:func:`emscripten_request_fullscreen_strategy` conflict with the developer's use case in some way.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -2127,8 +2130,6 @@ Functions
   :returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available.
   :rtype: |EM_BOOL|
 
-  .. comment : **HamishW** Are EM_TRUE, EM_FALSE defined?
-
 
 CSS
 ===
@@ -2182,3 +2183,191 @@ Functions
 
 .. _gamepad: http://www.w3.org/TR/gamepad/#gamepad-interface
 .. _webgl_context: http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+
+Animation and Timing
+====================
+
+The API provided here are low-level functions that directly call the relevant Web APIs and nothing more. They don't integrate with the emscripten runtime, such as checking if the program has halted and cancelling a callback if so. For that purpose,
+see the function ``emscripten_set_main_loop()``.
+
+Functions
+---------
+
+.. c:function:: long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData)
+
+  Performs a setTimeout() callback call on the given function on the calling thread.
+
+  :param cb: The callback function to call.
+  :param msecs: Millisecond delay until the callback should fire.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+  :returns: An ID to the setTimeout() call that can be passed to emscripten_clear_timeout() to cancel the pending timeout timer.
+
+
+.. c:function:: void emscripten_clear_timeout(long setTimeoutId)
+
+  Cancels a pending setTimeout() call on the calling thread. This function must be called on the same
+  thread as the emscripten_set_timeout() call that registered the callback.
+
+  :param setTimeoutId: An ID returned by function emscripten_set_timeout().
+
+
+.. c:function:: void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData)
+
+  Initializes a setTimeout() loop on the given function on the calling thread. The specified callback
+  function 'cb' needs to keep returning EM_TRUE as long as the animation loop should continue to run.
+  When the function returns false, the setTimeout() loop will stop.
+  Note: The loop will start immediately with a 0 msecs delay - the passed in intervalMsecs time specifies
+  the interval that the consecutive callback calls should fire at.
+
+  :param cb: The callback function to call.
+  :param intervalMsecs: Millisecond interval at which the callback should keep firing.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+
+
+.. c:function:: long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData)
+
+  Performs a single requestAnimationFrame() callback call on the given function on the calling thread.
+
+  :param cb: The callback function to call. This function will receive the current high precision timer value
+    (value of performance.now()) at the time of the call.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+  :returns: An ID to the requestAnimationFrame() call that can be passed to emscripten_cancel_animation_frame() to
+    cancel the pending requestAnimationFrame timer.
+
+
+.. c:function:: void emscripten_cancel_animation_frame(long requestAnimationFrameId)
+
+  Cancels a registered requestAnimationFrame() callback on the calling thread before it is run. This
+  function must be called on the same thread as the emscripten_request_animation_frame() call that
+  registered the callback.
+
+  :param requestAnimationFrameId: An ID returned by function emscripten_request_animation_frame().
+
+
+.. c:function:: void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData)
+
+  Initializes a requestAnimationFrame() loop on the given function on the calling thread. The specified
+  callback function 'cb' needs to keep returning EM_TRUE as long as the animation loop should continue
+  to run. When the function returns false, the animation frame loop will stop.
+
+  :param cb: The callback function to call. This function will receive the current high precision timer value
+    (value of performance.now()) at the time of the call.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+
+
+.. c:function:: long emscripten_set_immediate(void (*cb)(void *userData), void *userData)
+
+  Performs a setImmediate() callback call on the given function on the calling thread. Returns an ID
+  to the setImmediate() call that can be passed to emscripten_clear_immediate() function to cancel
+  a pending setImmediate() invocation.
+  TODO: Currently the polyfill of setImmediate() only works in the main browser thread, but not in pthreads.
+
+  :param cb: The callback function to call.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+  :returns: An ID to the setImmediate() call that can be passed to emscripten_clear_immediate() to cancel the pending callback.
+
+
+.. c:function:: void emscripten_clear_immediate(long setImmediateId)
+
+  Cancels a pending setImmediate() call on the calling thread. This function must be called on the same
+  thread as the emscripten_set_immediate() call that registered the callback.
+
+  :param setImmediateId: An ID returned by function emscripten_set_immediate().
+
+
+.. c:function:: void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData)
+
+  Initializes a setImmediate() loop on the given function on the calling thread. The specified callback
+  function 'cb' needs to keep returning EM_TRUE as long as the loop should continue to run.
+  When the function returns false, the setImmediate() loop will stop.
+  TODO: Currently the polyfill of setImmediate() only works in the main browser thread, but not in pthreads.
+
+  :param cb: The callback function to call.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+
+
+.. c:function:: long emscripten_set_interval(void (*cb)(void *userData), double intervalMsecs, void *userData)
+
+  Initializes a setInterval() loop on the given function on the calling thread. Returns an ID to the
+  initialized loop. Call emscripten_clear_interval() with this ID to terminate the loop.
+  Note that this function will cause the given callback to be called repeatedly. Do not call
+  emscripten_set_interval() again on the same callback function from inside the callback, as that would
+  register multiple loops to run simultaneously.
+
+  :param cb: The callback function to call.
+  :param intervalMsecs: Millisecond interval at which the callback should keep firing.
+  :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
+  :returns: An ID to the setInterval() call that can be passed to emscripten_clear_interval() to cancel the
+    currently executing interval timer.
+
+
+.. c:function:: void emscripten_clear_interval(long setIntervalId)
+
+  Cancels a currently executing setInterval() loop on the calling thread. This function must be called on
+  the same thread as the emscripten_set_interval() call that registered the callback.
+
+  :param setIntervalId: An ID returned by function emscripten_set_interval().
+
+
+.. c:function:: double emscripten_date_now(void)
+
+  Calls JavaScript Date.now() function in the current thread.
+
+  :returns: The number of msecs elapsed since the UNIX epoch. (00:00:00 Thursday, 1 January 1970)
+
+
+.. c:function:: double emscripten_performance_now(void)
+
+  Calls JavaScript performance.now() function in the current thread. Note that the returned value of
+  this function is based on different time offset depending on which thread this function is called in.
+  That is, do not compare absolute time values returned by performance.now() across threads. (comparing
+  relative timing values is ok). On the main thread this function returns the number of milliseconds elapsed
+  since page startup time. In a Web Worker/pthread, this function returns the number of milliseconds since
+  the Worker hosting that pthread started up. (Workers are generally not torn down when a pthread quits and
+  a second one starts, but they are kept alive in a pool, so this function is not guaranteed to start
+  counting time from 0 at the time when a pthread starts)
+
+  :returns: A high precision wallclock time value in msecs.
+
+
+Console
+=======
+
+Functions
+---------
+
+.. c:function:: void emscripten_console_log(const char *utf8String)
+
+  Prints a string using console.log().
+
+  :param utf8String: A string encoded as UTF-8.
+
+
+.. c:function:: void emscripten_console_warn(const char *utf8String)
+
+  Prints a string using console.warn().
+
+  :param utf8String: A string encoded as UTF-8.
+
+
+.. c:function:: void emscripten_console_error(const char *utf8String)
+
+  Prints a string using console.error().
+
+  :param utf8String: A string encoded as UTF-8.
+
+
+Throw
+=====
+
+Functions
+---------
+
+.. c:function:: void emscripten_throw_number(double number)
+
+  Invokes JavaScript throw statement and throws a number.
+
+
+.. c:function:: void emscripten_throw_string(const char *utf8String)
+
+  Invokes JavaScript throw statement and throws a string.

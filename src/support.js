@@ -25,13 +25,15 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  if (end >= TOTAL_MEMORY) {
-    var success = enlargeMemory();
-    if (!success) {
-      HEAP32[DYNAMICTOP_PTR>>2] = ret;
-      return 0;
-    }
+  if (end <= _emscripten_get_heap_size()) {
+    HEAP32[DYNAMICTOP_PTR>>2] = end;
+  } else {
+#if ALLOW_MEMORY_GROWTH
+    var success = _emscripten_resize_heap(end);
+    if (!success) return 0;
+#else
+    return 0;
+#endif
   }
   return ret;
 }
@@ -357,7 +359,9 @@ function loadWebAssemblyModule(binary, flags) {
     tableAlign = Math.pow(2, tableAlign);
     // finalize alignments and verify them
     memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
-    assert(tableAlign === 1);
+#if ASSERTIONS
+    assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
+#endif
     // prepare memory
     var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
     // The static area consists of explicitly initialized data, followed by zero-initialized data.

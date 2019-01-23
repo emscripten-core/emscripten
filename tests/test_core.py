@@ -1289,7 +1289,9 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
-  def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
+  def test_iostream_ctors(self):
+    # iostream stuff must be globally constructed before user global
+    # constructors, so iostream works in global constructors
     self.do_run(r'''
 #include <iostream>
 
@@ -1302,7 +1304,7 @@ int main() {
   std::cout << "free code" << std::endl;
   return 0;
 }
-''', "bugfree code")
+''', 'bugfree code')
 
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
@@ -1416,7 +1418,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
   def test_stack_varargs2(self):
-    self.set_setting('TOTAL_STACK', 1536)
+    self.set_setting('TOTAL_STACK', 4096)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -1424,7 +1426,7 @@ int main() {
       void func(int i) {
       }
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
         }
@@ -1441,7 +1443,7 @@ int main() {
       #include <stdlib.h>
 
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -1477,7 +1479,7 @@ int main() {
       }
 
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -5529,7 +5531,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp')).read(), 'Success!')
 
   # ignore nans in some simd tests due to an LLVM regression still being investigated,
-  # https://github.com/kripken/emscripten/issues/4435
+  # https://github.com/emscripten-core/emscripten/issues/4435
   # https://llvm.org/bugs/show_bug.cgi?id=28510
   @staticmethod
   def ignore_nans(out, err=''):
@@ -5665,7 +5667,7 @@ return malloc(size);
 
   @SIMD
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
+    # test_simd7 is to test negative zero handling: https://github.com/emscripten-core/emscripten/issues/2791
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -7782,7 +7784,7 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_cxx_self_assign(self):
-    # See https://github.com/kripken/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
+    # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     create_test_file('src.cpp', r'''
       #include <map>
       #include <stdio.h>
@@ -7892,7 +7894,8 @@ extern "C" {
     self.emcc_args += ['-DTEST_BRK=1']
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
-  # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  # Tests that we can use the dlmalloc mallinfo() function to obtain information
+  # about malloc()ed blocks and compute how much memory is used/freed.
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 

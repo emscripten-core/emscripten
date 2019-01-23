@@ -36,20 +36,20 @@ To build the Fastcomp code from source:
     cd myfastcomp
 
 
-- Clone the fastcomp LLVM repository (https://github.com/kripken/emscripten-fastcomp):
+- Clone the fastcomp LLVM repository (https://github.com/emscripten-core/emscripten-fastcomp):
 
   ::
 
-    git clone https://github.com/kripken/emscripten-fastcomp
+    git clone https://github.com/emscripten-core/emscripten-fastcomp
 
 
 
-- Clone the `kripken/emscripten-fastcomp-clang <https://github.com/kripken/emscripten-fastcomp-clang>`_ repository into **emscripten-fastcomp/tools/clang**:
+- Clone the `emscripten-core/emscripten-fastcomp-clang <https://github.com/emscripten-core/emscripten-fastcomp-clang>`_ repository into **emscripten-fastcomp/tools/clang**:
 
   ::
 
     cd emscripten-fastcomp
-    git clone https://github.com/kripken/emscripten-fastcomp-clang tools/clang
+    git clone https://github.com/emscripten-core/emscripten-fastcomp-clang tools/clang
 
   .. warning:: You **must** clone it into a directory named **clang** as shown, so that :term:`Clang` is present in **tools/clang**!
 
@@ -104,9 +104,9 @@ Branches
 
 You should use the **same** branch (*incoming*, or *master*) for building all three repositories:
 
-- Emscripten: `emscripten <https://github.com/kripken/emscripten>`_.
-- Emscripten's LLVM fork: `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_.
-- Emscripten's *Clang* fork `emscripten-fastcomp-clang <https://github.com/kripken/emscripten-fastcomp-clang>`_.
+- Emscripten: `emscripten <https://github.com/emscripten-core/emscripten>`_.
+- Emscripten's LLVM fork: `emscripten-fastcomp <https://github.com/emscripten-core/emscripten-fastcomp>`_.
+- Emscripten's *Clang* fork `emscripten-fastcomp-clang <https://github.com/emscripten-core/emscripten-fastcomp-clang>`_.
 
 Mixing *incoming* and *master* branches may result in errors when building the three repositories.
 
@@ -119,9 +119,9 @@ Version numbers
 
 Bisecting across multiple git trees can be hard. We use version numbers to help synchronize points between them:
 
-- `emscripten-version.txt <https://github.com/kripken/emscripten/blob/master/emscripten-version.txt>`__ in Emscripten
-- `emscripten-version.txt <https://github.com/kripken/emscripten-fastcomp/blob/master/emscripten-version.txt>`__ in fastcomp (llvm)
-- `emscripten-version.txt <https://github.com/kripken/emscripten-fastcomp-clang/blob/master/emscripten-version.txt>`__ in fastcomp-clang (clang)
+- `emscripten-version.txt <https://github.com/emscripten-core/emscripten/blob/master/emscripten-version.txt>`__ in Emscripten
+- `emscripten-version.txt <https://github.com/emscripten-core/emscripten-fastcomp/blob/master/emscripten-version.txt>`__ in fastcomp (llvm)
+- `emscripten-version.txt <https://github.com/emscripten-core/emscripten-fastcomp-clang/blob/master/emscripten-version.txt>`__ in fastcomp-clang (clang)
 
 Version numbers are typically ``X.Y.Z`` where:
 
@@ -134,6 +134,6 @@ Version numbers are typically ``X.Y.Z`` where:
 Backend code structure
 ----------------------
 
-The backend is in `emscripten-fastcomp <https://github.com/kripken/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/kripken/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the other files in that directory (`lib/Target/JSBackend/ <https://github.com/kripken/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
+The backend is in `emscripten-fastcomp <https://github.com/emscripten-core/emscripten-fastcomp>`_. The main file is `JSBackend.cpp <https://github.com/emscripten-core/emscripten-fastcomp/blob/incoming/lib/Target/JSBackend/JSBackend.cpp>`_ but the other files in that directory (`lib/Target/JSBackend/ <https://github.com/emscripten-core/emscripten-fastcomp/tree/incoming/lib/Target/JSBackend>`_) are also important.
 
 

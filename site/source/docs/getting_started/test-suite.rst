@@ -11,7 +11,7 @@ This article explains how to run the test and benchmark suite, and provides an o
 Running tests
 =============
 
-Run the test suite runner (`tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
+Run the test suite runner (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
 
 .. code-block:: bash
 

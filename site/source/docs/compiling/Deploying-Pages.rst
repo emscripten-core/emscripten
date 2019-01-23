@@ -15,7 +15,7 @@ By default when targeting asm.js, the compiled code and the runtime are fused in
 
 Additional build output files can also exist, depending on which features are used. If the Emscripten file packager is used, a binary ``out.data`` package is generated, along with an associated ``out.data.js`` loader file. Also Emscripten pthreads and Fetch APIs have their own associated Web Worker related script ``.js`` output files.
 
-Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/kripken/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
+Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
 
 The following sections offer tips for improving the site experience.
 
@@ -161,4 +161,4 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Simulate lack of any special APIs that the page might need, e.g. Gamepad, Acceleration or Touch Events, and make sure that appropriate error flow is handled in those cases as well.
 
-If you have good tips or suggestsions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/kripken/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
+If you have good tips or suggestsions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/emscripten-core/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.

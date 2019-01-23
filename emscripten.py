@@ -30,9 +30,6 @@ from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
 logger = logging.getLogger('emscripten')
 
-if __name__ == '__main__':
-  ToolchainProfiler.record_process_start()
-
 STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
 if STDERR_FILE:
   STDERR_FILE = os.path.abspath(STDERR_FILE)
@@ -673,11 +670,16 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   pthread = ''
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
+
+  if len(global_initializers) > 0:
+    global_initializers = '/* global initializers */ {pthread} __ATINIT__.push({global_initializers});'.format(pthread=pthread, global_initializers=global_initializers)
+  else:
+    global_initializers = '/* global initializers */ /*__ATINIT__.push();*/'
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''\
 STATICTOP = STATIC_BASE + {staticbump};
-/* global initializers */ {pthread} __ATINIT__.push({global_initializers});
+{global_initializers}
 {mem_init}'''.format(staticbump=staticbump,
-                     pthread=pthread,
                      global_initializers=global_initializers,
                      mem_init=mem_init))
 
@@ -1401,7 +1403,7 @@ function ftCall_%s(%s) {%s
 
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
-  basic_funcs = ['abort', 'assert', 'enlargeMemory', 'getTotalMemory', 'setTempRet0', 'getTempRet0']
+  basic_funcs = ['abort', 'assert', 'setTempRet0', 'getTempRet0']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -1535,7 +1537,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 #      receiving += ''.join(['var ' + s + ' = asm["' + s + '"];\n' for s in module_exports])
 #      receiving += 'for(var module_exported_function in asm) Module[module_exported_function] = asm[module_exported_function];\n'
     else:
-      receiving += '(function() { for(var i in asm) this[i] = Module[i] = asm[i]; }());\n'
+      receiving += 'for(var i in asm) this[i] = Module[i] = asm[i];\n'
   else:
     receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in module_exports])
   receiving += ';\n'
@@ -1756,10 +1758,10 @@ function SAFE_FT_MASK(value, mask) {
 def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   shared_array_buffer = ''
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    shared_array_buffer = "Module.asmGlobalArg['Atomics'] = Atomics;"
+    shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
 
   module_get = 'Module{access} = {val};'
-  module_global = module_get.format(access=access_quote('asmGlobalArg'), val=the_global)
+  module_global = 'var asmGlobalArg = ' + the_global
   module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
@@ -1833,8 +1835,8 @@ def create_asm_end(exports):
   return %s;
 })
 // EMSCRIPTEN_END_ASM
-(Module%s, Module%s, buffer);
-''' % (exports, access_quote('asmGlobalArg'), access_quote('asmLibraryArg'))
+(%s, Module%s, buffer);
+''' % (exports, 'asmGlobalArg', access_quote('asmLibraryArg'))
 
 
 def create_first_in_asm():
@@ -2132,7 +2134,7 @@ def create_em_js(forwarded_json, metadata):
 
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
-  basic_funcs = ['assert', 'enlargeMemory', 'getTotalMemory']
+  basic_funcs = ['assert']
   if shared.Settings.ABORTING_MALLOC:
     basic_funcs += ['abortOnCannotGrowMemory']
   if shared.Settings.SAFE_HEAP:
@@ -2202,13 +2204,13 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
   module = []
-  module.append('Module%s = {};\n' % access_quote('asmGlobalArg'))
+  module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
-    module.append("if (typeof SharedArrayBuffer !== 'undefined') Module.asmGlobalArg['Atomics'] = Atomics;\n")
+    module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append("Module['wasmTableSize'] = %s;\n" % metadata['tableSize'])
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
-  module.append("var asm = Module['asm'](Module%s, Module%s, buffer);\n" % (access_quote('asmGlobalArg'), access_quote('asmLibraryArg')))
+  module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
 
   module.append(receiving)
   module.append(invoke_wrappers)
@@ -2306,7 +2308,7 @@ def normalize_line_endings(text):
   return text
 
 
-def main(infile, outfile, memfile, libraries):
+def run(infile, outfile, memfile, libraries):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 

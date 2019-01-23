@@ -4,7 +4,7 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
 We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
@@ -419,7 +419,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function alignUp(x, multiple)
-  function enlargeMemory()
   function demangle(func)
   function demangleAll(text)
   function parseJSFunc(jsfunc)

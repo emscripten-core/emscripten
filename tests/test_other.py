@@ -148,12 +148,21 @@ class other(RunnerCore):
       self.assertContained('LLVM_ROOT', config_contents)
       os.remove(config_path)
 
+  def test_emcc_output_mjs(self):
+    run_process([PYTHON, EMCC, '-o', 'hello_world.mjs', path_from_root('tests', 'hello_world.c')])
+    with open('hello_world.mjs') as f:
+      output = f.read()
+    self.assertContained('export default Module;', output)
+    # TODO(sbc): Test that this is actually runnable.  We currently don't have
+    # any tests for EXPORT_ES6 but once we do this should be enabled.
+    # self.assertContained('hello, world!', run_js('hello_world.mjs'))
+
   def test_emcc_1(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
       # --version
       output = run_process([PYTHON, compiler, '--version'], stdout=PIPE, stderr=PIPE)
       output = output.stdout.replace('\r', '')
-      self.assertContained('''emcc (Emscripten gcc/clang-like replacement)''', output)
+      self.assertContained('emcc (Emscripten gcc/clang-like replacement)', output)
       self.assertContained('''Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -616,7 +625,7 @@ f.close()
           cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
           env = os.environ.copy()
-          # https://github.com/kripken/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
+          # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
           if test_dir == 'target_html':
             env['EMCC_SKIP_SANITY_CHECK'] = '1'
           print(str(cmd))
@@ -689,7 +698,8 @@ f.close()
         else:
           self.assertTextDataIdentical('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', ret)
 
-  # Tests that the Emscripten CMake toolchain option -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
+  # Tests that the Emscripten CMake toolchain option
+  # -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON works.
   def test_cmake_bitcode_static_libraries(self):
     if WINDOWS:
       emcmake = path_from_root('emcmake.bat')
@@ -703,7 +713,9 @@ f.close()
       assert Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
       assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
 
-    # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON directive causes CMake to generate LLVM bitcode files as static libraries (.bc)
+    # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON
+    # directive causes CMake to generate LLVM bitcode files as static libraries
+    # (.bc)
     with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
@@ -711,7 +723,8 @@ f.close()
       assert not Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
-    # (sometimes projects want to emulate stuff, and do weird things like files with ".so" suffix which are in fact either ar archives or bitcode files)
+    # (sometimes projects want to emulate stuff, and do weird things like files
+    # with ".so" suffix which are in fact either ar archives or bitcode files)
     with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
@@ -7810,8 +7823,9 @@ int main() {
           self.assertNotIn(not_exists, sent)
         self.assertEqual(len(sent), expected_len)
         wasm_size = os.path.getsize('a.out.wasm')
-        ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
-        print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
+        if expected_wasm_size is not None:
+          ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
+          print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
         self.assertLess(ratio, size_slack)
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         imports = wast.count('(import ')
@@ -7848,7 +7862,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1505, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1555, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -7864,9 +7878,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
+        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
+                  35, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend
@@ -7882,7 +7896,7 @@ int main() {
         (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],          61,  0,   1,  1), # noqa; almost totally empty!
+                   0, [],         [],        None,  0,   1,  1), # noqa; FIXME: should be almost totally empty! see https://github.com/WebAssembly/binaryen/pull/1875
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -7891,9 +7905,9 @@ int main() {
         (['-O1'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
         (['-O2'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],         [],          61,  0,  1,  1), # noqa
-        (['-Os'],  0, [],         [],          61,  0,  1,  1), # noqa
-        (['-Oz'],  0, [],         [],           8,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/kripken/emscripten/issues/6233
+        (['-O3'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
+        (['-Os'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
+        (['-Oz'],  0, [],         [],        None,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
       ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')

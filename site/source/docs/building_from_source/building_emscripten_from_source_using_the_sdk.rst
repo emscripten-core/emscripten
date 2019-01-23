@@ -38,8 +38,6 @@ The :ref:`emsdk` controls which tool and SDK "targets" are installed and activat
 	# Set the "incoming SDK" as the active version.
 	./emsdk activate sdk-incoming-64bit
 
-.. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the windows specific line if it is.
-
 If you want to use the upstream stable branch ``master``, replace ``-incoming-`` with ``-master-`` in the commands above.
 
 .. note:: The SDK supplies a number of other "repository" targets. These targets are viewed by entering ``./emsdk list`` on the command prompt:

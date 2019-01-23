@@ -908,7 +908,7 @@ The call overhead for simple functions has been measured at about 200 ns.
 While there is room for further optimisation, so far its performance in
 real-world applications has proved to be more than acceptable.
 
-.. _Test Suite: https://github.com/kripken/emscripten/tree/master/tests/embind
+.. _Test Suite: https://github.com/emscripten-core/emscripten/tree/master/tests/embind
 .. _Connecting C++ and JavaScript on the Web with Embind: http://chadaustin.me/2014/09/connecting-c-and-javascript-on-the-web-with-embind/
 .. _Boost.Python: http://www.boost.org/doc/libs/1_56_0/libs/python/doc/
 .. _finalizers: http://en.wikipedia.org/wiki/Finalizer

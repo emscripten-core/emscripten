@@ -133,7 +133,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # Make sure we don't mark symbols as default visibility.  This works around
     # an issue with the wasm backend where all default visibility symbols are
     # exported (and therefore can't be GC'd).
-    # FIXME(https://github.com/kripken/emscripten/issues/7383)
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/7383)
     opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
     if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
       opts += ['-fno-exceptions']
@@ -431,6 +431,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
+
+      # Only dlmalloc interacts with errno, emmalloc does not
+      if not shared.Settings.SUPPORT_ERRNO:
+        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -453,6 +457,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
+    if not shared.Settings.SUPPORT_ERRNO:
+      cflags += ['-DMALLOC_FAILURE_ACTION=']
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
@@ -640,10 +646,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force_all = True
     force = ','.join(system_libs_map.keys())
-  else:
-    force_all = False
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logging.debug('forcing stdlibs: ' + str(force_include))
@@ -731,15 +734,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
-  if force_all:
-    ret = ['--whole-archive'] + [r[0] for r in libs_to_link] + ['--no-whole-archive']
-  else:
-    ret = []
-    for name, need_whole_archive in libs_to_link:
-      if need_whole_archive:
-        ret += ['--whole-archive', name, '--no-whole-archive']
-      else:
-        ret.append(name)
+  ret = []
+  for name, need_whole_archive in libs_to_link:
+    if need_whole_archive:
+      ret += ['--whole-archive', name, '--no-whole-archive']
+    else:
+      ret.append(name)
 
   return ret
 

@@ -4,7 +4,7 @@
 File System API
 ===============
 
-File operations in Emscripten are provided by the `FS <https://github.com/kripken/emscripten/blob/incoming/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
+File operations in Emscripten are provided by the `FS <https://github.com/emscripten-core/emscripten/blob/incoming/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
 
 .. note:: The API is *inspired* by the Linux/POSIX `File System API <http://linux.die.net/man/2/>`_, with each presenting a very similar interface.
 
@@ -12,11 +12,11 @@ File operations in Emscripten are provided by the `FS <https://github.com/kripke
   native and browser environments make this unreasonable. For example, user and
   group permissions are defined but ignored in :js:func:`FS.open`.
 
-Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/kripken/emscripten/blob/master/system/include/libc/bits/errno.h>`_).
+Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/emscripten-core/emscripten/blob/master/system/include/libc/bits/errno.h>`_).
 
 File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
 
-The automatic tests in `tests/test_core.py <https://github.com/kripken/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
+The automatic tests in `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
 
 A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`.
 
@@ -60,7 +60,7 @@ NODEFS
 
 This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
 
-See `this test <https://github.com/kripken/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
+See `this test <https://github.com/emscripten-core/emscripten/blob/master/tests/fs/test_nodefs_rw.c>`_ for an example.
 
 .. _filesystem-api-idbfs:
 
@@ -105,7 +105,7 @@ The device node acts as an interface between the device and the file system. Any
   Registers the specified device driver with a set of callbacks.
 
   :param dev: The specific device driver id, created using :js:func:`makedev`.
-  :param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/kripken/emscripten/blob/1.29.12/src/library_nodefs.js#L213>`_.
+  :param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/library_nodefs.js#L213>`_.
 
 
 
@@ -217,7 +217,7 @@ File system API
        });
      }
 
-  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/kripken/emscripten/blob/master/tests/fs/test_idbfs_sync.c>`_.
+  A real example of this functionality can be seen in `test_idbfs_sync.c <https://github.com/emscripten-core/emscripten/blob/master/tests/fs/test_idbfs_sync.c>`_.
 
   :param bool populate: ``true`` to initialize Emscripten's file system data with the data from the file system's persistent source, and ``false`` to save Emscripten`s file system data to the file system's persistent source.
   :param callback: A notification callback function that is invoked on completion of the synchronization. If an error occurred, it will be provided as a parameter to this function.

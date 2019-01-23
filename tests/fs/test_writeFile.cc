@@ -1,4 +1,4 @@
-// https://github.com/kripken/emscripten/issues/2334
+// https://github.com/emscripten-core/emscripten/issues/2334
 
 #include <fstream>
 #include <iostream>
