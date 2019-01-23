@@ -561,7 +561,7 @@ var LibraryOpenAL = {
         lBackZ *= invMag;
 
         // ...and the Up vector
-        var invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
+        invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
         lUpX *= invMag;
         lUpY *= invMag;
         lUpZ *= invMag;
@@ -572,15 +572,15 @@ var LibraryOpenAL = {
         var lRightZ = (lUpX * lBackY - lUpY * lBackX);
 
         // Back and Up might not be exactly perpendicular, so the cross product also needs normalization
-        var invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
+        invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
         lRightX *= invMag;
         lRightY *= invMag;
         lRightZ *= invMag;
 
         // Recompute Up from the now orthonormal Right and Back vectors so we have a fully orthonormal basis
-        var lUpX = (lBackY * lRightZ - lBackZ * lRightY);
-        var lUpY = (lBackZ * lRightX - lBackX * lRightZ);
-        var lUpZ = (lBackX * lRightY - lBackY * lRightX);
+        lUpX = (lBackY * lRightZ - lBackZ * lRightY);
+        lUpY = (lBackZ * lRightX - lBackX * lRightZ);
+        lUpZ = (lBackX * lRightY - lBackY * lRightX);
 
         var oldX = dirX;
         var oldY = dirY;
@@ -591,9 +591,9 @@ var LibraryOpenAL = {
         dirY = oldX * lRightY + oldY * lUpY + oldZ * lBackY;
         dirZ = oldX * lRightZ + oldY * lUpZ + oldZ * lBackZ;
 
-        var oldX = posX;
-        var oldY = posY;
-        var oldZ = posZ;
+        oldX = posX;
+        oldY = posY;
+        oldZ = posZ;
 
         // ...and to the source position
         posX = oldX * lRightX + oldY * lUpX + oldZ * lBackX;
@@ -2306,7 +2306,7 @@ var LibraryOpenAL = {
   alcIsExtensionPresent__proxy: 'sync',
   alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
-    name = UTF8ToString(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
