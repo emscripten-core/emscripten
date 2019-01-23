@@ -609,6 +609,9 @@ def update_settings_glue(metadata):
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
+  if shared.Settings.WASM_BACKEND:
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
+
 
 def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
@@ -2214,9 +2217,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
-
-  table_total_size = metadata['tableSize']
-  shared.Settings.WASM_TABLE_SIZE = table_total_size
 
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
   module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
