@@ -373,7 +373,7 @@ function loadWebAssemblyModule(binary, flags) {
     // prepare env imports
     var env = Module['asmLibraryArg'];
     // TODO: use only __memory_base and __table_base, need to update asm.js backend
-    var table = Module['wasmTable'];
+    var table = wasmTable;
     var tableBase = table.length;
     var originalTable = table;
     table.grow(tableSize);
@@ -465,7 +465,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if ASSERTIONS
       // the table should be unchanged
       assert(table === originalTable);
-      assert(table === Module['wasmTable']);
+      assert(table === wasmTable);
       if (instance.exports['table']) {
         assert(table === instance.exports['table']);
       }
@@ -615,7 +615,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 // Add a wasm function to the table.
 // Attempting to call this with JS function will cause of table.set() to fail
 function addWasmFunction(func) {
-  var table = Module['wasmTable'];
+  var table = wasmTable;
   var ret = table.length;
   table.grow(1);
   table.set(ret, func);

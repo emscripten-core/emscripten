@@ -2945,7 +2945,7 @@ function jsCall_%s(%s) {
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);
-        return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+        return wasmTable.get(args[0]).apply(null, args.slice(1));
       '''
     else:
       legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
