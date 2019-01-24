@@ -54,13 +54,13 @@ function preprocess(text, filenameHint) {
             ret += '\n' + preprocess(included, filename) + '\n'
           }
         } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
           showStack.push(!showStack.pop());
         } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command: " + line;
+          throw "Unclear preprocessor command on line " + i + ': ' + line;
         }
       }
     } catch(e) {
@@ -68,7 +68,7 @@ function preprocess(text, filenameHint) {
       throw e;
     }
   }
-  assert(showStack.length == 0);
+  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
   return ret;
 }
 
@@ -1391,6 +1391,22 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
+function lengthBytesUTF8(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) ++len;
+    else if (u <= 0x7FF) len += 2;
+    else if (u <= 0xFFFF) len += 3;
+    else len += 4;
+  }
+  return len;
+}
+
 function getTypeFromHeap(suffix) {
   switch (suffix) {
     case '8': return 'i8';
@@ -1441,8 +1457,32 @@ function makeEval(code) {
 }
 
 function makeStaticAlloc(size) {
-  size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
-  return 'STATICTOP; STATICTOP += ' + size + ';';
+  size = alignMemory(size);
+  var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
+  STATIC_BUMP = ret + size - GLOBAL_BASE;
+  return ret;
+}
+
+function makeStaticString(string) {
+  var len = lengthBytesUTF8(string) + 1;
+  var ptr = makeStaticAlloc(len);
+  return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
+}
+
+// We emit the dynamic and stack bases as strings that need to be further
+// preprocessed, since during JS compiler time here we are still computing
+// static allocations as we go.
+
+function getStackBase() {
+  return '{{{ STACK_BASE }}}';
+}
+
+function getStackMax() {
+  return '{{{ STACK_MAX }}}';
+}
+
+function getDynamicBase() {
+  return '{{{ DYNAMIC_BASE }}}';
 }
 
 function makeRetainedCompilerSettings() {
@@ -1454,5 +1494,14 @@ function makeRetainedCompilerSettings() {
     } catch(e){}
   }
   return ret;
+}
+
+// In wasm, the heap size must be a multiple of 64KB.
+// In asm.js, it must be a multiple of 16MB.
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+
+function getPageSize() {
+  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 

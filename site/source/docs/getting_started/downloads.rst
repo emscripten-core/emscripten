@@ -18,12 +18,12 @@ The core Emscripten SDK (emsdk) driver is a Python script. You can get it for th
   ::
 
     # Get the emsdk repo
-    git clone https://github.com/juj/emsdk.git
+    git clone https://github.com/emscripten-core/emsdk.git
 
     # Enter that directory
     cd emsdk
 
-.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/juj/emsdk>`_.
+.. note:: You can also get the emsdk without git, by selecting "Clone or download => Download ZIP" on the `emsdk GitHub page <https://github.com/emscripten-core/emsdk>`_.
 
 Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>`:
 
@@ -55,26 +55,26 @@ Platform-specific notes
 Windows
 +++++++
 
-#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+#. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
   .. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
 
-Mac OS X
-++++++++
+macOS
++++++
 
-If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
+If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-#. Install the *XCode Command Line Tools*. These are a precondition for *git*.
+#. Install the *Xcode Command Line Tools*. These are a precondition for *git*.
 
-  -  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-  -  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+  -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+  -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
 
   - `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
-  - Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+  - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
   - Download and install git directly from http://git-scm.com/.
 
 #. Install *cmake* if you do not have it yet:
@@ -83,7 +83,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *node.js* from http://nodejs.org/
 
-  .. _getting-started-on-osx-install-python2:
+  .. _getting-started-on-macos-install-python2:
 
 Linux
 ++++++++
@@ -106,7 +106,7 @@ Linux
     # Install Java (optional, only needed for Closure Compiler minification)
     sudo apt-get install default-jre
 
-.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_).
+.. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
 .. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
 
@@ -191,5 +191,5 @@ On Windows, you can also install one of the **old versions** via an offline NSIS
 - `emsdk-1.5.6.1-full.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.1-full.exe)>`_ (32-bit, first emsdk release)
 
 
-A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/kripken/emscripten/releases>`_.
+A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/emscripten-core/emscripten/releases>`_.
 

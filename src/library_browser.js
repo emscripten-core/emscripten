@@ -318,9 +318,14 @@ var LibraryBrowser = {
           }
         }
 
-        contextHandle = GL.createContext(canvas, contextAttributes);
-        if (contextHandle) {
-          ctx = GL.getContext(contextHandle).GLctx;
+        // This check of existence of GL is here to satisfy Closure compiler, which yells if variable GL is referenced below but GL object is not
+        // actually compiled in because application is not doing any GL operations. TODO: Ideally if GL is not being used, this function
+        // Browser.createContext() should not even be emitted.
+        if (typeof GL !== 'undefined') {
+          contextHandle = GL.createContext(canvas, contextAttributes);
+          if (contextHandle) {
+            ctx = GL.getContext(contextHandle).GLctx;
+          }
         }
       } else {
         ctx = canvas.getContext('2d');
@@ -549,7 +554,7 @@ var LibraryBrowser = {
     },
 
     // Browsers specify wheel direction according to the page CSS pixel Y direction:
-    // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and OSX without 'natural scroll' enabled)
+    // Scrolling mouse wheel down (==towards user/away from screen) on Windows/Linux (and macOS without 'natural scroll' enabled)
     // is the positive wheel direction. Scrolling mouse wheel up (towards the screen) is the negative wheel direction.
     // This function returns the wheel direction in the browser page coordinate system (+: down, -: up). Note that this is often the
     // opposite of native code: In native APIs the positive scroll direction is to scroll up (away from the user).
@@ -780,8 +785,8 @@ var LibraryBrowser = {
   emscripten_async_wget: function(url, file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
-    var _url = Pointer_stringify(url);
-    var _file = Pointer_stringify(file);
+    var _url = UTF8ToString(url);
+    var _file = UTF8ToString(file);
     _file = PATH.resolve(FS.cwd(), _file);
     function doCallback(callback) {
       if (callback) {
@@ -817,7 +822,7 @@ var LibraryBrowser = {
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
-    Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+    Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
       Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
@@ -832,11 +837,11 @@ var LibraryBrowser = {
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
     Module['noExitRuntime'] = true;
 
-    var _url = Pointer_stringify(url);
-    var _file = Pointer_stringify(file);
+    var _url = UTF8ToString(url);
+    var _file = UTF8ToString(file);
     _file = PATH.resolve(FS.cwd(), _file);
-    var _request = Pointer_stringify(request);
-    var _param = Pointer_stringify(param);
+    var _request = UTF8ToString(request);
+    var _param = UTF8ToString(param);
     var index = _file.lastIndexOf('/');
 
     var http = new XMLHttpRequest();
@@ -905,9 +910,9 @@ var LibraryBrowser = {
   emscripten_async_wget2_data__proxy: 'sync',
   emscripten_async_wget2_data__sig: 'iiiiiiiii',
   emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
-    var _url = Pointer_stringify(url);
-    var _request = Pointer_stringify(request);
-    var _param = Pointer_stringify(param);
+    var _url = UTF8ToString(url);
+    var _request = UTF8ToString(request);
+    var _param = UTF8ToString(param);
 
     var http = new XMLHttpRequest();
     http.open(_request, _url, true);
@@ -975,7 +980,7 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
-    var _file = Pointer_stringify(file);
+    var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
     FS.createPreloadedFile(
@@ -998,7 +1003,7 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     Module['noExitRuntime'] = true;
 
-    var _suffix = Pointer_stringify(suffix);
+    var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
     var lengthAsUTF8 = lengthBytesUTF8(name);
@@ -1037,7 +1042,7 @@ var LibraryBrowser = {
 
 #if USE_PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      console.error('emscripten_async_load_script("' + Pointer_stringify(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      console.error('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
     }
 #endif
@@ -1055,7 +1060,7 @@ var LibraryBrowser = {
       };
     }
     if (onerror) script.onerror = onerror;
-    script.src = Pointer_stringify(url);
+    script.src = UTF8ToString(url);
     document.body.appendChild(script);
   },
 
@@ -1093,7 +1098,7 @@ var LibraryBrowser = {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
         var emscriptenMainLoopMessageId = 'setimmediate';
-        function Browser_setImmediate_messageHandler(event) {
+        var Browser_setImmediate_messageHandler = function(event) {
           // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
           // so check for both cases.
           if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
@@ -1192,15 +1197,13 @@ var LibraryBrowser = {
       GL.newRenderingFrameStarted();
 #endif
 
-#if USE_PTHREADS
-#if OFFSCREEN_FRAMEBUFFER
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
       // perform the swap on behalf of the user.
       if (typeof GL !== 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
         var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
         if (!explicitSwapControl) _emscripten_webgl_commit_frame();
       }
-#endif
 #endif
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -1271,7 +1274,7 @@ var LibraryBrowser = {
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
       Module['dynCall_vi'](func, arg);
-    }, name: Pointer_stringify(name), counted: true });
+    }, name: UTF8ToString(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
@@ -1279,7 +1282,7 @@ var LibraryBrowser = {
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
       Module['dynCall_vi'](func, arg);
-    }, name: Pointer_stringify(name), counted: false });
+    }, name: UTF8ToString(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
@@ -1323,12 +1326,6 @@ var LibraryBrowser = {
     exit(status);
   },
 
-  emscripten_get_device_pixel_ratio__proxy: 'sync',
-  emscripten_get_device_pixel_ratio__sig: 'd',
-  emscripten_get_device_pixel_ratio: function() {
-    return window.devicePixelRatio || 1.0;
-  },
-
   emscripten_hide_mouse__proxy: 'sync',
   emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
@@ -1362,7 +1359,7 @@ var LibraryBrowser = {
   emscripten_create_worker__proxy: 'sync',
   emscripten_create_worker__sig: 'ii',
   emscripten_create_worker: function(url) {
-    url = Pointer_stringify(url);
+    url = UTF8ToString(url);
     var id = Browser.workers.length;
     var info = {
       worker: new Worker(url),
@@ -1415,7 +1412,7 @@ var LibraryBrowser = {
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     Module['noExitRuntime'] = true; // should we only do this if there is a callback?
 
-    funcName = Pointer_stringify(funcName);
+    funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];
     var callbackId = -1;
     if (callback) {
@@ -1483,9 +1480,7 @@ var LibraryBrowser = {
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
-    if (typeof path === "number") {
-      path = Pointer_stringify(path);
-    }
+    if ((path | 0) === path) path = UTF8ToString(path);
 
     path = PATH.resolve(path);
 

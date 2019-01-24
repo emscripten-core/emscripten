@@ -54,7 +54,7 @@ def validate_asmjs_jsfile(filename, muteOutput):
 def validate_asmjs(filename, muteOutput):
   if filename.endswith('.html'):
     html = open(filename, 'r').read()
-    matches = re.findall('''<\w*script\w*.*?>(.*?)<\w*/script\w*>''', html, re.DOTALL | re.MULTILINE)
+    matches = re.findall(r'''<\w*script\w*.*?>(.*?)<\w*/script\w*>''', html, re.DOTALL | re.MULTILINE)
     numAsmJsBlocks = 0
     for match in matches:
       if '"use asm"' in match:

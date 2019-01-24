@@ -100,7 +100,7 @@ void __attribute__((noinline)) bar(int = 0, char * = 0, double = 0) // Arbitrary
 	char str[1024];
 	emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_JS_STACK, str, 1024);
 
-	// Test that obtaining a truncated callstack works. (https://github.com/kripken/emscripten/issues/2171)
+	// Test that obtaining a truncated callstack works. (https://github.com/emscripten-core/emscripten/issues/2171)
 	char *buffer = new char[21];
 	buffer[20] = 0x01; // Magic sentinel that should not change its value.
 	emscripten_get_callstack(EM_LOG_C_STACK | EM_LOG_DEMANGLE | EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS, buffer, 20);

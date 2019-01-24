@@ -81,7 +81,7 @@ class AsmModule():
     for sending in [sending.strip() for sending in self.post_js[self.post_js.find('}, { ')+5:self.post_js.find(' }, buffer);')].split(',')]:
       colon = sending.find(':')
       self.sendings[sending[:colon].replace('"', '')] = sending[colon+1:].strip()
-    self.module_defs = set(re.findall('var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
+    self.module_defs = set(re.findall(r'var [\w\d_$]+ = Module\["[\w\d_$]+"\] = asm\["[\w\d_$]+"\];\n', self.post_js))
 
     self.extra_funcs_js = ''
 

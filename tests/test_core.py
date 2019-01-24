@@ -436,7 +436,7 @@ int main()
   def test_unsigned(self):
     src = '''
       #include <stdio.h>
-      const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \FF, and needs re-signing
+      const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \\FF, and needs re-signing
       int main()
       {
         {
@@ -650,7 +650,7 @@ align 32: 0
 base align: 0, 0, 0, 0'''])
 
     test()
-    if '-O' in str(self.emcc_args):
+    if '-O' in str(self.emcc_args) and not self.is_wasm_backend():
       print('outlining')
       self.set_setting('OUTLINING_LIMIT', 60)
       test()
@@ -1289,7 +1289,9 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
-  def test_iostream_ctors(self): # iostream stuff must be globally constructed before user global constructors, so iostream works in global constructors
+  def test_iostream_ctors(self):
+    # iostream stuff must be globally constructed before user global
+    # constructors, so iostream works in global constructors
     self.do_run(r'''
 #include <iostream>
 
@@ -1302,7 +1304,7 @@ int main() {
   std::cout << "free code" << std::endl;
   return 0;
 }
-''', "bugfree code")
+''', 'bugfree code')
 
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
@@ -1411,12 +1413,12 @@ int main() {
 
   def test_stack_varargs(self):
     self.set_setting('INLINING_LIMIT', 50)
-    self.set_setting('TOTAL_STACK', 2048)
+    self.set_setting('TOTAL_STACK', 4096)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
   def test_stack_varargs2(self):
-    self.set_setting('TOTAL_STACK', 1536)
+    self.set_setting('TOTAL_STACK', 4096)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -1424,7 +1426,7 @@ int main() {
       void func(int i) {
       }
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
         }
@@ -1441,7 +1443,7 @@ int main() {
       #include <stdlib.h>
 
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -1477,7 +1479,7 @@ int main() {
       }
 
       int main() {
-        for (int i = 0; i < 1024; i++) {
+        for (int i = 0; i < 3072; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -1740,7 +1742,7 @@ int main(int argc, char **argv) {
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
 
     # Fail without memory growth
-    self.do_run(src, 'Cannot enlarge memory arrays.')
+    self.do_run(src, 'Cannot enlarge memory arrays')
     fail = open('src.cpp.o.js').read()
 
     # Win with it
@@ -1780,7 +1782,7 @@ int main(int argc, char **argv) {
       src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
 
       # Fail without memory growth
-      self.do_run(src, 'Cannot enlarge memory arrays.')
+      self.do_run(src, 'Cannot enlarge memory arrays')
       fail = open('src.cpp.o.js').read()
 
       # Win with it
@@ -2399,6 +2401,7 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('ASSERTIONS', 1)
     src = r'''
       #include <dlfcn.h>
       #include <stdio.h>
@@ -2412,6 +2415,9 @@ The current type of b is: 9
       }
       '''
     self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: No such file or directory')
+    print('without assertions, the error is less clear')
+    self.set_setting('ASSERTIONS', 0)
+    self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: FS error')
 
   @needs_dlfcn
   def test_dlfcn_basic(self):
@@ -3786,7 +3792,7 @@ ok
   def test_dylink_global_var_jslib(self):
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
-        jslib_x: 'allocate(1, "i32*", ALLOC_STATIC)',
+        jslib_x: '{{{ makeStaticAlloc(4) }}}',
         jslib_x__postset: 'HEAP32[_jslib_x>>2] = 148;',
       });
     ''')
@@ -3872,9 +3878,9 @@ ok
       int global_var = 12345;
     ''', expected=['12345\n'])
 
-  @no_wasm # todo
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
@@ -4456,7 +4462,7 @@ Module = {
 
     mem_file = 'src.cpp.o.js.mem'
     orig_args = self.emcc_args
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1'], ['-s', 'SYSCALL_DEBUG=1']]:
+    for mode in [[], ['-s', 'SYSCALL_DEBUG=1']]:
       print(mode)
       self.emcc_args = orig_args + mode
       try_delete(mem_file)
@@ -4528,11 +4534,7 @@ Module = {
   def test_fwrite_0(self):
     test_path = path_from_root('tests', 'core', 'test_fwrite_0')
     src, output = (test_path + s for s in ('.c', '.out'))
-
-    orig_args = self.emcc_args
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      self.emcc_args = orig_args + mode
-      self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output)
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
@@ -4760,10 +4762,7 @@ name: .
   def test_wprintf(self):
     test_path = path_from_root('tests', 'core', 'test_wprintf')
     src, output = (test_path + s for s in ('.cpp', '.out'))
-    orig_args = self.emcc_args
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      self.emcc_args = orig_args + mode
-      self.do_run_from_file(src, output)
+    self.do_run_from_file(src, output)
 
   def test_write_stdout_fileno(self):
     test_path = path_from_root('tests', 'core', 'test_write_stdout_fileno')
@@ -4835,9 +4834,7 @@ name: .
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out, js_engines=js_engines)
 
-  @also_with_noderawfs
   def test_fs_write(self, js_engines=None):
-    self.emcc_args = ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']
     src = path_from_root('tests', 'fs', 'test_write.cpp')
     out = path_from_root('tests', 'fs', 'test_write.out')
     self.do_run_from_file(src, out, js_engines=js_engines)
@@ -5115,17 +5112,24 @@ PORT: 3979
   def test_atomic(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
-  @no_wasm_backend('wasm has 64bit lockfree atomics')
   def test_atomic_cxx(self):
     test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
     src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
+    is_lock_free = self.is_wasm_backend()
+    Building.COMPILER_TEST_OPTS += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_from_file(src, output)
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_from_file(src, output)
+    # TODO
+    # elif self.is_wasm_backend():
+    #   print('pthreads')
+    #   self.set_setting('USE_PTHREADS', 1)
+    #   self.do_run_from_file(src, output)
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -5518,7 +5522,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'test_sse1.cpp')).read(), 'Success!')
 
   # ignore nans in some simd tests due to an LLVM regression still being investigated,
-  # https://github.com/kripken/emscripten/issues/4435
+  # https://github.com/emscripten-core/emscripten/issues/4435
   # https://llvm.org/bugs/show_bug.cgi?id=28510
   @staticmethod
   def ignore_nans(out, err=''):
@@ -5654,7 +5658,7 @@ return malloc(size);
 
   @SIMD
   def test_simd7(self):
-    # test_simd7 is to test negative zero handling: https://github.com/kripken/emscripten/issues/2791
+    # test_simd7 is to test negative zero handling: https://github.com/emscripten-core/emscripten/issues/2791
     self.emcc_args = self.emcc_args + ['-msse']
     test_path = path_from_root('tests', 'core', 'test_simd7')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5812,6 +5816,8 @@ return malloc(size);
 
     # Main
     for outlining in [0, 5000]:
+      if outlining and self.is_wasm_backend():
+        continue
       self.set_setting('OUTLINING_LIMIT', outlining)
       print('outlining:', outlining, file=sys.stderr)
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
@@ -5853,8 +5859,6 @@ return malloc(size);
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
-
-    # self.set_setting('OUTLINING_LIMIT', 60000)
 
     src = '''
        #define SQLITE_DISABLE_LFS
@@ -5991,7 +5995,7 @@ return malloc(size);
     # check our output by comparing the average pixel difference
     def image_compare(output, err):
       # Get the image generated by JS, from the JSON.stringify'd array
-      m = re.search('\[[\d, -]*\]', output)
+      m = re.search(r'\[[\d, -]*\]', output)
       self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
       # Evaluate the output as a python array
       js_data = eval(m.group(0))
@@ -6333,12 +6337,12 @@ return malloc(size);
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
-  def test_dyncall(self):
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+  def test_EXTRA_EXPORTED_RUNTIME_METHODS(self):
+    self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
     # test dyncall (and other runtime methods in support.js) can be exported
     self.emcc_args += ['-DEXPORTED']
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8'])
-    self.do_run_in_out_file_test('tests', 'core', 'dyncall')
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
+    self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
@@ -7771,7 +7775,7 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   def test_cxx_self_assign(self):
-    # See https://github.com/kripken/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
+    # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     create_test_file('src.cpp', r'''
       #include <map>
       #include <stdio.h>
@@ -7807,7 +7811,6 @@ extern "C" {
         check_memprof_requirements: function() {
           if (typeof TOTAL_MEMORY === 'number' &&
               typeof STATIC_BASE === 'number' &&
-              typeof STATICTOP === 'number' &&
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
@@ -7840,8 +7843,6 @@ extern "C" {
   @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
-    self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=1', '-s', 'ASSERTIONS=0']
-    self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Stack cookie has been overwritten' if not self.get_setting('SAFE_HEAP') else 'segmentation fault')
 
     self.emcc_args = args + ['-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'ASSERTIONS=0']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
@@ -7884,7 +7885,8 @@ extern "C" {
     self.emcc_args += ['-DTEST_BRK=1']
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
-  # Tests that we can use the dlmalloc mallinfo() function to obtain information about malloc()ed blocks and compute how much memory is used/freed.
+  # Tests that we can use the dlmalloc mallinfo() function to obtain information
+  # about malloc()ed blocks and compute how much memory is used/freed.
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 
@@ -7893,25 +7895,39 @@ extern "C" {
 
   def test_environment(self):
     self.set_setting('ASSERTIONS', 1)
+
+    def test():
+      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+      js = open('src.cpp.o.js').read()
+      assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
+
     for engine in JS_ENGINES:
-      for work in (1, 0):
-        # set us to test in just this engine
-        self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
-        # tell the compiler to build with just that engine
-        if engine == NODE_JS and work:
-          self.set_setting('ENVIRONMENT', 'node')
-        else:
-          self.set_setting('ENVIRONMENT', 'shell')
-        print(engine, work, self.get_setting('ENVIRONMENT'))
-        try:
-          self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-        except Exception as e:
-          if not work:
-            self.assertContained('not compiled for this environment', str(e))
-          else:
-            raise
-        js = open('src.cpp.o.js').read()
-        assert ('require(' in js) == (self.get_setting('ENVIRONMENT') == 'node'), 'we should have require() calls only if node js specified'
+      print(engine)
+      # set us to test in just this engine
+      self.banned_js_engines = [e for e in JS_ENGINES if e != engine]
+      # tell the compiler to build with just that engine
+      if engine == NODE_JS:
+        right = 'node'
+        wrong = 'shell'
+      else:
+        right = 'shell'
+        wrong = 'node'
+      # test with the right env
+      self.set_setting('ENVIRONMENT', right)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      test()
+      # test with the wrong env
+      self.set_setting('ENVIRONMENT', wrong)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      try:
+        test()
+        raise Exception('unexpected success')
+      except Exception as e:
+        self.assertContained('not compiled for this environment', str(e))
+      # test with a combined env
+      self.set_setting('ENVIRONMENT', right + ',' + wrong)
+      print('  ', self.get_setting('ENVIRONMENT'))
+      test()
 
   def test_dfe(self):
     if not self.supports_js_dfe():
@@ -8014,10 +8030,7 @@ asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_
 asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
-binaryen2jo = make_run('binaryen2jo', emcc_args=['-O2'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
-binaryen3jo = make_run('binaryen3jo', emcc_args=['-O3'], settings={'BINARYEN_METHOD': 'native-wasm,asmjs'})
 binaryen2s = make_run('binaryen2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
-binaryen2_interpret = make_run('binaryen2_interpret', emcc_args=['-O2'], settings={'BINARYEN_METHOD', 'interpret-binary'})
 
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})

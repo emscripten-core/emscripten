@@ -723,6 +723,10 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['libdlmalloc_threadsafe.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_debug'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_threadsafe_debug.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_noerrno.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_debug_noerrno.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_noerrno'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['libdlmalloc_threadsafe_noerrno.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_debug_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_threadsafe_debug_noerrno.bc']),
       ([PYTHON, EMBUILDER, 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['libpthreads.bc']),
@@ -748,6 +752,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
       ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libc-wasm'], ['building and verifying libc-wasm', 'success'], True, ['libc-wasm.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'regal'], ['building and verifying regal', 'success'], True, ['regal.bc']),
     ]
     if Settings.WASM_BACKEND:
       tests.append(([PYTHON, EMBUILDER, 'build', 'libcompiler_rt_wasm'], ['building and verifying libcompiler_rt_wasm', 'success'], True, ['libcompiler_rt_wasm.a']),)
@@ -1013,13 +1018,13 @@ BINARYEN_ROOT = ''
       prep()
       run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
       assert os.path.exists(tag_file)
-      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('see we show an error for emmake (we cannot build natively under emmake)')
       prep()
       try_delete('a.out.js')
-      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
+      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
       assert not os.path.exists(tag_file)
       assert not os.path.exists('a.out.js')
       self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
@@ -1038,7 +1043,7 @@ BINARYEN_ROOT = ''
           else:
             # EM_ASM doesn't work in a wasm side module, build a normal program
             cmd += [path_from_root('tests', 'hello_world.c'), '-s', 'SIDE_MODULE=1']
-          cmd += ['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"']
+          cmd += ['-s', 'BINARYEN=1']
           run_process(cmd)
           assert os.path.exists(tag_file)
           assert os.path.exists('a.out.wasm')

@@ -12,7 +12,7 @@
 
 #ifndef _DEBUG
 // The following tests break when optimizer is applied, so disable them for now. Baby steps.
-// See https://github.com/kripken/emscripten/issues/3789
+// See https://github.com/emscripten-core/emscripten/issues/3789
 #define BREAKS_UNDER_OPTIMIZATION
 #endif
 

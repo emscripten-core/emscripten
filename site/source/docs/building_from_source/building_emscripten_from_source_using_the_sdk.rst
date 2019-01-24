@@ -4,7 +4,7 @@
 Building Emscripten from Source using the SDK
 =============================================
 
-The SDK can be used to fetch and build Emscripten from the latest sources in the Emscripten and :ref:`Fastcomp <LLVM-Backend>` repositories. This allows you to obtain new features and defect fixes as soon as they are pushed to Github.
+The SDK can be used to fetch and build Emscripten from the latest sources in the Emscripten and :ref:`Fastcomp <LLVM-Backend>` repositories. This allows you to obtain new features and defect fixes as soon as they are pushed to GitHub.
 
 :ref:`Contributors <contributing>` can replace these sources with their own forks of Emscripten and *Fastcomp*, build them, and then use the normal process to pull changes into the main repository.
 
@@ -37,8 +37,6 @@ The :ref:`emsdk` controls which tool and SDK "targets" are installed and activat
 
 	# Set the "incoming SDK" as the active version.
 	./emsdk activate sdk-incoming-64bit
-
-.. todo:: **HamishW** Check whether the bug (https://github.com/juj/emsdk/issues/13) is fixed and remove the windows specific line if it is.
 
 If you want to use the upstream stable branch ``master``, replace ``-incoming-`` with ``-master-`` in the commands above.
 
@@ -122,7 +120,7 @@ After installing the main repositories:
 
 	#. Determine the number of available cores on your system (Emscripten can run many operations in parallel, so using more cores may have a significant impact on compilation time):
 
-		- On Mac OS X you can get the number of cores using: **Apple menu | About this mac | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
+		- On macOS you can get the number of cores using: **Apple menu | About this mac | System report**. The **Hardware overview** on the resulting dialog includes a *Total number of cores* entry.
 		- On Linux you can find the number of cores by entering the following command on the terminal: ``cat /proc/cpuinfo | grep "^cpu cores" | uniq``.
 		- On Windows the number of cores is listed on the **Task Manager | Performance Tab**. You can open the *Task Manager* by entering **Ctrl + Shift + Esc** from the Desktop.
 
