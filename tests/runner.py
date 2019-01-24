@@ -518,7 +518,7 @@ class RunnerCore(unittest.TestCase):
       if len(additional_files) + len(libraries):
         shutil.move(object_file, object_file + '.alone')
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        Building.link(inputs, object_file)
+        Building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
@@ -1403,7 +1403,7 @@ def get_poppler_library(runner_core):
   # Combine libraries
 
   combined = os.path.join(runner_core.get_dir(), 'poppler-combined.bc')
-  Building.link(poppler + freetype, combined)
+  Building.link_to_object(poppler + freetype, combined)
 
   return combined
 
