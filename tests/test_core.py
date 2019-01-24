@@ -20,7 +20,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, CLANG, WINDOWS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
