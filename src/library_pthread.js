@@ -350,25 +350,25 @@ var LibraryPThread = {
 
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
-            cmd: 'load',
-            // If the application main .js file was loaded from a Blob, then it is not possible
-            // to access the URL of the current script that could be passed to a Web Worker so that
-            // it could load up the same file. In that case, developer must either deliver the Blob
-            // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-            // independently load up the same main application file.
-            urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
+          cmd: 'load',
+          // If the application main .js file was loaded from a Blob, then it is not possible
+          // to access the URL of the current script that could be passed to a Web Worker so that
+          // it could load up the same file. In that case, developer must either deliver the Blob
+          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+          // independently load up the same main application file.
+          urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
 #if WASM
-            wasmMemory: Module['wasmMemory'],
-            wasmModule: Module['wasmModule'],
+          wasmMemory: wasmMemory,
+          wasmModule: wasmModule,
 #else
-            buffer: HEAPU8.buffer,
+          buffer: HEAPU8.buffer,
 #endif
-            tempDoublePtr: tempDoublePtr,
-            TOTAL_MEMORY: TOTAL_MEMORY,
-            DYNAMIC_BASE: DYNAMIC_BASE,
-            DYNAMICTOP_PTR: DYNAMICTOP_PTR,
-            PthreadWorkerInit: PthreadWorkerInit
-          });
+          tempDoublePtr: tempDoublePtr,
+          TOTAL_MEMORY: TOTAL_MEMORY,
+          DYNAMIC_BASE: DYNAMIC_BASE,
+          DYNAMICTOP_PTR: DYNAMICTOP_PTR,
+          PthreadWorkerInit: PthreadWorkerInit
+        });
         PThread.unusedWorkerPool.push(worker);
       }
     },
