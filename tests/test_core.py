@@ -630,7 +630,7 @@ int main()
     Building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     Building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
 
-    Building.link_objects(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
+    Building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
     self.do_ll_run('all.o', 'result: 1')
 
@@ -2100,7 +2100,7 @@ The current type of b is: 9
 
     Building.emcc('supp.cpp')
     Building.emcc('main.cpp')
-    Building.link_objects(['supp.cpp.o', 'main.cpp.o'], 'all.o')
+    Building.link_to_object(['supp.cpp.o', 'main.cpp.o'], 'all.o')
 
     # This will fail! See explanation near the warning we check for, in the compiler source code
     run_process([PYTHON, EMCC, 'all.o'] + self.emcc_args, check=False, stderr=PIPE)
@@ -7176,7 +7176,7 @@ err = err = function(){};
     Building.emcc(module_name, ['-g'])
     Building.emcc(main_name, ['-g'])
     all_name = 'all.o'
-    Building.link_objects([module_name + '.o', main_name + '.o'], all_name)
+    Building.link_to_object([module_name + '.o', main_name + '.o'], all_name)
 
     try:
       self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)

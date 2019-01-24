@@ -1885,12 +1885,12 @@ class Building(object):
     return args
 
   @staticmethod
-  def link_objects(linker_inputs, target):
-    # link some object files together into another object file
+  def link_to_object(linker_inputs, target):
+    # link using lld for the wasm backend, or our python code for asm.js
     if Settings.WASM_BACKEND:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
-      Building.link_llvm(linker_inputs, target)
+      Building.link(linker_inputs, target)
     assert os.path.exists(target)
     return target
 
@@ -1991,7 +1991,7 @@ class Building(object):
         logger.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
         return False
       # Check the object is valid for us, and not a native object file.
-      if not Building.is_object_file(f):
+      if not Building.is_bitcode(f):
         logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
@@ -2062,7 +2062,7 @@ class Building(object):
           # is called, so this is an internal error
           assert False, 'unsupported link flag: ' + f
       elif not Building.is_ar(absolute_path_f):
-        if Building.is_object_file(absolute_path_f):
+        if Building.is_bitcode(absolute_path_f):
           if has_ar:
             consider_object(absolute_path_f, force_add=True)
           else:
@@ -2120,7 +2120,7 @@ class Building(object):
 
     if not just_calculate:
       logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      Building.link_objects(link_args, target)
+      Building.link_llvm(link_args, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
@@ -2690,9 +2690,6 @@ class Building(object):
       b = open(filename, 'rb').read(4)
       if b[:2] == b'BC':
         return True
-      # look for ar signature
-      elif Building.is_ar(filename):
-        return True
       # on macOS, there is a 20-byte prefix which starts with little endian
       # encoding of 0x0B17C0DE
       elif b == b'\xDE\xC0\x17\x0B':
@@ -2708,14 +2705,6 @@ class Building(object):
   def is_wasm(filename):
     magic = asstr(open(filename, 'rb').read(4))
     return magic == '\0asm'
-
-  @staticmethod
-  def is_object_file(filename):
-    if Settings.WASM_OBJECT_FILES and Building.is_wasm(filename):
-      return True
-    if not Settings.WASM_OBJECT_FILES and Building.is_bitcode(filename):
-      return True
-    return False
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library

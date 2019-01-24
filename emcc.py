@@ -819,7 +819,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                   # right now we just assume that what is left contains no more |-x OPT| things
       arg = newargs[i]
-
       if i > 0:
         prev = newargs[i - 1]
         if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
@@ -846,7 +845,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
-          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
+          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
             input_files.append((i, arg))
           elif 'WASM_OBJECT_FILES=0' not in settings_changes and shared.Building.is_wasm(arg):
             # this is before libraries, since wasm static libraries (wasm.so that contains wasm) are just
@@ -864,7 +863,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             libs.append((i, l))
             newargs[i] = ''
           else:
-            logger.warning(arg + ' is not valid LLVM bitcode')
+            logger.warning(arg + ' is not a valid input')
         elif file_suffix.endswith(STATICLIB_ENDINGS):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
@@ -953,7 +952,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if error_on_missing_libraries_cmdline:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
-    settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files))
+    settings_changes.append(process_libraries(libs, lib_dirs, settings_changes, input_files))
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
     # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1646,7 +1645,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # We have a specified target (-o <target>), which is not JavaScript or HTML, and
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
-            shared.Building.link_objects(linker_inputs, specified_target)
+            shared.Building.link_to_object(linker_inputs, specified_target)
         logger.debug('stopping at bitcode')
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode. That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an LLVM bitcode file, which you should then compile to .wasm or .js with SIDE_MODULE.')
@@ -2926,12 +2925,12 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files):
+def process_libraries(libs, lib_dirs, settings_changes, input_files):
   libraries = []
 
   # Find library files
   for i, lib in libs:
-    logger.debug('looking for library "%s"', lib)
+    logger.debug('looking for library "%s" (%s)', lib)
     found = False
     for prefix in LIB_PREFIXES:
       for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
