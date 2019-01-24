@@ -990,6 +990,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.verify_settings()
 
     # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
+    # TODO: remove
     shared.reconfigure_cache()
 
     # Note the exports the user requested
