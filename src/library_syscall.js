@@ -1724,6 +1724,7 @@ for (var x in SyscallsLibrary) {
   if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
   SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
 #if USE_PTHREADS
+  // proxy all syscalls synchronously, for their return values
   SyscallsLibrary[x + '__proxy'] = 'sync';
 #endif
 }
