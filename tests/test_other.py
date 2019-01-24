@@ -711,7 +711,8 @@ f.close()
       run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
       assert Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-      assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
+      run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
+      assert Building.is_object_file(os.path.join(tempdirname, 'lib.cpp.o'))
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON
     # directive causes CMake to generate LLVM bitcode files as static libraries
@@ -728,7 +729,6 @@ f.close()
     with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
       assert Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
