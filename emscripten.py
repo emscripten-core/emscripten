@@ -776,8 +776,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs.append('_emscripten_replace_memory')
     if not shared.Settings.SIDE_MODULE:
       funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if shared.Settings.SAFE_HEAP:
-      funcs += ['setDynamicTop']
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       funcs += ['setThrew']
     if shared.Settings.EMTERPRETIFY:
@@ -1491,8 +1489,6 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
-  if shared.Settings.SAFE_HEAP:
-    funcs += ['setDynamicTop']
   if shared.Settings.ONLY_MY_CODE:
     funcs = []
   return funcs
@@ -1676,14 +1672,6 @@ function getEmtStackMax() {
 function setEmtStackMax(x) {
   x = x | 0;
   EMT_STACK_MAX = x;
-}
-''')
-
-  if shared.Settings.SAFE_HEAP:
-    funcs.append('''
-function setDynamicTop(value) {
-  value = value | 0;
-  HEAP32[DYNAMICTOP_PTR>>2] = value;
 }
 ''')
 
