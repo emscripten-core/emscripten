@@ -136,6 +136,10 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
 
+// If true, allows more functions to be added to the table at runtime. This is
+// necessary for dynamic linking, and set automatically in that mode.
+var ALLOW_TABLE_GROWTH = 0;
+
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;

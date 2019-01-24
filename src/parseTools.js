@@ -1469,20 +1469,11 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
-// We emit the dynamic and stack bases as strings that need to be further
-// preprocessed, since during JS compiler time here we are still computing
-// static allocations as we go.
+// Some things, like the dynamic and stack bases, will be computed later and
+// applied. Return them as {{{ STR }}} for that replacing later.
 
-function getStackBase() {
-  return '{{{ STACK_BASE }}}';
-}
-
-function getStackMax() {
-  return '{{{ STACK_MAX }}}';
-}
-
-function getDynamicBase() {
-  return '{{{ DYNAMIC_BASE }}}';
+function getQuoted(str) {
+  return '{{{ ' + str + ' }}}';
 }
 
 function makeRetainedCompilerSettings() {

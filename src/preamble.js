@@ -13,6 +13,16 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if WASM
+if (typeof WebAssembly !== 'object') {
+#if ASSERTIONS
+  abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
+#else
+  err('no native wasm support detected');
+#endif
+}
+#endif
+
 #include "runtime_safe_heap.js"
 
 //========================================
@@ -367,10 +377,10 @@ if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variab
 #endif
 
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
-    STACK_BASE = {{{ getStackBase() }}},
+    STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
-    STACK_MAX = {{{ getStackMax() }}},
-    DYNAMIC_BASE = {{{ getDynamicBase() }}},
+    STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
+    DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
     DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
 
 #if ASSERTIONS
@@ -981,13 +991,6 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-  if (typeof WebAssembly !== 'object') {
-#if ASSERTIONS
-    abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
-#endif
-    err('no native wasm support detected');
-    return false;
-  }
   // prepare imports
   if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
     err('no native wasm Memory in use');
@@ -995,16 +998,16 @@ function createWasm(env) {
   }
   env['memory'] = Module['wasmMemory'];
   var info = {
+    'env': env
+#if WASM_BACKEND == 0
+    ,
     'global': {
       'NaN': NaN,
       'Infinity': Infinity
     },
-#if WASM_BACKEND == 0
     'global.Math': Math,
+    'asm2wasm': asm2wasmImports
 #endif
-    'env': env,
-    'asm2wasm': asm2wasmImports,
-    'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
   };
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
@@ -1138,6 +1141,9 @@ Module['reallocBuffer'] = function(size) {
   return wasmReallocBuffer(size);
 };
 
+// Potentially used for direct table calls.
+var wasmTable;
+
 // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
 // the wasm module at that time, and it receives imports and provides exports and so forth, the app
 // doesn't need to care that it is wasm or asm.js.
@@ -1145,21 +1151,13 @@ Module['reallocBuffer'] = function(size) {
 Module['asm'] = function(global, env, providedBuffer) {
   // import table
   if (!env['table']) {
-#if ASSERTIONS
-   assert(Module['wasmTableSize'] !== undefined);
-#endif
-    var TABLE_SIZE = Module['wasmTableSize'];
-    var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
-    if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {
-      if (MAX_TABLE_SIZE !== undefined) {
-        env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
-      } else {
-        env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
-      }
-    } else {
-      env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
-    }
-    Module['wasmTable'] = env['table'];
+    wasmTable = env['table'] = new WebAssembly.Table({
+      'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+      'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif // WASM_BACKEND
+      'element': 'anyfunc'
+    });
   }
 
   if (!env['__memory_base']) {
@@ -1168,7 +1166,6 @@ Module['asm'] = function(global, env, providedBuffer) {
   if (!env['__table_base']) {
     env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
   }
-
   var exports = createWasm(env);
 
 #if ASSERTIONS

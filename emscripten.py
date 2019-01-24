@@ -231,6 +231,17 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   return glue, forwarded_data
 
 
+def analyze_table(function_table_data):
+  def table_size(table):
+    table_contents = table[table.index('[') + 1: table.index(']')]
+    if len(table_contents) == 0: # empty table
+      return 0
+    return table_contents.count(',') + 1
+  # note that this is a minimal estimate, as when asm2wasm lays out tables it adds padding
+  table_total_size = sum(table_size(s) for s in function_table_data.values())
+  shared.Settings.WASM_TABLE_SIZE = table_total_size
+
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
@@ -241,6 +252,9 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   # merge in information from llvm backend
 
   function_table_data = metadata['tables']
+
+  if shared.Settings.WASM:
+    analyze_table(function_table_data)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -254,6 +268,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   check_all_implemented(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
+  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
@@ -594,6 +609,9 @@ def update_settings_glue(metadata):
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
+  if shared.Settings.WASM_BACKEND:
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
+
 
 def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
@@ -655,6 +673,12 @@ def apply_memory(js):
   js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+
+  return js
+
+
+def apply_table(js):
+  js = js.replace('{{{ WASM_TABLE_SIZE }}}', str(shared.Settings.WASM_TABLE_SIZE))
 
   return js
 
@@ -1322,19 +1346,6 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
     for sig in function_table_sigs:
       asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs) + 'abort(x) }\n'
 
-  if shared.Settings.WASM:
-    def table_size(table):
-      table_contents = table[table.index('[') + 1: table.index(']')]
-      if len(table_contents) == 0: # empty table
-        return 0
-      return table_contents.count(',') + 1
-
-    table_total_size = sum(table_size(s) for s in function_table_data.values())
-    asm_setup += "\nModule['wasmTableSize'] = %d;\n" % table_total_size
-    shared.Settings.WASM_TABLE_SIZE = table_total_size
-    if not shared.Settings.EMULATED_FUNCTION_POINTERS:
-      asm_setup += "\nModule['wasmMaxTableSize'] = %d;\n" % table_total_size
-
   if shared.Settings.RELOCATABLE:
     if not shared.Settings.SIDE_MODULE:
       asm_setup += 'var gb = GLOBAL_BASE, fb = 0;\n'
@@ -1383,7 +1394,7 @@ function ftCall_%s(%s) {
         else:
           # otherwise, wasm emulated function pointers *without* emulated casts can just all
           # into the table
-          table_access = "Module['wasmTable']"
+          table_access = "wasmTable"
           table_read = table_access + '.get(x)'
       else:
         table_access = 'FUNCTION_TABLE_' + sig
@@ -1968,7 +1979,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
      ',\n '.join(asm_consts) + '];\n' +
      asstr('\n'.join(asm_const_funcs)) +
      '\n'.join(em_js_funcs) + '\n'))
-
+  pre = apply_table(pre)
   outfile.write(pre)
   pre = None
 
@@ -2204,9 +2215,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
-  table_total_size = metadata['tableSize']
-  module.append("Module['wasmTableSize'] = %s;\n" % table_total_size)
-  shared.Settings.WASM_TABLE_SIZE = table_total_size
   module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
   module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
 
