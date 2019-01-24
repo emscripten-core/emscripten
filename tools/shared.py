@@ -1885,6 +1885,15 @@ class Building(object):
     return args
 
   @staticmethod
+  def link_objects(linker_inputs, target):
+    # helper method to link some object files together into another object file
+    if Settings.WASM_BACKEND:
+      Building.link_lld(linker_inputs, target, ['--relocatable'])
+    else:
+      Building.link(linker_inputs, target)
+    return target
+
+  @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
     # lld doesn't currently support --start-group/--end-group since the
     # semantics are more like the windows linker where there is no need for

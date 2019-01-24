@@ -16,6 +16,15 @@ import time
 import unittest
 from textwrap import dedent
 
+'''
+TODO:
+
+wasm-ld: warning: function signature mismatch: _ZNSt3__215basic_streambufIwNS_11char_traitsIwEEE7seekposENS_4fposI11__mbstate_tEEj
+>>> defined as (i32, i32, i32, i32) -> void in /usr/local/google/home/azakai/.emscripten_cache/wasm_o/libc++_noexcept.a(ios_84870f69.cpp.o)
+>>> defined as () -> void in /usr/local/google/home/azakai/.emscripten_cache/wasm_o/libc++_noexcept.a(iostream_d7cd508a.cpp.o)
+
+'''
+
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
@@ -621,9 +630,9 @@ int main()
     Building.emar('cr', 'liba.a', ['a1.c.o', 'a2.c.o'])
     Building.emar('cr', 'libb.a', ['b1.c.o', 'b2.c.o'])
 
-    Building.link(['main.c.o', 'liba.a', 'libb.a'], 'all.bc')
+    Building.link_objects(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.do_ll_run('all.bc', 'result: 1')
+    self.do_ll_run('all.o', 'result: 1')
 
   def test_if(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_if')
@@ -2091,10 +2100,10 @@ The current type of b is: 9
 
     Building.emcc('supp.cpp')
     Building.emcc('main.cpp')
-    Building.link(['supp.cpp.o', 'main.cpp.o'], 'all.bc')
+    Building.link_objects(['supp.cpp.o', 'main.cpp.o'], 'all.o')
 
     # This will fail! See explanation near the warning we check for, in the compiler source code
-    run_process([PYTHON, EMCC, 'all.bc'] + self.emcc_args, check=False, stderr=PIPE)
+    run_process([PYTHON, EMCC, 'all.o'] + self.emcc_args, check=False, stderr=PIPE)
 
     # Check for warning in the generated code
     generated = open('src.cpp.o.js').read()
@@ -7166,8 +7175,8 @@ err = err = function(){};
 
     Building.emcc(module_name, ['-g'])
     Building.emcc(main_name, ['-g'])
-    all_name = 'all.bc'
-    Building.link([module_name + '.o', main_name + '.o'], all_name)
+    all_name = 'all.o'
+    Building.link_objects([module_name + '.o', main_name + '.o'], all_name)
 
     try:
       self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
