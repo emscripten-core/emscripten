@@ -1342,7 +1342,7 @@ int f() {
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
     proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE)
-    self.assertContained('is not LLVM bitcode, cannot link', proc.stderr)
+    self.assertContained('is not a valid object file for emscripten, cannot link', proc.stderr)
 
   def test_export_all(self):
     lib = r'''
@@ -8112,7 +8112,7 @@ int main() {
   def test_native_link_error_message(self):
     run_process([CLANG, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', 'hello_world.o'])
     err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
-    self.assertContained('hello_world.o is not valid LLVM bitcode', err)
+    self.assertContained('hello_world.o is not a valid input', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
