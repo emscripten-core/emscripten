@@ -1886,15 +1886,24 @@ class Building(object):
 
   @staticmethod
   def link_objects(linker_inputs, target):
-    # helper method to link some object files together into another object file
+    # link some object files together into another object file
     if Settings.WASM_BACKEND:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
-      Building.link(linker_inputs, target)
+      Building.link_llvm(linker_inputs, target)
+    assert os.path.exists(target)
+    return target
+
+  @staticmethod
+  def link_llvm(linker_inputs, target):
+    # runs llvm-link to link things.
+    output = run_process([LLVM_LINK] + linker_inputs + ['-o', target], stdout=PIPE).stdout
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     return target
 
   @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
+    # runs lld to link things.
     # lld doesn't currently support --start-group/--end-group since the
     # semantics are more like the windows linker where there is no need for
     # grouping.
@@ -1949,6 +1958,7 @@ class Building(object):
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+    # "Full-featured" linking: looks into archives (duplicates lld functionality)
     if not temp_files:
       temp_files = configuration.get_temp_files()
     actual_files = []
@@ -1981,8 +1991,8 @@ class Building(object):
         logger.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
         return False
       # Check the object is valid for us, and not a native object file.
-      if not Building.is_bitcode(f):
-        logger.warning('object %s is not LLVM bitcode, cannot link' % (f))
+      if not Building.is_object_file(f):
+        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2052,11 +2062,11 @@ class Building(object):
           # is called, so this is an internal error
           assert False, 'unsupported link flag: ' + f
       elif not Building.is_ar(absolute_path_f):
-        if Building.is_bitcode(absolute_path_f):
+        if Building.is_object_file(absolute_path_f):
           if has_ar:
             consider_object(absolute_path_f, force_add=True)
           else:
-            # If there are no archives then we can simply link all valid bitcode
+            # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
       else:
@@ -2109,9 +2119,8 @@ class Building(object):
           f.write("\"" + arg + "\"\n")
 
     if not just_calculate:
-      logger.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
-      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
+      Building.link_objects(link_args, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
@@ -2699,6 +2708,14 @@ class Building(object):
   def is_wasm(filename):
     magic = asstr(open(filename, 'rb').read(4))
     return magic == '\0asm'
+
+  @staticmethod
+  def is_object_file(filename):
+    if Settings.WASM_OBJECT_FILES and Building.is_wasm(filename):
+      return True
+    if not Settings.WASM_OBJECT_FILES and Building.is_bitcode(filename):
+      return True
+    return False
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
