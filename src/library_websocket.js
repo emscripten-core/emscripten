@@ -137,7 +137,7 @@ var LibraryWebSocket = {
       console.error('websocket event "open": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
-      Module['dynCall_iiii'](callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iiii') }}}(callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -163,7 +163,7 @@ var LibraryWebSocket = {
       console.error('websocket event "error": socketId='+socketId+',userData='+userData+',callbackFunc='+callbackFunc+')');
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
-      Module['dynCall_iiii'](callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iiii') }}}(callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -192,7 +192,7 @@ var LibraryWebSocket = {
       HEAPU32[(WS.socketEvent+4)>>2] = e.wasClean;
       HEAPU32[(WS.socketEvent+8)>>2] = e.code;
       stringToUTF8(e.reason, HEAPU32[(WS.socketEvent+10)>>2], 512);
-      Module['dynCall_iiii'](callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iiii') }}}(callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -245,7 +245,7 @@ var LibraryWebSocket = {
       }
       HEAPU32[(WS.socketEvent+4)>>2] = buf;
       HEAPU32[(WS.socketEvent+8)>>2] = len;
-      Module['dynCall_iiii'](callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iiii') }}}(callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
       _free(buf);
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
