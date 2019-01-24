@@ -13,7 +13,7 @@
 // and `-s NO_OPTION` expands to `-s OPTION=0` (assuming OPTION is a valid
 // option).
 //
-// See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+// See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
 // Note that the values here are the defaults in -O0, that is, unoptimized
 // mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
@@ -113,6 +113,11 @@ var MALLOC = "dlmalloc";
 // returning NULL (0) when it fails.
 var ABORTING_MALLOC = 1;
 
+// If 1, generated a version of memcpy() and memset() that unroll their
+// copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
+// This flag only has effect when targeting asm.js.
+var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
+
 // If false, we abort with an error if we try to allocate more memory than
 // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
 // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
@@ -131,6 +136,10 @@ var ABORTING_MALLOC = 1;
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
 
+// If true, allows more functions to be added to the table at runtime. This is
+// necessary for dynamic linking, and set automatically in that mode.
+var ALLOW_TABLE_GROWTH = 0;
+
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
@@ -140,9 +149,6 @@ var GLOBAL_BASE = -1;
 // this is useful when debugging two builds that may differ in their static
 // allocations, by forcing the stack to start in the same place their
 // memory usage patterns would be the same.
-
-// Code embetterments
-var STACK_START = -1;
 
 // How to load and store 64-bit doubles.  A potential risk is that doubles may
 // be only 32-bit aligned. Forcing 64-bit alignment in Clang itself should be
@@ -216,6 +222,18 @@ var SIMD = 0;
 
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
+
+// If set to 1, each asm.js/wasm module export is individually declared with a
+// JavaScript "var" definition. This is the simple and recommended approach.
+// However, this does increase code size (especially if you have many such
+// exports), which can be avoided in an unsafe way by setting this to 0. In that
+// case, no "var" is created for each export, and instead a loop (of small
+// constant code size, no matter how many exports you have) writes all the
+// exports received into the global scope. Doing so is dangerous since such
+// modifications of the global scope can confuse external JS minifer tools, and
+// also things can break if the scope the code is in is not the global scope
+// (e.g. if you manually enclose them in a function scope).
+var DECLARE_ASM_MODULE_EXPORTS = 1;
 
 // Ignore closure warnings and errors (like on duplicate definitions)
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
@@ -361,6 +379,11 @@ var WEBSOCKET_SUBPROTOCOL = 'binary';
 // Print out debugging information from our OpenAL implementation.
 var OPENAL_DEBUG = 0;
 
+// If 1, prints out debugging related to calls from emscripten_web_socket_* functions
+// in emscripten/websocket.h.
+// If 2, additionally traces bytes communicated via the sockets.
+var WEBSOCKET_DEBUG = 0;
+
 // Adds extra checks for error situations in the GL library. Can impact
 // performance.
 var GL_ASSERTIONS = 0;
@@ -393,6 +416,32 @@ var FULL_ES2 = 0;
 // false to make GL contexts appear like WebGL contexts and to save some bytes
 // from the output.
 var GL_EMULATE_GLES_VERSION_STRING_FORMAT = 1;
+
+// If true, all GL extensions are advertised in both unprefixed WebGL extension
+// format, but also in desktop/mobile GLES/GL extension format with "GL_" prefix.
+var GL_EXTENSIONS_IN_PREFIXED_FORMAT = 1;
+
+// If true, adds support for automatically enabling all GL extensions for
+// GLES/GL emulation purposes. This takes up code size. If you set this to 0,
+// you will need to manually enable the extensions you need.
+var GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS = 1;
+
+// If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
+// of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
+// saves code size. (Good to keep at 1 for development)
+var GL_TRACK_ERRORS = 1;
+
+// If true, GL contexts support the explicitSwapControl context creation flag.
+// Set to 0 to save a little bit of space on projects that do not need it.
+var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = 0;
+
+// If true, calls to glUniform*fv and glUniformMatrix*fv utilize a pool of
+// preallocated temporary buffers for common small sizes to avoid generating
+// temporary garbage for WebGL 1. Disable this to optimize generated size of the
+// GL library a little bit, at the expense of generating garbage in WebGL 1. If
+// you are only using WebGL 2 and do not support WebGL 1, this is not needed and
+// you can turn it off.
+var GL_POOL_TEMP_BUFFERS = 1;
 
 // Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
 // the offset of a typed array view pointing to an ArrayBuffer. Set this to
@@ -471,6 +520,8 @@ var LEGACY_VM_SUPPORT = 0;
 //    'worker' - a web worker environment.
 //    'node'   - Node.js.
 //    'shell'  - a JS shell like d8, js, or jsc.
+// Or it can be a comma-separated list of them, e.g., "web,worker". If this is
+// the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
 var ENVIRONMENT = '';
@@ -515,7 +566,7 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // or programs that don't need exit() to work.
 
 // For more explanations of this option, please visit
-// https://github.com/kripken/emscripten/wiki/Asyncify
+// https://github.com/emscripten-core/emscripten/wiki/Asyncify
 var NODEJS_CATCH_EXIT = 1;
 
 // Whether to enable asyncify transformation
@@ -559,15 +610,9 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 var FS_LOG = 0;
 
 // If set to nonzero, the provided virtual filesystem if treated
-// case-insensitive, like Windows and OSX do. If set to 0, the VFS is
+// case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
 var CASE_INSENSITIVE_FS = 0;
-
-// If set to nonzero, MEMFS will always utilize typed arrays as the backing
-// store for appending data to files. The default behavior is to use typed
-// arrays for files when the file size doesn't change after initial creation,
-// and for files that do change size, use normal JS arrays instead.
-var MEMFS_APPEND_TO_TYPED_ARRAYS = 0;
 
 // If set to 0, does not build in any filesystem support. Useful if you are just
 // doing pure computation, but not reading files or using any streams (including
@@ -646,7 +691,14 @@ var PROFILING_FUNCS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free'];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
+	'memcpy',
+	'memset',
+	'malloc',
+	'free',
+	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
+	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
+	];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -738,7 +790,7 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // EXPORTED_FUNCTIONS will also be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
-// If set to 1, any -lfoo directives pointing to nonexisting library files will
+// If set to 1, any -lfoo directives pointing to nonexistent library files will
 // issue a linker error.
 
 // The default value for this is currently 0, but will be transitioned to 1 in
@@ -826,7 +878,7 @@ var MODULARIZE = 0;
 // EXPORT_NAME() to create the instance manually.
 //
 // Note that the promise-like API MODULARIZE provides isn't available here
-// (since you arean't creating the instance yourself).
+// (since you aren't creating the instance yourself).
 var MODULARIZE_INSTANCE = 0;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
@@ -945,6 +997,9 @@ var EMTERPRETIFY_SYNCLIST = [];
 // whether js opts will be run, after the main compiler
 var RUNNING_JS_OPTS = 0;
 
+// whether we are emitting JS glue code
+var EMITTING_JS = 1;
+
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
@@ -973,10 +1028,6 @@ var WASM_BACKEND = 0;
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
 var WASM_OBJECT_FILES = 1;
-
-// How we should run WebAssembly code. By default, we run it natively.
-// See binaryen's src/js/wasm.js-post.js for more details and options.
-var BINARYEN_METHOD = "native-wasm";
 
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
@@ -1025,8 +1076,7 @@ var BINARYEN_ROOT = "";
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
 // non-web/non-JS embeddings, setting this to 0 may be desirable.
-// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS and using non-wasm
-// BINARYEN_METHOD settings.
+// LEGALIZE_JS_FFI=0 is incompatible with RUNNING_JS_OPTS.
 var LEGALIZE_JS_FFI = 1;
 
 // Ports
@@ -1056,6 +1106,9 @@ var USE_ZLIB = 0;
 
 // 1 = use libpng from emscripten-ports
 var USE_LIBPNG = 0;
+
+// 1 = use Regal from emscripten-ports
+var USE_REGAL = 0;
 
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
@@ -1094,12 +1147,6 @@ var SDL2_IMAGE_FORMATS = [];
 //    metadata
 //    legalizer
 var DEBUG_TAGS_SHOWING = [];
-
-// Internal: tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
-// For internal use only
-var ORIGINAL_EXPORTED_FUNCTIONS = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
@@ -1199,6 +1246,8 @@ var BUNDLED_CD_DEBUG_FILE = "";
 
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
+// If set to 2, we assume TextDecoder is present and usable, and do not emit
+// any JS code to fall back if it is missing.
 var TEXTDECODER = 1;
 
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
@@ -1249,36 +1298,75 @@ var ASMFS = 0;
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
 
-// For internal use only (name of the file containing wasm text, if relevant).
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+
+// Internal use only, from here
+
+// tracks the list of EM_ASM signatures that are proxied between threads.
+var PROXIED_FUNCTION_SIGNATURES = [];
+
+var ORIGINAL_EXPORTED_FUNCTIONS = [];
+
+// name of the file containing wasm text, if relevant
 var WASM_TEXT_FILE = '';
 
-// For internal use only (name of the file containing wasm binary, if relevant).
+// name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// For internal use only (name of the file containing asm.js, if relevant).
+// name of the file containing asm.js code, if relevant
 var ASMJS_CODE_FILE = '';
 
-// For internal use only (name of the file containing the pthread *.worker.js, if relevant).
+// name of the file containing the pthread *.worker.js, if relevant
 var PTHREAD_WORKER_FILE = '';
 
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// for internal use only
 var MEM_INIT_IN_WASM = 0;
 
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = 0;
 
-// For internal use only, the possible environments the code may run in.
+// the possible environments the code may run in.
 var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
-var ENVIRONMENT_MAY_BE_WEB_OR_WORKER = 1;
 
-// Internal: passes information to emscripten.py about whether to minify
+// passes information to emscripten.py about whether to minify
 // JS -> asm.js import names. Controlled by optimization level, enabled
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
+
+// the total static allocation, that is, how much to bump the start of memory
+// for static globals. received from the backend, and possibly increased due
+// to JS static allocations
+var STATIC_BUMP = -1;
+
+// the total initial wasm table size.
+var WASM_TABLE_SIZE = 0;
+
+// if set to 1, then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Tracks whether we are building with errno support enabled. Set to 0
+// to disable compiling errno support in altogether. This saves a little
+// bit of generated code size in applications that do not care about
+// POSIX errno variable. Setting this to 0 also requires using --closure
+// for effective code size optimizations to take place.
+var SUPPORT_ERRNO = 1;
+
+// Internal: points to a file that lists all asm.js/wasm module exports, annotated
+// with suppressions for Closure compiler, that can be passed as an --externs file
+// to Closure.
+var MODULE_EXPORTS = [];
+
+// Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
+var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;

@@ -382,7 +382,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "8.0"
+    return "9.0"
   else:
     return "6.0"
 
@@ -507,6 +507,19 @@ def get_emscripten_version(path):
 EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
 parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
 EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
+# For the Emscripten-specific WASM metadata section, follows semver, changes
+# whenever metadata section changes structure
+# NB: major version 0 implies no compatibility
+(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 0)
+# For the JS/WASM ABI, specifies the minimum ABI version required of
+# the WASM runtime implementation by the generated WASM binary. It follows
+# semver and changes whenever C types change size/signedness or
+# syscalls change signature. By semver, the maximum ABI version is
+# implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
+# change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
+# or the ABI change is backwards compatible, otherwise increment
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 1)
 
 
 def generate_sanity():
@@ -1226,6 +1239,10 @@ class SettingsManager(object):
     def __getitem__(self, key):
       return self.attrs[key]
 
+    @classmethod
+    def target_environment_may_be(self, environment):
+      return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')
+
   __instance = None
 
   @staticmethod
@@ -1394,16 +1411,35 @@ class Building(object):
   def get_multiprocessing_pool():
     if not Building.multiprocessing_pool:
       cores = Building.get_num_cores()
+      if DEBUG:
+        # When in EMCC_DEBUG mode, only use a single core in the pool, so that
+        # logging is not all jumbled up.
+        cores = 1
 
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
       if cores == 1:
         class FakeMultiprocessor(object):
-          def map(self, func, tasks):
+          def map(self, func, tasks, *args, **kwargs):
             results = []
             for t in tasks:
               results += [func(t)]
             return results
+
+          def map_async(self, func, tasks, *args, **kwargs):
+            class Result:
+              def __init__(self, func, tasks):
+                self.func = func
+                self.tasks = tasks
+
+              def get(self, timeout):
+                results = []
+                for t in tasks:
+                  results += [func(t)]
+                return results
+
+            return Result(func, tasks)
+
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
@@ -2047,18 +2083,21 @@ class Building(object):
 
       link_args = ["@" + response_file]
 
-      response_fh = open(response_file, 'w')
-      for arg in actual_files:
-        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes backslashes in response files, so Windows paths
-        # "c:\path\to\file.txt" with single slashes no longer work. LLVM upstream dev 3.9.0 from January 2016 still treated
-        # backslashes without escaping. To preserve compatibility with both versions of llvm-link, don't pass backslash
-        # path delimiters at all to response files, but always use forward slashes.
-        if WINDOWS:
-          arg = arg.replace('\\', '/')
+      with open(response_file, 'w') as f:
+        for arg in actual_files:
+          # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
+          # backslashes in response files, so Windows paths
+          # "c:\path\to\file.txt" with single slashes no longer work. LLVM
+          # upstream dev 3.9.0 from January 2016 still treated backslashes
+          # without escaping. To preserve compatibility with both versions of
+          # llvm-link, don't pass backslash path delimiters at all to response
+          # files, but always use forward slashes.
+          if WINDOWS:
+            arg = arg.replace('\\', '/')
 
-        # escaped double quotes allows 'space' characters in pathname the response file can use
-        response_fh.write("\"" + arg + "\"\n")
-      response_fh.close()
+          # escaped double quotes allows 'space' characters in pathname the
+          # response file can use
+          f.write("\"" + arg + "\"\n")
 
     if not just_calculate:
       logger.debug('emcc: llvm-linking: %s to %s', actual_files, target)
@@ -2216,7 +2255,7 @@ class Building(object):
     # Run Emscripten
     outfile = infile + '.o.js'
     with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.main(infile, outfile, memfile, js_libraries)
+      emscripten.run(infile, outfile, memfile, js_libraries)
 
     # Detect compilation crashes and errors
     assert os.path.exists(outfile), 'Emscripten failed to generate .js'
@@ -2231,9 +2270,6 @@ class Building(object):
   def need_asm_js_file():
     # Explicitly separate asm.js requires it
     if Settings.SEPARATE_ASM:
-      return True
-    # A binaryen method may require it.
-    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
       return True
     return False
 
@@ -2253,14 +2289,11 @@ class Building(object):
       # emitting code compatible with JS, and there is no reason not to
       # be wasm-only, regardless of everything else
       return True
-    if 'asmjs' in Settings.BINARYEN_METHOD or 'interpret-asm2wasm' in Settings.BINARYEN_METHOD:
-      # code compatible with asm.js cannot be wasm-only
-      return False
     if Settings.RUNNING_JS_OPTS:
       # if the JS optimizer runs, it must run on valid asm.js
       return False
     if Settings.RELOCATABLE and Settings.EMULATED_FUNCTION_POINTERS:
-      # FIXME(https://github.com/kripken/emscripten/issues/5370)
+      # FIXME(https://github.com/emscripten-core/emscripten/issues/5370)
       # emulation function pointers work properly, but calling between
       # modules as wasm-only needs more work
       return False
@@ -2282,9 +2315,8 @@ class Building(object):
       logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
       finalized_exports = '\n'.join([exp[1:] for exp in exps])
       internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
-      internalize_list_fh = open(internalize_list_file, 'w')
-      internalize_list_fh.write(finalized_exports)
-      internalize_list_fh.close()
+      with open(internalize_list_file, 'w') as f:
+        f.write(finalized_exports)
       internalize_public_api += 'file=' + internalize_list_file
     else:
       internalize_public_api += 'list=' + internalize_list
@@ -2408,11 +2440,28 @@ class Building(object):
         logger.error('Cannot run closure compiler')
         raise Exception('closure compiler check failed')
 
+      # Closure annotations file contains suppressions and annotations to different symbols
+      CLOSURE_ANNOTATIONS = ['--js', path_from_root('src', 'closure-annotations.js')]
+
+      if not Settings.ASMFS:
+        # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
+        if not Settings.FILESYSTEM:
+          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
+
+        # If we do have filesystem enabled, tell Closure not to bark when FS references different libraries that might not exist.
+        if Settings.FILESYSTEM and not Settings.ASMFS:
+          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-defined-fs-annotation.js')]
+
+      # Closure externs file contains known symbols to be extern to the minification, Closure
+      # should not minify these symbol names.
       CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
       NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
       NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
       NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                       if name.endswith('.js')]
+      NODE_EXTERNS = [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
+      V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
+      SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
       BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
@@ -2425,22 +2474,42 @@ class Building(object):
               '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
               '-jar', CLOSURE_COMPILER,
               '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5',
-              '--externs', CLOSURE_EXTERNS,
-              # '--variable_map_output_file', filename + '.vars',
-              '--js', filename, '--js_output_file', outfile]
-      for extern in NODE_EXTERNS:
-        args.append('--externs')
-        args.append(extern)
-      for extern in BROWSER_EXTERNS:
-        args.append('--externs')
-        args.append(extern)
+              '--language_in', 'ECMASCRIPT5']
+      args += CLOSURE_ANNOTATIONS
+      args += ['--externs', CLOSURE_EXTERNS,
+               '--js_output_file', outfile]
+
+      if Settings.target_environment_may_be('node'):
+        for extern in NODE_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      if Settings.target_environment_may_be('shell'):
+        for extern in V8_EXTERNS + SPIDERMONKEY_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
+        for extern in BROWSER_EXTERNS:
+          args.append('--externs')
+          args.append(extern)
+      # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
+      # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
+      # externs file for the exports, Closure is able to reason about the exports.
+      if Settings.MODULE_EXPORTS and not Settings.DECLARE_ASM_MODULE_EXPORTS:
+        # Generate an exports file that records all the exported symbols from asm.js/wasm module.
+        module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i in Settings.MODULE_EXPORTS])
+        exports_file = configuration.get_temp_files().get('_module_exports.js')
+        exports_file.write(module_exports_suppressions.encode())
+        exports_file.close()
+
+        args.append('--js')
+        args.append(exports_file.name)
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+      args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
       proc = run_process(args, stderr=PIPE, check=False)
       if proc.returncode != 0:
@@ -2478,8 +2547,12 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.js_optimizer_no_asmjs(js_file, passes)
-        # also minify the names used between js and wasm
-        js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
+        # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
+        # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
+        # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
+        # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
+        if Settings.EMITTING_JS:
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
         logger.debug('running closure on shell code')
@@ -2490,10 +2563,24 @@ class Building(object):
   @staticmethod
   def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     logger.debug('running meta-DCE')
+    assert Settings.DECLARE_ASM_MODULE_EXPORTS, 'Internal error: Meta-DCE is currently not compatible with -s DECLARE_ASM_MODULE_EXPORTS=0, build should have occurred with -s DECLARE_ASM_MODULE_EXPORTS=1 if we reach here!'
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
     graph = json.loads(txt)
+    # add exports based on the backend output, that are not present in the JS
+    if not Settings.DECLARE_ASM_MODULE_EXPORTS:
+      exports = set()
+      for item in graph:
+        if 'export' in item:
+          exports.add(item['export'])
+      for export in Settings.MODULE_EXPORTS:
+        if export not in exports:
+          graph.append({
+            'export': export,
+            'name': 'emcc$export$' + export,
+            'reaches': []
+          })
     # ensure that functions expected to be exported to the outside are roots
     for item in graph:
       if 'export' in item:
@@ -2540,10 +2627,10 @@ class Building(object):
     return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, debug_info):
+  def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports', wasm_file, '-o', wasm_file]
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports' if minify_exports else '--minify-imports', wasm_file, '-o', wasm_file]
     cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd.append('-g')
@@ -2634,10 +2721,6 @@ class Building(object):
       if len(js_system_libraries[library_name]):
         library_files += [js_system_libraries[library_name]]
 
-        # TODO: This is unintentional due to historical reasons. Improve EGL to use HTML5 API to avoid depending on GLUT.
-        if library_name == 'EGL':
-          library_files += ['library_glut.js']
-
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
@@ -2662,7 +2745,7 @@ class Building(object):
     if 'USE_SDL=1' in link_settings:
       system_js_libraries += ['library_sdl.js']
     if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_glut.js', 'library_gl.js']
+      system_js_libraries += ['library_egl.js', 'library_gl.js']
     return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod
@@ -2690,18 +2773,6 @@ class Building(object):
     Building.get_binaryen()
     return os.path.join(Settings.BINARYEN_ROOT, 'bin')
 
-  @staticmethod
-  def get_binaryen_lib():
-    Building.get_binaryen()
-    # The wasm.js and binaryen.js libraries live in 'bin' in the binaryen
-    # source tree, but are installed to share/binaryen.
-    paths = (os.path.join(Settings.BINARYEN_ROOT, 'bin'),
-             os.path.join(Settings.BINARYEN_ROOT, 'share', 'binaryen'))
-    for dirname in paths:
-      if os.path.exists(os.path.join(dirname, 'wasm.js')):
-        return dirname
-    exit_with_error('emcc: cannot find binaryen js libraries (tried: %s)', str(paths))
-
 
 # compatibility with existing emcc, etc. scripts
 Cache = cache.Cache()
@@ -2721,12 +2792,12 @@ class FilenameReplacementStrings:
 
 
 class JS(object):
-  memory_initializer_pattern = '/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
-  no_memory_initializer_pattern = '/\* no memory initializer \*/'
+  memory_initializer_pattern = r'/\* memory initializer \*/ allocate\(\[([\d, ]*)\], "i8", ALLOC_NONE, ([\d+\.GLOBAL_BASEHgb]+)\);'
+  no_memory_initializer_pattern = r'/\* no memory initializer \*/'
 
-  memory_staticbump_pattern = 'STATICTOP = STATIC_BASE \+ (\d+);'
+  memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
-  global_initializers_pattern = '/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+  global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
   module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
 
@@ -2876,7 +2947,7 @@ function jsCall_%s(%s) {
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);
-        return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+        return wasmTable.get(args[0]).apply(null, args.slice(1));
       '''
     else:
       legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
@@ -2957,16 +3028,72 @@ class WebAssembly(object):
     return bytearray(ret)
 
   @staticmethod
+  def delebify(buf, offset):
+    result = 0
+    shift = 0
+    while True:
+      byte = bytearray(buf[offset:offset + 1])[0]
+      offset += 1
+      result |= (byte & 0x7f) << shift
+      if not (byte & 0x80):
+        break
+      shift += 7
+    return (result, offset)
+
+  @staticmethod
+  def get_js_data(js_file, shared=False):
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
+    if shared:
+      mem_align = Settings.MAX_GLOBAL_ALIGN
+    else:
+      mem_align = None
+    return (mem_size, table_size, mem_align)
+
+  @staticmethod
+  def add_emscripten_metadata(js_file, wasm_file):
+    (mem_size, table_size, _) = WebAssembly.get_js_data(js_file)
+    logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
+    wso = js_file + '.wso'
+    wasm = open(wasm_file, 'rb').read()
+    f = open(wso, 'wb')
+    f.write(wasm[0:8]) # copy magic number and version
+    # write the special section
+    f.write(b'\0') # user section is code 0
+    # need to find the size of this section
+    name = b'\x13emscripten_metadata' # section name, including prefixed size
+    contents = (
+      # metadata section version
+      WebAssembly.lebify(EMSCRIPTEN_METADATA_MAJOR) +
+      WebAssembly.lebify(EMSCRIPTEN_METADATA_MINOR) +
+
+      # NB: The structure of the following should only be changed
+      #     if EMSCRIPTEN_METADATA_MAJOR is incremented
+      # Minimum ABI version
+      WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
+      WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
+
+      # static bump
+      WebAssembly.lebify(mem_size) +
+
+      # table size
+      WebAssembly.lebify(table_size)
+      # NB: more data can be appended here as long as you increase
+      #     the EMSCRIPTEN_METADATA_MINOR
+    )
+
+    size = len(name) + len(contents)
+    f.write(WebAssembly.lebify(size))
+    f.write(name)
+    f.write(contents)
+    f.write(wasm[8:])
+    f.close()
+    return wso
+
+  @staticmethod
   def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    js = open(js_file).read()
-    m = re.search("var STATIC_BUMP = (\d+);", js)
-    mem_size = int(m.group(1))
-    m = re.search("Module\['wasmTableSize'\] = (\d+);", js)
-    table_size = int(m.group(1))
-    m = re.search('gb = alignMemory\(getMemory\(\d+ \+ (\d+)\), (\d+) \|\| 1\);', js)
-    assert m.group(1) == m.group(2), 'js must contain a clear alignment for the wasm shared library'
-    mem_align = int(m.group(1))
+    (mem_size, table_size, mem_align) = WebAssembly.get_js_data(js_file, True)
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
     wso = js_file + '.wso'
@@ -3034,11 +3161,6 @@ def asbytes(s):
     # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
     return s
   return s.encode('utf-8')
-
-
-def suffix(name):
-  """Return the file extension *not* including the '.'."""
-  return os.path.splitext(name)[1][1:]
 
 
 def unsuffixed(name):
@@ -3112,7 +3234,7 @@ def read_and_preprocess(filename):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', 'getTotalMemory', 'stringToUTF8', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);

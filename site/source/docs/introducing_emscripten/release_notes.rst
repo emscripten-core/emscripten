@@ -22,7 +22,7 @@ ChangeLog
 =========
 
 The ChangeLog for Emscripten |release| (|today|) is listed below (master version
-`here <https://github.com/kripken/emscripten/blob/master/ChangeLog.md>`_).
+`here <https://github.com/emscripten-core/emscripten/blob/master/ChangeLog.md>`_).
 
 .. include::   ../../../../ChangeLog.md
    :literal:

@@ -10,7 +10,7 @@ mergeInto(LibraryManager.library, {
   $TTY: {
     ttys: [],
     init: function () {
-      // https://github.com/kripken/emscripten/pull/1555
+      // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // currently, FS.init does not distinguish if process.stdin is a file or TTY
       //   // device, it always assumes it's a TTY device. because of this, we're forcing
@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
       // }
     },
     shutdown: function() {
-      // https://github.com/kripken/emscripten/pull/1555
+      // https://github.com/emscripten-core/emscripten/pull/1555
       // if (ENVIRONMENT_IS_NODE) {
       //   // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
       //   // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation

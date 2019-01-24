@@ -18,18 +18,18 @@ code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost a
 '''
       if not minified:
         # simple dumb replace
-        mod += "code = code.replace(/Math_fround\(/g, '(')\n";
+        mod += "code = code.replace(/Math_fround\\(/g, '(')\n";
       else:
         # minified, not quite so simple
         mod += '''
 try {
   console.log('optimizing out Math.fround calls');
-  var m = /var ([^=]+)=global\.Math\.fround;/.exec(code);
+  var m = /var ([^=]+)=global\\.Math\\.fround;/.exec(code);
   var minified = m[1];
   if (!minified) throw 'fail';
 
-  // The minified JS variable for Math.fround might contain the '$' sign, so this must be escaped to \$ to be used as a search pattern.
-  minified = minified.replace(/\$/g, "\\\\$$");
+  // The minified JS variable for Math.fround might contain the '$' sign, so this must be escaped to \\$ to be used as a search pattern.
+  minified = minified.replace(/\\$/g, "\\\\$$");
 
   do {
     var moar = false; // we need to re-do, as x(x( will not be fixed

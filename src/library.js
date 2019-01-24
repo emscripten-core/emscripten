@@ -19,16 +19,17 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-// Memory allocated during startup, in postsets, should only be ALLOC_STATIC
+// Memory allocated during startup, in postsets, should only be static
+// (using makeStaticAlloc)
 
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
 #if USE_PTHREADS
-  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = allocate(1, "i32*", ALLOC_STATIC)',
-  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = allocate(1, "i32*", ALLOC_STATIC)',
-  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = allocate(1, "i32*", ALLOC_STATIC)',
-  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = allocate(1, "i32*", ALLOC_STATIC)',
-  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = allocate(1, "i32*", ALLOC_STATIC)',
+  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = {{{ makeStaticAlloc(4) }}}',
+  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = {{{ makeStaticAlloc(4) }}}',
+  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = {{{ makeStaticAlloc(4) }}}',
+  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = {{{ makeStaticAlloc(4) }}}',
+  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
 #else
   stdin: '{{{ makeStaticAlloc(1) }}}',
   stdout: '{{{ makeStaticAlloc(1) }}}',
@@ -71,10 +72,22 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // JavaScript <-> C string interop
+  // ==========================================================================
+
+  $stringToNewUTF8__deps: ['malloc'],
+  $stringToNewUTF8: function(jsString) {
+    var length = lengthBytesUTF8(jsString)+1;
+    var cString = _malloc(length);
+    stringToUTF8(jsString, cString, length);
+    return cString;
+  },
+
+  // ==========================================================================
   // utime.h
   // ==========================================================================
 
-  utime__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  utime__deps: ['$FS', '__setErrNo'],
   utime__proxy: 'sync',
   utime__sig: 'iii',
   utime: function(path, times) {
@@ -89,7 +102,7 @@ LibraryManager.library = {
     } else {
       time = Date.now();
     }
-    path = Pointer_stringify(path);
+    path = UTF8ToString(path);
     try {
       FS.utime(path, time, time);
       return 0;
@@ -99,7 +112,7 @@ LibraryManager.library = {
     }
   },
 
-  utimes__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  utimes__deps: ['$FS', '__setErrNo'],
   utimes__proxy: 'sync',
   utimes__sig: 'iii',
   utimes: function(path, times) {
@@ -112,7 +125,7 @@ LibraryManager.library = {
     } else {
       time = Date.now();
     }
-    path = Pointer_stringify(path);
+    path = UTF8ToString(path);
     try {
       FS.utime(path, time, time);
       return 0;
@@ -132,17 +145,17 @@ LibraryManager.library = {
     return 0;
   },
 
-  chroot__deps: ['__setErrNo', '$ERRNO_CODES'],
+  chroot__deps: ['__setErrNo'],
   chroot__proxy: 'sync',
   chroot__sig: 'ii',
   chroot: function(path) {
     // int chroot(const char *path);
     // http://pubs.opengroup.org/onlinepubs/7908799/xsh/chroot.html
-    ___setErrNo(ERRNO_CODES.EACCES);
+    ___setErrNo({{{ cDefine('EACCES') }}});
     return -1;
   },
 
-  fpathconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  fpathconf__deps: ['__setErrNo'],
   fpathconf__proxy: 'sync',
   fpathconf__sig: 'iii',
   fpathconf: function(fildes, name) {
@@ -180,12 +193,12 @@ LibraryManager.library = {
       case {{{ cDefine('_PC_FILESIZEBITS') }}}:
         return 64;
     }
-    ___setErrNo(ERRNO_CODES.EINVAL);
+    ___setErrNo({{{ cDefine('EINVAL') }}});
     return -1;
   },
   pathconf: 'fpathconf',
 
-  confstr__deps: ['__setErrNo', '$ERRNO_CODES', '$ENV'],
+  confstr__deps: ['__setErrNo', '$ENV'],
   confstr__proxy: 'sync',
   confstr__sig: 'iiii',
   confstr: function(name, buf, len) {
@@ -227,7 +240,7 @@ LibraryManager.library = {
         value = '-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64';
         break;
       default:
-        ___setErrNo(ERRNO_CODES.EINVAL);
+        ___setErrNo({{{ cDefine('EINVAL') }}});
         return 0;
     }
     if (len == 0 || buf == 0) {
@@ -242,12 +255,12 @@ LibraryManager.library = {
     }
   },
 
-  execl__deps: ['__setErrNo', '$ERRNO_CODES'],
+  execl__deps: ['__setErrNo'],
   execl: function(/* ... */) {
     // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
-    ___setErrNo(ERRNO_CODES.ENOEXEC);
+    ___setErrNo({{{ cDefine('ENOEXEC') }}});
     return -1;
   },
   execle: 'execl',
@@ -264,28 +277,28 @@ LibraryManager.library = {
     exit(status);
   },
 
-  fork__deps: ['__setErrNo', '$ERRNO_CODES'],
+  fork__deps: ['__setErrNo'],
   fork: function() {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
     // We don't support multiple processes.
-    ___setErrNo(ERRNO_CODES.EAGAIN);
+    ___setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
   vfork: 'fork',
   posix_spawn: 'fork',
   posix_spawnp: 'fork',
 
-  setgroups__deps: ['__setErrNo', '$ERRNO_CODES', 'sysconf'],
+  setgroups__deps: ['__setErrNo', 'sysconf'],
   setgroups: function(ngroups, gidset) {
     // int setgroups(int ngroups, const gid_t *gidset);
     // https://developer.apple.com/library/mac/#documentation/Darwin/Reference/ManPages/man2/setgroups.2.html
     if (ngroups < 1 || ngroups > _sysconf({{{ cDefine('_SC_NGROUPS_MAX') }}})) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     } else {
       // We have just one process/user/group, so it makes no sense to set groups.
-      ___setErrNo(ERRNO_CODES.EPERM);
+      ___setErrNo({{{ cDefine('EPERM') }}});
       return -1;
     }
   },
@@ -294,7 +307,7 @@ LibraryManager.library = {
     return PAGE_SIZE;
   },
 
-  sysconf__deps: ['__setErrNo', '$ERRNO_CODES'],
+  sysconf__deps: ['__setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
@@ -450,8 +463,124 @@ LibraryManager.library = {
         return 1;
       }
     }
-    ___setErrNo(ERRNO_CODES.EINVAL);
+    ___setErrNo({{{ cDefine('EINVAL') }}});
     return -1;
+  },
+
+  emscripten_get_heap_size: function() {
+    return TOTAL_MEMORY;
+  },
+
+  $abortOnCannotGrowMemory: function(requestedSize) {
+#if WASM
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#else
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#endif
+  },
+
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'],
+  emscripten_resize_heap: function(requestedSize) {
+#if USE_PTHREADS
+    abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
+#else
+#if ALLOW_MEMORY_GROWTH == 0
+#if ABORTING_MALLOC
+    abortOnCannotGrowMemory(requestedSize);
+#else
+    return false; // malloc will report failure
+#endif
+#else
+    var oldSize = _emscripten_get_heap_size();
+    // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
+#if ASSERTIONS
+    assert(requestedSize > oldSize); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+#endif
+
+#if EMSCRIPTEN_TRACING
+    // Report old layout one last time
+    _emscripten_trace_report_memory_layout();
+#endif
+
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
+
+    if (requestedSize > LIMIT) {
+#if ASSERTIONS
+      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
+#endif
+      return false;
+    }
+
+    var MIN_TOTAL_MEMORY = 16777216;
+    var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+
+    while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
+      if (newSize <= 536870912) {
+        newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
+      } else {
+        // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+        newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+#if ASSERTIONS
+        if (newSize === oldSize) {
+          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
+        }
+#endif
+      }
+    }
+
+#if WASM_MEM_MAX != -1
+    // A limit was set for how much we can grow. We should not exceed that
+    // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
+    // if we are at say 64MB, and the max is 100MB, then we should *not* try to
+    // grow 64->128MB which is the default behavior (doubling), as 128MB will
+    // fail because of the max limit. Instead, we should only try to grow
+    // 64->100MB in this example, which has a chance of succeeding (but may
+    // still fail for another reason, of actually running out of memory).
+    newSize = Math.min(newSize, {{{ WASM_MEM_MAX }}});
+    if (newSize == oldSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
+#endif
+      return false;
+    }
+#endif
+
+#if ASSERTIONS
+    var start = Date.now();
+#endif
+
+    var replacement = Module['reallocBuffer'](newSize);
+    if (!replacement || replacement.byteLength != newSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+      if (replacement) {
+        err('Expected to get back a buffer of size ' + newSize + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
+      }
+#endif
+      return false;
+    }
+
+    // everything worked
+    updateGlobalBuffer(replacement);
+    updateGlobalBufferViews();
+
+    TOTAL_MEMORY = newSize;
+    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
+
+#if ASSERTIONS && !WASM
+    err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+#endif
+
+#if EMSCRIPTEN_TRACING
+    _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+    // And now report the new layout
+    _emscripten_trace_report_memory_layout();
+#endif
+
+    return true;
+#endif // ALLOW_MEMORY_GROWTH
+#endif // USE_PTHREADS
   },
 
   // Implement a Linux-like 'memory area' for our 'process'.
@@ -460,7 +589,7 @@ LibraryManager.library = {
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
   sbrk__asm: true,
   sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo'],
+  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   sbrk: function(increment) {
     increment = increment|0;
     var oldDynamicTop = 0;
@@ -468,7 +597,7 @@ LibraryManager.library = {
     var newDynamicTop = 0;
     var totalMemory = 0;
 #if USE_PTHREADS
-    totalMemory = getTotalMemory()|0;
+    totalMemory = _emscripten_get_heap_size()|0;
 
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can becalled simultaneously in multiple threads.
@@ -481,7 +610,7 @@ LibraryManager.library = {
         | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
         | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-        abortOnCannotGrowMemory()|0;
+        abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
@@ -498,17 +627,17 @@ LibraryManager.library = {
     if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
       | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
     }
 
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
-    totalMemory = getTotalMemory()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((enlargeMemory()|0) == 0) {
-        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+    totalMemory = _emscripten_get_heap_size()|0;
+    if ((newDynamicTop|0) <= (totalMemory|0)) {
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+    } else {
+      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
@@ -519,17 +648,17 @@ LibraryManager.library = {
 
   brk__asm: true,
   brk__sig: ['ii'],
+  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
-    var oldDynamicTop = 0;
     var totalMemory = 0;
 #if USE_PTHREADS
-    totalMemory = getTotalMemory()|0;
+    totalMemory = _emscripten_get_heap_size()|0;
     // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
     // enlarge memory, so this needs to fail.
     if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
@@ -539,19 +668,18 @@ LibraryManager.library = {
 #else // singlethreaded build: (-s USE_PTHREADS=0)
     if ((newDynamicTop|0) < 0) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
     }
 
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
-    totalMemory = getTotalMemory()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((enlargeMemory()|0) == 0) {
+    totalMemory = _emscripten_get_heap_size()|0;
+    if ((newDynamicTop|0) <= (totalMemory|0)) {
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+    } else {
+      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
-        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
         return -1;
       }
     }
@@ -559,12 +687,12 @@ LibraryManager.library = {
     return 0;
   },
 
-  system__deps: ['__setErrNo', '$ERRNO_CODES'],
+  system__deps: ['__setErrNo'],
   system: function(command) {
     // int system(const char *command);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
-    ___setErrNo(ERRNO_CODES.EAGAIN);
+    ___setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
 
@@ -691,7 +819,7 @@ LibraryManager.library = {
     // char *getenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
     if (name === 0) return 0;
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
     if (!ENV.hasOwnProperty(name)) return 0;
 
     if (_getenv.ret) _free(_getenv.ret);
@@ -708,20 +836,20 @@ LibraryManager.library = {
     ___buildEnvironment(__get_environ());
     return 0;
   },
-  setenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  setenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
   setenv__proxy: 'sync',
   setenv__sig: 'iiii',
   setenv: function(envname, envval, overwrite) {
     // int setenv(const char *envname, const char *envval, int overwrite);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
     if (envname === 0) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    var name = Pointer_stringify(envname);
-    var val = Pointer_stringify(envval);
+    var name = UTF8ToString(envname);
+    var val = UTF8ToString(envval);
     if (name === '' || name.indexOf('=') !== -1) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     if (ENV.hasOwnProperty(name) && !overwrite) return 0;
@@ -729,19 +857,19 @@ LibraryManager.library = {
     ___buildEnvironment(__get_environ());
     return 0;
   },
-  unsetenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  unsetenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
   unsetenv__proxy: 'sync',
   unsetenv__sig: 'ii',
   unsetenv: function(name) {
     // int unsetenv(const char *name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
     if (name === 0) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
     if (name === '' || name.indexOf('=') !== -1) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     if (ENV.hasOwnProperty(name)) {
@@ -750,7 +878,7 @@ LibraryManager.library = {
     }
     return 0;
   },
-  putenv__deps: ['$ENV', '__buildEnvironment', '$ERRNO_CODES', '__setErrNo'],
+  putenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
   putenv__proxy: 'sync',
   putenv__sig: 'ii',
   putenv: function(string) {
@@ -760,13 +888,13 @@ LibraryManager.library = {
     //          string is taken by reference so future changes are reflected.
     //          We copy it instead, possibly breaking some uses.
     if (string === 0) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    string = Pointer_stringify(string);
+    string = UTF8ToString(string);
     var splitPoint = string.indexOf('=')
     if (string === '' || string.indexOf('=') === -1) {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     var name = string.slice(0, splitPoint);
@@ -805,7 +933,6 @@ LibraryManager.library = {
 
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
-    return dest;
   },
 
   memcpy__asm: true,
@@ -825,7 +952,8 @@ LibraryManager.library = {
       8192
 #endif
     ) {
-      return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+      _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+      return dest|0;
     }
 
     ret = dest|0;
@@ -840,6 +968,7 @@ LibraryManager.library = {
         num = (num-1)|0;
       }
       aligned_dest_end = (dest_end & -4)|0;
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_dest_end = (aligned_dest_end - 64)|0;
       while ((dest|0) <= (block_aligned_dest_end|0) ) {
 #if SIMD
@@ -868,6 +997,7 @@ LibraryManager.library = {
         dest = (dest+64)|0;
         src = (src+64)|0;
       }
+#endif
       while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
@@ -894,11 +1024,6 @@ LibraryManager.library = {
     return ret|0;
   },
 
-  llvm_memcpy_i32: 'memcpy',
-  llvm_memcpy_i64: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
-  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
-
   memmove__sig: 'iiii',
   memmove__asm: true,
   memmove__deps: ['memcpy'],
@@ -922,10 +1047,6 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
-  llvm_memmove_i32: 'memmove',
-  llvm_memmove_i64: 'memmove',
-  llvm_memmove_p0i8_p0i8_i32: 'memmove',
-  llvm_memmove_p0i8_p0i8_i64: 'memmove',
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -948,8 +1069,11 @@ LibraryManager.library = {
       }
 
       aligned_end = (end & -4)|0;
-      block_aligned_end = (aligned_end - 64)|0;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
+
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
+      block_aligned_end = (aligned_end - 64)|0;
+
 #if SIMD
       value16 = SIMD_Int32x4_splat(value4);
 #endif
@@ -980,6 +1104,7 @@ LibraryManager.library = {
 #endif
         ptr = (ptr + 64)|0;
       }
+#endif
 
       while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
@@ -993,10 +1118,53 @@ LibraryManager.library = {
     }
     return (end-num)|0;
   },
+
+#if DECLARE_ASM_MODULE_EXPORTS
+  llvm_memcpy_i32: 'memcpy',
+  llvm_memcpy_i64: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i32: 'memcpy',
+  llvm_memcpy_p0i8_p0i8_i64: 'memcpy',
+
+  llvm_memmove_i32: 'memmove',
+  llvm_memmove_i64: 'memmove',
+  llvm_memmove_p0i8_p0i8_i32: 'memmove',
+  llvm_memmove_p0i8_p0i8_i64: 'memmove',
+
   llvm_memset_i32: 'memset',
   llvm_memset_p0i8_i32: 'memset',
   llvm_memset_p0i8_i64: 'memset',
+#else
+  // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
+  // functions, so use an intermediate function as a pass-through.
+  _memcpy_js__deps: ['memcpy'],
+  _memcpy_js: function(dst, src, num) {
+    return _memcpy(dst, src, num);
+  },
 
+  _memmove_js__deps: ['memmove'],
+  _memmove_js: function(dst, src, num) {
+    return _memmove(dst, src, num);
+  },
+
+  _memset_js__deps: ['memset'],
+  _memset_js: function(ptr, value, num) {
+    return _memset(ptr, value, num);
+  },
+
+  llvm_memcpy_i32: '_memcpy_js',
+  llvm_memcpy_i64: '_memcpy_js',
+  llvm_memcpy_p0i8_p0i8_i32: '_memcpy_js',
+  llvm_memcpy_p0i8_p0i8_i64: '_memcpy_js',
+
+  llvm_memmove_i32: '_memmove_js',
+  llvm_memmove_i64: '_memmove_js',
+  llvm_memmove_p0i8_p0i8_i32: '_memmove_js',
+  llvm_memmove_p0i8_p0i8_i64: '_memmove_js',
+
+  llvm_memset_i32: '_memset_js',
+  llvm_memset_p0i8_i32: '_memset_js',
+  llvm_memset_p0i8_i64: '_memset_js',
+#endif // ~DECLARE_ASM_MODULE_EXPORTS
   // ==========================================================================
   // GCC/LLVM specifics
   // ==========================================================================
@@ -1115,13 +1283,14 @@ LibraryManager.library = {
   llvm_prefetch: function(){},
 
   __assert_fail: function(condition, filename, line, func) {
-    abort('Assertion failed: ' + Pointer_stringify(condition) + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function']);
+    abort('Assertion failed: ' + UTF8ToString(condition) + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
   __assert_func: function(filename, line, func, condition) {
-    abort('Assertion failed: ' + (condition ? Pointer_stringify(condition) : 'unknown condition') + ', at: ' + [filename ? Pointer_stringify(filename) : 'unknown filename', line, func ? Pointer_stringify(func) : 'unknown function']);
+    abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+  $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
     last: 0,
     caught: [],
@@ -1716,7 +1885,7 @@ LibraryManager.library = {
 
 #if MAIN_MODULE == 0
   dlopen: function(/* ... */) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
   dlclose: 'dlopen',
   dlsym:   'dlopen',
@@ -1741,7 +1910,7 @@ LibraryManager.library = {
     if (filenameAddr === 0) {
       filename = '__self__';
     } else {
-      filename = Pointer_stringify(filenameAddr);
+      filename = UTF8ToString(filenameAddr);
 
       var isValidFile = function (filename) {
         var target = FS.findObject(filename);
@@ -1814,7 +1983,7 @@ LibraryManager.library = {
   dlsym: function(handle, symbol) {
     // void *dlsym(void *restrict handle, const char *restrict name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlsym.html
-    symbol = Pointer_stringify(symbol);
+    symbol = UTF8ToString(symbol);
 
     if (!LDSO.loadedLibs[handle]) {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
@@ -1864,7 +2033,7 @@ LibraryManager.library = {
   },
 
   // char* dlerror(void);
-  dlerror__deps: ['$DLFCN'],
+  dlerror__deps: ['$DLFCN', '$stringToNewUTF8'],
   dlerror__proxy: 'sync',
   dlerror__sig: 'i',
   dlerror: function() {
@@ -1874,18 +2043,18 @@ LibraryManager.library = {
       return 0;
     } else {
       if (DLFCN.error) _free(DLFCN.error);
-      var msgArr = intArrayFromString(DLFCN.errorMsg);
-      DLFCN.error = allocate(msgArr, 'i8', ALLOC_NORMAL);
+      DLFCN.error = stringToNewUTF8(DLFCN.errorMsg);
       DLFCN.errorMsg = null;
       return DLFCN.error;
     }
   },
 
+  dladdr__deps: ['$stringToNewUTF8'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = allocate(intArrayFromString(Module['thisProgram'] || './this.program'), 'i8', ALLOC_NORMAL); // XXX leak
+    var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -1928,13 +2097,13 @@ LibraryManager.library = {
 
   // Statically allocated time struct.
 #if USE_PTHREADS
-  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
-  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
-  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = allocate({{{ C_STRUCTS.tm.__size__ }}}, "i8", ALLOC_STATIC)',
+  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
+  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = {{{ makeStaticString("GMT") }}}',
+  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
 #else
   __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
-  __tm_timezone: 'allocate(intArrayFromString("GMT"), "i8", ALLOC_STATIC)',
+  __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   // Statically allocated time strings.
   __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
 #endif
@@ -2144,15 +2313,15 @@ LibraryManager.library = {
     }
   },
 
-  stime__deps: ['$ERRNO_CODES', '__setErrNo'],
+  stime__deps: ['__setErrNo'],
   stime: function(when) {
-    ___setErrNo(ERRNO_CODES.EPERM);
+    ___setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
 
-  __map_file__deps: ['$ERRNO_CODES', '__setErrNo'],
+  __map_file__deps: ['__setErrNo'],
   __map_file: function(pathname, size) {
-    ___setErrNo(ERRNO_CODES.EPERM);
+    ___setErrNo({{{ cDefine('EPERM') }}});
     return -1;
   },
 
@@ -2215,10 +2384,10 @@ LibraryManager.library = {
       tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
       tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
       tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'i32') }}},
-      tm_zone: tm_zone ? Pointer_stringify(tm_zone) : ''
+      tm_zone: tm_zone ? UTF8ToString(tm_zone) : ''
     };
 
-    var pattern = Pointer_stringify(format);
+    var pattern = UTF8ToString(format);
 
     // expand format
     var EXPANSION_RULES_1 = {
@@ -2506,7 +2675,7 @@ LibraryManager.library = {
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
-    var pattern = Pointer_stringify(format);
+    var pattern = UTF8ToString(format);
 
     // escape special characters
     // TODO: not sure we really need to escape all of these in JS regexps
@@ -2573,8 +2742,8 @@ LibraryManager.library = {
       pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
     }
 
-    var matches = new RegExp('^'+pattern, "i").exec(Pointer_stringify(buf))
-    // out(Pointer_stringify(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
+    var matches = new RegExp('^'+pattern, "i").exec(UTF8ToString(buf))
+    // out(UTF8ToString(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
 
     function initDate() {
       function fixup(value, min, max) {
@@ -2755,12 +2924,12 @@ LibraryManager.library = {
     return 0;
   },
 
-  timespec_get__deps: ['clock_gettime', '$ERRNO_CODES', '__setErrNo'],
+  timespec_get__deps: ['clock_gettime', '__setErrNo'],
   timespec_get: function(ts, base) {
     //int timespec_get(struct timespec *ts, int base);
     if (base !== {{{ cDefine('TIME_UTC') }}}) {
       // There is no other implemented value than TIME_UTC; all other values are considered erroneous.
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return 0;
     }
     var ret = _clock_gettime({{{ cDefine('CLOCK_REALTIME') }}}, ts);
@@ -2771,7 +2940,7 @@ LibraryManager.library = {
   // sys/time.h
   // ==========================================================================
 
-  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
+  clock_gettime__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_gettime: function(clk_id, tp) {
     // int clock_gettime(clockid_t clk_id, struct timespec *tp);
     var now;
@@ -2780,7 +2949,7 @@ LibraryManager.library = {
     } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       now = _emscripten_get_now();
     } else {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_sec, '(now/1000)|0', 'i32') }}}; // seconds
@@ -2788,15 +2957,15 @@ LibraryManager.library = {
     return 0;
   },
   __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_settime__deps: ['$ERRNO_CODES', '__setErrNo'],
+  clock_settime__deps: ['__setErrNo'],
   clock_settime: function(clk_id, tp) {
     // int clock_settime(clockid_t clk_id, const struct timespec *tp);
     // Nothing.
-    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? ERRNO_CODES.EPERM
-                                                             : ERRNO_CODES.EINVAL);
+    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? {{{ cDefine('EPERM') }}}
+                                                             : {{{ cDefine('EINVAL') }}});
     return -1;
   },
-  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '$ERRNO_CODES', '__setErrNo'],
+  clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
     var nsec;
@@ -2805,7 +2974,7 @@ LibraryManager.library = {
     } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       nsec = _emscripten_get_now_res();
     } else {
-      ___setErrNo(ERRNO_CODES.EINVAL);
+      ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_sec, '(nsec/1000000000)|0', 'i32') }}};
@@ -2814,8 +2983,8 @@ LibraryManager.library = {
   },
   clock_getcpuclockid__deps: ['$PROCINFO'],
   clock_getcpuclockid: function(pid, clk_id) {
-    if (pid < 0) return ERRNO_CODES.ESRCH;
-    if (pid !== 0 && pid !== PROCINFO.pid) return ERRNO_CODES.ENOSYS;
+    if (pid < 0) return {{{ cDefine('ESRCH') }}};
+    if (pid !== 0 && pid !== PROCINFO.pid) return {{{ cDefine('ENOSYS') }}};
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
@@ -2961,12 +3130,12 @@ LibraryManager.library = {
   // sys/wait.h
   // ==========================================================================
 
-  wait__deps: ['$ERRNO_CODES', '__setErrNo'],
+  wait__deps: ['__setErrNo'],
   wait: function(stat_loc) {
     // pid_t wait(int *stat_loc);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
     // Makes no sense in a single-process environment.
-    ___setErrNo(ERRNO_CODES.ECHILD);
+    ___setErrNo({{{ cDefine('ECHILD') }}});
     return -1;
   },
   // NOTE: These aren't really the same, but we use the same stub for them all.
@@ -3226,11 +3395,15 @@ LibraryManager.library = {
     {{{ cDefine('ESTRPIPE') }}}: 'Streams pipe error',
   },
   __setErrNo: function(value) {
+#if SUPPORT_ERRNO
     if (Module['___errno_location']) {{{ makeSetValue("Module['___errno_location']()", 0, 'value', 'i32') }}};
 #if ASSERTIONS
     else err('failed to set errno from JS');
 #endif
     return value;
+#else
+    return 0;
+#endif
   },
 
   // ==========================================================================
@@ -3247,7 +3420,7 @@ LibraryManager.library = {
   // old ipv4 only functions
   inet_addr__deps: ['_inet_pton4_raw'],
   inet_addr: function(ptr) {
-    var addr = __inet_pton4_raw(Pointer_stringify(ptr));
+    var addr = __inet_pton4_raw(UTF8ToString(ptr));
     if (addr === null) {
       return -1;
     }
@@ -3259,13 +3432,13 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if USE_PTHREADS
-  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
-  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = {{{ makeStaticAlloc(16) }}}',
+  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = {{{ makeStaticAlloc(16) }}}',
 #else
   in6addr_any:
-    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], "i8", ALLOC_STATIC)',
+    '{{{ makeStaticAlloc(16) }}}',
   in6addr_loopback:
-    'allocate([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], "i8", ALLOC_STATIC)',
+    '{{{ makeStaticAlloc(16) }}}',
 #endif
 
   // ==========================================================================
@@ -3342,7 +3515,7 @@ LibraryManager.library = {
   },
   _inet_pton6__deps: ['_inet_pton6_raw'],
   _inet_pton6: function(src, dst) {
-    var ints = __inet_pton6_raw(Pointer_stringify(src));
+    var ints = __inet_pton6_raw(UTF8ToString(src));
     if (ints === null) {
       return 0;
     }
@@ -3459,14 +3632,14 @@ LibraryManager.library = {
     switch (family) {
       case {{{ cDefine('AF_INET') }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in.__size__ }}}) {
-          return { errno: ERRNO_CODES.EINVAL };
+          return { errno: {{{ cDefine('EINVAL') }}} };
         }
         addr = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_addr.s_addr, 'i32') }}};
         addr = __inet_ntop4_raw(addr);
         break;
       case {{{ cDefine('AF_INET6') }}}:
         if (salen !== {{{ C_STRUCTS.sockaddr_in6.__size__ }}}) {
-          return { errno: ERRNO_CODES.EINVAL };
+          return { errno: {{{ cDefine('EINVAL') }}} };
         }
         addr = [
           {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in6.sin6_addr.__in6_union.__s6_addr+0, 'i32') }}},
@@ -3477,7 +3650,7 @@ LibraryManager.library = {
         addr = __inet_ntop6_raw(addr);
         break;
       default:
-        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
     }
 
     return { family: family, addr: addr, port: port };
@@ -3503,7 +3676,7 @@ LibraryManager.library = {
         {{{ makeSetValue('sa', C_STRUCTS.sockaddr_in6.sin6_scope_id, '0', 'i32') }}};
         break;
       default:
-        return { errno: ERRNO_CODES.EAFNOSUPPORT };
+        return { errno: {{{ cDefine('EAFNOSUPPORT') }}} };
     }
     // kind of lame, but let's match _read_sockaddr's interface
     return {};
@@ -3565,7 +3738,7 @@ LibraryManager.library = {
   gethostbyaddr__sig: 'iiii',
   gethostbyaddr: function (addr, addrlen, type) {
     if (type !== {{{ cDefine('AF_INET') }}}) {
-      ___setErrNo(ERRNO_CODES.EAFNOSUPPORT);
+      ___setErrNo({{{ cDefine('EAFNOSUPPORT') }}});
       // TODO: set h_errno
       return null;
     }
@@ -3583,7 +3756,7 @@ LibraryManager.library = {
   gethostbyname__proxy: 'sync',
   gethostbyname__sig: 'ii',
   gethostbyname: function(name) {
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
 
     // generate hostent
     var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
@@ -3707,7 +3880,7 @@ LibraryManager.library = {
     }
 
     if (service) {
-      service = Pointer_stringify(service);
+      service = UTF8ToString(service);
       port = parseInt(service, 10);
 
       if (isNaN(port)) {
@@ -3739,7 +3912,7 @@ LibraryManager.library = {
     //
     // try as a numeric address
     //
-    node = Pointer_stringify(node);
+    node = UTF8ToString(node);
     addr = __inet_pton4_raw(node);
     if (addr !== null) {
       // incoming node is a valid ipv4 address
@@ -3944,7 +4117,7 @@ LibraryManager.library = {
   getprotobyname__deps: ['setprotoent', '$Protocols'],
   getprotobyname: function(name) {
     // struct protoent *getprotobyname(const char *);
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
     _setprotoent(true);
     var result = Protocols.map[name];
     return result;
@@ -3963,11 +4136,11 @@ LibraryManager.library = {
   // nonblocking
   // ==========================================================================
 #if SOCKET_WEBRTC
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES',
+  $Sockets__deps: ['__setErrNo',
     function() { return 'var SocketIO = ' + read('socket.io.js') + ';\n' },
     function() { return 'var Peer = ' + read('wrtcp.js') + ';\n' }],
 #else
-  $Sockets__deps: ['__setErrNo', '$ERRNO_CODES'],
+  $Sockets__deps: ['__setErrNo'],
 #endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
@@ -3998,15 +4171,15 @@ LibraryManager.library = {
   // ==========================================================================
 
   emscripten_run_script: function(ptr) {
-    {{{ makeEval('eval(Pointer_stringify(ptr));') }}}
+    {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
   emscripten_run_script_int: function(ptr) {
-    {{{ makeEval('return eval(Pointer_stringify(ptr))|0;') }}}
+    {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
 
   emscripten_run_script_string: function(ptr) {
-    {{{ makeEval("var s = eval(Pointer_stringify(ptr)) + '';") }}}
+    {{{ makeEval("var s = eval(UTF8ToString(ptr)) + '';") }}}
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
@@ -4244,7 +4417,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_compiler_setting: function(name) {
-    name = Pointer_stringify(name);
+    name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
     if (typeof ret === 'number') return ret;
@@ -4780,3 +4953,4 @@ function autoAddDeps(object, name) {
     }
   }
 }
+

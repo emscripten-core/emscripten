@@ -169,7 +169,7 @@ operator^=: ffffffff
 
 64 bits
 
-atomic<int>.is_lock_free(): false
+atomic<int>.is_lock_free(): ok
 atomic<int> value: 5
 store/load 0: 0
 store/load 1: 1

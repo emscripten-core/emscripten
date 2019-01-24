@@ -38,7 +38,7 @@ In particular, this mode emulates client-side arrays that are missing [#f1]_ fro
 
 This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/man3/xhtml/glDrawArrays.xml>`_ and `glDrawElements <https://www.opengl.org/sdk/docs/man/html/glDrawElements.xhtml>`_ etc. without a bound buffer, and Emscripten's GL bindings will set up the buffer automatically (WebGL requires that a buffer be bound).
 
-.. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/kripken/emscripten/issues/4214>`_ for more details.
+.. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/emscripten-core/emscripten/issues/4214>`_ for more details.
 
 To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when linking the final executable (.js/.html) of the project.
 
@@ -81,9 +81,9 @@ When migrating from WebGL 1 to WebGL 2, take note that some WebGL 1 extensions a
 Test code/examples
 ==================
 
-The files in `tests/glbook <https://github.com/kripken/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
+The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
 
-The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/kripken/emscripten/blob/master/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
+The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
 
 Bug Reports
 ===========

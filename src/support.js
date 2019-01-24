@@ -13,19 +13,11 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
-#endif
 
 function staticAlloc(size) {
-#if ASSERTIONS
-  assert(!staticSealed);
-#endif
-  var ret = STATICTOP;
-  STATICTOP = (STATICTOP + size + 15) & -16;
-#if ASSERTIONS
-  assert(STATICTOP < TOTAL_MEMORY, 'not enough memory for static allocation - increase TOTAL_MEMORY');
-#endif
-  return ret;
+  abort('staticAlloc is no longer available at runtime; instead, perform static allocations at compile time (using makeStaticAlloc)');
 }
+#endif
 
 function dynamicAlloc(size) {
 #if ASSERTIONS
@@ -33,13 +25,15 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  if (end >= TOTAL_MEMORY) {
-    var success = enlargeMemory();
-    if (!success) {
-      HEAP32[DYNAMICTOP_PTR>>2] = ret;
-      return 0;
-    }
+  if (end <= _emscripten_get_heap_size()) {
+    HEAP32[DYNAMICTOP_PTR>>2] = end;
+  } else {
+#if ALLOW_MEMORY_GROWTH
+    var success = _emscripten_resize_heap(end);
+    if (!success) return 0;
+#else
+    return 0;
+#endif
   }
   return ret;
 }
@@ -365,7 +359,9 @@ function loadWebAssemblyModule(binary, flags) {
     tableAlign = Math.pow(2, tableAlign);
     // finalize alignments and verify them
     memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
-    assert(tableAlign === 1);
+#if ASSERTIONS
+    assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
+#endif
     // prepare memory
     var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
     // The static area consists of explicitly initialized data, followed by zero-initialized data.
@@ -377,7 +373,7 @@ function loadWebAssemblyModule(binary, flags) {
     // prepare env imports
     var env = Module['asmLibraryArg'];
     // TODO: use only __memory_base and __table_base, need to update asm.js backend
-    var table = Module['wasmTable'];
+    var table = wasmTable;
     var tableBase = table.length;
     var originalTable = table;
     table.grow(tableSize);
@@ -427,7 +423,7 @@ function loadWebAssemblyModule(binary, flags) {
           var name = prop.substr(2); // without g$ prefix
           return env[prop] = function() {
 #if ASSERTIONS
-            assert(Module[name], 'missing linked global ' + name);
+            assert(Module[name], 'missing linked global ' + name + '. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
             return Module[name];
           };
@@ -442,7 +438,7 @@ function loadWebAssemblyModule(binary, flags) {
         // if not a global, then a function - call it indirectly
         return env[prop] = function() {
 #if ASSERTIONS
-          assert(Module[prop], 'missing linked function ' + prop);
+          assert(Module[prop], 'missing linked function ' + prop + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
           return Module[prop].apply(null, arguments);
         };
@@ -469,7 +465,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if ASSERTIONS
       // the table should be unchanged
       assert(table === originalTable);
-      assert(table === Module['wasmTable']);
+      assert(table === wasmTable);
       if (instance.exports['table']) {
         assert(table === instance.exports['table']);
       }
@@ -619,7 +615,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 // Add a wasm function to the table.
 // Attempting to call this with JS function will cause of table.set() to fail
 function addWasmFunction(func) {
-  var table = Module['wasmTable'];
+  var table = wasmTable;
   var ret = table.length;
   table.grow(1);
   table.set(ret, func);

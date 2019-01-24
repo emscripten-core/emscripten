@@ -44,9 +44,6 @@ var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
 var DYNAMICTOP_PTR = 0;
 var TOTAL_MEMORY = 0;
-function enlargeMemory() {
-  abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
-}
 var nan = NaN;
 var inf = Infinity;
 

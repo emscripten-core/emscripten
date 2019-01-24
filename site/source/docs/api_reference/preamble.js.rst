@@ -4,7 +4,7 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
 We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
@@ -163,6 +163,9 @@ Conversion functions — strings, pointers and arrays
 
   Returns a JavaScript String from a pointer, for use in compiled code.
 
+  .. note::
+  	This function is deprecated, use one of functions UTF8ToString(), AsciiToString(), UTF16ToString() or UTF32ToString() instead.
+
   :param ptr: The pointer to be converted to a ``String``.
   :param length: The length of the data in the pointer (optional).
   :returns: A JavaScript ``String`` containing the data from ``ptr``.
@@ -231,6 +234,15 @@ Conversion functions — strings, pointers and arrays
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
   :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
+
+
+.. js:function:: AsciiToString(ptr)
+
+  Converts an ASCII or Latin-1 encoded string to a JavaScript String object.
+
+  :param ptr: The pointer to be converted to a ``String``.
+  :returns: A JavaScript ``String`` containing the data from ``ptr``.
+  :rtype: String
 
 
 .. js:function:: intArrayFromString(stringy, dontAddNull[, length])
@@ -405,7 +417,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
 
   function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_STATIC, ALLOC_DYNAMIC, ALLOC_NONE
+    associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_DYNAMIC, ALLOC_NONE
 
   function addOnPreRun
   function addOnInit
@@ -414,13 +426,11 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function addOnPostRun
   Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
   Module['ALLOC_STACK'] = ALLOC_STACK;
-  Module['ALLOC_STATIC'] = ALLOC_STATIC;
   Module['ALLOC_DYNAMIC'] = ALLOC_DYNAMIC;
   Module['ALLOC_NONE'] = ALLOC_NONE;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function alignUp(x, multiple)
-  function enlargeMemory()
   function demangle(func)
   function demangleAll(text)
   function parseJSFunc(jsfunc)

@@ -22,8 +22,6 @@ var STACK_MAX = 0;
 var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
 var DYNAMICTOP_PTR = 0;
 var TOTAL_MEMORY = 0;
-var STATICTOP = 0;
-var staticSealed = true; // When threads are being initialized, the static memory area has been already sealed a long time ago.
 var DYNAMIC_BASE = 0;
 
 var ENVIRONMENT_IS_PTHREAD = true;
@@ -85,7 +83,6 @@ this.onmessage = function(e) {
 
       // Initialize the global "process"-wide fields:
       Module['TOTAL_MEMORY'] = TOTAL_MEMORY = e.data.TOTAL_MEMORY;
-      STATICTOP = e.data.STATICTOP;
       DYNAMIC_BASE = e.data.DYNAMIC_BASE;
       DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
 
