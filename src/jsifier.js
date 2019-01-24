@@ -364,9 +364,7 @@ function JSify(data, functionsOnly) {
       if (!Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        if (!SIDE_MODULE) {
-          print('STATIC_BASE = GLOBAL_BASE;\n');
-        } else {
+        if (SIDE_MODULE) {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
           // The static area consists of explicitly initialized data, followed by zero-initialized data.
           // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
@@ -377,12 +375,6 @@ function JSify(data, functionsOnly) {
         }
         // emit "metadata" in a comment. FIXME make this nicer
         print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
-        if (WASM) {
-          // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
-          print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
-          print('Module["STATIC_BASE"] = STATIC_BASE;');
-          print('Module["STATIC_BUMP"] = STATIC_BUMP;');
-        }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));

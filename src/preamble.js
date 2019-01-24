@@ -25,6 +25,18 @@ if (typeof WebAssembly !== 'object') {
 
 #include "runtime_safe_heap.js"
 
+// Wasm globals
+
+var wasmMemory;
+
+// Potentially used for direct table calls.
+var wasmTable;
+
+#if USE_PTHREADS
+// For sending to workers.
+var wasmModule;
+#endif
+
 //========================================
 // Runtime essentials
 //========================================
@@ -483,11 +495,11 @@ updateGlobalBufferViews();
 #else
 if (!ENVIRONMENT_IS_PTHREAD) {
 #if ALLOW_MEMORY_GROWTH
-  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
+  wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
 #else
-  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
+  wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
 #endif
-  buffer = Module['wasmMemory'].buffer;
+  buffer = wasmMemory.buffer;
   assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 }
 
@@ -513,14 +525,14 @@ if (Module['buffer']) {
 #if ASSERTIONS
     assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // WASM_MEM_MAX
 #else
-    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // ALLOW_MEMORY_GROWTH
-    buffer = Module['wasmMemory'].buffer;
+    buffer = wasmMemory.buffer;
   } else
 #endif // WASM
   {
@@ -934,7 +946,7 @@ function mergeMemory(newBuffer) {
 #if MEM_INIT_IN_WASM == 0
   // If we have a mem init file, do not trample it
   if (!memoryInitializer) {
-    oldView.set(newView.subarray(Module['STATIC_BASE'], Module['STATIC_BASE'] + Module['STATIC_BUMP']), Module['STATIC_BASE']);
+    oldView.set(newView.subarray({{{ GLOBAL_BASE }}}, {{{ GLOBAL_BASE }}} + {{{ getQuoted('STATIC_BUMP') }}}), {{{ GLOBAL_BASE }}});
   }
 #endif
 
@@ -992,11 +1004,6 @@ function getBinaryPromise() {
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
   // prepare imports
-  if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
-    err('no native wasm Memory in use');
-    return false;
-  }
-  env['memory'] = Module['wasmMemory'];
   var info = {
     'env': env
 #if WASM_BACKEND == 0
@@ -1018,7 +1025,7 @@ function createWasm(env) {
     Module['asm'] = exports;
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
-    Module['wasmModule'] = module;
+    wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
 #else
@@ -1122,10 +1129,10 @@ var wasmReallocBuffer = function(size) {
   var oldSize = old.byteLength;
   // native wasm support
   try {
-    var result = Module['wasmMemory'].grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
+    var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
     if (result !== (-1 | 0)) {
       // success in native wasm memory growth, get the buffer from the memory
-      return Module['buffer'] = Module['wasmMemory'].buffer;
+      return Module['buffer'] = wasmMemory.buffer;
     } else {
       return null;
     }
@@ -1141,37 +1148,28 @@ Module['reallocBuffer'] = function(size) {
   return wasmReallocBuffer(size);
 };
 
-// Potentially used for direct table calls.
-var wasmTable;
-
 // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
 // the wasm module at that time, and it receives imports and provides exports and so forth, the app
 // doesn't need to care that it is wasm or asm.js.
 
 Module['asm'] = function(global, env, providedBuffer) {
+  // memory was already allocated (so js could use the buffer)
+  env['memory'] = wasmMemory;
   // import table
-  if (!env['table']) {
-    wasmTable = env['table'] = new WebAssembly.Table({
-      'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+  env['table'] = wasmTable = new WebAssembly.Table({
+    'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
-      'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #endif // WASM_BACKEND
-      'element': 'anyfunc'
-    });
-  }
+    'element': 'anyfunc'
+  });
+  env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
+  env['__table_base'] = 0; // table starts at 0 by default (even in dynamic linking, for the main module)
 
-  if (!env['__memory_base']) {
-    env['__memory_base'] = Module['STATIC_BASE']; // tell the memory segments where to place themselves
-  }
-  if (!env['__table_base']) {
-    env['__table_base'] = 0; // table starts at 0 by default, in dynamic linking this will change
-  }
   var exports = createWasm(env);
-
 #if ASSERTIONS
   assert(exports, 'binaryen setup failed (no wasm support?)');
 #endif
-
   return exports;
 };
 #endif
