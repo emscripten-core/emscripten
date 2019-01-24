@@ -32,6 +32,11 @@ var wasmMemory;
 // Potentially used for direct table calls.
 var wasmTable;
 
+#if USE_PTHREADS
+// For sending to workers.
+var wasmModule;
+#endif
+
 //========================================
 // Runtime essentials
 //========================================
@@ -1020,7 +1025,7 @@ function createWasm(env) {
     Module['asm'] = exports;
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
-    Module['wasmModule'] = module;
+    wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
 #else
