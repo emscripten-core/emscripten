@@ -280,13 +280,13 @@ def main():
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
-      build_port('bullet', static_library_name('libbullet'), ['-s', 'USE_BULLET=1'])
+      build_port('bullet', 'libbullet.bc', ['-s', 'USE_BULLET=1'])
     elif what == 'vorbis':
-      build_port('vorbis', static_library_name('libvorbis'), ['-s', 'USE_VORBIS=1'])
+      build_port('vorbis', 'libvorbis.bc', ['-s', 'USE_VORBIS=1'])
     elif what == 'ogg':
-      build_port('ogg', static_library_name('libogg'), ['-s', 'USE_OGG=1'])
+      build_port('ogg', 'libogg.bc', ['-s', 'USE_OGG=1'])
     elif what == 'libpng':
-      build_port('libpng', static_library_name('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+      build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build_port('sdl2', static_library_name('libsdl2'), ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-gfx':
