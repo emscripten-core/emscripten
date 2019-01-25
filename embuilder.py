@@ -36,19 +36,10 @@ Available operations and tasks:
         libc-mt
         libc-extras
         struct_info
-        emmalloc
-        emmalloc_debug
-        dlmalloc
-        dlmalloc_debug
-        dlmalloc_threadsafe
-        dlmalloc_threadsafe_debug
-        dlmalloc_noerrno
-        dlmalloc_debug_noerrno
-        dlmalloc_threadsafe_noerrno
-        dlmalloc_threadsafe_debug_noerrno
+        emmalloc[_debug]
+        dlmalloc[_debug][_noerrno][_threadsafe][_tracing]
         pthreads
-        libc++
-        libc++_noexcept
+        libc++[_noexcept]
         libc++abi
         gl
         gl-mt
@@ -110,12 +101,15 @@ CXX_WITH_STDLIB = '''
 
 SYSTEM_TASKS = [
     'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
-    'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
-    'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++', 'libc++_noexcept',
-    'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
-    'dlmalloc_noerrno', 'dlmalloc_threadsafe_noerrno',
+    'emmalloc', 'emmalloc_debug', 'pthreads', 'libc++', 'libc++_noexcept',
     'libc++abi', 'html5'
 ]
+for debug in ['', '_debug']:
+  for noerrno in ['', '_noerrno']:
+    for threadsafe in ['', '_threadsafe']:
+      for tracing in ['', '_tracing']:
+        SYSTEM_TASKS += ['dlmalloc' + debug + noerrno + threadsafe + tracing]
+
 USER_TASKS = [
     'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
     'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
@@ -163,7 +157,7 @@ def main():
     auto_tasks = True
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
-      skip_tasks = {'libc-mt', 'gl-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
+      skip_tasks = [task for task in SYSTEM_TASKS + USER_TASKS if '-mt' in task or 'thread' in task]
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
@@ -199,22 +193,19 @@ def main():
       build(C_WITH_MALLOC, ['libemmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
       build(C_WITH_MALLOC, ['libemmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
-    elif what == 'dlmalloc':
-      build(C_WITH_MALLOC, ['libdlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_debug':
-      build(C_WITH_MALLOC, ['libdlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_threadsafe_debug':
-      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
-    elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
-      build(C_WITH_MALLOC, ['libc-mt.bc', 'libdlmalloc_threadsafe.bc', 'libpthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_noerrno':
-      build(C_WITH_MALLOC, ['libdlmalloc_noerrno.bc'], ['-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_debug_noerrno':
-      build(C_WITH_MALLOC, ['libdlmalloc_debug_noerrno.bc'], ['-g', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_threadsafe_debug_noerrno':
-      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_debug_noerrno.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_threadsafe_noerrno':
-      build(C_WITH_MALLOC, ['libdlmalloc_threadsafe_noerrno.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
+    elif what.startswith('dlmalloc'):
+      cmd = ['-s', 'MALLOC="dlmalloc"']
+      if '_debug' in what:
+        cmd += ['-g']
+      if '_noerrno' in what:
+        cmd += ['-s', 'SUPPORT_ERRNO=0']
+      if '_threadsafe' in what:
+        cmd += ['-s', 'USE_PTHREADS=1']
+      if '_tracing' in what:
+        cmd += ['-s', 'EMSCRIPTEN_TRACING=1']
+      build(C_WITH_MALLOC, ['lib' + what + '.bc'], cmd)
+    elif what in ('libc-mt', 'pthreads'):
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'libpthreads.bc'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libc-wasm':
       build(C_WITH_STDLIB, ['libc-wasm.bc'], ['-s', 'WASM=1'])
     elif what == 'libc++':
