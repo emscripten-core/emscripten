@@ -480,51 +480,53 @@ f.close()
   # cache on demand, that exactly one of the processes will, and the other
   # processes will block to wait until that process finishes.
   def test_emcc_multiprocess_cache_access(self):
-    create_test_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    cache_dir_name = self.in_dir('emscripten_cache')
-    tasks = []
-    num_times_libc_was_built = 0
-    for i in range(3):
-      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
-      tasks += [p]
-    for p in tasks:
-      print('stdout:\n', p.stdout)
-      if 'generating system library: libc' in p.stdout:
-        num_times_libc_was_built += 1
-    # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
-    # The cache directory must contain a built libc
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
-    # Exactly one child process should have triggered libc build!
-    self.assertEqual(num_times_libc_was_built, 1)
+    with env_modify({'EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS': '0'}):
+      create_test_file('test.c', r'''
+        #include <stdio.h>
+        int main() {
+          printf("hello, world!\n");
+          return 0;
+        }
+        ''')
+      cache_dir_name = self.in_dir('emscripten_cache')
+      tasks = []
+      num_times_libc_was_built = 0
+      for i in range(3):
+        p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+        tasks += [p]
+      for p in tasks:
+        print('stdout:\n', p.stdout)
+        if 'generating system library: libc' in p.stdout:
+          num_times_libc_was_built += 1
+      # The cache directory must exist after the build
+      self.assertTrue(os.path.exists(cache_dir_name))
+      # The cache directory must contain a built libc
+      if self.is_wasm_backend():
+        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      else:
+        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+      # Exactly one child process should have triggered libc build!
+      self.assertEqual(num_times_libc_was_built, 1)
 
   def test_emcc_cache_flag(self):
-    cache_dir_name = self.in_dir('emscripten_cache')
-    self.assertFalse(os.path.exists(cache_dir_name))
-    create_test_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
-    # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
-    # The cache directory must contain a built libc'
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    with env_modify({'EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS': '0'}):
+      cache_dir_name = self.in_dir('emscripten_cache')
+      self.assertFalse(os.path.exists(cache_dir_name))
+      create_test_file('test.c', r'''
+        #include <stdio.h>
+        int main() {
+          printf("hello, world!\n");
+          return 0;
+        }
+        ''')
+      run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+      # The cache directory must exist after the build
+      self.assertTrue(os.path.exists(cache_dir_name))
+      # The cache directory must contain a built libc'
+      if self.is_wasm_backend():
+        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      else:
+        self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
   @uses_canonical_tmp
   def test_emcc_cflags(self):

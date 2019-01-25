@@ -748,7 +748,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
       ([PYTHON, EMBUILDER, 'build', 'sdl2-mixer'], ['building and verifying sdl2-mixer', 'success'], True, ['sdl2-mixer.bc']),
       ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
-      ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libcocos2d.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libc-wasm'], ['building and verifying libc-wasm', 'success'], True, ['libc-wasm.bc']),
       ([PYTHON, EMBUILDER, 'build', 'regal'], ['building and verifying regal', 'success'], True, ['regal.bc']),
     ]
