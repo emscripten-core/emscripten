@@ -2246,7 +2246,7 @@ int f() {
       else:
         print('(skip non-native)')
 
-      if tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
+      if not self.is_wasm_backend() and tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           run_process(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w'))
@@ -7397,6 +7397,7 @@ int main() {
     self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value.js',
                                          'test-function-eliminator-replace-variable-value-output.js')
 
+  @no_wasm_backend('tests asm.js optimizer')
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).
