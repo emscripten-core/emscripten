@@ -502,7 +502,7 @@ f.close()
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
     # Exactly one child process should have triggered libc build!
@@ -523,7 +523,7 @@ f.close()
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc'
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.a')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
@@ -7045,6 +7045,7 @@ int main() {
     test('hello_123.c', ['-O1'], 1, 2)
     test('fasta.cpp', ['-O3', '-g2'], 2, 12)
 
+  @no_wasm_backend('tests our python linking logic')
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
     if not os.path.exists(with_space):
