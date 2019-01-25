@@ -43,6 +43,7 @@ Available operations and tasks:
         libc++abi
         gl
         gl-mt
+        gl-emu
         native_optimizer
         binaryen
         bullet
@@ -101,7 +102,7 @@ CXX_WITH_STDLIB = '''
       '''
 
 SYSTEM_TASKS = [
-    'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
+    'al', 'compiler-rt', 'gl', 'gl-mt', 'gl-emu', 'libc', 'libc-mt', 'libc-extras',
     'emmalloc', 'emmalloc_debug', 'pthreads', 'libc++', 'libc++_noexcept',
     'libc++abi', 'html5'
 ]
@@ -237,6 +238,13 @@ def main():
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', ['libgl-mt.bc'], ['-s', 'USE_PTHREADS=1'])
+    elif what == 'gl-emu':
+      build('''
+        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
+        int main() {
+          return int(emscripten_GetProcAddress("waka waka"));
+        }
+      ''', ['libgl-emu.bc'], ['-s', 'LEGACY_GL_EMULATION=1'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':
