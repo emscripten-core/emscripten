@@ -510,6 +510,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
     # intrinsics. But for wasm, we need a better solution. For now, make another archive
     # that gets included at the same time as compiler-rt.
+    # Note that this also includes things that may be depended on by those functions - fmin
+    # uses signbit, for example, so signbit must be here (so if fmin is added by codegen,
+    # it will have all it needs).
     math_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
       filenames=[
@@ -518,7 +521,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'fmod.c', 'fmodf.c', 'fmodl.c',
         'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
         'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c'
+        'scalbn.c', '__fpclassifyl.c',
+        '__signbitl.c', '__signbitf.c', '__signbit.c'
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],

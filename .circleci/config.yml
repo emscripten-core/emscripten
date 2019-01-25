@@ -358,6 +358,10 @@ jobs:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+  test-upstream-binaryen0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen0
   test-upstream-binaryen2:
     <<: *test-defaults
     environment:
@@ -435,6 +439,9 @@ workflows:
           requires:
             - build
       - build-upstream
+      - test-upstream-binaryen0:
+          requires:
+            - build-upstream
       - test-upstream-binaryen2:
           requires:
             - build-upstream
