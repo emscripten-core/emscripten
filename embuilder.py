@@ -51,6 +51,7 @@ Available operations and tasks:
         ogg
         sdl2
         sdl2-image
+        sdl2-image-png
         sdl2-mixer
         sdl2-ttf
         sdl2-net
@@ -278,6 +279,8 @@ def main():
       build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'sdl2-image-png':
+      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
