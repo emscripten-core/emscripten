@@ -116,7 +116,7 @@ USER_TASKS = [
     'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
     'sdl2-gfx', 'sdl2-image', 'sdl2-image-png',
     'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
-    'vorbis', 'zlib', 'regal'
+    'vorbis', 'zlib', 'regal', 'cocos2d'
 ]
 
 temp_files = shared.configuration.get_temp_files()
