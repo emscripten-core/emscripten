@@ -135,6 +135,7 @@ class browser(BrowserCore):
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
+  @no_wasm_backend('wasm source maps')
   def test_zzz_html_source_map(self):
     if not has_browser():
       self.skipTest('need a browser')
@@ -762,6 +763,7 @@ window.close = function() {
     create_test_file('data.txt', 'datum')
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
+  @no_chrome('see #7930')
   @requires_graphics_hardware
   def test_glgears_proxy(self):
     # we modify the asm.js, this is a non-wasm test
@@ -2166,6 +2168,7 @@ void *getBindBuffer() {
     for mem in [0, 1]:
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
+  @no_wasm_backend('mem init file')
   def test_mem_init(self):
     create_test_file('pre.js', '''
       function myJSCallback() { // called from main()
@@ -2196,6 +2199,7 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
+  @no_wasm_backend('mem init file')
   def test_mem_init_request(self):
     def test(what, status):
       print(what, status)
@@ -2491,11 +2495,14 @@ Module["preRun"].push(function () {
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
+  @no_chrome('see #7930')
+  @requires_threads
   def test_html5(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
+  @requires_threads
   def test_html5_gamepad(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
@@ -2508,6 +2515,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0', timeout=20)
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
+  @requires_threads
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS=1']]:
@@ -3259,6 +3267,7 @@ window.close = function() {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @no_wasm_backend('cannot customize TOTAL_MEMORY in wasm at runtime')
   def test_modularize_and_preload_files(self):
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
@@ -3876,6 +3885,7 @@ window.close = function() {
       create_test_file('test.html', '<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0')
 
+  @no_wasm_backend('mem init file')
   def test_in_flight_memfile_request(self):
     # test the XHR for an asm.js mem init file being in flight already
     for o in [0, 1, 2]:
