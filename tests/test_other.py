@@ -722,7 +722,10 @@ f.close()
     with temp_directory(self.get_dir()) as tempdirname:
       run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
       run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
+      if self.is_wasm_backend():
+        assert Building.is_wasm(os.path.join(tempdirname, 'libstatic_lib.bc'))
+      else:
+        assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
       assert not Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
 
     # Test that one is able to fake custom suffixes for static libraries.
@@ -2422,6 +2425,7 @@ int f() {
         output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0, engine=NODE_JS)
         assert "FAIL" not in output, output
 
+  @no_wasm_backend('cannot nativize a wasm object file (...yet?)')
   @no_windows('test_llvm_nativizer does not work on Windows')
   def test_llvm_nativizer(self):
     if MACOS:
