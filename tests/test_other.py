@@ -548,6 +548,7 @@ f.close()
     assert not output.stderr
     self.assertContained('LLVM', output.stdout)
 
+  @no_wasm_backend("see https://bugs.llvm.org/show_bug.cgi?id=40470")
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
@@ -7479,6 +7480,7 @@ int main() {
     stderr = run_process([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE, check=False).stderr
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
+  @no_wasm_backend('assumes object files are bitcode')
   def test_disable_inlining(self):
     create_test_file('test.c', r'''
 #include <stdio.h>
@@ -7496,14 +7498,12 @@ int main() {
     run_process([PYTHON, EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1'])
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
-    Building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test.bc')
+    Building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test2.bc')
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = Building.llvm_nm('test.bc', include_internal=True)
+    syms = Building.llvm_nm('test2.bc', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
-    try_delete('test.c')
-    try_delete('test.bc')
 
   @no_wasm_backend()
   def test_output_eol(self):
