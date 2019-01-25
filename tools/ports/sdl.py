@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'version_16'
+TAG = 'no-global-SDL2-in-JS' # https://github.com/emscripten-ports/SDL2/pull/71
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
