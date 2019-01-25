@@ -372,6 +372,7 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=wasmobj2
+      - EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS=0 # embuilder doesn't build both wasm-bc and wasm-obj dirs, we can remove this when we switch to just wasm-obj
   test-upstream-other:
     <<: *test-defaults
     environment:
