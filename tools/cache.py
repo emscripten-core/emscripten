@@ -102,6 +102,15 @@ class Cache(object):
     try:
       if os.path.exists(cachename) and not force:
         return cachename
+      # it doesn't exist yet, create it
+      error = os.environ.get('EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS')
+      if error and error != '0':
+        # set this env var (to != '0') get an error if a system lib or port is built -
+        # this lets you guarantee on your bots that everything has been
+        # prebuilt
+        WHITELIST = ['is_vanilla.txt']
+        if shortname not in WHITELIST:
+          raise Exception('EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS disallows building system libs: %s' % shortname)
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
         else: what = 'system asset'
