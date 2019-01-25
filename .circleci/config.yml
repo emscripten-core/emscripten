@@ -318,6 +318,7 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=sanity
+      - EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS=0
   build-upstream:
     <<: *defaults
     working_directory: ~/
