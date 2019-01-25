@@ -352,6 +352,8 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
+          environment:
+            EMCC_ERROR_ON_BUILDING_SYSTEM_LIBS: 0
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
