@@ -15,13 +15,20 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
- - System librarys have been renamed to include the `lib` prefix.  If you use
-   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libaries
+ - Remove BINARYEN_METHOD: no more support for interpret modes, and if you want
+   non-wasm, use WASM=0.
+
+v1.38.22: 01/08/2019
+--------------------
+ - Add Regal port. See #7674
+ - System libraries have been renamed to include the `lib` prefix.  If you use
+   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libraries
    you may need to add the `lib` prefix.
  - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
    name of your application, that is, if you emit `program.js` then you'll get
    `program.worker.js` (this allows more than one to exist in the same
    directory, etc.).
+ - Dynamic linker has been taught to handle library -> library dependencies.
 
 v1.38.21: 11/30/2018
 --------------------

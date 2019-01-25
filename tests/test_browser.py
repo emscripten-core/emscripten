@@ -1437,6 +1437,13 @@ keydown(100);keyup(100); // trigger the end
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
+  def test_sdl_ogl_regal(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
+    self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
+               message='You should see an image with gray at the top.')
+
+  @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
@@ -1874,6 +1881,11 @@ keydown(100);keyup(100); // trigger the end
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
+  def test_cubegeom_pre_regal(self):
+    self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
   @requires_sync_compilation
   def test_cubegeom_pre_relocatable(self):
     self.btest('cubegeom_pre.c', reference='cubegeom_pre.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL', '-s', 'RELOCATABLE=1'])
@@ -1891,6 +1903,10 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_cubegeom(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_graphics_hardware
+  def test_cubegeom_regal(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -1961,6 +1977,11 @@ void *getBindBuffer() {
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
     self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+
+  @requires_graphics_hardware
+  @no_swiftshader
+  def test_cubegeom_pre_vao_regal(self):
+    self.btest('cubegeom_pre_vao.c', reference='cubegeom_pre_vao.png', args=['-s', 'USE_REGAL=1', '-DUSE_REGAL', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
@@ -3068,6 +3089,11 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), 'sound.ogg')
     self.btest('sdl2_mixer.c', expected='1', args=['--preload-file', 'sound.ogg', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
 
+  @requires_sound_hardware
+  def test_sdl2_mixer_wav(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
+    self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
+
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
@@ -3822,10 +3848,6 @@ window.close = function() {
       print('default html')
       self.btest('in_flight_memfile_request.c', expected='0' if o < 2 else '1', args=opts) # should happen when there is a mem init file (-O2+)
 
-  def test_binaryen_interpreter(self):
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"'])
-    self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'BINARYEN=1', '-s', 'BINARYEN_METHOD="interpret-binary"', '-O2'])
-
   @requires_sync_compilation
   def test_binaryen_async(self):
     # notice when we use async compilation
@@ -3862,7 +3884,6 @@ window.close = function() {
       (['-O3'], 1),
       (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
       (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
-      (['-s', 'BINARYEN_ASYNC_COMPILATION=1', '-s', 'BINARYEN_METHOD="interpret-binary"'], 0), # try to force it on, but have it disabled
     ]:
       print(opts, expect)
       self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
@@ -3898,6 +3919,16 @@ window.close = function() {
   def test_utf16_textdecoder(self):
     self.btest('benchmark_utf16.cpp', expected='0', args=['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["UTF16ToString","stringToUTF16","lengthBytesUTF16"]'])
 
+  def test_TextDecoder(self):
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=0'])
+    just_fallback = os.path.getsize('test.js')
+    self.btest('browser_test_hello_world.c', '0')
+    td_with_fallback = os.path.getsize('test.js')
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'TEXTDECODER=2'])
+    td_without_fallback = os.path.getsize('test.js')
+    self.assertLess(td_without_fallback, just_fallback)
+    self.assertLess(just_fallback, td_with_fallback)
+
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
   @no_chrome('see #7374')
@@ -3928,6 +3959,20 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
+
+  # Tests that offscreen framebuffer state restoration works
+  @requires_graphics_hardware
+  def test_webgl_offscreen_framebuffer_state_restoration(self):
+    for args in [
+        # full state restoration path
+        ['-s', 'USE_WEBGL2=0', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        # VAO path
+        ['-s', 'USE_WEBGL2=0'],
+        # blitFramebuffer path
+        ['-s', 'USE_WEBGL2=1'],
+      ]:
+      cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
+      self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
 
   # Tests that -s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1 rendering works.
   @requires_graphics_hardware
@@ -4149,7 +4194,7 @@ window.close = function() {
 
   # Tests that base64 utils work in browser with no native atob function
   def test_base64_atob_fallback(self):
-    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='interpret-binary'"]
+    opts = ['-s', 'SINGLE_FILE=1', '-s', 'WASM=1']
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -4177,7 +4222,7 @@ window.close = function() {
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
-    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"], also_proxied=True)
+    self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
 
   # Tests that SINGLE_FILE works as intended with locateFile
@@ -4212,7 +4257,7 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1', '-s', "BINARYEN_METHOD='native-wasm'"])
+    run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     assert os.path.exists('test.js') and not os.path.exists('test.worker.js')

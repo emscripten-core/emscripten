@@ -59,22 +59,22 @@ Windows
 
   .. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
 
-Mac OS X
-++++++++
+macOS
++++++
 
 If you use MacOS 10.13.3 or later then you should have a new enough version of Python installed (older versions may not work due to `a GitHub change with SSL <https://github.com/kripken/emscripten/issues/6275>`_). Otherwise you can manually install and use Python 2.7.12 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools <toolchain-what-you-need>`. You can :ref:`test whether some of these are already installed <toolchain-test-which-dependencies-are-installed>` on the platform and skip those steps.
 
-#. Install the *XCode Command Line Tools*. These are a precondition for *git*.
+#. Install the *Xcode Command Line Tools*. These are a precondition for *git*.
 
-  -  Install XCode from the `Mac OS X App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-  -  In **XCode | Preferences | Downloads**, install *Command Line Tools*.
+  -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+  -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
 
   - `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
-  - Install XCode and the XCode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+  - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
   - Download and install git directly from http://git-scm.com/.
 
 #. Install *cmake* if you do not have it yet:
@@ -83,7 +83,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *node.js* from http://nodejs.org/
 
-  .. _getting-started-on-osx-install-python2:
+  .. _getting-started-on-macos-install-python2:
 
 Linux
 ++++++++

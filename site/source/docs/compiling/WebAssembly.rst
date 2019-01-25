@@ -25,36 +25,6 @@ WebAssembly is emitted by default, without the need for any special flags.
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which will be automatically fetched and built for you (you may see logging about that, the first time you compile to WebAssembly).
 .. note:: The ``WASM``, ``BINARYEN*``, etc. options only matter when compiling to your final executable. In other words, the same .o files are used for both asm.js and WebAssembly. Only when linking them and compiling to asm.js or WebAssembly do you need to specify WebAssembly if you want that. That means that it is easy to build your project to both asm.js and WebAssembly.
 
-Binaryen methods
-================
-
-When using Binaryen with Emscripten, it can load the compiled code using one of several methods. By setting ``-s BINARYEN_METHOD='..'`` you can specify those methods, as a comma-separated list (note: on the commandline you might need to quote twice, ``-s "BINARYEN_METHOD='..'"``). It will try them one by one, which allows fallbacks.
-
-By default, it will try native support. The full list of methods is
-
-- ``native-wasm``: Use native binary wasm support in the browser.
-- ``interpret-s-expr``: Load a ``.wast``, which contains wasm in s-expression format, and interpret it.
-- ``interpret-binary``: Load a ``.wasm``, which contains wasm in binary format, and interpret it.
-- ``interpret-asm2wasm``: Load ``.asm.js``, compile to wasm on the fly, and interpret that.
-- ``asmjs``: Load ``.asm.js`` and just run it, no wasm. Useful for comparisons, or as a fallback for browsers without WebAssembly support.
-
-For more details, see the function ``integrateWasmJS`` in :ref:`preamble-js`, which is where all the integration between JavaScript and WebAssembly happens.
-
-Codegen effects
----------------
-
-Note that the methods you specify affect what is emitted. For example, ``-s "BINARYEN_METHOD='native-wasm,asmjs'"`` will try native support, and if that fails, will use asm.js. This avoids using the WebAssembly polyfill interpreter in both cases, so the interpreter won't be linked in to your code.
-
-Another effect is that if you specify ``asmjs`` as one of the methods, then you will get a "compromise" build:
-
-- Some WebAssembly-specific optimizations will be prevented (like native i64s).
-- Build times will be slower than a WebAssembly-only build (in which we would use only the fast Binaryen optimizer; but for asm.js, we can't do that).
-- The asm.js code will be marked ``"almost asm"`` instead of ``"use asm"``, as a build that does either WebAssembly or asm.js will use a WebAssembly Memory during startup, and that is not compatible with asm.js optimizations.
-
-Furthermore, if you have more than one method, i.e. if you want to potentially use a fallback method, then we try the methods synchronously, which disables asynchronous compilation, which makes startup slower and also may not work in all browsers.
-
-As a result, if you want maximal performance, instead of using ``native-wasm,asmjs`` (which would try WebAssembly and fall back to asm.js if necessary), you can create two separate builds as described earlier, and run the asm.js one if WebAssembly is not present in the user's browser.
-
 Binaryen codegen options
 ========================
 
@@ -96,7 +66,7 @@ asm.js support is considered very stable now, and you can change between it and 
 - wasm allows unaligned accesses, i.e. it will load 4 bytes from an unaligned address the same way x86 does (it doesn't care it's unaligned). asm.js works more like ARM CPUs which mostly don't accept such things (but they often trap, while asm.js just returns a wrong result). To rule this out, you can build with ``-s SAFE_HEAP=1``, that will catch all such invalid accesses.
 - Timing issues - wasm might run faster or slower. To some extent you can mitigate that by building with ``-s DETERMINISTIC=1``.
 - Trap mode. As mentioned above, we can generate wasm that traps or that avoids traps. Make sure the trap mode is ``"js"`` when comparing builds. The ``"js"`` trap mode is also useful in a single build, as otherwise operations like division or float-to-int may trap, and the optimizer may happen to change whether a trap occurs or not, which can be confusing (for example, enabling ``SAFE_HEAP`` may prevent some optimizations, and a trap may start to occur). Instead, in the ``"js"`` trap mode there are no traps and all operations are deterministically defined as identical to JavaScript.
-- Minor libc and runtime differences. To eliminate any possible difference due to that, use builds that support both, i.e. use the same runtime etc. for both approaches, using e.g. ``-s "BINARYEN_METHOD='native-wasm,asmjs'"`` for a build that can do both, but defaults to wasm, and ``-s "BINARYEN_METHOD='asmjs,native-wasm'"`` for what is an identical build that does asm.js first. (In fact, since the builds are identical, you can make one and edit the native-wasm,asmjs string manually in the generated JS, to switch between asm.js and wasm.) Note: Such builds disable some optimizations, as mentioned above, so it's not a good idea in general.
+- Minor libc and runtime differences exist between wasm and asm.js. We used to have a way to emit more compatable builds (``-s "BINARYEN_METHOD='asmjs,native-wasm'"`` etc.) but due to its complexity and low value it was removed.
 - Floating-point behavior: WebAssembly uses 32-bit floats in a standard way, while asm.js by default implements floats using doubles. That can lead to differences in the precision of results. You can force 32-bit float behavior in asm.js with ``-s PRECISE_F32=1``, in which case it should be identical to wasm.
 - Browser instability: It's worth testing multiple browsers, as one might have a wasm bug that another doesn't. You can also test the Binaryen interpreter (e.g. using the ``interpret-binary`` method, as discussed above).
 

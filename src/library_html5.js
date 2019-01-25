@@ -2074,7 +2074,15 @@ var LibraryJSEvents = {
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 1, 'i32') }}};
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 0, 'i32') }}};
-    {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 1, 'i32') }}};
+#if USE_PTHREADS
+    // Default context initialization state (user can override):
+    // - if main thread is creating the context, default to the context not being shared between threads - enabling sharing has performance overhead, because it forces the context to be OffscreenCanvas or OffscreenFramebuffer.
+    // - if a web worker is creating the context, default to using OffscreenCanvas if available, or proxying via Offscreen Framebuffer if not
+    if (ENVIRONMENT_IS_WORKER) {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 1/*EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK*/, 'i32') }}};
+    else
+#endif
+      {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 0/*EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW*/, 'i32') }}};
+
     {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 0, 'i32') }}};
   },
 
@@ -2272,7 +2280,7 @@ var LibraryJSEvents = {
 #if OFFSCREEN_FRAMEBUFFER
     if (GL.currentContext.defaultFbo) {
       GL.blitOffscreenFramebuffer(GL.currentContext);
-#if GL_DEBUG
+#if GL_DEBUG && OFFSCREENCANVAS_SUPPORT
       if (GL.currentContext.GLctx.commit) console.error('emscripten_webgl_commit_frame(): Offscreen framebuffer should never have gotten created when canvas is in OffscreenCanvas mode, since it is redundant and not necessary');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -2419,24 +2427,29 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread: function(targetThread, targetCanvas, width, height) {
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
-
-    // TODO: This could be optimized a bit (basically a dumb encoding agnostic strdup)
-    var targetStr = targetCanvas ? Pointer_stringify(targetCanvas) : 0;
-    var targetStrHeap = targetStr ? _malloc(targetStr.length+1) : 0;
-    if (targetStrHeap) stringToUTF8(targetStr, targetStrHeap, targetStr.length+1);
-
-    {{{ makeSetValue('varargs', 0, 'targetStrHeap', 'i32')}}};
+    var targetCanvasPtr = 0;
+    if (targetCanvas) {
+      targetCanvasPtr = stringToNewUTF8(targetCanvas);
+    }
+    {{{ makeSetValue('varargs', 0, 'targetCanvasPtr', 'i32')}}};
     {{{ makeSetValue('varargs', 4, 'width', 'i32')}}};
     {{{ makeSetValue('varargs', 8, 'height', 'i32')}}};
     // Note: If we are also a pthread, the call below could theoretically be done synchronously. However if the target pthread is waiting for a mutex from us, then
     // these two threads will deadlock. At the moment, we'd like to consider that this kind of deadlock would be an Emscripten runtime bug, although if
     // emscripten_set_canvas_element_size() was documented to require running an event in the queue of thread that owns the OffscreenCanvas, then that might be ok.
     // (safer this way however)
-    _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetStrHeap /* satellite data */, varargs);
+    _emscripten_async_queue_on_thread_(targetThread, {{{ cDefine('EM_PROXIED_RESIZE_OFFSCREENCANVAS') }}}, 0, targetCanvasPtr /* satellite data */, varargs);
     stackRestore(stackTop);
+  },
+
+  emscripten_set_offscreencanvas_size_on_target_thread__deps: ['emscripten_set_offscreencanvas_size_on_target_thread_js'],
+  emscripten_set_offscreencanvas_size_on_target_thread: function(targetThread, targetCanvas, width, height) {
+    targetCanvas = targetCanvas ? Pointer_stringify(targetCanvas) : '';
+    _emscripten_set_offscreencanvas_size_on_target_thread_js(targetThread, targetCanvas, width, height);
   },
 
   emscripten_set_canvas_element_size_main_thread__proxy: 'sync',

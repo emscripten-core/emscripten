@@ -13,19 +13,11 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
-#endif
 
 function staticAlloc(size) {
-#if ASSERTIONS
-  assert(!staticSealed);
-#endif
-  var ret = STATICTOP;
-  STATICTOP = (STATICTOP + size + 15) & -16;
-#if ASSERTIONS
-  assert(STATICTOP < TOTAL_MEMORY, 'not enough memory for static allocation - increase TOTAL_MEMORY');
-#endif
-  return ret;
+  abort('staticAlloc is no longer available at runtime; instead, perform static allocations at compile time (using makeStaticAlloc)');
 }
+#endif
 
 function dynamicAlloc(size) {
 #if ASSERTIONS
@@ -427,7 +419,7 @@ function loadWebAssemblyModule(binary, flags) {
           var name = prop.substr(2); // without g$ prefix
           return env[prop] = function() {
 #if ASSERTIONS
-            assert(Module[name], 'missing linked global ' + name);
+            assert(Module[name], 'missing linked global ' + name + '. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
             return Module[name];
           };
@@ -442,7 +434,7 @@ function loadWebAssemblyModule(binary, flags) {
         // if not a global, then a function - call it indirectly
         return env[prop] = function() {
 #if ASSERTIONS
-          assert(Module[prop], 'missing linked function ' + prop);
+          assert(Module[prop], 'missing linked function ' + prop + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
           return Module[prop].apply(null, arguments);
         };

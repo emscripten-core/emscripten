@@ -120,14 +120,8 @@ The :ref:`browser execution environment reference (emscripten.h) <emscripten-h-b
 Emscripten memory representation
 ================================
 
-Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents memory using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.)
+In both asm.js and WebAssembly Emscripten represents memory in a way similar to native architectures. Pointers represent offsets into memory, structs use the same amount of address space as they normally do, and so forth.
 
-.. note:: *Typed Arrays Mode 2* is the *only* memory model supported by the :ref:`Fastcomp <LLVM-Backend>` compiler, and it is the *default* memory model for the :ref:`old compiler <original-compiler-core>`.
+In WebAssembly, this is done using a ``WebAssembly.Memory`` which was designed for that purpose. In asm.js, Emscripten uses a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.).
 
-  Compared to other models tried by the project, it can be used for a broad range of arbitrary compiled code, and is relatively fast.
-
-The model lays out items in memory in the same way as with normal C and C++, and as a result it uses the same amount of memory.
-
-This model allows you to use code that violates the :term:`load-store consistency` assumption. Since the different views show the same data, you can (say) write a 32-bit integer, then read a byte from the middle, and it will work just like in a native build of C or C++ on most platforms.
-
-
+Emscripten experimented with other memory representations in the past, ending up on the "typed arrays mode 2" approach for JS and then asm.js, as described above, and then WebAssembly implemented something similar.
