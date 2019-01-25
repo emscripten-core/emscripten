@@ -724,7 +724,7 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_noerrno.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['libdlmalloc_threadsafe.bc']),
       ([PYTHON, EMBUILDER, 'build', 'dlmalloc_tracing'], ['building and verifying dlmalloc_tracing', 'success'], True, ['libdlmalloc_tracing.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug_noerrno_threadsafe_tracing'], ['building and verifying dlmalloc', 'success'], True, ['dlmalloc_debug_noerrno_threadsafe_tracing.bc']),
+      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug_noerrno_threadsafe_tracing'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_debug_noerrno_threadsafe_tracing.bc']),
       ([PYTHON, EMBUILDER, 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc.bc']),
       ([PYTHON, EMBUILDER, 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc_debug.bc']),
       ([PYTHON, EMBUILDER, 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['libpthreads.bc']),
