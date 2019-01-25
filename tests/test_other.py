@@ -523,7 +523,7 @@ f.close()
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc'
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
