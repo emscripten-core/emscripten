@@ -241,6 +241,7 @@ class TestCoreBase(RunnerCore):
 
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
+  @no_wasm_backend('test looks for js impls of intrinsics')
   def test_lower_intrinsics(self):
     self.emcc_args += ['-g1']
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
