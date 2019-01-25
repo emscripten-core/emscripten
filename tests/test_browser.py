@@ -2140,6 +2140,7 @@ void *getBindBuffer() {
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
 
+  @no_wasm_backend('dynamic linking')
   def test_runtimelink(self):
     for wasm in [0, 1]:
       print(wasm)
@@ -2341,6 +2342,7 @@ void *getBindBuffer() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORT_ALL=1'], expected='8')
 
+  @no_wasm_backend('dynamic linking')
   def test_preload_module(self):
     create_test_file('library.c', r'''
       #include <stdio.h>
@@ -3299,6 +3301,7 @@ window.close = function() {
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
+  @no_wasm_backend('dynamic linking')
   @requires_sync_compilation
   def test_dynamic_link(self):
     create_test_file('pre.js', '''
@@ -3411,6 +3414,7 @@ window.close = function() {
 
     super(browser, self)._test_dylink_dso_needed(do_run)
 
+  @no_wasm_backend('dynamic linking')
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):
