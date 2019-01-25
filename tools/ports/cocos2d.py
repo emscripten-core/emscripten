@@ -64,7 +64,7 @@ def get(ports, settings, shared):
       final = os.path.join(ports.get_build_dir(), 'Cocos2d', 'libCocos2d.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('libCocos2d', create, what='port')]
+    return [shared.Cache.get('cocos2d', create, what='port')]
   else:
     return []
 
