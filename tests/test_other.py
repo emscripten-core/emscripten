@@ -202,6 +202,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.assertContained('errors generated', process.stderr)
       assert 'compiler frontend failed to generate LLVM bitcode, halting' in process.stderr.split('errors generated.')[1]
 
+  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40471')
   def test_emcc_2(self):
     for compiler in [EMCC, EMXX]:
       suffix = '.c' if compiler == EMCC else '.cpp'
@@ -3659,6 +3660,7 @@ Waste<3> *getMore() {
       else:
         self.assertNotContained('_GLOBAL_', src)
 
+  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40472')
   def test_implicit_func(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
