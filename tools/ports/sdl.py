@@ -325,7 +325,7 @@ sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by c
 /* #undef SDL_VIDEO_DRIVER_COCOA */
 /* #undef SDL_VIDEO_DRIVER_DIRECTFB */
 /* #undef SDL_VIDEO_DRIVER_DIRECTFB_DYNAMIC */
-#define SDL_VIDEO_DRIVER_DUMMY 1
+/* #undef SDL_VIDEO_DRIVER_DUMMY */
 /* #undef SDL_VIDEO_DRIVER_WINDOWS */
 /* #undef SDL_VIDEO_DRIVER_WAYLAND */
 /* #undef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
