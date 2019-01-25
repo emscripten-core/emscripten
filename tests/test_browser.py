@@ -175,6 +175,7 @@ If manually bisecting:
   through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
+  @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
     # TODO: wasm support for source maps
     src = 'src.cpp'
@@ -2585,6 +2586,7 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
+  @no_wasm_backend('asm.js-specific')
   def test_codemods(self):
     # tests asm.js client-side code modifications
     for opt_level in [0, 2]:
@@ -4422,9 +4424,11 @@ window.close = function() {
   def test_emscripten_request_animation_frame_loop(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
 
+  @requires_threads
   def test_emscripten_set_timeout(self):
     self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_threads
   def test_emscripten_set_timeout_loop(self):
     self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -4434,10 +4438,12 @@ window.close = function() {
   def test_emscripten_set_immediate_loop(self):
     self.btest(path_from_root('tests', 'emscripten_set_immediate_loop.c'), '0')
 
+  @requires_threads
   def test_emscripten_set_interval(self):
     self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
+  @requires_threads
   def test_emscripten_performance_now(self):
     self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
