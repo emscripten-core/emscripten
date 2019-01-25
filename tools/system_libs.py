@@ -421,20 +421,19 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.exit_with_error('only dlmalloc is possible when using %s' % what)
 
     extra = ''
-    if shared.Settings.USE_PTHREADS:
-      extra += '_threadsafe'
-      require_dlmalloc('pthreads')
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      extra += '_debug'
+    if not shared.Settings.SUPPORT_ERRNO:
+      extra += '_noerrno'
+      require_dlmalloc('noerrno')
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
       require_dlmalloc('tracing')
-    if shared.Settings.DEBUG_LEVEL >= 3:
-      extra += '_debug'
+    if shared.Settings.USE_PTHREADS:
+      extra += '_threadsafe'
+      require_dlmalloc('pthreads')
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
-
-      # Only dlmalloc interacts with errno, emmalloc does not
-      if not shared.Settings.SUPPORT_ERRNO:
-        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
