@@ -106,9 +106,20 @@ def no_swiftshader(f):
   return decorated
 
 
+def requires_threads(f):
+  def decorated(self):
+    if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
+      self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
+    # FIXME when the wasm backend gets threads
+    if is_chrome() and self.is_wasm_backend():
+      self.skipTest('wasm backend lacks threads')
+    return f(self)
+
+  return decorated
+
+
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
-requires_threads = unittest.skipIf(os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'), "This test requires thread support")
 requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
 
 
