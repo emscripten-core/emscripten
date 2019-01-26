@@ -2120,7 +2120,6 @@ class Building(object):
 
     if not just_calculate:
       logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      1/0
       Building.link_llvm(link_args, target)
       return target
     else:
