@@ -276,7 +276,7 @@ def main():
         }
       ''', [static_library_name('libal')])
     elif what == 'icu':
-      build_port('icu', static_library_name('libicuuc'), ['-s', 'USE_ICU=1'])
+      build_port('icu', 'libicuuc.bc', ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
