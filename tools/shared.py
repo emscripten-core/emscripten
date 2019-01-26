@@ -2363,6 +2363,13 @@ class Building(object):
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
 
+  @staticmethod
+  def acorn_optimizer(filename, passes):
+    next = filename + '.acorn.js'
+    with open(next, 'w') as f:
+      f.write(run_process(NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), filename] + passes, stdout=PIPE).stdout)
+    return next
+
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
@@ -2530,7 +2537,7 @@ class Building(object):
       passes.append('minifyWhitespace')
     if passes:
       logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+      js_file = Building.acorn_optimizer(js_file, ['noPrintMetadata'] + passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
     if not Settings.LINKABLE:
