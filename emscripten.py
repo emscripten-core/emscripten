@@ -1515,8 +1515,6 @@ def create_the_global(metadata):
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
-  if shared.Settings.ALLOW_MEMORY_GROWTH:
-    fundamentals.append('byteLength')
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
@@ -1805,15 +1803,14 @@ def create_replace_memory():
 
   return '''
 function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
+  HEAP8 = new Int8Array(newBuffer);
+  HEAP16 = new Int16Array(newBuffer);
+  HEAP32 = new Int32Array(newBuffer);
+  HEAPU8 = new Uint8Array(newBuffer);
+  HEAPU16 = new Uint16Array(newBuffer);
+  HEAPU32 = new Uint32Array(newBuffer);
+  HEAPF32 = new Float32Array(newBuffer);
+  HEAPF64 = new Float64Array(newBuffer);
   buffer = newBuffer;
   return true;
 }
@@ -1843,7 +1840,6 @@ def create_memory_views():
     Float32View Float64View
   """
   ret = '\n'
-  grow_memory = shared.Settings.ALLOW_MEMORY_GROWTH
   for info in HEAP_TYPE_INFOS:
     access = access_quote('{}Array'.format(info.long_name))
     format_args = {
@@ -1851,13 +1847,7 @@ def create_memory_views():
       'long': info.long_name,
       'access': access,
     }
-    if grow_memory:
-      ret += ('  var {long}View = global{access};\n'
-              '  var {heap} = new {long}View(buffer);\n').format(**format_args)
-    else:
-      ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
-  if grow_memory:
-    ret += '  var byteLength = global.byteLength;\n'
+    ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
   return ret
 
 
