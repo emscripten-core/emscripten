@@ -154,6 +154,7 @@ def static_library_name(name):
   else:
     return name + '.bc'
 
+
 def main():
   operation = sys.argv[1]
   if operation != 'build':
