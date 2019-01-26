@@ -143,7 +143,7 @@ def get(ports, settings, shared):
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'regal', 'libregal.bc')
       shared.try_delete(final)
-      shared.Building.link(o_s, final)
+      shared.Building.link_to_object(o_s, final)
       assert os.path.exists(final)
       return final
 
