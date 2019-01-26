@@ -1,5 +1,5 @@
 var acorn = require('acorn');
-var acorn_walk = require('acorn-walk');
+var walk = require('acorn-walk');
 var astring = require('astring');
 var fs = require('fs');
 var path = require('path');
@@ -24,6 +24,19 @@ var read = function(x) {
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
 function JSDCE(ast, multipleIterations) {
+
+/*
+walk.recursive(ast, null, {
+  Literal(node) {
+    console.log(`Found a literal: ${node.value}`)
+  },
+  FunctionDeclaration(node, state, c) {
+    c(node.body, state);
+    console.log(`Found a func: ${node.id.name}`)
+  },
+});
+return;
+*/
   function iteration() {
     var removed = false;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -44,6 +57,7 @@ function JSDCE(ast, multipleIterations) {
       return scope[name];
     }
     function cleanUp(ast, names) {
+throw 'TODO';
       traverse(ast, function(node, type) {
         if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) {
           removed = true;
@@ -63,54 +77,59 @@ function JSDCE(ast, multipleIterations) {
       });
       return ast;
     }
-    traverse(ast, function(node, type) {
-      if (type === 'var') {
-        node[1].forEach(function(varItem, j) {
-          var name = varItem[0];
-          ensureData(scopes[scopes.length-1], name).def = 1;
-        });
-        return;
+
+    function handleFunction(node, state, c, defun) {
+      // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
+      if (defun) {
+        ensureData(scopes[scopes.length-1], node.id.name).def = 1;
       }
-      if (type === 'object') {
-        return;
-      }
-      if (type === 'defun' || type === 'function') {
-        // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
-        if (type === 'defun') ensureData(scopes[scopes.length-1], node[1]).def = 1;
-        var scope = {};
-        node[2].forEach(function(param) {
-          ensureData(scope, param).def = 1;
-          scope[param].param = 1;
-        });
-        scopes.push(scope);
-        return;
-      }
-      if (type === 'name') {
-        ensureData(scopes[scopes.length-1], node[1]).use = 1;
-      }
-    }, function(node, type) {
-      if (type === 'defun' || type === 'function') {
-        // we can ignore self-references, i.e., references to ourselves inside
-        // ourselves, for named defined (defun) functions
-        var ownName = type === 'defun' ? node[1] : '';
-        var scope = scopes.pop();
-        var names = set();
-        for (name in scope) {
-          if (name === ownName) continue;
-          var data = scope[name];
-          if (data.use && !data.def) {
-            // this is used from a higher scope, propagate the use down
-            ensureData(scopes[scopes.length-1], name).use = 1;
-            continue;
-          }
-          if (data.def && !data.use && !data.param) {
-            // this is eliminateable!
-            names[name] = 0;
-          }
+      var scope = {};
+      node.params.forEach(function(param) {
+        var name = param.name;
+        ensureData(scope, name).def = 1;
+        scope[name].param = 1;
+      });
+      scopes.push(scope);
+      c(node.body, state);
+      // we can ignore self-references, i.e., references to ourselves inside
+      // ourselves, for named defined (defun) functions
+      var ownName = defun ? node.id.name : '';
+      var scope = scopes.pop();
+      var names = {};
+      for (var name in scope) {
+        if (name === ownName) continue;
+        var data = scope[name];
+        if (data.use && !data.def) {
+          // this is used from a higher scope, propagate the use down
+          ensureData(scopes[scopes.length-1], name).use = 1;
+          continue;
         }
-        cleanUp(node[3], names);
+        if (data.def && !data.use && !data.param) {
+          // this is eliminateable!
+          names[name] = 0;
+        }
       }
+      cleanUp(node[3], names);
+    }
+
+    walk.recursive(ast, null, {
+      VariableDeclarator(node, state, c) {
+        var name = node.id.name;
+        ensureData(scopes[scopes.length-1], name).def = 1;
+        c(node.init, state);
+      },
+      FunctionDeclaration(node, state, c) {
+        handleFunction(node, state, c, true /* defun */);
+      },
+      FunctionExpression(node, state, c) {
+        handleFunction(node, state, c);
+      },
+      Identifier(node, state, c) {
+        var name = node.name;
+        ensureData(scopes[scopes.length-1], name).use = 1;
+      },
     });
+
     // toplevel
     var scope = scopes.pop();
     assert(scopes.length === 0);
@@ -154,11 +173,14 @@ var passes = arguments.slice(1);
 var input = read(infile);
 var ast = acorn.parse(input, { ecmaVersion: 6 });
 
+print("PRE\n" + JSON.stringify(ast, null, ' '));
+
 passes.forEach(function(pass) {
   registry[pass](ast);
 });
 
 //print(JSON.stringify(ast));
+
 var output = astring.generate(ast, {
   indent: minifyWhitespace ? '' : ' ',
   lineEnd: minifyWhitespace ? '' : '\n',
