@@ -1798,7 +1798,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-DFAIL_REALLOC_BUFFER']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   def test_ssr(self): # struct self-ref
