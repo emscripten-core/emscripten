@@ -288,13 +288,13 @@ def main():
     elif what == 'libpng':
       build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
-      build_port('sdl2', static_library_name('libsdl2'), ['-s', 'USE_SDL=2'])
+      build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-gfx':
-      build_port('sdl2-gfx', static_library_name('libsdl2_gfx'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
+      build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
-      build_port('sdl2-image', static_library_name('libsdl2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-net':
-      build_port('sdl2-net', static_library_name('libsdl2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
+      build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
       build_port('sdl2-mixer', 'libsdl2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
@@ -302,13 +302,13 @@ def main():
     elif what == 'harfbuzz':
       build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
     elif what == 'sdl2-ttf':
-      build_port('sdl2-ttf', static_library_name('libsdl2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+      build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
       build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
-      build_port('regal', static_library_name('libregal'), ['-s', 'USE_REGAL=1'])
+      build_port('regal', 'libregal.bc', ['-s', 'USE_REGAL=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       sys.exit(1)

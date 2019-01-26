@@ -35,7 +35,7 @@ def get(ports, settings, shared):
       shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2-image', 'libsdl2_image.bc')
-      shared.Building.link(o_s, final)
+      shared.Building.link_to_object(o_s, final)
       return final
 
     settings.SDL2_IMAGE_FORMATS.sort()
