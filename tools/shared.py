@@ -2537,7 +2537,7 @@ class Building(object):
       passes.append('minifyWhitespace')
     if passes:
       logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.acorn_optimizer(js_file, ['noPrintMetadata'] + passes)
+      js_file = Building.acorn_optimizer(js_file, passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
     if not Settings.LINKABLE:
@@ -2547,11 +2547,11 @@ class Building(object):
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
-        passes = ['noPrintMetadata', 'AJSDCE']
+        passes = ['AJSDCE']
         if minify_whitespace:
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+        js_file = Building.acorn_optimizer(js_file, passes)
         # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
