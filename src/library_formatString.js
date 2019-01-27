@@ -174,9 +174,6 @@ mergeInto(LibraryManager.library, {
             var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
             argSize = argSize || 4;
             currArg = getNextArg('i' + (argSize * 8));
-#if PRECISE_I64_MATH
-            var origArg = currArg;
-#endif
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
@@ -191,32 +188,14 @@ mergeInto(LibraryManager.library, {
             var currAbsArg = Math.abs(currArg);
             var prefix = '';
             if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
-#if PRECISE_I64_MATH
-              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], null); else
-#endif
               argText = reSign(currArg, 8 * argSize, 1).toString(10);
             } else if (next == {{{ charCode('u') }}}) {
-#if PRECISE_I64_MATH
-              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], true); else
-#endif
               argText = unSign(currArg, 8 * argSize, 1).toString(10);
               currArg = Math.abs(currArg);
             } else if (next == {{{ charCode('o') }}}) {
               argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
             } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
               prefix = (flagAlternative && currArg != 0) ? '0x' : '';
-#if PRECISE_I64_MATH
-              if (argSize == 8 && typeof i64Math === 'object') {
-                if (origArg[1]) {
-                  argText = (origArg[1]>>>0).toString(16);
-                  var lower = (origArg[0]>>>0).toString(16);
-                  while (lower.length < 8) lower = '0' + lower;
-                  argText += lower;
-                } else {
-                  argText = (origArg[0]>>>0).toString(16);
-                }
-              } else
-#endif
               if (currArg < 0) {
                 // Represent negative numbers in hex as 2's complement.
                 currArg = -currArg;

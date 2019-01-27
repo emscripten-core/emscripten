@@ -207,13 +207,6 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
     logger.debug('emscript: js compiler glue')
     t = time.time()
 
-  # Settings changes
-  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
-  for i64_func in i64_funcs:
-    if i64_func in metadata['declares']:
-      shared.Settings.PRECISE_I64_MATH = 2
-      break
-
   # FIXME: do these one by one as normal js lib funcs
   metadata['declares'] = [i64_func for i64_func in metadata['declares'] if i64_func not in ['getHigh32', 'setHigh32']]
 
