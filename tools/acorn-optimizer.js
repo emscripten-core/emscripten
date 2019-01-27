@@ -21,11 +21,16 @@ var read = function(x) {
 // Utilities
 
 function assert(condition, text) {
-  if (!condition) throw text;
+  if (!condition) throw text + ' : ' + new Error().stack;
 }
 
 function emptyOut(node) {
   node.type = 'EmptyStatement';
+}
+
+function dump(node, text) {
+  if (text) print(text);
+  print(JSON.stringify(node, null, ' '));
 }
 
 function hasSideEffects(node) {
@@ -95,7 +100,7 @@ function JSDCE(ast, multipleIterations) {
           node.declarations = node.declarations.filter(function(node) {
             var curr = node.id.name
             var value = node.init;
-            var keep = !(curr in names) || hasSideEffects(value);
+            var keep = !(curr in names) || (value && hasSideEffects(value));
             if (!keep) removed = true;
             return keep;
           });
@@ -155,7 +160,7 @@ function JSDCE(ast, multipleIterations) {
       VariableDeclarator(node, state, c) {
         var name = node.id.name;
         ensureData(scopes[scopes.length-1], name).def = 1;
-        c(node.init, state);
+        if (node.init) c(node.init, state);
       },
       FunctionDeclaration(node, state, c) {
         handleFunction(node, state, c, true /* defun */);
@@ -212,13 +217,13 @@ var passes = arguments.slice(1);
 var input = read(infile);
 var ast = acorn.parse(input, { ecmaVersion: 6 });
 
-print("PRE\n" + JSON.stringify(ast, null, ' '));
+//print("\nPRE\n" + JSON.stringify(ast, null, ' '));
 
 passes.forEach(function(pass) {
   registry[pass](ast);
 });
 
-//print(JSON.stringify(ast));
+//print("\nPOST\n" + JSON.stringify(ast, null, ' '));
 
 var output = astring.generate(ast, {
   indent: minifyWhitespace ? '' : ' ',
