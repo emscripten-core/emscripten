@@ -24,7 +24,7 @@ function assert(condition, text) {
 }
 
 // Visits and walks
-// (We don't use acorn-walk because it ignores x in "x = y".)
+// (We don't use acorn-walk because it ignores x in 'x = y'.)
 
 function visitChildren(node, c) {
   // emptyOut() and temporary ignoring may mark nodes as empty,
@@ -108,6 +108,11 @@ function recursiveWalk(node, cs) {
 
 function emptyOut(node) {
   node.type = 'EmptyStatement';
+}
+
+function setLiteralValue(item, value) {
+  item.value = value;
+  item.raw = "'" + value + "'";
 }
 
 function dump(node, text) {
@@ -334,6 +339,85 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
+function isAsmLibraryArgAssign(node) { // Module.asmLibraryArg = ..
+  return node.type === 'AssignmentExpression' &&
+         node.operator === '=' &&
+         node.left.type === 'MemberExpression' &&
+         node.left.object.type === 'Identifier' &&
+         node.left.object.name === 'Module' &&
+         node.left.property.type === 'Identifier' &&
+         node.left.property.name === 'asmLibraryArg';
+}
+
+function isAsmUse(node) {
+  return node.type === 'MemberExpression' &&
+         ((node.object.type === 'Identifier' && // asm['X']
+           node.object.name === 'asm' &&
+           node.property.type === 'Literal') ||
+          (node.object.type === 'MemberExpression' && // Module[asm]['X']
+           node.object.object.type === 'Identifier' &&
+           node.object.object.name === 'Module' &&
+           node.object.property.type === 'Identifier' &&
+           node.object.property.name === 'asm' &&
+           node.property.type === 'Literal'));
+}
+
+function getAsmUseName(node) {
+  return node.property.value;
+}
+
+function isModuleUse(node) {
+  return node.type === 'MemberExpression' && // Module['X']
+         node.object.type === 'Identifier' &&
+         node.object.name === 'Module' &&
+         node.property.type === 'Literal';
+}
+
+function getModuleUseName(node) {
+  return node.property.value;
+}
+
+function isModuleAsmUse(node) { // Module['asm'][..string..]
+  return node.type === 'MemberExpression' &&
+         node.object.type === 'MemberExpression' &&
+         node.object.object.type === 'Identifier' &&
+         node.object.object.name === 'Module' &&
+         node.object.property.type === 'Literal' && 
+         node.object.property.value === 'asm' &&
+         node.property.type === 'Literal';
+}
+
+// Apply import/export name changes (after minifying them)
+function applyImportAndExportNameChanges(ast) {
+  var mapping = extraInfo.mapping;
+  fullWalk(ast, function(node) {
+    if (isAsmLibraryArgAssign(node)) {
+      var assignedObject = node.right;
+      assert(node.right.type === 'ObjectExpression');
+      assignedObject.properties.forEach(function(item) {
+        if (mapping[item.key.value]) {
+          setLiteralValue(item.key, mapping[item.key.value]);
+        }
+      });
+    } else if (node.type === 'AssignmentExpression') {
+      var target = node.left;
+      var value = node.right;
+      if (isAsmUse(value)) {
+        var name = value.property.value;
+        if (mapping[name]) {
+          setLiteralValue(value.property, mapping[name]);
+        }
+      }
+    } else if (isModuleAsmUse(node)) {
+      var prop = node.property;
+      var name = prop.value;
+      if (mapping[name]) {
+        setLiteralValue(prop, mapping[name]);
+      }
+    }
+  });
+}
+
 // Main
 
 var arguments = process['argv'].slice(2);;
@@ -341,6 +425,11 @@ var infile = arguments[0];
 var passes = arguments.slice(1);
 
 var input = read(infile);
+var extraInfoStart = input.lastIndexOf('// EXTRA_INFO:')
+var extraInfo = null;
+if (extraInfoStart > 0) {
+  extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
+}
 var ast = acorn.parse(input, { ecmaVersion: 6 });
 
 var minifyWhitespace = false;
@@ -348,6 +437,7 @@ var minifyWhitespace = false;
 var registry = {
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
+  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
   minifyWhitespace: function() { minifyWhitespace = true },
   dump: function() { dump(ast) },
 };
@@ -356,7 +446,7 @@ passes.forEach(function(pass) {
   registry[pass](ast);
 });
 
-//print("\nPOST\n" + JSON.stringify(ast, null, ' '));
+//print('\nPOST\n' + JSON.stringify(ast, null, ' '));
 
 var output = astring.generate(ast, {
   indent: minifyWhitespace ? '' : ' ',

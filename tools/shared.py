@@ -2345,8 +2345,12 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None):
-    from . import js_optimizer
+  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None, acorn=False):
+    if not acorn:
+      from . import js_optimizer
+      optimizer = js_optimizer.JS_OPTIMIZER
+    else:
+      optimizer = path_from_root('tools', 'acorn-optimizer.js')
     original_filename = filename
     if extra_info is not None:
       temp_files = configuration.get_temp_files()
@@ -2358,17 +2362,14 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      check_call(NODE_JS + [optimizer, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
 
   @staticmethod
-  def acorn_optimizer(filename, passes):
-    next = filename + '.acorn.js'
-    with open(next, 'w') as f:
-      f.write(run_process(NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), filename] + passes, stdout=PIPE).stdout)
-    return next
+  def acorn_optimizer(filename, passes, extra_info=None):
+    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, acorn=True)
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2652,7 +2653,7 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = {'mapping': mapping}
-    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+    return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested
   user_requested_exports = []
