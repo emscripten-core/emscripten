@@ -33,6 +33,7 @@ function hasSideEffects(node) {
   var has = false;
   walk.full(node, function(node, state, type) {
     switch (type) {
+      // TODO: go through all the ESTree spec
       case 'Literal':
       case 'Identifier':
       case 'UnaryExpression':
