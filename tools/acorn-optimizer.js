@@ -18,25 +18,30 @@ var read = function(x) {
   return fs.readFileSync(x).toString();
 }
 
+// Utilities
+
+function assert(condition, text) {
+  if (!condition) throw text;
+}
+
+function emptyOut(node) {
+  node.type = 'EmptyStatement';
+}
+
 // Passes
 
 // Removes obviously-unused code. Similar to closure compiler in its rules -
 // export e.g. by Module['..'] = theThing; , or use it somewhere, otherwise
 // it goes away.
-function JSDCE(ast, multipleIterations) {
+//
+// Note that this is somewhat conservative, since the ESTree AST does not
+// have a simple separation between definitions and uses, e.g.
+// Identifier is used both for the x in  function foo(x) {
+// and for  y = x + 1 . That means we need to consider new ES6+ constructs
+// as they appear (like ArrowFunctionExpression). Instead, we do a conservative
+// analysis here.
 
-/*
-walk.recursive(ast, null, {
-  Literal(node) {
-    console.log(`Found a literal: ${node.value}`)
-  },
-  FunctionDeclaration(node, state, c) {
-    c(node.body, state);
-    console.log(`Found a func: ${node.id.name}`)
-  },
-});
-return;
-*/
+function JSDCE(ast, multipleIterations) {
   function iteration() {
     var removed = false;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -57,25 +62,31 @@ return;
       return scope[name];
     }
     function cleanUp(ast, names) {
-throw 'TODO';
-      traverse(ast, function(node, type) {
-        if (type === 'defun' && Object.prototype.hasOwnProperty.call(names, node[1])) {
-          removed = true;
-          return emptyNode();
-        }
-        if (type === 'defun' || type === 'function') return null; // do not enter other scopes
-        if (type === 'var') {
-          node[1] = node[1].filter(function(varItem, j) {
-            var curr = varItem[0];
-            var value = varItem[1];
-            var keep = !(curr in names) || (value && hasSideEffects(value));
+      walk.recursive(ast, null, {
+        VariableDeclaration(node, state, c) {
+          node.declarations = node.declarations.filter(function(node) {
+            var curr = node.id.name
+            var value = node.init;
+            var keep = !(curr in names) || hasSideEffects(value);
             if (!keep) removed = true;
             return keep;
           });
-          if (node[1].length === 0) return emptyNode();
-        }
+          if (node.declarations.length === 0) {
+            emptyOut(node);
+          }
+        },
+        FunctionDeclaration(node, state, c) {
+          if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
+            removed = true;
+            emptyOut(node);
+            return;
+          }
+          // do not recurse into other scopes
+        },
+        // do not recurse into other scopes
+        FunctionExpression() {},
+        ArrowFunctionExpression() {},
       });
-      return ast;
     }
 
     function handleFunction(node, state, c, defun) {
@@ -109,7 +120,7 @@ throw 'TODO';
           names[name] = 0;
         }
       }
-      cleanUp(node[3], names);
+      cleanUp(node.body, names);
     }
 
     walk.recursive(ast, null, {
@@ -134,7 +145,7 @@ throw 'TODO';
     var scope = scopes.pop();
     assert(scopes.length === 0);
 
-    var names = set();
+    var names = {};
     for (var name in scope) {
       var data = scope[name];
       if (data.def && !data.use) {

@@ -2537,11 +2537,6 @@ class Building(object):
       passes.append('minifyWhitespace')
     if passes:
       logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-      # XXX estree syntax doesn't clearly separate definitions from uses, e.g.
-      #     Identifier is used both for the x in function foo(x) {
-      #     and for y = x + 1. That means our JSDCE would need to know about
-      #     all aspects of estree, e.g., ArrowFunctionExpression and perhaps
-      #     more in the future, so it would not be safe for us to do this.
       js_file = Building.acorn_optimizer(js_file, ['noPrintMetadata'] + passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
