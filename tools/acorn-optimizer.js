@@ -77,7 +77,6 @@ function hasSideEffects(node) {
       case 'BinaryExpresson':
       case 'ExpressionStatement':
       case 'UpdateOperator':
-      case 'MemberExpression':
       case 'ConditionalExpression':
       case 'AssignmentExpression':
       case 'FunctionExpression':
@@ -91,7 +90,18 @@ function hasSideEffects(node) {
       case 'EmptyStatement': {
         break; // safe
       }
-      default: has = true; console.error('because ' + type);
+      case 'MemberExpression': {
+        // safe if on Math (or other familiar objects, TODO)
+        if (node.object.type !== 'Identifier' ||
+            node.object.name !== 'Math') {
+          has = true;
+        }
+        break;
+      }
+      default: {
+        has = true;
+        //console.error('because ' + type);
+      }
     }
   });
   restoreInnerScopes(node, map);
