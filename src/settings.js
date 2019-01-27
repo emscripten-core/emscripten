@@ -885,16 +885,6 @@ var MODULARIZE_INSTANCE = 0;
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
 
-// The version of JS that may be used in input you provide: --pre-js,
-// --js-library, EM_ASM, and EM_JS.
-// The number here can be 0, which means plain ES5. Otherwise,
-// it should be any of the modern year-based JS names, e.g., 2015(=ES6),
-// 2016(=ES7), etc.
-// For anything other than ES5, some JS minification that depends on
-// uglify1 is not run, and so you should build with --closure 1 to get
-// minified that way.
-var INPUT_JS_VERSION = 0;
-
 // If 1, will just time how long main() takes to execute, and not print out
 // anything at all whatsoever. This is useful for benchmarking.
 var BENCHMARK = 0;
