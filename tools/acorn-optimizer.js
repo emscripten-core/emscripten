@@ -23,6 +23,14 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
+function set(args) {
+  var ret = {};
+  for (var i = 0; i < args.length; i++) {
+    ret[args[i]] = 0;
+  }
+  return ret;
+}
+
 // Visits and walks
 // (We don't use acorn-walk because it ignores x in 'x = y'.)
 
@@ -110,6 +118,18 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
+function nullify(node) {
+  node.type = 'Literal';
+  node.value = null;
+  node.raw = 'null';
+}
+
+function undefinedify(node) {
+  node.type = 'Literal';
+  node.value = undefined;
+  node.raw = 'undefined';
+}
+
 function setLiteralValue(item, value) {
   item.value = value;
   item.raw = "'" + value + "'";
@@ -180,7 +200,9 @@ function hasSideEffects(node) {
       case 'MemberExpression': {
         // safe if on Math (or other familiar objects, TODO)
         if (node.object.type !== 'Identifier' ||
-            node.object.name !== 'Math') {
+            (node.object.name !== 'Math' &&
+             node.object.name !== 'asm' &&
+             node.object.name !== 'Module')) {
           //console.error('because member on ' + node.object.name);
           has = true;
         }
@@ -362,7 +384,7 @@ function isAsmUse(node) {
            node.property.type === 'Literal'));
 }
 
-function getAsmUseName(node) {
+function getAsmOrModuleUseName(node) {
   return node.property.value;
 }
 
@@ -371,10 +393,6 @@ function isModuleUse(node) {
          node.object.type === 'Identifier' &&
          node.object.name === 'Module' &&
          node.property.type === 'Literal';
-}
-
-function getModuleUseName(node) {
-  return node.property.value;
 }
 
 function isModuleAsmUse(node) { // Module['asm'][..string..]
@@ -393,7 +411,6 @@ function applyImportAndExportNameChanges(ast) {
   fullWalk(ast, function(node) {
     if (isAsmLibraryArgAssign(node)) {
       var assignedObject = node.right;
-      assert(node.right.type === 'ObjectExpression');
       assignedObject.properties.forEach(function(item) {
         if (mapping[item.key.value]) {
           setLiteralValue(item.key, mapping[item.key.value]);
@@ -413,6 +430,34 @@ function applyImportAndExportNameChanges(ast) {
       var name = prop.value;
       if (mapping[name]) {
         setLiteralValue(prop, mapping[name]);
+      }
+    }
+  });
+}
+
+// Apply graph removals from running wasm-metadce
+function applyDCEGraphRemovals(ast) {
+  var unused = set(extraInfo.unused);
+
+  fullWalk(ast, function(node) {
+    if (isAsmLibraryArgAssign(node)) {
+      var assignedObject = node.right;
+      assignedObject.properties = assignedObject.properties.filter(function(item) {
+        var name = item.key.value;
+        var value = item.value;
+        var full = 'emcc$import$' + name;
+        return !((full in unused) && !hasSideEffects(value));
+      });
+    } else if (node.type === 'AssignmentExpression') {
+      // when we assign to a thing we don't need, we can just remove the assign
+      var target = node.left;
+      if (isAsmUse(target) || isModuleUse(target)) {
+        var name = getAsmOrModuleUseName(target);
+        var full = 'emcc$export$' + name;
+        var value = node.right;
+        if ((full in unused) && !hasSideEffects(value)) {
+          undefinedify(node);
+        }
       }
     }
   });
@@ -438,6 +483,7 @@ var registry = {
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
   applyImportAndExportNameChanges: applyImportAndExportNameChanges,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
   dump: function() { dump(ast) },
 };

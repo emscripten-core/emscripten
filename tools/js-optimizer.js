@@ -8192,33 +8192,6 @@ function emitDCEGraph(ast) {
   print(JSON.stringify(graph, null, ' '));
 }
 
-// Apply graph removals from running wasm-metadce
-function applyDCEGraphRemovals(ast) {
-  var unused = set(extraInfo.unused);
-
-  traverse(ast, function(node, type) {
-    if (isAsmLibraryArgAssign(node)) {
-      node[3][1] = node[3][1].filter(function(item) {
-        var name = item[0];
-        var value = item[1];
-        var full = 'emcc$import$' + name;
-        return !((full in unused) && !hasSideEffects(value));
-      });
-    } else if (type === 'assign') {
-      // when we assign to a thing we don't need, we can just remove the assign
-      var target = node[2];
-      if (isAsmUse(target) || isModuleUse(target)) {
-        var name = target[2][1];
-        var full = 'emcc$export$' + name;
-        var value = node[3];
-        if ((full in unused) && !hasSideEffects(value)) {
-          return ['name', 'undefined'];
-        }
-      }
-    }
-  });
-}
-
 function removeFuncs(ast) {
   assert(ast[0] === 'toplevel');
   var keep = set(extraInfo.keep);
