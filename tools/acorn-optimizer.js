@@ -176,14 +176,14 @@ function hasSideEffects(node) {
         // safe if on Math (or other familiar objects, TODO)
         if (node.object.type !== 'Identifier' ||
             node.object.name !== 'Math') {
-          console.error('because member on ' + node.object.name);
+          //console.error('because member on ' + node.object.name);
           has = true;
         }
         break;
       }
       default: {
         has = true;
-        console.error('because ' + node.type);
+        //console.error('because ' + node.type);
       }
     }
   });
