@@ -263,6 +263,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   pre = memory_and_global_initializers(pre, metadata, mem_init)
   pre, funcs_js = get_js_funcs(pre, funcs)
+  pre, vars_js = get_js_vars(pre)
   all_exported_functions = get_all_exported_functions(function_table_data)
   all_implemented = get_all_implemented(forwarded_json, metadata)
   check_all_implemented(all_implemented, pre)
@@ -346,7 +347,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   bg_funcs = basic_funcs + global_funcs
   bg_vars = basic_vars + global_vars
   asm_global_funcs = create_asm_global_funcs(bg_funcs, metadata)
-  asm_global_vars = create_asm_global_vars(bg_vars)
+  asm_global_vars = create_asm_global_vars(bg_vars) + '\n' + vars_js
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
@@ -713,6 +714,14 @@ STATICTOP = STATIC_BASE + {staticbump};
   pre = apply_memory(pre)
 
   return pre
+
+
+def get_js_vars(pre):
+  try:
+    pre, vars_js = pre.split('// ASM_LIBRARY VARIABLES\n')
+    return pre, vars_js
+  except Exception:
+    return pre, ''
 
 
 def get_js_funcs(pre, funcs):

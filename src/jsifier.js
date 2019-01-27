@@ -14,6 +14,7 @@ var STRUCT_LIST = set('struct', 'list');
 
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
+var asmLibraryVariables = [];
 
 var SETJMP_LABEL = -1;
 
@@ -300,6 +301,9 @@ function JSify(data, functionsOnly) {
         contentText = ' ';
         Functions.libraryFunctions[finalName] = 2;
         noExport = true; // if it needs to be exported, that will happen in emscripten.py
+      } else if (!isFunction && LibraryManager.library[ident + '__asm']) {
+        asmLibraryVariables.push(contentText);
+        contentText = ' ';
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
@@ -467,6 +471,11 @@ function JSify(data, functionsOnly) {
 
     if (SUPPORT_BASE64_EMBEDDING) {
       print(preprocess(read('base64Utils.js')));
+    }
+
+    if (asmLibraryVariables.length > 0) {
+      print('// ASM_LIBRARY VARIABLES');
+      print(asmLibraryVariables.join('\n'));
     }
 
     if (asmLibraryFunctions.length > 0) {

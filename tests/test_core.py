@@ -7949,6 +7949,12 @@ extern "C" {
     self.assertContained('hello, world!', output)
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
+  # Tests that users are able to create variables in JS libraries that should live inside the asm.js/wasm module scope
+  # by annotating them with someVar__asm: true.
+  def test_asm_library_variable(self):
+    self.emcc_args += ['--js-library', path_from_root('tests', 'asm_library_variable.js')]
+    self.do_run(open(path_from_root('tests', 'asm_library_variable.cpp')).read(), '42')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
