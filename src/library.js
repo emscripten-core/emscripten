@@ -1045,7 +1045,7 @@ LibraryManager.library = {
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big'],
+  memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
@@ -1148,6 +1148,7 @@ LibraryManager.library = {
   },
   memset__sig: 'iiii',
   memset__asm: true,
+  memset__deps: ['Int8Array', 'Int32Array'],
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
@@ -1294,6 +1295,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i8__asm: true,
   llvm_ctlz_i8__sig: 'ii',
+  llvm_ctlz_i8__deps: ['Math_clz32'],
   llvm_ctlz_i8: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
@@ -1302,6 +1304,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i16__asm: true,
   llvm_ctlz_i16__sig: 'ii',
+  llvm_ctlz_i16__deps: ['Math_clz32'],
   llvm_ctlz_i16: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
@@ -1310,6 +1313,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i64__asm: true,
   llvm_ctlz_i64__sig: 'iii',
+  llvm_ctlz_i64__deps: ['Math_clz32'],
   llvm_ctlz_i64: function(l, h, isZeroUndef) {
     l = l | 0;
     h = h | 0;
@@ -1325,6 +1329,7 @@ LibraryManager.library = {
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
+  llvm_cttz_i32__deps: ['Math_clz32'],
   llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
     x = x | 0;
     return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
@@ -1339,6 +1344,7 @@ LibraryManager.library = {
 
   llvm_ctpop_i32__asm: true,
   llvm_ctpop_i32__sig: 'ii',
+  llvm_ctpop_i32__deps: ['Math_imul'],
   llvm_ctpop_i32: function(x) {
     // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
     // http://bits.stephan-brumme.com/countBits.html
@@ -1902,6 +1908,7 @@ LibraryManager.library = {
 
   round__asm: true,
   round__sig: 'dd',
+  round__deps: ['Math_floor', 'Math_ceil'],
   round: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1909,6 +1916,7 @@ LibraryManager.library = {
 
   roundf__asm: true,
   roundf__sig: 'ff',
+  roundf__deps: ['Math_floor', 'Math_ceil'],
   roundf: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1916,6 +1924,7 @@ LibraryManager.library = {
 
   llvm_round_f64__asm: true,
   llvm_round_f64__sig: 'dd',
+  llvm_round_f64__deps: ['Math_floor', 'Math_ceil'],
   llvm_round_f64: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1923,6 +1932,7 @@ LibraryManager.library = {
 
   llvm_round_f32__asm: true,
   llvm_round_f32__sig: 'ff',
+  llvm_round_f32__deps: ['Math_floor', 'Math_ceil'],
   llvm_round_f32: function(f) {
     f = +f;
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
@@ -1930,7 +1940,7 @@ LibraryManager.library = {
 
   rintf__asm: true,
   rintf__sig: 'ff',
-  rintf__deps: ['round'],
+  rintf__deps: ['round', 'Math_floor'],
   rintf: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1939,7 +1949,7 @@ LibraryManager.library = {
   // TODO: fround?
   llvm_rint_f32__asm: true,
   llvm_rint_f32__sig: 'ff',
-  llvm_rint_f32__deps: ['roundf'],
+  llvm_rint_f32__deps: ['roundf', 'Math_floor'],
   llvm_rint_f32: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
@@ -1947,7 +1957,7 @@ LibraryManager.library = {
 
   llvm_rint_f64__asm: true,
   llvm_rint_f64__sig: 'dd',
-  llvm_rint_f64__deps: ['round'],
+  llvm_rint_f64__deps: ['round', 'Math_floor'],
   llvm_rint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1956,7 +1966,7 @@ LibraryManager.library = {
   // TODO: fround?
   llvm_nearbyint_f32__asm: true,
   llvm_nearbyint_f32__sig: 'ff',
-  llvm_nearbyint_f32__deps: ['roundf'],
+  llvm_nearbyint_f32__deps: ['roundf', 'Math_floor'],
   llvm_nearbyint_f32: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
@@ -1964,7 +1974,7 @@ LibraryManager.library = {
 
   llvm_nearbyint_f64__asm: true,
   llvm_nearbyint_f64__sig: 'dd',
-  llvm_nearbyint_f64__deps: ['round'],
+  llvm_nearbyint_f64__deps: ['round', 'Math_floor'],
   llvm_nearbyint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1976,6 +1986,7 @@ LibraryManager.library = {
   // see also https://github.com/WebAssembly/design/issues/214
   llvm_minnum_f32__asm: true,
   llvm_minnum_f32__sig: 'ff',
+  llvm_minnum_f32__deps: ['Math_min'],
   llvm_minnum_f32: function(x, y) {
     x = +x;
     y = +y;
@@ -1986,6 +1997,7 @@ LibraryManager.library = {
 
   llvm_minnum_f64__asm: true,
   llvm_minnum_f64__sig: 'dd',
+  llvm_minnum_f64__deps: ['Math_min'],
   llvm_minnum_f64: function(x, y) {
     x = +x;
     y = +y;
@@ -1996,6 +2008,7 @@ LibraryManager.library = {
 
   llvm_maxnum_f32__asm: true,
   llvm_maxnum_f32__sig: 'ff',
+  llvm_maxnum_f32__deps: ['Math_max'],
   llvm_maxnum_f32: function(x, y) {
     x = +x;
     y = +y;
@@ -2006,6 +2019,7 @@ LibraryManager.library = {
 
   llvm_maxnum_f64__asm: true,
   llvm_maxnum_f64__sig: 'dd',
+  llvm_maxnum_f64__deps: ['Math_max'],
   llvm_maxnum_f64: function(x, y) {
     x = +x;
     y = +y;
@@ -4783,6 +4797,7 @@ LibraryManager.library = {
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
   __muldsi3__sig: 'iii',
+  __muldsi3__deps: ['Math_imul'],
   __muldsi3: function($a, $b) {
     $a = $a | 0;
     $b = $b | 0;
@@ -4845,7 +4860,7 @@ LibraryManager.library = {
   },
   __muldi3__sig: 'iiiii',
   __muldi3__asm: true,
-  __muldi3__deps: ['__muldsi3'],
+  __muldi3__deps: ['__muldsi3', 'Math_imul'],
   __muldi3: function($a$0, $a$1, $b$0, $b$1) {
     $a$0 = $a$0 | 0;
     $a$1 = $a$1 | 0;
@@ -4889,7 +4904,7 @@ LibraryManager.library = {
   },
   __udivmoddi4__sig: 'iiiiii',
   __udivmoddi4__asm: true,
-  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32'],
+  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32', 'Math_clz32'],
   __udivmoddi4: function($a$0, $a$1, $b$0, $b$1, $rem) {
     $a$0 = $a$0 | 0;
     $a$1 = $a$1 | 0;
