@@ -776,8 +776,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs.append('_emscripten_replace_memory')
     if not shared.Settings.SIDE_MODULE:
       funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-      funcs += ['setThrew']
     if shared.Settings.EMTERPRETIFY:
       funcs += ['emterpret']
       if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -1488,7 +1486,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
   if shared.Settings.ONLY_MY_CODE:
     funcs = []
   return funcs
@@ -1628,14 +1626,6 @@ function establishStackSpace(stackBase, stackMax) {
   stackMax = stackMax|0;
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
-}
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
 }
 ''' % stack_check]
 
@@ -2284,7 +2274,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
+  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
   if name.startswith('dynCall_'):
     return name
   if name in library_functions_in_module:
