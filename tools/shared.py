@@ -164,6 +164,7 @@ def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **k
   result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
+  logger.debug('Successfully executed %s' % ' '.join(cmd))
   return result
 
 
@@ -2362,7 +2363,7 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      check_call(NODE_JS + [optimizer, filename] + passes, stdout=open(next, 'w'))
+      run_process(NODE_JS + [optimizer, filename] + passes, stdout=open(next, 'w'))
       return next
     else:
       return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
