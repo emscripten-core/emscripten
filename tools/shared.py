@@ -2536,13 +2536,11 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     if passes:
-      logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-      # XXX estree syntax doesn't clearly separate definitions from uses, e.g.
-      #     Identifier is used both for the x in function foo(x) {
-      #     and for y = x + 1. That means our JSDCE would need to know about
-      #     all aspects of estree, e.g., ArrowFunctionExpression and perhaps
-      #     more in the future, so it would not be safe for us to do this.
-      js_file = Building.acorn_optimizer(js_file, ['noPrintMetadata'] + passes)
+      if Settings.INPUT_JS_VERSION == 0:
+        logger.debug('running cleanup on shell code: ' + ' '.join(passes))
+        js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+      else:
+        logging.debug('num running JSDCE since code may contain JS later than ES5. you should use --closure 1 for compact JS')
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
     if not Settings.LINKABLE:
@@ -2552,11 +2550,12 @@ class Building(object):
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
-        passes = ['noPrintMetadata', 'AJSDCE']
-        if minify_whitespace:
-          passes.append('minifyWhitespace')
-        logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+        if Settings.INPUT_JS_VERSION == 0:
+          passes = ['noPrintMetadata', 'AJSDCE']
+          if minify_whitespace:
+            passes.append('minifyWhitespace')
+          logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
+          js_file = Building.js_optimizer_no_asmjs(js_file, passes)
         # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
