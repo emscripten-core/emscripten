@@ -33,8 +33,40 @@ function dump(node, text) {
   print(JSON.stringify(node, null, ' '));
 }
 
+// Mark inner scopes temporarily as empty statements. Returns
+// a special object that must be used to restore them.
+function ignoreInnerScopes(node) {
+  var map = new WeakMap();
+  function ignore(node) {
+    map.set(node, node.type);
+    node.type = 'EmptyStatement';
+  }
+  walk.simple(node, {
+    FunctionExpression(node) {
+      ignore(node);
+    },
+    FunctionDeclaration(node) {
+      ignore(node);
+    },
+    // TODO: arrow etc.
+  });
+  return map;
+}
+
+// Mark inner scopes temporarily as empty statements.
+function restoreInnerScopes(node, map) {
+  walk.full(node, function(node) {
+    if (map.has(node)) {
+      node.type = map.get(node);
+      map.delete(node);
+      restoreInnerScopes(node, map);
+    }
+  });
+}
+
 function hasSideEffects(node) {
   // Conservative analysis.
+  var map = ignoreInnerScopes(node);
   var has = false;
   walk.full(node, function(node, state, type) {
     switch (type) {
@@ -47,17 +79,22 @@ function hasSideEffects(node) {
       case 'UpdateOperator':
       case 'MemberExpression':
       case 'ConditionalExpression':
+      case 'AssignmentExpression':
       case 'FunctionExpression':
       case 'FunctionDeclaration':
       case 'VariableDeclaration':
       case 'VariableDeclarator':
       case 'ObjectExpression':
-      case 'ArrayExpression': {
+      case 'Property':
+      case 'BlockStatement':
+      case 'ArrayExpression':
+      case 'EmptyStatement': {
         break; // safe
       }
       default: has = true; console.error('because ' + type);
     }
   });
+  restoreInnerScopes(node, map);
   return has;
 }
 
@@ -198,16 +235,6 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
-// Registry and global state
-
-var minifyWhitespace = false;
-
-var registry = {
-  JSDCE: JSDCE,
-  AJSDCE: AJSDCE,
-  minifyWhitespace: function() { minifyWhitespace = true },
-};
-
 // Main
 
 var arguments = process['argv'].slice(2);;
@@ -217,7 +244,14 @@ var passes = arguments.slice(1);
 var input = read(infile);
 var ast = acorn.parse(input, { ecmaVersion: 6 });
 
-//print("\nPRE\n" + JSON.stringify(ast, null, ' '));
+var minifyWhitespace = false;
+
+var registry = {
+  JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
+  minifyWhitespace: function() { minifyWhitespace = true },
+  dump: function() { dump(ast) },
+};
 
 passes.forEach(function(pass) {
   registry[pass](ast);
