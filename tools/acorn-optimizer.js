@@ -23,39 +23,21 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
-// Walks
+// Visits and walks
 // (We don't use acorn-walk because it ignores x in "x = y".)
 
-// Simple post-order walk, calling properties on an object by node type,
-// if the type exists.
-function simple(node, cs) {
-  for (var child in node) {
-    if (child && typeof child === 'object' && typeof child.type === 'string') {
-      simple(child, cs);
-    }
-  }
-  if (node.type in cs) {
-    cs[node.type](node);
-  }
-}
-
-// Full post-order walk, calling a single function for all types.
-function full(node, c) {
-  for (var child in node) {
-    if (child && typeof child === 'object' && typeof child.type === 'string') {
-      simple(child, c);
-    }
-  }
-  c(node);
-}
-
 function visitChildren(node, c) {
-print('vcs ' + JSON.stringify(node));
+  // emptyOut() and temporary ignoring may mark nodes as empty,
+  // while they have properties with children we should ignore.
+  if (node.type === 'EmptyStatement') {
+    return;
+  }
+//print('vcs ' + JSON.stringify(node));
   function maybeChild(child) {
-print('mc ' + JSON.stringify(child));
+//print('mc ' + JSON.stringify(child));
     if (child && typeof child === 'object' && typeof child.type === 'string') {
 
-print('MC!!!!!!!');
+//print('MC!!!!!!!');
       c(child);
       return true;
     }
@@ -63,40 +45,63 @@ print('MC!!!!!!!');
   }
   for (var key in node) {
     var child = node[key];
-print('a1 ' + key + ' : ' + JSON.stringify(child));
+//print('a1 ' + key + ' : ' + JSON.stringify(child));
     // Check for a child.
     if (!maybeChild(child)) {
-print('a2');
+//print('a2');
       // Check for an array of children.
       if (Array.isArray(child)) {
-print('a3');
+//print('a3');
         child.forEach(maybeChild);
       } else {
-print('a4');
+//print('a4');
+        /*
         // Check for an object of children.
         if (child && typeof child === 'object') {
-print('a5');
+//print('a5');
           for (var grandChild in child) {
-print('a6');
+//print('a6');
             maybeChild(grandChild);
           }
         }
+        */
       }
     }
   }
 }
 
+// Simple post-order walk, calling properties on an object by node type,
+// if the type exists.
+function simpleWalk(node, cs) {
+  visitChildren(node, function(child) {
+    simpleWalk(child, cs);
+  });
+  if (node.type in cs) {
+    cs[node.type](node);
+  }
+}
+
+// Full post-order walk, calling a single function for all types.
+function fullWalk(node, c) {
+  visitChildren(node, function(child) {
+    fullWalk(child, c);
+  });
+  c(node);
+}
+
 // Recursive post-order walk, calling properties on an object by node type,
 // if the type exists, and if so leaving recursion to that function.
 function recursiveWalk(node, cs) {
-print('recw1 ' + JSON.stringify(node));
-  if (!(node.type in cs)) {
-    visitChildren(node, function(child) {
-      recursiveWalk(child, cs);
-    });
-  } else {
-    cs[node.type](node);
-  }
+//print('recw1 ' + JSON.stringify(node));
+  (function c(node) {
+    if (!(node.type in cs)) {
+      visitChildren(node, function(child) {
+        recursiveWalk(child, cs);
+      });
+    } else {
+      cs[node.type](node, c);
+    }
+  })(node);
 }
 
 // AST Utilities
@@ -145,8 +150,8 @@ function hasSideEffects(node) {
   // Conservative analysis.
   var map = ignoreInnerScopes(node);
   var has = false;
-  fullWalk(node, function(node, type) {
-    switch (type) {
+  fullWalk(node, function(node) {
+    switch (node.type) {
       // TODO: go through all the ESTree spec
       case 'Literal':
       case 'Identifier':
@@ -177,7 +182,7 @@ function hasSideEffects(node) {
       }
       default: {
         has = true;
-        //console.error('because ' + type);
+        //console.error('because ' + node.type);
       }
     }
   });
@@ -199,16 +204,6 @@ function hasSideEffects(node) {
 // analysis here.
 
 function JSDCE(ast, multipleIterations) {
-dump(ast);
-    recursiveWalk(ast, {
-      Identifier(node, c) {
-        var name = node.name;
-printErr('ident ' + name);
-      },
-    });
-throw 5;
-
-
   function iteration() {
     var removed = false;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -295,6 +290,12 @@ throw 5;
         var name = node.id.name;
         ensureData(scopes[scopes.length-1], name).def = 1;
         if (node.init) c(node.init);
+      },
+      ObjectExpression(node, c) {
+        // ignore the property identifiers
+        node.properties.forEach(function(node) {
+          c(node.value);
+        });
       },
       FunctionDeclaration(node, c) {
         handleFunction(node, c, true /* defun */);
