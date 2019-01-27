@@ -28,6 +28,33 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
+function hasSideEffects(node) {
+  // Conservative analysis.
+  var has = false;
+  walk.full(node, function(node, state, type) {
+    switch (type) {
+      case 'Literal':
+      case 'Identifier':
+      case 'UnaryExpression':
+      case 'BinaryExpresson':
+      case 'ExpressionStatement':
+      case 'UpdateOperator':
+      case 'MemberExpression':
+      case 'ConditionalExpression':
+      case 'FunctionExpression':
+      case 'FunctionDeclaration':
+      case 'VariableDeclaration':
+      case 'VariableDeclarator':
+      case 'ObjectExpression':
+      case 'ArrayExpression': {
+        break; // safe
+      }
+      default: has = true; console.error('because ' + type);
+    }
+  });
+  return has;
+}
+
 // Passes
 
 // Removes obviously-unused code. Similar to closure compiler in its rules -
