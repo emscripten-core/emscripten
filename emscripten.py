@@ -395,6 +395,20 @@ def finalize_output(outfile, post, function_table_data, bundled_args, metadata, 
   write_cyberdwarf_data(outfile, metadata)
 
 
+# Given JS code that consists only exactly of a series of "var a = ...;\n var b = ...;" statements,
+# this function collapses the redundant 'var ' statements at the beginning of each line to a
+# single var a =..., b=..., c=...; statement.
+def collapse_redundant_vars(code):
+  if shared.Settings.WASM:
+    return code # Skip if targeting Wasm, this does not matter there
+
+  old_code = ''
+  while code != old_code: # Repeated vars overlap, so can't run in one regex pass. Runs in O(log(N)) time
+    old_code = code
+    code = re.sub('(var [^;]*);\s*var ', r'\1,\n  ', code)
+  return code
+
+
 def create_module_asmjs(function_table_sigs, metadata,
                         funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                         asm_global_funcs, pre_tables, final_function_tables, exports):
@@ -402,9 +416,9 @@ def create_module_asmjs(function_table_sigs, metadata,
   runtime_funcs = create_runtime_funcs_asmjs(exports)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
+  memory_views = create_memory_views()
   asm_temp_vars = create_asm_temp_vars()
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
-  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
     stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n')
@@ -420,12 +434,11 @@ def create_module_asmjs(function_table_sigs, metadata,
 
   asm_end = create_asm_end(exports)
 
+  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + async_state + f0_fround)
+
   module = [
-    asm_start,
-    stack,
-    temp_float,
-    async_state,
-    f0_fround,
+    asm_start_pre,
+    asm_variables,
     replace_memory,
     start_funcs_marker
   ] + runtime_funcs + funcs_js + [
@@ -1766,7 +1779,6 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
     asm_function_top,
     use_asm,
     create_first_in_asm(),
-    create_memory_views(),
   ]
   return '\n'.join(lines)
 

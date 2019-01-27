@@ -7035,7 +7035,7 @@ int main() {
         print('(skipping asm.js validation check)')
 
     test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 12)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 3)
 
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
