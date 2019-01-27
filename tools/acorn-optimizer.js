@@ -1,5 +1,4 @@
 var acorn = require('acorn');
-var walk = require('acorn-walk');
 var astring = require('astring');
 var fs = require('fs');
 var path = require('path');
@@ -24,6 +23,84 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
+// Walks
+// (We don't use acorn-walk because it ignores x in "x = y".)
+
+// Simple post-order walk, calling properties on an object by node type,
+// if the type exists.
+function simple(node, cs) {
+  for (var child in node) {
+    if (child && typeof child === 'object' && typeof child.type === 'string') {
+      simple(child, cs);
+    }
+  }
+  if (node.type in cs) {
+    cs[node.type](node);
+  }
+}
+
+// Full post-order walk, calling a single function for all types.
+function full(node, c) {
+  for (var child in node) {
+    if (child && typeof child === 'object' && typeof child.type === 'string') {
+      simple(child, c);
+    }
+  }
+  c(node);
+}
+
+function visitChildren(node, c) {
+print('vcs ' + JSON.stringify(node));
+  function maybeChild(child) {
+print('mc ' + JSON.stringify(child));
+    if (child && typeof child === 'object' && typeof child.type === 'string') {
+
+print('MC!!!!!!!');
+      c(child);
+      return true;
+    }
+    return false;
+  }
+  for (var key in node) {
+    var child = node[key];
+print('a1 ' + key + ' : ' + JSON.stringify(child));
+    // Check for a child.
+    if (!maybeChild(child)) {
+print('a2');
+      // Check for an array of children.
+      if (Array.isArray(child)) {
+print('a3');
+        child.forEach(maybeChild);
+      } else {
+print('a4');
+        // Check for an object of children.
+        if (child && typeof child === 'object') {
+print('a5');
+          for (var grandChild in child) {
+print('a6');
+            maybeChild(grandChild);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Recursive post-order walk, calling properties on an object by node type,
+// if the type exists, and if so leaving recursion to that function.
+function recursiveWalk(node, cs) {
+print('recw1 ' + JSON.stringify(node));
+  if (!(node.type in cs)) {
+    visitChildren(node, function(child) {
+      recursiveWalk(child, cs);
+    });
+  } else {
+    cs[node.type](node);
+  }
+}
+
+// AST Utilities
+
 function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
@@ -41,7 +118,7 @@ function ignoreInnerScopes(node) {
     map.set(node, node.type);
     node.type = 'EmptyStatement';
   }
-  walk.simple(node, {
+  simpleWalk(node, {
     FunctionExpression(node) {
       ignore(node);
     },
@@ -55,7 +132,7 @@ function ignoreInnerScopes(node) {
 
 // Mark inner scopes temporarily as empty statements.
 function restoreInnerScopes(node, map) {
-  walk.full(node, function(node) {
+  fullWalk(node, function(node) {
     if (map.has(node)) {
       node.type = map.get(node);
       map.delete(node);
@@ -68,7 +145,7 @@ function hasSideEffects(node) {
   // Conservative analysis.
   var map = ignoreInnerScopes(node);
   var has = false;
-  walk.full(node, function(node, state, type) {
+  fullWalk(node, function(node, type) {
     switch (type) {
       // TODO: go through all the ESTree spec
       case 'Literal':
@@ -122,6 +199,16 @@ function hasSideEffects(node) {
 // analysis here.
 
 function JSDCE(ast, multipleIterations) {
+dump(ast);
+    recursiveWalk(ast, {
+      Identifier(node, c) {
+        var name = node.name;
+printErr('ident ' + name);
+      },
+    });
+throw 5;
+
+
   function iteration() {
     var removed = false;
     var scopes = [{}]; // begin with empty toplevel scope
@@ -142,8 +229,8 @@ function JSDCE(ast, multipleIterations) {
       return scope[name];
     }
     function cleanUp(ast, names) {
-      walk.recursive(ast, null, {
-        VariableDeclaration(node, state, c) {
+      recursiveWalk(ast, {
+        VariableDeclaration(node, c) {
           node.declarations = node.declarations.filter(function(node) {
             var curr = node.id.name
             var value = node.init;
@@ -155,7 +242,7 @@ function JSDCE(ast, multipleIterations) {
             emptyOut(node);
           }
         },
-        FunctionDeclaration(node, state, c) {
+        FunctionDeclaration(node, c) {
           if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
             removed = true;
             emptyOut(node);
@@ -169,7 +256,7 @@ function JSDCE(ast, multipleIterations) {
       });
     }
 
-    function handleFunction(node, state, c, defun) {
+    function handleFunction(node, c, defun) {
       // defun names matter - function names (the y in var x = function y() {..}) are just for stack traces.
       if (defun) {
         ensureData(scopes[scopes.length-1], node.id.name).def = 1;
@@ -181,7 +268,7 @@ function JSDCE(ast, multipleIterations) {
         scope[name].param = 1;
       });
       scopes.push(scope);
-      c(node.body, state);
+      c(node.body);
       // we can ignore self-references, i.e., references to ourselves inside
       // ourselves, for named defined (defun) functions
       var ownName = defun ? node.id.name : '';
@@ -203,19 +290,19 @@ function JSDCE(ast, multipleIterations) {
       cleanUp(node.body, names);
     }
 
-    walk.recursive(ast, null, {
-      VariableDeclarator(node, state, c) {
+    recursiveWalk(ast, {
+      VariableDeclarator(node, c) {
         var name = node.id.name;
         ensureData(scopes[scopes.length-1], name).def = 1;
-        if (node.init) c(node.init, state);
+        if (node.init) c(node.init);
       },
-      FunctionDeclaration(node, state, c) {
-        handleFunction(node, state, c, true /* defun */);
+      FunctionDeclaration(node, c) {
+        handleFunction(node, c, true /* defun */);
       },
-      FunctionExpression(node, state, c) {
-        handleFunction(node, state, c);
+      FunctionExpression(node, c) {
+        handleFunction(node, c);
       },
-      Identifier(node, state, c) {
+      Identifier(node, c) {
         var name = node.name;
         ensureData(scopes[scopes.length-1], name).use = 1;
       },
