@@ -176,6 +176,25 @@ function restoreInnerScopes(node, map) {
   });
 }
 
+// If we empty out a var from
+//   for (var i in x) {}
+//   for (var j = 0;;) {}
+// then it will be invalid. We saved it on the side;
+// restore it here.
+function restoreForVars(node) {
+  function fix(init) {
+    if (init.type === 'EmptyStatement') {
+      assert(init.oldDeclarations);
+      init.type = 'VariableDeclaration';
+      init.declarations = init.oldDeclarations;
+    }
+  }
+  simpleWalk(node, {
+    ForStatement(node) { fix(node.init) },
+    ForInStatement(node) { fix(node.left) },
+  });
+}
+
 function hasSideEffects(node) {
   // Conservative analysis.
   var map = ignoreInnerScopes(node);
@@ -256,6 +275,7 @@ function JSDCE(ast, multipleIterations) {
     function cleanUp(ast, names) {
       recursiveWalk(ast, {
         VariableDeclaration(node, c) {
+          var old = node.declarations;
           node.declarations = node.declarations.filter(function(node) {
             var curr = node.id.name
             var value = node.init;
@@ -265,6 +285,8 @@ function JSDCE(ast, multipleIterations) {
           });
           if (node.declarations.length === 0) {
             emptyOut(node);
+            // If this is in a for, we may need to restore it.
+            node.oldDeclarations = old;
           }
         },
         FunctionDeclaration(node, c) {
@@ -279,6 +301,7 @@ function JSDCE(ast, multipleIterations) {
         FunctionExpression() {},
         ArrowFunctionExpression() {},
       });
+      restoreForVars(ast);
     }
 
     function handleFunction(node, c, defun) {

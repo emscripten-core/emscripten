@@ -2178,6 +2178,8 @@ int f() {
       # ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
        ['JSDCE']),
+      (path_from_root('tests', 'optimizer', 'JSDCE-fors.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-fors-output.js')).read(),
+       ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
        ['AJSDCE']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
