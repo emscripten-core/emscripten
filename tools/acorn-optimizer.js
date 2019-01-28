@@ -154,10 +154,13 @@ function ignoreInnerScopes(node) {
     node.type = 'EmptyStatement';
   }
   simpleWalk(node, {
+    FunctionDeclaration(node) {
+      ignore(node);
+    },
     FunctionExpression(node) {
       ignore(node);
     },
-    FunctionDeclaration(node) {
+    ArrowFunctionExpression(node) {
       ignore(node);
     },
     // TODO: arrow etc.
@@ -182,17 +185,20 @@ function restoreInnerScopes(node, map) {
 // then it will be invalid. We saved it on the side;
 // restore it here.
 function restoreForVars(node) {
+  var restored = 0;
   function fix(init) {
     if (init && init.type === 'EmptyStatement') {
       assert(init.oldDeclarations);
       init.type = 'VariableDeclaration';
       init.declarations = init.oldDeclarations;
+      restored++;
     }
   }
   simpleWalk(node, {
     ForStatement(node) { fix(node.init) },
     ForInStatement(node) { fix(node.left) },
   });
+  return restored;
 }
 
 function hasSideEffects(node) {
@@ -209,8 +215,9 @@ function hasSideEffects(node) {
       case 'ExpressionStatement':
       case 'UpdateOperator':
       case 'ConditionalExpression':
-      case 'FunctionExpression':
       case 'FunctionDeclaration':
+      case 'FunctionExpression':
+      case 'ArrowFunctionExpression':
       case 'VariableDeclaration':
       case 'VariableDeclarator':
       case 'ObjectExpression':
@@ -254,7 +261,7 @@ function hasSideEffects(node) {
 
 function JSDCE(ast, multipleIterations) {
   function iteration() {
-    var removed = false;
+    var removed = 0;
     var scopes = [{}]; // begin with empty toplevel scope
     function DUMP() {
       printErr('vvvvvvvvvvvvvv');
@@ -276,13 +283,15 @@ function JSDCE(ast, multipleIterations) {
       recursiveWalk(ast, {
         VariableDeclaration(node, c) {
           var old = node.declarations;
+          var removedHere = 0;
           node.declarations = node.declarations.filter(function(node) {
             var curr = node.id.name
             var value = node.init;
             var keep = !(curr in names) || (value && hasSideEffects(value));
-            if (!keep) removed = true;
+            if (!keep) removedHere = 1;
             return keep;
           });
+          removed += removedHere;
           if (node.declarations.length === 0) {
             emptyOut(node);
             // If this is in a for, we may need to restore it.
@@ -291,7 +300,7 @@ function JSDCE(ast, multipleIterations) {
         },
         FunctionDeclaration(node, c) {
           if (Object.prototype.hasOwnProperty.call(names, node.id.name)) {
-            removed = true;
+            removed++;
             emptyOut(node);
             return;
           }
@@ -301,7 +310,7 @@ function JSDCE(ast, multipleIterations) {
         FunctionExpression() {},
         ArrowFunctionExpression() {},
       });
-      restoreForVars(ast);
+      removed -= restoreForVars(ast);
     }
 
     function handleFunction(node, c, defun) {
@@ -354,6 +363,9 @@ function JSDCE(ast, multipleIterations) {
         handleFunction(node, c, true /* defun */);
       },
       FunctionExpression(node, c) {
+        handleFunction(node, c);
+      },
+      FunctionFunctionExpression(node, c) {
         handleFunction(node, c);
       },
       Identifier(node, c) {
