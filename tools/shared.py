@@ -2348,8 +2348,7 @@ class Building(object):
   @staticmethod
   def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None, acorn=False):
     if not acorn:
-      from . import js_optimizer
-      optimizer = js_optimizer.JS_OPTIMIZER
+      optimizer = path_from_root('tools', 'js-optimizer.js')
     else:
       optimizer = path_from_root('tools', 'acorn-optimizer.js')
     original_filename = filename
@@ -2360,17 +2359,18 @@ class Building(object):
       with open(temp, 'a') as f:
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
+    cmd = NODE_JS + [optimizer, filename] + passes
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      run_process(NODE_JS + [optimizer, filename] + passes, stdout=open(next, 'w'))
+      run_process(cmd, stdout=open(next, 'w'))
       return next
     else:
-      return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
+      return run_process(cmd, stdout=PIPE).stdout
 
   @staticmethod
-  def acorn_optimizer(filename, passes, extra_info=None):
-    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, acorn=True)
+  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, return_output=return_output, acorn=True)
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2573,7 +2573,7 @@ class Building(object):
     assert Settings.DECLARE_ASM_MODULE_EXPORTS, 'Internal error: Meta-DCE is currently not compatible with -s DECLARE_ASM_MODULE_EXPORTS=0, build should have occurred with -s DECLARE_ASM_MODULE_EXPORTS=1 if we reach here!'
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
-    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noPrint'], return_output=True)
+    txt = Building.acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True)
     graph = json.loads(txt)
     # add exports based on the backend output, that are not present in the JS
     if not Settings.DECLARE_ASM_MODULE_EXPORTS:
