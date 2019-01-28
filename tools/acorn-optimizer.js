@@ -183,7 +183,7 @@ function restoreInnerScopes(node, map) {
 // restore it here.
 function restoreForVars(node) {
   function fix(init) {
-    if (init.type === 'EmptyStatement') {
+    if (init && init.type === 'EmptyStatement') {
       assert(init.oldDeclarations);
       init.type = 'VariableDeclaration';
       init.declarations = init.oldDeclarations;
