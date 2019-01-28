@@ -2208,7 +2208,6 @@ int f() {
       # test calling optimizer
       if not acorn:
         print('  js')
-        continue # XXX
         output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
       else:
         print('  acorn')
