@@ -210,7 +210,6 @@ function hasSideEffects(node) {
         }
         break;
       }
-      }
       default: {
         has = true;
         //console.error('because ' + node.type);
@@ -717,7 +716,8 @@ function applyDCEGraphRemovals(ast) {
         var name = getAsmOrModuleUseName(target);
         var full = 'emcc$export$' + name;
         var value = node.right;
-        if ((full in unused) && !hasSideEffects(value)) {
+        if ((full in unused) &&
+            (isAsmUse(value) || !hasSideEffects(value))) {
           undefinedify(node);
         }
       }
