@@ -366,6 +366,10 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=binaryen2
+  test-upstream-wasmobj0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasmobj0
   test-upstream-wasmobj2:
     <<: *test-defaults
     environment:
@@ -443,6 +447,9 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-binaryen2:
+          requires:
+            - build-upstream
+      - test-upstream-wasmobj0:
           requires:
             - build-upstream
       - test-upstream-wasmobj2:
