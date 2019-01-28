@@ -1110,7 +1110,7 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
-      if (whence < 0 /* SEEK_SET */ || whence > 2 /* SEEK_END */) {
+      if (whence != 0 /* SEEK_SET */ && whence != 1 /* SEEK_CUR */ && whence != 2 /* SEEK_END */) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
