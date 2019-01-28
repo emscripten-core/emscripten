@@ -1290,6 +1290,17 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+  setThrew__asm: true,
+  setThrew__sig: 'vii',
+  setThrew: function(threw, value) {
+    threw = threw|0;
+    value = value|0;
+    if ((__THREW__|0) == 0) {
+      __THREW__ = threw;
+      threwValue = value;
+    }
+  },
+
   $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
     last: 0,
@@ -1458,10 +1469,10 @@ LibraryManager.library = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS', 'setThrew'],
   __cxa_end_catch: function() {
     // Clear state flag.
-    Module['setThrew'](0);
+    _setThrew(0);
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -3116,9 +3127,9 @@ LibraryManager.library = {
     return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
   },
 
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
+  longjmp__deps: ['saveSetjmp', 'testSetjmp', 'setThrew'],
   longjmp: function(env, value) {
-    Module['setThrew'](env, value || 1);
+    _setThrew(env, value || 1);
     throw 'longjmp';
   },
   emscripten_longjmp__deps: ['longjmp'],

@@ -18,7 +18,7 @@ import shared, jsrun
 # configuration options will have to be hardcoded.
 CSMITH_CFLAGS = ['-I', os.path.join(os.environ['CSMITH_PATH'], 'runtime')]
 ENGINE = shared.JS_ENGINES[0]
-EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1']
+EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1']
 
 filename = sys.argv[1]
 obj_filename = shared.unsuffixed(filename)

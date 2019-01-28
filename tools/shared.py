@@ -2961,7 +2961,7 @@ function jsCall_%s(%s) {
   } catch(e) {
     stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
+    _setThrew(1, 0);
   }
 }''' % ((' invoke_' + sig) if named else '', args, body)
     return ret
