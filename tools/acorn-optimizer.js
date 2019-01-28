@@ -135,6 +135,11 @@ function setLiteralValue(item, value) {
   item.raw = "'" + value + "'";
 }
 
+function isLiteralString(node) {
+  return node.type === 'Literal' &&
+         (node.raw[0] === '"' || node.raw[0] === "'");
+}
+
 function dump(node, text) {
   if (text) print(text);
   print(JSON.stringify(node, null, ' '));
@@ -376,12 +381,12 @@ function isAsmUse(node) {
          ((node.object.type === 'Identifier' && // asm['X']
            node.object.name === 'asm' &&
            node.property.type === 'Literal') ||
-          (node.object.type === 'MemberExpression' && // Module[asm]['X']
+          (node.object.type === 'MemberExpression' && // Module['asm']['X']
            node.object.object.type === 'Identifier' &&
            node.object.object.name === 'Module' &&
-           node.object.property.type === 'Identifier' &&
-           node.object.property.name === 'asm' &&
-           node.property.type === 'Literal'));
+           node.object.property.type === 'Literal' &&
+           node.object.property.value === 'asm' &&
+           isLiteralString(node.property)));
 }
 
 function getAsmOrModuleUseName(node) {
@@ -392,7 +397,7 @@ function isModuleUse(node) {
   return node.type === 'MemberExpression' && // Module['X']
          node.object.type === 'Identifier' &&
          node.object.name === 'Module' &&
-         node.property.type === 'Literal';
+         isLiteralString(node.property);
 }
 
 function isModuleAsmUse(node) { // Module['asm'][..string..]
@@ -402,7 +407,7 @@ function isModuleAsmUse(node) { // Module['asm'][..string..]
          node.object.object.name === 'Module' &&
          node.object.property.type === 'Literal' && 
          node.object.property.value === 'asm' &&
-         node.property.type === 'Literal';
+         isLiteralString(node.property);
 }
 
 // Apply import/export name changes (after minifying them)
@@ -433,6 +438,265 @@ function applyImportAndExportNameChanges(ast) {
       }
     }
   });
+}
+
+// A static dyncall is dynCall('vii', ..), which is actually static even
+// though we call dynCall() - we see the string signature statically.
+function isStaticDynCall(node) {
+  return node.type === 'CallExpression' &&
+         node.callee.type === 'Identifier' &&
+         node.callee.name === 'dynCall' &&
+         isLiteralString(node.arguments[0])
+}
+
+function getStaticDynCallName(node) {
+  return 'dynCall_' + node.arguments[0].value;
+}
+
+// a dynamic dyncall is one in which all we know is *some* dynCall may
+// be called, but not who. This can be either
+//   dynCall(*not a string*, ..)
+// or, to be conservative,
+//   "dynCall_"
+// as that prefix means we may be constructing a dynamic dyncall name
+// (dynCall and embind's requireFunction do this internally).
+function isDynamicDynCall(node) {
+  return (node.type === 'CallExpression' &&
+          node.callee.type === 'Identifier' &&
+          node.callee.name === 'dynCall' &&
+          !isLiteralString(node.arguments[0])) ||
+         (isLiteralString(node) &&
+          node.value === 'dynCall_');
+}
+
+//
+// Emit the DCE graph, to help optimize the combined JS+wasm.
+// This finds where JS depends on wasm, and where wasm depends
+// on JS, and prints that out.
+//
+// The analysis here is simplified, and not completely general. It
+// is enough to optimize the common case of JS library and runtime
+// functions involved in loops with wasm, but not more complicated
+// things like JS objects and sub-functions. Specifically we
+// analyze as follows:
+//
+//  * We consider (1) the toplevel scope, and (2) the scopes of toplevel defined
+//    functions (defun, not function; i.e., function X() {} where
+//    X can be called later, and not y = function Z() {} where Z is
+//    just a name for stack traces). We also consider the wasm, which
+//    we can see things going to and arriving from.
+//  * Anything used in a defun creates a link in the DCE graph, either
+//    to another defun, or the wasm.
+//  * Anything used in the toplevel scope is rooted, as it is code
+//    we assume will execute. The exceptions are
+//     * when we receive something from wasm; those are "free" and
+//       do not cause rooting. (They will become roots if they are
+//       exported, the metadce logic will handle that.)
+//     * when we send something to wasm; sending a defun causes a
+//       link in the DCE graph.
+//  * Anything not in the toplevel or not in a toplevel defun is
+//    considering rooted. We don't optimize those cases.
+//
+// Special handling:
+//
+//  * dynCall('vii', ..) are dynamic dynCalls, but we analyze them
+//    statically, to preserve the dynCall_vii etc. method they depend on.
+//    Truly dynamic dynCalls (not to a string constant) will not work,
+//    and require the user to export them.
+//  * Truly dynamic dynCalls are assumed to reach any dynCall_*.
+//
+// XXX this modifies the input AST. if you want to keep using it,
+//     that should be fixed. Currently the main use case here does
+//     not require that. TODO FIXME
+//
+function emitDCEGraph(ast) {
+  // Pre-pass: remove functions, which we don't want to look inside,
+  // and can just ignore.
+  simpleWalk(ast, {
+    FunctionExpression(node) {
+// XXX      nullify(node);
+    }
+  });
+  // First pass: find the wasm imports and exports, and the toplevel
+  // defuns, and save them on the side, removing them from the AST,
+  // which makes the second pass simpler.
+  //
+  // The imports that wasm receives look like this:
+  //
+  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //
+  // The exports are trickier, as they have a different form whether or not
+  // async compilation is enabled. It can be either:
+  //
+  //  var _malloc = Module["_malloc"] = asm["_malloc"];
+  //
+  // or
+  //
+  //  var _malloc = Module["_malloc"] = (function() {
+  //   return Module["asm"]["_malloc"].apply(null, arguments);
+  //  });
+  //
+  var imports = [];
+  var defuns = [];
+  var dynCallNames = [];
+  var nameToGraphName = {};
+  var modulePropertyToGraphName = {};
+  var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
+  var foundAsmLibraryArgAssign = false;
+  var graph = [];
+  fullWalk(ast, function(node) {
+    if (isAsmLibraryArgAssign(node)) {
+      var assignedObject = node.right;
+      assignedObject.properties.forEach(function(item) {
+        var value = item.value;
+        assert(value.type === 'Identifier');
+        imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
+      });
+      foundAsmLibraryArgAssign = true;
+      emptyOut(node); // ignore this in the second pass; this does not root
+    } else if (node.type === 'VariableDeclaration') {
+      if (node.declarations.length === 1) {
+        var item = node.declarations[0];
+        var name = item.id.name;
+        var value = item.init;
+        if (value && value.type === 'AssignmentExpression') {
+          var assigned = value.left;
+          if (isModuleUse(assigned) && getAsmOrModuleUseName(assigned) === name) {
+            // this is
+            //  var x = Module['x'] = ?
+            // which looks like a wasm export being received. confirm with the asm use
+            var found = 0;
+            var asmName;
+            fullWalk(value.right, function(node) {
+              if (isAsmUse(node)) {
+                found++;
+                asmName = getAsmOrModuleUseName(node);
+              }
+            });
+            // in the wasm backend, the asm name may have one fewer "_" prefixed
+            if (found === 1) {
+              // this is indeed an export
+              // the asmName is what the wasm provides directly; the outside JS
+              // name may be slightly different (extra "_" in wasm backend)
+              var graphName = getGraphName(name, 'export');
+              nameToGraphName[name] = graphName;
+              modulePropertyToGraphName[name] = graphName;
+              exportNameToGraphName[asmName] = graphName;
+              if (/^dynCall_/.test(name)) {
+                dynCallNames.push(graphName);
+              }
+              emptyOut(node); // ignore this in the second pass; this does not root
+            }
+          }
+        }
+      }
+    } else if (node.type === 'FunctionDeclaration') {
+      defuns.push(node);
+      var name = node.id.name;
+      nameToGraphName[name] = getGraphName(name, 'defun');
+      emptyOut(node); // ignore this in the second pass; we scan defuns separately
+    }
+  });
+  // must find the info we need
+  assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
+  // Second pass: everything used in the toplevel scope is rooted;
+  // things used in defun scopes create links
+  function getGraphName(name, what) {
+    return 'emcc$' + what + '$' + name;
+  }
+  var infos = {}; // the graph name of the item => info for it
+  imports.forEach(function(import_) {
+    var name = getGraphName(import_, 'import');
+    var info = infos[name] = {
+      name: name,
+      import: ['env', import_],
+      reaches: {}
+    };
+    if (nameToGraphName.hasOwnProperty(import_)) {
+      info.reaches[nameToGraphName[import_]] = 1;
+    } // otherwise, it's a number, ignore
+  });
+  for (var e in exportNameToGraphName) {
+    var name = exportNameToGraphName[e];
+    infos[name] = {
+      name: name,
+      export: e,
+      reaches: {}
+    };
+  }
+  // a function that handles a node we visit, in either a defun or
+  // the toplevel scope (in which case the second param is not provided)
+  function visitNode(node, defunInfo) {
+    // TODO: scope awareness here. for now we just assume all uses are
+    //       from the top scope, which might create more uses than needed
+    var reached;
+    if (node.type === 'Identifier') {
+      var name = node.name;
+      if (nameToGraphName.hasOwnProperty(name)) {
+        reached = nameToGraphName[name];
+      }
+    } else if (isModuleUse(node)) {
+      var name = getAsmOrModuleUseName(node);
+      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+        reached = modulePropertyToGraphName[name];
+      }
+    } else if (isStaticDynCall(node)) {
+      reached = getGraphName(getStaticDynCallName(node), 'export');
+    } else if (isDynamicDynCall(node)) {
+      // this can reach *all* dynCall_* targets, we can't narrow it down
+      reached = dynCallNames;
+    } else if (isAsmUse(node)) {
+      // any remaining asm uses are always rooted in any case
+      var name = getAsmOrModuleUseName(node);
+      if (exportNameToGraphName.hasOwnProperty(name)) {
+        infos[exportNameToGraphName[name]].root = true;
+      }
+      return;
+    }
+    if (reached) {
+      function addReach(reached) {
+        if (defunInfo) {
+          defunInfo.reaches[reached] = 1; // defun reaches it
+        } else {
+          infos[reached].root = true; // in global scope, root it
+        }
+      }
+      if (typeof reached === 'string') {
+        addReach(reached);
+      } else {
+        reached.forEach(addReach);
+      }
+    }
+  }
+  defuns.forEach(function(defun) {
+    var name = getGraphName(defun.id.name, 'defun');
+    var info = infos[name] = {
+      name: name,
+      reaches: {}
+    };
+    fullWalk(defun.body, function(node) {
+      visitNode(node, info);
+    });
+  });
+  fullWalk(ast, function(node) {
+    visitNode(node, null);
+  });
+  // Final work: print out the graph
+  // sort for determinism
+  function sortedNamesFromMap(map) {
+    var names = [];
+    for (var name in map) {
+      names.push(name);
+    }
+    names.sort();
+    return names;
+  }
+  sortedNamesFromMap(infos).forEach(function(name) {
+    var info = infos[name];
+    info.reaches = sortedNamesFromMap(info.reaches);
+    graph.push(info);
+  });
+  print(JSON.stringify(graph, null, ' '));
 }
 
 // Apply graph removals from running wasm-metadce
@@ -478,13 +742,16 @@ if (extraInfoStart > 0) {
 var ast = acorn.parse(input, { ecmaVersion: 6 });
 
 var minifyWhitespace = false;
+var noPrint = false;
 
 var registry = {
   JSDCE: JSDCE,
   AJSDCE: AJSDCE,
   applyImportAndExportNameChanges: applyImportAndExportNameChanges,
+  emitDCEGraph: emitDCEGraph,
   applyDCEGraphRemovals: applyDCEGraphRemovals,
   minifyWhitespace: function() { minifyWhitespace = true },
+  noPrint: function() { noPrint = true },
   dump: function() { dump(ast) },
 };
 
@@ -499,5 +766,8 @@ var output = astring.generate(ast, {
   lineEnd: minifyWhitespace ? '' : '\n',
   // may want to use escodegen with compact=true and semicolons=false (but it has many more deps)
 });
-print(output);
+
+if (!noPrint) {
+  print(output);
+}
 
