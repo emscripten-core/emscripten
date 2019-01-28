@@ -1578,6 +1578,7 @@ int f() {
     ''')
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertNotIn('loading from archive', err)
+    self.assertNotIn('liba.a', err)
     self.assertNotIn('which has duplicate entries', err)
     self.assertNotIn('duplicate: common.o', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
@@ -1592,6 +1593,7 @@ int f() {
     run_process([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertIn('loading from archive', err)
+    self.assertIn('liba.a', err)
     self.assertIn('which has duplicate entries', err)
     self.assertIn('duplicate: common.o', err)
     assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
