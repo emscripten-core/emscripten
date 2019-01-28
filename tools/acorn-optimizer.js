@@ -365,7 +365,7 @@ function JSDCE(ast, multipleIterations) {
       FunctionExpression(node, c) {
         handleFunction(node, c);
       },
-      FunctionFunctionExpression(node, c) {
+      ArrowFunctionExpression(node, c) {
         handleFunction(node, c);
       },
       Identifier(node, c) {
@@ -542,13 +542,6 @@ function isDynamicDynCall(node) {
 //     not require that. TODO FIXME
 //
 function emitDCEGraph(ast) {
-  // Pre-pass: remove functions, which we don't want to look inside,
-  // and can just ignore.
-  simpleWalk(ast, {
-    FunctionExpression(node) {
-// XXX      nullify(node);
-    }
-  });
   // First pass: find the wasm imports and exports, and the toplevel
   // defuns, and save them on the side, removing them from the AST,
   // which makes the second pass simpler.
