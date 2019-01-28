@@ -7027,7 +7027,7 @@ int main() {
   def test_only_my_code(self):
     run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
     count = open('a.out.asm.js').read().count('function ')
-    assert count > 30, count # libc brings in a bunch of stuff
+    assert count > 29, count # libc brings in a bunch of stuff
 
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
@@ -7045,7 +7045,7 @@ int main() {
         print('(skipping asm.js validation check)')
 
     test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 12)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 3)
 
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
@@ -7861,9 +7861,9 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      21, ['assert'], ['waka'], 46505,  22,   16, 59), # noqa
-        (['-O1'], 16, ['assert'], ['waka'], 12630,  14,   14, 31), # noqa
-        (['-O2'], 16, ['assert'], ['waka'], 12616,  14,   14, 31), # noqa
+        ([],      21, ['assert'], ['waka'], 46505,  22,   15, 58), # noqa
+        (['-O1'], 16, ['assert'], ['waka'], 12630,  14,   13, 30), # noqa
+        (['-O2'], 16, ['assert'], ['waka'], 12616,  14,   13, 30), # noqa
         (['-O3'],  6, [],         [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  6, [],         [],        2690,   9,    2, 21), # noqa
         (['-Oz'],  6, [],         [],        2690,   9,    2, 21), # noqa
@@ -7877,9 +7877,9 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      21, ['assert'], ['waka'], 22712, 22, 15, 28), # noqa
-        (['-O1'], 11, ['assert'], ['waka'], 10450,  7, 12, 12), # noqa
-        (['-O2'], 11, ['assert'], ['waka'], 10440,  7, 12, 12), # noqa
+        ([],      21, ['assert'], ['waka'], 22712, 22, 14, 27), # noqa
+        (['-O1'], 11, ['assert'], ['waka'], 10450,  7, 11, 11), # noqa
+        (['-O2'], 11, ['assert'], ['waka'], 10440,  7, 11, 11), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  0, [],         [],          55,  0,  1, 1), # noqa
         (['-Os'],  0, [],         [],          55,  0,  1, 1), # noqa
@@ -7888,9 +7888,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   41, 659), # noqa
+        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   40, 658), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   22, 620), # noqa
+                  35, ['assert'], ['waka'], 196709,  28,   21, 619), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend

@@ -156,22 +156,10 @@ class TestCoreBase(RunnerCore):
   def test_i64_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
-  def test_i64_precise_unneeded(self):
-    # Verify that even if we ask for precision, if it is not needed it is not included
-    self.set_setting('PRECISE_I64_MATH', 1)
-    self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_unneeded')
-
-    code = open('src.cpp.o.js').read()
-    assert 'goog.math.Long' not in code, 'i64 precise math should never be included, musl does its own printfing'
-
   def test_i64_precise_needed(self):
-    # and now one where we do
-    self.set_setting('PRECISE_I64_MATH', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise_needed')
 
   def test_i64_llabs(self):
-    self.set_setting('PRECISE_I64_MATH', 2)
-
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_llabs')
 
   def test_i64_zextneg(self):
@@ -236,9 +224,6 @@ class TestCoreBase(RunnerCore):
 
   @no_wasm_backend('test uses calls to expected js imports, rather than using llvm intrinsics directly')
   def test_llvm_intrinsics(self):
-    # for bswap64
-    self.set_setting('PRECISE_I64_MATH', 2)
-
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_intrinsics')
 
   @no_wasm_backend('test looks for js impls of intrinsics')

@@ -184,14 +184,6 @@ var FORCE_ALIGNED_MEMORY = 0;
 // wasm.
 var WARN_UNALIGNED = 0;
 
-// If enabled, i64 addition etc. is emulated - which is slow but precise. If
-// disabled, we use the 'double trick' which is fast but incurs rounding at high
-// values.  If set to 2, we always include the i64 math code, which is necessary
-// in the case that we can't know at compile time that 64-bit math is needed.
-// For example, if you print 64-bit values with printf, but never add them, we
-// can't know at compile time and you need to set this to 2.
-var PRECISE_I64_MATH = 1;
-
 // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
 //    floats exactly, which are 32-bit.
 // 1: Model C++ floats precisely, using Math.fround, polyfilling when necessary. This
@@ -591,9 +583,9 @@ var ASYNCIFY_WHITELIST = ['qsort',
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
 // only for backwards compatibility. You should use
 // EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.  Note that methods on this list are only exported if they are
-// included (either automatically from linking, or due to being in
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
+// runtime.
+// Methods on this list are automatically included from JS libraries, if they
+// are library methods.
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we export the Runtime object by
 // having "Runtime" in this list.

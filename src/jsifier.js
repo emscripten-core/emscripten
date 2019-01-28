@@ -110,6 +110,19 @@ function JSify(data, functionsOnly) {
         ident: '_' + ident
       });
     });
+    // Exports from the JS runtime may be JS library functions
+    EXPORTED_RUNTIME_METHODS.forEach(function(ident) {
+      // No _ prefix for JS runtime methods, so must be marked with $ in the library.
+      // The first character is ignored by the functionStubs handler, so as a workaround
+      // we can put anything there.
+      ident = '*$' + ident;
+      data.functionStubs.push({
+        intertype: 'functionStub',
+        finalName: ident,
+        ident: ident,
+        ignoreIfMissing: true
+      });
+    });
   }
 
   function processLibraryFunction(snippet, ident, finalName) {
@@ -177,6 +190,9 @@ function JSify(data, functionsOnly) {
       var noExport = false;
 
       if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
+        if (item.ignoreIfMissing) {
+          return '';
+        }
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
