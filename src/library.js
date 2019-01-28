@@ -4261,17 +4261,22 @@ LibraryManager.library = {
   },
 
   emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
-  emscripten_get_now__postset: "if (ENVIRONMENT_IS_NODE) {\n" +
+  emscripten_get_now__postset:
+#if ENVIRONMENT_MAY_BE_NODE
+                               "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
+                               "} else " +
+#endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
-                               "} else if (ENVIRONMENT_IS_PTHREAD) {\n" +
+                               "if (ENVIRONMENT_IS_PTHREAD) {\n" +
                                "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+                               "} else " +
 #endif
-                               "} else if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return self['performance']['now'](); };\n" +

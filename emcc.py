@@ -2849,7 +2849,7 @@ def generate_html(target, options, js_target, target_basename,
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
     for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
-      content = open(shared.path_from_root('src', filename)).read()
+      content = read_and_preprocess(shared.path_from_root('src', filename))
       script.inline = content + script.inline
 
     script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)
