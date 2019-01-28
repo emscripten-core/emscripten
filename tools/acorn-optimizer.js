@@ -190,7 +190,6 @@ function hasSideEffects(node) {
       case 'ExpressionStatement':
       case 'UpdateOperator':
       case 'ConditionalExpression':
-      case 'AssignmentExpression':
       case 'FunctionExpression':
       case 'FunctionDeclaration':
       case 'VariableDeclaration':
@@ -205,13 +204,12 @@ function hasSideEffects(node) {
       case 'MemberExpression': {
         // safe if on Math (or other familiar objects, TODO)
         if (node.object.type !== 'Identifier' ||
-            (node.object.name !== 'Math' &&
-             node.object.name !== 'asm' &&
-             node.object.name !== 'Module')) {
+            node.object.name !== 'Math') {
           //console.error('because member on ' + node.object.name);
           has = true;
         }
         break;
+      }
       }
       default: {
         has = true;
