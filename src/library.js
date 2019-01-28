@@ -4627,8 +4627,8 @@ LibraryManager.library = {
   },
 
   // C calling interface.
-  ccall__deps: ['$UTF8ToString', '$getCFunc'],
-  ccall: function(ident, returnType, argTypes, args, opts) {
+  $ccall__deps: ['$getCFunc', '$JSfuncs'],
+  $ccall: function(ident, returnType, argTypes, args, opts) {
     // For fast lookup of conversion functions
     var toC = {
       'string': JSfuncs['stringToC'],
@@ -4683,8 +4683,8 @@ LibraryManager.library = {
     return ret;
   },
 
-  cwrap__deps: ['$ccall'],
-  cwrap: function(ident, returnType, argTypes, opts) {
+  $cwrap__deps: ['$ccall'],
+  $cwrap: function(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS
     argTypes = argTypes || [];
     // When the function takes numbers and returns a number, we can just return

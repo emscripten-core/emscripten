@@ -110,6 +110,19 @@ function JSify(data, functionsOnly) {
         ident: '_' + ident
       });
     });
+    // Exports from the JS runtime may be JS library functions
+    EXPORTED_RUNTIME_METHODS.forEach(function(ident) {
+      // No _ prefix for JS runtime methods, so must be marked with $ in the library.
+      // The first character is ignored by the functionStubs handler, so as a workaround
+      // we can put anything there.
+      ident = '*$' + ident;
+      data.functionStubs.push({
+        intertype: 'functionStub',
+        finalName: ident,
+        ident: ident,
+        ignoreIfMissing: true
+      });
+    });
   }
 
   function processLibraryFunction(snippet, ident, finalName) {
@@ -180,11 +193,13 @@ function JSify(data, functionsOnly) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
-              if (ERROR_ON_UNDEFINED_SYMBOLS) {
-                error('undefined symbol: ' + ident);
-                warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
-              } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-                warn('undefined symbol: ' + ident);
+              if (!item.ignoreIfMissing) {
+                if (ERROR_ON_UNDEFINED_SYMBOLS) {
+                  error('undefined symbol: ' + ident);
+                  warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
+                } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+                  warn('undefined symbol: ' + ident);
+                }
               }
             }
           }
