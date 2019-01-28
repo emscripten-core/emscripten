@@ -4608,42 +4608,26 @@ LibraryManager.library = {
     return func;
   },
 
-  $JSfuncs__deps: ['writeArrayToMemory', 'stringToUTF8'],
-  $JSfuncs: {
-    // Helpers for cwrap -- it can't refer to Runtime directly because it might
-    // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
-    // out what the minified function name is.
-    'stackSave': function() {
-      stackSave()
-    },
-    'stackRestore': function() {
-      stackRestore()
-    },
-    // type conversion from js to c
-    'arrayToC' : function(arr) {
-      var ret = stackAlloc(arr.length);
-      writeArrayToMemory(arr, ret);
-      return ret;
-    },
-    'stringToC' : function(str) {
-      var ret = 0;
-      if (str !== null && str !== undefined && str !== 0) { // null string
-        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-        var len = (str.length << 2) + 1;
-        ret = stackAlloc(len);
-        stringToUTF8(str, ret, len);
-      }
-      return ret;
-    }
-  },
-
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$JSfuncs'],
+  $ccall__deps: ['$getCFunc'],
   $ccall: function(ident, returnType, argTypes, args, opts) {
     // For fast lookup of conversion functions
     var toC = {
-      'string': JSfuncs['stringToC'],
-      'array': JSfuncs['arrayToC']
+      'array': function(arr) {
+        var ret = stackAlloc(arr.length);
+        writeArrayToMemory(arr, ret);
+        return ret;
+      },
+      'string': function(str) {
+        var ret = 0;
+        if (str !== null && str !== undefined && str !== 0) { // null string
+          // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+          var len = (str.length << 2) + 1;
+          ret = stackAlloc(len);
+          stringToUTF8(str, ret, len);
+        }
+        return ret;
+      }
     };
 
     function convertReturnValue(ret) {
