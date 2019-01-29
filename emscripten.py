@@ -413,11 +413,17 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_temp_vars = create_asm_temp_vars()
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
+  stack = ''
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n')
+    if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
+    if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
+
+  if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
+    temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
   else:
-    stack = ''
-  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
+    temp_float = ''
   async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
 
@@ -1443,7 +1449,10 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
-  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr']
+  basic_vars = ['DYNAMICTOP_PTR']
+  if 'tempDoublePtr' in shared.Settings.ASM_PRIMITIVE_VARS:
+    basic_vars += ['tempDoublePtr']
+
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
@@ -1515,8 +1524,6 @@ def create_the_global(metadata):
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
-  if shared.Settings.ALLOW_MEMORY_GROWTH:
-    fundamentals.append('byteLength')
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
@@ -1777,13 +1784,18 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
 
 
 def create_asm_temp_vars():
-  rtn = '''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
-''' % (access_quote('NaN'), access_quote('Infinity'))
+  temp_ints = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue']
+  temp_doubles = ['tempDouble']
+  rtn = 'var nan = global%s, inf = global%s' % (access_quote('NaN'), access_quote('Infinity'))
+
+  for i in temp_ints:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0'
+
+  for i in temp_doubles:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0.0'
+  rtn += ';'
 
   return rtn
 
@@ -1805,15 +1817,14 @@ def create_replace_memory():
 
   return '''
 function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
+  HEAP8 = new Int8Array(newBuffer);
+  HEAP16 = new Int16Array(newBuffer);
+  HEAP32 = new Int32Array(newBuffer);
+  HEAPU8 = new Uint8Array(newBuffer);
+  HEAPU16 = new Uint16Array(newBuffer);
+  HEAPU32 = new Uint32Array(newBuffer);
+  HEAPF32 = new Float32Array(newBuffer);
+  HEAPF64 = new Float64Array(newBuffer);
   buffer = newBuffer;
   return true;
 }
@@ -1843,7 +1854,6 @@ def create_memory_views():
     Float32View Float64View
   """
   ret = '\n'
-  grow_memory = shared.Settings.ALLOW_MEMORY_GROWTH
   for info in HEAP_TYPE_INFOS:
     access = access_quote('{}Array'.format(info.long_name))
     format_args = {
@@ -1851,13 +1861,7 @@ def create_memory_views():
       'long': info.long_name,
       'access': access,
     }
-    if grow_memory:
-      ret += ('  var {long}View = global{access};\n'
-              '  var {heap} = new {long}View(buffer);\n').format(**format_args)
-    else:
-      ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
-  if grow_memory:
-    ret += '  var byteLength = global.byteLength;\n'
+    ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
   return ret
 
 

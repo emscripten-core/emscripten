@@ -16,8 +16,9 @@ from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()
 
-import os, subprocess, sys
+import os, sys
 from tools import shared
+from tools.response_file import substitute_response_files
 
 #
 # Main run() function
@@ -26,6 +27,8 @@ def run():
   DEBUG = os.environ.get('EMCC_DEBUG')
   if DEBUG == "0":
     DEBUG = None
+
+  sys.argv = substitute_response_files(sys.argv)
 
   newargs = [shared.LLVM_AR] + sys.argv[1:]
 
@@ -64,10 +67,8 @@ def run():
           break
         i += 1
 
-  if DEBUG:
-    print('Invoking ' + str(newargs), file=sys.stderr)
   try:
-    return subprocess.call(newargs, stdin=sys.stdin)
+    return shared.run_process(newargs, stdin=sys.stdin).returncode
   finally:
     for d in to_delete:
       shared.try_delete(d)

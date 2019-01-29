@@ -1578,6 +1578,7 @@ int f() {
     ''')
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertNotIn('loading from archive', err)
+    self.assertNotIn('liba.a', err)
     self.assertNotIn('which has duplicate entries', err)
     self.assertNotIn('duplicate: common.o', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
@@ -1592,6 +1593,7 @@ int f() {
     run_process([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertIn('loading from archive', err)
+    self.assertIn('liba.a', err)
     self.assertIn('which has duplicate entries', err)
     self.assertIn('duplicate: common.o', err)
     assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
@@ -6062,19 +6064,6 @@ int main() {
 #define CHUNK_SIZE (10 * 1024 * 1024)
 
 int main() {
-  EM_ASM({
-    // we want to allocate a lot until eventually we can't anymore. to simulate that, we limit how much
-    // can be allocated by Buffer, so that if we don't hit a limit before that, we don't keep going into
-    // swap space and other bad things.
-    var old = Module['reallocBuffer'];
-    Module['reallocBuffer'] = function(size) {
-      if (size > 500 * 1024 * 1024) {
-        return null;
-      }
-      return old(size);
-    };
-  });
-
   std::vector<void*> allocs;
   bool has = false;
   while (1) {
@@ -6106,6 +6095,7 @@ int main() {
 }
 ''' % (pre_fail, post_fail))
           args = [PYTHON, EMCC, 'main.cpp'] + opts
+          args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting:
@@ -7862,7 +7852,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1556, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1557, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')

@@ -479,7 +479,61 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'],
+#if TEST_MEMORY_GROWTH_FAILS
+  $emscripten_realloc_buffer: function(size) {
+    return null;
+  },
+#else
+
+  $emscripten_realloc_buffer: function(size) {
+#if WASM
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
+    var old = Module['buffer'];
+    var oldSize = old.byteLength;
+    // native wasm support
+    try {
+      var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
+      if (result !== (-1 | 0)) {
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = wasmMemory.buffer;
+      } else {
+        return null;
+      }
+    } catch(e) {
+#if ASSERTIONS
+      console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+      return null;
+    }
+#else // asm.js:
+    try {
+      var newBuffer = new ArrayBuffer(size);
+      if (newBuffer.byteLength != size) return false;
+      new Int8Array(newBuffer).set(HEAP8);
+    } catch(e) {
+      return false;
+    }
+    Module['_emscripten_replace_memory'](newBuffer);
+    HEAP8 = new Int8Array(newBuffer);
+    HEAP16 = new Int16Array(newBuffer);
+    HEAP32 = new Int32Array(newBuffer);
+    HEAPU8 = new Uint8Array(newBuffer);
+    HEAPU16 = new Uint16Array(newBuffer);
+    HEAPU32 = new Uint32Array(newBuffer);
+    HEAPF32 = new Float32Array(newBuffer);
+    HEAPF64 = new Float64Array(newBuffer);
+    buffer = newBuffer;
+    return newBuffer;
+#endif
+  },
+#endif // ~TEST_MEMORY_GROWTH_FAILS
+
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'
+#if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
+  , '$emscripten_realloc_buffer'
+#endif
+  ],
   emscripten_resize_heap: function(requestedSize) {
 #if USE_PTHREADS
     abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
@@ -550,7 +604,7 @@ LibraryManager.library = {
     var start = Date.now();
 #endif
 
-    var replacement = Module['reallocBuffer'](newSize);
+    var replacement = emscripten_realloc_buffer(newSize);
     if (!replacement || replacement.byteLength != newSize) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
@@ -4207,17 +4261,22 @@ LibraryManager.library = {
   },
 
   emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
-  emscripten_get_now__postset: "if (ENVIRONMENT_IS_NODE) {\n" +
+  emscripten_get_now__postset:
+#if ENVIRONMENT_MAY_BE_NODE
+                               "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
+                               "} else " +
+#endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
-                               "} else if (ENVIRONMENT_IS_PTHREAD) {\n" +
+                               "if (ENVIRONMENT_IS_PTHREAD) {\n" +
                                "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+                               "} else " +
 #endif
-                               "} else if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return self['performance']['now'](); };\n" +
