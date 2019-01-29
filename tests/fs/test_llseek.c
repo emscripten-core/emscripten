@@ -21,7 +21,7 @@ int main()
     } catch(e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === ERRNO_CODES.EINVAL);
+    assert(ex instanceof FS.ErrnoError && ex.errno === 22 /* EINVAL */);
 
     if (FS.llseek(stream, 0, 1 /* SEEK_CUR */) === 11) {
       console.log("success");
