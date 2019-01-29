@@ -28,7 +28,11 @@ template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1
 
     // test atomic<int>
     std::atomic<dog> atomicDog(5);
-    printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() ? "true" : "false");
+    if (sizeof(TYPE) < 8) {
+      printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() ? "true" : "false");
+    } else {
+      printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() == IS_64BIT_LOCK_FREE ? "ok" : "bad :(");
+    }
     printf("atomic<int> value: %lld\n", (long long)TYPE(atomicDog));
 
     // test store/load

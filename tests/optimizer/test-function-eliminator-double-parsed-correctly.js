@@ -15,7 +15,7 @@ var asm = (function(global, env, buffer) {
  }
 // EMSCRIPTEN_END_FUNCS
  var f = 0;
-})(Module.asmGlobalArg, Module.asmLibraryArg, buffer);
+})(asmGlobalArg, Module.asmLibraryArg, buffer);
 // EMSCRIPTEN_END_ASM
 // EMSCRIPTEN_GENERATED_FUNCTIONS
 

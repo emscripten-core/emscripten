@@ -28,7 +28,7 @@ import time
 
 
 
-wiki_repo = 'https://github.com/kripken/emscripten.wiki.git'
+wiki_repo = 'https://github.com/emscripten-core/emscripten.wiki.git'
 wiki_directory = './wiki_static/'
 logfilename='log-get-wiki.txt'
 

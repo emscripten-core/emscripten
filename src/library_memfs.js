@@ -113,33 +113,18 @@ mergeInto(LibraryManager.library, {
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
-#if !MEMFS_APPEND_TO_TYPED_ARRAYS
-      // If we are asked to expand the size of a file that already exists, revert to using a standard JS array to store the file
-      // instead of a typed array. This makes resizing the array more flexible because we can just .push() elements at the back to
-      // increase the size.
-      if (node.contents && node.contents.subarray && newCapacity > node.contents.length) {
-        node.contents = MEMFS.getFileDataAsRegularArray(node);
-        node.usedBytes = node.contents.length; // We might be writing to a lazy-loaded file which had overridden this property, so force-reset it.
-      }
-#endif
-
-      if (!node.contents || node.contents.subarray) { // Keep using a typed array if creating a new storage, or if old one was a typed array as well.
-        var prevCapacity = node.contents ? node.contents.length : 0;
-        if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
-        // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
-        // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
-        // avoid overshooting the allocation cap by a very large margin.
-        var CAPACITY_DOUBLING_MAX = 1024 * 1024;
-        newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
-        if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
-        var oldContents = node.contents;
-        node.contents = new Uint8Array(newCapacity); // Allocate new storage.
-        if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
-        return;
-      }
-      // Not using a typed array to back the file storage. Use a standard JS array instead.
-      if (!node.contents && newCapacity > 0) node.contents = [];
-      while (node.contents.length < newCapacity) node.contents.push(0);
+      var prevCapacity = node.contents ? node.contents.length : 0;
+      if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
+      // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
+      // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
+      // avoid overshooting the allocation cap by a very large margin.
+      var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
+      if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
+      var oldContents = node.contents;
+      node.contents = new Uint8Array(newCapacity); // Allocate new storage.
+      if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
+      return;
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.

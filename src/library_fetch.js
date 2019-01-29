@@ -8,10 +8,10 @@
 var LibraryFetch = {
 #if USE_PTHREADS
   $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
-  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit._fetch_work_queue; else PthreadWorkerInit._fetch_work_queue = _fetch_work_queue = allocate(12, "i32*", ALLOC_STATIC)',
+  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit._fetch_work_queue; else PthreadWorkerInit._fetch_work_queue = _fetch_work_queue = {{{ makeStaticAlloc(12) }}}',
 #else
   $Fetch__postset: 'Fetch.staticInit();',
-  fetch_work_queue: 'allocate(12, "i32*", ALLOC_STATIC)',
+  fetch_work_queue: '{{{ makeStaticAlloc(12) }}}',
 #endif
   $Fetch: Fetch,
   _emscripten_get_fetch_work_queue__deps: ['fetch_work_queue'],

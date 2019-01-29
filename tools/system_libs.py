@@ -69,7 +69,18 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   def read_symbols(path):
     with open(path) as f:
-      return shared.Building.parse_symbols(f.read()).defs
+      content = f.read()
+
+      # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
+      # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
+      # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
+      # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
+      # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
+      # in the toolchain, hence abort execution if so.
+      if os.name != 'nt' and '\r\n' in content:
+        raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
+
+      return shared.Building.parse_symbols(content).defs
 
   default_opts = ['-Werror']
 
@@ -122,7 +133,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # Make sure we don't mark symbols as default visibility.  This works around
     # an issue with the wasm backend where all default visibility symbols are
     # exported (and therefore can't be GC'd).
-    # FIXME(https://github.com/kripken/emscripten/issues/7383)
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/7383)
     opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
     if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
       opts += ['-fno-exceptions']
@@ -143,6 +154,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       return ['-s', 'USE_PTHREADS=1']
     else:
       assert '-mt' not in libname
+      return []
+
+  def legacy_gl_emulation_flags(libname):
+    if shared.Settings.LEGACY_GL_EMULATION:
+      assert '-emu' in libname
+      return ['-DLEGACY_GL_EMULATION=1']
+    else:
+      assert '-emu' not in libname
       return []
 
   # libc
@@ -350,6 +369,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       files += map(lambda f: os.path.join(src_dir, f), filenames)
     flags = ['-Oz']
     flags += threading_flags(libname)
+    flags += legacy_gl_emulation_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -411,6 +431,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
+
+      # Only dlmalloc interacts with errno, emmalloc does not
+      if not shared.Settings.SUPPORT_ERRNO:
+        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -433,6 +457,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
+    if not shared.Settings.SUPPORT_ERRNO:
+      cflags += ['-DMALLOC_FAILURE_ACTION=']
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
@@ -484,6 +510,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
     # intrinsics. But for wasm, we need a better solution. For now, make another archive
     # that gets included at the same time as compiler-rt.
+    # Note that this also includes things that may be depended on by those functions - fmin
+    # uses signbit, for example, so signbit must be here (so if fmin is added by codegen,
+    # it will have all it needs).
     math_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
       filenames=[
@@ -492,7 +521,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'fmod.c', 'fmodf.c', 'fmodl.c',
         'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
         'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c'
+        'scalbn.c', '__fpclassifyl.c',
+        '__signbitl.c', '__signbitf.c', '__signbit.c'
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
@@ -501,15 +531,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       path_components=['system', 'lib', 'libc'],
       filenames=['emscripten_memcpy.c'])
     return create_wasm_rt_lib(libname, math_files + string_files + other_files)
-
-  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
-  # You can provide 1 to include everything, or a comma-separated list with the ones you want
-  force = os.environ.get('EMCC_FORCE_STDLIBS')
-  force_all = force == '1'
-  force_include = set((force.split(',') if force else []) + forced)
-  if force_include:
-    logging.debug('forcing stdlibs: ' + str(force_include))
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
@@ -600,10 +621,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False), # noqa
-                    Library('libgl-mt',          ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
+    if shared.Settings.LEGACY_GL_EMULATION:
+      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    else:
+      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
-    system_libs += [Library('libgl',             ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    if shared.Settings.LEGACY_GL_EMULATION:
+      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    else:
+      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 
@@ -616,8 +643,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   libs_to_link = []
   already_included = set()
-
   system_libs_map = {l.shortname: l for l in system_libs}
+
+  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
+  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
+  # You can provide 1 to include everything, or a comma-separated list with the ones you want
+  force = os.environ.get('EMCC_FORCE_STDLIBS')
+  if force == '1':
+    force = ','.join(system_libs_map.keys())
+  force_include = set((force.split(',') if force else []) + forced)
+  if force_include:
+    logging.debug('forcing stdlibs: ' + str(force_include))
 
   for lib in always_include:
     assert lib in system_libs_map
@@ -702,15 +738,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
-  if force_all:
-    ret = ['--whole-archive'] + [r[0] for r in libs_to_link] + ['--no-whole-archive']
-  else:
-    ret = []
-    for name, need_whole_archive in libs_to_link:
-      if need_whole_archive:
-        ret += ['--whole-archive', name, '--no-whole-archive']
-      else:
-        ret.append(name)
+  ret = []
+  for name, need_whole_archive in libs_to_link:
+    if need_whole_archive:
+      ret += ['--whole-archive', name, '--no-whole-archive']
+    else:
+      ret.append(name)
 
   return ret
 

@@ -6,7 +6,7 @@ val.h (under-construction)
 
 .. COMMENT (Not rendered) : This created from val.h header file on 10 Aug 2014-03
 
-The *Embind* C++ class :cpp:class:`emscripten::val` (defined in `val.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/val.h>`_) is used to *transliterate* JavaScript code to C++.
+The *Embind* C++ class :cpp:class:`emscripten::val` (defined in `val.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/val.h>`_) is used to *transliterate* JavaScript code to C++.
 
 Guide material for this class can be found in :ref:`embind-val-guide`.
 

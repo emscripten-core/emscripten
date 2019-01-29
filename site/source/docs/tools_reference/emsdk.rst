@@ -244,7 +244,7 @@ To switch to using the latest upstream git development branch (``incoming``), ru
   # Install git. Skip if the system already has it.
   ./emsdk install git-1.8.3
 
-  # Clone+pull the latest kripken/emscripten/incoming.
+  # Clone+pull the latest emscripten-core/emscripten/incoming.
   ./emsdk install sdk-incoming-64bit
 
   # Set the "incoming SDK" as the active version.

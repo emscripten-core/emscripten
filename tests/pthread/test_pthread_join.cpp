@@ -31,7 +31,7 @@ static void *thread_start(void *arg)
 
 int main()
 {
-  // Test existence of nanosleep(), https://github.com/kripken/emscripten/issues/4578
+  // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
 

@@ -308,9 +308,8 @@ var emscriptenMemoryProfiler = {
 
     var width = (nBits(TOTAL_MEMORY) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + this.formatBytes(TOTAL_MEMORY) + '.';
-    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + this.formatBytes(STATICTOP - STATIC_BASE);
+    html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + this.formatBytes(STACK_BASE - STATIC_BASE);
     html += '. STATIC_BASE: ' + toHex(STATIC_BASE, width);
-    html += '. STATICTOP: ' + toHex(STATICTOP, width) + '.';
 
     html += '<br />' + colorBar('#FF8080') + 'STACK memory area size: ' + this.formatBytes(STACK_MAX - STACK_BASE);
     html += '. STACK_BASE: ' + toHex(STACK_BASE, width);
@@ -335,9 +334,6 @@ var emscriptenMemoryProfiler = {
     // Background clear
     this.drawContext.fillStyle = "#FFFFFF";
     this.drawContext.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    this.drawContext.fillStyle = "#202020";
-    this.fillLine(STATIC_BASE, STATICTOP);
 
     this.drawContext.fillStyle = "#FF8080";
     this.fillLine(STACK_BASE, STACK_MAX);

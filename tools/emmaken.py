@@ -88,7 +88,7 @@ for the C++ compiler. This is needed for cases where we get
 a C++ file with a C extension, in which case CMake can be told
 to run g++ on it despite the .c extension, see
 
-  https://github.com/kripken/emscripten/issues/6
+  https://github.com/emscripten-core/emscripten/issues/6
 
 (If a similar situation occurs with ./configure, you can do the same there too.)
 

@@ -206,8 +206,8 @@ def delete_emrun_safe_firefox_profile():
 def create_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  f = open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w')
-  f.write('''
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
+    f.write('''
 // Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
 user_pref("dom.workers.maxPerDomain", 100);
 // Always allow opening popups
@@ -293,7 +293,6 @@ user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
 ''')
-  f.close()
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
   return temp_firefox_profile_dir
 
@@ -422,7 +421,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
               emrun_options.serve_after_close = True
               logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
               if not emrun_options.browser:
-                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
             else:
               self.shutdown()
               logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
@@ -628,7 +627,7 @@ def get_cpu_info():
   try:
     if WINDOWS:
       import_win32api_modules()
-      root_winmgmts = GetObject("winmgmts:root\cimv2")
+      root_winmgmts = GetObject("winmgmts:root\\cimv2")
       cpus = root_winmgmts.ExecQuery("Select * from Win32_Processor")
       cpu_name = cpus[0].Name + ', ' + platform.processor()
       physical_cores = int(check_output(['wmic', 'cpu', 'get', 'NumberOfCores']).split('\n')[1].strip())
@@ -646,9 +645,9 @@ def get_cpu_info():
           cpu_name = re.sub( ".*model name.*:", "", line, 1).strip()
       lscpu = check_output(['lscpu'])
       frequency = int(float(re.search('CPU MHz: (.*)', lscpu).group(1).strip()) + 0.5)
-      sockets = int(re.search('Socket\(s\): (.*)', lscpu).group(1).strip())
-      physical_cores = sockets * int(re.search('Core\(s\) per socket: (.*)', lscpu).group(1).strip())
-      logical_cores = physical_cores * int(re.search('Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+      sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
+      physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
+      logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
   except Exception as e:
     import traceback
     print(traceback.format_exc())
@@ -695,7 +694,7 @@ def win_get_gpu_info():
       hHardwareReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "HARDWARE")
       hDeviceMapReg = winreg.OpenKey(hHardwareReg, "DEVICEMAP")
       hVideoReg = winreg.OpenKey(hDeviceMapReg, "VIDEO")
-      VideoCardString = winreg.QueryValueEx(hVideoReg,"\Device\Video"+str(i))[0]
+      VideoCardString = winreg.QueryValueEx(hVideoReg,"\\Device\\Video"+str(i))[0]
       #Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split("\\")
       ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
@@ -758,7 +757,7 @@ def linux_get_gpu_info():
   ram = 0
   try:
     vgainfo = check_output('lspci -v -s $(lspci | grep VGA | cut -d " " -f 1)', shell=True, stderr=subprocess.PIPE)
-    ram = int(re.search("\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
+    ram = int(re.search(r"\[size=([0-9]*)M\]", vgainfo).group(1)) * 1024 * 1024
   except Exception as e:
     logv(e)
 
@@ -1565,7 +1564,7 @@ def run():
       options.serve_after_close = True
       logv('Warning: emrun got immediately detached from the target browser process (the process quit with exit code ' + str(premature_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
       if not options.browser:
-        logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/kripken/emscripten/issues/3234 for more discussion.')
+        logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
   
   if not options.no_server:
     try:

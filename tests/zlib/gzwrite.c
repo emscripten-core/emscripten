@@ -321,7 +321,7 @@ int ZEXPORTVA gzprintf (gzFile file, const char *format, ...)
     for (len = 0; len < size; len++)
         if (state->in[len] == 0) break;
 #  else
-    len = vsprintf(state->in, format, va);
+    len = vsprintf((char*)state->in, format, va);
     va_end(va);
 #  endif
 #else

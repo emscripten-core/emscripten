@@ -61,7 +61,7 @@ if (memoryInitializer) {
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
     }
-    function doBrowserLoad() {
+    var doBrowserLoad = function() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
@@ -74,7 +74,7 @@ if (memoryInitializer) {
 #endif
     if (Module['memoryInitializerRequest']) {
       // a network request has already been created, just use that
-      function useRequest() {
+      var useRequest = function() {
         var request = Module['memoryInitializerRequest'];
         var response = request.response;
         if (request.status !== 200 && request.status !== 0) {

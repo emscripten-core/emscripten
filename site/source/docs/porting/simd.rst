@@ -30,7 +30,7 @@ When porting native SIMD code, it should be noted that because of portability co
 
  - The SIMD types supported by SIMD.js are Float32x4, Int32x4, Uint32x4, Int16x8, Uint16x8, Int8x16 and Uint8x16. In particular, Float64x2 and Int64x2 are currently not supported, however Float64x2 is emulated in software in the current polyfill. 256-bit or wider SIMD types (AVX) are not supported either.
 
- - Even though the full set of SSE1, SSE2, SSE3 and SSSE3 intrinsics are supported, because of the platform-abstract nature of SIMD.js, some of these intrinsics will compile down to scalarized instructions to emulate. To verify which instructions are accelerated and which are not, examine the code in the platform headers `xmmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_ and `emmintrin.h <https://github.com/kripken/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_.
+ - Even though the full set of SSE1, SSE2, SSE3 and SSSE3 intrinsics are supported, because of the platform-abstract nature of SIMD.js, some of these intrinsics will compile down to scalarized instructions to emulate. To verify which instructions are accelerated and which are not, examine the code in the platform headers `xmmintrin.h <https://github.com/emscripten-core/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_ and `emmintrin.h <https://github.com/emscripten-core/emscripten/blob/incoming/system/include/emscripten/xmmintrin.h>`_.
 
  - Currently the Intel x86 SIMD support is limited to SSE1, SSE2, SSE3 and SSSE3 instruction sets. The Intel x86 SSE4.1, SSE4.2, AVX, AVX2 and FMA instruction sets or newer are not supported. Also, the old Intel x86 MMX instruction set is not supported.
 
@@ -45,8 +45,8 @@ When porting native SIMD code, it should be noted that because of portability co
 Tests and Benchmarks
 ====================
 
-Emscripten repository has several tests for SIMD support. To run SIMD tests, execute e.g. "python tests/runner.py asm*.test_sse1_full" in Emscripten root directory (note that currently - 2018-7-11 - only asm.js supports SIMD, so we run the `asm*` tests). For the full list of tests, see test_simd* and test_sse* in `test_core.py <https://github.com/kripken/emscripten/blob/incoming/tests/test_core.py>`_.
+Emscripten repository has several tests for SIMD support. To run SIMD tests, execute e.g. "python tests/runner.py asm*.test_sse1_full" in Emscripten root directory (note that currently - 2018-7-11 - only asm.js supports SIMD, so we run the `asm*` tests). For the full list of tests, see test_simd* and test_sse* in `test_core.py <https://github.com/emscripten-core/emscripten/blob/incoming/tests/test_core.py>`_.
 
 To run a synthetic SSE1 API benchmark, execute "python tests/benchmark_sse1.py" in Emscripten root directory.
 
-SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/kripken/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
+SIMD-related bug reports are tracked in the `Emscripten bug tracker with the label SIMD <https://github.com/emscripten-core/emscripten/issues?q=is%3Aopen+is%3Aissue+label%3ASIMD>`_.
