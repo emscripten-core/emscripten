@@ -117,7 +117,7 @@ SYSTEM_TASKS = [
     'libc++abi', 'html5'
 ]
 USER_TASKS = [
-    'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl',
+    'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
     'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
     'vorbis', 'zlib', 'regal'
 ]
