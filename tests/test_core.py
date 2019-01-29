@@ -1398,12 +1398,20 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_byval')
 
   def test_stack_varargs(self):
+    # in node.js we allocate argv[0] on the stack, which means the  length
+    # of the program directory influences how much stack we need, and so
+    # long random temp dir names can lead to random failures. The stack
+    # size was increased here to avoid that.
     self.set_setting('INLINING_LIMIT', 50)
-    self.set_setting('TOTAL_STACK', 4096)
+    self.set_setting('TOTAL_STACK', 8 * 1024)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
   def test_stack_varargs2(self):
+    # in node.js we allocate argv[0] on the stack, which means the  length
+    # of the program directory influences how much stack we need, and so
+    # long random temp dir names can lead to random failures. The stack
+    # size was increased here to avoid that.
     self.set_setting('TOTAL_STACK', 8 * 1024)
     src = r'''
       #include <stdio.h>
