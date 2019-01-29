@@ -807,7 +807,7 @@ class Ports(object):
     # for testing. This env var should be in format
     #     name=dir,name=dir
     # e.g.
-    #     sdl=/home/username/dev/ports/SDL2
+    #     sdl2=/home/username/dev/ports/SDL2
     # so you could run
     #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
     # this will simply copy that directory into the ports directory for sdl2, and use that. It also

@@ -13,13 +13,13 @@ def get(ports, settings, shared):
     # SDL2 uses some things on the Module object, make sure they are exported
     settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
     # get the port
-    ports.fetch_project('sdl', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
+    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
     def create():
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
       ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
-      source_include_path = os.path.join(ports.get_dir(), 'sdl', SUBDIR + '', 'include')
-      dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl', 'include')
+      source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
+      dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
       shared.try_delete(dest_include_path)
       shutil.copytree(source_include_path, dest_include_path)
       shutil.copytree(source_include_path, os.path.join(dest_include_path, 'SDL2'))
@@ -31,15 +31,15 @@ def get(ports, settings, shared):
       commands = []
       o_s = []
       for src in srcs:
-        o = os.path.join(ports.get_build_dir(), 'sdl', 'src', src + '.o')
+        o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
         o_s.append(o)
       ports.run_commands(commands)
-      final = os.path.join(ports.get_build_dir(), 'sdl', 'libsdl2.bc')
+      final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
       shared.Building.link(o_s, final)
       return final
-    return [shared.Cache.get('sdl', create, what='port')]
+    return [shared.Cache.get('sdl2', create, what='port')]
   else:
     return []
 
@@ -48,7 +48,7 @@ def process_args(ports, args, settings, shared):
       args += ['-Xclang', '-isystem' + shared.path_from_root('system', 'include', 'SDL')]
   elif settings.USE_SDL == 2:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl', 'include')]
+    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
   return args
 
 def show():
