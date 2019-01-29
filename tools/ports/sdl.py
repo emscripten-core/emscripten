@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'version_17' # TODO
+TAG = 'version_17'
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
