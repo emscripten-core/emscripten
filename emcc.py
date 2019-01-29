@@ -2354,31 +2354,6 @@ def parse_args(newargs):
       if not options.default_object_extension.startswith('.'):
         options.default_object_extension = '.' + options.default_object_extension
       newargs[i + 1] = ''
-    elif newargs[i] == '-msse':
-      newargs.append('-D__SSE__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse2':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse3':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-mssse3':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs.append('-D__SSSE3__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse4.1':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs.append('-D__SSSE3__=1')
-      newargs.append('-D__SSE4_1__=1')
-      newargs[i] = ''
     elif newargs[i].startswith("-fsanitize=cfi"):
       options.cfi = True
     elif newargs[i] == "--output_eol":
