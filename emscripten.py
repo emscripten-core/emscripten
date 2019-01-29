@@ -413,11 +413,17 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_temp_vars = create_asm_temp_vars()
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
+  stack = ''
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n')
+    if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
+    if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
+
+  if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
+    temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
   else:
-    stack = ''
-  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
+    temp_float = ''
   async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
 
@@ -1443,7 +1449,10 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
-  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr']
+  basic_vars = ['DYNAMICTOP_PTR']
+  if 'tempDoublePtr' in shared.Settings.ASM_PRIMITIVE_VARS:
+    basic_vars += ['tempDoublePtr']
+
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
@@ -1775,13 +1784,18 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
 
 
 def create_asm_temp_vars():
-  rtn = '''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
-''' % (access_quote('NaN'), access_quote('Infinity'))
+  temp_ints = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue']
+  temp_doubles = ['tempDouble']
+  rtn = 'var nan = global%s, inf = global%s' % (access_quote('NaN'), access_quote('Infinity'))
+
+  for i in temp_ints:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0'
+
+  for i in temp_doubles:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0.0'
+  rtn += ';'
 
   return rtn
 
