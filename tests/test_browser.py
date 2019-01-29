@@ -2317,7 +2317,9 @@ void *getBindBuffer() {
       ('runtime_misuse.cpp', [], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
-      for mode in [[], ['-s', 'WASM=1']]:
+      for mode in [['-s', 'WASM=0'], ['-s', 'WASM=1']]:
+        if 'WASM=0' in mode and self.is_wasm_backend():
+          continue
         print('\n', filename, extra_args, mode)
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
