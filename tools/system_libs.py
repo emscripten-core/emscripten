@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import tarfile
 import zipfile
 from collections import namedtuple
@@ -806,23 +807,33 @@ class Ports(object):
     # for testing. This env var should be in format
     #     name=dir,name=dir
     # e.g.
-    #     sdl2=/home/username/dev/ports/SDL2
+    #     sdl=/home/username/dev/ports/SDL2
     # so you could run
     #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
     # this will simply copy that directory into the ports directory for sdl2, and use that. It also
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
+      logging.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       for local in local_ports:
         if name == local[0]:
           path = local[1]
-          tag = ports.ports_by_name[name].TAG
-          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (tag: ' + tag + ')')
+          if name not in ports.ports_by_name:
+            logging.error('%s is not a known port' % name)
+            sys.exit(1)
+          port = ports.ports_by_name[name]
+          if not hasattr(port, 'SUBDIR'):
+            logging.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+            sys.exit(1)
+          subdir = port.SUBDIR
+          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
           shared.try_delete(fullname)
-          shutil.copytree(path, os.path.join(fullname, tag))
+          shutil.copytree(path, os.path.join(fullname, subdir))
           Ports.clear_project_build(name)
           return
+      logging.error('could not find port %s' % name)
+      sys.exit(1)
 
     fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
 
