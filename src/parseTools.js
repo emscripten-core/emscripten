@@ -1495,6 +1495,13 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
+function guardAgainstUnincludedFunction(name) {
+  if (!addedLibraryItems[name]) {
+    return 'function ' + name + '() { abort("ccall is now in the JS library. to use it, build with -s EXTRA_LIBRARY_FUNCS_TO_INCLUDE=[' + "'$ccall'" + ']") }\n';
+  }
+  return '';
+}
+
 // In wasm, the heap size must be a multiple of 64KB.
 // In asm.js, it must be a multiple of 16MB.
 var WASM_PAGE_SIZE = 65536;

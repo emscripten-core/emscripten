@@ -6027,6 +6027,7 @@ return malloc(size);
   @sync
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     create_test_file('post.js', '''
       out('*');
       var ret;
@@ -6062,8 +6063,6 @@ return malloc(size);
     self.emcc_args += ['--post-js', 'post.js']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
-
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
     if '-O2' in self.emcc_args or self.is_emterpreter():
@@ -6079,8 +6078,17 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
   def test_EXTRA_LIBRARY_FUNCS_TO_INCLUDE(self):
-    self.set_setting('EXTRA_LIBRARY_FUNCS_TO_INCLUDE', ['$ccall', '$cwrap'])
+    self.set_setting('EXTRA_LIBRARY_FUNCS_TO_INCLUDE', ['$ccall'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_LIBRARY_FUNCS_TO_INCLUDE')
+
+    print('without it, we fail')
+    self.set_setting('EXTRA_LIBRARY_FUNCS_TO_INCLUDE', [])
+    error = ''
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'EXTRA_LIBRARY_FUNCS_TO_INCLUDE')
+    except Exception, e:
+      error = str(e)
+    self.assertContained('''ccall is now in the JS library. to use it, build with -s EXTRA_LIBRARY_FUNCS_TO_INCLUDE=['$ccall']''', error)
 
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
