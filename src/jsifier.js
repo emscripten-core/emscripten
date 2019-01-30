@@ -129,67 +129,6 @@ function JSify(data, functionsOnly) {
     return snippet;
   }
 
-  // Generates a function that invokes a proxied function call from the calling thread to the main browser thread.
-  function generateProxiedCallInvoker(sig, sync /*async if false*/) {
-    if (sig.length == 0) throw 'Function signature cannot be empty!';
-    function argsList(num) { // ", p0, p1, p2, p3, p4"
-      var s = '';
-      for(var i = 0; i < num; ++i) s += ', p' + i;
-      return s;
-    }
-
-    var func = "function _emscripten_" + (sync ? '' : 'a') + 'sync_run_in_browser_thread_' + sig + '(func' + argsList(sig.length-1) + ') {\n';
-    if (sync) func += '  var waitAddress = stackSave();\n';
-
-    function sizeofType(t) {
-      switch(t) {
-        case 'd': return 8;
-//      case 'I': return 8; // int64 // TODO: For wasm, we'll have to have something like this
-        case 'i': return 4;
-        case 'f': return 4;
-        case 'v': return 0;
-        // TODO: Smaller sizes?
-        default: throw 'unsupported type in signature: ' + t;
-      }
-    }
-
-    var sizeofReturn = sizeofType(sig[0]);
-    if (sync) {
-      if (sizeofReturn == 4) func += '  var returnValue = waitAddress + 4;\n';
-      else if (sizeofReturn == 8) func += '  var returnValue = waitAddress + 8;\n'; // Retain alignment of each type
-    }
-
-    if (sync) func += '  Atomics.store(HEAP32, waitAddress >> 2, 0);\n';
-
-    function argsDict(num) { // ", p0: p0, p1: p1, p2: p2, p3: p3, p4: p4"
-      var s = '';
-      for(var i = 0; i < num; ++i) s += ', p' + i + ': p' + i;
-      return s;
-    }
-
-    // This is ad-hoc numbering scheme to map signatures to IDs, and must agree with call handler in src/library_pthread.js.
-    // Signatures with numbers 0-19 are for functions that return void, int or float, and ID numbers >= 32 are for functions that return a double.
-    // Once proxied function calls no longer go through postMessage()s but instead in the heap, this will need to change, since int vs float will matter.
-    const idForFunctionReturningDouble = 32;
-    var functionCallOrdinal = sig.length + (sig[0] == 'd' ? idForFunctionReturningDouble : 0);
-    if (sig.length > 10) throw 'Proxying functions with 10 or more function parameters is not supported!';
-
-    // next line generates a form: "postMessage({ proxiedCall: 9, func: func, waitAddress: waitAddress, returnValue: returnValue, p0: p0, p1: p1, p2: p2, p3: p3, p4: p4, p5: p5, p6: p6, p7: p7 });"
-    func += '  postMessage({ proxiedCall: ' + functionCallOrdinal + ', func: func' + (sync ? ', waitAddress: waitAddress' : '') + (sync && sizeofReturn > 0 ? ', returnValue: returnValue' : '') + argsDict(sig.length-1) + ' });\n';
-    if (sync) {
-      func += '  Atomics.wait(HEAP32, waitAddress >> 2, 0);\n';
-      switch(sig[0]) {
-        case 'i': func += '  return HEAP32[returnValue >> 2];\n'; break;
-        case 'f': func += '  return HEAPF32[returnValue >> 2];\n'; break;
-        case 'd': func += '  return HEAPF64[returnValue >> 3];\n'; break;
-        //case 'I': func += '  return HEAP64[returnValue >> 3];\n'; // TODO: For wasm
-        // TODO: Smaller sizes?
-      }
-    }
-    func += '}';
-    return func;
-  }
-
   // functionStub
   function functionStubHandler(item) {
     // special logic
@@ -326,24 +265,20 @@ function JSify(data, functionsOnly) {
       if (isFunction) {
         // Emit the body of a JS library function.
         var proxyingMode = LibraryManager.library[ident + '__proxy'];
-        if (proxyingMode && proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
-        }
-
         if (USE_PTHREADS && proxyingMode) {
           var sig = LibraryManager.library[ident + '__sig'];
           if (!sig) throw 'Missing function signature field "' + ident + '__sig"! (Using proxying mode requires specifying the signature of the function)';
           sig = sig.replace(/f/g, 'i'); // TODO: Implement float signatures.
-          var synchronousCall = (proxyingMode === 'sync');
-          var invokerKey = sig + (synchronousCall ? '_sync' : '_async');
-          if (!proxiedFunctionInvokers[invokerKey]) proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig, synchronousCall);
-          var proxyingFunc = synchronousCall ? '_emscripten_sync_run_in_browser_thread_' : '_emscripten_async_run_in_browser_thread_';
+          if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
+            throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
+          }
+          var sync = proxyingMode === 'sync';
           if (sig.length > 1) {
             // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return ' + proxyingFunc + sig + '(' + proxiedFunctionTable.length + ', $2);');
+            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
           } else {
             // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return ' + proxyingFunc + sig + '(' + proxiedFunctionTable.length + ');');
+            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');');
           }
           if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
           contentText = processedSnippet;
@@ -429,9 +364,7 @@ function JSify(data, functionsOnly) {
       if (!Variables.generatedGlobalBase) {
         Variables.generatedGlobalBase = true;
         // Globals are done, here is the rest of static memory
-        if (!SIDE_MODULE) {
-          print('STATIC_BASE = GLOBAL_BASE;\n');
-        } else {
+        if (SIDE_MODULE) {
           print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
           // The static area consists of explicitly initialized data, followed by zero-initialized data.
           // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
@@ -442,12 +375,6 @@ function JSify(data, functionsOnly) {
         }
         // emit "metadata" in a comment. FIXME make this nicer
         print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
-        if (WASM) {
-          // export static base and bump, needed for linking in wasm binary's memory, dynamic linking, etc.
-          print('var STATIC_BUMP = {{{ STATIC_BUMP }}};');
-          print('Module["STATIC_BASE"] = STATIC_BASE;');
-          print('Module["STATIC_BUMP"] = STATIC_BUMP;');
-        }
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));
@@ -531,18 +458,7 @@ function JSify(data, functionsOnly) {
       if (USE_PTHREADS) {
         print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
         print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
-        // Generate worker->main thread proxy function invokers for MAIN_THREAD_EM_ASM() signatures.
-        for (var i in PROXIED_FUNCTION_SIGNATURES) {
-          var invokerKey = PROXIED_FUNCTION_SIGNATURES[i];
-          if (!proxiedFunctionInvokers[invokerKey]) {
-            var sig_sync = invokerKey.split('_');
-            proxiedFunctionInvokers[invokerKey] = generateProxiedCallInvoker(sig_sync[0], sig_sync[1] === 'sync');
-          }
-        }
-        for(i in proxiedFunctionInvokers) print(proxiedFunctionInvokers[i]+'\n');
-        print('if (!ENVIRONMENT_IS_PTHREAD) {\n // Only main thread initializes these, pthreads copy them over at thread worker init time (in worker.js)');
       }
-      if (USE_PTHREADS) print('}\n');
     }
 
     print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');

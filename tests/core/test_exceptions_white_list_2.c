@@ -22,7 +22,7 @@ void nocatch(void) {
     }
 }
 
-int main(void) {
+int main(int argc, char* argv[]) {
     try {
         nocatch();
     }

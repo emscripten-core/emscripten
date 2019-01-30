@@ -4,7 +4,7 @@
 
 # At the moment this required minimum version is not exact (i.e. we do not know of a feature that needs CMake 3.0.0 specifically)
 # It is possible that CMake 3.0.0 is too old and will not actually work. If you do find such a case, please report it at Emscripten
-# bug tracker to revise the minimum requirement. See also https://github.com/juj/emsdk/issues/108
+# bug tracker to revise the minimum requirement. See also https://github.com/emscripten-core/emsdk/issues/108
 cmake_minimum_required(VERSION 3.0.0)
 
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters

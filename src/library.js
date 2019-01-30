@@ -467,13 +467,183 @@ LibraryManager.library = {
     return -1;
   },
 
+  emscripten_get_heap_size: function() {
+    return TOTAL_MEMORY;
+  },
+
+  $abortOnCannotGrowMemory: function(requestedSize) {
+#if WASM
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#else
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#endif
+  },
+
+#if TEST_MEMORY_GROWTH_FAILS
+  $emscripten_realloc_buffer: function(size) {
+    return null;
+  },
+#else
+
+  $emscripten_realloc_buffer: function(size) {
+#if WASM
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
+    var old = Module['buffer'];
+    var oldSize = old.byteLength;
+    // native wasm support
+    try {
+      var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
+      if (result !== (-1 | 0)) {
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = wasmMemory.buffer;
+      } else {
+        return null;
+      }
+    } catch(e) {
+#if ASSERTIONS
+      console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+      return null;
+    }
+#else // asm.js:
+    try {
+      var newBuffer = new ArrayBuffer(size);
+      if (newBuffer.byteLength != size) return false;
+      new Int8Array(newBuffer).set(HEAP8);
+    } catch(e) {
+      return false;
+    }
+    Module['_emscripten_replace_memory'](newBuffer);
+    HEAP8 = new Int8Array(newBuffer);
+    HEAP16 = new Int16Array(newBuffer);
+    HEAP32 = new Int32Array(newBuffer);
+    HEAPU8 = new Uint8Array(newBuffer);
+    HEAPU16 = new Uint16Array(newBuffer);
+    HEAPU32 = new Uint32Array(newBuffer);
+    HEAPF32 = new Float32Array(newBuffer);
+    HEAPF64 = new Float64Array(newBuffer);
+    buffer = newBuffer;
+    return newBuffer;
+#endif
+  },
+#endif // ~TEST_MEMORY_GROWTH_FAILS
+
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'
+#if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
+  , '$emscripten_realloc_buffer'
+#endif
+  ],
+  emscripten_resize_heap: function(requestedSize) {
+#if USE_PTHREADS
+    abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
+#else
+#if ALLOW_MEMORY_GROWTH == 0
+#if ABORTING_MALLOC
+    abortOnCannotGrowMemory(requestedSize);
+#else
+    return false; // malloc will report failure
+#endif
+#else
+    var oldSize = _emscripten_get_heap_size();
+    // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
+#if ASSERTIONS
+    assert(requestedSize > oldSize); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+#endif
+
+#if EMSCRIPTEN_TRACING
+    // Report old layout one last time
+    _emscripten_trace_report_memory_layout();
+#endif
+
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
+
+    if (requestedSize > LIMIT) {
+#if ASSERTIONS
+      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
+#endif
+      return false;
+    }
+
+    var MIN_TOTAL_MEMORY = 16777216;
+    var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+
+    while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
+      if (newSize <= 536870912) {
+        newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
+      } else {
+        // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+        newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+#if ASSERTIONS
+        if (newSize === oldSize) {
+          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
+        }
+#endif
+      }
+    }
+
+#if WASM_MEM_MAX != -1
+    // A limit was set for how much we can grow. We should not exceed that
+    // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
+    // if we are at say 64MB, and the max is 100MB, then we should *not* try to
+    // grow 64->128MB which is the default behavior (doubling), as 128MB will
+    // fail because of the max limit. Instead, we should only try to grow
+    // 64->100MB in this example, which has a chance of succeeding (but may
+    // still fail for another reason, of actually running out of memory).
+    newSize = Math.min(newSize, {{{ WASM_MEM_MAX }}});
+    if (newSize == oldSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
+#endif
+      return false;
+    }
+#endif
+
+#if ASSERTIONS
+    var start = Date.now();
+#endif
+
+    var replacement = emscripten_realloc_buffer(newSize);
+    if (!replacement || replacement.byteLength != newSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+      if (replacement) {
+        err('Expected to get back a buffer of size ' + newSize + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
+      }
+#endif
+      return false;
+    }
+
+    // everything worked
+    updateGlobalBuffer(replacement);
+    updateGlobalBufferViews();
+
+    TOTAL_MEMORY = newSize;
+    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
+
+#if ASSERTIONS && !WASM
+    err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+#endif
+
+#if EMSCRIPTEN_TRACING
+    _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+    // And now report the new layout
+    _emscripten_trace_report_memory_layout();
+#endif
+
+    return true;
+#endif // ALLOW_MEMORY_GROWTH
+#endif // USE_PTHREADS
+  },
+
   // Implement a Linux-like 'memory area' for our 'process'.
   // Changes the size of the memory area by |bytes|; returns the
   // address of the previous top ('break') of the memory area
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
   sbrk__asm: true,
   sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo'],
+  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   sbrk: function(increment) {
     increment = increment|0;
     var oldDynamicTop = 0;
@@ -481,7 +651,7 @@ LibraryManager.library = {
     var newDynamicTop = 0;
     var totalMemory = 0;
 #if USE_PTHREADS
-    totalMemory = getTotalMemory()|0;
+    totalMemory = _emscripten_get_heap_size()|0;
 
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can becalled simultaneously in multiple threads.
@@ -494,7 +664,7 @@ LibraryManager.library = {
         | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
         | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-        abortOnCannotGrowMemory()|0;
+        abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
@@ -511,17 +681,17 @@ LibraryManager.library = {
     if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
       | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
     }
 
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
-    totalMemory = getTotalMemory()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((enlargeMemory()|0) == 0) {
-        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
+    totalMemory = _emscripten_get_heap_size()|0;
+    if ((newDynamicTop|0) <= (totalMemory|0)) {
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+    } else {
+      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
@@ -532,17 +702,17 @@ LibraryManager.library = {
 
   brk__asm: true,
   brk__sig: ['ii'],
+  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
-    var oldDynamicTop = 0;
     var totalMemory = 0;
 #if USE_PTHREADS
-    totalMemory = getTotalMemory()|0;
+    totalMemory = _emscripten_get_heap_size()|0;
     // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
     // enlarge memory, so this needs to fail.
     if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #else
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
@@ -552,19 +722,18 @@ LibraryManager.library = {
 #else // singlethreaded build: (-s USE_PTHREADS=0)
     if ((newDynamicTop|0) < 0) {
 #if ABORTING_MALLOC
-      abortOnCannotGrowMemory()|0;
+      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
       ___setErrNo({{{ cDefine('ENOMEM') }}});
       return -1;
     }
 
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop;
-    totalMemory = getTotalMemory()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((enlargeMemory()|0) == 0) {
+    totalMemory = _emscripten_get_heap_size()|0;
+    if ((newDynamicTop|0) <= (totalMemory|0)) {
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+    } else {
+      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
-        HEAP32[DYNAMICTOP_PTR>>2] = oldDynamicTop;
         return -1;
       }
     }
@@ -818,7 +987,6 @@ LibraryManager.library = {
 
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
-    return dest;
   },
 
   memcpy__asm: true,
@@ -831,14 +999,9 @@ LibraryManager.library = {
     var block_aligned_dest_end = 0;
     var dest_end = 0;
     // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
-    if ((num|0) >=
-#if SIMD
-      196608
-#else
-      8192
-#endif
-    ) {
-      return _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+    if ((num|0) >= 8192) {
+      _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
+      return dest|0;
     }
 
     ret = dest|0;
@@ -853,14 +1016,9 @@ LibraryManager.library = {
         num = (num-1)|0;
       }
       aligned_dest_end = (dest_end & -4)|0;
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_dest_end = (aligned_dest_end - 64)|0;
       while ((dest|0) <= (block_aligned_dest_end|0) ) {
-#if SIMD
-        SIMD_Int32x4_store(HEAPU8, dest, SIMD_Int32x4_load(HEAPU8, src));
-        SIMD_Int32x4_store(HEAPU8, dest+16, SIMD_Int32x4_load(HEAPU8, src+16));
-        SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
-        SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
-#else
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
@@ -877,10 +1035,10 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
-#endif
         dest = (dest+64)|0;
         src = (src+64)|0;
       }
+#endif
       while ((dest|0) < (aligned_dest_end|0) ) {
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         dest = (dest+4)|0;
@@ -939,9 +1097,6 @@ LibraryManager.library = {
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
-#if SIMD
-    var value16 = SIMD_Int32x4(0,0,0,0);
-#endif
     end = (ptr + num)|0;
 
     value = value & 0xff;
@@ -952,19 +1107,12 @@ LibraryManager.library = {
       }
 
       aligned_end = (end & -4)|0;
-      block_aligned_end = (aligned_end - 64)|0;
       value4 = value | (value << 8) | (value << 16) | (value << 24);
-#if SIMD
-      value16 = SIMD_Int32x4_splat(value4);
-#endif
+
+#if FAST_UNROLLED_MEMCPY_AND_MEMSET
+      block_aligned_end = (aligned_end - 64)|0;
 
       while((ptr|0) <= (block_aligned_end|0)) {
-#if SIMD
-        SIMD_Int32x4_store(HEAPU8, ptr, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
-#else
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
@@ -981,9 +1129,9 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
-#endif
         ptr = (ptr + 64)|0;
       }
+#endif
 
       while ((ptr|0) < (aligned_end|0) ) {
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
@@ -1169,6 +1317,18 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+  setThrew__asm: true,
+  setThrew__sig: 'vii',
+  setThrew: function(threw, value) {
+    threw = threw|0;
+    value = value|0;
+    if ((__THREW__|0) == 0) {
+      __THREW__ = threw;
+      threwValue = value;
+    }
+  },
+
+  $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
     last: 0,
     caught: [],
@@ -1336,10 +1496,10 @@ LibraryManager.library = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS', 'setThrew'],
   __cxa_end_catch: function() {
     // Clear state flag.
-    Module['setThrew'](0);
+    _setThrew(0);
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -1763,7 +1923,7 @@ LibraryManager.library = {
 
 #if MAIN_MODULE == 0
   dlopen: function(/* ... */) {
-    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/kripken/emscripten/wiki/Linking");
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
   dlclose: 'dlopen',
   dlsym:   'dlopen',
@@ -2994,9 +3154,9 @@ LibraryManager.library = {
     return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
   },
 
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
+  longjmp__deps: ['saveSetjmp', 'testSetjmp', 'setThrew'],
   longjmp: function(env, value) {
-    Module['setThrew'](env, value || 1);
+    _setThrew(env, value || 1);
     throw 'longjmp';
   },
   emscripten_longjmp__deps: ['longjmp'],
@@ -4074,17 +4234,22 @@ LibraryManager.library = {
   },
 
   emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
-  emscripten_get_now__postset: "if (ENVIRONMENT_IS_NODE) {\n" +
+  emscripten_get_now__postset:
+#if ENVIRONMENT_MAY_BE_NODE
+                               "if (ENVIRONMENT_IS_NODE) {\n" +
                                "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
+                               "} else " +
+#endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
-                               "} else if (ENVIRONMENT_IS_PTHREAD) {\n" +
+                               "if (ENVIRONMENT_IS_PTHREAD) {\n" +
                                "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+                               "} else " +
 #endif
-                               "} else if (typeof dateNow !== 'undefined') {\n" +
+                               "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
                                "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return self['performance']['now'](); };\n" +
@@ -4422,7 +4587,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = Module['dynCall_iii'](func, 0, arg);
+      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
       if (ret !== 0) return;
     }
   },
@@ -4831,4 +4996,3 @@ function autoAddDeps(object, name) {
     }
   }
 }
-

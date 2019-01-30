@@ -237,13 +237,13 @@ try {
   } else {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
-    printErr('Please create a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
   }
 
   if (ENVIRONMENT_IS_NODE) {
     // Work around a node.js bug where stdout buffer is not flushed at process exit:
     // Instead of process.exit() directly, wait for stdout flush event.
-    // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
+    // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
     // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
     process['stdout']['once']('drain', function () {
       process['exit'](1);

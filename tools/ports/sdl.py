@@ -5,12 +5,10 @@
 
 import os, shutil, logging
 
-TAG = 'version_15'
+TAG = 'version_17'
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
-    # SDL2 uses some things on the Module object, make sure they are exported
-    settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
     # get the port
     ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
     def create():
@@ -325,7 +323,7 @@ sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by c
 /* #undef SDL_VIDEO_DRIVER_COCOA */
 /* #undef SDL_VIDEO_DRIVER_DIRECTFB */
 /* #undef SDL_VIDEO_DRIVER_DIRECTFB_DYNAMIC */
-#define SDL_VIDEO_DRIVER_DUMMY 1
+/* #undef SDL_VIDEO_DRIVER_DUMMY */
 /* #undef SDL_VIDEO_DRIVER_WINDOWS */
 /* #undef SDL_VIDEO_DRIVER_WAYLAND */
 /* #undef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */

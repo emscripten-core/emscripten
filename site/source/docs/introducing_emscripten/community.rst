@@ -26,7 +26,7 @@ Emscripten also has a presence on social media:
 Report a bug
 ============
 
-:ref:`Bug reports <bug-reports>` can be posted in the GitHub `Issue Tracker <https://github.com/kripken/emscripten/issues?state=open>`_.
+:ref:`Bug reports <bug-reports>` can be posted in the GitHub `Issue Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_.
 
 
 .. _blogs:

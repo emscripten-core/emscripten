@@ -509,7 +509,7 @@ var LibraryGL = {
             ctx = canvas.getContext("webgl2", webGLContextAttributes);
 #endif
           } else {
-            throw 'Unsupported WebGL context version ' + majorVersion + '.' + minorVersion + '!'
+            throw 'Unsupported WebGL context version ' + webGLContextAttributes['majorVersion'] + '.' + webGLContextAttributes['minorVersion'] + '!'
           }
         } finally {
           canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
@@ -1747,8 +1747,8 @@ var LibraryGL = {
   },
 
   glIsTexture__sig: 'ii',
-  glIsTexture: function(texture) {
-    var texture = GL.textures[texture];
+  glIsTexture: function(id) {
+    var texture = GL.textures[id];
     if (!texture) return 0;
     return GLctx.isTexture(texture);
   },
@@ -1928,7 +1928,7 @@ var LibraryGL = {
 
   glIsQueryEXT__sig: 'ii',
   glIsQueryEXT: function(id) {
-    var query = GL.timerQueriesEXT[query];
+    var query = GL.timerQueriesEXT[id];
     if (!query) return 0;
     return GLctx.disjointTimerQueryExt['isQueryEXT'](query);
   },
@@ -2236,7 +2236,7 @@ var LibraryGL = {
 
   glIsQuery__sig: 'ii',
   glIsQuery: function(id) {
-    var query = GL.queries[query];
+    var query = GL.queries[id];
     if (!query) return 0;
     return GLctx['isQuery'](query);
   },

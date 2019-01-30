@@ -133,7 +133,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # Make sure we don't mark symbols as default visibility.  This works around
     # an issue with the wasm backend where all default visibility symbols are
     # exported (and therefore can't be GC'd).
-    # FIXME(https://github.com/kripken/emscripten/issues/7383)
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/7383)
     opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
     if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
       opts += ['-fno-exceptions']
@@ -431,6 +431,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
+
+      # Only dlmalloc interacts with errno, emmalloc does not
+      if not shared.Settings.SUPPORT_ERRNO:
+        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -453,6 +457,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
+    if not shared.Settings.SUPPORT_ERRNO:
+      cflags += ['-DMALLOC_FAILURE_ACTION=']
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
@@ -504,6 +510,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
     # intrinsics. But for wasm, we need a better solution. For now, make another archive
     # that gets included at the same time as compiler-rt.
+    # Note that this also includes things that may be depended on by those functions - fmin
+    # uses signbit, for example, so signbit must be here (so if fmin is added by codegen,
+    # it will have all it needs).
     math_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
       filenames=[
@@ -512,7 +521,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'fmod.c', 'fmodf.c', 'fmodl.c',
         'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
         'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c'
+        'scalbn.c', '__fpclassifyl.c',
+        '__signbitl.c', '__signbitf.c', '__signbit.c'
       ])
     string_files = files_in_path(
       path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],

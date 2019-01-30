@@ -14,7 +14,7 @@ Emscripten is an :ref:`Open Source <emscripten-license>` LLVM to JavaScript comp
 
   With Emscripten, C/C++ developers don't have the high cost of porting code manually to JavaScript — or having to learn JavaScript at all. Web developers also benefit, as they can use the many thousands of pre-existing native utilities and libraries in their sites.
 
-Practically any **portable** C or C++ codebase can be compiled into JavaScript using Emscripten, ranging from high performance games that need to render graphics, play sounds, and load and process files, through to application frameworks like Qt. Emscripten has already been used to convert a `very long list <https://github.com/kripken/emscripten/wiki/Porting-Examples-and-Demos>`_ of real-world codebases to JavaScript, including large projects like *CPython*, `Poppler <https://github.com/coolwanglu/emscripten/tree/master/tests/poppler#readme>`_ and the `Bullet Physics Engine <http://kripken.github.io/ammo.js/examples/new/ammo.html>`_, as well as commercial projects like the `Unreal Engine 4 <https://blog.mozilla.org/blog/2014/03/12/mozilla-and-epic-preview-unreal-engine-4-running-in-firefox/>`_ and the `Unity <http://www.unity3d.com>`_ engine. Here are two demos using Unity:
+Practically any **portable** C or C++ codebase can be compiled into JavaScript using Emscripten, ranging from high performance games that need to render graphics, play sounds, and load and process files, through to application frameworks like Qt. Emscripten has already been used to convert a `very long list <https://github.com/emscripten-core/emscripten/wiki/Porting-Examples-and-Demos>`_ of real-world codebases to JavaScript, including large projects like *CPython*, `Poppler <https://github.com/coolwanglu/emscripten/tree/master/tests/poppler#readme>`_ and the `Bullet Physics Engine <http://kripken.github.io/ammo.js/examples/new/ammo.html>`_, as well as commercial projects like the `Unreal Engine 4 <https://blog.mozilla.org/blog/2014/03/12/mozilla-and-epic-preview-unreal-engine-4-running-in-firefox/>`_ and the `Unity <http://www.unity3d.com>`_ engine. Here are two demos using Unity:
 
 .. figure:: angrybots.png
   :alt: Angrybots game logo
@@ -30,7 +30,7 @@ Practically any **portable** C or C++ codebase can be compiled into JavaScript u
 
   <div style="clear:both;"></div>
 
-For more demos, see the `list on the wiki <https://github.com/kripken/emscripten/wiki/Porting-Examples-and-Demos>`_.
+For more demos, see the `list on the wiki <https://github.com/emscripten-core/emscripten/wiki/Porting-Examples-and-Demos>`_.
 
 Emscripten generates fast code! Its default output format is `asm.js <http://asmjs.org>`_ , a highly optimizable subset of JavaScript that can execute at close to native speed in many cases (check out the `current benchmark results <http://arewefastyet.com/#machine=11&view=breakdown&suite=asmjs-ubench>`_ or run the :ref:`benchmark tests <benchmarking>` yourself). Optimized Emscripten code has also been `shown to have <http://mozakai.blogspot.com/2011/11/code-size-when-compiling-to-javascript.html>`_ a similar *effective size* to native code, when both are gzipped.
 

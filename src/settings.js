@@ -13,7 +13,7 @@
 // and `-s NO_OPTION` expands to `-s OPTION=0` (assuming OPTION is a valid
 // option).
 //
-// See https://github.com/kripken/emscripten/wiki/Code-Generation-Modes/
+// See https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes/
 //
 // Note that the values here are the defaults in -O0, that is, unoptimized
 // mode. See apply_opt_level in tools/shared.py for how -O1,2,3 affect these
@@ -113,6 +113,11 @@ var MALLOC = "dlmalloc";
 // returning NULL (0) when it fails.
 var ABORTING_MALLOC = 1;
 
+// If 1, generated a version of memcpy() and memset() that unroll their
+// copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
+// This flag only has effect when targeting asm.js.
+var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
+
 // If false, we abort with an error if we try to allocate more memory than
 // we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
 // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
@@ -130,6 +135,10 @@ var ABORTING_MALLOC = 1;
 // returning 0 when it fails, and also of being able to allocate more
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
+
+// If true, allows more functions to be added to the table at runtime. This is
+// necessary for dynamic linking, and set automatically in that mode.
+var ALLOW_TABLE_GROWTH = 0;
 
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
@@ -174,14 +183,6 @@ var FORCE_ALIGNED_MEMORY = 0;
 // to ensure proper alignment.  This is currently only supported in asm.js, not
 // wasm.
 var WARN_UNALIGNED = 0;
-
-// If enabled, i64 addition etc. is emulated - which is slow but precise. If
-// disabled, we use the 'double trick' which is fast but incurs rounding at high
-// values.  If set to 2, we always include the i64 math code, which is necessary
-// in the case that we can't know at compile time that 64-bit math is needed.
-// For example, if you print 64-bit values with printf, but never add them, we
-// can't know at compile time and you need to set this to 2.
-var PRECISE_I64_MATH = 1;
 
 // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
 //    floats exactly, which are 32-bit.
@@ -557,7 +558,7 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // or programs that don't need exit() to work.
 
 // For more explanations of this option, please visit
-// https://github.com/kripken/emscripten/wiki/Asyncify
+// https://github.com/emscripten-core/emscripten/wiki/Asyncify
 var NODEJS_CATCH_EXIT = 1;
 
 // Whether to enable asyncify transformation
@@ -604,12 +605,6 @@ var FS_LOG = 0;
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
 var CASE_INSENSITIVE_FS = 0;
-
-// If set to nonzero, MEMFS will always utilize typed arrays as the backing
-// store for appending data to files. The default behavior is to use typed
-// arrays for files when the file size doesn't change after initial creation,
-// and for files that do change size, use normal JS arrays instead.
-var MEMFS_APPEND_TO_TYPED_ARRAYS = 0;
 
 // If set to 0, does not build in any filesystem support. Useful if you are just
 // doing pure computation, but not reading files or using any streams (including
@@ -688,7 +683,14 @@ var PROFILING_FUNCS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = ['memcpy', 'memset', 'malloc', 'free'];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
+	'memcpy',
+	'memset',
+	'malloc',
+	'free',
+	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
+	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
+	];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -1338,6 +1340,9 @@ var MINIFY_ASMJS_IMPORT_NAMES = 0;
 // to JS static allocations
 var STATIC_BUMP = -1;
 
+// the total initial wasm table size.
+var WASM_TABLE_SIZE = 0;
+
 // if set to 1, then generated WASM files will contain a custom
 // "emscripten_metadata" section that contains information necessary
 // to execute the file without the accompanying JS file.
@@ -1350,7 +1355,6 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
-
 // Internal: points to a file that lists all asm.js/wasm module exports, annotated
 // with suppressions for Closure compiler, that can be passed as an --externs file
 // to Closure.
@@ -1358,3 +1362,13 @@ var MODULE_EXPORTS = [];
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
+
+// Internal (testing only): Forces memory growing to fail.
+var TEST_MEMORY_GROWTH_FAILS = 0;
+
+// Advanced: Customize this array to reduce the set of asm.js runtime variables
+// that are generated. This allows minifying extra bit of asm.js code from unused
+// runtime code, if you know some of these are not needed.
+// (think of this as advanced manual DCE)
+var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
+

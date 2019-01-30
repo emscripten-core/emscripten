@@ -25,13 +25,15 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-  HEAP32[DYNAMICTOP_PTR>>2] = end;
-  if (end >= TOTAL_MEMORY) {
-    var success = enlargeMemory();
-    if (!success) {
-      HEAP32[DYNAMICTOP_PTR>>2] = ret;
-      return 0;
-    }
+  if (end <= _emscripten_get_heap_size()) {
+    HEAP32[DYNAMICTOP_PTR>>2] = end;
+  } else {
+#if ALLOW_MEMORY_GROWTH
+    var success = _emscripten_resize_heap(end);
+    if (!success) return 0;
+#else
+    return 0;
+#endif
   }
   return ret;
 }
@@ -357,7 +359,9 @@ function loadWebAssemblyModule(binary, flags) {
     tableAlign = Math.pow(2, tableAlign);
     // finalize alignments and verify them
     memoryAlign = Math.max(memoryAlign, STACK_ALIGN); // we at least need stack alignment
-    assert(tableAlign === 1);
+#if ASSERTIONS
+    assert(tableAlign === 1, 'invalid tableAlign ' + tableAlign);
+#endif
     // prepare memory
     var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
     // The static area consists of explicitly initialized data, followed by zero-initialized data.
@@ -369,7 +373,7 @@ function loadWebAssemblyModule(binary, flags) {
     // prepare env imports
     var env = Module['asmLibraryArg'];
     // TODO: use only __memory_base and __table_base, need to update asm.js backend
-    var table = Module['wasmTable'];
+    var table = wasmTable;
     var tableBase = table.length;
     var originalTable = table;
     table.grow(tableSize);
@@ -461,7 +465,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if ASSERTIONS
       // the table should be unchanged
       assert(table === originalTable);
-      assert(table === Module['wasmTable']);
+      assert(table === wasmTable);
       if (instance.exports['table']) {
         assert(table === instance.exports['table']);
       }
@@ -611,7 +615,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 // Add a wasm function to the table.
 // Attempting to call this with JS function will cause of table.set() to fail
 function addWasmFunction(func) {
-  var table = Module['wasmTable'];
+  var table = wasmTable;
   var ret = table.length;
   table.grow(1);
   table.set(ret, func);
@@ -812,10 +816,6 @@ function getCompilerSetting(name) {
 #endif // RETAIN_COMPILER_SETTINGS
 
 var Runtime = {
-  // FIXME backwards compatibility layer for ports. Support some Runtime.*
-  //       for now, fix it there, then remove it from here. That way we
-  //       can minimize any period of breakage.
-  dynCall: dynCall, // for SDL2 port
 #if ASSERTIONS
   // helpful errors
   getTempRet0: function() { abort('getTempRet0() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },

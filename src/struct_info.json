@@ -1392,7 +1392,7 @@
               "antialias",
               "premultipliedAlpha",
               "preserveDrawingBuffer",
-              "preferLowPowerToHighPerformance",
+              "powerPreference",
               "failIfMajorPerformanceCaveat",
               "majorVersion",
               "minorVersion",

@@ -7,7 +7,7 @@
 '''
 Fast static linker for emscripten outputs. Specifically this links asm.js modules.
 
-See https://github.com/kripken/emscripten/wiki/Linking
+See https://github.com/emscripten-core/emscripten/wiki/Linking
 '''
 
 from __future__ import print_function

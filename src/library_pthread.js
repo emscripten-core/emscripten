@@ -276,41 +276,6 @@ var LibraryPThread = {
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
-            // TODO: Move the proxied call mechanism into a queue inside heap.
-            if (d.proxiedCall) {
-              var returnValue;
-              var funcTable = (d.func >= 0) ? proxiedFunctionTable : ASM_CONSTS;
-              var funcIdx = (d.func >= 0) ? d.func : (-1 - d.func);
-              switch(d.proxiedCall & 31) {
-                case 1: returnValue = funcTable[funcIdx](); break;
-                case 2: returnValue = funcTable[funcIdx](d.p0); break;
-                case 3: returnValue = funcTable[funcIdx](d.p0, d.p1); break;
-                case 4: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2); break;
-                case 5: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3); break;
-                case 6: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4); break;
-                case 7: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5); break;
-                case 8: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6); break;
-                case 9: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7); break;
-                case 10: returnValue = funcTable[funcIdx](d.p0, d.p1, d.p2, d.p3, d.p4, d.p5, d.p6, d.p7, d.p8); break;
-                default:
-                  if (d.proxiedCall) {
-                    err("worker sent an unknown proxied call idx " + d.proxiedCall);
-                    console.error(e.data);
-                  }
-                  break;
-              }
-              if (d.returnValue) {
-                if (d.proxiedCall < 32) HEAP32[d.returnValue >> 2] = returnValue;
-                else HEAPF64[d.returnValue >> 3] = returnValue;
-              }
-              var waitAddress = d.waitAddress;
-              if (waitAddress) {
-                Atomics.store(HEAP32, waitAddress >> 2, 1);
-                Atomics.wake(HEAP32, waitAddress >> 2, 1);
-              }
-              PThread.currentProxiedOperationCallerThread = undefined;
-              return;
-            }
 
             // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
             if (d.targetThread && d.targetThread != _pthread_self()) {
@@ -385,25 +350,25 @@ var LibraryPThread = {
 
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
-            cmd: 'load',
-            // If the application main .js file was loaded from a Blob, then it is not possible
-            // to access the URL of the current script that could be passed to a Web Worker so that
-            // it could load up the same file. In that case, developer must either deliver the Blob
-            // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-            // independently load up the same main application file.
-            urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
+          cmd: 'load',
+          // If the application main .js file was loaded from a Blob, then it is not possible
+          // to access the URL of the current script that could be passed to a Web Worker so that
+          // it could load up the same file. In that case, developer must either deliver the Blob
+          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+          // independently load up the same main application file.
+          urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
 #if WASM
-            wasmMemory: Module['wasmMemory'],
-            wasmModule: Module['wasmModule'],
+          wasmMemory: wasmMemory,
+          wasmModule: wasmModule,
 #else
-            buffer: HEAPU8.buffer,
+          buffer: HEAPU8.buffer,
 #endif
-            tempDoublePtr: tempDoublePtr,
-            TOTAL_MEMORY: TOTAL_MEMORY,
-            DYNAMIC_BASE: DYNAMIC_BASE,
-            DYNAMICTOP_PTR: DYNAMICTOP_PTR,
-            PthreadWorkerInit: PthreadWorkerInit
-          });
+          tempDoublePtr: tempDoublePtr,
+          TOTAL_MEMORY: TOTAL_MEMORY,
+          DYNAMIC_BASE: DYNAMIC_BASE,
+          DYNAMICTOP_PTR: DYNAMICTOP_PTR,
+          PthreadWorkerInit: PthreadWorkerInit
+        });
         PThread.unusedWorkerPool.push(worker);
       }
     },
@@ -1010,7 +975,7 @@ var LibraryPThread = {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
     }
-    PThread.exitHandlers.push(function() { Module['dynCall_vi'](routine, arg) });
+    PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
 
   pthread_cleanup_pop: function(execute) {
@@ -1172,7 +1137,50 @@ var LibraryPThread = {
 #if PTHREADS_PROFILING
     _emscripten_set_thread_name_js(threadId|0, name|0);
 #endif
-  }
+  },
+
+  emscripten_proxy_to_main_thread_js: function(index, sync) {
+    // Additional arguments are passed after those two, which are the actual
+    // function arguments.
+    // The serialization buffer contains the number of call params, and then
+    // all the args here.
+    // We also pass 'sync' to C separately, since C needs to look at it.
+    var numCallArgs = arguments.length - 2;
+    // Allocate a buffer, which will be copied by the C code.
+    var stack = stackSave();
+    var buffer = stackAlloc(numCallArgs * 8);
+    for (var i = 0; i < numCallArgs; i++) {
+      HEAPF64[(buffer >> 3) + i] = arguments[2 + i];
+    }
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
+    stackRestore(stack);
+    return ret;
+  },
+
+  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js'],
+  emscripten_receive_on_main_thread_js: function(index, numCallArgs, buffer) {
+    // Avoid garbage by reusing a single JS array for call arguments.
+    if (!_emscripten_receive_on_main_thread_js.callArgs) {
+      _emscripten_receive_on_main_thread_js.callArgs = [];
+    }
+    var callArgs = _emscripten_receive_on_main_thread_js.callArgs;
+    callArgs.length = numCallArgs;
+    for (var i = 0; i < numCallArgs; i++) {
+      callArgs[i] = HEAPF64[(buffer >> 3) + i];
+    }
+    // Proxied JS library funcs are encoded as positive values, and
+    // EM_ASMs as negative values (see include_asm_consts)
+    var func;
+    if (index > 0) {
+      func = proxiedFunctionTable[index];
+    } else {
+      func = ASM_CONSTS[-index - 1];
+    }
+#if ASSERTIONS
+    assert(func.length == numCallArgs);
+#endif
+    return func.apply(null, callArgs);
+  },
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

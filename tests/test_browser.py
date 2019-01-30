@@ -81,8 +81,18 @@ def is_chrome():
   return EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower()
 
 
-def no_chrome(note='chome is not supported'):
+def no_chrome(note='chrome is not supported'):
   if is_chrome():
+    return unittest.skip(note)
+  return lambda f: f
+
+
+def is_firefox():
+  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+
+
+def no_firefox(note='firefox is not supported'):
+  if is_firefox():
     return unittest.skip(note)
   return lambda f: f
 
@@ -792,7 +802,7 @@ window.close = function() {
 
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
-    # See https://github.com/kripken/emscripten/issues/4069.
+    # See https://github.com/emscripten-core/emscripten/issues/4069.
     create_test_file('flag_0.js', '''
       Module['arguments'] = ['-0'];
     ''')
@@ -1249,10 +1259,10 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_get_now(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
-  @unittest.skip('Skipping due to https://github.com/kripken/emscripten/issues/2770')
+  @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['--shell-file', path_from_root('tests', 'test_fflush.html')])
 
@@ -1268,11 +1278,10 @@ keydown(100);keyup(100); // trigger the end
     shutil.move('test.html', 'third.html')
 
   def test_fs_idbfs_sync(self):
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      for extra in [[], ['-DEXTRA_WORK']]:
-        secret = str(time.time())
-        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
-        self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=mode + ['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
+    for extra in [[], ['-DEXTRA_WORK']]:
+      secret = str(time.time())
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1290,16 +1299,14 @@ keydown(100);keyup(100); // trigger the end
     ''')
 
     args = ['--pre-js', 'pre.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1']
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
   def test_fs_memfs_fsync(self):
     args = ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EXIT_RUNTIME=1']
-    for mode in [[], ['-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1']]:
-      secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + mode + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
   def test_fs_workerfs_read(self):
     secret = 'a' * 10
@@ -2496,7 +2503,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
   @requires_graphics_hardware
-  # Verify bug https://github.com/kripken/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   def test_html5_webgl_create_context2(self):
     self.btest(path_from_root('tests', 'webgl_create_context2.cpp'), args=['--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html'), '-lGL'], expected='0', timeout=20)
 
@@ -2513,7 +2520,7 @@ Module["preRun"].push(function () {
       self.skipTest('SKIPPED due to bug https://bugzilla.mozilla.org/show_bug.cgi?id=1310005 - WebGL implementation advertises implementation defined GL_IMPLEMENTATION_COLOR_READ_TYPE/FORMAT pair that it cannot read with')
     self.btest(path_from_root('tests', 'webgl_color_buffer_readpixels.cpp'), args=['-lGL'], expected='0', timeout=20)
 
-  # Test for PR#5373 (https://github.com/kripken/emscripten/pull/5373)
+  # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   def test_webgl_shader_source_length(self):
     for opts in [[], ['-s', 'FULL_ES2=1']]:
       print(opts)
@@ -3721,7 +3728,7 @@ window.close = function() {
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
-    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
 
   # test atomicrmw i64
   @requires_threads
@@ -4225,6 +4232,10 @@ window.close = function() {
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
 
+  # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
+  def test_single_file_in_web_environment_with_closure(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE=1', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
+
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
@@ -4374,3 +4385,47 @@ window.close = function() {
 
   def test_modularize_Module_input(self):
     self.btest(path_from_root('tests', 'browser', 'modularize_Module_input.cpp'), '0', args=['--shell-file', path_from_root('tests', 'browser', 'modularize_Module_input.html'), '-s', 'MODULARIZE_INSTANCE=1'])
+
+  def test_emscripten_request_animation_frame(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame.c'), '0')
+
+  def test_emscripten_request_animation_frame_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
+
+  def test_emscripten_set_timeout(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_timeout_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  def test_emscripten_set_immediate(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate.c'), '0')
+
+  def test_emscripten_set_immediate_loop(self):
+    self.btest(path_from_root('tests', 'emscripten_set_immediate_loop.c'), '0')
+
+  def test_emscripten_set_interval(self):
+    self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_performance_now() and emscripten_date_now()
+  def test_emscripten_performance_now(self):
+    self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
+  def test_emscripten_console_log(self):
+    self.btest(path_from_root('tests', 'emscripten_console_log.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_console_log_pre.js')])
+
+  def test_emscripten_throw_number(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_number.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_number_pre.js')])
+
+  def test_emscripten_throw_string(self):
+    self.btest(path_from_root('tests', 'emscripten_throw_string.c'), '0', args=['--pre-js', path_from_root('tests', 'emscripten_throw_string_pre.js')])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a minimal console.log() application
+  def test_closure_in_web_only_target_environment_console_log(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+
+  # Tests that Closure run in combination with -s ENVIRONMENT=web mode works with a small WebGL application
+  @requires_graphics_hardware
+  def test_closure_in_web_only_target_environment_webgl(self):
+    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])

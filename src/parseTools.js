@@ -54,13 +54,13 @@ function preprocess(text, filenameHint) {
             ret += '\n' + preprocess(included, filename) + '\n'
           }
         } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
           showStack.push(!showStack.pop());
         } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0);
+          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command: " + line;
+          throw "Unclear preprocessor command on line " + i + ': ' + line;
         }
       }
     } catch(e) {
@@ -68,7 +68,7 @@ function preprocess(text, filenameHint) {
       throw e;
     }
   }
-  assert(showStack.length == 0);
+  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
   return ret;
 }
 
@@ -1040,6 +1040,14 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
+function makeDynCall(sig) {
+  if (!MAIN_MODULE && !SIDE_MODULE) {
+    return 'dynCall_' + sig;
+  } else {
+    return "Module['dynCall_" + sig + "']";
+  }
+}
+
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
@@ -1399,19 +1407,10 @@ function lengthBytesUTF8(str) {
     // See http://unicode.org/faq/utf_bom.html#utf16-3
     var u = str.charCodeAt(i); // possibly a lead surrogate
     if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
-    if (u <= 0x7F) {
-      ++len;
-    } else if (u <= 0x7FF) {
-      len += 2;
-    } else if (u <= 0xFFFF) {
-      len += 3;
-    } else if (u <= 0x1FFFFF) {
-      len += 4;
-    } else if (u <= 0x3FFFFFF) {
-      len += 5;
-    } else {
-      len += 6;
-    }
+    if (u <= 0x7F) ++len;
+    else if (u <= 0x7FF) len += 2;
+    else if (u <= 0xFFFF) len += 3;
+    else len += 4;
   }
   return len;
 }
@@ -1478,20 +1477,11 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
-// We emit the dynamic and stack bases as strings that need to be further
-// preprocessed, since during JS compiler time here we are still computing
-// static allocations as we go.
+// Some things, like the dynamic and stack bases, will be computed later and
+// applied. Return them as {{{ STR }}} for that replacing later.
 
-function getStackBase() {
-  return '{{{ STACK_BASE }}}';
-}
-
-function getStackMax() {
-  return '{{{ STACK_MAX }}}';
-}
-
-function getDynamicBase() {
-  return '{{{ DYNAMIC_BASE }}}';
+function getQuoted(str) {
+  return '{{{ ' + str + ' }}}';
 }
 
 function makeRetainedCompilerSettings() {
