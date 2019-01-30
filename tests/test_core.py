@@ -800,6 +800,10 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp_unwind(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_unwind')
 
+  def test_longjmp_i64(self):
+    self.emcc_args += ['-g']
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp_i64')
+
   def test_siglongjmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_siglongjmp')
 

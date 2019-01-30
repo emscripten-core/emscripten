@@ -487,7 +487,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.log('fetch: operation success. e: ' + e);
 #endif
-    if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
+    if (onsuccess) Module['dynCall_vi'](onsuccess, fetch);
     else if (successcb) successcb(fetch);
   };
 
@@ -499,21 +499,21 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
       console.log('fetch: IndexedDB store succeeded.');
 #endif
-      if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
+      if (onsuccess) Module['dynCall_vi'](onsuccess, fetch);
       else if (successcb) successcb(fetch);
     };
     var storeError = function(fetch, xhr, e) {
 #if FETCH_DEBUG
       console.error('fetch: IndexedDB store failed.');
 #endif
-      if (onsuccess && typeof dynCall === 'function') Module['dynCall_vi'](onsuccess, fetch);
+      if (onsuccess) Module['dynCall_vi'](onsuccess, fetch);
       else if (successcb) successcb(fetch);
     };
     __emscripten_fetch_cache_data(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);
   };
 
   var reportProgress = function(fetch, xhr, e) {
-    if (onprogress && typeof dynCall === 'function') Module['dynCall_vi'](onprogress, fetch);
+    if (onprogress) Module['dynCall_vi'](onprogress, fetch);
     else if (progresscb) progresscb(fetch);
   };
 
@@ -521,7 +521,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
 #if FETCH_DEBUG
     console.error('fetch: operation failed: ' + e);
 #endif
-    if (onerror && typeof dynCall === 'function') Module['dynCall_vi'](onerror, fetch);
+    if (onerror) Module['dynCall_vi'](onerror, fetch);
     else if (errorcb) errorcb(fetch);
   };
 
