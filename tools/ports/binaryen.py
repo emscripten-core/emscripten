@@ -5,7 +5,7 @@
 
 import os, shutil, logging
 
-TAG = 'workaround' # XXX FIXME
+TAG = 'version_66'
 
 def needed(settings, shared, ports):
   if not settings.WASM:

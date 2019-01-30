@@ -5,12 +5,10 @@
 
 import os, shutil, logging
 
-TAG = 'version_16'
+TAG = 'version_17'
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
-    # SDL2 uses some things on the Module object, make sure they are exported
-    settings.EXPORTED_RUNTIME_METHODS.append('Pointer_stringify')
     # get the port
     ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
     def create():

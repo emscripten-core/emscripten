@@ -207,13 +207,6 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
     logger.debug('emscript: js compiler glue')
     t = time.time()
 
-  # Settings changes
-  i64_funcs = ['i64Add', 'i64Subtract', '__muldi3', '__divdi3', '__udivdi3', '__remdi3', '__uremdi3']
-  for i64_func in i64_funcs:
-    if i64_func in metadata['declares']:
-      shared.Settings.PRECISE_I64_MATH = 2
-      break
-
   # FIXME: do these one by one as normal js lib funcs
   metadata['declares'] = [i64_func for i64_func in metadata['declares'] if i64_func not in ['getHigh32', 'setHigh32']]
 
@@ -395,6 +388,45 @@ def finalize_output(outfile, post, function_table_data, bundled_args, metadata, 
   write_cyberdwarf_data(outfile, metadata)
 
 
+# Given JS code that consists only exactly of a series of "var a = ...;\n var b = ...;" statements,
+# this function collapses the redundant 'var ' statements at the beginning of each line to a
+# single var a =..., b=..., c=...; statement.
+def collapse_redundant_vars(code):
+  if shared.Settings.WASM:
+    return code # Skip if targeting Wasm, this does not matter there
+
+  old_code = ''
+  while code != old_code: # Repeated vars overlap, so can't run in one regex pass. Runs in O(log(N)) time
+    old_code = code
+    code = re.sub('(var [^;]*);\s*var ', r'\1,\n  ', code)
+  return code
+
+
+def global_initializer_funcs(initializers):
+  # If we have at most one global ctor, no need to group global initializers.
+  # Also in EVAL_CTORS mode, we want to try to evaluate the individual ctor functions, so in that mode,
+  # do not group ctors into one.
+  return ['globalCtors'] if (len(initializers) > 1 and not shared.Settings.EVAL_CTORS) else initializers
+
+
+# Each .cpp file with global constructors generates a __GLOBAL__init() function that needs to be
+# called to construct the global objects in that compilation unit. This function groups all these
+# global initializer functions together into a single globalCtors() function that lives inside the
+# asm.js/wasm module, and gets exported out to JS scope to be called at the startup of the application.
+def create_global_initializer(initializers):
+  # If we have no global ctors, don't even generate a dummy empty function to save code space
+  # Also in EVAL_CTORS mode, we want to try to evaluate the individual ctor functions, so in that mode,
+  # we do not group ctors into one.
+  if 'globalCtors' not in global_initializer_funcs(initializers):
+    return ''
+
+  global_initializer = '''  function globalCtors() {
+    %s
+  }''' % '\n    '.join(i + '();' for i in initializers)
+
+  return global_initializer
+
+
 def create_module_asmjs(function_table_sigs, metadata,
                         funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                         asm_global_funcs, pre_tables, final_function_tables, exports):
@@ -402,15 +434,21 @@ def create_module_asmjs(function_table_sigs, metadata,
   runtime_funcs = create_runtime_funcs_asmjs(exports)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
+  memory_views = create_memory_views()
   asm_temp_vars = create_asm_temp_vars()
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
-  asm_start = asm_start_pre + '\n' + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs
 
+  stack = ''
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    stack = apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n  var STACK_MAX = {{{ STACK_MAX }}};\n')
+    if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
+    if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
+      stack += apply_memory('  var STACK_MAX = {{{ STACK_MAX }}};\n')
+
+  if 'tempFloat' in shared.Settings.ASM_PRIMITIVE_VARS:
+    temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
   else:
-    stack = ''
-  temp_float = '  var tempFloat = %s;\n' % ('Math_fround(0)' if provide_fround() else '0.0')
+    temp_float = ''
   async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
 
@@ -420,14 +458,15 @@ def create_module_asmjs(function_table_sigs, metadata,
 
   asm_end = create_asm_end(exports)
 
+  asm_variables = collapse_redundant_vars(memory_views + asm_global_vars + asm_temp_vars + asm_runtime_thread_local_vars + '\n' + asm_global_funcs + stack + temp_float + async_state + f0_fround)
+  asm_global_initializer = create_global_initializer(metadata['initializers'])
+
   module = [
-    asm_start,
-    stack,
-    temp_float,
-    async_state,
-    f0_fround,
+    asm_start_pre,
+    asm_variables,
     replace_memory,
-    start_funcs_marker
+    start_funcs_marker,
+    asm_global_initializer
   ] + runtime_funcs + funcs_js + [
     '\n  ',
     pre_tables, final_function_tables, asm_end,
@@ -684,8 +723,6 @@ def apply_table(js):
 
 
 def memory_and_global_initializers(pre, metadata, mem_init):
-  global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in metadata['initializers'])
-
   if shared.Settings.SIMD == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
 
@@ -695,7 +732,9 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
 
+  global_initializers = global_initializer_funcs(metadata['initializers'])
   if len(global_initializers) > 0:
+    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in global_initializers)
     global_initializers = '/* global initializers */ {pthread} __ATINIT__.push({global_initializers});'.format(pthread=pthread, global_initializers=global_initializers)
   else:
     global_initializers = '/* global initializers */ /*__ATINIT__.push();*/'
@@ -770,14 +809,13 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       funcs.add(key)
 
-  funcs = list(funcs) + metadata['initializers']
+  funcs = list(funcs) + global_initializer_funcs(metadata['initializers'])
+
   if not shared.Settings.ONLY_MY_CODE:
     if shared.Settings.ALLOW_MEMORY_GROWTH:
       funcs.append('_emscripten_replace_memory')
     if not shared.Settings.SIDE_MODULE:
       funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-      funcs += ['setThrew']
     if shared.Settings.EMTERPRETIFY:
       funcs += ['emterpret']
       if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -1439,7 +1477,10 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
-  basic_vars = ['DYNAMICTOP_PTR', 'tempDoublePtr']
+  basic_vars = ['DYNAMICTOP_PTR']
+  if 'tempDoublePtr' in shared.Settings.ASM_PRIMITIVE_VARS:
+    basic_vars += ['tempDoublePtr']
+
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb']
@@ -1488,7 +1529,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', 'setThrew']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
   if shared.Settings.ONLY_MY_CODE:
     funcs = []
   return funcs
@@ -1511,8 +1552,6 @@ def create_the_global(metadata):
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
-  if shared.Settings.ALLOW_MEMORY_GROWTH:
-    fundamentals.append('byteLength')
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
@@ -1628,14 +1667,6 @@ function establishStackSpace(stackBase, stackMax) {
   stackMax = stackMax|0;
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
-}
-function setThrew(threw, value) {
-  threw = threw|0;
-  value = value|0;
-  if ((__THREW__|0) == 0) {
-    __THREW__ = threw;
-    threwValue = value;
-  }
 }
 ''' % stack_check]
 
@@ -1776,20 +1807,23 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
     asm_function_top,
     use_asm,
     create_first_in_asm(),
-    create_memory_views(),
   ]
   return '\n'.join(lines)
 
 
 def create_asm_temp_vars():
-  rtn = '''
-  var __THREW__ = 0;
-  var threwValue = 0;
-  var setjmpId = 0;
-  var undef = 0;
-  var nan = global%s, inf = global%s;
-  var tempInt = 0, tempBigInt = 0, tempBigIntS = 0, tempValue = 0, tempDouble = 0.0;
-''' % (access_quote('NaN'), access_quote('Infinity'))
+  temp_ints = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue']
+  temp_doubles = ['tempDouble']
+  rtn = 'var nan = global%s, inf = global%s' % (access_quote('NaN'), access_quote('Infinity'))
+
+  for i in temp_ints:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0'
+
+  for i in temp_doubles:
+    if i in shared.Settings.ASM_PRIMITIVE_VARS:
+      rtn += ', ' + i + ' = 0.0'
+  rtn += ';'
 
   return rtn
 
@@ -1811,15 +1845,14 @@ def create_replace_memory():
 
   return '''
 function _emscripten_replace_memory(newBuffer) {
-  if ((byteLength(newBuffer) & 0xffffff || byteLength(newBuffer) <= 0xffffff) || byteLength(newBuffer) > 0x80000000) return false;
-  HEAP8 = new Int8View(newBuffer);
-  HEAP16 = new Int16View(newBuffer);
-  HEAP32 = new Int32View(newBuffer);
-  HEAPU8 = new Uint8View(newBuffer);
-  HEAPU16 = new Uint16View(newBuffer);
-  HEAPU32 = new Uint32View(newBuffer);
-  HEAPF32 = new Float32View(newBuffer);
-  HEAPF64 = new Float64View(newBuffer);
+  HEAP8 = new Int8Array(newBuffer);
+  HEAP16 = new Int16Array(newBuffer);
+  HEAP32 = new Int32Array(newBuffer);
+  HEAPU8 = new Uint8Array(newBuffer);
+  HEAPU16 = new Uint16Array(newBuffer);
+  HEAPU32 = new Uint32Array(newBuffer);
+  HEAPF32 = new Float32Array(newBuffer);
+  HEAPF64 = new Float64Array(newBuffer);
   buffer = newBuffer;
   return true;
 }
@@ -1849,7 +1882,6 @@ def create_memory_views():
     Float32View Float64View
   """
   ret = '\n'
-  grow_memory = shared.Settings.ALLOW_MEMORY_GROWTH
   for info in HEAP_TYPE_INFOS:
     access = access_quote('{}Array'.format(info.long_name))
     format_args = {
@@ -1857,13 +1889,7 @@ def create_memory_views():
       'long': info.long_name,
       'access': access,
     }
-    if grow_memory:
-      ret += ('  var {long}View = global{access};\n'
-              '  var {heap} = new {long}View(buffer);\n').format(**format_args)
-    else:
-      ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
-  if grow_memory:
-    ret += '  var byteLength = global.byteLength;\n'
+    ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
   return ret
 
 
@@ -2284,7 +2310,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setThrew', 'setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
+  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
   if name.startswith('dynCall_'):
     return name
   if name in library_functions_in_module:
