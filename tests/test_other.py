@@ -3656,9 +3656,32 @@ Waste<3> *getMore() {
       src = open('a.out.js').read()
       self.assertContained('argc: 1\n16\n17\n10\n', run_js('a.out.js'))
       if has_global:
-        self.assertContained('_GLOBAL_', src)
+        self.assertContained('globalCtors', src)
       else:
-        self.assertNotContained('_GLOBAL_', src)
+        self.assertNotContained('globalCtors', src)
+
+  # Tests that when there are only 0 or 1 global initializers, that a grouped global initializer function will not be generated
+  # (that would just consume excess code size)
+  def test_no_global_inits(self):
+    create_test_file('one_global_initializer.cpp', r'''
+#include <emscripten.h>
+#include <stdio.h>
+double t = emscripten_get_now();
+int main() { printf("t:%d\n", (int)(t>0)); }
+''')
+    run_process([PYTHON, EMCC, 'one_global_initializer.cpp'])
+    # Above file has one global initializer, should not generate a redundant grouped globalCtors function
+    self.assertNotContained('globalCtors', open('a.out.js').read())
+    self.assertContained('t:1', run_js('a.out.js'))
+
+    create_test_file('zero_global_initializers.cpp', r'''
+#include <stdio.h>
+int main() { printf("t:1\n"); }
+''')
+    run_process([PYTHON, EMCC, 'zero_global_initializers.cpp'])
+    # Above file should have zero global initializers, should not generate any global initializer functions
+    self.assertNotContained('__GLOBAL__sub_', open('a.out.js').read())
+    self.assertContained('t:1', run_js('a.out.js'))
 
   def test_implicit_func(self):
     create_test_file('src.c', r'''
@@ -7868,9 +7891,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   40, 658), # noqa
+        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   39, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   21, 619), # noqa
+                  35, ['assert'], ['waka'], 196709,  28,   20, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend
@@ -7902,9 +7925,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
+        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 727), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  40, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
+                  40, ['assert'], ['waka'], 348249,  27,  224, 727), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
