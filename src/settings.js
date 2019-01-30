@@ -692,6 +692,10 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
 	];
 
+// More JS library functions to include in the output. Setting this instead of
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE lets you avoid changing the default ones.
+var EXTRA_LIBRARY_FUNCS_TO_INCLUDE = [];
+
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
 // so we must export so that if they are implemented in C they will be
