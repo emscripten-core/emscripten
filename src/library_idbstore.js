@@ -16,12 +16,12 @@ var LibraryIDBStore = {
   emscripten_idb_async_load: function(db, id, arg, onload, onerror) {
     IDBStore.getFile(UTF8ToString(db), UTF8ToString(id), function(error, byteArray) {
       if (error) {
-        if (onerror) Module['dynCall_vi'](onerror, arg);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
         return;
       }
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
+      {{{ makeDynCall('viii') }}}(onload, arg, buffer, byteArray.length);
       _free(buffer);
     });
   },
@@ -29,28 +29,28 @@ var LibraryIDBStore = {
     // note that we copy the data here, as these are async operatins - changes to HEAPU8 meanwhile should not affect us!
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), function(error) {
       if (error) {
-        if (onerror) Module['dynCall_vi'](onerror, arg);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
         return;
       }
-      if (onstore) Module['dynCall_vi'](onstore, arg);
+      if (onstore) {{{ makeDynCall('vi') }}}(onstore, arg);
     });
   },
   emscripten_idb_async_delete: function(db, id, arg, ondelete, onerror) {
     IDBStore.deleteFile(UTF8ToString(db), UTF8ToString(id), function(error) {
       if (error) {
-        if (onerror) Module['dynCall_vi'](onerror, arg);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
         return;
       }
-      if (ondelete) Module['dynCall_vi'](ondelete, arg);
+      if (ondelete) {{{ makeDynCall('vi') }}}(ondelete, arg);
     });
   },
   emscripten_idb_async_exists: function(db, id, arg, oncheck, onerror) {
     IDBStore.existsFile(UTF8ToString(db), UTF8ToString(id), function(error, exists) {
       if (error) {
-        if (onerror) Module['dynCall_vi'](onerror, arg);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
         return;
       }
-      if (oncheck) Module['dynCall_vii'](oncheck, arg, exists);
+      if (oncheck) {{{ makeDynCall('vii') }}}(oncheck, arg, exists);
     });
   },
 

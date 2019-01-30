@@ -105,7 +105,7 @@ var funs = {
   alarm__deps: ['_sigalrm_handler'],
   alarm: function(seconds) {
     setTimeout(function() {
-      if (__sigalrm_handler) Module['dynCall_vi'](__sigalrm_handler, 0);
+      if (__sigalrm_handler) {{{ makeDynCall('vi') }}}(__sigalrm_handler, 0);
     }, seconds*1000);
   },
   ualarm: function() {

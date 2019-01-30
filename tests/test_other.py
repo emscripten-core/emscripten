@@ -7901,8 +7901,8 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
-        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
+        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 70), # noqa
+        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 29), # noqa
         (['-O2'], 15, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
         (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
@@ -7925,9 +7925,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 727), # noqa
+        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 728), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  40, ['assert'], ['waka'], 348249,  27,  224, 727), # noqa
+                  40, ['assert'], ['waka'], 348249,  27,  224, 728), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
