@@ -113,16 +113,19 @@ function JSify(data, functionsOnly) {
     // Exports from the JS runtime may be JS library functions
     EXPORTED_RUNTIME_METHODS.forEach(function(ident) {
       // No _ prefix for JS runtime methods, so must be marked with $ in the library.
-      // The first character is ignored by the functionStubs handler, so as a workaround
-      // we can put anything there.
-      ident = '*$' + ident;
-      data.functionStubs.push({
-        intertype: 'functionStub',
-        finalName: ident,
-        ident: ident,
-        ignoreIfMissing: true,
-        exported: true
-      });
+      ident = '$' + ident;
+      if (LibraryManager.library[ident]) {
+        // The first character is ignored by the functionStubs handler, so as a workaround
+        // we can put anything there.
+        ident = '*' + ident;
+        data.functionStubs.push({
+          intertype: 'functionStub',
+          finalName: ident,
+          ident: ident,
+          ignoreIfMissing: true,
+          exported: true
+        });
+      }
     });
   }
 
@@ -158,7 +161,7 @@ function JSify(data, functionsOnly) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
-    function addFromLibrary(ident, firstCall) {
+    function addFromLibrary(ident, exported) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -191,10 +194,6 @@ function JSify(data, functionsOnly) {
       var noExport = false;
 
       if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (firstCall && item.ignoreIfMissing) {
-          // it's ignore to ignore this item (but wouldn't be ok to ignore a dependency)
-          return '';
-        }
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
@@ -321,8 +320,7 @@ function JSify(data, functionsOnly) {
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if (((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) ||
-          (item.exported && firstCall)) {
+      if (((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) || exported) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       if (!LibraryManager.library[ident + '__asm']) {
@@ -350,7 +348,7 @@ function JSify(data, functionsOnly) {
         delete LibraryManager.library[shortident + '__deps'];
       }
     }
-    item.JS = addFromLibrary(shortident, true /* firstCall */);
+    item.JS = addFromLibrary(shortident, true /* exported */);
   }
 
   // Final combiner
