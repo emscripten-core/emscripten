@@ -8334,7 +8334,6 @@ end
     # on exit, we can send out a newline as no more code will run
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
-  @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
@@ -8346,10 +8345,14 @@ int main() {
 }
 ''')
     output = run_process([PYTHON, EMCC, 'src.cpp', '-O2'], stdout=PIPE, stderr=PIPE, check=False)
-    self.assertContained('''
+    # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
-''', output.stderr)
+''', '''
+var ASM_CONSTS = [function() {var x = !<->5.;}];
+                                       ^
+'''), output.stderr)
 
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
