@@ -4587,7 +4587,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = Module['dynCall_iii'](func, 0, arg);
+      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
       if (ret !== 0) return;
     }
   },
