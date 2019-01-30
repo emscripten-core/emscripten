@@ -206,7 +206,8 @@ function JSify(data, functionsOnly) {
         }
       }
 
-      var snippet = LibraryManager.library[ident];
+      var original = LibraryManager.library[ident];
+      var snippet = original;
       var redirectedIdent = null;
       var deps = LibraryManager.library[ident + '__deps'] || [];
       deps.forEach(function(dep) {
@@ -270,7 +271,8 @@ function JSify(data, functionsOnly) {
             throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
           }
           var sync = proxyingMode === 'sync';
-          var hasArgs = LibraryManager.library[ident].length > 0;
+          assert(typeof original === 'function');
+          var hasArgs = original.length > 0;
           if (hasArgs) {
             // If the function takes parameters, forward those to the proxied function call
             var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
