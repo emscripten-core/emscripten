@@ -5881,7 +5881,6 @@ int main(void) {
 
       if args:
         assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
       else:
         assert err.count(VECTORIZE) == 0, err # no optimizations
 
