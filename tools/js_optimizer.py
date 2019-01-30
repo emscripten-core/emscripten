@@ -471,6 +471,8 @@ EMSCRIPTEN_FUNCS();
     else:
       filenames = []
 
+    for filename in filenames: temp_files.note(filename)
+
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup or split_memory:
       # run on the shell code, everything but what we js-optimize
@@ -494,12 +496,14 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG: print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+          temp_files.note(cld)
         elif cleanup:
           if DEBUG: print('running cleanup on shell code', file=sys.stderr)
           passes = ['JSDCE']
           if 'minifyWhitespace' in passes:
             passes.append('minifyWhitespace')
           cld = shared.Building.acorn_optimizer(cld, passes)
+          temp_files.note(cld)
         coutput = open(cld).read()
 
       coutput = coutput.replace('wakaUnknownBefore();', start_asm)
