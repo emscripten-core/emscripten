@@ -1,5 +1,6 @@
 var acorn = require('acorn');
 var astring = require('astring');
+var Terser = require("terser");
 var fs = require('fs');
 var path = require('path');
 
@@ -766,15 +767,22 @@ passes.forEach(function(pass) {
   registry[pass](ast);
 });
 
-//print('\nPOST\n' + JSON.stringify(ast, null, ' '));
-
-var output = astring.generate(ast, {
-  indent: minifyWhitespace ? '' : ' ',
-  lineEnd: minifyWhitespace ? '' : '\n',
-  // may want to use escodegen with compact=true and semicolons=false (but it has many more deps)
-});
-
 if (!noPrint) {
+  var output;
+  if (!minifyWhitespace) {
+    // Use astring, it's fast.
+    output = astring.generate(ast, {
+      indent: ' ',
+      lineEnd: '\n',
+    });
+  } else {
+    // Use terser, as it can achieve good code sizes.
+    output = Terser.AST_Node.from_mozilla_ast(ast).print_to_string({
+      beautify: false,
+      indent_level: 0,
+      keep_quoted_props: true, // for closure
+    });
+  }
   print(output);
 }
 
