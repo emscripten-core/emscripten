@@ -40,12 +40,8 @@ function visitChildren(node, c) {
   if (node.type === 'EmptyStatement') {
     return;
   }
-//print('vcs ' + JSON.stringify(node));
   function maybeChild(child) {
-//print('mc ' + JSON.stringify(child));
     if (child && typeof child === 'object' && typeof child.type === 'string') {
-
-//print('MC!!!!!!!');
       c(child);
       return true;
     }
@@ -53,26 +49,11 @@ function visitChildren(node, c) {
   }
   for (var key in node) {
     var child = node[key];
-//print('a1 ' + key + ' : ' + JSON.stringify(child));
     // Check for a child.
     if (!maybeChild(child)) {
-//print('a2');
       // Check for an array of children.
       if (Array.isArray(child)) {
-//print('a3');
         child.forEach(maybeChild);
-      } else {
-//print('a4');
-        /*
-        // Check for an object of children.
-        if (child && typeof child === 'object') {
-//print('a5');
-          for (var grandChild in child) {
-//print('a6');
-            maybeChild(grandChild);
-          }
-        }
-        */
       }
     }
   }
