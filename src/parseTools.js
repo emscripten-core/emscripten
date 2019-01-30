@@ -1040,6 +1040,14 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
+function makeDynCall(sig) {
+  if (!MAIN_MODULE && !SIDE_MODULE) {
+    return 'dynCall_' + sig;
+  } else {
+    return "Module['dynCall_" + sig + "']";
+  }
+}
+
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.

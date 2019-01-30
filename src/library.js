@@ -999,13 +999,7 @@ LibraryManager.library = {
     var block_aligned_dest_end = 0;
     var dest_end = 0;
     // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
-    if ((num|0) >=
-#if SIMD
-      196608
-#else
-      8192
-#endif
-    ) {
+    if ((num|0) >= 8192) {
       _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
       return dest|0;
     }
@@ -1025,12 +1019,6 @@ LibraryManager.library = {
 #if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_dest_end = (aligned_dest_end - 64)|0;
       while ((dest|0) <= (block_aligned_dest_end|0) ) {
-#if SIMD
-        SIMD_Int32x4_store(HEAPU8, dest, SIMD_Int32x4_load(HEAPU8, src));
-        SIMD_Int32x4_store(HEAPU8, dest+16, SIMD_Int32x4_load(HEAPU8, src+16));
-        SIMD_Int32x4_store(HEAPU8, dest+32, SIMD_Int32x4_load(HEAPU8, src+32));
-        SIMD_Int32x4_store(HEAPU8, dest+48, SIMD_Int32x4_load(HEAPU8, src+48));
-#else
         {{{ makeSetValueAsm('dest', 0, makeGetValueAsm('src', 0, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 4, makeGetValueAsm('src', 4, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 8, makeGetValueAsm('src', 8, 'i32'), 'i32') }}};
@@ -1047,7 +1035,6 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('dest', 52, makeGetValueAsm('src', 52, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 56, makeGetValueAsm('src', 56, 'i32'), 'i32') }}};
         {{{ makeSetValueAsm('dest', 60, makeGetValueAsm('src', 60, 'i32'), 'i32') }}};
-#endif
         dest = (dest+64)|0;
         src = (src+64)|0;
       }
@@ -1110,9 +1097,6 @@ LibraryManager.library = {
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
-#if SIMD
-    var value16 = SIMD_Int32x4(0,0,0,0);
-#endif
     end = (ptr + num)|0;
 
     value = value & 0xff;
@@ -1128,17 +1112,7 @@ LibraryManager.library = {
 #if FAST_UNROLLED_MEMCPY_AND_MEMSET
       block_aligned_end = (aligned_end - 64)|0;
 
-#if SIMD
-      value16 = SIMD_Int32x4_splat(value4);
-#endif
-
       while((ptr|0) <= (block_aligned_end|0)) {
-#if SIMD
-        SIMD_Int32x4_store(HEAPU8, ptr, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+16, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+32, value16);
-        SIMD_Int32x4_store(HEAPU8, ptr+48, value16);
-#else
         {{{ makeSetValueAsm('ptr', 0, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 4, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 8, 'value4', 'i32') }}};
@@ -1155,7 +1129,6 @@ LibraryManager.library = {
         {{{ makeSetValueAsm('ptr', 52, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 56, 'value4', 'i32') }}};
         {{{ makeSetValueAsm('ptr', 60, 'value4', 'i32') }}};
-#endif
         ptr = (ptr + 64)|0;
       }
 #endif
@@ -4614,7 +4587,7 @@ LibraryManager.library = {
     var trace = _emscripten_get_callstack_js();
     var parts = trace.split('\n');
     for (var i = 0; i < parts.length; i++) {
-      var ret = Module['dynCall_iii'](func, 0, arg);
+      var ret = {{{ makeDynCall('iii') }}}(func, 0, arg);
       if (ret !== 0) return;
     }
   },
@@ -5023,4 +4996,3 @@ function autoAddDeps(object, name) {
     }
   }
 }
-
