@@ -1659,12 +1659,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
           args.append('-fPIC')
           args.append('-fvisibility=default')
-        if shared.Settings.WASM_OBJECT_FILES:
-          for a in shared.Building.llvm_backend_args():
-            args += ['-mllvm', a]
+        if shared.Settings.WASM_BACKEND:
+          if shared.Settings.WASM_OBJECT_FILES:
+            for a in shared.Building.llvm_backend_args():
+              args += ['-mllvm', a]
+          else:
+            # Not using native objects.  Make sure we pass an lto flag so that
+            # clang will generate bitcode.
+            if not any(a.startswith('-flto') for a in args):
+              if optimizing(options.llvm_opts):
+                if options.opt_level < 2:
+                  args.append('-flto=thin')
+                else:
+                  args.append('-flto')
+              else:
+                args.append('-emit-llvm')
         else:
           args.append('-emit-llvm')
-        logger.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
+        # NOTE: Printing this line here in this specific format is important, it
+        # is parsed to implement the "emcc --cflags" command
+        logger.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args)))
         if run_process(args, check=False).returncode != 0:
           exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
         assert(os.path.exists(output_file))
@@ -1830,19 +1844,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('linking: ' + str(linker_inputs))
         # force archive contents to all be included, if just archives, or if linking shared modules
         force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
-
-        # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-        # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
-        # TODO: we could check if this is a fastcomp build, and still speed things up here
-        just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
+        extra_args = []
         if shared.Settings.WASM_BACKEND:
-          # If LTO is enabled then use the -O opt level as the LTO level
-          if options.llvm_lto:
-            lto_level = options.opt_level
-          else:
-            lto_level = 0
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
+          if not optimizing(options.llvm_opts):
+            extra_args.append('-lto-O0')
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, extra_args)
         else:
+          # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
+          just_calculate = DEBUG != 2
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
         logger.debug('skipping linking: ' + str(linker_inputs))
