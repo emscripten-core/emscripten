@@ -586,9 +586,12 @@ var ASYNCIFY_WHITELIST = ['qsort',
 // runtime.
 // Methods on this list are automatically included from JS libraries, if they
 // are library methods.
-// Note that the name may be slightly misleading, as this is for any JS library
-// element, and not just methods. For example, we export the Runtime object by
+// Note that the name may be slightly misleading, as this is not just for
+// methods, but also for objects. For example, we could export the Runtime object by
 // having "Runtime" in this list.
+// Note that names in this list must be part of the JS runtime, and not C
+// methods - for that reason, you don't need any prefixing, just "ccall" for
+// example will work.
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
@@ -683,6 +686,9 @@ var PROFILING_FUNCS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
+// Note that the names here are as they appear in library.js, which is why
+// you may need names like $Browser (which indicates it will not be prefixed
+// later - this is to handle prefixing differences between JS and C).
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'memcpy',
 	'memset',
