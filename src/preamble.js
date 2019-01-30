@@ -418,33 +418,6 @@ function abortStackOverflowEmterpreter() {
 }
 #endif
 
-#if WASM == 0 && ALLOW_MEMORY_GROWTH
-if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
-  var ret;
-  try {
-    var oldHEAP8 = HEAP8;
-    ret = new ArrayBuffer(size);
-    var temp = new Int8Array(ret);
-    temp.set(oldHEAP8);
-  } catch(e) {
-    return false;
-  }
-  var success = _emscripten_replace_memory(ret);
-  if (!success) return false;
-  return ret;
-};
-#endif // WASM == 0 && ALLOW_MEMORY_GROWTH
-
-#if ALLOW_MEMORY_GROWTH
-var byteLength;
-try {
-  byteLength = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'byteLength').get);
-  byteLength(new ArrayBuffer(4)); // can fail on older ie
-} catch(e) { // can fail on older node/v8
-  byteLength = function(buffer) { return buffer.byteLength; };
-}
-#endif
-
 var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
@@ -1119,34 +1092,6 @@ function createWasm(env) {
   return Module['asm']; // exports were assigned here
 #endif
 }
-
-// Memory growth integration code
-
-var wasmReallocBuffer = function(size) {
-  var PAGE_MULTIPLE = {{{ getPageSize() }}};
-  size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-  var old = Module['buffer'];
-  var oldSize = old.byteLength;
-  // native wasm support
-  try {
-    var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
-    if (result !== (-1 | 0)) {
-      // success in native wasm memory growth, get the buffer from the memory
-      return Module['buffer'] = wasmMemory.buffer;
-    } else {
-      return null;
-    }
-  } catch(e) {
-#if ASSERTIONS
-    console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
-#endif
-    return null;
-  }
-};
-
-Module['reallocBuffer'] = function(size) {
-  return wasmReallocBuffer(size);
-};
 
 // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
 // the wasm module at that time, and it receives imports and provides exports and so forth, the app

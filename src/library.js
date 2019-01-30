@@ -479,7 +479,61 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'],
+#if TEST_MEMORY_GROWTH_FAILS
+  $emscripten_realloc_buffer: function(size) {
+    return null;
+  },
+#else
+
+  $emscripten_realloc_buffer: function(size) {
+#if WASM
+    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
+    var old = Module['buffer'];
+    var oldSize = old.byteLength;
+    // native wasm support
+    try {
+      var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
+      if (result !== (-1 | 0)) {
+        // success in native wasm memory growth, get the buffer from the memory
+        return Module['buffer'] = wasmMemory.buffer;
+      } else {
+        return null;
+      }
+    } catch(e) {
+#if ASSERTIONS
+      console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+      return null;
+    }
+#else // asm.js:
+    try {
+      var newBuffer = new ArrayBuffer(size);
+      if (newBuffer.byteLength != size) return false;
+      new Int8Array(newBuffer).set(HEAP8);
+    } catch(e) {
+      return false;
+    }
+    Module['_emscripten_replace_memory'](newBuffer);
+    HEAP8 = new Int8Array(newBuffer);
+    HEAP16 = new Int16Array(newBuffer);
+    HEAP32 = new Int32Array(newBuffer);
+    HEAPU8 = new Uint8Array(newBuffer);
+    HEAPU16 = new Uint16Array(newBuffer);
+    HEAPU32 = new Uint32Array(newBuffer);
+    HEAPF32 = new Float32Array(newBuffer);
+    HEAPF64 = new Float64Array(newBuffer);
+    buffer = newBuffer;
+    return newBuffer;
+#endif
+  },
+#endif // ~TEST_MEMORY_GROWTH_FAILS
+
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'
+#if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
+  , '$emscripten_realloc_buffer'
+#endif
+  ],
   emscripten_resize_heap: function(requestedSize) {
 #if USE_PTHREADS
     abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
@@ -550,7 +604,7 @@ LibraryManager.library = {
     var start = Date.now();
 #endif
 
-    var replacement = Module['reallocBuffer'](newSize);
+    var replacement = emscripten_realloc_buffer(newSize);
     if (!replacement || replacement.byteLength != newSize) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
@@ -1290,6 +1344,17 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+  setThrew__asm: true,
+  setThrew__sig: 'vii',
+  setThrew: function(threw, value) {
+    threw = threw|0;
+    value = value|0;
+    if ((__THREW__|0) == 0) {
+      __THREW__ = threw;
+      threwValue = value;
+    }
+  },
+
   $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
     last: 0,
@@ -1458,10 +1523,10 @@ LibraryManager.library = {
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS'],
+  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS', 'setThrew'],
   __cxa_end_catch: function() {
     // Clear state flag.
-    Module['setThrew'](0);
+    _setThrew(0);
     // Call destructor if one is registered then clear it.
     var ptr = EXCEPTIONS.caught.pop();
 #if EXCEPTION_DEBUG
@@ -3116,9 +3181,9 @@ LibraryManager.library = {
     return '_saveSetjmp(' + env + ', label, setjmpTable)|0';
   },
 
-  longjmp__deps: ['saveSetjmp', 'testSetjmp'],
+  longjmp__deps: ['saveSetjmp', 'testSetjmp', 'setThrew'],
   longjmp: function(env, value) {
-    Module['setThrew'](env, value || 1);
+    _setThrew(env, value || 1);
     throw 'longjmp';
   },
   emscripten_longjmp__deps: ['longjmp'],
