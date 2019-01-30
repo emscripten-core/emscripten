@@ -2176,7 +2176,7 @@ int f() {
       (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
        ['JSDCE']),
       # XXX this test cannot pass with astring as our code emitter
-      #(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes-output.js')).read(),
+      # (path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes-output.js')).read(),
       # ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
        ['JSDCE']),
