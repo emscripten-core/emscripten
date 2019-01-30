@@ -74,6 +74,8 @@ mergeInto(LibraryManager.library, {
         position += stream.position;
       } else if (whence === 2) {  // SEEK_END.
         position += fs.fstatSync(stream.nfd).size;
+      } else if (whence !== 0) {  // SEEK_SET.
+        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
 
       if (position < 0) {

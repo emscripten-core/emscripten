@@ -1365,3 +1365,10 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 
 // Internal (testing only): Forces memory growing to fail.
 var TEST_MEMORY_GROWTH_FAILS = 0;
+
+// Advanced: Customize this array to reduce the set of asm.js runtime variables
+// that are generated. This allows minifying extra bit of asm.js code from unused
+// runtime code, if you know some of these are not needed.
+// (think of this as advanced manual DCE)
+var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
+
