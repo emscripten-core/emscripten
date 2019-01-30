@@ -106,9 +106,20 @@ def no_swiftshader(f):
   return decorated
 
 
+def requires_threads(f):
+  def decorated(self):
+    if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
+      self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
+    # FIXME when the wasm backend gets threads
+    if is_chrome() and self.is_wasm_backend():
+      self.skipTest('wasm backend lacks threads')
+    return f(self)
+
+  return decorated
+
+
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
-requires_threads = unittest.skipIf(os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'), "This test requires thread support")
 requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
 
 
@@ -135,6 +146,7 @@ class browser(BrowserCore):
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
+  @no_wasm_backend('wasm source maps')
   def test_zzz_html_source_map(self):
     if not has_browser():
       self.skipTest('need a browser')
@@ -175,6 +187,7 @@ If manually bisecting:
   through and see the print (best to run with EMTEST_SAVE_DIR=1 for the reload).
 ''')
 
+  @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
     # TODO: wasm support for source maps
     src = 'src.cpp'
@@ -761,6 +774,7 @@ window.close = function() {
     create_test_file('data.txt', 'datum')
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
+  @no_chrome('see #7930')
   @requires_graphics_hardware
   def test_glgears_proxy(self):
     # we modify the asm.js, this is a non-wasm test
@@ -821,6 +835,10 @@ window.close = function() {
           ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', "SAFE_HEAP=1"]
         ]:
           print(delay, defines, emterps)
+
+          if emterps and self.is_wasm_backend():
+            return self.skipTest('no emterpretify with wasm backend')
+
           create_test_file('pre.js', '''
             function keydown(c) {
              %s
@@ -1283,6 +1301,7 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
+  @no_wasm_backend('emterpretify')
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     create_test_file('pre.js', '''
@@ -1303,6 +1322,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
+  @no_wasm_backend('emterpretify')
   def test_fs_memfs_fsync(self):
     args = ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EXIT_RUNTIME=1']
     secret = str(time.time())
@@ -1394,11 +1414,13 @@ keydown(100);keyup(100); // trigger the end
       self.clear()
       self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-lidbstore.js', '-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
 
+  @no_wasm_backend('emterpretify')
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.clear()
     self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2'])
 
+  @no_wasm_backend('emterpretify')
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
     self.clear()
@@ -2132,6 +2154,7 @@ void *getBindBuffer() {
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
 
+  @no_wasm_backend('dynamic linking')
   def test_runtimelink(self):
     for wasm in [0, 1]:
       print(wasm)
@@ -2156,6 +2179,7 @@ void *getBindBuffer() {
     for mem in [0, 1]:
       self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js', '--memory-init-file', str(mem)])
 
+  @no_wasm_backend('mem init file')
   def test_mem_init(self):
     create_test_file('pre.js', '''
       function myJSCallback() { // called from main()
@@ -2186,6 +2210,7 @@ void *getBindBuffer() {
     # otherwise, we just overwrite
     self.btest('mem_init.cpp', expected='3', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1', '-s', 'ASSERTIONS=0'])
 
+  @no_wasm_backend('mem init file')
   def test_mem_init_request(self):
     def test(what, status):
       print(what, status)
@@ -2292,7 +2317,9 @@ void *getBindBuffer() {
       ('runtime_misuse.cpp', [], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
-      for mode in [[], ['-s', 'WASM=1']]:
+      for mode in [['-s', 'WASM=0'], ['-s', 'WASM=1']]:
+        if 'WASM=0' in mode and self.is_wasm_backend():
+          continue
         print('\n', filename, extra_args, mode)
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
@@ -2319,6 +2346,7 @@ void *getBindBuffer() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
     self.btest('worker_api_3_main.cpp', expected='5')
 
+  @no_wasm_backend('emterpretify')
   def test_worker_api_sleep(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
     self.btest('worker_api_main.cpp', expected='566')
@@ -2332,6 +2360,7 @@ void *getBindBuffer() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORT_ALL=1'], expected='8')
 
+  @no_wasm_backend('dynamic linking')
   def test_preload_module(self):
     create_test_file('library.c', r'''
       #include <stdio.h>
@@ -2479,11 +2508,14 @@ Module["preRun"].push(function () {
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
+  @no_chrome('see #7930')
+  @requires_threads
   def test_html5(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
 
+  @requires_threads
   def test_html5_gamepad(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
@@ -2496,6 +2528,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_create_context.cpp'), args=opts + ['-DNO_ANTIALIAS', '-lGL'], expected='0', timeout=20)
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
+  @requires_threads
   @requires_graphics_hardware
   def test_html5_webgl_create_context(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1'], ['-s', 'USE_PTHREADS=1']]:
@@ -2574,6 +2607,7 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'], expected='0')
 
+  @no_wasm_backend('asm.js-specific')
   def test_codemods(self):
     # tests asm.js client-side code modifications
     for opt_level in [0, 2]:
@@ -2584,6 +2618,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=1'])
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
 
+  @no_wasm_backend('emterpretify')
   def test_wget(self):
     with open('test.txt', 'w') as f:
       f.write('emscripten')
@@ -2593,6 +2628,7 @@ Module["preRun"].push(function () {
     print('emterpreter by itself')
     self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
 
+  @no_wasm_backend('emterpretify')
   def test_wget_data(self):
     with open('test.txt', 'w') as f:
       f.write('emscripten')
@@ -2600,7 +2636,7 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2', '-s', 'ASSERTIONS=1'])
 
   def test_locate_file(self):
-    for wasm in [0, 1]:
+    for wasm in ([0, 1] if not self.is_wasm_backend() else [1]):
       print('wasm', wasm)
       self.clear()
       create_test_file('src.cpp', self.with_report_result(r'''
@@ -2688,6 +2724,7 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
     self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
+  @no_wasm_backend('asm.js')
   def test_asm_swapping(self):
     self.clear()
     create_test_file('run.js', r'''
@@ -2925,7 +2962,7 @@ Module['onRuntimeInitialized'] = function() {
 
   @requires_graphics_hardware
   def test_sdl2glshader(self):
-    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-s', 'LEGACY_GL_EMULATION=1'])
+    self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION=1'])
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True) # XXX closure fails on proxy
 
   def test_sdl2_canvas_blank(self):
@@ -3101,6 +3138,7 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), 'sound.wav')
     self.btest('sdl2_mixer_wav.c', expected='1', args=['--preload-file', 'sound.wav', '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432'])
 
+  @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
@@ -3110,32 +3148,38 @@ window.close = function() {
                message='You should see Cocos2d logo',
                timeout=30)
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_test_file('pre.js', 'Error.stackTraceLimit = 80;\n')
     self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '--pre-js', 'pre.js', ])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_virtual(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async_virtual.cpp', '5', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-profiling'])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_virtual_2(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_bad(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_bad_2(self):
     for opts in [0, 1, 2, 3]:
       for assertions in [0, 1]:
@@ -3145,33 +3189,41 @@ window.close = function() {
         print(opts, assertions, expected)
         self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_mainloop(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)], timeout=20)
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_with_manual(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'], timeout=20)
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_sleep2(self):
     self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_sleep2_safeheap(self):
     # check that safe-heap machinery does not cause errors in async operations
     self.btest('emterpreter_async_sleep2_safeheap.cpp', '17', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz', '-profiling', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main","_callback","_fix"]', '-s', 'EXIT_RUNTIME=1'])
 
+  @no_wasm_backend('emterpretify')
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
     self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'], timeout=90)
 
+  @no_wasm_backend('emterpretify')
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'], timeout=30)
 
+  @no_wasm_backend('emterpretify')
   def test_mainloop_infloop(self):
     self.btest('mainloop_infloop.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'], timeout=30)
 
+  @no_wasm_backend('emterpretify')
   def test_emterpreter_async_iostream(self):
     self.btest('emterpreter_async_iostream.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
 
@@ -3228,6 +3280,7 @@ window.close = function() {
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
+  @no_wasm_backend('cannot customize TOTAL_MEMORY in wasm at runtime')
   def test_modularize_and_preload_files(self):
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
@@ -3272,6 +3325,7 @@ window.close = function() {
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
+  @no_wasm_backend('dynamic linking')
   @requires_sync_compilation
   def test_dynamic_link(self):
     create_test_file('pre.js', '''
@@ -3384,6 +3438,7 @@ window.close = function() {
 
     super(browser, self)._test_dylink_dso_needed(do_run)
 
+  @no_wasm_backend('dynamic linking')
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):
@@ -3418,7 +3473,7 @@ window.close = function() {
 
   def test_memory_growth_during_startup(self):
     create_test_file('data.dat', 'X' * (30 * 1024 * 1024))
-    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=16MB', '-s', 'TOTAL_STACK=5000', '--preload-file', 'data.dat'])
+    self.btest('browser_test_hello_world.c', '0', args=['-s', 'ASSERTIONS=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=16MB', '-s', 'TOTAL_STACK=16384', '--preload-file', 'data.dat'])
 
   # pthreads tests
 
@@ -3607,6 +3662,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
 
   # Test that --separate-asm works with -s USE_PTHREADS=1.
+  @no_wasm_backend('asm.js')
   @requires_threads
   def test_pthread_separate_asm_pthreads(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'])
@@ -3741,6 +3797,7 @@ window.close = function() {
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
 
+  @no_wasm_backend('mem init file')
   def test_meminit_pairs(self):
     d = 'const char *data[] = {\n  "'
     d += '",\n  "'.join(''.join('\\x{:02x}\\x{:02x}'.format(i, j)
@@ -3752,6 +3809,7 @@ window.close = function() {
     self.btest(d, expected='0', args=args + ["--closure", "0", "-g"])
     self.btest(d, expected='0', args=args + ["--closure", "1"])
 
+  @no_wasm_backend('mem init file')
   def test_meminit_big(self):
     d = 'const char *data[] = {\n  "'
     d += '",\n  "'.join([''.join('\\x{:02x}\\x{:02x}'.format(i, j)
@@ -3773,6 +3831,7 @@ window.close = function() {
   def test_custom_messages_proxy(self):
     self.btest(path_from_root('tests', 'custom_messages_proxy.c'), expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests', 'custom_messages_proxy_shell.html'), '--post-js', path_from_root('tests', 'custom_messages_proxy_postjs.js')])
 
+  @no_wasm_backend('asm.js')
   def test_separate_asm(self):
     for opts in [['-O0'], ['-O1'], ['-O2'], ['-O2', '--closure', '1']]:
       print(opts)
@@ -3805,6 +3864,7 @@ window.close = function() {
       print('see a fail')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
+  @no_wasm_backend('emterpretify')
   def test_emterpretify_file(self):
     create_test_file('shell.html', '''
       <!--
@@ -3840,6 +3900,7 @@ window.close = function() {
       create_test_file('test.html', '<script src="test.js"></script>')
       self.run_browser('test.html', None, '/report_result?0')
 
+  @no_wasm_backend('mem init file')
   def test_in_flight_memfile_request(self):
     # test the XHR for an asm.js mem init file being in flight already
     for o in [0, 1, 2]:
@@ -4009,6 +4070,7 @@ window.close = function() {
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
+  @no_wasm_backend('asm.js feature')
   def test_preallocated_heap(self):
     self.btest('test_preallocated_heap.cpp', expected='1', args=['-s', 'WASM=0', '-s', 'TOTAL_MEMORY=16MB', '-s', 'ABORTING_MALLOC=0', '--shell-file', path_from_root('tests', 'test_preallocated_heap_shell.html')])
 
@@ -4086,6 +4148,7 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_threads
   def test_fetch_idb_store(self):
     self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -4392,9 +4455,11 @@ window.close = function() {
   def test_emscripten_request_animation_frame_loop(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
 
+  @requires_threads
   def test_emscripten_set_timeout(self):
     self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_threads
   def test_emscripten_set_timeout_loop(self):
     self.btest(path_from_root('tests', 'emscripten_set_timeout_loop.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -4404,10 +4469,12 @@ window.close = function() {
   def test_emscripten_set_immediate_loop(self):
     self.btest(path_from_root('tests', 'emscripten_set_immediate_loop.c'), '0')
 
+  @requires_threads
   def test_emscripten_set_interval(self):
     self.btest(path_from_root('tests', 'emscripten_set_interval.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
+  @requires_threads
   def test_emscripten_performance_now(self):
     self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
