@@ -75,8 +75,6 @@ all the four API calls marked with a star are redundant, but simple state cachin
 
 A good rule of thumb is that a renderer that inherently avoids redundant state calls in the first place by high level design is generally more efficient than one that relies heavily on state caching at the low level.
 
-- Emscripten itself offers a GL state cache, which is disabled by default, and optionally enabled by passing the linker flag ``-s GL_STATE_CACHE=1``. It worthwhile to benchmark application performance with this built-in cache in use, before attempting custom caching schemes, since it is so simple to enable.
-
 Techniques To Minimize API Calls
 ================================
 
