@@ -16,9 +16,11 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
  - Move ccall/cwrap to be JS library functions, which is better for code size.
-   This means if you use them, you must explicitly ask for them, either using
+   We already did not export them by default, and this will also not include them
+   in the JS unless asked for - so using them from pre-js code for example will
+   no longer work without asking for them. That can be done either using
    `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or `EXPORTED_RUNTIME_METHODS` (the
-   latter will also export them on Module). See #TODO
+   latter will also export them on Module). See #7956
 
 v1.38.25: 01/18/2019
 --------------------

@@ -277,7 +277,9 @@ function JSify(data, functionsOnly) {
         });
       });
       if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
+      var depsText = (deps ? '\n' + deps.map(function(dep) {
+        return addFromLibrary(dep);
+      }).filter(function(x) { return x != '' }).join('\n') : '');
       var contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
@@ -348,7 +350,7 @@ function JSify(data, functionsOnly) {
         delete LibraryManager.library[shortident + '__deps'];
       }
     }
-    item.JS = addFromLibrary(shortident, true /* exported */);
+    item.JS = addFromLibrary(shortident, item.exported);
   }
 
   // Final combiner
