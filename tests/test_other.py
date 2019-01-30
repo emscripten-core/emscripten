@@ -8354,6 +8354,20 @@ var ASM_CONSTS = [function() {var x = !<->5.;}];
                                        ^
 '''), output.stderr)
 
+  def test_EM_ASM_ES6(self):
+    # check we show a proper understandable error for JS parse problems
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    var x = (a, b) => 5; // valid ES6!
+    out('hello!');
+  });
+}
+''')
+    run_process([PYTHON, EMCC, 'src.cpp', '-O2'])
+    self.assertContained('hello!', run_js('a.out.js'))
+
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
