@@ -15,6 +15,13 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Move ccall/cwrap to be JS library functions, which is better for code size.
+   This means if you use them, you must explicitly ask for them, either using
+   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or `EXPORTED_RUNTIME_METHODS` (the
+   latter will also export them on Module). See #TODO
+
+v1.38.25: 01/18/2019
+--------------------
  - Move kripken/emscripten,emscripten-fastcomp,emscripten-fastcomp-clang to
    emscripten-core/*
 
