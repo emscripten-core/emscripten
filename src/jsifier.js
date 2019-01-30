@@ -270,7 +270,7 @@ function JSify(data, functionsOnly) {
             throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
           }
           var sync = proxyingMode === 'sync';
-          var hasArgs = snippet.match(/function\s+.*?\s*\((.*?)\)\s*{/)[1].length > 0;
+          var hasArgs = LibraryManager.library[ident].length > 0;
           if (hasArgs) {
             // If the function takes parameters, forward those to the proxied function call
             var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
