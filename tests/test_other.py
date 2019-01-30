@@ -709,32 +709,37 @@ f.close()
       emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-      run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
-      assert Building.is_object_file(os.path.join(tempdirname, 'lib.cpp.o'))
+    self.clear()
+    run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    assert Building.is_ar('libstatic_lib.a')
+    run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
+    found = False # hashing makes the object name random
+    for x in os.listdir('.'):
+      if x.endswith('.o'):
+        found = True
+        assert Building.is_object_file(x)
+    assert found
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON
     # directive causes CMake to generate LLVM bitcode files as static libraries
     # (.bc)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      if self.is_wasm_backend():
-        assert Building.is_wasm(os.path.join(tempdirname, 'libstatic_lib.bc'))
-      else:
-        assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
-      assert not Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
+    self.clear()
+    run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    if self.is_wasm_backend():
+      assert Building.is_wasm('libstatic_lib.bc')
+    else:
+      assert Building.is_bitcode('libstatic_lib.bc')
+    assert not Building.is_ar('libstatic_lib.bc')
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files
     # with ".so" suffix which are in fact either ar archives or bitcode files)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+    self.clear()
+    run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    assert Building.is_ar('myprefix_static_lib.somecustomsuffix')
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):

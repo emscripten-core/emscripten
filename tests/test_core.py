@@ -16,18 +16,6 @@ import time
 import unittest
 from textwrap import dedent
 
-'''
-TODO (seen in test log output):
-
-wasm-ld: warning: function signature mismatch: _ZNSt3__215basic_streambufIwNS_11char_traitsIwEEE7seekposENS_4fposI11__mbstate_tEEj
->>> defined as (i32, i32, i32, i32) -> void in /usr/local/google/home/azakai/.emscripten_cache/wasm_o/libc++_noexcept.a(ios_84870f69.cpp.o)
->>> defined as () -> void in /usr/local/google/home/azakai/.emscripten_cache/wasm_o/libc++_noexcept.a(iostream_d7cd508a.cpp.o)
-
-ALSO:
-
-wasm-ld: warning: unexpected existing value for R_WEBASSEMBLY_FUNCTION_OFFSET_I32: existing=4525 expected=10929
-
-'''
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
