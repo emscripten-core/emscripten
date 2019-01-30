@@ -2348,11 +2348,10 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if 'LLVM opts:' in l])
           if expect_debug:
-            self.assertNotIn('strip-debug', opts)
+            self.assertNotIn('strip-debug', err)
           else:
-            self.assertIn('strip-debug', opts)
+            self.assertIn('strip-debug', err)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -3561,11 +3560,11 @@ int main() {
   def test_os_oz(self):
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          (['-O1'], 'LLVM opts: -O1'),
-          (['-O2'], 'LLVM opts: -O3'),
-          (['-Os'], 'LLVM opts: -Os'),
-          (['-Oz'], 'LLVM opts: -Oz'),
-          (['-O3'], 'LLVM opts: -O3'),
+          (['-O1'], '-O1'),
+          (['-O2'], '-O3'),
+          (['-Os'], '-Os'),
+          (['-Oz'], '-Oz'),
+          (['-O3'], '-O3'),
         ]:
         print(args, expect)
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
