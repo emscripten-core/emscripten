@@ -1560,6 +1560,7 @@ RUNTIME_ASSERTIONS = '''
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 '''
 
+
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions):
   receiving = ''
   if not shared.Settings.ASSERTIONS:
