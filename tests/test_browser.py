@@ -1259,7 +1259,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_get_now(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
@@ -1278,10 +1278,11 @@ keydown(100);keyup(100); // trigger the end
     shutil.move('test.html', 'third.html')
 
   def test_fs_idbfs_sync(self):
+    args = ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]']
     for extra in [[], ['-DEXTRA_WORK']]:
       secret = str(time.time())
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
-      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=args + ['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
+      self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=args + ['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1298,7 +1299,7 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    args = ['--pre-js', 'pre.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1']
+    args = ['--pre-js', 'pre.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
@@ -1331,7 +1332,7 @@ keydown(100);keyup(100); // trigger the end
       os.makedirs('sub')
     open(os.path.join('sub', 'file2.txt'), 'w').write('second')
     run_process([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
-    self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker'])
+    self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'])
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1343,30 +1344,32 @@ keydown(100);keyup(100); // trigger the end
     random_data[17] = ord('X')
     open('file3.txt', 'wb').write(random_data)
 
+    args = ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]']
+
     # compress in emcc,  -s LZ4=1  tells it to tell the file packager
     print('emcc-normal')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=args + ['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt'], timeout=60)
     assert os.path.getsize('file1.txt') + os.path.getsize(os.path.join('subdir', 'file2.txt')) + os.path.getsize('file3.txt') == 3 * 1024 * 128 * 10 + 1
     assert os.path.getsize('test.data') < (3 * 1024 * 128 * 10) / 2  # over half is gone
     print('    emcc-opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=args + ['-s', 'LZ4=1', '--preload-file', 'file1.txt', '--preload-file', 'subdir/file2.txt', '--preload-file', 'file3.txt', '-O2'], timeout=60)
 
     # compress in the file packager, on the server. the client receives compressed data and can just use it. this is typical usage
     print('normal')
     out = subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--lz4'])
     open('files.js', 'wb').write(out)
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=args + ['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '2', args=args + ['--pre-js', 'files.js', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
 
     # load the data into LZ4FS manually at runtime. This means we compress on the client. This is generally not recommended
     print('manual')
     subprocess.check_output([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'subdir/file2.txt', 'file3.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=args + ['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1'], timeout=60)
     print('    opts')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=args + ['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'], timeout=60)
     print('    opts+closure')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1'], timeout=60)
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=args + ['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1'], timeout=60)
 
     '''# non-lz4 for comparison
     try:
@@ -2288,6 +2291,8 @@ void *getBindBuffer() {
       };
     ''')
 
+    args = ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]']
+
     for filename, extra_args, second_code in [
       ('runtime_misuse.cpp', [], 600),
       ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
@@ -2296,13 +2301,13 @@ void *getBindBuffer() {
         print('\n', filename, extra_args, mode)
         print('mem init, so async, call too early')
         create_test_file('post.js', post_prep + post_test + post_hook)
-        self.btest(filename, expected='600', args=['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected='600', args=args + ['--post-js', 'post.js', '--memory-init-file', '1', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
         print('sync startup, call too late')
         create_test_file('post.js', post_prep + 'Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected=str(second_code), args=['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
+        self.btest(filename, expected=str(second_code), args=args + ['--post-js', 'post.js', '--memory-init-file', '0', '-s', 'EXIT_RUNTIME=1'] + extra_args + mode)
         print('sync, runtime still alive, so all good')
         create_test_file('post.js', post_prep + 'expected_ok = true; Module.postRun.push(function() { ' + post_test + ' });' + post_hook)
-        self.btest(filename, expected='606', args=['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)
+        self.btest(filename, expected='606', args=args + ['--post-js', 'post.js', '--memory-init-file', '0'] + extra_args + mode)
 
   def test_cwrap_early(self):
     self.btest(os.path.join('browser', 'cwrap_early.cpp'), args=['-O2', '-s', 'ASSERTIONS=1', '--pre-js', path_from_root('tests', 'browser', 'cwrap_early.js'), '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["cwrap"]'], expected='0')
@@ -4231,6 +4236,10 @@ window.close = function() {
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
+
+  # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
+  def test_single_file_in_web_environment_with_closure(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE=1', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):

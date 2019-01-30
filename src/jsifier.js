@@ -120,7 +120,8 @@ function JSify(data, functionsOnly) {
         intertype: 'functionStub',
         finalName: ident,
         ident: ident,
-        ignoreIfMissing: true
+        ignoreIfMissing: true,
+        exported: true
       });
     });
   }
@@ -157,7 +158,7 @@ function JSify(data, functionsOnly) {
       functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
-    function addFromLibrary(ident) {
+    function addFromLibrary(ident, firstCall) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
 
@@ -190,7 +191,8 @@ function JSify(data, functionsOnly) {
       var noExport = false;
 
       if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (item.ignoreIfMissing) {
+        if (firstCall && item.ignoreIfMissing) {
+          // it's ignore to ignore this item (but wouldn't be ok to ignore a dependency)
           return '';
         }
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
@@ -319,7 +321,8 @@ function JSify(data, functionsOnly) {
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
+      if (((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) ||
+          (item.exported && firstCall)) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       if (!LibraryManager.library[ident + '__asm']) {
@@ -347,7 +350,7 @@ function JSify(data, functionsOnly) {
         delete LibraryManager.library[shortident + '__deps'];
       }
     }
-    item.JS = addFromLibrary(shortident);
+    item.JS = addFromLibrary(shortident, true /* firstCall */);
   }
 
   // Final combiner

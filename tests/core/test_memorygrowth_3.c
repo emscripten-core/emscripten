@@ -23,15 +23,6 @@ int main(int argc, char **argv)
   int totalMemory = get_TOTAL_MEMORY();
   int chunk = 1024*1024;
   volatile voidStar alloc;
-#ifdef FAIL_REALLOC_BUFFER
-  EM_ASM({
-    Module.seenOurReallocBuffer = false;
-    Module['reallocBuffer'] = function() {
-      Module.seenOurReallocBuffer = true;
-      return null;
-    };
-  });
-#endif
   for (int i = 0; i < (totalMemory/chunk)+2; i++) {
     // make sure state remains the same if malloc fails
     void* sbrk_before = sbrk(0);
@@ -44,11 +35,6 @@ int main(int argc, char **argv)
     }
   }
   assert(alloc == NULL);
-#ifdef FAIL_REALLOC_BUFFER
-  EM_ASM({
-    assert(Module.seenOurReallocBuffer, 'our override should have been called');
-  });
-#endif
   puts("ok.");
   return 0;
 }
