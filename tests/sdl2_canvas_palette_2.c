@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
   SDL_RenderPresent(renderer);
 
-  SDL_Quit();
+  // Don't quit - we need to reftest the canvas! SDL_Quit();
 
   return 0;
 }

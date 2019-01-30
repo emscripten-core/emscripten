@@ -289,8 +289,7 @@ jobs:
   test-qrst:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t* skip:asm*.test_sse1_full skip:asm*.test_sse2_full skip:asm*.test_sse3_full skip:asm*.test_ssse3_full skip:asm*.test_sse4_1_full
-      # SSE tests fail because of the lack of native headers on emsdk-bundled clang
+      - TEST_TARGET=asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*
   test-uvwxyz:
     <<: *test-defaults
     environment:

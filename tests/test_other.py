@@ -1578,6 +1578,7 @@ int f() {
     ''')
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertNotIn('loading from archive', err)
+    self.assertNotIn('liba.a', err)
     self.assertNotIn('which has duplicate entries', err)
     self.assertNotIn('duplicate: common.o', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
@@ -1592,6 +1593,7 @@ int f() {
     run_process([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
     self.assertIn('loading from archive', err)
+    self.assertIn('liba.a', err)
     self.assertIn('which has duplicate entries', err)
     self.assertIn('duplicate: common.o', err)
     assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
@@ -3654,9 +3656,32 @@ Waste<3> *getMore() {
       src = open('a.out.js').read()
       self.assertContained('argc: 1\n16\n17\n10\n', run_js('a.out.js'))
       if has_global:
-        self.assertContained('_GLOBAL_', src)
+        self.assertContained('globalCtors', src)
       else:
-        self.assertNotContained('_GLOBAL_', src)
+        self.assertNotContained('globalCtors', src)
+
+  # Tests that when there are only 0 or 1 global initializers, that a grouped global initializer function will not be generated
+  # (that would just consume excess code size)
+  def test_no_global_inits(self):
+    create_test_file('one_global_initializer.cpp', r'''
+#include <emscripten.h>
+#include <stdio.h>
+double t = emscripten_get_now();
+int main() { printf("t:%d\n", (int)(t>0)); }
+''')
+    run_process([PYTHON, EMCC, 'one_global_initializer.cpp'])
+    # Above file has one global initializer, should not generate a redundant grouped globalCtors function
+    self.assertNotContained('globalCtors', open('a.out.js').read())
+    self.assertContained('t:1', run_js('a.out.js'))
+
+    create_test_file('zero_global_initializers.cpp', r'''
+#include <stdio.h>
+int main() { printf("t:1\n"); }
+''')
+    run_process([PYTHON, EMCC, 'zero_global_initializers.cpp'])
+    # Above file should have zero global initializers, should not generate any global initializer functions
+    self.assertNotContained('__GLOBAL__sub_', open('a.out.js').read())
+    self.assertContained('t:1', run_js('a.out.js'))
 
   def test_implicit_func(self):
     create_test_file('src.c', r'''
@@ -6062,19 +6087,6 @@ int main() {
 #define CHUNK_SIZE (10 * 1024 * 1024)
 
 int main() {
-  EM_ASM({
-    // we want to allocate a lot until eventually we can't anymore. to simulate that, we limit how much
-    // can be allocated by Buffer, so that if we don't hit a limit before that, we don't keep going into
-    // swap space and other bad things.
-    var old = Module['reallocBuffer'];
-    Module['reallocBuffer'] = function(size) {
-      if (size > 500 * 1024 * 1024) {
-        return null;
-      }
-      return old(size);
-    };
-  });
-
   std::vector<void*> allocs;
   bool has = false;
   while (1) {
@@ -6106,6 +6118,7 @@ int main() {
 }
 ''' % (pre_fail, post_fail))
           args = [PYTHON, EMCC, 'main.cpp'] + opts
+          args += ['-s', 'TEST_MEMORY_GROWTH_FAILS=1'] # In this test, force memory growing to fail
           if growth:
             args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
           if not aborting:
@@ -7862,7 +7875,7 @@ int main() {
                    0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1556, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1557, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -7878,9 +7891,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   40, 658), # noqa
+        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   39, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   21, 619), # noqa
+                  35, ['assert'], ['waka'], 196709,  28,   20, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend
@@ -7888,8 +7901,8 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 69), # noqa
-        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 28), # noqa
+        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 70), # noqa
+        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 29), # noqa
         (['-O2'], 15, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
         (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
@@ -7912,9 +7925,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  220, 723), # noqa
+        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 728), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  40, ['assert'], ['waka'], 348249,  27,  220, 723), # noqa
+                  40, ['assert'], ['waka'], 348249,  27,  224, 728), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
