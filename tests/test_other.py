@@ -416,7 +416,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert not os.path.exists(target)
         proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'] + args, stdout=PIPE, stderr=PIPE)
         syms = Building.llvm_nm('combined.o')
-        assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
+        assert len(syms.defs) in (2, 3) and 'main' in syms.defs, 'Should be two functions (and in the wasm backend, also __original_main)'
         proc = run_process([PYTHON, compiler, 'combined.o', '-o', 'combined.o.js'], stdout=PIPE, stderr=PIPE)
         assert len(proc.stdout) == 0, proc.stdout
         assert os.path.exists('combined.o.js'), 'Expected %s to exist' % ('combined.o.js')
