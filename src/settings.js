@@ -136,6 +136,10 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
 
+// If true, allows more functions to be added to the table at runtime. This is
+// necessary for dynamic linking, and set automatically in that mode.
+var ALLOW_TABLE_GROWTH = 0;
+
 // where global data begins; the start of static memory. -1 means use the
 // default, any other value will be used as an override
 var GLOBAL_BASE = -1;
@@ -179,14 +183,6 @@ var FORCE_ALIGNED_MEMORY = 0;
 // to ensure proper alignment.  This is currently only supported in asm.js, not
 // wasm.
 var WARN_UNALIGNED = 0;
-
-// If enabled, i64 addition etc. is emulated - which is slow but precise. If
-// disabled, we use the 'double trick' which is fast but incurs rounding at high
-// values.  If set to 2, we always include the i64 math code, which is necessary
-// in the case that we can't know at compile time that 64-bit math is needed.
-// For example, if you print 64-bit values with printf, but never add them, we
-// can't know at compile time and you need to set this to 2.
-var PRECISE_I64_MATH = 1;
 
 // 0: Use JS numbers for floating-point values. These are 64-bit and do not model C++
 //    floats exactly, which are 32-bit.
@@ -1366,3 +1362,13 @@ var MODULE_EXPORTS = [];
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
+
+// Internal (testing only): Forces memory growing to fail.
+var TEST_MEMORY_GROWTH_FAILS = 0;
+
+// Advanced: Customize this array to reduce the set of asm.js runtime variables
+// that are generated. This allows minifying extra bit of asm.js code from unused
+// runtime code, if you know some of these are not needed.
+// (think of this as advanced manual DCE)
+var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
+

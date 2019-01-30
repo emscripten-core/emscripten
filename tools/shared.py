@@ -1296,9 +1296,9 @@ verify_settings()
 # llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
 # will trample each other when we extract them. to help warn of such situations, we warn if there
 # are duplicate entries in the archive
-def warn_if_duplicate_entries(archive_contents, archive_filename_hint=''):
+def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % archive_filename_hint)
+    logger.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % archive_filename)
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
@@ -1328,7 +1328,7 @@ def extract_archive_contents(archive_file):
     assert not os.path.dirname(f)
     assert not os.path.isabs(f)
 
-  warn_if_duplicate_entries(contents, f)
+  warn_if_duplicate_entries(contents, archive_file)
 
   # create temp dir
   temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
@@ -2945,7 +2945,7 @@ function jsCall_%s(%s) {
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);
-        return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+        return wasmTable.get(args[0]).apply(null, args.slice(1));
       '''
     else:
       legal_sig = JS.legalize_sig(sig) # TODO: do this in extcall, jscall?
@@ -2961,7 +2961,7 @@ function jsCall_%s(%s) {
   } catch(e) {
     stackRestore(sp);
     if (typeof e !== 'number' && e !== 'longjmp') throw e;
-    Module["setThrew"](1, 0);
+    _setThrew(1, 0);
   }
 }''' % ((' invoke_' + sig) if named else '', args, body)
     return ret

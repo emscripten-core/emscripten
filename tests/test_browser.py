@@ -1259,7 +1259,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_get_now(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
   @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
@@ -4231,6 +4231,10 @@ window.close = function() {
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
+
+  # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
+  def test_single_file_in_web_environment_with_closure(self):
+    self.btest('minimal_hello.c', '0', args=['-s', 'SINGLE_FILE=1', '-s', 'ENVIRONMENT=web', '-O2', '--closure', '1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
   def test_single_file_locate_file(self):

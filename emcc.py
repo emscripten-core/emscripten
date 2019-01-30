@@ -1066,13 +1066,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
         shared.Settings.LINKABLE = 1
       shared.Settings.RELOCATABLE = 1
-      shared.Settings.PRECISE_I64_MATH = 1 # other might use precise math, we need to be able to print it
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
       shared.Settings.EXPORTED_RUNTIME_METHODS += [
         'allocate',
         'getMemory',
       ]
+      shared.Settings.ALLOW_TABLE_GROWTH = 1
+
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
@@ -2353,31 +2354,6 @@ def parse_args(newargs):
       if not options.default_object_extension.startswith('.'):
         options.default_object_extension = '.' + options.default_object_extension
       newargs[i + 1] = ''
-    elif newargs[i] == '-msse':
-      newargs.append('-D__SSE__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse2':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse3':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-mssse3':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs.append('-D__SSSE3__=1')
-      newargs[i] = ''
-    elif newargs[i] == '-msse4.1':
-      newargs.append('-D__SSE__=1')
-      newargs.append('-D__SSE2__=1')
-      newargs.append('-D__SSE3__=1')
-      newargs.append('-D__SSSE3__=1')
-      newargs.append('-D__SSE4_1__=1')
-      newargs[i] = ''
     elif newargs[i].startswith("-fsanitize=cfi"):
       options.cfi = True
     elif newargs[i] == "--output_eol":
@@ -2873,7 +2849,7 @@ def generate_html(target, options, js_target, target_basename,
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:
     for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
-      content = open(shared.path_from_root('src', filename)).read()
+      content = read_and_preprocess(shared.path_from_root('src', filename))
       script.inline = content + script.inline
 
     script.inline = 'var ASSERTIONS = %s;\n%s' % (shared.Settings.ASSERTIONS, script.inline)

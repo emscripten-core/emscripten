@@ -931,7 +931,7 @@ class benchmark(RunnerCore):
     args = [path_from_root('tests', 'nbody-java', x) for x in os.listdir(path_from_root('tests', 'nbody-java')) if x.endswith('.c')] + \
            ['-I' + path_from_root('tests', 'nbody-java')]
     self.do_benchmark('nbody_java', '', '''Time(s)''',
-                      force_c=True, emcc_args=args + ['-s', 'PRECISE_I64_MATH=1', '--llvm-lto', '2'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
+                      force_c=True, emcc_args=args + ['--llvm-lto', '2'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
