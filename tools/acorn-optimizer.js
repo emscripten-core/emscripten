@@ -1,5 +1,4 @@
 var acorn = require('acorn');
-var astring = require('astring');
 var Terser = require("terser");
 var fs = require('fs');
 var path = require('path');
