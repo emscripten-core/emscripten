@@ -252,7 +252,7 @@ var LibraryGL = {
       var source = '';
       for (var i = 0; i < count; ++i) {
         var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : undefined;
-        source += Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
+        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
