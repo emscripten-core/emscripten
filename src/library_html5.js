@@ -2138,21 +2138,22 @@ var LibraryJSEvents = {
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
     var contextAttributes = {};
-    contextAttributes['alpha'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 'i32') }}};
-    contextAttributes['depth'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 'i32') }}};
-    contextAttributes['stencil'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 'i32') }}};
-    contextAttributes['antialias'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 'i32') }}};
-    contextAttributes['premultipliedAlpha'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 'i32') }}};
-    contextAttributes['preserveDrawingBuffer'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 'i32') }}};
-    var powerPreference = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'i32') }}};
+    var a = attributes >> 2;
+    contextAttributes['alpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)];
+    contextAttributes['depth'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)];
+    contextAttributes['stencil'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}>>2)];
+    contextAttributes['antialias'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)];
+    contextAttributes['premultipliedAlpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)];
+    contextAttributes['preserveDrawingBuffer'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}>>2)];
+    var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     contextAttributes['powerPreference'] = __emscripten_webgl_power_preferences[powerPreference];
-    contextAttributes['failIfMajorPerformanceCaveat'] = !!{{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 'i32') }}};
-    contextAttributes['majorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'i32') }}};
-    contextAttributes['minorVersion'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 'i32') }}};
-    contextAttributes['enableExtensionsByDefault'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'i32') }}};
-    contextAttributes['explicitSwapControl'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'i32') }}};
-    contextAttributes['proxyContextToMainThread'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 'i32') }}};
-    contextAttributes['renderViaOffscreenBackBuffer'] = {{{ makeGetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, 'i32') }}};
+    contextAttributes['failIfMajorPerformanceCaveat'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)];
+    contextAttributes['majorVersion'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)];
+    contextAttributes['minorVersion'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)];
+    contextAttributes['enableExtensionsByDefault'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)];
+    contextAttributes['explicitSwapControl'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)];
+    contextAttributes['proxyContextToMainThread'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
+    contextAttributes['renderViaOffscreenBackBuffer'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
 
     target = UTF8ToString(target);
     var canvas;
