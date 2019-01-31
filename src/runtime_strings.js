@@ -65,10 +65,11 @@ var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') :
 
 /**
  * @param {number} idx
- * @param {number=} endIdx
+ * @param {number=} maxBytesToRead
  * @return {string}
  */
-function UTF8ArrayToString(u8Array, idx, endIdx) {
+function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
+  var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
   var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
@@ -131,19 +132,23 @@ function UTF8ArrayToString(u8Array, idx, endIdx) {
 #endif // TEXTDECODER == 2
 }
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
-// a copy of that string as a Javascript String object.
-// endPtr: an optional end index for where the string is to end. You can omit this parameter
-//         to scan the string until the first \0 byte. If endPtr is passed, and the string at
-//         [ptr, endPtr[ contains a null byte in the middle, then the string will cut short at
-//         that byte index (i.e. endPtr will not produce a string of exact length [ptr, endPtr[)
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns a
+// copy of that string as a Javascript String object.
+// maxBytesToRead: an optional length that specifies the maximum number of bytes to read. You can omit
+//                 this parameter to scan the string until the first \0 byte. If maxBytesToRead is
+//                 passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the
+//                 middle, then the string will cut short at that byte index (i.e. maxBytesToRead will
+//                 not produce a string of exact length [ptr, ptr+maxBytesToRead[)
+//                 N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may
+//                 throw JS JIT optimizations off, so it is worth to consider consistently using one
+//                 style or the other.
 /**
  * @param {number} ptr
- * @param {number=} endPtr
+ * @param {number=} maxBytesToRead
  * @return {string}
  */
-function UTF8ToString(ptr, endPtr) {
-  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, endPtr) : '';
+function UTF8ToString(ptr, maxBytesToRead) {
+  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, maxBytesToRead) : '';
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
