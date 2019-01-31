@@ -8393,13 +8393,13 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
   def test_wasm_producers_section(self):
     # no producers section by default
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
-    with open('a.out.wasm') as f:
-      self.assertNotIn('clang', f.read())
+    with open('a.out.wasm', 'rb') as f:
+      self.assertNotIn('clang', str(f.read()))
     size = os.path.getsize('a.out.wasm')
     if self.is_wasm_backend():
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
-      with open('a.out.wasm') as f:
-        self.assertIn('clang', f.read())
+      with open('a.out.wasm', 'rb') as f:
+        self.assertIn('clang', str(f.read()))
       size_with_section = os.path.getsize('a.out.wasm')
       self.assertLess(size, size_with_section)
 
