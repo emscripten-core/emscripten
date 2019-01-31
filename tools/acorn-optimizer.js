@@ -768,21 +768,11 @@ passes.forEach(function(pass) {
 });
 
 if (!noPrint) {
-  var output;
-  if (!minifyWhitespace) {
-    // Use astring, it's fast.
-    output = astring.generate(ast, {
-      indent: ' ',
-      lineEnd: '\n',
-    });
-  } else {
-    // Use terser, as it can achieve good code sizes.
-    output = Terser.AST_Node.from_mozilla_ast(ast).print_to_string({
-      beautify: false,
-      indent_level: 0,
-      keep_quoted_props: true, // for closure
-    });
-  }
+  var output = Terser.AST_Node.from_mozilla_ast(ast).print_to_string({
+    beautify: !minifyWhitespace,
+    indent_level: minifyWhitespace ? 0 : 1,
+    keep_quoted_props: true, // for closure
+  });
   print(output);
 }
 

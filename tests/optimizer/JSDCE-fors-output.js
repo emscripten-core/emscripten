@@ -1,4 +1,3 @@
 for (var i in x) {}
-for (var j = 0; ; ) {}
 
-
+for (var j = 0; ;) {}
