@@ -1,5 +1,5 @@
 var acorn = require('acorn');
-var Terser = require("terser");
+var terser = require("terser");
 var fs = require('fs');
 var path = require('path');
 
@@ -767,7 +767,7 @@ passes.forEach(function(pass) {
 });
 
 if (!noPrint) {
-  var terserAst = Terser.AST_Node.from_mozilla_ast(ast);
+  var terserAst = terser.AST_Node.from_mozilla_ast(ast);
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
