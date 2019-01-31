@@ -3,7 +3,7 @@ var z = fleefl();
 var zz = fleefl();
 
 var keeperObj = {
- "x": fleefl()
+ x: fleefl()
 };
 
 var keeperArray = [ 1, 2, "3", four() ];
