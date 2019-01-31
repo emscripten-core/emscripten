@@ -783,7 +783,7 @@ if (!noPrint) {
         node.forEach(inner);
       } else {
         for (var child in node) {
-          inner(node[child]);
+          inner(node[child]); // has recursion, not a DAG!
         }
       }
       c(node);
