@@ -6086,7 +6086,7 @@ return malloc(size);
     error = ''
     try:
       self.do_run_in_out_file_test('tests', 'core', 'EXTRA_LIBRARY_FUNCS_TO_INCLUDE')
-    except:
+    except Exception as e:
       error = str(e)
     self.assertContained('''ccall is now in the JS library. to use it, build with -s EXTRA_LIBRARY_FUNCS_TO_INCLUDE=['$ccall']''', error)
 
