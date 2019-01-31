@@ -1370,13 +1370,21 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_byval')
 
   def test_stack_varargs(self):
+    # in node.js we allocate argv[0] on the stack, which means the  length
+    # of the program directory influences how much stack we need, and so
+    # long random temp dir names can lead to random failures. The stack
+    # size was increased here to avoid that.
     self.set_setting('INLINING_LIMIT', 50)
-    self.set_setting('TOTAL_STACK', 4096)
+    self.set_setting('TOTAL_STACK', 8 * 1024)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_varargs')
 
   def test_stack_varargs2(self):
-    self.set_setting('TOTAL_STACK', 4096)
+    # in node.js we allocate argv[0] on the stack, which means the  length
+    # of the program directory influences how much stack we need, and so
+    # long random temp dir names can lead to random failures. The stack
+    # size was increased here to avoid that.
+    self.set_setting('TOTAL_STACK', 8 * 1024)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -1384,7 +1392,7 @@ int main() {
       void func(int i) {
       }
       int main() {
-        for (int i = 0; i < 3072; i++) {
+        for (int i = 0; i < 7000; i++) {
           printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
         }
@@ -1401,7 +1409,7 @@ int main() {
       #include <stdlib.h>
 
       int main() {
-        for (int i = 0; i < 3072; i++) {
+        for (int i = 0; i < 7000; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -1437,7 +1445,7 @@ int main() {
       }
 
       int main() {
-        for (int i = 0; i < 3072; i++) {
+        for (int i = 0; i < 7000; i++) {
           int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
                    i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
           printf(" (%d)\n", j);
@@ -1825,6 +1833,8 @@ int main(int argc, char **argv) {
   @no_emterpreter
   @is_slow_test
   def test_biggerswitch(self):
+    if self.is_wasm_backend() and not is_optimizing(self.emcc_args):
+      self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
     num_cases = 20000
     switch_case = run_process([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
