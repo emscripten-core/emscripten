@@ -7909,7 +7909,7 @@ int main() {
         (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],        None,  0,   1,  1), # noqa; FIXME: should be almost totally empty! see https://github.com/WebAssembly/binaryen/pull/1875
+                   0, [],         [],          61,  0,   1,  1), # noqa
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -8389,6 +8389,19 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     output = open('a.out.wasm.map').read()
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
+
+  def test_wasm_producers_section(self):
+    # no producers section by default
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    with open('a.out.wasm') as f:
+      assert 'clang' not in f.read()
+    size = os.path.getsize('a.out.wasm')
+    if self.is_wasm_backend():
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+      with open('a.out.wasm') as f:
+        assert 'clang' in f.read()
+      size_with_section = os.path.getsize('a.out.wasm')
+      self.assertLess(size, size_with_section)
 
   def test_html_preprocess(self):
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
