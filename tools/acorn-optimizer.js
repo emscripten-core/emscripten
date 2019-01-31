@@ -769,32 +769,6 @@ passes.forEach(function(pass) {
 
 if (!noPrint) {
   var terserAst = Terser.AST_Node.from_mozilla_ast(ast);
-  // Uglify uses the "quoted" property to tell it to emit
-  // { "quotedname": .. }
-  // as opposed to
-  // { quotedname: }
-  // We need quoting for closure compiler to work
-  (function(node, c) {
-    (function inner(node) {
-      if (!(node && typeof node === 'object')) {
-        return;
-      }
-      if (Array.isArray(node)) {
-        node.forEach(inner);
-      } else {
-        for (var child in node) {
-          inner(node[child]); // has recursion, not a DAG!
-        }
-      }
-      c(node);
-    })(node);
-  })(terserAst, function(node) {
-    if (node.properties && Array.isArray(node.properties)) {
-      node.properties.forEach(function(prop) {
-        prop.quote = true
-      });
-    }
-  });
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
