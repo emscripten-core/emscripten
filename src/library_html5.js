@@ -2148,12 +2148,12 @@ var LibraryJSEvents = {
     var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     contextAttributes['powerPreference'] = __emscripten_webgl_power_preferences[powerPreference];
     contextAttributes['failIfMajorPerformanceCaveat'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)];
-    contextAttributes['majorVersion'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)];
-    contextAttributes['minorVersion'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)];
-    contextAttributes['enableExtensionsByDefault'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)];
-    contextAttributes['explicitSwapControl'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)];
-    contextAttributes['proxyContextToMainThread'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
-    contextAttributes['renderViaOffscreenBackBuffer'] = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
+    contextAttributes.majorVersion = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)];
+    contextAttributes.minorVersion = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)];
+    contextAttributes.enableExtensionsByDefault = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)];
+    contextAttributes.explicitSwapControl = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)];
+    contextAttributes.proxyContextToMainThread = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
+    contextAttributes.renderViaOffscreenBackBuffer = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
 
     target = UTF8ToString(target);
     var canvas;
@@ -2166,14 +2166,14 @@ var LibraryJSEvents = {
 #if USE_PTHREADS
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
-      if (contextAttributes['proxyContextToMainThread'] === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
-         (!canvas && contextAttributes['proxyContextToMainThread'] === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}})) {
+      if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
+         (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}})) {
         // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
         // "implicit swap when callback exits" behavior. TODO: If OffscreenCanvas is supported, explicitSwapControl=true and still proxying,
         // then this can be avoided, since OffscreenCanvas enables explicit swap control.
 #if GL_DEBUG
-        if (contextAttributes['proxyContextToMainThread'] === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) console.error('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes['proxyContextToMainThread'] === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) console.error('Specified canvas target "' + target + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
+        if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) console.error('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
+        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) console.error('Specified canvas target "' + target + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
         console.error('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
@@ -2199,13 +2199,13 @@ var LibraryJSEvents = {
     else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) console.log('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + target + '"');
 #endif
 
-    if (contextAttributes['explicitSwapControl']) {
+    if (contextAttributes.explicitSwapControl) {
       var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas);
 
       if (!supportsOffscreenCanvas) {
 #if OFFSCREEN_FRAMEBUFFER
-        if (!contextAttributes['renderViaOffscreenBackBuffer']) {
-          contextAttributes['renderViaOffscreenBackBuffer'] = true;
+        if (!contextAttributes.renderViaOffscreenBackBuffer) {
+          contextAttributes.renderViaOffscreenBackBuffer = true;
 #if GL_DEBUG
           console.error('emscripten_webgl_create_context: Performance warning, OffscreenCanvas is not supported but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
 #endif
@@ -2237,14 +2237,14 @@ var LibraryJSEvents = {
     }
 #else // !OFFSCREENCANVAS_SUPPORT
 #if OFFSCREEN_FRAMEBUFFER
-    if (contextAttributes['explicitSwapControl'] && !contextAttributes['renderViaOffscreenBackBuffer']) {
-      contextAttributes['renderViaOffscreenBackBuffer'] = true;
+    if (contextAttributes.explicitSwapControl && !contextAttributes.renderViaOffscreenBackBuffer) {
+      contextAttributes.renderViaOffscreenBackBuffer = true;
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context: Performance warning, not building with OffscreenCanvas support enabled but explicitSwapControl was requested, so force-enabling renderViaOffscreenBackBuffer=true to allow explicit swapping!');
 #endif
     }
 #else
-    if (contextAttributes['explicitSwapControl']) {
+    if (contextAttributes.explicitSwapControl) {
 #if GL_DEBUG
       console.error('emscripten_webgl_create_context failed: explicitSwapControl is not supported, please rebuild with -s OFFSCREENCANVAS_SUPPORT=1 to enable targeting the experimental OffscreenCanvas specification, or rebuild with -s OFFSCREEN_FRAMEBUFFER=1 to emulate explicitSwapControl in the absence of OffscreenCanvas support!');
 #endif
