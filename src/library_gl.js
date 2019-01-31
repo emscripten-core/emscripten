@@ -1692,7 +1692,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.textures, texture, 'glBindTexture', 'texture');
 #endif
-    GLctx.bindTexture(target, texture ? GL.textures[texture] : null);
+    GLctx.bindTexture(target, GL.textures[texture]);
   },
 
   glGetTexParameterfv__sig: 'viii',
@@ -1927,7 +1927,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glBeginQueryEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, id ? GL.timerQueriesEXT[id] : null);
+    GLctx.disjointTimerQueryExt['beginQueryEXT'](target, GL.timerQueriesEXT[id]);
   },
 
   glEndQueryEXT__sig: 'vi',
@@ -1940,7 +1940,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.timerQueriesEXT, id, 'glQueryCounterEXT', 'id');
 #endif
-    GLctx.disjointTimerQueryExt['queryCounterEXT'](id ? GL.timerQueriesEXT[id] : null, target);
+    GLctx.disjointTimerQueryExt['queryCounterEXT'](GL.timerQueriesEXT[id], target);
   },
 
   glGetQueryivEXT__sig: 'viii',
@@ -2235,7 +2235,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.queries, id, 'glBeginQuery', 'id');
 #endif
-    GLctx['beginQuery'](target, id ? GL.queries[id] : null);
+    GLctx['beginQuery'](target, GL.queries[id]);
   },
 
   glGetQueryiv__sig: 'viii',
@@ -2312,7 +2312,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['bindSampler'](unit, sampler ? GL.samplers[sampler] : null);
+    GLctx['bindSampler'](unit, GL.samplers[sampler]);
   },
 
   glSamplerParameterf__sig: 'viif',
@@ -2320,7 +2320,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameteri__sig: 'viii',
@@ -2328,7 +2328,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
-    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameterfv__sig: 'viii',
@@ -2337,7 +2337,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'float') }}};
-    GLctx['samplerParameterf'](sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameterf'](GL.samplers[sampler], pname, param);
   },
 
   glSamplerParameteriv__sig: 'viii',
@@ -2346,7 +2346,7 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.samplers, sampler, 'glBindSampler', 'sampler');
 #endif
     var param = {{{ makeGetValue('params', '0', 'i32') }}};
-    GLctx['samplerParameteri'](sampler ? GL.samplers[sampler] : null, pname, param);
+    GLctx['samplerParameteri'](GL.samplers[sampler], pname, param);
   },
 
   glGetSamplerParameterfv__sig: 'viii',
@@ -2403,10 +2403,8 @@ var LibraryGL = {
   },
 
   glIsTransformFeedback__sig: 'ii',
-  glIsTransformFeedback: function(transformFeedback) {
-    var transformFeedback = GL.transformFeedbacks[transformFeedback];
-    if (!transformFeedback) return 0;
-    return GLctx['isTransformFeedback'](transformFeedback);
+  glIsTransformFeedback: function(id) {
+    return GLctx['isTransformFeedback'](GL.transformFeedbacks[id]);
   },
 
   glBindTransformFeedback__sig: 'vii',
@@ -2414,12 +2412,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.transformFeedbacks, id, 'glBindTransformFeedback', 'id');
 #endif
-    var transformFeedback = id ? GL.transformFeedbacks[id] : null;
-    if (id && !transformFeedback) { // Passing an nonexisting or an already deleted id is an error.
-      GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
-      return;
-    }
-    GLctx['bindTransformFeedback'](target, transformFeedback);
+    GLctx['bindTransformFeedback'](target, GL.transformFeedbacks[id]);
   },
 
   glTransformFeedbackVaryings__sig: 'viiii',
@@ -2534,8 +2527,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferBase', 'buffer');
 #endif
-    var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx['bindBufferBase'](target, index, bufferObj);
+    GLctx['bindBufferBase'](target, index, GL.buffers[buffer]);
   },
 
   glBindBufferRange__sig: 'viiiii',
@@ -2543,8 +2535,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBufferRange', 'buffer');
 #endif
-    var bufferObj = buffer ? GL.buffers[buffer] : null;
-    GLctx['bindBufferRange'](target, index, bufferObj, offset, ptrsize);
+    GLctx['bindBufferRange'](target, index, GL.buffers[buffer], offset, ptrsize);
   },
 
   glGetUniformIndices__sig: 'viiii',
@@ -2851,7 +2842,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.renderbuffers, renderbuffer, 'glBindRenderbuffer', 'renderbuffer');
 #endif
-    GLctx.bindRenderbuffer(target, renderbuffer ? GL.renderbuffers[renderbuffer] : null);
+    GLctx.bindRenderbuffer(target, GL.renderbuffers[renderbuffer]);
   },
 
   glGetRenderbufferParameteriv__sig: 'viii',
@@ -3636,8 +3627,6 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.buffers, buffer, 'glBindBuffer', 'buffer');
 #endif
-    var bufferObj = buffer ? GL.buffers[buffer] : null;
-
 #if FULL_ES2 || LEGACY_GL_EMULATION
     if (target == GLctx.ARRAY_BUFFER) {
       GL.currArrayBuffer = buffer;
@@ -3664,7 +3653,7 @@ var LibraryGL = {
       GLctx.currentPixelUnpackBufferBinding = buffer;
     }
 #endif
-    GLctx.bindBuffer(target, bufferObj);
+    GLctx.bindBuffer(target, GL.buffers[buffer]);
   },
 
   glVertexAttrib1fv__sig: 'vii',
@@ -4070,7 +4059,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glUseProgram', 'program');
 #endif
-    GLctx.useProgram(program ? GL.programs[program] : null);
+    GLctx.useProgram(GL.programs[program]);
   },
 
   glValidateProgram__sig: 'vi',
@@ -4135,7 +4124,7 @@ var LibraryGL = {
     // is being used, but that is ultimately decided at context creation time.
     GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : GL.currentContext.defaultFbo);
 #else
-    GLctx.bindFramebuffer(target, framebuffer ? GL.framebuffers[framebuffer] : null);
+    GLctx.bindFramebuffer(target, GL.framebuffers[framebuffer]);
 #endif
 
   },
