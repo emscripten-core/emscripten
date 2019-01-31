@@ -1,8 +1,8 @@
 var name;
 
 Module.asmLibraryArg = {
- save1: 1,
- save2: 2
+ "save1": 1,
+ "save2": 2
 };
 
 var expD1 = Module["expD1"] = asm["expD1"];
