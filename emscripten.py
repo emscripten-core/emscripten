@@ -1555,17 +1555,20 @@ def create_the_global(metadata):
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
+RUNTIME_ASSERTIONS = '''
+  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+'''
+
+
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions):
   receiving = ''
   if not shared.Settings.ASSERTIONS:
     runtime_assertions = ''
   else:
+    runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    runtime_assertions = '''
-  assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-'''
     receiving = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
     receiving = '\n'.join('var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
@@ -2201,12 +2204,13 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
 
 def create_receiving_wasm(exported_implemented_functions):
   receiving = ''
-  if shared.Settings.ASSERTIONS:
+  if not shared.Settings.ASSERTIONS:
+    runtime_assertions = ''
+  else:
+    runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() { ''' + runtime_assertions + '''
 return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', '_emscripten_replace_memory', '__start_module']])
@@ -2214,7 +2218,7 @@ return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
+    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { ' + runtime_assertions + ' return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
   receiving += ';\n'
   return receiving
 

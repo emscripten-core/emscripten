@@ -8264,6 +8264,12 @@ end
     # on exit, we can send out a newline as no more code will run
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
+  def test_extern_weak(self):
+    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    if not self.is_wasm_backend(): # TODO: wasm backend main module
+      self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+
+  @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
