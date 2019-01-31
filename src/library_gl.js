@@ -987,7 +987,7 @@ var LibraryGL = {
         // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
         // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
         var loc = GLctx.getUniformLocation(p, name);
-        if (loc != null)
+        if (loc)
         {
           var id = GL.getNewId(GL.uniforms);
           utable[name] = [u.size, id];
