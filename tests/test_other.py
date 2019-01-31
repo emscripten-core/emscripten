@@ -718,7 +718,10 @@ f.close()
     for x in os.listdir('.'):
       if x.endswith('.o'):
         found = True
-        assert Building.is_object_file(x)
+        if self.is_wasm_backend():
+          assert Building.is_wasm(x)
+        else:
+          assert Building.is_bitcode(x)
     assert found
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON

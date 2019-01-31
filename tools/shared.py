@@ -2707,13 +2707,6 @@ class Building(object):
     return magic == '\0asm'
 
   @staticmethod
-  def is_object_file(filename):
-    if Settings.WASM_BACKEND:
-      return Building.is_wasm(filename)
-    else:
-      return Building.is_bitcode(filename)
-
-  @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
   # files inside emscripten/src/ that corresponds to the library name.
   def path_to_system_js_libraries(library_name):
