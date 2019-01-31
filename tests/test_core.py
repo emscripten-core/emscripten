@@ -6091,8 +6091,9 @@ return malloc(size);
     self.set_setting('EXTRA_LIBRARY_FUNCS_TO_INCLUDE', ['$ccall'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_LIBRARY_FUNCS_TO_INCLUDE')
 
-    print('without it, we fail')
+    print('without it, we fail (and in assertions, show a nice error)')
     self.set_setting('EXTRA_LIBRARY_FUNCS_TO_INCLUDE', [])
+    self.set_setting('ASSERTIONS', 1)
     error = ''
     try:
       self.do_run_in_out_file_test('tests', 'core', 'EXTRA_LIBRARY_FUNCS_TO_INCLUDE')
