@@ -1064,6 +1064,16 @@ var BINARYEN_ASYNC_COMPILATION = 1;
 // you can set it to override if you are a Binaryen developer.
 var BINARYEN_ROOT = "";
 
+// WebAssembly defines a "producers section" which compilers and tools can
+// annotate themselves in. Emscripten does not emit this by default, as it
+// increases code size, and some users may not want information about their tools
+// to be included in their builds for privacy or security reasons, see
+// https://github.com/WebAssembly/tool-conventions/issues/93.
+// TODO: currently this flag just controls whether we run the binaryen pass
+//       to strip it out from the wasm (where the LLVM wasm backend may have
+//       created it)
+var EMIT_PRODUCERS_SECTION = 0;
+
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For

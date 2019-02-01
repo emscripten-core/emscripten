@@ -1366,7 +1366,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
             passes += ['--post-emscripten']
           if options.debug_level < 3:
-            passes += ['--strip']
+            passes += ['--strip-debug']
+          if not shared.Settings.EMIT_PRODUCERS_SECTION:
+            passes += ['--strip-producers']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 

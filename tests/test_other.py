@@ -7925,7 +7925,7 @@ int main() {
         (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],        None,  0,   1,  1), # noqa; FIXME: should be almost totally empty! see https://github.com/WebAssembly/binaryen/pull/1875
+                   0, [],         [],          61,  0,   1,  1), # noqa
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
@@ -8341,6 +8341,11 @@ end
     # on exit, we can send out a newline as no more code will run
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
+  def test_extern_weak(self):
+    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    if not self.is_wasm_backend(): # TODO: wasm backend main module
+      self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
@@ -8405,6 +8410,19 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     output = open('a.out.wasm.map').read()
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
+
+  def test_wasm_producers_section(self):
+    # no producers section by default
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    with open('a.out.wasm', 'rb') as f:
+      self.assertNotIn('clang', str(f.read()))
+    size = os.path.getsize('a.out.wasm')
+    if self.is_wasm_backend():
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+      with open('a.out.wasm', 'rb') as f:
+        self.assertIn('clang', str(f.read()))
+      size_with_section = os.path.getsize('a.out.wasm')
+      self.assertLess(size, size_with_section)
 
   def test_html_preprocess(self):
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
