@@ -73,7 +73,6 @@ def uses_canonical_tmp(func):
     # canonical_tmp
     self.assertTrue(os.path.exists(self.canonical_temp_dir))
     shutil.rmtree(self.canonical_temp_dir)
-    self.used_canonical_temp_dir = True
 
   return decorated
 
