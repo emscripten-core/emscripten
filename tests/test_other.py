@@ -3558,11 +3558,11 @@ int main() {
   def test_os_oz(self):
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          (['-O1'], '-O1'),
-          (['-O2'], '-O3'),
-          (['-Os'], '-Os'),
-          (['-Oz'], '-Oz'),
-          (['-O3'], '-O3'),
+          (['-O1'], 'LLVM opts: -O1'),
+          (['-O2'], 'LLVM opts: -O3'),
+          (['-Os'], 'LLVM opts: -Os'),
+          (['-Oz'], 'LLVM opts: -Oz'),
+          (['-O3'], 'LLVM opts: -O3'),
         ]:
         print(args, expect)
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
@@ -5878,6 +5878,7 @@ int main(void) {
 
       if args:
         assert err.count(VECTORIZE) == 2, err # specified twice, once per file
+        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
       else:
         assert err.count(VECTORIZE) == 0, err # no optimizations
 
@@ -7072,7 +7073,7 @@ int main() {
     with chdir(with_space):
       link_args = Building.link(['main.cpp.o'], 'all.bc', just_calculate=True)
 
-    time.sleep(0.2) # Wait for Windows FS to retest_js_optimizerlease access to the directory
+    time.sleep(0.2) # Wait for Windows FS to release access to the directory
     shutil.rmtree(with_space)
 
     # We want only the relative path to be in the linker args, it should not be converted to an absolute path.
