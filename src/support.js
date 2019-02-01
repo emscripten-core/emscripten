@@ -833,3 +833,12 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}};
 #if RELOCATABLE
 GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
+
+#if WASM_BACKEND && USE_PTHREADS
+// The wasm backend path does not have a way to set the stack max, so we can
+// just implement this function in a trivial way
+function establishStackSpace(base, max) {
+  stackRestore(base);
+}
+#endif
+
