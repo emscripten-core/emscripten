@@ -164,15 +164,15 @@ def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **k
   result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
-  logger.debug('Successfully executed %s' % ' '.join(cmd))
+    logger.debug('Successfully executed %s' % ' '.join(cmd))
+  else:
+    logger.debug('Executed %s' % ' '.join(cmd))
   return result
 
 
 def check_call(cmd, *args, **kw):
   try:
-    proc = run_process(cmd, *args, **kw)
-    logger.debug('Successfully executed %s' % ' '.join(cmd))
-    return proc
+    return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
   except OSError as e:
