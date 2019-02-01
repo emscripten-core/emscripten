@@ -975,7 +975,10 @@ var LibraryGL = {
         var u = GLctx.getActiveUniform(p, i);
 
         var name = u.name;
-        ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length+1);
+        var length = name.length + 1;
+        if (length > ptable.maxUniformLength) {
+          ptable.maxUniformLength = length;
+        }
 
         // Strip off any trailing array specifier we might have got, e.g. "[0]".
         var ls = name.lastIndexOf('[');
@@ -987,8 +990,7 @@ var LibraryGL = {
         // only store the string 'colors' in utable, and 'colors[0]', 'colors[1]' and 'colors[2]' will be parsed as 'colors'+i.
         // Note that for the GL.uniforms table, we still need to fetch the all WebGLUniformLocations for all the indices.
         var loc = GLctx.getUniformLocation(p, name);
-        if (loc)
-        {
+        if (loc) {
           var id = GL.getNewId(GL.uniforms);
           utable[name] = [u.size, id];
           GL.uniforms[id] = loc;
