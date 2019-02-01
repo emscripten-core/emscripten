@@ -2127,6 +2127,7 @@ class Building(object):
     else:
       opts += ['-force-vector-width=4']
 
+    logger.debug('emcc: LLVM opts: ' + ' '.join(opts) + '  [num inputs: ' + str(len(inputs)) + ']')
     target = out or (filename + '.opt.bc')
     try:
       run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
