@@ -7217,7 +7217,6 @@ int main() {
 
     if emterpretify:
       print('check bad ccall use')
-      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ["ccall"])
       src = r'''
 #include <stdio.h>
 #include <emscripten.h>
