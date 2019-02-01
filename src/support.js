@@ -840,5 +840,11 @@ GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 function establishStackSpace(base, max) {
   stackRestore(base);
 }
+
+// JS library code refers to Atomics in the manner used from asm.js, provide
+// the same API here.
+var Atomics_load = Atomics.load;
+var Atomics_store = Atomics.store;
+var Atomics_compareExchange = Atomics.compareExchange;
 #endif
 
