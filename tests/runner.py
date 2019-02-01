@@ -336,15 +336,13 @@ class RunnerCore(unittest.TestCase):
         if temp_file.endswith('.ll'):
           self.has_prev_ll = True
 
-    self.used_canonical_temp_dir = False
-
   def tearDown(self):
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
       try_delete(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG') and not self.used_canonical_temp_dir:
+      if EMTEST_DETECT_TEMPFILE_LEAKS and not os.environ.get('EMCC_DEBUG'):
         temp_files_after_run = []
         for root, dirnames, filenames in os.walk(self.temp_dir):
           for dirname in dirnames:
