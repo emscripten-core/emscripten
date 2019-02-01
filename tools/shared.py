@@ -172,8 +172,7 @@ def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **k
 
 def check_call(cmd, *args, **kw):
   try:
-    proc = run_process(cmd, *args, **kw)
-    return proc
+    return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%d)", ' '.join(cmd), e.returncode)
   except OSError as e:
