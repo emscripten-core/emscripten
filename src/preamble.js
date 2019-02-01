@@ -57,6 +57,100 @@ function assert(condition, text) {
   }
 }
 
+var globalScope = this;
+
+// Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+function getCFunc(ident) {
+  var func = Module['_' + ident]; // closure exported function
+  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+  return func;
+}
+
+// C calling interface.
+function ccall(ident, returnType, argTypes, args, opts) {
+  // For fast lookup of conversion functions
+  var toC = {
+    'string': function(str) {
+      var ret = 0;
+      if (str !== null && str !== undefined && str !== 0) { // null string
+        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+        var len = (str.length << 2) + 1;
+        ret = stackAlloc(len);
+        stringToUTF8(str, ret, len);
+      }
+      return ret;
+    },
+    'array': function(arr) {
+      var ret = stackAlloc(arr.length);
+      writeArrayToMemory(arr, ret);
+      return ret;
+    }
+  };
+
+  function convertReturnValue(ret) {
+    if (returnType === 'string') return UTF8ToString(ret);
+    if (returnType === 'boolean') return Boolean(ret);
+    return ret;
+  }
+
+  var func = getCFunc(ident);
+  var cArgs = [];
+  var stack = 0;
+#if ASSERTIONS
+  assert(returnType !== 'array', 'Return type should not be "array".');
+#endif
+  if (args) {
+    for (var i = 0; i < args.length; i++) {
+      var converter = toC[argTypes[i]];
+      if (converter) {
+        if (stack === 0) stack = stackSave();
+        cArgs[i] = converter(args[i]);
+      } else {
+        cArgs[i] = args[i];
+      }
+    }
+  }
+  var ret = func.apply(null, cArgs);
+#if EMTERPRETIFY_ASYNC
+  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
+#if ASSERTIONS
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
+#endif
+    return new Promise(function(resolve) {
+      EmterpreterAsync.restartFunc = func;
+      EmterpreterAsync.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
+  }
+#endif
+  ret = convertReturnValue(ret);
+  if (stack !== 0) stackRestore(stack);
+#if EMTERPRETIFY_ASYNC
+  // If this is an async ccall, ensure we return a promise
+  if (opts && opts.async) return Promise.resolve(ret);
+#endif
+  return ret;
+}
+
+function cwrap(ident, returnType, argTypes, opts) {
+#if !ASSERTIONS
+  argTypes = argTypes || [];
+  // When the function takes numbers and returns a number, we can just return
+  // the original function
+  var numericArgs = argTypes.every(function(type){ return type === 'number'});
+  var numericRet = returnType !== 'string';
+  if (numericRet && numericArgs && !opts) {
+    return getCFunc(ident);
+  }
+#endif
+  return function() {
+    return ccall(ident, returnType, argTypes, arguments, opts);
+  }
+}
+
 /** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';

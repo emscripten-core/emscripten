@@ -583,9 +583,9 @@ var ASYNCIFY_WHITELIST = ['qsort',
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
 // only for backwards compatibility. You should use
 // EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.
-// Methods on this list are automatically included from JS libraries, if they
-// are library methods.
+// runtime.  Note that methods on this list are only exported if they are
+// included (either automatically from linking, or due to being in
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we export the Runtime object by
 // having "Runtime" in this list.
