@@ -978,8 +978,8 @@ var LibraryGL = {
         ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length+1);
 
         // Strip off any trailing array specifier we might have got, e.g. "[0]".
-        if (name.indexOf(']', name.length-1) !== -1) {
-          var ls = name.lastIndexOf('[');
+        var ls = name.lastIndexOf('[');
+        if (ls > 0) {
           name = name.slice(0, ls);
         }
 
