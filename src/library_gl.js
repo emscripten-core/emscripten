@@ -833,25 +833,19 @@ var LibraryGL = {
     },
 
     makeContextCurrent: function(contextHandle) {
-      // Deactivating current context?
-      if (!contextHandle) {
-        GLctx = Module.ctx = GL.currentContext = null;
-        return true;
-      }
-      var context = GL.contexts[contextHandle];
-      if (!context) {
 #if GL_DEBUG
+      if (contextHandle && !GL.contexts[contextHandle]) {
 #if USE_PTHREADS
         console.error('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist, or was created on another thread!');
 #else
         console.error('GL.makeContextCurrent() failed! WebGL context ' + contextHandle + ' does not exist!');
 #endif
-#endif
-        return false;
       }
-      GLctx = Module.ctx = context.GLctx; // Active WebGL context object.
-      GL.currentContext = context; // Active Emscripten GL layer context object.
-      return true;
+#endif
+
+      GL.currentContext = GL.contexts[contextHandle]; // Active Emscripten GL layer context object.
+      Module.ctx = GLctx = GL.currentContext && GL.currentContext.GLctx; // Active WebGL context object.
+      return !(contextHandle && !GLctx);
     },
 
     getContext: function(contextHandle) {
