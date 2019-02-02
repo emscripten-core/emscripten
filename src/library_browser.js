@@ -309,7 +309,12 @@ var LibraryBrowser = {
         // For GLES2/desktop GL compatibility, adjust a few defaults to be different to WebGL defaults, so that they align better with the desktop defaults.
         var contextAttributes = {
           antialias: false,
-          alpha: false
+          alpha: false,
+#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
+#else
+          majorVersion: 1,
+#endif
         };
 
         if (webGLContextAttributes) {
