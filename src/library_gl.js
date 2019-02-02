@@ -959,14 +959,13 @@ var LibraryGL = {
       GL.validateGLObjectID(GL.programs, program, 'populateUniformTable', 'program');
 #endif
       var p = GL.programs[program];
-      GL.programInfos[program] = {
+      var ptable = GL.programInfos[program] = {
         uniforms: {},
         maxUniformLength: 0, // This is eagerly computed below, since we already enumerate all uniforms anyway.
         maxAttributeLength: -1, // This is lazily computed and cached, computed when/if first asked, "-1" meaning not computed yet.
         maxUniformBlockNameLength: -1 // Lazily computed as well
       };
 
-      var ptable = GL.programInfos[program];
       var utable = ptable.uniforms;
       // A program's uniform table maps the string name of an uniform to an integer location of that uniform.
       // The global GL.uniforms map maps integer locations to WebGLUniformLocations.
@@ -4027,7 +4026,6 @@ var LibraryGL = {
     var log = (GLctx.getProgramInfoLog(GL.programs[program]) || '').trim();
     if (log) console.error('glLinkProgram: ' + log);
 #endif
-    GL.programInfos[program] = null; // uniforms no longer keep the same names after linking
     GL.populateUniformTable(program);
   },
 
