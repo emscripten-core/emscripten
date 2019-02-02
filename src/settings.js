@@ -1419,3 +1419,7 @@ var TARGET_BASENAME = '';
 // this to 0 to save a little bit of code size and performance when catching exceptions.
 var SUPPORT_LONGJMP = 1;
 
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
+// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
+// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;

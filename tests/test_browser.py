@@ -2512,13 +2512,13 @@ Module["preRun"].push(function () {
   def test_html5(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'test_html5.c'), args=opts, expected='0', timeout=20)
+      self.btest(path_from_root('tests', 'test_html5.c'), args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'] + opts, expected='0', timeout=20)
 
   @requires_threads
   def test_html5_gamepad(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'test_gamepad.c'), args=opts, expected='0', timeout=20)
+      self.btest(path_from_root('tests', 'test_gamepad.c'), args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'] + opts, expected='0', timeout=20)
 
   @requires_graphics_hardware
   def test_html5_webgl_create_context_no_antialias(self):
@@ -2543,7 +2543,7 @@ Module["preRun"].push(function () {
   def test_html5_webgl_destroy_context(self):
     for opts in [[], ['-O2', '-g1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-lGL'], expected='0', timeout=20)
+      self.btest(path_from_root('tests', 'webgl_destroy_context.cpp'), args=opts + ['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '--shell-file', path_from_root('tests/webgl_destroy_context_shell.html'), '-lGL'], expected='0', timeout=20)
 
   @no_chrome('see #7373')
   @requires_graphics_hardware
@@ -2599,7 +2599,7 @@ Module["preRun"].push(function () {
   def test_html5_mouse(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'test_html5_mouse.c'), args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+      self.btest(path_from_root('tests', 'test_html5_mouse.c'), args=opts + ['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-DAUTOMATE_SUCCESS=1'], expected='0')
 
   def test_sdl_mousewheel(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
