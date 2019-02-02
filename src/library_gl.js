@@ -251,8 +251,8 @@ var LibraryGL = {
     getSource: function(shader, count, string, length) {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : undefined;
-        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
+        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
+        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? 9e9/*short abbrv. for infinity*/ : len);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
