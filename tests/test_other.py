@@ -2337,6 +2337,7 @@ int f() {
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         lines = err.splitlines()
         if self.is_wasm_backend():
+          print('zz waka\n' + err + '\nzz shaka')
           finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
           if expect_debug:
             self.assertIn(' -g ', finalize)
