@@ -2129,8 +2129,13 @@ var LibraryJSEvents = {
   _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
 #if !USE_PTHREADS
+  emscripten_webgl_create_context__sig: 'iii',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
+
+  emscripten_webgl_get_current_context__sig: 'i',
   emscripten_webgl_get_current_context: 'emscripten_webgl_do_get_current_context',
+
+  emscripten_webgl_commit_frame__sig: 'i',
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
@@ -2306,6 +2311,7 @@ var LibraryJSEvents = {
     else _emscripten_webgl_get_drawing_buffer_size_main_thread(contextHandle, width, height);
   },
 #else
+  emscripten_webgl_get_drawing_buffer_size__sig: 'iiii',
   emscripten_webgl_get_drawing_buffer_size: 'emscripten_webgl_get_drawing_buffer_size_calling_thread',
 #endif
 
@@ -2392,6 +2398,7 @@ var LibraryJSEvents = {
     return GL.contexts[contextHandle] ? _emscripten_webgl_destroy_context_calling_thread(contextHandle) : _emscripten_webgl_destroy_context_main_thread(contextHandle);
   },
 #else
+  emscripten_webgl_destroy_context__sig: 'vi',
   emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
 #endif
 
@@ -2422,6 +2429,7 @@ var LibraryJSEvents = {
     return GL.contexts[contextHandle] ? _emscripten_webgl_enable_extension_calling_thread(contextHandle, extension) : _emscripten_webgl_enable_extension_main_thread(contextHandle, extension);
   },
 #else
+  emscripten_webgl_enable_extension__sig: 'iii',
   emscripten_webgl_enable_extension: 'emscripten_webgl_enable_extension_calling_thread',
 #endif
 

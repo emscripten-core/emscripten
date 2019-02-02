@@ -140,6 +140,7 @@ var funs = {
     _longjmp(env, value);
   },
 #else
+  siglongjmp__sig: 'vii',
   siglongjmp: 'longjmp',
 #endif
   sigpending: function(set) {

@@ -861,8 +861,11 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD();
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
+  __syscall150__sig: 'iii',
   __syscall150: '__syscall153',     // mlock
+  __syscall151__sig: 'iii',
   __syscall151: '__syscall153',     // munlock
+  __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
   __syscall153: function(which, varargs) { // munlockall
     return 0;
@@ -972,8 +975,11 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
     return 0;
   },
+  __syscall199__sig: 'iii',
   __syscall199: '__syscall202',     // getuid32
+  __syscall200__sig: 'iii',
   __syscall200: '__syscall202',     // getgid32
+  __syscall201__sig: 'iii',
   __syscall201: '__syscall202',     // geteuid32
   __syscall202: function(which, varargs) { // getgid32
     return 0;
@@ -988,8 +994,11 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
+  __syscall203__sig: 'iii',
   __syscall203: '__syscall214',     // setreuid32
+  __syscall204__sig: 'iii',
   __syscall204: '__syscall214',     // setregid32
+  __syscall213__sig: 'iii',
   __syscall213: '__syscall214',     // setuid32
   __syscall214: function(which, varargs) { // setgid32
     var uid = SYSCALLS.get();
@@ -1002,12 +1011,14 @@ var SyscallsLibrary = {
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
+  __syscall208__sig: 'iii',
   __syscall208: '__syscall210',     // setresuid32
   __syscall210: function(which, varargs) { // setresgid32
     var ruid = SYSCALLS.get(), euid = SYSCALLS.get(), suid = SYSCALLS.get();
     if (euid !== 0) return -ERRNO_CODES.EPERM;
     return 0;
   },
+  __syscall209__sig: 'iii',
   __syscall209: '__syscall211',     // getresuid
   __syscall211: function(which, varargs) { // getresgid32
 #if SYSCALL_DEBUG
