@@ -68,11 +68,16 @@ def uses_canonical_tmp(func):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
-    func(self)
-    # Make sure the test isn't lying about the fact that it uses
-    # canonical_tmp
-    self.assertTrue(os.path.exists(self.canonical_temp_dir))
-    shutil.rmtree(self.canonical_temp_dir)
+    try:
+      func(self)
+    finally:
+      # Make sure the test isn't lying about the fact that it uses
+      # canonical_tmp
+      self.assertTrue(os.path.exists(self.canonical_temp_dir))
+      # Remove the temp dir in a try-finally, as otherwise if the
+      # test fails we would not clean it up, and if leak detection
+      # is set we will show that error instead of the actual one.
+      shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
 
