@@ -153,9 +153,11 @@ class Py2CompletedProcess:
 def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **kw):
   kw.setdefault('universal_newlines', True)
 
+  debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
+
   if hasattr(subprocess, "run"):
     ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-    logger.debug('Successfully executed %s' % ' '.join(cmd))
+    logger.debug(debug_text)
     return ret
 
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
@@ -166,9 +168,7 @@ def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **k
   result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
     result.check_returncode()
-    logger.debug('Successfully executed %s' % ' '.join(cmd))
-  else:
-    logger.debug('Executed %s' % ' '.join(cmd))
+  logger.debug(debug_text)
   return result
 
 
