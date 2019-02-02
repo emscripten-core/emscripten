@@ -154,7 +154,9 @@ def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **k
   kw.setdefault('universal_newlines', True)
 
   if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, check=check, input=input, *args, **kw)
+    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+    logger.debug('Successfully executed %s' % ' '.join(cmd))
+    return ret
 
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
   if input is not None:
