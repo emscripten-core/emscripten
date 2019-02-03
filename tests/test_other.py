@@ -7827,7 +7827,7 @@ int main() {
         run_process([PYTHON, EMCC, filename, '-g2'] + args)
         # find the imports we send from JS
         js = open('a.out.js').read()
-        start = js.find('Module.asmLibraryArg = ')
+        start = js.find('asmLibraryArg = ')
         end = js.find('}', start) + 1
         start = js.find('{', start)
         relevant = js[start + 2:end - 2]
