@@ -148,7 +148,14 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
-  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, maxBytesToRead) : '';
+#if TEXTDECODER == 2
+  if (!ptr) return '';
+  var maxPtr = ptr + maxBytesToRead;
+  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+#else
+  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+#endif
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
