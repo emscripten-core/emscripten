@@ -7907,9 +7907,9 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 33171, 10,  15, 69), # noqa
-        (['-O1'], 14, [], ['waka'], 14720,  8,  14, 28), # noqa
-        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 24), # noqa
+        ([],      16, [], ['waka'], 33171, 10,  15, 70), # noqa
+        (['-O1'], 14, [], ['waka'], 14720,  8,  14, 29), # noqa
+        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 25), # noqa
         (['-O3'],  5, [], [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  5, [], [],        3350,  7,   3, 15), # noqa
         (['-Oz'],  5, [], [],        3309,  7,   2, 14), # noqa
@@ -7920,9 +7920,9 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      16, [], ['waka'], 14567,  9, 15, 24), # noqa
-        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
-        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
+        ([],      16, [], ['waka'], 14567,  9, 15, 25), # noqa
+        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 11), # noqa
+        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 11), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
         (['-Os'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
@@ -7931,9 +7931,9 @@ int main() {
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 39, [], ['waka'], 348370,  27,  224, 727), # noqa
+        (['-O2'], 39, [], ['waka'], 348370,  27,  224, 728), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  39, [], ['waka'], 348249,  27,  224, 727), # noqa
+                  39, [], ['waka'], 348249,  27,  224, 728), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
