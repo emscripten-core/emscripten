@@ -98,7 +98,7 @@ mergeInto(LibraryManager.library, {
     //  just undo a recent emscripten_alloc_async_context
     ctx = ctx|0;
 #if ASSERTIONS
-    assert((((___async_cur_frame + 8)|0) == (ctx|0))|0);
+    if ((((___async_cur_frame + 8)|0) != (ctx|0))|0) abort();
 #endif
     stackRestore(___async_cur_frame | 0);
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
