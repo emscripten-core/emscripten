@@ -68,11 +68,16 @@ def uses_canonical_tmp(func):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
-    func(self)
-    # Make sure the test isn't lying about the fact that it uses
-    # canonical_tmp
-    self.assertTrue(os.path.exists(self.canonical_temp_dir))
-    shutil.rmtree(self.canonical_temp_dir)
+    try:
+      func(self)
+    finally:
+      # Make sure the test isn't lying about the fact that it uses
+      # canonical_tmp
+      self.assertTrue(os.path.exists(self.canonical_temp_dir))
+      # Remove the temp dir in a try-finally, as otherwise if the
+      # test fails we would not clean it up, and if leak detection
+      # is set we will show that error instead of the actual one.
+      shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
 
@@ -2338,7 +2343,7 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if 'LLVM opts:' in l])
+          opts = '\n'.join([l for l in lines if os.path.sep + 'opt' in l])
           if expect_debug:
             self.assertNotIn('strip-debug', opts)
           else:
@@ -3551,11 +3556,11 @@ int main() {
   def test_os_oz(self):
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          (['-O1'], 'LLVM opts: -O1'),
-          (['-O2'], 'LLVM opts: -O3'),
-          (['-Os'], 'LLVM opts: -Os'),
-          (['-Oz'], 'LLVM opts: -Oz'),
-          (['-O3'], 'LLVM opts: -O3'),
+          (['-O1'], '-O1'),
+          (['-O2'], '-O3'),
+          (['-Os'], '-Os'),
+          (['-Oz'], '-Oz'),
+          (['-O3'], '-O3'),
         ]:
         print(args, expect)
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
@@ -5871,7 +5876,8 @@ int main(void) {
 
       if args:
         assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
+        # corresponding to exactly once per invocation of optimizer
+        assert err.count(os.path.sep + 'opt') == 2, err
       else:
         assert err.count(VECTORIZE) == 0, err # no optimizations
 
