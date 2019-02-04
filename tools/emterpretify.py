@@ -603,7 +603,7 @@ def make_emterpreter(zero=False):
 
   CASES[ROPCODES['EXTCALL']] = 'switch ((inst>>>16)|0) {\n' + \
     '\n'.join(['    case %d: {\n%s\n    }' % (i, make_target_call(i)) for i in range(global_func_id)]) + \
-    '\n    default: assert(0);' + \
+    '\n    default: emterpAssert(0);' + \
     '\n   }'
 
   if ROPCODES['GETGLBI'] not in CASES:
@@ -614,7 +614,7 @@ def make_emterpreter(zero=False):
     def make_getglb(suffix, t):
       CASES[ROPCODES['GETGLB' + suffix]] = 'switch (ly|0) {\n' + \
         '\n'.join(['    case %d: {\n%s\n    }' % (i, make_load(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
-        '\n    default: assert(0);' + \
+        '\n    default: emterpAssert(0);' + \
         '\n   }'
 
     make_getglb('I', 'i')
@@ -627,7 +627,7 @@ def make_emterpreter(zero=False):
     def make_setglb(suffix, t):
       CASES[ROPCODES['SETGLB' + suffix]] = 'switch ((inst >> 8)&255) {\n' + \
         '\n'.join(['    case %d: {\n%s\n    }' % (i, make_store(i, t)) for i in range(global_var_id) if global_var_types[rglobal_vars[i]] == t]) + \
-        '\n    default: assert(0);' + \
+        '\n    default: emterpAssert(0);' + \
         '\n   }'
 
     make_setglb('I', 'i')
@@ -638,7 +638,7 @@ def make_emterpreter(zero=False):
     return case.replace('PROCEED_WITH_PC_BUMP', 'continue').replace('PROCEED_WITHOUT_PC_BUMP', 'pc = pc - 4 | 0; continue').replace('continue; continue;', 'continue;')
 
   def process(code):
-    if not ASSERTIONS: code = code.replace(' assert(', ' //assert(')
+    if not ASSERTIONS: code = code.replace(' emterpAssert(', ' //emterpAssert(')
     if zero: code = code.replace('sp + ', '')
     return code
 
@@ -655,7 +655,7 @@ def make_emterpreter(zero=False):
     main_loop = main_loop_prefix + r'''
   switch (inst&255) {
 %s
-   default: assert(0);
+   default: emterpAssert(0);
   }
 ''' % ('\n'.join([fix_case('   case %d: %s break;' % (k, CASES[k])) for k in sorted(CASES.keys()) if opcode_used[OPCODES[k]]]))
   else:
@@ -671,7 +671,7 @@ def make_emterpreter(zero=False):
   }
   switch (inst&255) {
 %s
-   default: assert(0);
+   default: emterpAssert(0);
   }
 ''' % (
   ' ' + '\n '.join(main_loop_prefix.split('\n')),
@@ -688,7 +688,7 @@ function emterpret%s(pc) {
 %s
 %s
 %s
- assert(((HEAPU8[pc>>0]>>>0) == %d)|0);
+ emterpAssert(((HEAPU8[pc>>0]>>>0) == %d)|0);
  lx = HEAPU16[pc + 2 >> 1] | 0; // num locals
 %s
 %s
@@ -698,7 +698,7 @@ function emterpret%s(pc) {
  while (1) {
 %s
  }
- assert(0);
+ emterpAssert(0);
 }''' % (
   '' if not zero else '_z',
   'sp = 0, ' if not zero else '',
@@ -987,6 +987,13 @@ if __name__ == '__main__':
 
   # finalize funcs JS (first line has the marker, add emterpreters right after that)
   asm.funcs_js = '\n'.join([lines[0], make_emterpreter(), make_emterpreter(zero=True) if ZERO else '', '\n'.join([line for line in lines[1:] if len(line)])]) + '\n'
+  if ASSERTIONS:
+    asm.funcs_js += '''
+function emterpAssert(x) {
+ x = x | 0;
+ if (!x) abort();
+}
+'''
   lines = None
 
   # set up emterpreter stack top (note we must use malloc if in a shared lib, or other enviroment where static memory is sealed)
