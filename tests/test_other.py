@@ -7909,7 +7909,7 @@ int main() {
       test(path_from_root('tests', 'hello_world.cpp'), [
         ([],      16, [], ['waka'], 33171, 10,  15, 70), # noqa
         (['-O1'], 14, [], ['waka'], 14720,  8,  14, 29), # noqa
-        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 25), # noqa
+        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 24), # noqa
         (['-O3'],  5, [], [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
         (['-Os'],  5, [], [],        3350,  7,   3, 15), # noqa
         (['-Oz'],  5, [], [],        3309,  7,   2, 14), # noqa
@@ -7920,9 +7920,9 @@ int main() {
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      16, [], ['waka'], 14567,  9, 15, 25), # noqa
-        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 11), # noqa
-        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 11), # noqa
+        ([],      16, [], ['waka'], 14567,  9, 15, 24), # noqa
+        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
+        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
         (['-O3'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
         (['-Os'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
