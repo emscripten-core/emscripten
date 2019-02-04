@@ -1340,21 +1340,6 @@ var LibraryBrowser = {
     styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
   },
 
-  emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size__sig: 'vii',
-  emscripten_set_canvas_size: function(width, height) {
-    Browser.setCanvasSize(width, height);
-  },
-
-  emscripten_get_canvas_size__proxy: 'sync',
-  emscripten_get_canvas_size__sig: 'viii',
-  emscripten_get_canvas_size: function(width, height, isFullscreen) {
-    var canvas = Module['canvas'];
-    {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
-    {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
-    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullscreen ? 1 : 0', 'i32') }}};
-  },
-
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
   emscripten_create_worker__sig: 'ii',

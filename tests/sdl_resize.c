@@ -10,6 +10,7 @@
 #include <SDL/SDL_ttf.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/html5.h>
 
 int stage = 0;
 
@@ -24,7 +25,7 @@ void loop() {
           case 0:
             assert(r->w == 100);
             assert(r->h == 200);
-            emscripten_set_canvas_size(123, 246);
+            emscripten_set_canvas_element_size("#canvas", 123, 246);
             stage++;
             break;
           case 1:
@@ -44,7 +45,7 @@ int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
-  emscripten_set_canvas_size(100, 200);
+  emscripten_set_canvas_element_size("#canvas", 100, 200);
 
   emscripten_set_main_loop(loop, 0, 0);
 }
