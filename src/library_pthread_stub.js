@@ -169,7 +169,10 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
+  _pthread_cleanup_push__sig: 'vii',
   _pthread_cleanup_push: 'pthread_cleanup_push',
+
+  _pthread_cleanup_pop__sig: 'v',
   _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
   pthread_sigmask: function() { return 0; },
@@ -343,15 +346,34 @@ var LibraryPThreadStub = {
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
+  emscripten_atomic_add_u32__sig: 'iii',
   emscripten_atomic_add_u32: 'llvm_atomic_load_add_i32_p0i32',
+
+  emscripten_atomic_load_u64__sig: 'iii',
   emscripten_atomic_load_u64: '__atomic_load_8',
+
+  emscripten_atomic_store_u64__sig: 'viiii',
   emscripten_atomic_store_u64: '__atomic_store_8',
+
+  emscripten_atomic_cas_u64__sig: 'iiiiiiii',
   emscripten_atomic_cas_u64: '__atomic_compare_exchange_8',
+
+  emscripten_atomic_exchange_u64__sig: 'iiiii',
   emscripten_atomic_exchange_u64: '__atomic_exchange_8',
+
+  _emscripten_atomic_fetch_and_add_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+
+  _emscripten_atomic_fetch_and_sub_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_sub_u64: '__atomic_fetch_sub_8',
+
+  _emscripten_atomic_fetch_and_and_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
+
+  _emscripten_atomic_fetch_and_or_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
+
+  _emscripten_atomic_fetch_and_xor_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
 
   __wait: function() {},
