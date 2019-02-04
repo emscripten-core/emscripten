@@ -21,7 +21,7 @@ GLuint CompileShader(GLenum type, const char *src)
 
 int main(int argc, char *argv[])
 {
-  emscripten_set_canvas_size(256, 256);
+  emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;
