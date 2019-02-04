@@ -67,7 +67,7 @@
 
 int main()
 {
-    emscripten_set_canvas_size( 100, 100 );
+    emscripten_set_canvas_element_size( "#canvas", 100, 100 );
 
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
