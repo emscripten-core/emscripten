@@ -8030,18 +8030,11 @@ function AJSDCE(ast) {
 }
 
 function isAsmLibraryArgAssign(node) {
-  return node[0] === 'assign' && node[2][0] === 'dot'
-                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
-                              && node[2][2] === 'asmLibraryArg'
-      || node[0] === 'var' && node[1][0] && node[1][0][0] == 'asmLibraryArg';
+  return node[0] === 'var' && node[1][0] && node[1][0][0] == 'asmLibraryArg';
 }
 
 function asmLibraryArgs(node) {
-  if (node[0] === 'var') {
-    return node[1][0][1];
-  } else {
-    return node[3];
-  }
+  return node[1][0][1];
 }
 
 function isAsmUse(node) {
@@ -8140,7 +8133,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
