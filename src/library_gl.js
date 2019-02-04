@@ -1749,17 +1749,16 @@ var LibraryGL = {
     ) {
     for (var i = 0; i < n; i++) {
       var buffer = GLctx[createFunction]();
-      if (!buffer) {
+      var id = buffer && GL.getNewId(objectTable);
+      if (buffer) {
+        buffer.name = id;
+        objectTable[id] = buffer;
+      } else {
         GL.recordError(0x0502 /* GL_INVALID_OPERATION */);
 #if GL_ASSERTIONS
         err('GL_INVALID_OPERATION in ' + functionName + ': GLctx.' + createFunction + ' returned null - most likely GL context is lost!');
 #endif
-        while(i < n) {{{ makeSetValue('buffers', 'i++*4', 0, 'i32') }}};
-        return;
       }
-      var id = GL.getNewId(objectTable);
-      buffer.name = id;
-      objectTable[id] = buffer;
       {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
     }
   },
