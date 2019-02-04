@@ -2472,8 +2472,12 @@ var LibraryJSEvents = {
   emscripten_is_webgl_context_lost__proxy: 'sync',
   emscripten_is_webgl_context_lost__sig: 'ii',
   emscripten_is_webgl_context_lost: function(target) {
-    // TODO: In the future if multiple GL contexts are supported, use the 'target' parameter to find the canvas to query.
-    return Module.ctx ? Module.ctx.isContextLost() : true; // No context ~> lost context.
+#if USE_PTHREADS && ASSERTIONS && OFFSCREENCANVAS_SUPPORT
+    // TODO: for Offscreencanvas case, must first search locally in the calling thread if the given context is an OffscreenCanvas context on the calling thread,
+    // and only if it's not, then try to proxy the call to main thread. I.e. this function cannot be unconditionally 'sync' proxied.
+    if (ENVIRONMENT_IS_PTHREAD) warnOnce('TODO: emscripten_is_webgl_context_lost() does not yet work properly in pthreads with OffscreenCanvas contexts');
+#endif
+    return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },
 
 #if USE_PTHREADS
