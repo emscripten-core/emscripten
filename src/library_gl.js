@@ -791,14 +791,14 @@ var LibraryGL = {
 
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
+        function b(c, t) {
+          var s = g.createShader(t);
+          g.shaderSource(s, c);
+          g.compileShader(s);
+          return s;
+        }
         try {
           var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
-          function b(c, t) {
-            var s = g.createShader(t);
-            g.shaderSource(s, c);
-            g.compileShader(s);
-            return s;
-          }
           g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", g.VERTEX_SHADER));
           g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", g.FRAGMENT_SHADER));
           g.linkProgram(p);
