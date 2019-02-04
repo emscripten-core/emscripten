@@ -1164,7 +1164,7 @@ def expand_byte_size_suffixes(value):
   """
   value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
   try:
-    return eval(value)
+    return eval(value or '0')
   except:
     raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
 
