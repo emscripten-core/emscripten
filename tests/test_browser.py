@@ -2559,6 +2559,7 @@ Module["preRun"].push(function () {
       print(opts)
       self.btest(path_from_root('tests', 'webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
+  @requires_graphics_hardware
   def test_webgl2(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
