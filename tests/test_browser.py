@@ -110,9 +110,6 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    # FIXME when the wasm backend gets threads
-    if is_chrome() and self.is_wasm_backend():
-      self.skipTest('wasm backend lacks threads')
     return f(self)
 
   return decorated
@@ -1426,10 +1423,8 @@ keydown(100);keyup(100); // trigger the end
     self.clear()
     self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=80MB'])
 
-  @requires_threads
   def test_force_exit(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
-      self.btest('force_exit.c', force_c=True, expected='17')
+    self.btest('force_exit.c', force_c=True, expected='17', args=['-s', 'EXIT_RUNTIME=1'])
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
