@@ -1918,7 +1918,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
+      # for the wasm backend, use a memfile exactly when using pthreads (until
+      # we can remove this temporary hack)
+      if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
+         (shared.Settings.WASM_BACKEND and shared.Settings.USE_PTHREADS):
         memfile = target + '.mem'
 
       if memfile:
