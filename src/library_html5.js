@@ -39,12 +39,14 @@ var LibraryJSEvents = {
       JSEvents.deferredCalls = [];
     },
 
+#if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
         __ATEXIT__.push(JSEvents.removeAllEventListeners);
         JSEvents.removeEventListenersRegistered = true;
       }
     },
+#endif
 
     // Find a DOM element with the given ID.
     findEventTarget: function(target) {
@@ -180,7 +182,9 @@ var LibraryJSEvents = {
         eventHandler.eventListenerFunc = jsEventHandler;
         eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
         JSEvents.eventHandlers.push(eventHandler);
+#if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
         JSEvents.registerRemoveEventListeners();
+#endif
       } else {
         for(var i = 0; i < JSEvents.eventHandlers.length; ++i) {
           if (JSEvents.eventHandlers[i].target == eventHandler.target
@@ -192,6 +196,9 @@ var LibraryJSEvents = {
     },
 
 #if USE_PTHREADS
+#if MINIMAL_RUNTIME
+    queueEventHandlerOnThread_iiii__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
+#endif
     queueEventHandlerOnThread_iiii: function(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
       var stackTop = stackSave();
       var varargs = stackAlloc(12);
@@ -2542,7 +2549,11 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'],
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'
+#if MINIMAL_RUNTIME
+  , '$stackSave', '$stackAlloc', '$stackRestore'
+#endif
+  ],
   emscripten_set_offscreencanvas_size_on_target_thread_js: function(targetThread, targetCanvas, width, height) {
     var stackTop = stackSave();
     var varargs = stackAlloc(12);
@@ -2598,7 +2609,11 @@ var LibraryJSEvents = {
   },
 #endif
 
-  _set_canvas_element_size__deps: ['emscripten_set_canvas_element_size'],
+  _set_canvas_element_size__deps: ['emscripten_set_canvas_element_size'
+#if MINIMAL_RUNTIME
+  , '$stackSave', '$stackAlloc', '$stackRestore'
+#endif
+  ],
   _set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('_set_canvas_element_size(target='+target+',width='+width+',height='+height);
@@ -2668,7 +2683,11 @@ var LibraryJSEvents = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  _get_canvas_element_size__deps: ['emscripten_get_canvas_element_size'],
+  _get_canvas_element_size__deps: ['emscripten_get_canvas_element_size'
+#if MINIMAL_RUNTIME
+  , '$stackSave', '$stackAlloc', '$stackRestore'
+#endif
+  ],
   _get_canvas_element_size: function(target) {
     var stackTop = stackSave();
     var w = stackAlloc(8);

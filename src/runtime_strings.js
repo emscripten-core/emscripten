@@ -33,6 +33,8 @@ function Pointer_stringify(ptr, length) {
   return UTF8ToString(ptr);
 }
 
+#if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
+
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
@@ -51,6 +53,8 @@ function AsciiToString(ptr) {
 function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
+
+#endif
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
@@ -228,6 +232,8 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 {{{ lengthBytesUTF8 }}}
+
+#if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -451,3 +457,5 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
   // Null-terminate the pointer to the HEAP.
   if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
+
+#endif

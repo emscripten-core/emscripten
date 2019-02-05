@@ -766,6 +766,9 @@ var LibraryGL = {
 
     registerContext: function(ctx, webGLContextAttributes) {
       var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+#if ASSERTIONS
+      assert(handle, 'malloc() failed in GL.registerContext!');
+#endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
