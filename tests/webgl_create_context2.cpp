@@ -14,7 +14,7 @@ int main()
 {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
   EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
   assert(res == EMSCRIPTEN_RESULT_SUCCESS);

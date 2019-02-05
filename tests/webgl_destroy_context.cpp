@@ -46,7 +46,7 @@ int main()
 {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   emscripten_set_webglcontextlost_callback("#canvas", 0, 0, context_lost);
   emscripten_set_webglcontextrestored_callback("#canvas", 0, 0, context_restored);
   // When we force a context loss, we should get an event, i.e. context_lost_desired() should get called.

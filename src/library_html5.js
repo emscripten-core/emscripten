@@ -271,7 +271,7 @@ var LibraryJSEvents = {
   // to register many events to: document and window. These cannot be addressed by using document.querySelector(), so
   // a special mechanism to address them is needed. (For any other special object, such as screen.orientation, no general access
   // scheme should be needed, but the object-specific event callback registration functions should handle them individually)
-#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   _specialEventTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
 #else
   _specialEventTargets: "[0, document, window]",
@@ -1783,6 +1783,11 @@ var LibraryJSEvents = {
   emscripten_set_visibilitychange_callback_on_thread__sig: 'iiiii',
   emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '_specialEventTargets'],
   emscripten_set_visibilitychange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  if (!__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
+    return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+  }
+#endif
     __registerVisibilityChangeEventCallback(__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
