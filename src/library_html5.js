@@ -297,7 +297,7 @@ var LibraryJSEvents = {
     // TODO: Once Module['canvas'] is removed, clean up the following line:
     if (target == '#canvas') offscreenCanvas = GL.offscreenCanvases['canvas'];
     if (!offscreenCanvas) offscreenCanvas = GL.offscreenCanvases[target] || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]); // First looks up by DOM ID ("#myCanvasElement"), second looks up by DOM element name (first found element of type <canvas>)
-    if (offscreenCanvas) return offscreenCanvas['offscreenCanvas'];
+    if (offscreenCanvas) return offscreenCanvas;
 
 #if USE_PTHREADS
     return (typeof document !== 'undefined') ? document.querySelector(target) : null;
@@ -338,10 +338,10 @@ var LibraryJSEvents = {
   _findCanvasEventTarget: function(target) {
     if (typeof target === 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']['offscreenCanvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
       return Module['canvas'];
     }
-    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target]['offscreenCanvas'];
+    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
     return __findEventTarget(target);
   },
 #endif
@@ -2263,6 +2263,8 @@ var LibraryJSEvents = {
     }
 
 #if OFFSCREENCANVAS_SUPPORT
+    canvas = canvas.offscreenCanvas;
+
 #if GL_DEBUG
     if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');
     else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) console.log('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + targetStr + '"');
@@ -2292,9 +2294,12 @@ var LibraryJSEvents = {
         console.log('explicitSwapControl requested: canvas.transferControlToOffscreen() on canvas "' + targetStr + '" to get .commit() function and not rely on implicit WebGL swap');
 #endif
         if (!canvas.controlTransferredOffscreen) {
-          GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
+          GL.offscreenCanvases[canvas.id] = {
+            canvas: canvas.transferControlToOffscreen(),
+            canvasSharedPtr: _malloc(12),
+            id: canvas.id
+          };
           canvas.controlTransferredOffscreen = true;
-          GL.offscreenCanvases[canvas.id].id = canvas.id;
         } else if (!GL.offscreenCanvases[canvas.id]) {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
