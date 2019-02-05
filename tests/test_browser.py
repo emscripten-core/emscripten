@@ -2768,6 +2768,7 @@ Module['onRuntimeInitialized'] = function() {
 
       self.btest(path_from_root('tests', 'asm_swap.cpp'), args=opts, expected='999')
 
+  @requires_graphics_hardware
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
@@ -2782,6 +2783,7 @@ Module['onRuntimeInitialized'] = function() {
         ])
         self.run_browser('page.html', '', '/report_result?600')
 
+  @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
     create_test_file('sdl2_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
@@ -2791,6 +2793,7 @@ Module['onRuntimeInitialized'] = function() {
     ])
     self.run_browser('page.html', '', '/report_result?600')
 
+  @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_image.c', expected='512', args=['--preload-file', 'screenshot.png', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"',
@@ -2849,6 +2852,7 @@ Module['onRuntimeInitialized'] = function() {
     self.run_browser('page.html', '', '/report_result?1')
 
   @flaky
+  @requires_graphics_hardware
   def test_sdl2_mouse(self):
     create_test_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -2882,6 +2886,7 @@ Module['onRuntimeInitialized'] = function() {
     run_process([PYTHON, EMCC, 'sdl2_mouse.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1', timeout=30)
 
+  @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
     create_test_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -2965,18 +2970,23 @@ Module['onRuntimeInitialized'] = function() {
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION=1'])
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True) # XXX closure fails on proxy
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
     self.btest('sdl2_canvas_blank.c', reference='sdl_canvas_blank.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_palette(self):
     self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_twice(self):
     self.btest('sdl2_canvas_twice.c', reference='sdl_canvas_twice.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_gfx(self):
     self.btest('sdl2_gfx.cpp', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_GFX=2'], reference='sdl2_gfx.png', reference_slack=2)
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
     create_test_file('args-r.js', '''
       Module['arguments'] = ['-r'];
@@ -2997,11 +3007,13 @@ Module['onRuntimeInitialized'] = function() {
   def test_sdl2_swsurface(self):
     self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
     self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
+  @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')

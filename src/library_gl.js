@@ -496,7 +496,7 @@ var LibraryGL = {
 
       var ctx = 
 #if USE_WEBGL2
-        (webGLContextAttributes.majorVersion == 2) ? canvas.getContext("webgl2", webGLContextAttributes) :
+        (webGLContextAttributes.majorVersion > 1) ? canvas.getContext("webgl2", webGLContextAttributes) :
 #endif
         (canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes));
 
