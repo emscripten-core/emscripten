@@ -63,12 +63,19 @@ var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') :
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 
-function UTF8ArrayToString(u8Array, idx) {
+/**
+ * @param {number} idx
+ * @param {number=} maxBytesToRead
+ * @return {string}
+ */
+function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
+  var endIdx = idx + maxBytesToRead;
 #if TEXTDECODER
   var endPtr = idx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
-  while (u8Array[endPtr]) ++endPtr;
+  // (As a tiny code save trick, compare endPtr against endIdx using a negation, so that undefined means Infinity)
+  while (u8Array[endPtr] && !(endPtr >= endIdx)) ++endPtr;
 #endif // TEXTDECODER
 
 #if TEXTDECODER == 2
@@ -82,13 +89,22 @@ function UTF8ArrayToString(u8Array, idx) {
   } else {
 #endif // TEXTDECODER
     var str = '';
-    while (1) {
+#if TEXTDECODER
+    // If building with TextDecoder, we have already computed the string length above, so test loop end condition against that
+    while (idx < endPtr) {
+#else
+    while (!(idx >= endIdx)) {
+#endif
       // For UTF8 byte structure, see:
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
       var u0 = u8Array[idx++];
+#if !TEXTDECODER
+      // If not building with TextDecoder enabled, we don't know the string length, so scan for \0 byte.
+      // If building with TextDecoder, we know exactly at what byte index the string ends, so checking for nulls here would be redundant.
       if (!u0) return str;
+#endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
       var u1 = u8Array[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
@@ -111,15 +127,35 @@ function UTF8ArrayToString(u8Array, idx) {
     }
 #if TEXTDECODER
   }
+  return str;
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 }
 
-// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
-// a copy of that string as a Javascript String object.
-
-function UTF8ToString(ptr) {
-  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}) : '';
+// Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns a
+// copy of that string as a Javascript String object.
+// maxBytesToRead: an optional length that specifies the maximum number of bytes to read. You can omit
+//                 this parameter to scan the string until the first \0 byte. If maxBytesToRead is
+//                 passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the
+//                 middle, then the string will cut short at that byte index (i.e. maxBytesToRead will
+//                 not produce a string of exact length [ptr, ptr+maxBytesToRead[)
+//                 N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may
+//                 throw JS JIT optimizations off, so it is worth to consider consistently using one
+//                 style or the other.
+/**
+ * @param {number} ptr
+ * @param {number=} maxBytesToRead
+ * @return {string}
+ */
+function UTF8ToString(ptr, maxBytesToRead) {
+#if TEXTDECODER == 2
+  if (!ptr) return '';
+  var maxPtr = ptr + maxBytesToRead;
+  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+#else
+  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+#endif
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',

@@ -112,7 +112,7 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 int main()
 {
   // Make the canvas area stand out from the background.
-  emscripten_set_canvas_size(400, 300);
+  emscripten_set_canvas_element_size("#canvas", 400, 300);
   EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
 
   EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);

@@ -1769,16 +1769,19 @@ LibraryManager.library = {
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
   },
+  llvm_exp2_f64__sig: 'dd',
   llvm_exp2_f64: 'llvm_exp2_f32',
 
   llvm_log2_f32: function(x) {
     return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
   },
+  llvm_log2_f64__sig: 'dd',
   llvm_log2_f64: 'llvm_log2_f32',
 
   llvm_log10_f32: function(x) {
     return Math.log(x) / Math.LN10; // TODO: Math.log10, when browser support is there
   },
+  llvm_log10_f64__sig: 'dd',
   llvm_log10_f64: 'llvm_log10_f32',
 
   llvm_copysign_f32: function(x, y) {
@@ -2994,6 +2997,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
+  __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
   clock_settime__deps: ['__setErrNo'],
   clock_settime: function(clk_id, tp) {

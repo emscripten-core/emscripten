@@ -546,7 +546,7 @@ static inode *find_inode(const char *path, int *out_errno)
 	return find_inode(root, path, out_errno);
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_set_remote_url(const char *filename, const char *remoteUrl)
+void emscripten_asmfs_set_remote_url(const char *filename, const char *remoteUrl)
 {
 	int err;
 	inode *node = find_inode(filename, &err);
@@ -555,7 +555,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_set_remote_url(const char *filename, 
 	node->remoteurl = strdup(remoteUrl);
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_set_file_data(const char *filename, char *data, size_t size)
+void emscripten_asmfs_set_file_data(const char *filename, char *data, size_t size)
 {
 	int err;
 	inode *node = find_inode(filename, &err);
@@ -580,7 +580,7 @@ char *find_last_occurrence(char *str, char ch)
 }
 
 // Given a filename outputs the remote URL address that file can be located in.
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_remote_url(const char *filename, char *outRemoteUrl, int maxBytesToWrite)
+void emscripten_asmfs_remote_url(const char *filename, char *outRemoteUrl, int maxBytesToWrite)
 {
 	if (maxBytesToWrite <= 0 || !outRemoteUrl) return;
 	*outRemoteUrl = '\0';
@@ -709,14 +709,14 @@ void emscripten_dump_fs_tree(inode *root, char *path)
 	}
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_dump()
+void emscripten_asmfs_dump()
 {
 	EM_ASM({ err('emscripten_asmfs_dump()') });
 	char path[PATH_MAX] = "/";
 	emscripten_dump_fs_tree(filesystem_root(), path);
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_discard_tree(const char *path)
+void emscripten_asmfs_discard_tree(const char *path)
 {
 #ifdef ASMFS_DEBUG
 	emscripten_asmfs_dump();
@@ -1061,7 +1061,7 @@ static long close(int fd)
 	return 0;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_populate(const char *pathname, int mode)
+void emscripten_asmfs_populate(const char *pathname, int mode)
 {
 	emscripten_asmfs_open_t prevBehavior = emscripten_asmfs_get_file_open_behavior();
 	emscripten_asmfs_set_file_open_behavior(EMSCRIPTEN_ASMFS_OPEN_MEMORY);
@@ -1073,7 +1073,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_asmfs_populate(const char *pathname, int mo
 	emscripten_asmfs_set_file_open_behavior(prevBehavior);
 }
 
-EMSCRIPTEN_RESULT EMSCRIPTEN_KEEPALIVE emscripten_asmfs_preload_file(const char *url, const char *pathname, int mode, emscripten_fetch_attr_t *options)
+EMSCRIPTEN_RESULT emscripten_asmfs_preload_file(const char *url, const char *pathname, int mode, emscripten_fetch_attr_t *options)
 {
 	if (!options)
 	{
@@ -1350,7 +1350,7 @@ long __syscall36(int which, ...) // sync
 
 // TODO: syscall38,  int rename(const char *oldpath, const char *newpath);
 
-long EMSCRIPTEN_KEEPALIVE emscripten_asmfs_mkdir(const char *pathname, mode_t mode)
+long emscripten_asmfs_mkdir(const char *pathname, mode_t mode)
 {
 #ifdef ASMFS_DEBUG
 	EM_ASM(err('mkdir(pathname="' + UTF8ToString($0) + '", mode=0' + ($1).toString(8) + ')'), pathname, mode);

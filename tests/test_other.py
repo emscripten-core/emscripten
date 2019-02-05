@@ -68,11 +68,16 @@ def uses_canonical_tmp(func):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
-    func(self)
-    # Make sure the test isn't lying about the fact that it uses
-    # canonical_tmp
-    self.assertTrue(os.path.exists(self.canonical_temp_dir))
-    shutil.rmtree(self.canonical_temp_dir)
+    try:
+      func(self)
+    finally:
+      # Make sure the test isn't lying about the fact that it uses
+      # canonical_tmp
+      self.assertTrue(os.path.exists(self.canonical_temp_dir))
+      # Remove the temp dir in a try-finally, as otherwise if the
+      # test fails we would not clean it up, and if leak detection
+      # is set we will show that error instead of the actual one.
+      shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
 
@@ -2338,7 +2343,7 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if 'LLVM opts:' in l])
+          opts = '\n'.join([l for l in lines if os.path.sep + 'opt' in l])
           if expect_debug:
             self.assertNotIn('strip-debug', opts)
           else:
@@ -3551,11 +3556,11 @@ int main() {
   def test_os_oz(self):
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          (['-O1'], 'LLVM opts: -O1'),
-          (['-O2'], 'LLVM opts: -O3'),
-          (['-Os'], 'LLVM opts: -Os'),
-          (['-Oz'], 'LLVM opts: -Oz'),
-          (['-O3'], 'LLVM opts: -O3'),
+          (['-O1'], '-O1'),
+          (['-O2'], '-O3'),
+          (['-Os'], '-Os'),
+          (['-Oz'], '-Oz'),
+          (['-O3'], '-O3'),
         ]:
         print(args, expect)
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
@@ -5871,7 +5876,8 @@ int main(void) {
 
       if args:
         assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
+        # corresponding to exactly once per invocation of optimizer
+        assert err.count(os.path.sep + 'opt') == 2, err
       else:
         assert err.count(VECTORIZE) == 0, err # no optimizations
 
@@ -7864,36 +7870,36 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      21, ['assert'], ['waka'], 46505,  22,   15, 58), # noqa
-        (['-O1'], 16, ['assert'], ['waka'], 12630,  14,   13, 30), # noqa
-        (['-O2'], 16, ['assert'], ['waka'], 12616,  14,   13, 30), # noqa
-        (['-O3'],  6, [],         [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  6, [],         [],        2690,   9,    2, 21), # noqa
-        (['-Oz'],  6, [],         [],        2690,   9,    2, 21), # noqa
+        ([],      20, ['abort'], ['waka'], 46505,  22,   15, 58), # noqa
+        (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
+        (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
+        (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  6, [],        [],        2690,   9,    2, 21), # noqa
+        (['-Oz'],  6, [],        [],        2690,   9,    2, 21), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
+                   0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1557, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1556, [],        [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      21, ['assert'], ['waka'], 22712, 22, 14, 27), # noqa
-        (['-O1'], 11, ['assert'], ['waka'], 10450,  7, 11, 11), # noqa
-        (['-O2'], 11, ['assert'], ['waka'], 10440,  7, 11, 11), # noqa
+        ([],      20, ['abort'], ['waka'], 22712, 22, 14, 27), # noqa
+        (['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
+        (['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],         [],          55,  0,  1, 1), # noqa
-        (['-Os'],  0, [],         [],          55,  0,  1, 1), # noqa
-        (['-Oz'],  0, [],         [],          55,  0,  1, 1), # noqa
+        (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
+        (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
+        (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
       ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   39, 659), # noqa
+        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   39, 659), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   20, 620), # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   20, 620), # noqa
       ], size_slack) # noqa
     else:
       # wasm-backend
@@ -7901,33 +7907,33 @@ int main() {
 
       print('test on hello world')
       test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 70), # noqa
-        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 29), # noqa
-        (['-O2'], 15, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
+        ([],      16, [], ['waka'], 33171, 10,  15, 70), # noqa
+        (['-O1'], 14, [], ['waka'], 14720,  8,  14, 29), # noqa
+        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 24), # noqa
+        (['-O3'],  5, [], [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  5, [], [],        3350,  7,   3, 15), # noqa
+        (['-Oz'],  5, [], [],        3309,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],          61,  0,   1,  1), # noqa
+                   0, [], [],          61,  0,   1,  1), # noqa
       ], size_slack) # noqa
 
       print('test on a minimal pure computational thing')
       test('minimal.c', [
-        ([],      17, ['assert'], ['waka'], 14567,  9, 15, 24), # noqa
-        (['-O1'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
-        (['-O2'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
+        ([],      16, [], ['waka'], 14567,  9, 15, 24), # noqa
+        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
+        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Os'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Oz'],  0, [],         [],        None,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
+        (['-O3'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
+        (['-Os'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
+        (['-Oz'],  0, [], [],        None,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
       ], size_slack)
 
       print('test on libc++: see effects of emulated function pointers')
       test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 728), # noqa
+        (['-O2'], 39, [], ['waka'], 348370,  27,  224, 728), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  40, ['assert'], ['waka'], 348249,  27,  224, 728), # noqa
+                  39, [], ['waka'], 348249,  27,  224, 728), # noqa
       ], size_slack) # noqa
 
   # ensures runtime exports work, even with metadce
