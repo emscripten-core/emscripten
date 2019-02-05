@@ -2351,7 +2351,6 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if os.path.sep + 'opt' in l])
           if expect_debug:
             self.assertNotIn('strip-debug', err)
           else:
