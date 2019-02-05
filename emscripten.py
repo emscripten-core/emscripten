@@ -163,11 +163,6 @@ def parse_backend_output(backend_output, DEBUG):
   if provide_fround():
     metadata['externUses'] += ['Math.fround']
 
-  # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
-  # of time what the dynamically linked in modules will need. Also with SAFE_HEAP, generate full set of views.
-  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
-    shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS = 0
-
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
@@ -482,8 +477,8 @@ def create_module_asmjs(function_table_sigs, metadata,
   runtime_funcs = create_runtime_funcs_asmjs(exports)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
-  memory_views = create_memory_views(metadata['externUses'])
-  asm_temp_vars = create_asm_temp_vars(metadata['externUses'])
+  memory_views = create_memory_views(metadata)
+  asm_temp_vars = create_asm_temp_vars(metadata)
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
   stack = ''
@@ -1271,6 +1266,20 @@ def signature_sort_key(sig):
   return closure
 
 
+def asm_backend_uses(metadata, symbol):
+  # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
+  # of time what the dynamically linked in modules will need. Also with SAFE_HEAP and Emterpretify, generate full set of views.
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
+    return True
+
+  # Allow querying asm_backend_uses(metadata, 'Math.') to find if any of the Math objects are used
+  if symbol.endswith('.'):
+    return any(e.startswith(symbol) for e in metadata['externUses'])
+  else:
+    # Querying a single symbol
+    return symbol in metadata['externUses']
+
+
 def create_asm_global_funcs(bg_funcs, metadata):
   maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
   if provide_fround():
@@ -1278,7 +1287,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
 
   asm_global_funcs = ''
   for math in maths:
-    if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or math in metadata['externUses']:
+    if asm_backend_uses(metadata, math):
       asm_global_funcs += '  var ' + math.replace('.', '_') + '=global' + access_quote(math) + ';\n'
 
   asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
@@ -1617,10 +1626,10 @@ def create_the_global(metadata):
   if shared.Settings.WASM:
     return '{}'
   fundamentals = []
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or any(e.startswith('Math.') for e in metadata['externUses']):
+  if asm_backend_uses(metadata, 'Math.'):
     fundamentals += ['Math']
   for f in ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']:
-    if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or f in metadata['externUses']:
+    if asm_backend_uses(metadata, f):
       fundamentals += [f]
 
   if metadata['simd'] or shared.Settings.SIMD:
@@ -1914,7 +1923,7 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   return '\n'.join(lines)
 
 
-def create_asm_temp_vars(externUses):
+def create_asm_temp_vars(metadata):
   temp_ints = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue']
   temp_doubles = ['tempDouble']
   rtn = ''
@@ -1927,10 +1936,10 @@ def create_asm_temp_vars(externUses):
     if i in shared.Settings.ASM_PRIMITIVE_VARS:
       rtn += 'var ' + i + ' = 0.0;\n'
 
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'NaN' in externUses:
+  if asm_backend_uses(metadata, 'NaN'):
     rtn += 'var nan = global%s;\n' % (access_quote('NaN'))
 
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Infinity' in externUses:
+  if asm_backend_uses(metadata, 'Infinity'):
     rtn += 'var inf = global%s;\n' % (access_quote('Infinity'))
 
   return rtn
@@ -1954,21 +1963,21 @@ def create_replace_memory(metadata):
   emscripten_replace_memory = '''
 function _emscripten_replace_memory(newBuffer) {
 '''
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Int8Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Int8Array'):
     emscripten_replace_memory += '  HEAP8 = new Int8Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Uint8Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Uint8Array'):
     emscripten_replace_memory += '  HEAPU8 = new Uint8Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Int16Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Int16Array'):
     emscripten_replace_memory += '  HEAP16 = new Int16Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Uint16Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Uint16Array'):
     emscripten_replace_memory += '  HEAPU16 = new Uint16Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Int32Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Int32Array'):
     emscripten_replace_memory += '  HEAP32 = new Int32Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Uint32Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Uint32Array'):
     emscripten_replace_memory += '  HEAPU32 = new Uint32Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Float32Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Float32Array'):
     emscripten_replace_memory += '  HEAPF32 = new Float32Array(newBuffer);\n'
-  if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or 'Float64Array' in metadata['externUses']:
+  if asm_backend_uses(metadata, 'Float64Array'):
     emscripten_replace_memory += '  HEAPF64 = new Float64Array(newBuffer);\n'
   emscripten_replace_memory += '''
   buffer = newBuffer;
@@ -1999,7 +2008,7 @@ def create_first_in_asm():
   return ''
 
 
-def create_memory_views(externUses):
+def create_memory_views(metadata):
   """Generates memory views for the different heap types.
 
   Generated symbols:
@@ -2011,7 +2020,7 @@ def create_memory_views(externUses):
   for info in HEAP_TYPE_INFOS:
     heap_name = '{}Array'.format(info.long_name)
     access = access_quote(heap_name)
-    if not shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS or heap_name in externUses:
+    if asm_backend_uses(metadata, heap_name):
       format_args = {
         'heap': info.heap_name,
         'long': info.long_name,
