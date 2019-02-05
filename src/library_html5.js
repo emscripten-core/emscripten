@@ -271,7 +271,7 @@ var LibraryJSEvents = {
   // to register many events to: document and window. These cannot be addressed by using document.querySelector(), so
   // a special mechanism to address them is needed. (For any other special object, such as screen.orientation, no general access
   // scheme should be needed, but the object-specific event callback registration functions should handle them individually)
-#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || USE_PTHREADS
   _specialEventTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
 #else
   _specialEventTargets: "[0, document, window]",
@@ -291,7 +291,17 @@ var LibraryJSEvents = {
   _findCanvasEventTarget__deps: ['$GL', '_maybeCStringToJsString'],
   _findCanvasEventTarget: function(target) {
     target = __maybeCStringToJsString(target);
-    return GL.offscreenCanvases[target] || document.querySelector(target);
+
+    // First look up if there exists an OffscreenCanvas with the given name.
+    var offscreenCanvas;
+    // TODO: Once Module['canvas'] is removed, clean up the following line:
+    if (target == '#canvas') offscreenCanvas = GL.offscreenCanvases['canvas'];
+    if (!offscreenCanvas) offscreenCanvas = GL.offscreenCanvases[target] || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]); // First looks up by DOM ID ("#myCanvasElement"), second looks up by DOM element name (first found element of type <canvas>)
+    if (offscreenCanvas) return offscreenCanvas['offscreenCanvas'];
+
+#if USE_PTHREADS
+    return (typeof document !== 'undefined') ? document.querySelector(target) : null;
+#endif
   },
 #else
   _findCanvasEventTarget__deps: ['_findEventTarget'],
