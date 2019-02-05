@@ -39,8 +39,8 @@ function initRuntime(asm) {
 #if WASM
 
 // Initialize wasm (asynchronous)
-var env = Module.asmLibraryArg;
-env['memory'] = Module['wasmMemory'];
+var env = asmLibraryArg;
+env['memory'] = wasmMemory;
 env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}
 #if !ALLOW_TABLE_GROWTH
   , 'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}

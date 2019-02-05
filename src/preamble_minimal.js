@@ -59,7 +59,7 @@ var wasmMaximumMemory = {{{ WASM_MEM_MAX }}};
 var wasmMaximumMemory = TOTAL_MEMORY;
 #endif
 
-Module['wasmMemory'] = new WebAssembly.Memory({
+var wasmMemory = new WebAssembly.Memory({
   'initial': TOTAL_MEMORY >> 16
 #if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || WASM_MEM_MAX != -1
   , 'maximum': wasmMaximumMemory >> 16
@@ -69,7 +69,7 @@ Module['wasmMemory'] = new WebAssembly.Memory({
 #endif
   });
 
-var buffer = Module['wasmMemory'].buffer;
+var buffer = wasmMemory.buffer;
 
 #if USE_PTHREADS && ASSERTIONS
 assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');

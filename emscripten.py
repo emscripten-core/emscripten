@@ -1624,7 +1624,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       else:
         if shared.Settings.MINIMAL_RUNTIME:
           # In asm.js exports can be directly processed at top level, i.e.
-          # var asm = Module["asm"](asmGlobalArg, Module.asmLibraryArg, buffer);
+          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
           # var _main = asm["_main"];
           receiving += '\n'.join(['var ' + s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
         else:

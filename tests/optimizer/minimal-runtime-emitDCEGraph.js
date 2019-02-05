@@ -13,11 +13,11 @@ function UTF8ToString(ptr) {
 }
 var TOTAL_MEMORY = 16777216, STATIC_BASE = 1024;
 var wasmMaximumMemory = TOTAL_MEMORY;
-Module["wasmMemory"] = new WebAssembly.Memory({
+var wasmMemory = new WebAssembly.Memory({
  "initial": TOTAL_MEMORY >> 16,
  "maximum": wasmMaximumMemory >> 16
 });
-var buffer = Module["wasmMemory"].buffer;
+var buffer = wasmMemory.buffer;
 var HEAP8 = new Int8Array(buffer);
 var HEAP16 = new Int16Array(buffer);
 var HEAP32 = new Int32Array(buffer);
@@ -30,7 +30,7 @@ var __ATINIT__ = [];
 function _emscripten_console_log(str) {
  console.log(UTF8ToString(str));
 }
-Module.asmLibraryArg = {
+var asmLibraryArg = {
  "a": _emscripten_console_log
 };
 function run() {
@@ -39,8 +39,8 @@ function run() {
 function initRuntime() {
  for (var i in __ATINIT__) __ATINIT__[i].func();
 }
-var env = Module.asmLibraryArg;
-env["memory"] = Module["wasmMemory"];
+var env = asmLibraryArg;
+env["memory"] = wasmMemory;
 env["table"] = new WebAssembly.Table({
  "initial": 0,
  "maximum": 0,
