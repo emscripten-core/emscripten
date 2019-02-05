@@ -1422,5 +1422,4 @@ var SUPPORT_LONGJMP = 1;
 // If set to 1, only generate minimal detected amount of basic/primitive imports to asm.js/wasm
 // module. If 0, all basic runtime elements are generated, independent of whether they have
 // been detected to be used or not.
-var MINIMAL_ASM_PRIMITIVE_IMPORTS = 0;
-
+var MINIMAL_ASM_PRIMITIVE_IMPORTS = 1;

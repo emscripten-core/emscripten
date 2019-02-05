@@ -148,32 +148,25 @@ def parse_backend_output(backend_output, DEBUG):
     logger.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise
 
-  if shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS:
-    if 'externUses' in metadata:
-      # JS optimizer turns some heap accesses to others as an optimization, so make HEAP8 imply HEAPU8, HEAP16->HEAPU16, and HEAPF64->HEAPF32.
-      if 'Int8Array' in metadata['externUses']:
-        metadata['externUses'] += ['Uint8Array']
-      if 'Int16Array' in metadata['externUses']:
-        metadata['externUses'] += ['Uint16Array']
-      if 'Float64Array' in metadata['externUses']:
-        metadata['externUses'] += ['Float32Array']
-
-      # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-      if provide_fround() or metadata['simd']:
-        metadata['externUses'] += ['Math.fround']
-
-      # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
-      # of time what the dynamically linked in modules will need. Also with SAFE_HEAP, generate full set of views.
-      if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
-        shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS = 0
-    else:
-      # Using older fastcomp that does not declare externUses, revert to disabling exact codegen of only used primitives
-      # but generate them all
-      logging.warning('Your fastcomp compiler is out of date, please update!')
-      shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS = 0
-
   if 'externUses' not in metadata:
-    metadata['externUses'] = []
+    exit_with_error('Your fastcomp compiler is out of date, please update! (need >= 1.38.26)')
+
+  # JS optimizer turns some heap accesses to others as an optimization, so make HEAP8 imply HEAPU8, HEAP16->HEAPU16, and HEAPF64->HEAPF32.
+  if 'Int8Array' in metadata['externUses']:
+    metadata['externUses'] += ['Uint8Array']
+  if 'Int16Array' in metadata['externUses']:
+    metadata['externUses'] += ['Uint16Array']
+  if 'Float64Array' in metadata['externUses']:
+    metadata['externUses'] += ['Float32Array']
+
+  # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
+  if provide_fround():
+    metadata['externUses'] += ['Math.fround']
+
+  # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
+  # of time what the dynamically linked in modules will need. Also with SAFE_HEAP, generate full set of views.
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
+    shared.Settings.MINIMAL_ASM_PRIMITIVE_IMPORTS = 0
 
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
