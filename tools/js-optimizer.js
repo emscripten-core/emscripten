@@ -7915,9 +7915,11 @@ function eliminateDeadGlobals(ast) {
 }
 
 function isAsmLibraryArgAssign(node) {
-  return node[0] === 'assign' && node[2][0] === 'dot'
-                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
-                              && node[2][2] === 'asmLibraryArg';
+  return node[0] === 'var' && node[1][0] && node[1][0][0] == 'asmLibraryArg';
+}
+
+function asmLibraryArgs(node) {
+  return node[1][0][1];
 }
 
 function isAsmUse(node) {

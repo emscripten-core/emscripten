@@ -1,6 +1,6 @@
 var name;
 
-Module.asmLibraryArg = {
+var asmLibraryArg = {
  "save1": 1,
  "save2": 2
 };

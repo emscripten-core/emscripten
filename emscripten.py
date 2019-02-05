@@ -1791,9 +1791,8 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
 
-  module_get = 'Module{access} = {val};'
   module_global = 'var asmGlobalArg = ' + the_global
-  module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
+  module_library = 'var asmLibraryArg = ' + sending
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
                       'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
@@ -1868,8 +1867,8 @@ def create_asm_end(exports):
   return %s;
 })
 // EMSCRIPTEN_END_ASM
-(%s, Module%s, buffer);
-''' % (exports, 'asmGlobalArg', access_quote('asmLibraryArg'))
+(asmGlobalArg, asmLibraryArg, buffer);
+''' % (exports)
 
 
 def create_first_in_asm():
@@ -2233,8 +2232,8 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
-  module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
-  module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
+  module.append('var asmLibraryArg = %s;\n' % (sending))
+  module.append("var asm = Module['asm'](asmGlobalArg, asmLibraryArg, buffer);\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)
