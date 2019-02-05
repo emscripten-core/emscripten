@@ -2883,7 +2883,7 @@ def generate_html(target, options, js_target, target_basename,
         }
       }
       %s
-      var blob = new Blob([code], { type: 'text/javascript' });
+      var blob = new Blob([code], { type: 'application/javascript' });
       codeXHR = null;
       var src = URL.createObjectURL(blob);
       var script = document.createElement('script');

@@ -1029,6 +1029,24 @@ def harness_server_func(q, port):
 
 def server_func(dir, q, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
+    def send_head(self):
+      if self.path.endswith('.js'):
+        path = self.translate_path(self.path)
+        try:
+          f = open(path, 'rb')
+        except IOError:
+          self.send_error(404, "File not found: " + path)
+          return None
+        self.send_response(200)
+        self.send_header("Content-type", 'application/javascript')
+        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+        self.send_header('Connection', 'close')
+        self.send_header('Expires', '-1')
+        self.end_headers()
+        return f
+      else:
+        return SimpleHTTPRequestHandler.send_head(self)
+
     def do_GET(self):
       if 'report_' in self.path:
         print('[server response:', self.path, ']')

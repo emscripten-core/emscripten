@@ -60,7 +60,7 @@ var LibraryTracing = {
     loadWorkerViaXHR: function(url, ready, scope) {
       var req = new XMLHttpRequest();
       req.addEventListener('load', function() {
-        var blob = new Blob([this.responseText], { type: 'text/javascript' });
+        var blob = new Blob([this.responseText], { type: 'application/javascript' });
         var worker = new Worker(window.URL.createObjectURL(blob));
         if (ready) {
           ready.call(scope, worker);
