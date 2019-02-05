@@ -8030,9 +8030,11 @@ function AJSDCE(ast) {
 }
 
 function isAsmLibraryArgAssign(node) {
-  return node[0] === 'assign' && node[2][0] === 'dot'
-                              && node[2][1][0] === 'name' && node[2][1][1] === 'Module'
-                              && node[2][2] === 'asmLibraryArg';
+  return node[0] === 'var' && node[1][0] && node[1][0][0] == 'asmLibraryArg';
+}
+
+function asmLibraryArgs(node) {
+  return node[1][0][1];
 }
 
 function isAsmUse(node) {
@@ -8131,7 +8133,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
@@ -8154,7 +8156,7 @@ function emitDCEGraph(ast) {
   var graph = [];
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
-      var items = node[3][1];
+      var items = asmLibraryArgs(node)[1];
       items.forEach(function(item) {
         imports.push(item[1][1]); // the name doesn't matter, only the value which is that actual thing we are importing
       });
@@ -8313,7 +8315,8 @@ function applyDCEGraphRemovals(ast) {
 
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
-      node[3][1] = node[3][1].filter(function(item) {
+      var args = asmLibraryArgs(node);
+      args[1] = args[1].filter(function(item) {
         var name = item[0];
         var value = item[1];
         var full = 'emcc$import$' + name;
@@ -8339,7 +8342,8 @@ function applyImportAndExportNameChanges(ast) {
   var mapping = extraInfo.mapping;
   traverse(ast, function(node, type) {
     if (isAsmLibraryArgAssign(node)) {
-      node[3][1] = node[3][1].map(function(item) {
+      var args = asmLibraryArgs(node);
+      args[1] = args[1].map(function(item) {
         var name = item[0];
         var value = item[1];
         if (mapping[name]) {
