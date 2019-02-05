@@ -18,6 +18,7 @@ from tools import asm_module
 infile = sys.argv[1]
 asmfile = sys.argv[2]
 otherfile = sys.argv[3]
+asm_module_name = sys.argv[4] if len(sys.argv) >= 5 else 'Module["asm"]'
 
 everything = open(infile).read()
 module = asm_module.AsmModule(infile).asm_js
@@ -37,7 +38,7 @@ else:
   everything = everything.replace(module, closured_name + '["asm"]')
 
 o = open(asmfile, 'w')
-o.write('Module["asm"] = ')
+o.write(asm_module_name + ' = ')
 o.write(module)
 o.write(';')
 o.close()

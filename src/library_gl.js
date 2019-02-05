@@ -252,7 +252,7 @@ var LibraryGL = {
       var source = '';
       for (var i = 0; i < count; ++i) {
         var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : undefined;
-        source += Pointer_stringify({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
+        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len >= 0 ? len : undefined);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -462,23 +462,23 @@ var LibraryGL = {
 #endif
     // Returns the context handle to the new context.
     createContext: function(canvas, webGLContextAttributes) {
-      if (typeof webGLContextAttributes['majorVersion'] === 'undefined' && typeof webGLContextAttributes['minorVersion'] === 'undefined') {
+      if (typeof webGLContextAttributes.majorVersion === 'undefined' && typeof webGLContextAttributes.minorVersion === 'undefined') {
 #if USE_WEBGL2
         // If caller did not specify a context, initialize the best one that is possibly available.
         // To explicitly create a WebGL 1 or a WebGL 2 context, call this function with a specific
         // majorVersion set.
-        if (typeof WebGL2RenderingContext !== 'undefined') webGLContextAttributes['majorVersion'] = 2;
-        else webGLContextAttributes['majorVersion'] = 1;
+        if (typeof WebGL2RenderingContext !== 'undefined') webGLContextAttributes.majorVersion = 2;
+        else webGLContextAttributes.majorVersion = 1;
 #else
-        webGLContextAttributes['majorVersion'] = 1;
+        webGLContextAttributes.majorVersion = 1;
 #endif
-        webGLContextAttributes['minorVersion'] = 0;
+        webGLContextAttributes.minorVersion = 0;
       }
 
 #if OFFSCREEN_FRAMEBUFFER
       // In proxied operation mode, rAF()/setTimeout() functions do not delimit frame boundaries, so can't have WebGL implementation
       // try to detect when it's ok to discard contents of the rendered backbuffer.
-      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) webGLContextAttributes['preserveDrawingBuffer'] = true;
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
 #if GL_TESTING
@@ -499,17 +499,17 @@ var LibraryGL = {
           // code has been downloaded.
           if (Module['preinitializedWebGLContext']) {
             ctx = Module['preinitializedWebGLContext'];
-            webGLContextAttributes['majorVersion'] = (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
+            webGLContextAttributes.majorVersion = (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
           } else
 #endif
-          if (webGLContextAttributes['majorVersion'] == 1 && webGLContextAttributes['minorVersion'] == 0) {
+          if (webGLContextAttributes.majorVersion == 1 && webGLContextAttributes.minorVersion == 0) {
             ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
 #if USE_WEBGL2
-          } else if (webGLContextAttributes['majorVersion'] == 2 && webGLContextAttributes['minorVersion'] == 0) {
+          } else if (webGLContextAttributes.majorVersion == 2 && webGLContextAttributes.minorVersion == 0) {
             ctx = canvas.getContext("webgl2", webGLContextAttributes);
 #endif
           } else {
-            throw 'Unsupported WebGL context version ' + webGLContextAttributes['majorVersion'] + '.' + webGLContextAttributes['minorVersion'] + '!'
+            throw 'Unsupported WebGL context version ' + webGLContextAttributes.majorVersion + '.' + webGLContextAttributes.minorVersion + '!'
           }
         } finally {
           canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
@@ -767,7 +767,7 @@ var LibraryGL = {
     registerContext: function(ctx, webGLContextAttributes) {
       var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      {{{ makeSetValue('handle', 0, 'webGLContextAttributes["explicitSwapControl"]', 'i32')}}}; // explicitSwapControl
+      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
 #if USE_PTHREADS
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
@@ -775,7 +775,7 @@ var LibraryGL = {
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
-        version: webGLContextAttributes['majorVersion'],
+        version: webGLContextAttributes.majorVersion,
         GLctx: ctx
       };
 
@@ -791,14 +791,14 @@ var LibraryGL = {
 
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
       context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
+        function b(c, t) {
+          var s = g.createShader(t);
+          g.shaderSource(s, c);
+          g.compileShader(s);
+          return s;
+        }
         try {
           var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
-          function b(c, t) {
-            var s = g.createShader(t);
-            g.shaderSource(s, c);
-            g.compileShader(s);
-            return s;
-          }
           g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", g.VERTEX_SHADER));
           g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", g.FRAGMENT_SHADER));
           g.linkProgram(p);
@@ -816,7 +816,7 @@ var LibraryGL = {
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
       GL.contexts[handle] = context;
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-      if (typeof webGLContextAttributes['enableExtensionsByDefault'] === 'undefined' || webGLContextAttributes['enableExtensionsByDefault']) {
+      if (typeof webGLContextAttributes.enableExtensionsByDefault === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
         GL.initExtensions(context);
       }
 #endif
@@ -832,11 +832,11 @@ var LibraryGL = {
 #endif
 
 #if OFFSCREEN_FRAMEBUFFER
-      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) GL.createOffscreenFramebuffer(context);
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) GL.createOffscreenFramebuffer(context);
 #else
 
 #if GL_DEBUG
-      if (webGLContextAttributes['renderViaOffscreenBackBuffer']) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
 #endif
 
 #endif

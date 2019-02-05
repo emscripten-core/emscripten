@@ -889,30 +889,6 @@ if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
-function mergeMemory(newBuffer) {
-  // The wasm instance creates its memory. But static init code might have written to
-  // buffer already, including the mem init file, and we must copy it over in a proper merge.
-  // TODO: avoid this copy, by avoiding such static init writes
-  // TODO: in shorter term, just copy up to the last static init write
-  var oldBuffer = Module['buffer'];
-  if (newBuffer.byteLength < oldBuffer.byteLength) {
-    err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
-  }
-  var oldView = new Int8Array(oldBuffer);
-  var newView = new Int8Array(newBuffer);
-
-#if MEM_INIT_IN_WASM == 0
-  // If we have a mem init file, do not trample it
-  if (!memoryInitializer) {
-    oldView.set(newView.subarray({{{ GLOBAL_BASE }}}, {{{ GLOBAL_BASE }}} + {{{ getQuoted('STATIC_BUMP') }}}), {{{ GLOBAL_BASE }}});
-  }
-#endif
-
-  newView.set(oldView);
-  updateGlobalBuffer(newBuffer);
-  updateGlobalBufferViews();
-}
-
 function getBinary() {
   try {
     if (Module['wasmBinary']) {
@@ -979,7 +955,6 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
-    if (exports.memory) mergeMemory(exports.memory);
     Module['asm'] = exports;
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
