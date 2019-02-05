@@ -379,14 +379,16 @@ function AJSDCE(ast) {
   JSDCE(ast, /* multipleIterations= */ true);
 }
 
-function isAsmLibraryArgAssign(node) { // Module.asmLibraryArg = ..
-  return node.type === 'AssignmentExpression' &&
-         node.operator === '=' &&
-         node.left.type === 'MemberExpression' &&
-         node.left.object.type === 'Identifier' &&
-         node.left.object.name === 'Module' &&
-         node.left.property.type === 'Identifier' &&
-         node.left.property.name === 'asmLibraryArg';
+function isAsmLibraryArgAssign(node) { // var asmLibraryArg = ..
+  return node.type === 'VariableDeclaration' &&
+         node.declarations.length === 1 &&
+         node.declarations[0].id.name === 'asmLibraryArg' &&
+         node.declarations[0].init &&
+         node.declarations[0].init.type === 'ObjectExpression';
+}
+
+function getAsmLibraryArgValue(node) {
+  return node.declarations[0].init;
 }
 
 function isAsmUse(node) {
@@ -428,7 +430,7 @@ function applyImportAndExportNameChanges(ast) {
   var mapping = extraInfo.mapping;
   fullWalk(ast, function(node) {
     if (isAsmLibraryArgAssign(node)) {
-      var assignedObject = node.right;
+      var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         if (mapping[item.key.value]) {
           setLiteralValue(item.key, mapping[item.key.value]);
@@ -552,7 +554,7 @@ function emitDCEGraph(ast) {
   var graph = [];
   fullWalk(ast, function(node) {
     if (isAsmLibraryArgAssign(node)) {
-      var assignedObject = node.right;
+      var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         var value = item.value;
         assert(value.type === 'Identifier');
@@ -711,7 +713,7 @@ function applyDCEGraphRemovals(ast) {
 
   fullWalk(ast, function(node) {
     if (isAsmLibraryArgAssign(node)) {
-      var assignedObject = node.right;
+      var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties = assignedObject.properties.filter(function(item) {
         var name = item.key.value;
         var value = item.value;
