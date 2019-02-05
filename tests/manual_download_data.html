@@ -160,7 +160,7 @@
       function addScriptToDom(scriptCode) {
         return new Promise(function(resolve, reject) {
           var script = document.createElement('script');
-          var blob = new Blob([scriptCode], { type: 'text/javascript' });
+          var blob = new Blob([scriptCode], { type: 'application/javascript' });
           var objectUrl = URL.createObjectURL(blob);
           script.src = objectUrl;
           script.onload = function() {
