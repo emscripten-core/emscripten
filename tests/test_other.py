@@ -7922,7 +7922,7 @@ int main() {
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      20, ['abort'], ['waka'], 46505,  22,   15, 58), # noqa
+        ([],      20, ['abort'], ['waka'], 46505,  20,   15, 58), # noqa
         (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
         (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
         (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
@@ -8888,7 +8888,7 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5403, 'a.asm.js': 11361, 'a.mem': 321}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5307, 'a.asm.js': 10932, 'a.mem': 321}),
       (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5380, 'a.wasm': 8978})
     ]
 

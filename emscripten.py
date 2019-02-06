@@ -1963,22 +1963,18 @@ def create_replace_memory(metadata):
   emscripten_replace_memory = '''
 function _emscripten_replace_memory(newBuffer) {
 '''
-  if asm_backend_uses(metadata, 'Int8Array'):
-    emscripten_replace_memory += '  HEAP8 = new Int8Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Uint8Array'):
-    emscripten_replace_memory += '  HEAPU8 = new Uint8Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Int16Array'):
-    emscripten_replace_memory += '  HEAP16 = new Int16Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Uint16Array'):
-    emscripten_replace_memory += '  HEAPU16 = new Uint16Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Int32Array'):
-    emscripten_replace_memory += '  HEAP32 = new Int32Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Uint32Array'):
-    emscripten_replace_memory += '  HEAPU32 = new Uint32Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Float32Array'):
-    emscripten_replace_memory += '  HEAPF32 = new Float32Array(newBuffer);\n'
-  if asm_backend_uses(metadata, 'Float64Array'):
-    emscripten_replace_memory += '  HEAPF64 = new Float64Array(newBuffer);\n'
+  for heap, view in [
+    ('HEAP8', 'Int8Array'),
+    ('HEAPU8', 'Uint8Array'),
+    ('HEAP16', 'Int16Array'),
+    ('HEAPU16', 'Uint16Array'),
+    ('HEAP32', 'Int32Array'),
+    ('HEAPU32', 'Uint32Array'),
+    ('HEAPF32', 'Float32Array'),
+    ('HEAPF64', 'Float64Array')]:
+    if asm_backend_uses(metadata, view):
+      emscripten_replace_memory += '  %s = new %s(newBuffer);\n' % (heap, view)
+
   emscripten_replace_memory += '''
   buffer = newBuffer;
   return true;
