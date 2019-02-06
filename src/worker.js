@@ -92,9 +92,9 @@ this.onmessage = function(e) {
       {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-      {{{ makeAsmExportAndGlobalAccessInPthread('TOTAL_MEMORY') }}} = e.data.TOTAL_MEMORY;
-      {{{ makeAsmExportAndGlobalAccessInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
-      {{{ makeAsmExportAndGlobalAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('TOTAL_MEMORY') }}} = e.data.TOTAL_MEMORY;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
 
 #if WASM
       // The Wasm module will have import fields for STACKTOP and STACK_MAX. At 'load' stage of Worker startup, we are just
@@ -109,11 +109,11 @@ this.onmessage = function(e) {
       {{{ makeAsmExportAccessInPthread('STACK_MAX') }}} = {{{ makeAsmExportAccessInPthread('STACKTOP') }}}  = 0x7FFFFFFF;
 
       // Module and memory were sent from main thread
-      {{{ makeAsmExportAndGlobalAccessInPthread('wasmModule') }}} = e.data.wasmModule;
-      {{{ makeAsmExportAndGlobalAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
-      {{{ makeAsmExportAndGlobalAccessInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmModule') }}} = e.data.wasmModule;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmMemory') }}} = e.data.wasmMemory;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
 #else
-      {{{ makeAsmExportAndGlobalAccessInPthread('buffer') }}} = e.data.buffer;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
 
 #if SEPARATE_ASM
       // load the separated-out asm.js
@@ -129,7 +129,7 @@ this.onmessage = function(e) {
 
 #endif
 
-      {{{ makeAsmExportAndGlobalAccessInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
 
       if (typeof e.data.urlOrBlob === 'string') {
         importScripts(e.data.urlOrBlob);
@@ -158,8 +158,8 @@ this.onmessage = function(e) {
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
-      {{{ makeAsmExportAndGlobalAccessInPthread('STACK_BASE') }}} = {{{ makeAsmExportAndGlobalAccessInPthread('STACKTOP') }}} = e.data.stackBase;
-      {{{ makeAsmExportAndGlobalAccessInPthread('STACK_MAX') }}} = STACK_BASE + e.data.stackSize;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = e.data.stackBase;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = STACK_BASE + e.data.stackSize;
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
