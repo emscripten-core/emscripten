@@ -3577,6 +3577,7 @@ window.close = function() {
 
   # Tests the pthread mutex api.
   @requires_threads
+  # XXX TODO
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
@@ -3587,6 +3588,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
+  # XXX TODO
   @requires_threads
   def test_pthread_malloc_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=256MB'])
@@ -3658,7 +3660,7 @@ window.close = function() {
   @no_wasm_backend('asm.js')
   @requires_threads
   def test_pthread_separate_asm_pthreads(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'WASM=0', '-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'])
 
   # Test the operation of Module.pthreadMainPrefixURL variable
   @requires_threads

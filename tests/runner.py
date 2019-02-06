@@ -1283,7 +1283,7 @@ class BrowserCore(RunnerCore):
     original_args = args[:]
     if 'USE_PTHREADS=1' in args and not self.is_wasm_backend():
       if EMTEST_WASM_PTHREADS:
-        also_asmjs = True
+        also_asmjs = False
       elif 'WASM=0' not in args:
         args += ['-s', 'WASM=0']
     if 'WASM=0' not in args:
