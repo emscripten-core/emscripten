@@ -1,39 +1,10 @@
-/** @type {function(number, number=)} */
-function Pointer_stringify(ptr, length) {
-  if (length === 0 || !ptr) return '';
-  // Find the length, and check for UTF while doing so
-  var hasUtf = 0;
-  var t;
-  var i = 0;
-  while (1) {
-#if ASSERTIONS
-    assert(ptr + i < TOTAL_MEMORY);
-#endif
-    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    hasUtf |= t;
-    if (t == 0 && !length) break;
-    i++;
-    if (length && i == length) break;
-  }
-  if (!length) length = i;
-
-  var ret = '';
-
-  if (hasUtf < 128) {
-    var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
-    var curr;
-    while (length > 0) {
-      curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
-      ret = ret ? ret + curr : curr;
-      ptr += MAX_CHUNK;
-      length -= MAX_CHUNK;
-    }
-    return ret;
-  }
-  return UTF8ToString(ptr);
-}
 
 #if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
+
+/** @type {function(number, number=)} */
+function Pointer_stringify(ptr, length) {
+  abort("this function has been removed - you should use UTF8ToString(ptr, maxBytesToRead) instead!");
+}
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
