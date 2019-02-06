@@ -8890,8 +8890,8 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 518,  'a.asm.js': 741, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5979, 'a.asm.js': 11361, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5943, 'a.wasm': 8978})
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5605, 'a.asm.js': 11361, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5568, 'a.wasm': 8978})
     ]
 
     success = True
