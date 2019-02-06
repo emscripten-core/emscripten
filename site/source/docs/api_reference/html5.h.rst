@@ -2037,13 +2037,13 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EM_BOOL emscripten_is_webgl_context_lost(const char *target)
+.. c:function:: EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 
-  Queries the given canvas element for whether its WebGL context is in a lost state.
+  Queries the given WebGL context if it is in a lost context state.
 
-  :param target: Reserved for future use, pass in 0.
-  :type target: const char*
-  :returns: ``true`` if the WebGL context is in a lost state.
+  :param target: Specifies a handle to the context to test.
+  :type target: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
+  :returns: ``true`` if the WebGL context is in a lost state (or the context does not exist)
   :rtype: |EM_BOOL|
 
 
