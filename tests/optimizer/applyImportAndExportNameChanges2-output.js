@@ -74,7 +74,7 @@ var HEAPF64 = new Float64Array(buffer);
 HEAP32[DYNAMICTOP_PTR >> 2] = 5249152;
 var SYSCALLS = {
  buffers: [ null, [], [] ],
- printChar: (function(stream, curr) {
+ printChar: function(stream, curr) {
   var buffer = SYSCALLS.buffers[stream];
   if (curr === 0 || curr === 10) {
    (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
@@ -82,24 +82,24 @@ var SYSCALLS = {
   } else {
    buffer.push(curr);
   }
- }),
+ },
  varargs: 0,
- get: (function(varargs) {
+ get: function(varargs) {
   SYSCALLS.varargs += 4;
   var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
   return ret;
- }),
- getStr: (function() {
+ },
+ getStr: function() {
   var ret = UTF8ToString(SYSCALLS.get());
   return ret;
- }),
- get64: (function() {
+ },
+ get64: function() {
   var low = SYSCALLS.get(), high = SYSCALLS.get();
   return low;
- }),
- getZero: (function() {
+ },
+ getZero: function() {
   SYSCALLS.get();
- })
+ }
 };
 function ___syscall140(which, varargs) {
  SYSCALLS.varargs = varargs;
@@ -171,13 +171,13 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (typeof dateNow !== "undefined") {
  _emscripten_get_now = dateNow;
 } else if (typeof self === "object" && self["performance"] && typeof self["performance"]["now"] === "function") {
- _emscripten_get_now = (function() {
+ _emscripten_get_now = function() {
   return self["performance"]["now"]();
- });
+ };
 } else if (typeof performance === "object" && typeof performance["now"] === "function") {
- _emscripten_get_now = (function() {
+ _emscripten_get_now = function() {
   return performance["now"]();
- });
+ };
 } else {
  _emscripten_get_now = Date.now;
 }
@@ -210,20 +210,20 @@ var imports = {
  "env": env,
  "global": {
   "NaN": NaN,
-  "Infinity": Infinity
+  Infinity: Infinity
  },
  "global.Math": Math,
  "asm2wasm": {
-  "f64-rem": (function(x, y) {
+  "f64-rem": function(x, y) {
    return x % y;
-  }),
-  "debugger": (function() {
+  },
+  "debugger": function() {
    debugger;
-  })
+  }
  }
 };
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
-WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
  var asm = output.instance.exports;
  ___errno_location = asm["j"];
  _llvm_bswap_i32 = asm["k"];
@@ -234,4 +234,4 @@ WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
  dynCall_iiii = asm["p"];
  initRuntime(asm);
  ready();
-}));
+});

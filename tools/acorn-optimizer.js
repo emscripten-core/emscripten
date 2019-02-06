@@ -451,6 +451,12 @@ function applyImportAndExportNameChanges(ast) {
       if (mapping[name]) {
         setLiteralValue(prop, mapping[name]);
       }
+    } else if (isAsmUse(node)) {
+      var prop = node.property;
+      var name = prop.value;
+      if (mapping[name]) {
+        setLiteralValue(prop, mapping[name]);
+      }
     }
   });
 }
