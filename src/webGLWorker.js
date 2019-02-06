@@ -160,6 +160,12 @@ function WebGLWorker() {
   this.LINE_WIDTH                     = 0x0B21;
   this.ALIASED_POINT_SIZE_RANGE       = 0x846D;
   this.ALIASED_LINE_WIDTH_RANGE       = 0x846E;
+//PANDA3D need
+this.MAX_DRAW_BUFFERS               = 0x8824;
+this.MAX_SAMPLES                    = 0x8D57;
+this.MAX_3D_TEXTURE_SIZE            = 0x8073;
+this.MAX_ARRAY_TEXTURE_LAYERS		= 0x88FF;
+//PMPP  
   this.CULL_FACE_MODE                 = 0x0B45;
   this.FRONT_FACE                     = 0x0B46;
   this.DEPTH_RANGE                    = 0x0B70;
@@ -515,7 +521,16 @@ function WebGLWorker() {
   }
 
   // GL
-
+//PANDA3D: send default values taken from   https://webglstats.com/webgl2/parameter/<CONSTANT>
+  function maybe(name,defval){
+    if (bindings.enabledState[name] !== undefined) {
+		console.log(name+' OK '+ bindings.enabledState[name]);
+		return bindings.enabledState[name];
+	}
+	console.log('FIXME '+name+' ? '+defval);
+	return defval;
+  }
+//PMPP  
   this.getParameter = function(name) {
     assert(name);
     if (name in this.prefetchedParameters) return this.prefetchedParameters[name];
@@ -559,6 +574,21 @@ function WebGLWorker() {
       case this.BLEND_EQUATION_ALPHA: {
         return bindings.blendEquationAlpha;
       }
+//PANDA3D
+case this.MAX_DRAW_BUFFERS: {
+	return maybe('MAX_DRAW_BUFFERS', 1);
+}
+
+case this.MAX_SAMPLES: {
+	return maybe('MAX_SAMPLES', 1);
+}
+case this.MAX_3D_TEXTURE_SIZE: {
+	return maybe('MAX_3D_TEXTURE_SIZE', 1024);
+}
+case this.MAX_ARRAY_TEXTURE_LAYERS: {
+	return maybe('MAX_ARRAY_TEXTURE_LAYERS', 256);
+}
+//PMPP        
       default: {
         if (bindings.enabledState[name] !== undefined) return bindings.enabledState[name];
         throw 'TODO: get parameter ' + name + ' : ' + revname(name);
