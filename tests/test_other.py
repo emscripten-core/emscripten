@@ -8886,7 +8886,7 @@ int main () {
     hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'), path_from_root('tests', 'minimal_webgl', 'webgl.c'), '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 518,  'a.asm.js': 741, 'a.mem': 6}),
+      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5403, 'a.asm.js': 11361, 'a.mem': 321}),
       (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5380, 'a.wasm': 8978})
