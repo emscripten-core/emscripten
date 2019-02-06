@@ -394,7 +394,6 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'Pointer_stringify',
     'AsciiToString',
     'stringToAscii',
     'UTF8ArrayToString',
@@ -455,6 +454,9 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
   ];
+  if (!MINIMAL_RUNTIME) {
+    runtimeElements.push('Pointer_stringify');
+  }
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
