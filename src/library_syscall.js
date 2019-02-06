@@ -1118,7 +1118,8 @@ var SyscallsLibrary = {
         return 0;
       }
       case {{{ cDefine('F_GETLK') }}}:
-      case {{{ cDefine('F_GETLK64') }}}: {
+      /* case {{{ cDefine('F_GETLK64') }}}: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
+        {{{ assert(cDefine('F_GETLK') === cDefine('F_GETLK64')), '' }}}
         var arg = SYSCALLS.get();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
@@ -1127,8 +1128,10 @@ var SyscallsLibrary = {
       }
       case {{{ cDefine('F_SETLK') }}}:
       case {{{ cDefine('F_SETLKW') }}}:
-      case {{{ cDefine('F_SETLK64') }}}:
-      case {{{ cDefine('F_SETLKW64') }}}:
+      /* case {{{ cDefine('F_SETLK64') }}}: Currently in musl F_SETLK64 has same value as F_SETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+      /* case {{{ cDefine('F_SETLKW64') }}}: Currently in musl F_SETLKW64 has same value as F_SETLKW, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+        {{{ assert(cDefine('F_SETLK64') === cDefine('F_SETLK')), '' }}}
+        {{{ assert(cDefine('F_SETLKW64') === cDefine('F_SETLKW')), '' }}}
         return 0; // Pretend that the locking is successful.
       case {{{ cDefine('F_GETOWN_EX') }}}:
       case {{{ cDefine('F_SETOWN') }}}:
