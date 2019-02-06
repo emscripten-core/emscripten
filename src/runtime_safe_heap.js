@@ -1,3 +1,37 @@
+/** @type {function(number, string, boolean=)} */
+function getValue(ptr, type, noSafe) {
+  type = type || 'i8';
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+#if SAFE_HEAP
+  if (noSafe) {
+    switch(type) {
+      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, undefined, '1') }}};
+      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
+      case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
+      case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
+      default: abort('invalid type for getValue: ' + type);
+    }
+  } else {
+#endif
+    switch(type) {
+      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
+      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
+      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
+      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
+      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
+      case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
+      case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
+      default: abort('invalid type for getValue: ' + type);
+    }
+#if SAFE_HEAP
+  }
+#endif
+  return null;
+}
+
 #if SAFE_HEAP
 function getSafeHeapType(bytes, isFloat) {
   switch (bytes) {

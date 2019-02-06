@@ -552,6 +552,19 @@ function emitDCEGraph(ast) {
   var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   var foundAsmLibraryArgAssign = false;
   var graph = [];
+
+  function saveAsmExport(name, asmName) {
+    // the asmName is what the wasm provides directly; the outside JS
+    // name may be slightly different (extra "_" in wasm backend)
+    var graphName = getGraphName(name, 'export');
+    nameToGraphName[name] = graphName;
+    modulePropertyToGraphName[name] = graphName;
+    exportNameToGraphName[asmName] = graphName;
+    if (/^dynCall_/.test(name)) {
+      dynCallNames.push(graphName);
+    }
+  }
+
   fullWalk(ast, function(node) {
     if (isAsmLibraryArgAssign(node)) {
       var assignedObject = getAsmLibraryArgValue(node);
@@ -586,13 +599,7 @@ function emitDCEGraph(ast) {
               // this is indeed an export
               // the asmName is what the wasm provides directly; the outside JS
               // name may be slightly different (extra "_" in wasm backend)
-              var graphName = getGraphName(name, 'export');
-              nameToGraphName[name] = graphName;
-              modulePropertyToGraphName[name] = graphName;
-              exportNameToGraphName[asmName] = graphName;
-              if (/^dynCall_/.test(name)) {
-                dynCallNames.push(graphName);
-              }
+              saveAsmExport(name, asmName);
               emptyOut(node); // ignore this in the second pass; this does not root
             }
           }
@@ -607,6 +614,13 @@ function emitDCEGraph(ast) {
   });
   // must find the info we need
   assert(foundAsmLibraryArgAssign, 'could not find the assigment to "asmLibraryArg". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)');
+  // Read exports that were declared in extraInfo
+  if (extraInfo) {
+    for (var e in extraInfo.exports) {
+      var exp = extraInfo.exports[e];
+      saveAsmExport(exp[0], exp[1]);
+    }
+  }
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {

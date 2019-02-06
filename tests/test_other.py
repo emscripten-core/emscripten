@@ -2203,6 +2203,8 @@ int f() {
        ['applyImportAndExportNameChanges']),
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noPrint']),
     ]:
       print(input, passes)
 
@@ -8866,8 +8868,7 @@ int main () {
   # (need to contain the export name once for unminified access from calling code, and should not have the unminified name exist more than once, that would be wasteful for size)
   def test_function_exports_are_small(self):
     def test(wasm, closure, opt):
-      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0'] + wasm + opt + closure
-      print(str(args))
+      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0'] + wasm + opt + closure
       run_process(args)
 
       output = open('a.js', 'r').read()
@@ -8883,7 +8884,77 @@ int main () {
       for closure in [[], ['--closure', '1']]:
         for opt in [['-O2'], ['-O3'], ['-Os']]:
           test(['-s', 'WASM=0'], closure, opt)
+          test(['-s', 'WASM=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], closure, opt)
 
-    for closure in [[], ['--closure', '1']]:
-      for opt in [['-O1']]:
-        test(['-s', 'WASM=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], closure, opt)
+  @no_wasm_backend('tests asmjs, sizes sensitive to fastcomp')
+  def test_minimal_runtime_code_size(self):
+    smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
+                               '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
+                               '-s', 'ENVIRONMENT=web',
+                               '-s', 'TEXTDECODER=2',
+                               '-s', 'ABORTING_MALLOC=0',
+                               '-s', 'ALLOW_MEMORY_GROWTH=0',
+                               '-s', 'SUPPORT_ERRNO=0',
+                               '-s', 'DECLARE_ASM_MODULE_EXPORTS=1',
+                               '-s', 'MALLOC=emmalloc',
+                               '-s', 'GL_EMULATE_GLES_VERSION_STRING_FORMAT=0',
+                               '-s', 'GL_EXTENSIONS_IN_PREFIXED_FORMAT=0',
+                               '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0',
+                               '-s', 'GL_TRACK_ERRORS=0',
+                               '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
+                               '-s', 'GL_POOL_TEMP_BUFFERS=0',
+                               '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
+                               '--output_eol', 'linux']
+
+    asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']
+    opts = ['-O3', '--closure', '1', '-DNDEBUG', '-ffast-math']
+
+    hello_world_sources = [path_from_root('tests', 'small_hello_world.c'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=0', '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
+    hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'), path_from_root('tests', 'minimal_webgl', 'webgl.c'), '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL']
+
+    test_cases = [
+      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 518,  'a.asm.js': 741, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5979, 'a.asm.js': 11361, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5943, 'a.wasm': 8978})
+    ]
+
+    success = True
+
+    def print_percent(actual, expected):
+      if actual == expected:
+        return ''
+      return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
+
+    for case in test_cases:
+      print('\n-----------------------------\n' + str(case))
+      flags, sources, files = case
+      args = [PYTHON, EMCC, '-o', 'a.html'] + sources + smallest_code_size_args + flags
+      print('\n' + ' '.join(args))
+      run_process(args)
+      print('\n')
+
+      total_output_size = 0
+      total_expected_size = 0
+      for f in files:
+        expected_size = files[f]
+        size = os.path.getsize(f)
+        print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
+
+        # Hack: Generated .mem initializer files have different sizes on different platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home Linux gives x+2 bytes..)
+        # TODO: identify what is causing this (until that, expected .mem initializer file sizes are conservative estimates that do not contribute to total size)
+        mem_slop = 20
+        if f.endswith('.mem') or f.endswith('.wasm') and size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+          size = expected_size
+
+        total_output_size += size
+        total_expected_size += expected_size
+
+      print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
+      if total_output_size > total_expected_size:
+        print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
+      if total_output_size < total_expected_size:
+        print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Please update test other.test_minimal_runtime_code_size with the new updated size!')
+      if total_output_size != total_expected_size:
+        success = False
+    assert success

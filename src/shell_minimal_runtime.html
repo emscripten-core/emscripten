@@ -1,0 +1,42 @@
+<!doctype html><html lang="en-us"><head><meta charset="utf-8"></head>
+<body>
+<canvas style='display:block; margin:auto;'></canvas>
+<script>
+  var Module = {};
+
+  function script(url, cb) {
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = cb;
+    document.body.appendChild(s);
+  }
+
+  function binary(url, cb) {
+    var x = new XMLHttpRequest();
+    x.open('GET', url, true);
+    x.responseType = 'arraybuffer';
+    x.onload = function() { cb(x.response); }
+    x.send(null);
+  }
+
+#if WASM
+  binary('{{{ TARGET_BASENAME }}}.wasm', function(wasm) {
+    Module.wasm = wasm;
+    script('{{{ TARGET_BASENAME }}}.js');
+  });
+#else
+#if MEM_INIT_METHOD == 1
+  binary('{{{ TARGET_BASENAME }}}.mem', function(mem) {
+    Module.mem = mem;
+#endif
+    script('{{{ TARGET_BASENAME }}}.asm.js', function() {
+      script('{{{ TARGET_BASENAME }}}.js');
+    });
+#if MEM_INIT_METHOD == 1
+  });
+#endif
+#endif
+
+</script>
+</body>
+</html>
