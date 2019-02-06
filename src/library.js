@@ -3195,6 +3195,7 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+#if SUPPORT_LONGJMP
   // asm.js-style setjmp/longjmp support for wasm binaryen backend.
   // In asm.js compilation, various variables including setjmpId will be
   // generated within 'var asm' in emscripten.py, while in wasm compilation,
@@ -3275,6 +3276,7 @@ LibraryManager.library = {
   emscripten_longjmp: function(env, value) {
     _longjmp(env, value);
   },
+#endif
 
   // ==========================================================================
   // sys/wait.h
@@ -4744,11 +4746,13 @@ LibraryManager.library = {
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
+#if SUPPORT_LONGJMP
   emscripten_prep_setjmp: true,
   emscripten_cleanup_setjmp: true,
   emscripten_check_longjmp: true,
   emscripten_get_longjmp_result: true,
   emscripten_setjmp: true,
+#endif
   emscripten_preinvoke: true,
   emscripten_postinvoke: true,
   emscripten_resume: true,

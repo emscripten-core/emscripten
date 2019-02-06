@@ -2933,6 +2933,15 @@ function jsCall_%s(%s) {
     return ret
 
   @staticmethod
+  def make_dynCall(sig):
+    # Optimize dynCall accesses in the case when not building with dynamic
+    # linking enabled.
+    if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      return 'dynCall_' + sig
+    else:
+      return 'Module["dynCall_' + sig + '"]'
+
+  @staticmethod
   def make_invoke(sig, named=True):
     if sig == 'X':
       # 'X' means the generic unknown signature, used in wasm dynamic linking
@@ -2954,18 +2963,23 @@ function jsCall_%s(%s) {
       args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
       args = 'index' + (',' if args else '') + args
       ret = 'return ' if sig[0] != 'v' else ''
-      body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
+      body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+    if Settings.SUPPORT_LONGJMP:
+      rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
+    else:
+      rethrow = "if (e !== e+0) throw e;"
+
     ret = '''function%s(%s) {
   var sp = stackSave();
   try {
     %s
   } catch(e) {
     stackRestore(sp);
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
+    %s
     _setThrew(1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, body)
+}''' % ((' invoke_' + sig) if named else '', args, body, rethrow)
     return ret
 
   @staticmethod
