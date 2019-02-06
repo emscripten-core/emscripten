@@ -160,7 +160,7 @@ def parse_backend_output(backend_output, DEBUG):
     metadata['externUses'] += ['Float32Array']
 
   # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
-  if provide_fround():
+  if provide_fround() or metadata['simd']:
     metadata['externUses'] += ['Math.fround']
 
   # functions marked llvm.used in the code are exports requested by the user
