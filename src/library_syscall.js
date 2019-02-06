@@ -850,7 +850,7 @@ var SyscallsLibrary = {
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   __syscall146__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1
+#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
   __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif

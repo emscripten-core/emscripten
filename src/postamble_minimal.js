@@ -34,6 +34,15 @@ function initRuntime(asm) {
 #endif
 
   /*** RUN_GLOBAL_INITIALIZERS(); ***/
+
+  // TODO: the following line is a hack - remove it, and figure out a more generic "startup initialization stack" that is defined
+  // by libraries at compile time.
+#if LibraryManager.has('library_fs.js')
+  FS.init();
+#endif
+#if LibraryManager.has('library_tty.js')
+  TTY.init();
+#endif
 }
 
 #if WASM

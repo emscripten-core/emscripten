@@ -612,7 +612,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_string__deps: [
-    'free', 'malloc', '$readLatin1String', '$registerType',
+    '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer', '$throwBindingError'],
   _embind_register_std_string: function(rawType, name) {
     name = readLatin1String(name);
@@ -725,7 +725,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_std_wstring__deps: [
-    'free', 'malloc', '$readLatin1String', '$registerType',
+    '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer'],
   _embind_register_std_wstring: function(rawType, charSize, name) {
     // nb. do not cache HEAPU16 and HEAPU32, they may be destroyed by emscripten_resize_heap().
