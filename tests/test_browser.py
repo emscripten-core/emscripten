@@ -3537,7 +3537,7 @@ window.close = function() {
   def test_pthread_create(self):
     for opt in [['-O0'], ['-O3']]:
       print(str(opt))
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + ['-s', 'TOTAL_MEMORY=128MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
