@@ -135,6 +135,12 @@ function headlessCanvas() {
             LINE_WIDTH                     : 0x0B21,
             ALIASED_POINT_SIZE_RANGE       : 0x846D,
             ALIASED_LINE_WIDTH_RANGE       : 0x846E,
+//PANDA3D
+	MAX_DRAW_BUFFERS               	: 0x8824,
+	MAX_SAMPLES                    	: 0x8D57,
+	MAX_3D_TEXTURE_SIZE            	: 0x8073,
+	MAX_ARRAY_TEXTURE_LAYERS		: 0x88FF,
+//PMPP            
             CULL_FACE_MODE                 : 0x0B45,
             FRONT_FACE                     : 0x0B46,
             DEPTH_RANGE                    : 0x0B70,
