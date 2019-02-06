@@ -1174,7 +1174,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
