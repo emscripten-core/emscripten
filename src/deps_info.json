@@ -69,6 +69,7 @@
   "timegm": ["_get_tzname", "_get_daylight", "_get_timezone"],
   "tzset": ["_get_tzname", "_get_daylight", "_get_timezone"],
   "emscripten_set_canvas_element_size_calling_thread": ["emscripten_async_queue_on_thread_"],
-  "emscripten_webgl_destroy_context": "emscripten_webgl_make_context_current"
+  "emscripten_webgl_destroy_context": ["emscripten_webgl_make_context_current", "emscripten_webgl_get_current_context"],
+  "emscripten_webgl_create_context": ["malloc", "free"]
 }
 
