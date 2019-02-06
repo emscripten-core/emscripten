@@ -1415,3 +1415,7 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // Internal: stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
+// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
+// this to 0 to save a little bit of code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;

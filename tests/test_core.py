@@ -904,36 +904,39 @@ int main() {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
 
-    src = '''
-      #include <stdio.h>
-      void thrower() {
-        printf("infunc...");
-        throw(99);
-        printf("FAIL");
-      }
-      int main() {
-        try {
-          printf("*throw...");
-          throw(1);
+    for support_longjmp in [0, 1]:
+      src = '''
+        #include <stdio.h>
+        void thrower() {
+          printf("infunc...");
+          throw(99);
           printf("FAIL");
-        } catch(...) {
-          printf("caught!");
         }
-        try {
-          thrower();
-        } catch(...) {
-          printf("done!*\\n");
+        int main() {
+          try {
+            printf("*throw...");
+            throw(1);
+            printf("FAIL");
+          } catch(...) {
+            printf("caught!");
+          }
+          try {
+            thrower();
+          } catch(...) {
+            printf("done!*\\n");
+          }
+          return 0;
         }
-        return 0;
-      }
-    '''
-    self.do_run(src, '*throw...caught!infunc...done!*')
+      '''
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      self.do_run(src, '*throw...caught!infunc...done!*')
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
