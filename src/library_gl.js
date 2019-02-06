@@ -252,7 +252,7 @@ var LibraryGL = {
       var source = '';
       for (var i = 0; i < count; ++i) {
         var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
-        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? 9e9/*short abbrv. for infinity*/ : len);
+        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? undefined : len);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -968,10 +968,7 @@ var LibraryGL = {
         var u = GLctx.getActiveUniform(p, i);
 
         var name = u.name;
-        var length = name.length + 1;
-        if (length > ptable.maxUniformLength) {
-          ptable.maxUniformLength = length;
-        }
+        ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length+1);
 
         // Strip off any trailing array specifier we might have got, e.g. "[0]".
         var ls = name.lastIndexOf('[');
