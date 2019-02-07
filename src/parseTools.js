@@ -1305,7 +1305,11 @@ function makeStructuralReturn(values, inAsm) {
 }
 
 function makeThrow(what) {
-  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
+  if (ASSERTIONS) {
+    return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
+  } else {
+  return 'throw ' + what + ';';
+  }
 }
 
 function makeSignOp(value, type, op, force, ignore) {
