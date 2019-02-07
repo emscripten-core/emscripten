@@ -4046,12 +4046,17 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer_state_restoration(self):
     for args in [
-        # full state restoration path
+        # full state restoration path on WebGL 1.0
         ['-s', 'USE_WEBGL2=0', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
-        # VAO path
+        # VAO path on WebGL 1.0
         ['-s', 'USE_WEBGL2=0'],
-        # blitFramebuffer path
-        ['-s', 'USE_WEBGL2=1'],
+        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=0'],
+        # VAO path on WebGL 2.0
+        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
+        # full state restoration path on WebGL 2.0
+        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
+        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
       ]:
       cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
       self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
