@@ -8073,16 +8073,24 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  def test_wasm_backend(self):
-    if not shared.has_wasm_target(shared.get_llc_targets()):
-      self.skipTest('wasm backend was not built')
-    if self.is_wasm_backend():
-      return # already the default
-    with env_modify({'EMCC_WASM_BACKEND': '1'}):
-      for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
-        print(args)
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
-        self.assertContained('hello, world!', run_js('a.out.js'))
+  def test_wasm_backend_lto(self):
+    if not self.is_wasm_backend():
+      self.skipTest('not using wasm backend')
+    # test codegen in lto mode, and compare to normal (wasm object) mode
+    for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
+      print(args)
+      print('wasm in object')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-c', '-o', 'a.o'])
+      assert Building.is_wasm('a.o') and not Building.is_bitcode('a.o')
+      print('bitcode in object')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-c', '-o', 'a.o', '-s', 'WASM_OBJECT_FILES=0'])
+      assert not Building.is_wasm('a.o') and Building.is_bitcode('a.o')
+      print('build bitcode object')
+      run_process([PYTHON, EMCC, 'a.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      print('build with bitcode')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
