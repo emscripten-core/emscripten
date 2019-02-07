@@ -1948,49 +1948,60 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
+      # for the wasm backend, use a memfile exactly when using pthreads (until
+      # we can remove this temporary hack)
+      if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
+         (shared.Settings.WASM_BACKEND and shared.Settings.USE_PTHREADS):
         if shared.Settings.MINIMAL_RUNTIME:
           # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
           memfile = target.replace('.html', '.mem').replace('.js', '.mem')
         else:
           memfile = target + '.mem'
 
-      if memfile and not shared.Settings.WASM_BACKEND:
-        # Strip the memory initializer out of the asmjs file
-        shared.try_delete(memfile)
-
-        def repl(m):
-          # handle chunking of the memory initializer
-          s = m.group(1)
-          if len(s) == 0:
-            return '' # don't emit 0-size ones
-          membytes = [int(x or '0') for x in s.split(',')]
-          while membytes and membytes[-1] == 0:
-            membytes.pop()
-          if not membytes:
-            return ''
-          if shared.Settings.MEM_INIT_METHOD == 2:
-            # memory initializer in a string literal
-            return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-          open(memfile, 'wb').write(bytearray(membytes))
-          if DEBUG:
-            # Copy into temp dir as well, so can be run there too
-            shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
-            return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
-          else:
-            return ''
-
-        src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-        open(final + '.mem.js', 'w').write(src)
-        final += '.mem.js'
-        src = None
-        js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-        if os.path.exists(memfile):
-          save_intermediate('meminit')
-          logger.debug('wrote memory initialization to %s', memfile)
+      if memfile:
+        if shared.Settings.WASM_BACKEND:
+          # For the wasm backend, we don't have any memory info in JS. All we need to do
+          # is set the memory initializer url.
+          src = open(final).read()
+          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
+          open(final + '.mem.js', 'w').write(src)
+          final += '.mem.js'
         else:
-          logger.debug('did not see memory initialization')
+          # Non-wasm backend path: Strip the memory initializer out of the asmjs file
+          shared.try_delete(memfile)
+
+          def repl(m):
+            # handle chunking of the memory initializer
+            s = m.group(1)
+            if len(s) == 0:
+              return '' # don't emit 0-size ones
+            membytes = [int(x or '0') for x in s.split(',')]
+            while membytes and membytes[-1] == 0:
+              membytes.pop()
+            if not membytes:
+              return ''
+            if shared.Settings.MEM_INIT_METHOD == 2:
+              # memory initializer in a string literal
+              return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
+            open(memfile, 'wb').write(bytearray(membytes))
+            if DEBUG:
+              # Copy into temp dir as well, so can be run there too
+              shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
+            if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
+              return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
+            else:
+              return ''
+
+          src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+          open(final + '.mem.js', 'w').write(src)
+          final += '.mem.js'
+          src = None
+          js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+          if os.path.exists(memfile):
+            save_intermediate('meminit')
+            logger.debug('wrote memory initialization to %s', memfile)
+          else:
+            logger.debug('did not see memory initialization')
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
@@ -2001,7 +2012,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
         if shared.Settings.WASM:
           # FIXME(https://github.com/emscripten-core/emscripten/issues/7024)
-          logger.warning('Blocking calls the fetch API do not work under WASM')
+          logger.warning('Blocking calls to the fetch API do not work under WASM')
         else:
           shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
 
@@ -2167,7 +2178,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
-      if embed_memfile(options):
+      if embed_memfile(options) and memfile:
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:

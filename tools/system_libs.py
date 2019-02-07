@@ -280,6 +280,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_pthreads_wasm(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_wasm.c')]
+    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+
   def create_wasm_libc(libname):
     # in asm.js we just use Math.sin etc., which is good for code size. But
     # wasm doesn't have such builtins, so we need to bundle in more code
@@ -605,7 +609,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_PTHREADS:
     libc_name = 'libc-mt'
     always_include.add('libpthreads')
-    always_include.add('libpthreads_asmjs')
+    if not shared.Settings.WASM_BACKEND:
+      always_include.add('libpthreads_asmjs')
+    else:
+      always_include.add('libpthreads_wasm')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
@@ -620,8 +627,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
+    if not shared.Settings.WASM_BACKEND:
+      system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
+    else:
+      system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
     if shared.Settings.LEGACY_GL_EMULATION:
       system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
     else:
