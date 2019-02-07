@@ -1190,6 +1190,9 @@ class SettingsManager(object):
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
 
+      for opt, fixed_values, _ in self.attrs['REMOVED_SETTINGS']:
+        self.attrs[opt] = fixed_values[0]
+
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
 
@@ -1228,6 +1231,11 @@ class SettingsManager(object):
         raise AttributeError
 
     def __setattr__(self, attr, value):
+      for legacy_attr, fixed_values, error_message in self.attrs['REMOVED_SETTINGS']:
+        if attr == legacy_attr and value not in fixed_values:
+          logger.error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
+          sys.exit(1)
+
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
