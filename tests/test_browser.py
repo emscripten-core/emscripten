@@ -3565,7 +3565,8 @@ window.close = function() {
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
   def test_pthread_create_pthread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+    for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   @requires_threads
@@ -3676,7 +3677,8 @@ window.close = function() {
   @no_wasm_backend('asm.js')
   @requires_threads
   def test_pthread_separate_asm_pthreads(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'])
+    for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'] + modularize)
 
   # Test the operation of Module.pthreadMainPrefixURL variable
   @requires_threads
@@ -3768,7 +3770,7 @@ window.close = function() {
   @requires_threads
   def test_pthread_global_data_initialization(self):
     for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
-      for args in [[], ['-O3']]:
+      for args in [['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   @requires_threads
@@ -4263,8 +4265,10 @@ window.close = function() {
 
   # Tests the absolute minimum pthread-enabled application.
   @requires_threads
-  def test_hello_thread(self):
-    self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'])
+  def test_pthread_hello_thread(self):
+    for opts in [[], ['-O3']]:
+      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads

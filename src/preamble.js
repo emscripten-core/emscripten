@@ -356,14 +356,6 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 }
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-#if SEPARATE_ASM != 0
-  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
-#endif
-}
-#endif
-
 #if EMTERPRETIFY
 function abortStackOverflowEmterpreter() {
   abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
@@ -1026,7 +1018,13 @@ function createWasm(env) {
 
 Module['asm'] = function(global, env, providedBuffer) {
   // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory;
+  env['memory'] = wasmMemory
+#if MODULARIZE && USE_PTHREADS
+  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+  // Module scope, so lookup via Module as well.
+  || Module['wasmMemory']
+#endif
+  ;
   // import table
   env['table'] = wasmTable = new WebAssembly.Table({
     'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
