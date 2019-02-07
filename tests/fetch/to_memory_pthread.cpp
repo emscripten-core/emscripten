@@ -102,7 +102,5 @@ int main()
   int rc = pthread_create(&thread, &attr, ThreadMain, (void*)0);
   assert(rc == 0);
   pthread_attr_destroy(&attr);
-  int status;
-  rc = pthread_join(thread, (void**)&status);
-  assert(rc == 0);
+  emscripten_exit_with_live_runtime();
 }
