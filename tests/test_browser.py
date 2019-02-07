@@ -4112,6 +4112,12 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/response_headers.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_asmjs=True)
 
+  def test_fetch_to_memory_pthread(self):
+    shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
+    self.btest('fetch/to_memory_pthread.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   @no_chrome('depends on moz-chunked-arraybuffer')
   def test_fetch_stream_file(self):
