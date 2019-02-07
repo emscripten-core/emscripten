@@ -1309,9 +1309,9 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
         // for nodejs with or without crypto support included
         try {
-            var crypto = require('crypto');
+            var crypto_module = require('crypto');
             // nodejs has crypto support
-            random_device = function() { return crypto['randomBytes'](1)[0]; };
+            random_device = function() { return crypto_module['randomBytes'](1)[0]; };
         } catch (e) {
             // nodejs doesn't have crypto support so fallback to Math.random
             random_device = function() { return (Math.random()*256)|0; };
