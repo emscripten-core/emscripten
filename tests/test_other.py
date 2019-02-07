@@ -7892,7 +7892,6 @@ int main() {
         (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
       ])
 
-
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
