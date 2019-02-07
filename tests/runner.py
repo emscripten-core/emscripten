@@ -1281,7 +1281,7 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args:
+    if 'USE_PTHREADS=1' in args and not self.is_wasm_backend():
       if EMTEST_WASM_PTHREADS:
         also_asmjs = True
       elif 'WASM=0' not in args:

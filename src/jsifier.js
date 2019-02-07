@@ -48,7 +48,7 @@ function JSify(data, functionsOnly) {
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
+    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
 
     // We will start to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
@@ -74,6 +74,8 @@ function JSify(data, functionsOnly) {
     var pre;
     if (SIDE_MODULE) {
       pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
+    } else if (MINIMAL_RUNTIME) {
+      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
     } else {
       pre = processMacros(preprocess(read('support.js'), 'support.js')) +
             processMacros(preprocess(read('preamble.js'), 'preamble.js'));
@@ -461,9 +463,11 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
+    if (!MINIMAL_RUNTIME) {
+      print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
 
-    print(preprocess(read('arrayUtils.js')));
+      print(preprocess(read('arrayUtils.js')));
+    }
 
     if (SUPPORT_BASE64_EMBEDDING) {
       print(preprocess(read('base64Utils.js')));
@@ -503,7 +507,7 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
 
-    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
+    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : (MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js');
     var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 

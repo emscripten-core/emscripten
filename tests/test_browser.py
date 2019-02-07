@@ -1280,6 +1280,9 @@ keydown(100);keyup(100); // trigger the end
     for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:
       self.btest('emscripten_get_now.cpp', '1', args=args)
 
+  def test_write_file_in_environment_web(self):
+    self.btest('write_file.cpp', '0', args=['-s', 'ENVIRONMENT=web', '-Os', '--closure', '1'])
+
   @unittest.skip('Skipping due to https://github.com/emscripten-core/emscripten/issues/2770')
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['--shell-file', path_from_root('tests', 'test_fflush.html')])
@@ -1426,10 +1429,8 @@ keydown(100);keyup(100); // trigger the end
     self.clear()
     self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=80MB'])
 
-  @requires_threads
   def test_force_exit(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
-      self.btest('force_exit.c', force_c=True, expected='17')
+    self.btest('force_exit.c', force_c=True, expected='17', args=['-s', 'EXIT_RUNTIME=1'])
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -1758,10 +1759,8 @@ keydown(100);keyup(100); // trigger the end
     # NOTE: Should FULL_ES3=1 imply client-side vertex arrays? The emulation needs FULL_ES2=1 for now.
     self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'USE_WEBGL2=1', '-s', 'FULL_ES2=1', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
-  @requires_threads
   def test_emscripten_api(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
-      self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
+    self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
 
   def test_emscripten_api2(self):
     def setup():
@@ -2560,7 +2559,7 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
   def test_webgl2(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'FULL_ES2=1']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'], ['-s', 'FULL_ES2=1']]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'] + opts, expected='0')
 
@@ -2768,6 +2767,7 @@ Module['onRuntimeInitialized'] = function() {
 
       self.btest(path_from_root('tests', 'asm_swap.cpp'), args=opts, expected='999')
 
+  @requires_graphics_hardware
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
@@ -2782,6 +2782,7 @@ Module['onRuntimeInitialized'] = function() {
         ])
         self.run_browser('page.html', '', '/report_result?600')
 
+  @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
     create_test_file('sdl2_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
@@ -2791,6 +2792,7 @@ Module['onRuntimeInitialized'] = function() {
     ])
     self.run_browser('page.html', '', '/report_result?600')
 
+  @requires_graphics_hardware
   def test_sdl2_image_formats(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl2_image.c', expected='512', args=['--preload-file', 'screenshot.png', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"',
@@ -2849,6 +2851,7 @@ Module['onRuntimeInitialized'] = function() {
     self.run_browser('page.html', '', '/report_result?1')
 
   @flaky
+  @requires_graphics_hardware
   def test_sdl2_mouse(self):
     create_test_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -2882,6 +2885,7 @@ Module['onRuntimeInitialized'] = function() {
     run_process([PYTHON, EMCC, 'sdl2_mouse.c', '-O2', '--minify', '0', '-o', 'page.html', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1', timeout=30)
 
+  @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
     create_test_file('pre.js', '''
       function simulateMouseEvent(x, y, button) {
@@ -2965,18 +2969,23 @@ Module['onRuntimeInitialized'] = function() {
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION=1'])
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '-s', 'LEGACY_GL_EMULATION=1'], also_proxied=True) # XXX closure fails on proxy
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
     self.btest('sdl2_canvas_blank.c', reference='sdl_canvas_blank.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_palette(self):
     self.btest('sdl2_canvas_palette.c', reference='sdl_canvas_palette.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_twice(self):
     self.btest('sdl2_canvas_twice.c', reference='sdl_canvas_twice.png', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_gfx(self):
     self.btest('sdl2_gfx.cpp', args=['-s', 'USE_SDL=2', '-s', 'USE_SDL_GFX=2'], reference='sdl2_gfx.png', reference_slack=2)
 
+  @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
     create_test_file('args-r.js', '''
       Module['arguments'] = ['-r'];
@@ -2997,11 +3006,13 @@ Module['onRuntimeInitialized'] = function() {
   def test_sdl2_swsurface(self):
     self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
 
+  @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
     self.btest('sdl2_image_prepare.c', reference='screenshot.jpg', args=['--preload-file', 'screenshot.not', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
+  @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.not')
@@ -3787,6 +3798,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
 
   # test atomicrmw i64
+  @no_wasm_backend('uses an asm.js .ll file')
   @requires_threads
   def test_atomicrmw_i64(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
@@ -4052,6 +4064,7 @@ window.close = function() {
   # -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via automatic transferring of Module.canvas when EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas is also used
   @requires_threads
   @requires_graphics_hardware
+  @no_chrome('see #7374')
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
       cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1']
@@ -4060,6 +4073,7 @@ window.close = function() {
 
   @requires_threads
   @requires_graphics_hardware
+  @no_chrome('see #7374')
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
@@ -4496,3 +4510,44 @@ window.close = function() {
   @requires_graphics_hardware
   def test_closure_in_web_only_target_environment_webgl(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1'])
+
+  # Tests that it is possible to load two asm.js compiled programs to one page when both --separate-asm and MODULARIZE=1 is used, by assigning
+  # the pages different asm module names to ensure they do not conflict when being XHRed in.
+  @no_wasm_backend('this tests asm.js support')
+  def test_two_separate_asm_files_on_same_page(self):
+    html_file = open('main.html', 'w')
+    html_file.write(open(path_from_root('tests', 'two_separate_asm_files.html')).read().replace('localhost:8888', 'localhost:%s' % self.test_port))
+    html_file.close()
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page1.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module1', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage1["asm"]']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'page2.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=Module2', '-s', 'SEPARATE_ASM_MODULE_NAME=ModuleForPage2["asm"]']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    self.run_browser('main.html', None, '/report_result?1')
+
+  # Tests that it is possible to encapsulate asm.js compiled programs by using --separate-asm + MODULARIZE=1. See
+  # encapsulated_asmjs_page_load.html for the example.
+  @no_wasm_backend('this tests asm.js support')
+  def test_encapsulated_asmjs_page_load(self):
+    html_file = open('main.html', 'w')
+    html_file.write(open(path_from_root('tests', 'encapsulated_asmjs_page_load.html')).read().replace('localhost:8888', 'localhost:%s' % self.test_port))
+    html_file.close()
+
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'modularize_separate_asm.c'), '-o', 'a.js', '-s', 'WASM=0', '--separate-asm', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=EmscriptenCode', '-s', 'SEPARATE_ASM_MODULE_NAME="var EmscriptenCode"']
+    print(cmd)
+    subprocess.check_call(cmd)
+
+    self.run_browser('main.html', None, '/report_result?1')
+
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_no_declare_asm_module_exports_asmjs(self):
+    for minimal_runtime in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'WASM=0'] + minimal_runtime)
+
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_no_declare_asm_module_exports_wasm_minimal_runtime(self):
+    self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME=1'])

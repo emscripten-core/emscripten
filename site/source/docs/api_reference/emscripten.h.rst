@@ -465,23 +465,6 @@ Functions
   Note that SDL’s ``SDL_ShowCursor`` command shows and hides the SDL cursor, not the OS one. This command is useful to hide the OS cursor if your app draws its own cursor.
 
 
-.. c:function:: void emscripten_set_canvas_size(int width, int height)
-
-  Resizes the pixel width and height of the ``<canvas>`` element on the Emscripten web page.
-
-  :param int width: New pixel width of canvas element.
-  :param int height: New pixel height of canvas element.
-
-
-.. c:function:: void emscripten_get_canvas_size(int * width, int * height, int * isFullscreen)
-
-  Gets the current pixel width and height of the ``<canvas>`` element as well as whether the canvas is fullscreen or not.
-
-  :param int* width: Pixel width of canvas element.
-  :param int* height: New pixel height of canvas element.
-  :param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
-
-
 .. c:function:: double emscripten_get_now(void)
 
   Returns the highest-precision representation of the current time that the browser provides.

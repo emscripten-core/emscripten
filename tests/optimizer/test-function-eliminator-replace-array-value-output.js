@@ -21,5 +21,5 @@ function a() {
 // EMSCRIPTEN_END_FUNCS
 
  var f = [ a ];
-})(asmGlobalArg, Module.asmLibraryArg, buffer);
+})(asmGlobalArg, asmLibraryArg, buffer);
 // EMSCRIPTEN_END_ASM

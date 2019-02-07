@@ -57,8 +57,6 @@ function assert(condition, text) {
   }
 }
 
-var globalScope = this;
-
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
@@ -66,42 +64,27 @@ function getCFunc(ident) {
   return func;
 }
 
-var JSfuncs = {
-  // Helpers for cwrap -- it can't refer to Runtime directly because it might
-  // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
-  // out what the minified function name is.
-  'stackSave': function() {
-    stackSave()
-  },
-  'stackRestore': function() {
-    stackRestore()
-  },
-  // type conversion from js to c
-  'arrayToC' : function(arr) {
-    var ret = stackAlloc(arr.length);
-    writeArrayToMemory(arr, ret);
-    return ret;
-  },
-  'stringToC' : function(str) {
-    var ret = 0;
-    if (str !== null && str !== undefined && str !== 0) { // null string
-      // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-      var len = (str.length << 2) + 1;
-      ret = stackAlloc(len);
-      stringToUTF8(str, ret, len);
-    }
-    return ret;
-  }
-};
-
-// For fast lookup of conversion functions
-var toC = {
-  'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
-};
-
-
 // C calling interface.
 function ccall(ident, returnType, argTypes, args, opts) {
+  // For fast lookup of conversion functions
+  var toC = {
+    'string': function(str) {
+      var ret = 0;
+      if (str !== null && str !== undefined && str !== 0) { // null string
+        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+        var len = (str.length << 2) + 1;
+        ret = stackAlloc(len);
+        stringToUTF8(str, ret, len);
+      }
+      return ret;
+    },
+    'array': function(arr) {
+      var ret = stackAlloc(arr.length);
+      writeArrayToMemory(arr, ret);
+      return ret;
+    }
+  };
+
   function convertReturnValue(ret) {
     if (returnType === 'string') return UTF8ToString(ret);
     if (returnType === 'boolean') return Boolean(ret);
@@ -199,40 +182,6 @@ function setValue(ptr, value, type, noSafe) {
 #endif
 }
 
-/** @type {function(number, string, boolean=)} */
-function getValue(ptr, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
-#if SAFE_HEAP
-  if (noSafe) {
-    switch(type) {
-      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
-      case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
-      case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
-      default: abort('invalid type for getValue: ' + type);
-    }
-  } else {
-#endif
-    switch(type) {
-      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
-      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
-      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
-      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
-      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
-      case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
-      case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-      default: abort('invalid type for getValue: ' + type);
-    }
-#if SAFE_HEAP
-  }
-#endif
-  return null;
-}
-
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
@@ -252,9 +201,6 @@ var ALLOC_NONE = 3; // Do not allocate
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
-#if DECLARE_ASM_MODULE_EXPORTS == 0
-var stackAlloc; // Statically reference stackAlloc function that will be exported later from asm.js/wasm so that allocate() function below will see it.
-#endif
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
@@ -271,7 +217,13 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [_malloc, stackAlloc, dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [_malloc,
+#if DECLARE_ASM_MODULE_EXPORTS    
+    stackAlloc,
+#else
+    typeof stackAlloc !== 'undefined' ? stackAlloc : null,
+#endif
+    dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -904,30 +856,6 @@ if (!isDataURI(wasmBinaryFile)) {
   wasmBinaryFile = locateFile(wasmBinaryFile);
 }
 
-function mergeMemory(newBuffer) {
-  // The wasm instance creates its memory. But static init code might have written to
-  // buffer already, including the mem init file, and we must copy it over in a proper merge.
-  // TODO: avoid this copy, by avoiding such static init writes
-  // TODO: in shorter term, just copy up to the last static init write
-  var oldBuffer = Module['buffer'];
-  if (newBuffer.byteLength < oldBuffer.byteLength) {
-    err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
-  }
-  var oldView = new Int8Array(oldBuffer);
-  var newView = new Int8Array(newBuffer);
-
-#if MEM_INIT_IN_WASM == 0
-  // If we have a mem init file, do not trample it
-  if (!memoryInitializer) {
-    oldView.set(newView.subarray({{{ GLOBAL_BASE }}}, {{{ GLOBAL_BASE }}} + {{{ getQuoted('STATIC_BUMP') }}}), {{{ GLOBAL_BASE }}});
-  }
-#endif
-
-  newView.set(oldView);
-  updateGlobalBuffer(newBuffer);
-  updateGlobalBufferViews();
-}
-
 function getBinary() {
   try {
     if (Module['wasmBinary']) {
@@ -994,7 +922,6 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
-    if (exports.memory) mergeMemory(exports.memory);
     Module['asm'] = exports;
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.

@@ -832,6 +832,10 @@ var LibraryPThread = {
   pthread_exit: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
+#if WASM_BACKEND
+    // pthread_exit is marked noReturn, so we must not return from it.
+    throw 'pthread_exit';
+#endif
   },
 
   _pthread_ptr: 0,
