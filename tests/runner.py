@@ -225,18 +225,18 @@ core_test_modes = [
   'asm3',
   'asm2g',
   'asm2f',
-  'binaryen0',
-  'binaryen1',
-  'binaryen2',
-  'binaryen3',
-  'binaryens',
-  'binaryenz',
+  'wasm0',
+  'wasm1',
+  'wasm2',
+  'wasm3',
+  'wasms',
+  'wasmz',
   'asmi',
   'asm2i',
 ]
 
 # The default core test mode, used when none is specified
-default_core_test_mode = 'binaryen0'
+default_core_test_mode = 'wasm0'
 
 # The non-core test modes
 non_core_test_modes = [
