@@ -1082,6 +1082,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
 
+    if shared.Settings.MODULARIZE:
+      assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
@@ -1187,11 +1190,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         exit_with_error('Memory growth is not yet supported with pthreads')
-      if shared.Settings.MODULARIZE:
-        # currently worker.js uses the global namespace, so it's setting of
-        # ENVIRONMENT_IS_PTHREAD is not picked up, in addition to all the other
-        # modifications it performs.
-        exit_with_error('MODULARIZE is not yet supported with pthreads')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
@@ -1225,6 +1223,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
+      if shared.Settings.MODULARIZE:
+        # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
+        # can access them:
+
+        # general threading variables:
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread', 'ExitStatus']
+
+        # pthread stack setup:
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
+        shared.Settings.EXPORTED_FUNCTIONS += ['establishStackSpaceInJsModule']
+
+        # stack check:
+        if shared.Settings.STACK_OVERFLOW_CHECK:
+          shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+
       if shared.Settings.LINKABLE:
         exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.SIDE_MODULE:
@@ -2005,8 +2018,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
-        shutil.copyfile(shared.path_from_root('src', 'worker.js'),
-                        os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE))
+        worker_output = os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE)
+        with open(worker_output, 'w') as f:
+          f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
