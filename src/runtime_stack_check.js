@@ -14,9 +14,12 @@ function checkStackCookie() {
   if (HEAP32[0] !== 0x63736d65 /* 'emsc' */) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
 }
 
+#if !MINIMAL_RUNTIME // MINIMAL_RUNTIME moves this to a JS library function
 function abortStackOverflow(allocSize) {
   abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
 }
+#endif
+
 #endif
 
 #if STACK_OVERFLOW_CHECK

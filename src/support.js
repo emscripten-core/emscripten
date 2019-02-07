@@ -371,7 +371,7 @@ function loadWebAssemblyModule(binary, flags) {
     // from uninitialized memory.
     for (var i = memoryBase; i < memoryBase + memorySize; ++i) HEAP8[i] = 0;
     // prepare env imports
-    var env = Module['asmLibraryArg'];
+    var env = asmLibraryArg;
     // TODO: use only __memory_base and __table_base, need to update asm.js backend
     var table = wasmTable;
     var tableBase = table.length;

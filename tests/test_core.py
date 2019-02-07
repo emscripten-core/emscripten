@@ -904,36 +904,39 @@ int main() {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.maybe_closure()
 
-    src = '''
-      #include <stdio.h>
-      void thrower() {
-        printf("infunc...");
-        throw(99);
-        printf("FAIL");
-      }
-      int main() {
-        try {
-          printf("*throw...");
-          throw(1);
+    for support_longjmp in [0, 1]:
+      src = '''
+        #include <stdio.h>
+        void thrower() {
+          printf("infunc...");
+          throw(99);
           printf("FAIL");
-        } catch(...) {
-          printf("caught!");
         }
-        try {
-          thrower();
-        } catch(...) {
-          printf("done!*\\n");
+        int main() {
+          try {
+            printf("*throw...");
+            throw(1);
+            printf("FAIL");
+          } catch(...) {
+            printf("caught!");
+          }
+          try {
+            thrower();
+          } catch(...) {
+            printf("done!*\\n");
+          }
+          return 0;
         }
-        return 0;
-      }
-    '''
-    self.do_run(src, '*throw...caught!infunc...done!*')
+      '''
 
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      self.do_run(src, '*throw...caught!infunc...done!*')
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
@@ -4919,6 +4922,9 @@ name: .
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   def test_unistd_truncate_noderawfs(self):
+    # FIXME
+    self.skipTest('fails on some node versions and OSes, e.g. 10.13.0 on linux')
+
     self.emcc_args += ['-s', 'NODERAWFS=1']
     test_path = path_from_root('tests', 'unistd', 'truncate')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -7690,6 +7696,42 @@ extern "C" {
     self.assertNotContained('failed to asynchronously prepare wasm', output)
     self.assertContained('hello, world!', output)
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
+
+  # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
+  def test_no_declare_asm_module_exports(self):
+    self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
+    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+
+  # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_no_declare_asm_module_exports(self):
+    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
+    self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
+    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+
+  # Tests that -s MINIMAL_RUNTIME=1 works well
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_hello_world(self):
+    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+
+  # Tests global initializer with -s MINIMAL_RUNTIME=1
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_global_initializer(self):
+    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
 
 # Generate tests for everything
