@@ -6808,6 +6808,7 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', run_js('a.out.js'))
 
+  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40412 and https://bugs.llvm.org/show_bug.cgi?id=40470')
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
@@ -7836,6 +7837,7 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
+  @no_wasm_backend('TODO - update before landing wasm-objects-by-default')
   def test_binaryen_metadce(self):
     def test(filename, expectations, size_slack):
       # in -Os, -Oz, we remove imports wasm doesn't need
