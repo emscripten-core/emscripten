@@ -2178,7 +2178,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
-      if embed_memfile(options):
+      if embed_memfile(options) and memfile:
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
