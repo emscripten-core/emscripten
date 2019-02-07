@@ -522,7 +522,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 1)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 2)
 
 
 def generate_sanity():
@@ -2501,7 +2501,7 @@ class Building(object):
         exports_file.write(module_exports_suppressions.encode())
         exports_file.close()
 
-        args.append('--js')
+        args.append('--externs')
         args.append(exports_file.name)
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
@@ -2563,10 +2563,10 @@ class Building(object):
   @staticmethod
   def metadce(js_file, wasm_file, minify_whitespace, debug_info):
     logger.debug('running meta-DCE')
-    assert Settings.DECLARE_ASM_MODULE_EXPORTS, 'Internal error: Meta-DCE is currently not compatible with -s DECLARE_ASM_MODULE_EXPORTS=0, build should have occurred with -s DECLARE_ASM_MODULE_EXPORTS=1 if we reach here!'
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
-    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True)
+    extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x + '","' + x + '"]', Settings.MODULE_EXPORTS)) + ']}'
+    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True, extra_info=extra_info)
     graph = json.loads(txt)
     # add exports based on the backend output, that are not present in the JS
     if not Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -2933,6 +2933,15 @@ function jsCall_%s(%s) {
     return ret
 
   @staticmethod
+  def make_dynCall(sig):
+    # Optimize dynCall accesses in the case when not building with dynamic
+    # linking enabled.
+    if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
+      return 'dynCall_' + sig
+    else:
+      return 'Module["dynCall_' + sig + '"]'
+
+  @staticmethod
   def make_invoke(sig, named=True):
     if sig == 'X':
       # 'X' means the generic unknown signature, used in wasm dynamic linking
@@ -2954,18 +2963,23 @@ function jsCall_%s(%s) {
       args = ','.join(['a' + str(i) for i in range(1, len(legal_sig))])
       args = 'index' + (',' if args else '') + args
       ret = 'return ' if sig[0] != 'v' else ''
-      body = '%sModule["dynCall_%s"](%s);' % (ret, sig, args)
+      body = '%s%s(%s);' % (ret, JS.make_dynCall(sig), args)
     # C++ exceptions are numbers, and longjmp is a string 'longjmp'
+    if Settings.SUPPORT_LONGJMP:
+      rethrow = "if (e !== e+0 && e !== 'longjmp') throw e;"
+    else:
+      rethrow = "if (e !== e+0) throw e;"
+
     ret = '''function%s(%s) {
   var sp = stackSave();
   try {
     %s
   } catch(e) {
     stackRestore(sp);
-    if (typeof e !== 'number' && e !== 'longjmp') throw e;
+    %s
     _setThrew(1, 0);
   }
-}''' % ((' invoke_' + sig) if named else '', args, body)
+}''' % ((' invoke_' + sig) if named else '', args, body, rethrow)
     return ret
 
   @staticmethod

@@ -25,7 +25,11 @@ var LibraryPThreadStub = {
   },
 
   emscripten_is_main_browser_thread: function() {
+#if MINIMAL_RUNTIME
+    return typeof importScripts === 'undefined';
+#else
     return !ENVIRONMENT_IS_WORKER;
+#endif
   },
 
   emscripten_main_thread_process_queued_calls: function() {

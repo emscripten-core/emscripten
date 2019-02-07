@@ -115,13 +115,16 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
-      'library_browser.js',
       'library_formatString.js',
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
       'library_html5.js'
     ];
+
+    if (!MINIMAL_RUNTIME) {
+      libraries.push('library_browser.js');
+    }
 
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
@@ -159,19 +162,24 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_sdl.js',
         'library_gl.js',
-        'library_glut.js',
-        'library_xlib.js',
-        'library_egl.js',
         'library_openal.js',
-        'library_glfw.js',
-        'library_uuid.js',
-        'library_glew.js',
-        'library_idbstore.js',
-        'library_async.js',
         'library_vr.js'
       ]);
+
+      if (!MINIMAL_RUNTIME) {
+        libraries = libraries.concat([
+          'library_sdl.js',
+          'library_glut.js',
+          'library_xlib.js',
+          'library_egl.js',
+          'library_glfw.js',
+          'library_uuid.js',
+          'library_glew.js',
+          'library_idbstore.js',
+          'library_async.js'
+        ]);
+      }
     }
 
     if (LEGACY_GL_EMULATION) {
@@ -386,7 +394,6 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'Pointer_stringify',
     'AsciiToString',
     'stringToAscii',
     'UTF8ArrayToString',
@@ -447,6 +454,9 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
   ];
+  if (!MINIMAL_RUNTIME) {
+    runtimeElements.push('Pointer_stringify');
+  }
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');

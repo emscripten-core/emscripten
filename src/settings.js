@@ -1375,9 +1375,7 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
-// Internal: points to a file that lists all asm.js/wasm module exports, annotated
-// with suppressions for Closure compiler, that can be passed as an --externs file
-// to Closure.
+// Internal: An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
@@ -1392,3 +1390,32 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // (think of this as advanced manual DCE)
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
 
+
+// If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
+// Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
+// the smallest code size possible.
+// Set MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These opts are
+// quite hacky, and work around limitations in Closure and other parts of the build system, so
+// they may not work in all generated programs (But can be useful for really small programs)
+var MINIMAL_RUNTIME = 0;
+
+// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(), enable this. If you
+// are not using dynamic allocations, can set this to 0 to save code size. This setting is
+// ignored when building with -s MINIMAL_RUNTIME=0.
+var USES_DYNAMIC_ALLOC = 1;
+
+// Advanced manual dead code elimination:
+// Specifies the set of runtime JS functions that should be imported to the asm.js/wasm module.
+// Remove elements from this list to make build smaller if some of these are not needed.
+// In Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is able to
+// remove these, but if you are targeting asm.js or doing a -O2 build or lower, then this can
+// be beneficial.
+var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
+
+// Internal: stores the base name of the output file (-o TARGET_BASENAME.js)
+var TARGET_BASENAME = '';
+
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
+// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
+// this to 0 to save a little bit of code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;
