@@ -271,11 +271,21 @@ LibraryManager.library = {
   __execvpe: 'execl',
   fexecve: 'execl',
 
-  _exit: function(status) {
+  exit: function(status) {
+#if MINIMAL_RUNTIME
+    throw 'exit(' + status + ')';
+#else
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
     exit(status);
+#endif
   },
+
+  _exit__sig: 'vi',
+  _exit: 'exit',
+
+  _Exit__sig: 'vi',
+  _Exit: 'exit',
 
   fork__deps: ['__setErrNo'],
   fork: function() {
@@ -825,15 +835,6 @@ LibraryManager.library = {
 
   abs: 'Math_abs',
   labs: 'Math_abs',
-
-  exit__deps: ['_exit'],
-  exit: function(status) {
-    __exit(status);
-  },
-  _Exit__deps: ['exit'],
-  _Exit: function(status) {
-    __exit(status);
-  },
 
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {
