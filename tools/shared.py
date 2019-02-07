@@ -2705,8 +2705,8 @@ class Building(object):
 
   @staticmethod
   def is_wasm(filename):
-    magic = asstr(open(filename, 'rb').read(4))
-    return magic == '\0asm'
+    magic = open(filename, 'rb').read(4)
+    return magic == b'\0asm'
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
