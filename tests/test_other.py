@@ -7822,11 +7822,7 @@ int main() {
     print('sizes:', sizes)
 
   def run_metadce_tests(self, filename, expectations):
-    # TODO(sbc): Remove this distinction now that things are settling down.
-    if self.is_wasm_backend():
-      size_slack = 0.5
-    else:
-      size_slack = 0.05
+    size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     for args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
@@ -7911,12 +7907,12 @@ int main() {
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 33171, 10,  15, 70), # noqa
-        (['-O1'], 14, [], ['waka'], 14720,  8,  14, 29), # noqa
-        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [], [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [], [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [], [],        3309,  7,   2, 14), # noqa
+        ([],      16, [], ['waka'], 29296, 10,  15, 70), # noqa
+        (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
+        (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
+        (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  5, [], [],        2408,  7,   3, 15), # noqa
+        (['-Oz'],  5, [], [],        2367,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1), # noqa
