@@ -3241,53 +3241,72 @@ window.close = function() {
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
-      for args, code in [
-        ([], 'Module();'), # defaults
-        # use EXPORT_NAME
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
-          HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
-          HelloWorld();
-        '''),
-        # pass in a Module option (which prevents main(), which we then invoke ourselves)
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
-            setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
-          } });
-        '''),
-        # similar, but without a mem init file, everything is sync and simple
-        (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
-          var hello = HelloWorld({ noInitialRun: true});
+      self.do_test_modularize(opts)
+
+  @requires_sync_compilation
+  @requires_threads
+  def test_modularize_threaded(self):
+    # Note -- closure compiler is currently incompatible with pthreads 2019-02-07
+    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
+      self.do_test_modularize(opts + ['-s', 'USE_PTHREADS=1'])
+
+  def do_test_modularize(self, opts):
+    for args, code in [
+      ([], 'Module();'), # defaults
+      # use EXPORT_NAME
+      (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+        if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+        HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
+        HelloWorld();
+      '''),
+      # pass in a Module option (which prevents main(), which we then invoke ourselves)
+      (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+        var hello = HelloWorld({ noInitialRun: true, onRuntimeInitialized: function() {
+          setTimeout(function() { hello._main(); }); // must be async, because onRuntimeInitialized may be called synchronously, so |hello| is not yet set!
+        } });
+      '''),
+      # similar, but without a mem init file, everything is sync and simple
+      (['-s', 'EXPORT_NAME="HelloWorld"', '--memory-init-file', '0'], '''
+        var hello = HelloWorld({ noInitialRun: true});
+        hello._main();
+      '''),
+      # use the then() API
+      (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+        HelloWorld({ noInitialRun: true }).then(function(hello) {
           hello._main();
-        '''),
-        # use the then() API
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          HelloWorld({ noInitialRun: true }).then(function(hello) {
+        });
+      '''),
+      # then() API, also note the returned value
+      (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+        var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
+          setTimeout(function() {
             hello._main();
+            if (hello !== helloOutside) throw 'helloOutside has not been set!'; // as we are async, helloOutside must have been set
           });
-        '''),
-        # then() API, also note the returned value
-        (['-s', 'EXPORT_NAME="HelloWorld"'], '''
-          var helloOutside = HelloWorld({ noInitialRun: true }).then(function(hello) {
-            setTimeout(function() {
-              hello._main();
-              if (hello !== helloOutside) throw 'helloOutside has not been set!'; // as we are async, helloOutside must have been set
-            });
-          });
-        '''),
-      ]:
-        print('test on', opts, args, code)
-        src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
-        create_test_file('test.c', self.with_report_result(src))
-        # this test is synchronous, so avoid async startup due to wasm features
-        run_process([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
-        create_test_file('a.html', '''
-          <script src="a.out.js"></script>
-          <script>
-            %s
-          </script>
-        ''' % code)
-        self.run_browser('a.html', '...', '/report_result?0')
+        });
+      '''),
+      # Instantiate twice.
+      (['-s', 'EXPORT_NAME="HelloWorld"'], '''
+        HelloWorld({ noInitialRun: true }).then(function(hello) {
+          // do nothing
+        });
+        HelloWorld({ noInitialRun: true }).then(function(hello2) {
+          hello2._main();
+        });
+      '''),
+    ]:
+      print('test on', opts, args, code)
+      src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
+      create_test_file('test.c', self.with_report_result(src))
+      # this test is synchronous, so avoid async startup due to wasm features
+      run_process([PYTHON, EMCC, 'test.c', '-s', 'MODULARIZE=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
+      create_test_file('a.html', '''
+        <script src="a.out.js"></script>
+        <script>
+          %s
+        </script>
+      ''' % code)
+      self.run_browser('a.html', '...', '/report_result?0')
 
   # test illustrating the regression on the modularize feature since commit c5af8f6
   # when compiling with the --preload-file option
