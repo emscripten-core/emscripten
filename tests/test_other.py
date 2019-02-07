@@ -7883,7 +7883,7 @@ int main() {
       ])
     else:
       self.run_metadce_tests('minimal.c', [
-        ([],      20, ['abort'], ['waka'], 22712, 22, 14, 27), # noqa
+        ([],      20, ['abort'], ['waka'], 22712, 20, 14, 27), # noqa
         (['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
         (['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7922,7 +7922,7 @@ int main() {
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      20, ['abort'], ['waka'], 46505,  22,   15, 58), # noqa
+        ([],      20, ['abort'], ['waka'], 46505,  20,   15, 58), # noqa
         (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
         (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
         (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
@@ -8886,9 +8886,9 @@ int main () {
     hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'), path_from_root('tests', 'minimal_webgl', 'webgl.c'), '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 518,  'a.asm.js': 741, 'a.mem': 6}),
+      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5403, 'a.asm.js': 11361, 'a.mem': 321}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5307, 'a.asm.js': 10932, 'a.mem': 321}),
       (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5380, 'a.wasm': 8978})
     ]
 

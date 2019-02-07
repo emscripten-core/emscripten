@@ -1390,7 +1390,6 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // (think of this as advanced manual DCE)
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
 
-
 // If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
 // Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
 // the smallest code size possible.
@@ -1419,3 +1418,4 @@ var TARGET_BASENAME = '';
 // If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
 // this to 0 to save a little bit of code size and performance when catching exceptions.
 var SUPPORT_LONGJMP = 1;
+
