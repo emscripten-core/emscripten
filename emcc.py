@@ -1925,8 +1925,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         memfile = target + '.mem'
 
       if memfile:
-        if not shared.Settings.WASM_BACKEND:
-          # Strip the memory initializer out of the asmjs file
+        if shared.Settings.WASM_BACKEND:
+          # For the wasm backend, we don't have any memory info in JS. All we need to do
+          # is set the memory initializer url.
+          src = open(final).read()
+          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
+          open(final + '.mem.js', 'w').write(src)
+          final += '.mem.js'
+        else:
+          # Non-wasm backend path: Strip the memory initializer out of the asmjs file
           shared.try_delete(memfile)
 
           def repl(m):
@@ -1961,13 +1968,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             logger.debug('wrote memory initialization to %s', memfile)
           else:
             logger.debug('did not see memory initialization')
-        else:
-          # For the wasm backend, we don't have any memory info in JS. All we need to do
-          # is set the memory initializer url.
-          src = open(final).read()
-          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
-          open(final + '.mem.js', 'w').write(src)
-          final += '.mem.js'
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
