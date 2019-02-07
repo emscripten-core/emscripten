@@ -95,7 +95,7 @@ double emscripten_atomic_store_f64(void/*double*/ *addr, double val) {
 void emscripten_atomic_fence(void) {
   // Fake a fence with an arbitrary atomic operation
   uint8_t temp = 0;
-  emscripten_atomic_add_u8(&temp, 1);
+  emscripten_atomic_or_u8(&temp, 0);
 }
 
 // Each of the functions below (add, sub, and, or, xor) return the value that was in the memory location before the operation occurred.
