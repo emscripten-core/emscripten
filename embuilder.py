@@ -47,6 +47,7 @@ Available operations and tasks:
         dlmalloc_threadsafe_noerrno
         dlmalloc_threadsafe_debug_noerrno
         pthreads
+        pthreads_stub
         libc++
         libc++_noexcept
         libc++abi
@@ -111,8 +112,8 @@ CXX_WITH_STDLIB = '''
 SYSTEM_TASKS = [
     'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
     'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
-    'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++', 'libc++_noexcept',
-    'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
+    'pthreads_stub', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++',
+    'libc++_noexcept', 'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
     'dlmalloc_noerrno', 'dlmalloc_threadsafe_noerrno',
     'libc++abi', 'html5'
 ]
@@ -261,6 +262,14 @@ def main():
         }
 
       ''', ['libhtml5.bc'])
+    elif what == 'pthreads_stub':
+      build('''
+        #include <emscripten/threading.h>
+        int main() {
+          return emscripten_is_main_runtime_thread();
+        }
+
+      ''', ['libpthreads_stub.bc'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
