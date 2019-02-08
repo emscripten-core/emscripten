@@ -24,7 +24,6 @@ import atexit
 import contextlib
 import difflib
 import fnmatch
-import functools
 import glob
 import hashlib
 import json
@@ -46,13 +45,11 @@ import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
-  from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+  from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from httplib import HTTPConnection
   from urllib import unquote
 else:
-  from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
-  from http.client import HTTPConnection
+  from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote
 
 # Setup
