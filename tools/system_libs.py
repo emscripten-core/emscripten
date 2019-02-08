@@ -430,8 +430,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if shared.Settings.DEBUG_LEVEL >= 3:
       extra += '_debug'
     if not shared.Settings.SUPPORT_ERRNO:
-      extra += '_noerrno'
-      require_dlmalloc('noerrno')
+      # emmalloc does not use errno anyhow
+      if base != 'emmalloc':
+        extra += '_noerrno'
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
     if shared.Settings.EMSCRIPTEN_TRACING:
