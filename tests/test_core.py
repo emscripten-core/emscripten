@@ -963,16 +963,28 @@ int main() {
 
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-
     self.maybe_closure()
-
     src = open(path_from_root('tests', 'test_exception.cpp'), 'r').read()
-
     for support_longjmp in [0, 1]:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.do_run(src, '*throw...caught!infunc...done!*')
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
+
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_exceptions_minimal_runtime(self):
+    self.set_setting('EXCEPTION_DEBUG', 1)
+    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    src = open(path_from_root('tests', 'test_exception.cpp'), 'r').read()
+    for support_longjmp in [0, 1]:
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.do_run(src, '*throw...caught!infunc...done!*')
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)

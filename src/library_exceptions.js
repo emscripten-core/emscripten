@@ -46,16 +46,18 @@ var LibraryExceptions = {
 
   __exception_decRef__deps: ['__exception_infos', '__cxa_free_exception'
 #if EXCEPTION_DEBUG
-	, '__exception_last', '__exception_caught'
+      , '__exception_last', '__exception_caught'
 #endif
-  ],
+    ],
   __exception_decRef: function(ptr) {
 #if EXCEPTION_DEBUG
     err('decref ' + ptr);
 #endif
     if (!ptr) return;
     var info = ___exception_infos[ptr];
+#if ASSERTIONS
     assert(info.refcount > 0);
+#endif
     info.refcount--;
     // A rethrown exception can reach refcount 0; it must not be discarded
     // Its next handler will clear the rethrown flag and addRef it, prior to
@@ -178,7 +180,7 @@ var LibraryExceptions = {
     if (info) info.rethrown = false;
     ___exception_caught.push(ptr);
 #if EXCEPTION_DEBUG
-		err('cxa_begin_catch ' + [ptr, 'stack', ___exception_caught]);
+    err('cxa_begin_catch ' + [ptr, 'stack', ___exception_caught]);
 #endif
     ___exception_addRef(___exception_deAdjust(ptr));
     return ptr;

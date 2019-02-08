@@ -162,39 +162,6 @@ function cwrap(ident, returnType, argTypes, opts) {
   }
 }
 
-/** @type {function(number, number, string, boolean=)} */
-function setValue(ptr, value, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
-#if SAFE_HEAP
-  if (noSafe) {
-    switch(type) {
-      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
-      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
-      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
-      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
-      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
-      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
-      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
-  } else {
-#endif
-    switch(type) {
-      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
-      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
-      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
-      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
-      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
-#if SAFE_HEAP
-  }
-#endif
-}
-
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
