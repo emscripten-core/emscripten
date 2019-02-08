@@ -863,7 +863,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             libs.append((i, l))
             newargs[i] = ''
           else:
-            logger.warning(arg + ' is not a valid input')
+            logger.warning(arg + ' is not a valid input file')
         elif file_suffix.endswith(STATICLIB_ENDINGS):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
