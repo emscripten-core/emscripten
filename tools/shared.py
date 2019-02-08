@@ -2346,8 +2346,11 @@ class Building(object):
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
   @staticmethod
-  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None):
-    from . import js_optimizer
+  def js_optimizer_no_asmjs(filename, passes, return_output=False, extra_info=None, acorn=False):
+    if not acorn:
+      optimizer = path_from_root('tools', 'js-optimizer.js')
+    else:
+      optimizer = path_from_root('tools', 'acorn-optimizer.js')
     original_filename = filename
     if extra_info is not None:
       temp_files = configuration.get_temp_files()
@@ -2356,13 +2359,18 @@ class Building(object):
       with open(temp, 'a') as f:
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
+    cmd = NODE_JS + [optimizer, filename] + passes
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      check_call(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=open(next, 'w'))
+      run_process(cmd, stdout=open(next, 'w'))
       return next
     else:
-      return run_process(NODE_JS + [js_optimizer.JS_OPTIMIZER, filename] + passes, stdout=PIPE).stdout
+      return run_process(cmd, stdout=PIPE).stdout
+
+  @staticmethod
+  def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+    return Building.js_optimizer_no_asmjs(filename, passes, extra_info=extra_info, return_output=return_output, acorn=True)
 
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
@@ -2531,7 +2539,7 @@ class Building(object):
       passes.append('minifyWhitespace')
     if passes:
       logger.debug('running cleanup on shell code: ' + ' '.join(passes))
-      js_file = Building.js_optimizer_no_asmjs(js_file, ['noPrintMetadata'] + passes)
+      js_file = Building.acorn_optimizer(js_file, passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
     if not Settings.LINKABLE:
@@ -2541,11 +2549,11 @@ class Building(object):
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
-        passes = ['noPrintMetadata', 'AJSDCE']
+        passes = ['AJSDCE']
         if minify_whitespace:
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
-        js_file = Building.js_optimizer_no_asmjs(js_file, passes)
+        js_file = Building.acorn_optimizer(js_file, passes)
         # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
@@ -2565,7 +2573,7 @@ class Building(object):
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
     extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x + '","' + x + '"]', Settings.MODULE_EXPORTS)) + ']}'
-    txt = Building.js_optimizer_no_asmjs(js_file, ['emitDCEGraph', 'noEmitAst'], return_output=True, extra_info=extra_info)
+    txt = Building.acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
     graph = json.loads(txt)
     # add exports based on the backend output, that are not present in the JS
     if not Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -2623,7 +2631,7 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = {'unused': unused}
-    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+    return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
@@ -2646,7 +2654,7 @@ class Building(object):
     if minify_whitespace:
       passes.append('minifyWhitespace')
     extra_info = {'mapping': mapping}
-    return Building.js_optimizer_no_asmjs(js_file, passes, extra_info=json.dumps(extra_info))
+    return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   # the exports the user requested
   user_requested_exports = []
