@@ -7822,10 +7822,7 @@ int main() {
     print('sizes:', sizes)
 
   def run_metadce_tests(self, filename, expectations):
-    if self.is_wasm_backend():
-      size_slack = 0.5  # for now, don't look carefully at code size
-    else:
-      size_slack = 0.05  # changes very little
+    size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     for args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
@@ -7873,13 +7870,13 @@ int main() {
 
     if self.is_wasm_backend():
       self.run_metadce_tests('minimal.c', [
-        ([],      16, [], ['waka'], 14567,  9, 15, 24), # noqa
-        (['-O1'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
-        (['-O2'],  9, [], ['waka'], 11255,  2, 12, 10), # noqa
+        ([],      16, [], ['waka'], 11457,  9, 15, 24), # noqa
+        (['-O1'],  9, [], ['waka'],  8095,  2, 12, 10), # noqa
+        (['-O2'],  9, [], ['waka'],  8077,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Os'],  0, [], [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Oz'],  0, [], [],        None,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
+        (['-O3'],  0, [], [],          61,  0,  1,  1), # noqa
+        (['-Os'],  0, [], [],          61,  0,  1,  1), # noqa
+        (['-Oz'],  0, [], [],           8,  0,  0,  0), # noqa
       ])
     else:
       self.run_metadce_tests('minimal.c', [
@@ -7896,9 +7893,9 @@ int main() {
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 39, [], ['waka'], 348370,  27,  224, 728), # noqa
+        (['-O2'], 34, [], ['waka'], 226582,  22,  32, 565), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  39, [], ['waka'], 348249,  27,  224, 728), # noqa
+                  34, [], ['waka'], 226582,  22,  32, 565), # noqa
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
@@ -7910,12 +7907,12 @@ int main() {
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 33171, 10,  15, 70), # noqa
-        (['-O1'], 14, [], ['waka'], 14720,  8,  14, 29), # noqa
-        (['-O2'], 14, [], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [], [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [], [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [], [],        3309,  7,   2, 14), # noqa
+        ([],      16, [], ['waka'], 29296, 10,  15, 70), # noqa
+        (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
+        (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
+        (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  5, [], [],        2408,  7,   3, 15), # noqa
+        (['-Oz'],  5, [], [],        2367,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1), # noqa
