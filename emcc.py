@@ -2779,6 +2779,9 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   memfile, optimizer):
   logger.debug('generating HTML for minimal runtime')
   shell = read_and_preprocess(options.shell_path)
+  if re.search('{{{\s*SCRIPT\s*}}}', shell):
+    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+
   html_contents = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   with open(target, 'wb') as f:
