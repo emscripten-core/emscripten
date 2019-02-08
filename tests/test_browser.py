@@ -111,8 +111,8 @@ def requires_threads(f):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
     # FIXME when the wasm backend gets threads
-    if is_chrome() and self.is_wasm_backend():
-      self.skipTest('wasm backend lacks threads')
+    #if is_chrome() and self.is_wasm_backend():
+    #  self.skipTest('wasm backend lacks threads')
     return f(self)
 
   return decorated
@@ -3522,6 +3522,8 @@ window.close = function() {
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
         for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm', '-s', 'WASM=0']]:
           print(opt, debug, f32)
+          if self.is_wasm_backend() and '--separate-asm' in f32:
+            continue
           self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt + debug + f32 + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
@@ -3770,12 +3772,14 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
 
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
+  @no_wasm_backend('no memory init options')
   @requires_threads
   def test_pthread_global_data_initialization(self):
     for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
       for args in [[], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
+  @no_wasm_backend('no memory init options')
   @requires_threads
   @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
@@ -4229,7 +4233,6 @@ window.close = function() {
   def test_pthread_locale(self):
     for args in [
         [],
-        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
         ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
       print("Testing with: ", args)
