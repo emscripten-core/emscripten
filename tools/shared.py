@@ -2206,7 +2206,7 @@ class Building(object):
         continue # e.g.  filename.o:  , saying which file it's from
       parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
-      if len(parts) == 3 and parts[0] == "--------" or re.match(r'^\d+\d+\d+\d+\d+\d+\d+\d+$', parts[0]):
+      if len(parts) == 3 and parts[0] == "--------" or re.match(r'^\d\d\d\d\d\d\d\d$', parts[0]):
         parts.pop(0)
       if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
