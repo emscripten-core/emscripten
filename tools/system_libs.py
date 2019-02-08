@@ -44,8 +44,8 @@ def files_in_path(path_components, filenames):
 
 def get_cflags():
   flags = []
-  if shared.Settings.WASM_OBJECT_FILES:
-     flags += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+     flags += ['-s', 'WASM_OBJECT_FILES=0']
   return flags
 
 
