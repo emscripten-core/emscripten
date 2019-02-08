@@ -36,7 +36,11 @@
           iframe.src = url;
           document.getElementById('count').textContent = counter++;
         }
-        setTimeout(check, 100);
+        // Polling for the next test to start: we just keep asking if we
+        // should load a new page, since the iframe doesn't currently have
+        // a way to tell us it completed (even if it did, we'd need to poll
+        // the server to know when the next test page is ready to load).
+        setTimeout(check, 10);
       });
       request.addEventListener("error", function() {
         document.body.innerHTML = 'Tests complete. View log in console.';
