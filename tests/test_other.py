@@ -8013,8 +8013,10 @@ int main() {
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
-      e_i64_i32 = re.search('func \$legalstub\$dyn.* \(type \$\d+\) \(result i32\)', text)
-      assert e_i64_i32, 'legal stub not generated for dyncall'
+      i_legalimport_i64 = re.search('\(import.*\$legalimport\$invoke_j.*', text)
+      e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      assert i_legalimport_i64, 'legal import not generated for invoke call'
+      assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
   def test_sysconf_phys_pages(self):
     for args, expected in [
