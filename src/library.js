@@ -863,8 +863,15 @@ LibraryManager.library = {
   __cxa_thread_atexit_impl: 'atexit',
 #endif
 
+  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
+  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort: function() {
+#if MINIMAL_RUNTIME
+    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
+    throw 'abort';
+#else
     Module['abort']();
+#endif
   },
 
   __buildEnvironment__deps: ['$ENV'],
