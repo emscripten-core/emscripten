@@ -1110,6 +1110,9 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
+      if (whence != 0 /* SEEK_SET */ && whence != 1 /* SEEK_CUR */ && whence != 2 /* SEEK_END */) {
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+      }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
       return stream.position;
@@ -1171,7 +1174,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
@@ -1306,9 +1309,9 @@ mergeInto(LibraryManager.library, {
 #if ENVIRONMENT_MAY_BE_NODE
         // for nodejs with or without crypto support included
         try {
-            var crypto = require('crypto');
+            var crypto_module = require('crypto');
             // nodejs has crypto support
-            random_device = function() { return crypto['randomBytes'](1)[0]; };
+            random_device = function() { return crypto_module['randomBytes'](1)[0]; };
         } catch (e) {
             // nodejs doesn't have crypto support so fallback to Math.random
             random_device = function() { return (Math.random()*256)|0; };

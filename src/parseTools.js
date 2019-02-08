@@ -1040,6 +1040,14 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
+function makeDynCall(sig) {
+  if (!MAIN_MODULE && !SIDE_MODULE) {
+    return 'dynCall_' + sig;
+  } else {
+    return "Module['dynCall_" + sig + "']";
+  }
+}
+
 var TWO_TWENTY = Math.pow(2, 20);
 
 // Given two values and an operation, returns the result of that operation.
@@ -1297,7 +1305,11 @@ function makeStructuralReturn(values, inAsm) {
 }
 
 function makeThrow(what) {
-  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
+  if (ASSERTIONS) {
+    return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
+  } else {
+  return 'throw ' + what + ';';
+  }
 }
 
 function makeSignOp(value, type, op, force, ignore) {
@@ -1467,6 +1479,37 @@ function makeStaticString(string) {
   var len = lengthBytesUTF8(string) + 1;
   var ptr = makeStaticAlloc(len);
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
+}
+
+// Generates access to module exports variable in pthreads worker.js. Depending on whether main code is built with MODULARIZE
+// or not, asm module exports need to either be accessed via a local exports object obtained from instantiating the module (in src/worker.js), or via
+// the global Module exports object.
+function makeAsmExportAccessInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return EXPORT_NAME + "['" + variable + "']";
+  }
+}
+
+// Generates access to a JS global scope variable in pthreads worker.js. In MODULARIZE mode the JS scope is not directly accessible, so all the relevant variables
+// are exported via Module. In non-MODULARIZE mode, we can directly access the variables in global scope.
+function makeAsmGlobalAccessInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return variable;
+  }
+}
+
+// Generates access to both global scope variable and exported Module variable, e.g. "Module['foo'] = foo" or just plain "foo" depending on if we are MODULARIZEing.
+// Used the be able to initialize both variables at the same time in scenarios where a variable exists in both global scope and in Module.
+function makeAsmExportAndGlobalAssignTargetInPthread(variable) {
+  if (MODULARIZE) {
+    return "Module['" + variable + "'] = " + variable; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
+  } else {
+    return variable;
+  }
 }
 
 // Some things, like the dynamic and stack bases, will be computed later and

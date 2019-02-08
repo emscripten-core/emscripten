@@ -61,7 +61,7 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used)) __attribute__ ((visibility ("default")))
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);

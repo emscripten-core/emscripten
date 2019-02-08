@@ -1043,7 +1043,7 @@ Defines
 
   Specifies that the Emscripten runtime should explicitly scale the CSS size of the target element to cover the whole screen, while adding either vertical or horizontal
   black letterbox padding to preserve the aspect ratio of the content. The aspect ratio that is used here is the render target size of the canvas element. To change the
-  desired aspect ratio, call :c:func:`emscripten_set_canvas_size` before entering fullscreen mode.
+  desired aspect ratio, call :c:func:`emscripten_set_canvas_element_size` before entering fullscreen mode.
 
 .. c:macro:: EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE
 
@@ -2037,13 +2037,13 @@ Functions
   :rtype: |EMSCRIPTEN_RESULT|
 
 
-.. c:function:: EM_BOOL emscripten_is_webgl_context_lost(const char *target)
+.. c:function:: EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 
-  Queries the given canvas element for whether its WebGL context is in a lost state.
+  Queries the given WebGL context if it is in a lost context state.
 
-  :param target: Reserved for future use, pass in 0.
-  :type target: const char*
-  :returns: ``true`` if the WebGL context is in a lost state.
+  :param target: Specifies a handle to the context to test.
+  :type target: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
+  :returns: ``true`` if the WebGL context is in a lost state (or the context does not exist)
   :rtype: |EM_BOOL|
 
 
@@ -2138,6 +2138,26 @@ Functions
   :type extension: const char*
   :returns: EM_TRUE if the given extension is supported by the context, and EM_FALSE if the extension was not available.
   :rtype: |EM_BOOL|
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height)
+
+  Resizes the pixel width and height of the given Canvas element in the DOM.
+
+  :param target: Specifies a selector for the canvas to resize.
+  :param width: New pixel width of canvas element.
+  :param height: New pixel height of canvas element.
+  :returns: EMSCRIPTEN_RESULT_SUCCESS if resizing succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
+
+
+.. c:function:: EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height)
+
+  Gets the current pixel width and height of the given Canvas element in the DOM.
+
+  :param target: Specifies a selector for the canvas to resize.
+  :param width: A pointer to memory location where the width of the canvas element is received. This pointer may not be null.
+  :param height: A pointer to memory location where the height of the canvas element is received. This pointer may not be null.
+  :returns: EMSCRIPTEN_RESULT_SUCCESS if resizing succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
 
 
 CSS

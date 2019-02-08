@@ -31,8 +31,8 @@ GLuint program;
 
 void draw()
 {
-  int w, h, fs;
-  emscripten_get_canvas_size(&w, &h, &fs);
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
   float xs = (float)h / w;
   float ys = 1.0f;
   float mat[] = { xs, 0, 0, 0, 0, ys, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
@@ -57,7 +57,7 @@ void draw()
 
 int main()
 {
-  emscripten_set_canvas_size(256, 256);
+  emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;

@@ -32,7 +32,7 @@ function useManySorted() {
   Module['expI2']();
 }
 
-Module.asmLibraryArg = {
+var asmLibraryArg = {
   'tempNum': tempNum,
   'tempFunc': tempFunc,
   'rootedFunc1': rootedFunc1,

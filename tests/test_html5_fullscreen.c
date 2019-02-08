@@ -110,8 +110,8 @@ GLuint program;
 
 void draw()
 {
-  int w, h, fs;
-  emscripten_get_canvas_size(&w, &h, &fs);
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
   float t = emscripten_get_now() / 1000.0f;
   float xs = (float)h / w;
   float ys = 1.0f;
@@ -124,8 +124,8 @@ void draw()
 
 EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData)
 {
-  int w, h, fs;
-  emscripten_get_canvas_size(&w, &h, &fs);
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
   double cssW, cssH;
   emscripten_get_element_css_size(0, &cssW, &cssH);
   printf("Canvas resized: WebGL RTT size: %dx%d, canvas CSS size: %02gx%02g\n", w, h, cssW, cssH);

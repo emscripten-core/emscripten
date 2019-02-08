@@ -376,7 +376,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       call_prefix += 'wrapPointer('
       call_postfix += ', ' + return_type + ')'
     elif return_type == 'String':
-      call_prefix += 'Pointer_stringify('
+      call_prefix += 'UTF8ToString('
       call_postfix += ')'
     elif return_type == 'Boolean':
       call_prefix += '!!('

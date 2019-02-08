@@ -309,7 +309,12 @@ var LibraryBrowser = {
         // For GLES2/desktop GL compatibility, adjust a few defaults to be different to WebGL defaults, so that they align better with the desktop defaults.
         var contextAttributes = {
           antialias: false,
-          alpha: false
+          alpha: false,
+#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
+#else
+          majorVersion: 1,
+#endif
         };
 
         if (webGLContextAttributes) {
@@ -791,7 +796,7 @@ var LibraryBrowser = {
     function doCallback(callback) {
       if (callback) {
         var stack = stackSave();
-        Module['dynCall_vi'](callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+        {{{ makeDynCall('vi') }}}(callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
         stackRestore(stack);
       }
     }
@@ -825,10 +830,10 @@ var LibraryBrowser = {
     Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
+      {{{ makeDynCall('viii') }}}(onload, arg, buffer, byteArray.length);
       _free(buffer);
     }, function() {
-      if (onerror) Module['dynCall_vi'](onerror, arg);
+      if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
@@ -865,11 +870,11 @@ var LibraryBrowser = {
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
           var stack = stackSave();
-          Module['dynCall_viii'](onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+          {{{ makeDynCall('viii') }}}(onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
           stackRestore(stack);
         }
       } else {
-        if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
+        if (onerror) {{{ makeDynCall('viii') }}}(onerror, handle, arg, http.status);
       }
 
       delete Browser.wgetRequests[handle];
@@ -877,7 +882,7 @@ var LibraryBrowser = {
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
+      if (onerror) {{{ makeDynCall('viii') }}}(onerror, handle, arg, http.status);
       delete Browser.wgetRequests[handle];
     };
 
@@ -885,7 +890,7 @@ var LibraryBrowser = {
     http.onprogress = function http_onprogress(e) {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) Module['dynCall_viii'](onprogress, handle, arg, percentComplete);
+        if (onprogress) {{{ makeDynCall('viii') }}}(onprogress, handle, arg, percentComplete);
       }
     };
 
@@ -926,10 +931,10 @@ var LibraryBrowser = {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) Module['dynCall_viiii'](onload, handle, arg, buffer, byteArray.length);
+        if (onload) {{{ makeDynCall('viiii') }}}(onload, handle, arg, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
-        if (onerror) Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
+        if (onerror) {{{ makeDynCall('viiii') }}}(onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
@@ -937,14 +942,14 @@ var LibraryBrowser = {
     // ERROR
     http.onerror = function http_onerror(e) {
       if (onerror) {
-        Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
+        {{{ makeDynCall('viiii') }}}(onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (onprogress) Module['dynCall_viiii'](onprogress, handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
+      if (onprogress) {{{ makeDynCall('viiii') }}}(onprogress, handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
     };
 
     // ABORT
@@ -988,10 +993,10 @@ var LibraryBrowser = {
       PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) Module['dynCall_vi'](onload, file);
+        if (onload) {{{ makeDynCall('vi') }}}(onload, file);
       },
       function() {
-        if (onerror) Module['dynCall_vi'](onerror, file);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, file);
       },
       true // don'tCreateFile - it's already there
     );
@@ -1015,10 +1020,10 @@ var LibraryBrowser = {
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) Module['dynCall_vii'](onload, arg, cname);
+        if (onload) {{{ makeDynCall('vii') }}}(onload, arg, cname);
       },
       function() {
-        if (onerror) Module['dynCall_vi'](onerror, arg);
+        if (onerror) {{{ makeDynCall('vi') }}}(onerror, arg);
       },
       true // don'tCreateFile - it's already there
     );
@@ -1273,7 +1278,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Module['dynCall_vi'](func, arg);
+      {{{ makeDynCall('vi') }}}(func, arg);
     }, name: UTF8ToString(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
@@ -1281,7 +1286,7 @@ var LibraryBrowser = {
   // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Module['dynCall_vi'](func, arg);
+      {{{ makeDynCall('vi') }}}(func, arg);
     }, name: UTF8ToString(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
