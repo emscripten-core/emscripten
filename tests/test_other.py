@@ -8069,7 +8069,6 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40654')
   def test_wasm_backend_lto(self):
     if not self.is_wasm_backend():
       self.skipTest('not using wasm backend')

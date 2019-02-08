@@ -1889,8 +1889,11 @@ class Building(object):
 
   @staticmethod
   def link_to_object(linker_inputs, target):
-    # link using lld for the wasm backend, or our python code for asm.js
-    if Settings.WASM_BACKEND:
+    # link using lld for the wasm backend with wasm object files,
+    # other otherwise for linking of bitcode we must use our python
+    # code (necessary for asm.js, for wasm bitcode see
+    # https://bugs.llvm.org/show_bug.cgi?id=40654)
+    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
       Building.link(linker_inputs, target)
