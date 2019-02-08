@@ -968,31 +968,9 @@ int main() {
 
     self.maybe_closure()
 
-    for support_longjmp in [0, 1]:
-      src = '''
-        #include <stdio.h>
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
-        int main() {
-          try {
-            printf("*throw...");
-            throw(1);
-            printf("FAIL");
-          } catch(...) {
-            printf("caught!");
-          }
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-          return 0;
-        }
-      '''
+    src = open(path_from_root('tests', 'test_exception.cpp'), 'r').read()
 
+    for support_longjmp in [0, 1]:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run(src, '*throw...caught!infunc...done!*')
