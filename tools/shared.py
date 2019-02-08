@@ -1955,8 +1955,7 @@ class Building(object):
 
     cmd += opts
 
-    logger.debug('emcc: lld-linking: %s to %s', args, target)
-    check_call(cmd)
+    run_process(cmd)
     return target
 
   @staticmethod
