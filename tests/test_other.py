@@ -7874,7 +7874,6 @@ int main() {
       if expected_funcs is not None:
         self.assertEqual(funcs, expected_funcs)
 
-  @no_wasm_backend('TODO - update before landing wasm-objects-by-default')
   def test_binaryen_metadce_minimal(self):
     create_test_file('minimal.c', '''
       #include <emscripten.h>
@@ -7887,7 +7886,7 @@ int main() {
 
     if self.is_wasm_backend():
       self.run_metadce_tests('minimal.c', [
-        ([],      16, [], ['waka'], 11457,  9, 15, 24), # noqa
+        ([],      11, [], ['waka'],  9336,  5, 13, 16), # noqa
         (['-O1'],  9, [], ['waka'],  8095,  2, 12, 10), # noqa
         (['-O2'],  9, [], ['waka'],  8077,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7906,7 +7905,6 @@ int main() {
         (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
       ])
 
-  @no_wasm_backend('TODO - update before landing wasm-objects-by-default')
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
@@ -7922,11 +7920,10 @@ int main() {
                   34, ['abort'], ['waka'], 196709,  28,   20, 620), # noqa
       ]) # noqa
 
-  @no_wasm_backend('TODO - update before landing wasm-objects-by-default')
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 29296, 10,  15, 70), # noqa
+        ([],      16, [], ['waka'], 29296, 10,  15, 67), # noqa
         (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
         (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
         (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
