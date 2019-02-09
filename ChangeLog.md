@@ -16,6 +16,13 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
  - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
+ - Added a new option -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 that
+   changes the lookup semantics of DOM elements in html5.h event handler
+   callback and WebGL context creation. New behavior is to use CSS selector
+   strings to look up DOM elements over the old behavior, which was somewhat
+   ad hoc constructed rules around default Emscripten uses. The old behavior
+   will be deprecated and removed in the future. Build with -s ASSERTIONS=1
+   to get diagnostics messages related to this transition.
 
 v1.38.26: 02/04/2019
 --------------------

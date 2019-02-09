@@ -284,7 +284,14 @@ var LibraryJSEvents = {
 
   _findEventTarget__deps: ['_maybeCStringToJsString', '_specialEventTargets'],
   _findEventTarget: function(target) {
-    return __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
+    var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
+#if ASSERTIONS
+    // TODO: Remove this check in the future, or move it to some kind of debugging mode, because it may be perfectly fine behavior
+    // for one to query an event target to test if any DOM element with given CSS selector exists. However for a migration period
+    // from old lookup over to new, it is very useful to get diagnostics messages related to a lookup failing.
+    if (!domElement) err('No DOM element was found with CSS selector "' + __maybeCStringToJsString(target) + '"');
+#endif
+    return domElement;
   },
 
 #if OFFSCREENCANVAS_SUPPORT
@@ -313,7 +320,7 @@ var LibraryJSEvents = {
   _findEventTarget__deps: ['_specialEventTargets'],
   _findEventTarget: function(target) {
 #if ASSERTIONS
-    warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules.');
+    warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
 #endif
     try {
       // The sensible "default" target varies between events, but use window as the default
