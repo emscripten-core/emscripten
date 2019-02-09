@@ -1062,6 +1062,9 @@ def harness_server_func(in_queue, out_queue, port):
       # don't log; too noisy
       pass
 
+  # allows streaming compilation to work
+  SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
+
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
