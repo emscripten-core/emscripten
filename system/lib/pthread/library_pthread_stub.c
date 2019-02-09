@@ -376,35 +376,56 @@ int pthread_barrier_wait(pthread_barrier_t *mutex)
 
 #define pthread_key_t uintptr_t
 
+/* magic value to track a validly constructed TLS slot */
+#define PTHREAD_TLS_MAGIC_ID 0x02468ACE
+
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
 {
 	if (key == 0) return EINVAL;
-	*key = (pthread_key_t)malloc(sizeof(uintptr_t));
+	uintptr_t *tls = (uintptr_t *)malloc(sizeof(uintptr_t)*2);
+	tls[0] = 0;
+	tls[1] = PTHREAD_TLS_MAGIC_ID;
+	*key = (pthread_key_t)tls;
 	return 0;
 }
 
 int pthread_key_delete(pthread_key_t key)
 {
-	free((uintptr_t*)key);
+	uintptr_t *tls = (uintptr_t *)key;
+	if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+		return EINVAL;
+	tls[0] = tls[1] = 0;
+	free(tls);
 	return 0;
 }
 
 void *pthread_getspecific(pthread_key_t key)
 {
-	return (void*)*(uintptr_t*)key;
+	uintptr_t *tls = (uintptr_t *)key;
+	if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+		return NULL;
+	return (void*)tls[0];
 }
 
 int pthread_setspecific(pthread_key_t key, const void *value)
 {
-	*(uintptr_t*)value = (uintptr_t)value;
+	uintptr_t *tls = (uintptr_t *)key;
+	if (tls[1] != PTHREAD_TLS_MAGIC_ID)
+		return EINVAL;
+	tls[0] = (uintptr_t)value;
+	return 0;
 }
 
 #define pthread_once_t int
+
+/*magic number to detect if we have not run yet*/
+#define PTHREAD_ONCE_MAGIC_ID 0x13579BDF
+
 int pthread_once(pthread_once_t *once_control, void (*init_routine)(void))
 {
-	if (*once_control != 0x13579BDF /*magic number to detect if we have not run yet*/)
+	if (*once_control != PTHREAD_ONCE_MAGIC_ID)
 	{
 		init_routine();
-		*once_control = 0x13579BDF;
+		*once_control = PTHREAD_ONCE_MAGIC_ID;
 	}
 }
