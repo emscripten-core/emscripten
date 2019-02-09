@@ -90,6 +90,7 @@ var LibraryExceptions = {
   __cxa_allocate_exception: function(size) {
     return _malloc(size);
   },
+
   __cxa_free_exception: function(ptr) {
 #if ABORTING_MALLOC || ASSERTIONS
     try {
@@ -103,14 +104,17 @@ var LibraryExceptions = {
     }
 #endif
   },
+
   __cxa_increment_exception_refcount__deps: ['__exception_addRef', '__exception_deAdjust'],
   __cxa_increment_exception_refcount: function(ptr) {
     ___exception_addRef(___exception_deAdjust(ptr));
   },
+
   __cxa_decrement_exception_refcount__deps: ['__exception_decRef', '__exception_deAdjust'],
   __cxa_decrement_exception_refcount: function(ptr) {
     ___exception_decRef(___exception_deAdjust(ptr));
   },
+
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
   __cxa_throw__sig: 'viii',
@@ -136,6 +140,7 @@ var LibraryExceptions = {
     }
     {{{ makeThrow('ptr') }}}
   },
+
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
@@ -154,10 +159,12 @@ var LibraryExceptions = {
     ___exception_last = ptr;
     {{{ makeThrow('ptr') }}}
   },
+
   llvm_eh_exception__deps: ['__exception_last'],
   llvm_eh_exception: function() {
     return ___exception_last;
   },
+
   llvm_eh_selector__jsargs: true,
   llvm_eh_selector__deps: ['__exception_last'],
   llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
@@ -167,9 +174,11 @@ var LibraryExceptions = {
     }
     return 0;
   },
+
   llvm_eh_typeid_for: function(type) {
     return type;
   },
+
   __cxa_begin_catch__deps: ['__exception_infos', '__exception_caught', '__exception_addRef', '__exception_deAdjust'],
   __cxa_begin_catch: function(ptr) {
     var info = ___exception_infos[ptr];
@@ -185,6 +194,7 @@ var LibraryExceptions = {
     ___exception_addRef(___exception_deAdjust(ptr));
     return ptr;
   },
+
   // We're done with a catch. Now, we can run the destructor if there is one
   // and free the exception. Note that if the dynCall on the destructor fails
   // due to calling apply on undefined, that means that the destructor is
@@ -210,9 +220,11 @@ var LibraryExceptions = {
     // TODO: use info.adjusted?
     return ptr;
   },
+
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
   },
+
   __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
   __cxa_uncaught_exception: function() {
     return !!__ZSt18uncaught_exceptionv.uncaught_exception;
@@ -249,13 +261,6 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-
-  // TODO: JS function __cxa_find_matching_catch depends on C++ functions __cxa_is_pointer_type() and __cxa_can_catch(),
-  // so that info needs to be added to src/deps_info.json. However due to some issue, directive
-  //   "__cxa_find_matching_catch": ["__cxa_is_pointer_type", "__cxa_can_catch"],
-  // does not work there, so instead src/deps_info.json is given the following directive, which does work:
-  //   "__cxa_begin_catch": ["__cxa_is_pointer_type", "__cxa_can_catch"],
-  // Figure out why only deps_info on __cxa_begin_catch works..
 
   __cxa_find_matching_catch__deps: ['__exception_last', '__exception_infos', '__resumeException'],
   __cxa_find_matching_catch: function() {
@@ -310,5 +315,14 @@ var LibraryExceptions = {
     {{{ makeThrow('ptr') }}}
   },
 };
+
+// In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
+// where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
+// that variadically processes all of these functions using JS 'arguments' object.
+var maxExceptionArgs = 32; // arbitrary upper limit
+for(let n = 0; n < maxExceptionArgs; ++n) {
+  LibraryExceptions['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
+  LibraryExceptions['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
+}
 
 mergeInto(LibraryManager.library, LibraryExceptions);
