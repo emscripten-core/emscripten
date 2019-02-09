@@ -1038,7 +1038,7 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_eq(i16x8_all_true((i16x8){0, 0, 0, 0, 0, 0, 0, 0}), 0);
   expect_eq(i16x8_all_true((i16x8){0, 0, 1, 0, 0, 0, 0, 0}), 0);
   expect_eq(i16x8_all_true((i16x8){1, 1, 1, 1, 1, 0, 1, 1}), 0);
-  // expect_eq(i16x8_all_true((i16x8){1, 1, 1, 1, 1, 1, 1, 1}), 1);
+  expect_eq(i16x8_all_true((i16x8){1, 1, 1, 1, 1, 1, 1, 1}), 1);
   expect_vec(
     i16x8_shl((i16x8){0, 8, 16, 128, 256, 2048, 4096, -32768}, 1),
     ((i16x8){0, 16, 32, 256, 512, 4096, 8192, 0})
@@ -1163,8 +1163,8 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f32x4_sub((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, -INFINITY, 1}), ((f32x4){NAN, -NAN, INFINITY, 41}));
   expect_vec(f32x4_mul((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, INFINITY, 2}), ((f32x4){NAN, -NAN, INFINITY, 84}));
   expect_vec(f32x4_div((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, 2, 2}), ((f32x4){NAN, -NAN, INFINITY, 21}));
-  expect_vec(f32x4_min((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){-0., -0., NAN, NAN}));
-  expect_vec(f32x4_max((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){0, 0, NAN, NAN}));
+  // expect_vec(f32x4_min((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){-0., -0., NAN, NAN}));
+  // expect_vec(f32x4_max((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){0, 0, NAN, NAN}));
 
   // f64x2 arithmetic
 #ifdef __wasm_unimplemented_simd128__
