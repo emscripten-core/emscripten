@@ -278,13 +278,30 @@ uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val)
 	return old;
 }
 
-#define alias_symbol(old, new) extern __typeof(old) new __attribute__((alias(#old)))
+uint64_t _emscripten_atomic_fetch_and_add_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_add_u64(addr, val);
+}
 
-alias_symbol(emscripten_atomic_add_u64, _emscripten_atomic_fetch_and_add_u64);
-alias_symbol(emscripten_atomic_sub_u64, _emscripten_atomic_fetch_and_sub_u64);
-alias_symbol(emscripten_atomic_and_u64, _emscripten_atomic_fetch_and_and_u64);
-alias_symbol(emscripten_atomic_or_u64, _emscripten_atomic_fetch_and_or_u64);
-alias_symbol(emscripten_atomic_xor_u64, _emscripten_atomic_fetch_and_xor_u64);
+uint64_t _emscripten_atomic_fetch_and_sub_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_sub_u64(addr, val);
+}
+
+uint64_t _emscripten_atomic_fetch_and_and_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_and_u64(addr, val);
+}
+
+uint64_t _emscripten_atomic_fetch_and_or_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_or_u64(addr, val);
+}
+
+uint64_t _emscripten_atomic_fetch_and_xor_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_xor_u64(addr, val);
+}
 
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds)
 {

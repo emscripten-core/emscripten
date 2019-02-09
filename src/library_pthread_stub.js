@@ -284,6 +284,9 @@ var LibraryPThreadStub = {
   _emscripten_atomic_fetch_and_add_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
 
+  _emscripten_atomic_fetch_and_add_u64__sig: 'iiiii',
+  _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+
   _emscripten_atomic_fetch_and_sub_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_sub_u64: '__atomic_fetch_sub_8',
 
