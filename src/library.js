@@ -4396,12 +4396,18 @@ LibraryManager.library = {
                                "}",
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
+#if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       return 1; // nanoseconds
-    } else if (typeof dateNow !== 'undefined' ||
+    } else
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+    if (typeof dateNow !== 'undefined' ||
                ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])) {
       return 1000; // microseconds (1/1000 of a millisecond)
-    } else {
+    } else
+#endif
+    {
       return 1000*1000; // milliseconds
     }
   },
@@ -4410,8 +4416,17 @@ LibraryManager.library = {
   emscripten_get_now_is_monotonic: function() {
     // return whether emscripten_get_now is guaranteed monotonic; the Date.now
     // implementation is not :(
-    return ENVIRONMENT_IS_NODE || (typeof dateNow !== 'undefined') ||
-        ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']);
+    return (0
+#if ENVIRONMENT_MAY_BE_NODE
+      || ENVIRONMENT_IS_NODE
+#endif
+#if ENVIRONMENT_MAY_BE_SHELL
+      || (typeof dateNow !== 'undefined')
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+      || ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])
+#endif
+      );
   },
 
   // Returns [parentFuncArguments, functionName, paramListName]
