@@ -11,7 +11,7 @@
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
 //                   cannot manually do so, so this is only sent when the
-//                   program manually resizes it (emscripten_set_canvas_size
+//                   program manually resizes it (emscripten_set_canvas_element_size
 //                   or otherwise).
 
 var LibrarySDL = {

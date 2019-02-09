@@ -473,7 +473,7 @@ typedef EM_BOOL (*em_webgl_context_callback)(int eventType, const void *reserved
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 
-extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+extern EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 

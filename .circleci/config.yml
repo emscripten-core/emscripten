@@ -25,6 +25,43 @@ test-defaults: &test-defaults
         command: |
           EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
+test-chrome: &test-chrome
+  <<: *defaults
+  environment:
+    - EMTEST_LACKS_SOUND_HARDWARE=1
+    - EMTEST_DETECT_TEMPFILE_LEAKS=0
+  working_directory: ~/
+  steps:
+    - checkout:
+        path: emscripten/
+    - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+        at: ~/
+    - run:
+        name: install package dependencies
+        command: |
+          apt-get update -q
+          # install chromium-browser in order to ensure we have most of the
+          # dependecies for chrome.
+          EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
+          apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
+    - run:
+        name: download chrome
+        command: |
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          dpkg -i google-chrome-stable_current_amd64.deb
+    - run:
+        name: run tests
+        command: |
+          # --no-sandbox becasue we are running as root and chrome requires
+          # this flag for now: https://crbug.com/638180
+          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
+          CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+          export EMTEST_BROWSER="xvfb-run -a -e /dev/stdout /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+          export EMTEST_LACKS_GRAPHICS_HARDWARE=1
+          export EMCC_CORES=4
+          ./emscripten/tests/runner.py browser
+
 version: 2
 jobs:
   build:
@@ -219,41 +256,7 @@ jobs:
             openbox --exit
             wait # wait for startx to shutdown cleanly
   test-browser-chrome:
-    <<: *defaults
-    environment:
-      - EMTEST_LACKS_SOUND_HARDWARE=1
-      - EMTEST_DETECT_TEMPFILE_LEAKS=0
-    working_directory: ~/
-    steps:
-      - checkout:
-          path: emscripten/
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            # install chromium-browser in order to ensure we have most of the
-            # dependecies for chrome.
-            EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
-            apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
-      - run:
-          name: download chrome
-          command: |
-            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-            dpkg -i google-chrome-stable_current_amd64.deb
-      - run:
-          name: run tests
-          command: |
-            # --no-sandbox becasue we are running as root and chrome requires
-            # this flag for now: https://crbug.com/638180
-            CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
-            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
-            export EMTEST_BROWSER="xvfb-run -a -e /dev/stdout /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
-            export EMTEST_LACKS_GRAPHICS_HARDWARE=1
-            export EMCC_CORES=4
-            ./emscripten/tests/runner.py browser
+    <<: *test-chrome
   test-ab:
     <<: *test-defaults
     environment:
@@ -365,6 +368,10 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=binaryen2
+  test-upstream-wasmobj0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasmobj0
   test-upstream-wasmobj2:
     <<: *test-defaults
     environment:
@@ -374,6 +381,8 @@ jobs:
     environment:
       - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v
       # see explanations in the fastcomp skips for these, earlier
+  test-upstream-browser-chrome:
+    <<: *test-chrome
 
 workflows:
   version: 2
@@ -444,10 +453,16 @@ workflows:
       - test-upstream-binaryen2:
           requires:
             - build-upstream
+      - test-upstream-wasmobj0:
+          requires:
+            - build-upstream
       - test-upstream-wasmobj2:
           requires:
             - build-upstream
       - test-upstream-other:
+          requires:
+            - build-upstream
+      - test-upstream-browser-chrome:
           requires:
             - build-upstream
 

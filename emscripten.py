@@ -148,6 +148,21 @@ def parse_backend_output(backend_output, DEBUG):
     logger.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise
 
+  if 'externUses' not in metadata:
+    exit_with_error('Your fastcomp compiler is out of date, please update! (need >= 1.38.26)')
+
+  # JS optimizer turns some heap accesses to others as an optimization, so make HEAP8 imply HEAPU8, HEAP16->HEAPU16, and HEAPF64->HEAPF32.
+  if 'Int8Array' in metadata['externUses']:
+    metadata['externUses'] += ['Uint8Array']
+  if 'Int16Array' in metadata['externUses']:
+    metadata['externUses'] += ['Uint16Array']
+  if 'Float64Array' in metadata['externUses']:
+    metadata['externUses'] += ['Float32Array']
+
+  # If we are generating references to Math.fround() from here in emscripten.py, declare it used as well.
+  if provide_fround() or metadata['simd']:
+    metadata['externUses'] += ['Math.fround']
+
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
@@ -235,6 +250,15 @@ def analyze_table(function_table_data):
   shared.Settings.WASM_TABLE_SIZE = table_total_size
 
 
+# Extracts from JS library code dependencies to runtime primitives.
+def get_asm_extern_primitives(pre):
+  primitives = re.search(r'\/\/ ASM_LIBRARY EXTERN PRIMITIVES: ([^\n]*)', pre)
+  if primitives:
+    return [x.strip().replace('Math_', 'Math.') for x in primitives.group(1).split(',')]
+  else:
+    return []
+
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
@@ -253,6 +277,10 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
+
+  pre = apply_script_source(pre)
+  asm_extern_primitives = get_asm_extern_primitives(pre)
+  metadata['externUses'] += asm_extern_primitives
 
   pre = memory_and_global_initializers(pre, metadata, mem_init)
   pre, funcs_js = get_js_funcs(pre, funcs)
@@ -346,7 +374,22 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   sending = '{ ' + ', '.join(['"' + math_fix(minified) + '": ' + unminified for (minified, unminified) in sending_vars]) + ' }'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
-                               exported_implemented_functions)
+                               exported_implemented_functions, metadata['initializers'])
+
+  post = apply_table(post)
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
+    post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(metadata['initializers'])]))
+
+    if shared.Settings.WASM:
+      # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
+      # e.g. var a,b,c,d,e,f;
+      post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(shared.Settings.MODULE_EXPORTS) + ';')
+
+      # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+      post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+      receiving = ''
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
@@ -434,8 +477,8 @@ def create_module_asmjs(function_table_sigs, metadata,
   runtime_funcs = create_runtime_funcs_asmjs(exports)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
-  memory_views = create_memory_views()
-  asm_temp_vars = create_asm_temp_vars()
+  memory_views = create_memory_views(metadata)
+  asm_temp_vars = create_asm_temp_vars(metadata)
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
   stack = ''
@@ -452,7 +495,7 @@ def create_module_asmjs(function_table_sigs, metadata,
   async_state = '  var asyncState = 0;\n' if shared.Settings.EMTERPRETIFY_ASYNC else ''
   f0_fround = '  const f0 = Math_fround(0);\n' if provide_fround() else ''
 
-  replace_memory = create_replace_memory()
+  replace_memory = create_replace_memory(metadata)
 
   start_funcs_marker = '\n// EMSCRIPTEN_START_FUNCS\n'
 
@@ -722,6 +765,12 @@ def apply_table(js):
   return js
 
 
+def apply_script_source(js):
+  js = js.replace('{{{ TARGET_BASENAME }}}', shared.Settings.TARGET_BASENAME)
+
+  return js
+
+
 def memory_and_global_initializers(pre, metadata, mem_init):
   if shared.Settings.SIMD == 1:
     pre = open(path_from_root(os.path.join('src', 'ecmascript_simd.js'))).read() + '\n\n' + pre
@@ -732,12 +781,16 @@ def memory_and_global_initializers(pre, metadata, mem_init):
   if shared.Settings.USE_PTHREADS:
     pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
 
-  global_initializers = global_initializer_funcs(metadata['initializers'])
-  if len(global_initializers) > 0:
-    global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in global_initializers)
-    global_initializers = '/* global initializers */ {pthread} __ATINIT__.push({global_initializers});'.format(pthread=pthread, global_initializers=global_initializers)
-  else:
-    global_initializers = '/* global initializers */ /*__ATINIT__.push();*/'
+  global_initializers = ''
+  if not shared.Settings.MINIMAL_RUNTIME:
+    # In traditional runtime, global initializers are pushed to the __ATINIT__ array to be processed when runtime is loaded
+    # In MINIMAL_RUNTIME global initializers are invoked directly off of the asm[''] export object, so this does not apply.
+    global_initializers = global_initializer_funcs(metadata['initializers'])
+    if len(global_initializers) > 0:
+      global_initializers = ', '.join('{ func: function() { %s() } }' % i for i in global_initializers)
+      global_initializers = '/* global initializers */ {pthread} __ATINIT__.push({global_initializers});'.format(pthread=pthread, global_initializers=global_initializers)
+    else:
+      global_initializers = '/* global initializers */ /*__ATINIT__.push();*/'
 
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''\
 STATICTOP = STATIC_BASE + {staticbump};
@@ -814,7 +867,7 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   if not shared.Settings.ONLY_MY_CODE:
     if shared.Settings.ALLOW_MEMORY_GROWTH:
       funcs.append('_emscripten_replace_memory')
-    if not shared.Settings.SIDE_MODULE:
+    if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
       funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
     if shared.Settings.EMTERPRETIFY:
       funcs += ['emterpret']
@@ -987,7 +1040,12 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
         target = i
       name = 'b' + str(i)
       if not shared.Settings.ASSERTIONS:
-        code = 'abort(%s);' % target
+        if 'abort' in shared.Settings.RUNTIME_FUNCS_TO_IMPORT:
+          code = 'abort(%s);' % target
+        else:
+          # Advanced use: developers is generating code that does not include the function 'abort()'. Generate invalid
+          # function pointers to be no-op passthroughs that silently continue execution.
+          code = '\n/*execution is supposed to abort here, but you did not include "abort" in RUNTIME_FUNCS_TO_IMPORT (to save code size?). Silently trucking through, enjoy :)*/\n'
       else:
         code = 'nullFunc_' + sig + '(%d);' % target
       if sig[0] != 'v':
@@ -1208,12 +1266,30 @@ def signature_sort_key(sig):
   return closure
 
 
+def asm_backend_uses(metadata, symbol):
+  # If doing dynamic linking, we should generate full set of runtime primitives, since we cannot know up front ahead
+  # of time what the dynamically linked in modules will need. Also with SAFE_HEAP and Emterpretify, generate full set of views.
+  if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE or shared.Settings.SAFE_HEAP or shared.Settings.EMTERPRETIFY:
+    return True
+
+  # Allow querying asm_backend_uses(metadata, 'Math.') to find if any of the Math objects are used
+  if symbol.endswith('.'):
+    return any(e.startswith(symbol) for e in metadata['externUses'])
+  else:
+    # Querying a single symbol
+    return symbol in metadata['externUses']
+
+
 def create_asm_global_funcs(bg_funcs, metadata):
   maths = ['Math.' + func for func in ['floor', 'abs', 'sqrt', 'pow', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'atan2', 'exp', 'log', 'ceil', 'imul', 'min', 'max', 'clz32']]
   if provide_fround():
     maths += ['Math.fround']
 
-  asm_global_funcs = ''.join(['  var ' + g.replace('.', '_') + '=global' + access_quote(g) + ';\n' for g in maths])
+  asm_global_funcs = ''
+  for math in maths:
+    if asm_backend_uses(metadata, math):
+      asm_global_funcs += '  var ' + math.replace('.', '_') + '=global' + access_quote(math) + ';\n'
+
   asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
   asm_global_funcs += global_simd_funcs(access_quote, metadata)
   if shared.Settings.USE_PTHREADS:
@@ -1450,7 +1526,7 @@ function ftCall_%s(%s) {%s
 
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
-  basic_funcs = ['abort', 'assert', 'setTempRet0', 'getTempRet0']
+  basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
   if shared.Settings.STACK_OVERFLOW_CHECK:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.EMTERPRETIFY:
@@ -1477,9 +1553,12 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
 
 
 def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
-  basic_vars = ['DYNAMICTOP_PTR']
+  basic_vars = []
   if 'tempDoublePtr' in shared.Settings.ASM_PRIMITIVE_VARS:
     basic_vars += ['tempDoublePtr']
+
+  if shared.Settings.SAFE_HEAP or shared.Settings.USES_DYNAMIC_ALLOC or not shared.Settings.MINIMAL_RUNTIME:
+    basic_vars += ['DYNAMICTOP_PTR']
 
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
@@ -1528,7 +1607,7 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 
 def create_asm_runtime_funcs():
   funcs = []
-  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
+  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
   if shared.Settings.ONLY_MY_CODE:
     funcs = []
@@ -1546,26 +1625,33 @@ def create_the_global(metadata):
   # the global is only needed for asm.js
   if shared.Settings.WASM:
     return '{}'
-  fundamentals = ['Math']
-  fundamentals += ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array']
-  fundamentals += ['NaN', 'Infinity']
+  fundamentals = []
+  if asm_backend_uses(metadata, 'Math.'):
+    fundamentals += ['Math']
+  for f in ['Int8Array', 'Int16Array', 'Int32Array', 'Uint8Array', 'Uint16Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'NaN', 'Infinity']:
+    if asm_backend_uses(metadata, f):
+      fundamentals += [f]
+
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
   return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
-def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions):
-  receiving = ''
-  if not shared.Settings.ASSERTIONS:
-    runtime_assertions = ''
-  else:
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    runtime_assertions = '''
+RUNTIME_ASSERTIONS = '''
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 '''
+
+
+def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
+  receiving = ''
+  if not shared.Settings.ASSERTIONS or shared.Settings.MINIMAL_RUNTIME:
+    runtime_assertions = ''
+  else:
+    runtime_assertions = RUNTIME_ASSERTIONS
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
     receiving = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
     receiving = '\n'.join('var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
@@ -1575,16 +1661,39 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-      receiving += ';\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"]' for s in module_exports])
-      # TODO: Instead of the above line, we would like to use the two lines below for smaller size version of exports; but currently JS optimizer is wired to look for the exact above syntax when analyzing
-      # exports.
-#      receiving += ''.join(['var ' + s + ' = asm["' + s + '"];\n' for s in module_exports])
-#      receiving += 'for(var module_exported_function in asm) Module[module_exported_function] = asm[module_exported_function];\n'
+      imported_exports = [s for s in module_exports if s not in initializers]
+
+      if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+        # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+        # var _main;
+        # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+        # var asm = output.instance.exports;
+        # _main = asm["_main"];
+        receiving += '\n'.join([s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
+      else:
+        if shared.Settings.MINIMAL_RUNTIME:
+          # In asm.js exports can be directly processed at top level, i.e.
+          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+          # var _main = asm["_main"];
+          receiving += '\n'.join(['var ' + s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
+        else:
+          receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
     else:
-      receiving += 'for(var i in asm) this[i] = Module[i] = asm[i];\n'
+      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
+        global_object = '(typeof process !== "undefined" ? global : this)'
+      elif shared.Settings.target_environment_may_be('node'):
+        global_object = 'global'
+      else:
+        global_object = 'this'
+
+      if shared.Settings.MINIMAL_RUNTIME:
+        module_assign = ''
+      else:
+        module_assign = 'Module[__exportedFunc] = '
+
+      receiving += 'for(var __exportedFunc in asm) ' + global_object + '[__exportedFunc] = ' + module_assign + 'asm[__exportedFunc];\n'
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in module_exports])
-  receiving += ';\n'
+    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in module_exports]) + '\n'
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -1669,6 +1778,10 @@ function establishStackSpace(stackBase, stackMax) {
   STACK_MAX = stackMax;
 }
 ''' % stack_check]
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    # MINIMAL_RUNTIME moves stack functions to library.
+    funcs = []
 
   if need_asyncify(exports):
     funcs.append('''
@@ -1788,9 +1901,8 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     shared_array_buffer = "asmGlobalArg['Atomics'] = Atomics;"
 
-  module_get = 'Module{access} = {val};'
   module_global = 'var asmGlobalArg = ' + the_global
-  module_library = module_get.format(access=access_quote('asmLibraryArg'), val=sending)
+  module_library = 'var asmLibraryArg = ' + sending
 
   asm_function_top = ('// EMSCRIPTEN_START_ASM\n'
                       'var asm = (/** @suppress {uselessCode} */ function(global, env, buffer) {')
@@ -1811,19 +1923,24 @@ def create_asm_start_pre(asm_setup, the_global, sending, metadata):
   return '\n'.join(lines)
 
 
-def create_asm_temp_vars():
+def create_asm_temp_vars(metadata):
   temp_ints = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue']
   temp_doubles = ['tempDouble']
-  rtn = 'var nan = global%s, inf = global%s' % (access_quote('NaN'), access_quote('Infinity'))
+  rtn = ''
 
   for i in temp_ints:
     if i in shared.Settings.ASM_PRIMITIVE_VARS:
-      rtn += ', ' + i + ' = 0'
+      rtn += 'var ' + i + ' = 0;\n'
 
   for i in temp_doubles:
     if i in shared.Settings.ASM_PRIMITIVE_VARS:
-      rtn += ', ' + i + ' = 0.0'
-  rtn += ';'
+      rtn += 'var ' + i + ' = 0.0;\n'
+
+  if asm_backend_uses(metadata, 'NaN'):
+    rtn += 'var nan = global%s;\n' % (access_quote('NaN'))
+
+  if asm_backend_uses(metadata, 'Infinity'):
+    rtn += 'var inf = global%s;\n' % (access_quote('Infinity'))
 
   return rtn
 
@@ -1839,41 +1956,55 @@ def create_asm_runtime_thread_local_vars():
 '''
 
 
-def create_replace_memory():
+def create_replace_memory(metadata):
   if not shared.Settings.ALLOW_MEMORY_GROWTH:
     return ''
 
-  return '''
+  emscripten_replace_memory = '''
 function _emscripten_replace_memory(newBuffer) {
-  HEAP8 = new Int8Array(newBuffer);
-  HEAP16 = new Int16Array(newBuffer);
-  HEAP32 = new Int32Array(newBuffer);
-  HEAPU8 = new Uint8Array(newBuffer);
-  HEAPU16 = new Uint16Array(newBuffer);
-  HEAPU32 = new Uint32Array(newBuffer);
-  HEAPF32 = new Float32Array(newBuffer);
-  HEAPF64 = new Float64Array(newBuffer);
+'''
+  for heap, view in [
+    ('HEAP8', 'Int8Array'),
+    ('HEAPU8', 'Uint8Array'),
+    ('HEAP16', 'Int16Array'),
+    ('HEAPU16', 'Uint16Array'),
+    ('HEAP32', 'Int32Array'),
+    ('HEAPU32', 'Uint32Array'),
+    ('HEAPF32', 'Float32Array'),
+    ('HEAPF64', 'Float64Array')]:
+    if asm_backend_uses(metadata, view):
+      emscripten_replace_memory += '  %s = new %s(newBuffer);\n' % (heap, view)
+
+  emscripten_replace_memory += '''
   buffer = newBuffer;
   return true;
 }
 '''
+  return emscripten_replace_memory
 
 
 def create_asm_end(exports):
+  if shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM:
+    return '''
+    return %s;
+    })
+    // EMSCRIPTEN_END_ASM
+    ''' % (exports)
+
   return '''
 
   return %s;
 })
 // EMSCRIPTEN_END_ASM
-(%s, Module%s, buffer);
-''' % (exports, 'asmGlobalArg', access_quote('asmLibraryArg'))
+(asmGlobalArg, asmLibraryArg, buffer);
+''' % (exports)
 
 
 def create_first_in_asm():
   return ''
 
 
-def create_memory_views():
+def create_memory_views(metadata):
   """Generates memory views for the different heap types.
 
   Generated symbols:
@@ -1883,13 +2014,16 @@ def create_memory_views():
   """
   ret = '\n'
   for info in HEAP_TYPE_INFOS:
-    access = access_quote('{}Array'.format(info.long_name))
-    format_args = {
-      'heap': info.heap_name,
-      'long': info.long_name,
-      'access': access,
-    }
-    ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
+    heap_name = '{}Array'.format(info.long_name)
+    access = access_quote(heap_name)
+    if asm_backend_uses(metadata, heap_name):
+      format_args = {
+        'heap': info.heap_name,
+        'long': info.long_name,
+        'access': access,
+      }
+      ret += '  var {heap} = new global{access}(buffer);\n'.format(**format_args)
+
   return ret
 
 
@@ -2157,7 +2291,7 @@ def create_em_js(forwarded_json, metadata):
 
 
 def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
-  basic_funcs = ['assert']
+  basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
@@ -2201,21 +2335,21 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
 
 def create_receiving_wasm(exported_implemented_functions):
   receiving = ''
-  if shared.Settings.ASSERTIONS:
+  if not shared.Settings.ASSERTIONS:
+    runtime_assertions = ''
+  else:
+    runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {
-assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
+    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() { ''' + runtime_assertions + '''
 return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
 };
 ''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', '_emscripten_replace_memory', '__start_module']])
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    receiving += ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"]' for s in exported_implemented_functions])
+    receiving += '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exported_implemented_functions]) + '\n'
   else:
-    receiving += 'Module["asm"] = asm;\n' + ';\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { return Module["asm"]["' + s + '"].apply(null, arguments) }' for s in exported_implemented_functions])
-  receiving += ';\n'
+    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { ' + runtime_assertions + ' return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in exported_implemented_functions]) + '\n'
   return receiving
 
 
@@ -2229,8 +2363,8 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
-  module.append('Module%s = %s;\n' % (access_quote('asmLibraryArg'), sending))
-  module.append("var asm = Module['asm'](%s, Module%s, buffer);\n" % ('asmGlobalArg', access_quote('asmLibraryArg')))
+  module.append('var asmLibraryArg = %s;\n' % (sending))
+  module.append("var asm = Module['asm'](asmGlobalArg, asmLibraryArg, buffer);\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)

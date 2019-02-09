@@ -1,0 +1,54 @@
+<!doctype html><html lang="en-us"><head><meta charset="utf-8"></head>
+<body>
+<script>
+  var Module = {};
+
+  function script(url, cb) {
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = cb;
+    document.body.appendChild(s);
+  }
+
+  function clone(object) {
+    return Object.assign({}, object);
+  }
+
+  var page1RunSuccessfully = false;
+  var page2RunSuccessfully = false;
+  function testDone() {
+    if (page1RunSuccessfully && page2RunSuccessfully) {
+      console.error('test passed!');
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', 'http://localhost:8888/report_result?1');
+      xhr.send();
+      setTimeout(function() { window.close() }, 1000);
+    }
+  }
+
+  var ModuleForPage1 = clone(Module);
+  script('page1.asm.js', function() {
+    script('page1.js', function() {
+      ModuleForPage1.inputData = 1;
+      Module1(ModuleForPage1);
+      if (ModuleForPage1.weHaveExecutedSomeCCode) {
+        page1RunSuccessfully = true;
+        testDone();
+      }
+    });
+  });
+
+  var ModuleForPage2 = clone(Module);
+  script('page2.asm.js', function() {
+    script('page2.js', function() {
+      ModuleForPage2.inputData = 1;
+      Module2(ModuleForPage2);
+      if (ModuleForPage2.weHaveExecutedSomeCCode) {
+        page2RunSuccessfully = true;
+        testDone();
+      }
+    });
+  });
+</script>
+</body>
+</html>

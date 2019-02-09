@@ -15,6 +15,14 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
+
+v1.38.26: 02/04/2019
+--------------------
+ - Fix some pthreads proxying deadlocks. See #7865
+
+v1.38.25: 01/18/2019
+--------------------
  - Move kripken/emscripten,emscripten-fastcomp,emscripten-fastcomp-clang to
    emscripten-core/*
 

@@ -271,11 +271,21 @@ LibraryManager.library = {
   __execvpe: 'execl',
   fexecve: 'execl',
 
-  _exit: function(status) {
+  exit: function(status) {
+#if MINIMAL_RUNTIME
+    throw 'exit(' + status + ')';
+#else
     // void _exit(int status);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/exit.html
     exit(status);
+#endif
   },
+
+  _exit__sig: 'vi',
+  _exit: 'exit',
+
+  _Exit__sig: 'vi',
+  _Exit: 'exit',
 
   fork__deps: ['__setErrNo'],
   fork: function() {
@@ -637,6 +647,50 @@ LibraryManager.library = {
 #endif // USE_PTHREADS
   },
 
+#if MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH
+
+// If USES_DYNAMIC_ALLOC is not defined, do not compile in sbrk() or brk(), so that user gets a linker error if they attempt
+// to call into malloc() that would sbrk().
+#if USES_DYNAMIC_ALLOC
+  // If building with minimal runtime in release mode, where malloc() failures are not expected to throw and memory growth
+  // is not allowed, use a really small stub for sbrk() and brk() that return failure.
+  sbrk__asm: true,
+  sbrk__sig: ['ii'],
+#if USES_DYNAMIC_ALLOC == 1
+  sbrk__deps: ['emscripten_get_heap_size'],
+#endif
+  sbrk: function(increment) {
+    increment = increment|0;
+    var oldDynamicTop = 0;
+    var newDynamicTop = 0;
+    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+    newDynamicTop = oldDynamicTop + increment | 0;
+#if USES_DYNAMIC_ALLOC == 1
+    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
+      return -1;
+    }
+#endif
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
+    return oldDynamicTop | 0;
+  },
+  brk__asm: true,
+  brk__sig: ['ii'],
+#if USES_DYNAMIC_ALLOC == 1
+  brk__deps: ['emscripten_get_heap_size'],
+#endif
+  brk: function(newDynamicTop) {
+    newDynamicTop = newDynamicTop|0;
+#if USES_DYNAMIC_ALLOC == 1
+    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
+      return -1;
+    }
+#endif
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
+    return 0;
+  },
+#endif // USES_DYNAMIC_ALLOC
+
+#else
   // Implement a Linux-like 'memory area' for our 'process'.
   // Changes the size of the memory area by |bytes|; returns the
   // address of the previous top ('break') of the memory area
@@ -740,6 +794,7 @@ LibraryManager.library = {
 #endif
     return 0;
   },
+#endif // ~ (MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH)
 
   system__deps: ['__setErrNo'],
   system: function(command) {
@@ -754,6 +809,7 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
+#if !MINIMAL_RUNTIME
   // tiny, fake malloc/free implementation. If the program actually uses malloc,
   // a compiled version will be used; this will only be used if the runtime
   // needs to allocate something, for which this is good enough if otherwise
@@ -774,25 +830,23 @@ LibraryManager.library = {
 #if ASSERTIONS == 2
     warnOnce('using stub free (reference it from C to have the real one included)');
 #endif
-},
+  },
+#endif
 
   abs: 'Math_abs',
   labs: 'Math_abs',
-
-  exit__deps: ['_exit'],
-  exit: function(status) {
-    __exit(status);
-  },
-  _Exit__deps: ['exit'],
-  _Exit: function(status) {
-    __exit(status);
-  },
 
   _ZSt9terminatev__deps: ['exit'],
   _ZSt9terminatev: function() {
     _exit(-1234);
   },
 
+#if MINIMAL_RUNTIME
+  atexit: function(){},
+  __cxa_atexit: function(){},
+  __cxa_thread_atexit: function(){},
+  __cxa_thread_atexit_impl: function(){},
+#else
   atexit__proxy: 'sync',
   atexit__sig: 'ii',
   atexit: function(func, arg) {
@@ -808,9 +862,17 @@ LibraryManager.library = {
   // used in rust, clang when doing thread_local statics
   __cxa_thread_atexit: 'atexit',
   __cxa_thread_atexit_impl: 'atexit',
+#endif
 
+  // TODO: There are currently two abort() functions that get imported to asm module scope: the built-in runtime function abort(),
+  // and this function _abort(). Remove one of these, importing two functions for the same purpose is wasteful.
   abort: function() {
+#if MINIMAL_RUNTIME
+    // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
+    throw 'abort';
+#else
     Module['abort']();
+#endif
   },
 
   __buildEnvironment__deps: ['$ENV'],
@@ -991,7 +1053,7 @@ LibraryManager.library = {
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big'],
+  memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
@@ -1094,6 +1156,7 @@ LibraryManager.library = {
   },
   memset__sig: 'iiii',
   memset__asm: true,
+  memset__deps: ['Int8Array', 'Int32Array'],
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
@@ -1240,6 +1303,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i8__asm: true,
   llvm_ctlz_i8__sig: 'ii',
+  llvm_ctlz_i8__deps: ['Math_clz32'],
   llvm_ctlz_i8: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
@@ -1248,6 +1312,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i16__asm: true,
   llvm_ctlz_i16__sig: 'ii',
+  llvm_ctlz_i16__deps: ['Math_clz32'],
   llvm_ctlz_i16: function(x, isZeroUndef) {
     x = x | 0;
     isZeroUndef = isZeroUndef | 0;
@@ -1256,6 +1321,7 @@ LibraryManager.library = {
 
   llvm_ctlz_i64__asm: true,
   llvm_ctlz_i64__sig: 'iii',
+  llvm_ctlz_i64__deps: ['Math_clz32'],
   llvm_ctlz_i64: function(l, h, isZeroUndef) {
     l = l | 0;
     h = h | 0;
@@ -1271,6 +1337,7 @@ LibraryManager.library = {
   llvm_cttz_i32__asm: true,
 #endif
   llvm_cttz_i32__sig: 'ii',
+  llvm_cttz_i32__deps: ['Math_clz32'],
   llvm_cttz_i32: function(x) { // Note: Currently doesn't take isZeroUndef()
     x = x | 0;
     return (x ? (31 - (Math_clz32((x ^ (x - 1))) | 0) | 0) : 32) | 0;
@@ -1285,6 +1352,7 @@ LibraryManager.library = {
 
   llvm_ctpop_i32__asm: true,
   llvm_ctpop_i32__sig: 'ii',
+  llvm_ctpop_i32__deps: ['Math_imul'],
   llvm_ctpop_i32: function(x) {
     // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
     // http://bits.stephan-brumme.com/countBits.html
@@ -1633,6 +1701,60 @@ LibraryManager.library = {
     stackRestore(ret);
   },
 
+#if MINIMAL_RUNTIME
+  $abortStackOverflow: function(allocSize) {
+    abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
+  },
+
+  $stackAlloc__asm: true,
+  $stackAlloc__sig: 'ii',
+  $stackAlloc__deps: ['$abortStackOverflow'],
+  $stackAlloc: function(size) {
+    size = size|0;
+    var ret = 0;
+    ret = STACKTOP;
+    STACKTOP = (STACKTOP + size)|0;
+    STACKTOP = (STACKTOP + 15)&-16;
+#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
+    if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);
+#endif
+    return ret|0;
+  },
+
+  $stackSave__asm: true,
+  $stackSave__sig: 'i',
+  $stackSave: function() {
+    return STACKTOP|0;
+  },
+
+  $stackRestore__asm: true,
+  $stackRestore__sig: 'vi',
+  $stackRestore: function(top) {
+    top = top|0;
+    STACKTOP = top;
+  },
+
+  $establishStackSpace__asm: true,
+  $establishStackSpace__sig: 'vii',
+  $establishStackSpace: function(stackBase, stackMax) {
+    stackBase = stackBase|0;
+    stackMax = stackMax|0;
+    STACKTOP = stackBase;
+    STACK_MAX = stackMax;
+  },
+
+  $setThrew__asm: true,
+  $setThrew__sig: 'vii',
+  $setThrew: function(threw, value) {
+    threw = threw|0;
+    value = value|0;
+    if ((__THREW__|0) == 0) {
+      __THREW__ = threw;
+      threwValue = value;
+    }
+  },
+#endif
+
   __cxa_pure_virtual: function() {
     ABORT = true;
     throw 'Pure virtual function called!';
@@ -1769,16 +1891,19 @@ LibraryManager.library = {
   llvm_exp2_f32: function(x) {
     return Math.pow(2, x);
   },
+  llvm_exp2_f64__sig: 'dd',
   llvm_exp2_f64: 'llvm_exp2_f32',
 
   llvm_log2_f32: function(x) {
     return Math.log(x) / Math.LN2; // TODO: Math.log2, when browser support is there
   },
+  llvm_log2_f64__sig: 'dd',
   llvm_log2_f64: 'llvm_log2_f32',
 
   llvm_log10_f32: function(x) {
     return Math.log(x) / Math.LN10; // TODO: Math.log10, when browser support is there
   },
+  llvm_log10_f64__sig: 'dd',
   llvm_log10_f64: 'llvm_log10_f32',
 
   llvm_copysign_f32: function(x, y) {
@@ -1791,6 +1916,7 @@ LibraryManager.library = {
 
   round__asm: true,
   round__sig: 'dd',
+  round__deps: ['Math_floor', 'Math_ceil'],
   round: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1798,6 +1924,7 @@ LibraryManager.library = {
 
   roundf__asm: true,
   roundf__sig: 'ff',
+  roundf__deps: ['Math_floor', 'Math_ceil'],
   roundf: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1805,6 +1932,7 @@ LibraryManager.library = {
 
   llvm_round_f64__asm: true,
   llvm_round_f64__sig: 'dd',
+  llvm_round_f64__deps: ['Math_floor', 'Math_ceil'],
   llvm_round_f64: function(d) {
     d = +d;
     return d >= +0 ? +Math_floor(d + +0.5) : +Math_ceil(d - +0.5);
@@ -1812,6 +1940,7 @@ LibraryManager.library = {
 
   llvm_round_f32__asm: true,
   llvm_round_f32__sig: 'ff',
+  llvm_round_f32__deps: ['Math_floor', 'Math_ceil'],
   llvm_round_f32: function(f) {
     f = +f;
     return f >= +0 ? +Math_floor(f + +0.5) : +Math_ceil(f - +0.5); // TODO: use fround?
@@ -1819,7 +1948,7 @@ LibraryManager.library = {
 
   rintf__asm: true,
   rintf__sig: 'ff',
-  rintf__deps: ['round'],
+  rintf__deps: ['round', 'Math_floor'],
   rintf: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1828,7 +1957,7 @@ LibraryManager.library = {
   // TODO: fround?
   llvm_rint_f32__asm: true,
   llvm_rint_f32__sig: 'ff',
-  llvm_rint_f32__deps: ['roundf'],
+  llvm_rint_f32__deps: ['roundf', 'Math_floor'],
   llvm_rint_f32: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
@@ -1836,7 +1965,7 @@ LibraryManager.library = {
 
   llvm_rint_f64__asm: true,
   llvm_rint_f64__sig: 'dd',
-  llvm_rint_f64__deps: ['round'],
+  llvm_rint_f64__deps: ['round', 'Math_floor'],
   llvm_rint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1845,7 +1974,7 @@ LibraryManager.library = {
   // TODO: fround?
   llvm_nearbyint_f32__asm: true,
   llvm_nearbyint_f32__sig: 'ff',
-  llvm_nearbyint_f32__deps: ['roundf'],
+  llvm_nearbyint_f32__deps: ['roundf', 'Math_floor'],
   llvm_nearbyint_f32: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_roundf(f) : +_roundf(f / +2) * +2;
@@ -1853,7 +1982,7 @@ LibraryManager.library = {
 
   llvm_nearbyint_f64__asm: true,
   llvm_nearbyint_f64__sig: 'dd',
-  llvm_nearbyint_f64__deps: ['round'],
+  llvm_nearbyint_f64__deps: ['round', 'Math_floor'],
   llvm_nearbyint_f64: function(f) {
     f = +f;
     return (f - +Math_floor(f) != .5) ? +_round(f) : +_round(f / +2) * +2;
@@ -1865,6 +1994,7 @@ LibraryManager.library = {
   // see also https://github.com/WebAssembly/design/issues/214
   llvm_minnum_f32__asm: true,
   llvm_minnum_f32__sig: 'ff',
+  llvm_minnum_f32__deps: ['Math_min'],
   llvm_minnum_f32: function(x, y) {
     x = +x;
     y = +y;
@@ -1875,6 +2005,7 @@ LibraryManager.library = {
 
   llvm_minnum_f64__asm: true,
   llvm_minnum_f64__sig: 'dd',
+  llvm_minnum_f64__deps: ['Math_min'],
   llvm_minnum_f64: function(x, y) {
     x = +x;
     y = +y;
@@ -1885,6 +2016,7 @@ LibraryManager.library = {
 
   llvm_maxnum_f32__asm: true,
   llvm_maxnum_f32__sig: 'ff',
+  llvm_maxnum_f32__deps: ['Math_max'],
   llvm_maxnum_f32: function(x, y) {
     x = +x;
     y = +y;
@@ -1895,6 +2027,7 @@ LibraryManager.library = {
 
   llvm_maxnum_f64__asm: true,
   llvm_maxnum_f64__sig: 'dd',
+  llvm_maxnum_f64__deps: ['Math_max'],
   llvm_maxnum_f64: function(x, y) {
     x = +x;
     y = +y;
@@ -2994,6 +3127,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tp', C_STRUCTS.timespec.tv_nsec, '((now % 1000)*1000*1000)|0', 'i32') }}}; // nanoseconds
     return 0;
   },
+  __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
   clock_settime__deps: ['__setErrNo'],
   clock_settime: function(clk_id, tp) {
@@ -3083,6 +3217,7 @@ LibraryManager.library = {
   // setjmp.h
   // ==========================================================================
 
+#if SUPPORT_LONGJMP
   // asm.js-style setjmp/longjmp support for wasm binaryen backend.
   // In asm.js compilation, various variables including setjmpId will be
   // generated within 'var asm' in emscripten.py, while in wasm compilation,
@@ -3163,6 +3298,7 @@ LibraryManager.library = {
   emscripten_longjmp: function(env, value) {
     _longjmp(env, value);
   },
+#endif
 
   // ==========================================================================
   // sys/wait.h
@@ -4632,11 +4768,13 @@ LibraryManager.library = {
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
+#if SUPPORT_LONGJMP
   emscripten_prep_setjmp: true,
   emscripten_cleanup_setjmp: true,
   emscripten_check_longjmp: true,
   emscripten_get_longjmp_result: true,
   emscripten_setjmp: true,
+#endif
   emscripten_preinvoke: true,
   emscripten_postinvoke: true,
   emscripten_resume: true,
@@ -4667,6 +4805,7 @@ LibraryManager.library = {
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
   __muldsi3__sig: 'iii',
+  __muldsi3__deps: ['Math_imul'],
   __muldsi3: function($a, $b) {
     $a = $a | 0;
     $b = $b | 0;
@@ -4729,7 +4868,7 @@ LibraryManager.library = {
   },
   __muldi3__sig: 'iiiii',
   __muldi3__asm: true,
-  __muldi3__deps: ['__muldsi3'],
+  __muldi3__deps: ['__muldsi3', 'Math_imul'],
   __muldi3: function($a$0, $a$1, $b$0, $b$1) {
     $a$0 = $a$0 | 0;
     $a$1 = $a$1 | 0;
@@ -4773,7 +4912,7 @@ LibraryManager.library = {
   },
   __udivmoddi4__sig: 'iiiiii',
   __udivmoddi4__asm: true,
-  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32'],
+  __udivmoddi4__deps: ['i64Add', 'i64Subtract', 'llvm_cttz_i32', 'Math_clz32'],
   __udivmoddi4: function($a$0, $a$1, $b$0, $b$1, $rem) {
     $a$0 = $a$0 | 0;
     $a$1 = $a$1 | 0;

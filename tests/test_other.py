@@ -68,11 +68,16 @@ def uses_canonical_tmp(func):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
-    func(self)
-    # Make sure the test isn't lying about the fact that it uses
-    # canonical_tmp
-    self.assertTrue(os.path.exists(self.canonical_temp_dir))
-    shutil.rmtree(self.canonical_temp_dir)
+    try:
+      func(self)
+    finally:
+      # Make sure the test isn't lying about the fact that it uses
+      # canonical_tmp
+      self.assertTrue(os.path.exists(self.canonical_temp_dir))
+      # Remove the temp dir in a try-finally, as otherwise if the
+      # test fails we would not clean it up, and if leak detection
+      # is set we will show that error instead of the actual one.
+      shutil.rmtree(self.canonical_temp_dir)
 
   return decorated
 
@@ -2101,7 +2106,9 @@ int f() {
           assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals']
     for input, expected, passes in [
+
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
        ['eliminateDeadGlobals']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-output.js')).read(),
@@ -2174,28 +2181,32 @@ int f() {
        ['splitMemory']),
       (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
        ['JSDCE']),
-      (path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes-output.js')).read(),
-       ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
+       ['JSDCE']),
+      (path_from_root('tests', 'optimizer', 'JSDCE-fors.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-fors-output.js')).read(),
        ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
        ['AJSDCE']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph2.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph2-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph3.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph3-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph4.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph4-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph5.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph5-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
        ['applyImportAndExportNameChanges']),
+      (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2-output.js')).read(),
+       ['applyImportAndExportNameChanges']),
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noPrint']),
     ]:
       print(input, passes)
 
@@ -2203,9 +2214,15 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      # test calling js optimizer
-      print('  js')
-      output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      acorn = any([p for p in passes if p in ACORN_PASSES])
+
+      # test calling optimizer
+      if not acorn:
+        print('  js')
+        output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      else:
+        print('  acorn')
+        output = run_process(NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
 
       def check_js(js, expected):
         # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
@@ -2338,11 +2355,10 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if 'LLVM opts:' in l])
           if expect_debug:
-            self.assertNotIn('strip-debug', opts)
+            self.assertNotIn('strip-debug', err)
           else:
-            self.assertIn('strip-debug', opts)
+            self.assertIn('strip-debug', err)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -3551,11 +3567,11 @@ int main() {
   def test_os_oz(self):
     with env_modify({'EMCC_DEBUG': '1'}):
       for args, expect in [
-          (['-O1'], 'LLVM opts: -O1'),
-          (['-O2'], 'LLVM opts: -O3'),
-          (['-Os'], 'LLVM opts: -Os'),
-          (['-Oz'], 'LLVM opts: -Oz'),
-          (['-O3'], 'LLVM opts: -O3'),
+          (['-O1'], '-O1'),
+          (['-O2'], '-O3'),
+          (['-Os'], '-Os'),
+          (['-Oz'], '-Oz'),
+          (['-O3'], '-O3'),
         ]:
         print(args, expect)
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
@@ -5871,7 +5887,8 @@ int main(void) {
 
       if args:
         assert err.count(VECTORIZE) == 2, err # specified twice, once per file
-        assert err.count('emcc: LLVM opts: ' + llvm_opts) == 2, err # corresponding to exactly once per invocation of optimizer
+        # corresponding to exactly once per invocation of optimizer
+        assert err.count(os.path.sep + 'opt') == 2, err
       else:
         assert err.count(VECTORIZE) == 0, err # no optimizations
 
@@ -7813,42 +7830,44 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
-  def test_binaryen_metadce(self):
-    def test(filename, expectations, size_slack):
-      # in -Os, -Oz, we remove imports wasm doesn't need
-      for args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs in expectations:
-        print(args, expected_len, expected_exists, expected_not_exists, expected_wasm_size, expected_wasm_imports, expected_wasm_exports, expected_wasm_funcs)
-        run_process([PYTHON, EMCC, filename, '-g2'] + args)
-        # find the imports we send from JS
-        js = open('a.out.js').read()
-        start = js.find('Module.asmLibraryArg = ')
-        end = js.find('}', start) + 1
-        start = js.find('{', start)
-        relevant = js[start + 2:end - 2]
-        relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
-        sent = [x.split(':')[0].strip() for x in relevant]
-        sent = [x for x in sent if x]
-        sent.sort()
-        print('   seen: ' + str(sent))
-        for exists in expected_exists:
-          self.assertIn(exists, sent)
-        for not_exists in expected_not_exists:
-          self.assertNotIn(not_exists, sent)
-        self.assertEqual(len(sent), expected_len)
-        wasm_size = os.path.getsize('a.out.wasm')
-        if expected_wasm_size is not None:
-          ratio = abs(wasm_size - expected_wasm_size) / float(expected_wasm_size)
-          print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_wasm_size, ratio))
-        self.assertLess(ratio, size_slack)
-        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-        imports = wast.count('(import ')
-        exports = wast.count('(export ')
-        funcs = wast.count('\n (func ')
-        self.assertEqual(imports, expected_wasm_imports)
-        self.assertEqual(exports, expected_wasm_exports)
-        if expected_wasm_funcs is not None:
-          self.assertEqual(funcs, expected_wasm_funcs)
+  def run_metadce_tests(self, filename, expectations):
+    size_slack = 0.05
 
+    # in -Os, -Oz, we remove imports wasm doesn't need
+    for args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
+      print('Running metadce test:', args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+      run_process([PYTHON, EMCC, filename, '-g2'] + args)
+      # find the imports we send from JS
+      js = open('a.out.js').read()
+      start = js.find('asmLibraryArg = ')
+      end = js.find('}', start) + 1
+      start = js.find('{', start)
+      relevant = js[start + 2:end - 2]
+      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+      sent = [x.split(':')[0].strip() for x in relevant]
+      sent = [x for x in sent if x]
+      sent.sort()
+      print('   seen: ' + str(sent))
+      for exists in expected_exists:
+        self.assertIn(exists, sent)
+      for not_exists in expected_not_exists:
+        self.assertNotIn(not_exists, sent)
+      self.assertEqual(len(sent), expected_len)
+      wasm_size = os.path.getsize('a.out.wasm')
+      if expected_size is not None:
+        ratio = abs(wasm_size - expected_size) / float(expected_size)
+        print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
+      self.assertLess(ratio, size_slack)
+      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+      imports = wast.count('(import ')
+      exports = wast.count('(export ')
+      funcs = wast.count('\n (func ')
+      self.assertEqual(imports, expected_imports)
+      self.assertEqual(exports, expected_exports)
+      if expected_funcs is not None:
+        self.assertEqual(funcs, expected_funcs)
+
+  def test_binaryen_metadce_minimal(self):
     create_test_file('minimal.c', '''
       #include <emscripten.h>
 
@@ -7858,77 +7877,70 @@ int main() {
       }
       ''')
 
-    if not self.is_wasm_backend():
-      # fastcomp
-      size_slack = 0.05  # changes very little
+    if self.is_wasm_backend():
+      self.run_metadce_tests('minimal.c', [
+        ([],      16, [], ['waka'], 11457,  9, 15, 24), # noqa
+        (['-O1'],  9, [], ['waka'],  8095,  2, 12, 10), # noqa
+        (['-O2'],  9, [], ['waka'],  8077,  2, 12, 10), # noqa
+        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
+        (['-O3'],  0, [], [],          61,  0,  1,  1), # noqa
+        (['-Os'],  0, [], [],          61,  0,  1,  1), # noqa
+        (['-Oz'],  0, [], [],           8,  0,  0,  0), # noqa
+      ])
+    else:
+      self.run_metadce_tests('minimal.c', [
+        ([],      20, ['abort'], ['waka'], 22712, 20, 14, 27), # noqa
+        (['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
+        (['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
+        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
+        (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
+        (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
+        (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
+      ])
 
-      print('test on hello world')
-      test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      21, ['assert'], ['waka'], 46505,  22,   15, 58), # noqa
-        (['-O1'], 16, ['assert'], ['waka'], 12630,  14,   13, 30), # noqa
-        (['-O2'], 16, ['assert'], ['waka'], 12616,  14,   13, 30), # noqa
-        (['-O3'],  6, [],         [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  6, [],         [],        2690,   9,    2, 21), # noqa
-        (['-Oz'],  6, [],         [],        2690,   9,    2, 21), # noqa
+  def test_binaryen_metadce_cxx(self):
+    # test on libc++: see effects of emulated function pointers
+    if self.is_wasm_backend():
+      self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
+        (['-O2'], 34, [], ['waka'], 226582,  22,  32, 565), # noqa
+        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                  34, [], ['waka'], 226582,  22,  32, 565), # noqa
+      ]) # noqa
+    else:
+      self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
+        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   39, 659), # noqa
+        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                  34, ['abort'], ['waka'], 196709,  28,   20, 620), # noqa
+      ]) # noqa
+
+  def test_binaryen_metadce_hello(self):
+    if self.is_wasm_backend():
+      self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
+        ([],      16, [], ['waka'], 29296, 10,  15, 70), # noqa
+        (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
+        (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
+        (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  5, [], [],        2408,  7,   3, 15), # noqa
+        (['-Oz'],  5, [], [],        2367,  7,   2, 14), # noqa
         # finally, check what happens when we export nothing. wasm should be almost empty
         (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],           8,   0,    0,  0), # noqa; totally empty!
+                   0, [], [],          61,  0,   1,  1), # noqa
+      ]) # noqa
+    else:
+      self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
+        ([],      20, ['abort'], ['waka'], 46505,  20,   15, 58), # noqa
+        (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
+        (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
+        (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
+        (['-Os'],  6, [],        [],        2690,   9,    2, 21), # noqa
+        (['-Oz'],  6, [],        [],        2690,   9,    2, 21), # noqa
+        # finally, check what happens when we export nothing. wasm should be almost empty
+        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
+                   0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1557, [],         [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
-      ], size_slack) # noqa
-
-      print('test on a minimal pure computational thing')
-      test('minimal.c', [
-        ([],      21, ['assert'], ['waka'], 22712, 22, 14, 27), # noqa
-        (['-O1'], 11, ['assert'], ['waka'], 10450,  7, 11, 11), # noqa
-        (['-O2'], 11, ['assert'], ['waka'], 10440,  7, 11, 11), # noqa
-        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],         [],          55,  0,  1, 1), # noqa
-        (['-Os'],  0, [],         [],          55,  0,  1, 1), # noqa
-        (['-Oz'],  0, [],         [],          55,  0,  1, 1), # noqa
-      ], size_slack)
-
-      print('test on libc++: see effects of emulated function pointers')
-      test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 35, ['assert'], ['waka'], 196709,  28,   39, 659), # noqa
-        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  35, ['assert'], ['waka'], 196709,  28,   20, 620), # noqa
-      ], size_slack) # noqa
-    else:
-      # wasm-backend
-      size_slack = 0.5  # for now, don't look carefully at code size
-
-      print('test on hello world')
-      test(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      17, ['assert'], ['waka'], 33171, 10,  15, 70), # noqa
-        (['-O1'], 15, ['assert'], ['waka'], 14720,  8,  14, 29), # noqa
-        (['-O2'], 15, ['assert'], ['waka'], 14569,  8,  14, 24), # noqa
-        (['-O3'],  5, [],         [],        3395,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [],         [],        3350,  7,   3, 15), # noqa
-        (['-Oz'],  5, [],         [],        3309,  7,   2, 14), # noqa
-        # finally, check what happens when we export nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],         [],        None,  0,   1,  1), # noqa; FIXME: should be almost totally empty! see https://github.com/WebAssembly/binaryen/pull/1875
-      ], size_slack) # noqa
-
-      print('test on a minimal pure computational thing')
-      test('minimal.c', [
-        ([],      17, ['assert'], ['waka'], 14567,  9, 15, 24), # noqa
-        (['-O1'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
-        (['-O2'], 10, ['assert'], ['waka'], 11255,  2, 12, 10), # noqa
-        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Os'],  0, [],         [],        None,  0,  1,  1), # noqa FIXME see https://github.com/WebAssembly/binaryen/pull/1875
-        (['-Oz'],  0, [],         [],        None,  0,  0,  0), # noqa XXX wasm backend ignores EMSCRIPTEN_KEEPALIVE https://github.com/emscripten-core/emscripten/issues/6233
-      ], size_slack)
-
-      print('test on libc++: see effects of emulated function pointers')
-      test(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 40, ['assert'], ['waka'], 348370,  27,  224, 728), # noqa
-        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  40, ['assert'], ['waka'], 348249,  27,  224, 728), # noqa
-      ], size_slack) # noqa
+                1556, [],        [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+      ]) # noqa
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8325,6 +8337,11 @@ end
     # on exit, we can send out a newline as no more code will run
     self.do_other_test(os.path.join('other', 'fflush_fs_exit'), emcc_args=['-s', 'FORCE_FILESYSTEM=1', '-s', 'EXIT_RUNTIME=1'])
 
+  def test_extern_weak(self):
+    self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+    if not self.is_wasm_backend(): # TODO: wasm backend main module
+      self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
+
   @no_wasm_backend('tests js optimizer')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
@@ -8337,10 +8354,28 @@ int main() {
 }
 ''')
     output = run_process([PYTHON, EMCC, 'src.cpp', '-O2'], stdout=PIPE, stderr=PIPE, check=False)
-    self.assertContained('''
+    # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
-''', output.stderr)
+''', '''
+var ASM_CONSTS = [function() {var x = !<->5.;}];
+                                       ^
+'''), output.stderr)
+
+  def test_EM_ASM_ES6(self):
+    # check we show a proper understandable error for JS parse problems
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    var x = (a, b) => 5; // valid ES6!
+    out('hello!');
+  });
+}
+''')
+    run_process([PYTHON, EMCC, 'src.cpp', '-O2'])
+    self.assertContained('hello!', run_js('a.out.js'))
 
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
@@ -8389,6 +8424,19 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     output = open('a.out.wasm.map').read()
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
+
+  def test_wasm_producers_section(self):
+    # no producers section by default
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    with open('a.out.wasm', 'rb') as f:
+      self.assertNotIn('clang', str(f.read()))
+    size = os.path.getsize('a.out.wasm')
+    if self.is_wasm_backend():
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMIT_PRODUCERS_SECTION=1'])
+      with open('a.out.wasm', 'rb') as f:
+        self.assertIn('clang', str(f.read()))
+      size_with_section = os.path.getsize('a.out.wasm')
+      self.assertLess(size, size_with_section)
 
   def test_html_preprocess(self):
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
@@ -8817,8 +8865,7 @@ int main () {
   # (need to contain the export name once for unminified access from calling code, and should not have the unminified name exist more than once, that would be wasteful for size)
   def test_function_exports_are_small(self):
     def test(wasm, closure, opt):
-      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0'] + wasm + opt + closure
-      print(str(args))
+      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0'] + wasm + opt + closure
       run_process(args)
 
       output = open('a.js', 'r').read()
@@ -8834,7 +8881,77 @@ int main () {
       for closure in [[], ['--closure', '1']]:
         for opt in [['-O2'], ['-O3'], ['-Os']]:
           test(['-s', 'WASM=0'], closure, opt)
+          test(['-s', 'WASM=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], closure, opt)
 
-    for closure in [[], ['--closure', '1']]:
-      for opt in [['-O1']]:
-        test(['-s', 'WASM=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], closure, opt)
+  @no_wasm_backend('tests asmjs, sizes sensitive to fastcomp')
+  def test_minimal_runtime_code_size(self):
+    smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
+                               '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
+                               '-s', 'ENVIRONMENT=web',
+                               '-s', 'TEXTDECODER=2',
+                               '-s', 'ABORTING_MALLOC=0',
+                               '-s', 'ALLOW_MEMORY_GROWTH=0',
+                               '-s', 'SUPPORT_ERRNO=0',
+                               '-s', 'DECLARE_ASM_MODULE_EXPORTS=1',
+                               '-s', 'MALLOC=emmalloc',
+                               '-s', 'GL_EMULATE_GLES_VERSION_STRING_FORMAT=0',
+                               '-s', 'GL_EXTENSIONS_IN_PREFIXED_FORMAT=0',
+                               '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0',
+                               '-s', 'GL_TRACK_ERRORS=0',
+                               '-s', 'GL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
+                               '-s', 'GL_POOL_TEMP_BUFFERS=0',
+                               '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
+                               '--output_eol', 'linux']
+
+    asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']
+    opts = ['-O3', '--closure', '1', '-DNDEBUG', '-ffast-math']
+
+    hello_world_sources = [path_from_root('tests', 'small_hello_world.c'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=0', '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
+    hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'), path_from_root('tests', 'minimal_webgl', 'webgl.c'), '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL']
+
+    test_cases = [
+      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5307, 'a.asm.js': 10932, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5380, 'a.wasm': 8978})
+    ]
+
+    success = True
+
+    def print_percent(actual, expected):
+      if actual == expected:
+        return ''
+      return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
+
+    for case in test_cases:
+      print('\n-----------------------------\n' + str(case))
+      flags, sources, files = case
+      args = [PYTHON, EMCC, '-o', 'a.html'] + sources + smallest_code_size_args + flags
+      print('\n' + ' '.join(args))
+      run_process(args)
+      print('\n')
+
+      total_output_size = 0
+      total_expected_size = 0
+      for f in files:
+        expected_size = files[f]
+        size = os.path.getsize(f)
+        print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
+
+        # Hack: Generated .mem initializer files have different sizes on different platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home Linux gives x+2 bytes..)
+        # TODO: identify what is causing this (until that, expected .mem initializer file sizes are conservative estimates that do not contribute to total size)
+        mem_slop = 20
+        if f.endswith('.mem') or f.endswith('.wasm') and size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+          size = expected_size
+
+        total_output_size += size
+        total_expected_size += expected_size
+
+      print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
+      if total_output_size > total_expected_size:
+        print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
+      if total_output_size < total_expected_size:
+        print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Please update test other.test_minimal_runtime_code_size with the new updated size!')
+      if total_output_size != total_expected_size:
+        success = False
+    assert success
