@@ -1013,7 +1013,13 @@ def harness_server_func(in_queue, out_queue, port):
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
         print('[server response:', self.path, ']')
-        out_queue.put(self.path)
+        if out_queue.empty():
+          out_queue.put(self.path)
+        else:
+          # a badly-behaving test may send multiple xhrs with reported results; we just care
+          # about the first (if we queued the others, they might be read as responses for
+          # later tests)
+          print('[excessive response, ignoring]')
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
@@ -1038,7 +1044,11 @@ def harness_server_func(in_queue, out_queue, port):
         if not in_queue.empty():
           url, dir = in_queue.get()
           print('[queue command:', url, dir, ']')
+          assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
+          assert out_queue.empty(), 'the single response from the last test was read'
+          # tell the browser to load the test
           self.wfile.write('COMMAND:' + url)
+          # move us to the right place to serve the files
           os.chdir(dir)
         else:
           # the browser must keep polling
