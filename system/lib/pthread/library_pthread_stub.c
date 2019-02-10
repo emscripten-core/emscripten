@@ -320,11 +320,6 @@ int emscripten_is_main_runtime_thread()
 	return 1;
 }
 
-int emscripten_is_main_browser_thread()
-{
-	return 1;
-}
-
 void emscripten_main_thread_process_queued_calls()
 {
 	// nop

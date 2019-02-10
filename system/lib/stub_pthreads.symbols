@@ -49,7 +49,6 @@
 -------- T emscripten_futex_wait
 -------- T emscripten_futex_wake
 -------- T emscripten_has_threading_support
--------- T emscripten_is_main_browser_thread
 -------- T emscripten_is_main_runtime_thread
 -------- T emscripten_main_thread_process_queued_calls
 -------- T emscripten_num_logical_cores

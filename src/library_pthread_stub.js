@@ -8,17 +8,21 @@ var LibraryPThreadStub = {
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
   // ===================================================================================
 
+#if ENVIRONMENT_MAY_BE_WORKER || WASM_BACKEND
   emscripten_is_main_browser_thread: function() {
-#if ENVIRONMENT_MAY_BE_WORKER
 #if MINIMAL_RUNTIME
     return typeof importScripts === 'undefined';
 #else
     return !ENVIRONMENT_IS_WORKER;
 #endif
-#else
-    return 1;
-#endif
   },
+#else
+  emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__sig: 'i',
+  emscripten_is_main_browser_thread: function() {
+    return 1;
+  },
+#endif
 
   pthread_mutexattr_init: function() {},
   pthread_mutexattr_setschedparam: function() {},
