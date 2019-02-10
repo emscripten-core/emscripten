@@ -24,13 +24,13 @@ class interactive(BrowserCore):
     print()
 
   def test_html5_fullscreen(self):
-    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
+    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
 
   def test_html5_mouse(self):
-    self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
+    self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
 
   def test_html5_pointerlockerror(self):
-    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0')
+    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
 
   def test_sdl_mousewheel(self):
     self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
@@ -211,7 +211,7 @@ class interactive(BrowserCore):
   def test_html5_callbacks_on_calling_thread(self):
     # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
     for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
   # and that the application can manually proxy the event from main browser thread to the application main thread, to

@@ -88,6 +88,11 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
 #define EMSCRIPTEN_RESULT_TIMED_OUT           -8
 
+#define EMSCRIPTEN_EVENT_TARGET_INVALID        0
+#define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
+#define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
+#define EMSCRIPTEN_EVENT_TARGET_SCREEN         ((const char*)3)
+
 #define EM_BOOL int
 #define EM_TRUE 1
 #define EM_FALSE 0
@@ -141,6 +146,7 @@ typedef struct EmscriptenMouseEvent {
   long movementY;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
   long padding;
@@ -356,6 +362,7 @@ typedef struct EmscriptenTouchPoint
   EM_BOOL onTarget;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
 } EmscriptenTouchPoint;
