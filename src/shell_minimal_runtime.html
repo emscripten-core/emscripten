@@ -17,9 +17,13 @@
       var s = document.createElement('script');
       s.src = url;
       s.onload = () => {
+#if MODULARIZE
         var c = {{{ EXPORT_NAME }}};
         delete {{{ EXPORT_NAME }}};
         ok(c);
+#else
+        ok();
+#endif
       };
       document.body.appendChild(s);
     });
@@ -52,14 +56,12 @@
 #else
 #if MEM_INIT_METHOD == 1
   Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
-    Module.asm = r[1];
     Module.mem = r[2];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     s(url).then(() => { URL.revokeObjectURL(url) });
   });
 #else
   Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
-    Module.asm = r[1];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     s(url).then(() => { URL.revokeObjectURL(url) });
   });

@@ -4588,4 +4588,5 @@ window.close = function() {
     args = ['-s', 'MINIMAL_RUNTIME=2']
     for wasm in [[], ['-s', 'WASM=0', '--memory-init-file', '0'], ['-s', 'WASM=0', '--memory-init-file', '1']]:
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
+        print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
