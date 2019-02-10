@@ -192,3 +192,16 @@ GL_APICALL void GL_APIENTRY emscripten_glViewport (GLint x, GLint y, GLsizei wid
 
 extern pthread_key_t currentActiveWebGLContext;
 extern pthread_key_t currentThreadOwnsItsWebGLContext;
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+
+// When building with multithreading, return pointers to C functions that can perform proxying.
+#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return functionName;
+
+#else
+
+// When building with singlethreading, return pointers to JS library layer so that C code (Regal library)
+// can override them.
+#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return emscripten_##functionName;
+
+#endif

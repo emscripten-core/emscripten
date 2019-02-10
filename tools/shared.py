@@ -2736,7 +2736,6 @@ class Building(object):
       'EGL': 'library_egl.js',
       'GL': 'library_webgl.js',
       'GLESv2': 'library_webgl.js',
-      'GLESv3': ['library_webgl.js', 'library_webgl2.js'],
       'GLEW': 'library_glew.js',
       'glfw': 'library_glfw.js',
       'glfw3': 'library_glfw.js',

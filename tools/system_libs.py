@@ -167,6 +167,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       assert '-emu' not in libname
       return []
 
+  def gl_version_flags(libname):
+    if shared.Settings.USE_WEBGL2:
+      assert '-webgl2' in libname
+      return ['-DUSE_WEBGL2=1']
+    else:
+      assert '-webgl2' not in libname
+      return []
+
   # libc
   def create_libc(libname):
     logging.debug(' building libc for cache')
@@ -378,9 +386,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for dirpath, dirnames, filenames in os.walk(src_dir):
       filenames = filter(lambda f: f.endswith('.c'), filenames)
       files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz']
+    flags = ['-Oz', '-s', 'USE_WEBGL2=1']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
+    flags += gl_version_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -635,22 +644,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
+  gl_name = 'libgl'
+  if shared.Settings.USE_PTHREADS: gl_name += '-mt'
+  if shared.Settings.LEGACY_GL_EMULATION: gl_name += '-emu'
+  if shared.Settings.USE_WEBGL2: gl_name += '-webgl2'
+  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
+
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
     if not shared.Settings.WASM_BACKEND:
       system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
     else:
       system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
     system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 

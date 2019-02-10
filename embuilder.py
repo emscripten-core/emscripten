@@ -253,6 +253,13 @@ def main():
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', [static_library_name('libgl-mt')], ['-s', 'USE_PTHREADS=1'])
+    elif what == 'gl-webgl2':
+      build('''
+        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
+        int main() {
+          return int(emscripten_GetProcAddress("waka waka"));
+        }
+      ''', [static_library_name('libgl-webgl2')], ['-s', 'USE_WEBGL2=1'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':

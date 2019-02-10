@@ -1,5 +1,3 @@
-#ifdef __EMSCRIPTEN_PTHREADS__
-
 #include <emscripten/threading.h>
 #include <emscripten.h>
 #include <string.h>
@@ -7,6 +5,8 @@
 
 #include "webgl1.h"
 #include "webgl2.h"
+
+#ifdef __EMSCRIPTEN_PTHREADS__
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glReadBuffer, GLenum);
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glDrawRangeElements, GLenum, GLuint, GLuint, GLsizei, GLenum, const void *); // TODO: Not async if rendering from client side memory
@@ -113,6 +113,8 @@ ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glTexStorage2D, GLenum, GLsizei, G
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glTexStorage3D, GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetInternalformativ, GLenum, GLenum, GLenum, GLsizei, GLint *);
 
+#endif // ~__EMSCRIPTEN_PTHREADS__
+
 // Extensions:
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorNV(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorEXT(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
@@ -132,8 +134,6 @@ GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays) { gl
 GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsVertexArray(array); }
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
-
-#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return functionName;
 
 void *emscripten_webgl2_get_proc_address(const char *name)
 {
@@ -261,12 +261,3 @@ void *emscripten_webgl2_get_proc_address(const char *name)
 	RETURN_FN(glDrawBuffersWEBGL);
 	return 0;
 }
-
-extern void *emscripten_webgl_get_proc_address(const char *name)
-{
-	void *ptr = emscripten_webgl1_get_proc_address(name);
-	if (ptr) return ptr;
-	return emscripten_webgl2_get_proc_address(name);
-}
-
-#endif // ~__EMSCRIPTEN_PTHREADS__

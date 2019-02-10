@@ -60,43 +60,28 @@ var LibraryWebGL2 = {
     emscriptenWebGLGet(name_, p, 'Integer64');
   },
 
-  glGetInternalformativ__sig: 'viiiii',
-  glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
+  glGetInternalFormativ__sig: 'viiiii',
+  glGetInternalFormativ: function(target, internalformat, pname, bufSize, params) {
     if (bufSize < 0) {
+#if GL_ASSERTIONS
+      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
+#endif
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-#if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalformativ: bufSize=' + bufSize + ' < 0');
-#endif
       return;
     }
-    var samples = GLctx['getInternalformatParameter'](target, internalformat, 0x80A9 /*GL_SAMPLES*/);
-    if (!samples) {
-      // probably target != GL_RENDERBUFFER or bad internalformat
-      GL.recordError(0x0500 /* GL_INVALID_ENUM */);
+    if (!params) {
+      // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
+      // if values == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_ENUM in glGetInternalformativ');
+      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
 #endif
+      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-    switch(pname) {
-      case 0x80A9 /*GL_SAMPLES*/:
-        var n = Math.min(bufSize, samples.length);
-        for (var i = 0; i < n; i++) {
-          var v = samples[i];
-          {{{ makeSetValue('params', 'i*4', 'v', 'i32') }}};
-        }
-        break;
-      case 0x9380 /*GL_NUM_SAMPLE_COUNTS*/:
-        if (bufSize > 1) {
-          var v = samples.length;
-          {{{ makeSetValue('params', '0', 'v', 'i32') }}};
-        }
-        break;
-      default:
-        GL.recordError(0x0500 /* GL_INVALID_ENUM */);
-#if GL_ASSERTIONS
-        err('GL_INVALID_ENUM due to unknown pname in glGetInternalformativ: ' + pname);
-#endif
+    var ret = GLctx['getInternalFormatParameter'](target, internalformat, pname);
+    if (ret === null) return;
+    for (var i = 0; i < ret.length && i < bufSize; ++i) {
+      {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
     }
   },
 
@@ -955,31 +940,6 @@ var LibraryWebGL2 = {
     return GLctx.isSync(sync);
   },
 
-  glGetInternalFormativ__sig: 'viiiii',
-  glGetInternalFormativ: function(target, internalformat, pname, bufSize, params) {
-    if (bufSize < 0) {
-#if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-    if (!params) {
-      // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
-      // if values == null, issue a GL error to notify user about it.
-#if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
-#endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
-      return;
-    }
-    var ret = GLctx.getInternalFormatParameter(target, internalformat, pname);
-    if (ret === null) return;
-    for (var i = 0; i < ret.length && i < bufSize; ++i) {
-      {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
-    }
-  },
-
   glGetUniformuiv__sig: 'viii',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: 'glGetUniformiv',
@@ -1285,8 +1245,12 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
  [9, 'copyTexSubImage3D'],
  [10, 'blitFramebuffer']];
 
+#if USE_WEBGL2
+
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
 
 recordGLProcAddressGet(LibraryWebGL2);
 
 mergeInto(LibraryManager.library, LibraryWebGL2);
+
+#endif

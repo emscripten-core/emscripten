@@ -1,5 +1,3 @@
-#ifdef __EMSCRIPTEN_PTHREADS__
-
 #include <emscripten/threading.h>
 #include <emscripten.h>
 #include <string.h>
@@ -8,6 +6,8 @@
 #include "webgl1.h"
 #include "webgl1_ext.h"
 #include "webgl2.h"
+
+#ifdef __EMSCRIPTEN_PTHREADS__
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
@@ -624,7 +624,7 @@ RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectuivEXT, GLenum, G
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjecti64vEXT, GLenum, GLenum, GLint64 *);
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectui64vEXT, GLenum, GLenum, GLuint64 *);
 
-#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return functionName;
+#endif // ~__EMSCRIPTEN_PTHREADS__
 
 void *emscripten_webgl1_get_proc_address(const char *name)
 {
@@ -783,5 +783,3 @@ void *emscripten_webgl1_get_proc_address(const char *name)
   RETURN_FN(glGetQueryObjectui64vEXT);
   return 0;
 }
-
-#endif // ~__EMSCRIPTEN_PTHREADS__
