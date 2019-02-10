@@ -842,8 +842,6 @@ class Ports(object):
           shutil.copytree(path, os.path.join(fullname, subdir))
           Ports.clear_project_build(name)
           return
-      logging.error('could not find port %s' % name)
-      sys.exit(1)
 
     fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
 
