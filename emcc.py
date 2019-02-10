@@ -341,7 +341,7 @@ class JSOptimizer(object):
     if shared.Settings.PRECISE_F32:
       passes = ['asmPreciseF32'] + passes
     if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-      passes += ['symbolMap=' + self.target + '.symbols']
+      passes += ['symbolMap=' + shared.replace_or_append_suffix(self.target, '.symbols')]
     if self.profiling_funcs and 'minifyNames' in passes:
       passes += ['profilingFuncs']
     if self.minify_whitespace and 'last' in passes:
@@ -1048,7 +1048,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = wasm_binary_target + '.map'
+    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
 
     if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
       options.separate_asm = True
@@ -2271,7 +2271,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = do_emscripten(final, target + '.mem')
+      final = do_emscripten(final, shared.replace_or_append_suffix(target, '.mem'))
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
@@ -2284,7 +2284,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
-        shutil.move(cd_target, target + '.cd')
+        shutil.move(cd_target, shared.replace_or_append_suffix(target, '.cd'))
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2357,11 +2357,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       memfile = None
       if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
          (shared.Settings.WASM_BACKEND and not shared.Settings.MEM_INIT_IN_WASM):
-        if shared.Settings.MINIMAL_RUNTIME:
-          # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
-          memfile = target.replace('.html', '.mem').replace('.js', '.mem')
-        else:
-          memfile = target + '.mem'
+         memfile = shared.replace_or_append_suffix(target, '.mem')
 
       if memfile:
         if shared.Settings.WASM_BACKEND:
@@ -2533,7 +2529,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target + '.symbols'])
+        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), shared.replace_or_append_suffix(target, '.cd'), shared.replace_or_append_suffix(target, '.symbols')])
 
       if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
@@ -3036,7 +3032,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if intermediate_debug_info:
       cmd += ['-g']
     if emit_symbol_map:
-      cmd += ['--symbolmap=' + target + '.symbols']
+      cmd += ['--symbolmap=' + shared.replace_or_append_suffix(target, '.symbols')]
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
     # emit text (at least until wasm gains support for debug info in binaries)
