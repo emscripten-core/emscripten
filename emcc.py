@@ -1311,7 +1311,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = 1
 
       # Always use the new HTML5 API event target lookup rules (TODO: enable this when the other PR lands)
-      # shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
+      shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
 
       # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
       if not shared.Settings.WASM:
