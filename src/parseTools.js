@@ -25,9 +25,9 @@ function processMacros(text) {
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
-  var fileext = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
-  var ishtml = (fileext == "html" || fileext == "htm") ? true : false;
-  var instyle = false;
+  var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
+  var isHtml = (fileExt == 'html' || fileExt == 'htm') ? true : false;
+  var inStyle = false;
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
@@ -37,33 +37,33 @@ function preprocess(text, filenameHint) {
       if (line[line.length-1] == '\r') {
         line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-      if (ishtml && line.indexOf('<style') != -1 && !instyle) {
-        instyle = true;
+      if (isHtml && line.indexOf('<style') != -1 && !inStyle) {
+        inStyle = true;
       }
-      if (ishtml && line.indexOf('</style') != -1 && instyle) {
-        instyle = false;
+      if (isHtml && line.indexOf('</style') != -1 && inStyle) {
+        inStyle = false;
       }
 
-      if (!instyle && line.indexOf('#if') === 0) {
+      if (!inStyle && line.indexOf('#if') === 0) {
         var parts = line.split(' ');
         var after = parts.slice(1).join(' ');
         var truthy = !!eval(after);
         showStack.push(truthy);
-      } else if (!instyle && line.indexOf('#include') === 0) {
+      } else if (!inStyle && line.indexOf('#include') === 0) {
         var filename = line.substr(line.indexOf(' ')+1);
         if (filename.indexOf('"') === 0) {
           filename = filename.substr(1, filename.length - 2);
         }
         var included = read(filename);
         ret += '\n' + preprocess(included, filename) + '\n';
-      } else if (!instyle && line.indexOf('#else') === 0) {
+      } else if (!inStyle && line.indexOf('#else') === 0) {
         assert(showStack.length > 0);
         showStack.push(!showStack.pop());
-      } else if (!instyle && line.indexOf('#endif') === 0) {
+      } else if (!inStyle && line.indexOf('#endif') === 0) {
         assert(showStack.length > 0);
         showStack.pop();
       } else {
-        if (!instyle && line[0] == '#') {
+        if (!inStyle && line[0] == '#') {
           printErr("Ignoring unclear preprocessor command: " + line);
         }
         if (showStack.indexOf(false) == -1) {
