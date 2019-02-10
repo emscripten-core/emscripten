@@ -162,7 +162,8 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_gl.js',
+        'library_webgl.js',
+        'library_webgl2.js',
         'library_openal.js',
         'library_vr.js'
       ]);
