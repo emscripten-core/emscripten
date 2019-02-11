@@ -2242,7 +2242,15 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    run_process([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env)
+    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
+
+    response_filename = response_file.create_response_file(filenames, TEMP_DIR)
+    cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
+    try:
+      run_process(cmd, stdout=stdout, stderr=stderr, env=env)
+    finally:
+      try_delete(response_filename)
+
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
