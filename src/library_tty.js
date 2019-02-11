@@ -72,6 +72,9 @@ mergeInto(LibraryManager.library, {
           if (result === null || result === undefined) break;
           bytesRead++;
           buffer[offset+i] = result;
+
+          // If EOL character, return having put it in the buffer.
+          if (result === 10) break;
         }
         if (bytesRead) {
           stream.node.timestamp = Date.now();
@@ -79,6 +82,12 @@ mergeInto(LibraryManager.library, {
         return bytesRead;
       },
       write: function(stream, buffer, offset, length, pos) {
+#if UNBUFFERED_PRINT
+        if (!stream.tty || !stream.tty.ops.write) {
+          throw new FS.ErrnoError(ERRNO_CODES.ENXIO);
+        }
+        stream.tty.ops.write(offset, length, buffer);
+#else
         if (!stream.tty || !stream.tty.ops.put_char) {
           throw new FS.ErrnoError({{{ cDefine('ENXIO') }}});
         }
@@ -89,10 +98,11 @@ mergeInto(LibraryManager.library, {
         } catch (e) {
           throw new FS.ErrnoError({{{ cDefine('EIO') }}});
         }
+#endif
         if (length) {
           stream.node.timestamp = Date.now();
         }
-        return i;
+        return length;
       }
     },
     default_tty_ops: {
@@ -164,8 +174,13 @@ mergeInto(LibraryManager.library, {
         if (val === null || val === {{{ charCode('\n') }}}) {
           out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
-        } else {
-          if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
+        } else if (val) {
+          tty.output.push(val); // val == 0 would cut text output off in the middle.
+        }
+      },
+      write: function(offset, length, buffer) {
+        if (length) {
+          outp(UTF8ArrayToString(buffer, offset, length));
         }
       },
       flush: function(tty) {
@@ -180,8 +195,13 @@ mergeInto(LibraryManager.library, {
         if (val === null || val === {{{ charCode('\n') }}}) {
           err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
-        } else {
-          if (val != 0) tty.output.push(val);
+        } else if (val) {
+          tty.output.push(val);
+        }
+      },
+      write: function(offset, length, buffer) {
+        if (length) {
+          errp(UTF8ArrayToString(buffer, offset, length));
         }
       },
       flush: function(tty) {

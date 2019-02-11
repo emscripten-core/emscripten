@@ -51,7 +51,7 @@
     <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
     <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden=1></progress>  
+      <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
@@ -61,10 +61,10 @@
       <input type="checkbox" id="resize">Resize canvas
       <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
       &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked,
                                                                                 document.getElementById('resize').checked)">
     </div>
-    
+
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
@@ -76,9 +76,18 @@
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
+        setElement: (function() {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
+          return function(str) {
+            if (element) {
+              element.value += str;
+              element.scrollTop = element.scrollHeight;
+            }
+          };
+        })(),
+#if !UNBUFFERED_PRINT
+        print: (function() {
           return function(text) {
             if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
             // These replacements are necessary if you render to raw HTML
@@ -87,16 +96,31 @@
             //text = text.replace(/>/g, "&gt;");
             //text = text.replace('\n', '<br>', 'g');
             console.log(text);
-            if (element) {
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
+            Module.setElement(text + "\n");
           };
         })(),
         printErr: function(text) {
           if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
           console.error(text);
+          Module.setElement(text + "\n");
         },
+#else
+        buf: ['', ''],
+        print: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          Module.setElement(text);
+          var lines = (Module.buf[0] + text).split('\n');
+          lines.slice(0,-1).forEach(function(text) {console.log(text);});
+          Module.buf[0] = lines.pop();
+        },
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          Module.setElement(text);
+          var lines = (Module.buf[1] + text).split('\n');
+          lines.slice(0,-1).forEach(function(text) {console.error(text);});
+          Module.buf[1] = lines.pop();
+        },
+#endif
         canvas: (function() {
           var canvas = document.getElementById('canvas');
 

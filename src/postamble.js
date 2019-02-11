@@ -316,10 +316,12 @@ function checkUnflushedContent() {
   // How we flush the streams depends on whether we are in SYSCALLS_REQUIRE_FILESYSTEM=0
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
-  var print = out;
-  var printErr = err;
+  var saveOut = out;
+  var saveErr = err;
+  var saveOutp = outp;
+  var saveErrp = errp;
   var has = false;
-  out = err = function(x) {
+  out = err = outp = errp = function(x) {
     has = true;
   }
   try { // it doesn't matter if it fails
@@ -343,8 +345,10 @@ function checkUnflushedContent() {
     });
 #endif
   } catch(e) {}
-  out = print;
-  err = printErr;
+  out = saveOut;
+  err = saveErr;
+  outp = saveOutp;
+  errp = saveErrp;
   if (has) {
     warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
 #if FILESYSTEM == 0 || SYSCALLS_REQUIRE_FILESYSTEM == 0

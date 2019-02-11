@@ -12,7 +12,7 @@
       }
 
       .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      div.emscripten { text-align: center; }      
+      div.emscripten { text-align: center; }
       div.emscripten_border { border: 1px solid black; }
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
       canvas.emscripten { border: 0px none; background-color: black; }
@@ -40,7 +40,7 @@
         border-right: 5px solid rgb(235, 235, 235);
         border-bottom: 5px solid rgb(235, 235, 235);
         border-top: 5px solid rgb(120, 120, 120);
-        
+
         border-radius: 100%;
         background-color: rgb(189, 215, 46);
       }
@@ -108,8 +108,8 @@
    id="Layer_1"
    x="0px"
    y="0px"
-   width="296px" 
-   height="78px" 
+   width="296px"
+   height="78px"
    viewBox="420 120 100 170"
    enable-background="new 0 0 900 400"
    xml:space="preserve"
@@ -1201,7 +1201,7 @@
 <span id='controls'>
   <span><input type="checkbox" id="resize">Resize canvas</span>
   <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
-  <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+  <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked,
                                                                             document.getElementById('resize').checked)">
   </span>
 </span>
@@ -1210,7 +1210,7 @@
       <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
 
-    
+
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
     </div>
@@ -1224,9 +1224,18 @@
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
+        setElement: (function() {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
+          return function(str) {
+            if (element) {
+              element.value += str;
+              element.scrollTop = element.scrollHeight;
+            }
+          };
+        })(),
+#if !UNBUFFERED_PRINT
+        print: (function() {
           return function(text) {
             if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
             // These replacements are necessary if you render to raw HTML
@@ -1235,16 +1244,31 @@
             //text = text.replace(/>/g, "&gt;");
             //text = text.replace('\n', '<br>', 'g');
             console.log(text);
-            if (element) {
-              element.value += text + "\n";
-              element.scrollTop = element.scrollHeight; // focus on bottom
-            }
+            Module.setElement(text + "\n");
           };
         })(),
         printErr: function(text) {
           if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
           console.error(text);
+          Module.setElement(text + "\n");
         },
+#else
+        buf: ['', ''],
+        print: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          Module.setElement(text);
+          var lines = (Module.buf[0] + text).split('\n');
+          lines.slice(0,-1).forEach(function(text) {console.log(text);});
+          Module.buf[0] = lines.pop();
+        },
+        printErr: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          Module.setElement(text);
+          var lines = (Module.buf[1] + text).split('\n');
+          lines.slice(0,-1).forEach(function(text) {console.error(text);});
+          Module.buf[1] = lines.pop();
+        },
+#endif
         canvas: (function() {
           var canvas = document.getElementById('canvas');
 

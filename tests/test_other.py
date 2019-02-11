@@ -27,8 +27,8 @@ import uuid
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
-from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
+from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify, Settings, Popen
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, TEMP_DIR, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
@@ -1310,6 +1310,37 @@ int f() {
     _test()
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'),
                   ['-O2', '--closure', '1'],
+                  output_filename='a.out.js')
+    _test()
+
+  def test_stdin2(self):
+    def _test():
+      for engine in JS_ENGINES:
+        if engine == V8_ENGINE:
+          continue # no stdin support in v8 shell
+        engine[0] = os.path.normpath(engine[0])
+        print(engine, file=sys.stderr)
+        # work around a bug in python's subprocess module
+        # (we'd use run_js() normally)
+        try_delete('out.txt')
+        try_delete('err.txt')
+        if os.name == 'nt': # windows
+          os.system('type "in.txt" | {} >out.txt 2>err.txt'.format(' '.join(Building.doublequote_spaces(shared.make_js_command(os.path.normpath(exe), engine)))))
+        else: # posix
+          os.system('cat in.txt | {} > out.txt 2>err.txt'.format(' '.join(Building.doublequote_spaces(shared.make_js_command(exe, engine)))))
+        self.assertContained('''Enter your name: Hello Dave.
+What is your favourite colour? Green is a great colour!
+Goodbye, Dave.''', open('out.txt').read())
+        self.assertContained('Do you want another go?', open('err.txt').read())
+
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin2.c'),
+                  ['-s', 'NO_EXIT_RUNTIME=0'],
+                  output_filename='a.out.js')
+    open('in.txt', 'w').write('Dave\nGreen\nNo\n')
+    exe = os.path.join(self.get_dir(), 'a.out.js')
+    _test()
+    Building.emcc(path_from_root('tests', 'module', 'test_stdin2.c'),
+                  ['-s', 'NO_EXIT_RUNTIME=0', '-O2', '--closure', '1'],
                   output_filename='a.out.js')
     _test()
 
@@ -3234,8 +3265,25 @@ int main(void) {
 var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
 ''')
 
-    run_process([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js'])
-    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
+    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js', '-s', 'UNBUFFERED_PRINT=0']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
+    assert r'<{(123456789)}>' in output, output
+
+  def test_module_unbuffered_print(self):
+    open('code.cpp', 'w').write(r'''
+#include <stdio.h>
+int main(void) {
+  printf("123456789");
+  return 0;
+}
+''')
+
+    open('pre.js', 'w').write(r'''
+var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
+''')
+
+    Popen([PYTHON, EMCC, 'code.cpp', '--pre-js', 'pre.js', '-s', 'NO_EXIT_RUNTIME=0', '-s', 'UNBUFFERED_PRINT=1']).communicate()
+    output = run_js(os.path.join(self.get_dir(), 'a.out.js'), stderr=PIPE, full_output=True, engine=NODE_JS, assert_returncode=None)
     assert r'<{(123456789)}>' in output, output
 
   def test_precompiled_headers(self):
@@ -3476,7 +3524,8 @@ int main() {
         for assertions in [0, 1]:
           for flush in [0, 1]:
             # TODO: also check FILESYSTEM=0 here. it never worked though, buffered output was not emitted at shutdown
-            print(src, no_exit, assertions, flush)
+            msg = ('no exit' if no_exit == 1 else 'exit') + (', assertions' if assertions == 1 else ', no assertions') + (', flush' if flush == 1 else ', no flush')
+            print(src + ':', msg)
             cmd = [PYTHON, EMCC, src, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-s', 'ASSERTIONS=%d' % assertions]
             if flush:
               cmd += ['-DFLUSH']
@@ -3490,7 +3539,7 @@ int main() {
   def test_fs_after_main(self):
     for args in [[], ['-O1']]:
       print(args)
-      run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp')])
+      run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp'), '-DUNBUFFERED_PRINT=%s' % Settings.UNBUFFERED_PRINT])
       self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
 
   @no_wasm_backend('tests internal compiler command')

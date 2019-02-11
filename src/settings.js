@@ -1438,3 +1438,11 @@ var LEGACY_SETTINGS = [
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
 ];
+
+var UNBUFFERED_PRINT = 1; // If set to 0, printf, puts and other stdio output functions will
+                          // call the buffered 'out' and 'err' functions which do not print anything
+                          // until a newline is found.
+                          // If set to 1 (the default) these function will call versions of
+                          // 'out' and 'err' which print immediately.
+                          // N.B. This functionality is independent of the line buffering implemented
+                          // by musl libc which happens regardless.

@@ -231,7 +231,7 @@ function allocate(slab, types, allocator, ptr) {
     ret = ptr;
   } else {
     ret = [_malloc,
-#if DECLARE_ASM_MODULE_EXPORTS    
+#if DECLARE_ASM_MODULE_EXPORTS
     stackAlloc,
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,

@@ -326,6 +326,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
 var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
 var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
+// These functions are called from stdout functions (printf, puts etc) when UNBUFFERED_PRINT is set to 1
+var outp = Module['print'] || (typeof process !== 'undefined' ? process.stdout.write.bind(process.stdout) : (typeof putstr != 'undefined' ? putstr : function(str){}));
+var errp = Module['printErr'] || (typeof process !== 'undefined' ? process.stderr.write.bind(process.stderr) : outp);
 
 // Merge back in the overrides
 for (key in moduleOverrides) {

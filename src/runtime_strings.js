@@ -60,7 +60,13 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
 #else // TEXTDECODER == 2
 #if TEXTDECODER
   if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
+#if USE_PTHREADS
+    // Need to copy the data to a non-shared buffer as TextDecoder isn't compatible with SharedArrayBuffer.
+    // Uint8Array.from would be more readable, but isn't universally available.
+    return UTF8Decoder.decode(Uint8Array.prototype.slice.call(u8Array.subarray(idx, endPtr)));
+#else
     return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
+#endif
   } else {
 #endif // TEXTDECODER
     var str = '';

@@ -42,11 +42,16 @@ int main() {
   EM_ASM({
     (function() {
       // exiting main should not cause any weirdness with printing
-      var realPrint = out;
+      var realOutp = outp;
+      var realOut = out;
       Module['extraSecretBuffer'] = '';
+      outp = function(x) {
+        Module['extraSecretBuffer'] += x;
+        realOutp(x);
+      };
       out = function(x) {
         Module['extraSecretBuffer'] += x;
-        realPrint(x);
+        realOut(x);
       };
     })();
   });

@@ -1205,9 +1205,9 @@ int main(int argc, char **argv)
           }
 
           if (std::uncaught_exception())
-            std::cout << "ERROR: uncaught_exception still set.";
+            std::cout << "ERROR: uncaught_exception still set." << std::endl;
           else
-            std::cout << "OK";
+            std::cout << "OK" << std::endl;
         }
       '''
       self.do_run(src, 'OK\n')

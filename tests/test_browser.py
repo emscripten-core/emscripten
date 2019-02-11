@@ -3394,14 +3394,19 @@ window.close = function() {
         strcpy(ret, temp);
         temp[1] = 'x';
         EM_ASM({
-          Module.realPrint = out;
+          Module.realOut = out;
+          Module.realOutp = outp;
           out = function(x) {
+            if (!Module.printed) Module.printed = x + "\n";
+            Module.realOut(x);
+          };
+          outp = function(x) {
             if (!Module.printed) Module.printed = x;
-            Module.realPrint(x);
+            Module.realOutp(x);
           };
         });
         puts(ret);
-        EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
+        EM_ASM({ assert(Module.printed === 'hello through side\n', ['expected', Module.printed]); });
         REPORT_RESULT(2);
         return 0;
       }
@@ -3465,11 +3470,17 @@ window.close = function() {
       # linked dynlibs printed), and in pre.js it is too early (out is not yet
       # setup by the shell).
       create_test_file('post.js', r'''
-          Module.realPrint = out;
+          Module.realOut = out;
+          Module.realOutp = outp;
           out = function(x) {
             if (!Module.printed) Module.printed = "";
             Module.printed += x + '\n'; // out is passed str without last \n
-            Module.realPrint(x);
+            Module.realOut(x);
+          };
+          outp = function(x) {
+            if (!Module.printed) Module.printed = "";
+            Module.printed += x;
+            Module.realOutp(x);
           };
         ''')
       src += r'''
@@ -4036,7 +4047,7 @@ window.close = function() {
     self.run_browser('manual_wasm_instantiate.html', 'wasm instantiation succeeded', '/report_result?1')
 
   def test_binaryen_worker(self):
-    self.do_test_worker(['-s', 'WASM=1'])
+    self.do_test_worker(['-s', 'WASM=1', '-g4'])
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
