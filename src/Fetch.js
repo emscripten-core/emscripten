@@ -112,11 +112,10 @@ var Fetch = {
     if (isMainThread) {
       addRunDependency('library_fetch_init');
 
-      var fetchJs = 'fetch-worker.js';
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
-      fetchJs = locateFile(fetchJs);
+      var fetchJs = locateFile('{{{ FETCH_WORKER_FILE }}}');
       Fetch.worker = new Worker(fetchJs);
       Fetch.worker.onmessage = function(e) {
         out('fetch-worker sent a message: ' + e.filename + ':' + e.lineno + ': ' + e.message);
