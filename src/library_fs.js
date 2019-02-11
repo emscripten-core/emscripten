@@ -1305,8 +1305,9 @@ mergeInto(LibraryManager.library, {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else if (ENVIRONMENT_IS_NODE) {
+      } else
 #if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
         // for nodejs with or without crypto support included
         try {
             var crypto_module = require('crypto');
@@ -1316,8 +1317,9 @@ mergeInto(LibraryManager.library, {
             // nodejs doesn't have crypto support so fallback to Math.random
             random_device = function() { return (Math.random()*256)|0; };
         }
+      } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-      } else {
+      {
         // default for ES5 platforms
         random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see emscripten-core/emscripten/pull/7096 */ };
       }

@@ -210,15 +210,17 @@ mergeInto(LibraryManager.library, {
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
-            if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_NODE
+            if (ENVIRONMENT_IS_NODE) {
               WebSocketConstructor = require('ws');
-#endif ENVIRONMENT_MAY_BE_NODE
-            } else if (ENVIRONMENT_IS_WEB) {
+            } else
+#endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_WEB
+            if (ENVIRONMENT_IS_WEB) {
               WebSocketConstructor = window['WebSocket'];
+            } else
 #endif // ENVIRONMENT_MAY_BE_WEB
-            } else {
+            {
               WebSocketConstructor = WebSocket;
             }
             ws = new WebSocketConstructor(url, opts);
