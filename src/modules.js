@@ -163,7 +163,6 @@ var LibraryManager = {
     if (!STRICT) {
       libraries = libraries.concat([
         'library_webgl.js',
-        'library_webgl2.js',
         'library_openal.js',
         'library_vr.js'
       ]);
@@ -181,6 +180,10 @@ var LibraryManager = {
           'library_async.js'
         ]);
       }
+    }
+
+    if (USE_WEBGL2) {
+      libraries.push('library_webgl2.js');
     }
 
     if (LEGACY_GL_EMULATION) {

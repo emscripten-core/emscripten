@@ -1925,7 +1925,6 @@ var LibraryGL = {
     emscriptenWebGLGetUniform(program, location, params, 'Integer');
   },
 
-
   glGetUniformLocation__sig: 'iii',
   glGetUniformLocation: function(program, name) {
 #if GL_ASSERTIONS

@@ -53,6 +53,12 @@ Available operations and tasks:
         libc++abi
         gl
         gl-mt
+        gl-emu
+        gl-mt-emu
+        gl-webgl2
+        gl-mt-webgl2
+        gl-emu-webgl2
+        gl-mt-emu-webgl2
         native_optimizer
         binaryen
         bullet
@@ -110,7 +116,8 @@ CXX_WITH_STDLIB = '''
       '''
 
 SYSTEM_TASKS = [
-    'al', 'compiler-rt', 'gl', 'gl-mt', 'libc', 'libc-mt', 'libc-extras',
+    'al', 'compiler-rt', 'gl', 'gl-mt', 'gl-emu', 'gl-mt-emu', 'gl-webgl2',
+    'gl-mt-webgl2', 'gl-emu-webgl2', 'gl-mt-emu-webgl2', 'libc', 'libc-mt', 'libc-extras',
     'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
     'pthreads_stub', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++',
     'libc++_noexcept', 'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
@@ -239,27 +246,20 @@ def main():
           return y->y;
         }
       ''', [static_library_name('libc++abi')])
-    elif what == 'gl':
+    elif what == 'gl' or what.startswith('gl-'):
+      opts = []
+      if '-mt' in what:
+        opts += ['-s', 'USE_PTHREADS=1']
+      if '-emu' in what:
+        opts += ['-s', 'LEGACY_GL_EMULATION=1']
+      if '-webgl2' in what:
+        opts += ['-s', 'USE_WEBGL2=1']
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('libgl')])
-    elif what == 'gl-mt':
-      build('''
-        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
-        int main() {
-          return int(emscripten_GetProcAddress("waka waka"));
-        }
-      ''', [static_library_name('libgl-mt')], ['-s', 'USE_PTHREADS=1'])
-    elif what == 'gl-webgl2':
-      build('''
-        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
-        int main() {
-          return int(emscripten_GetProcAddress("waka waka"));
-        }
-      ''', [static_library_name('libgl-webgl2')], ['-s', 'USE_WEBGL2=1'])
+      ''', [static_library_name('lib%s' % what)], opts)
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':

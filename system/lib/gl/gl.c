@@ -1588,6 +1588,13 @@ for line in open('a').readlines():
   // The following list contains only exactly those functions that library_glemu.js currently implements.
   // Others will return a null pointer.
 
+  // misc renamings
+  if (!strcmp(name, "glCreateProgramObject")) return emscripten_glCreateProgram;
+  if (!strcmp(name, "glUseProgramObject")) return emscripten_glUseProgram;
+  if (!strcmp(name, "glCreateShaderObject")) return emscripten_glCreateShader;
+  if (!strcmp(name, "glAttachObject")) return emscripten_glAttachShader;
+  if (!strcmp(name, "glDetachObject")) return emscripten_glDetachShader;
+
   RETURN_GL_EMU_FN(glDeleteObject);
   RETURN_GL_EMU_FN(glGetObjectParameteriv);
   RETURN_GL_EMU_FN(glGetInfoLog);
@@ -1771,21 +1778,13 @@ void* emscripten_GetProcAddress(const char *name_) {
   end = strstr(name, "ANGLE");
   if (end) *end = 0;
 
-  void *ptr;
+  void *ptr = emscripten_webgl1_get_proc_address(name);
 
 #if LEGACY_GL_EMULATION
-  // misc renamings
-  if (!strcmp(name, "glCreateProgramObject")) ptr = emscripten_glCreateProgram;
-  else if (!strcmp(name, "glUseProgramObject")) ptr = emscripten_glUseProgram;
-  else if (!strcmp(name, "glCreateShaderObject")) ptr = emscripten_glCreateShader;
-  else if (!strcmp(name, "glAttachObject")) ptr = emscripten_glAttachShader;
-  else if (!strcmp(name, "glDetachObject")) ptr = emscripten_glDetachShader;
-  else ptr = emscripten_legacy_gl_emulation_GetProcAddress(name);
-#else
-  ptr = emscripten_webgl1_get_proc_address(name);
+  if (!ptr) ptr = emscripten_legacy_gl_emulation_GetProcAddress(name);
+#endif
 #if USE_WEBGL2
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
-#endif
 #endif
 
   free(name);

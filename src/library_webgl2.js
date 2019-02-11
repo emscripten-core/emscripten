@@ -942,7 +942,9 @@ var LibraryWebGL2 = {
 
   glGetUniformuiv__sig: 'viii',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
-  glGetUniformuiv: 'glGetUniformiv',
+  glGetUniformuiv: function(program, location, params) {
+    emscriptenWebGLGetUniform(program, location, params, 'Integer');
+  },
 
   glGetFragDataLocation__sig: 'iii',
   glGetFragDataLocation: function(program, name) {
