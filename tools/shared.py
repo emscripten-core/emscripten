@@ -1888,7 +1888,28 @@ class Building(object):
     return args
 
   @staticmethod
+  def link_to_object(linker_inputs, target):
+    # link using lld for the wasm backend with wasm object files,
+    # other otherwise for linking of bitcode we must use our python
+    # code (necessary for asm.js, for wasm bitcode see
+    # https://bugs.llvm.org/show_bug.cgi?id=40654)
+    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+      Building.link_lld(linker_inputs, target, ['--relocatable'])
+    else:
+      Building.link(linker_inputs, target)
+    assert os.path.exists(target)
+    return target
+
+  @staticmethod
+  def link_llvm(linker_inputs, target):
+    # runs llvm-link to link things.
+    output = run_process([LLVM_LINK] + linker_inputs + ['-o', target], stdout=PIPE).stdout
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    return target
+
+  @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
+    # runs lld to link things.
     # lld doesn't currently support --start-group/--end-group since the
     # semantics are more like the windows linker where there is no need for
     # grouping.
@@ -1934,12 +1955,14 @@ class Building(object):
     if Settings.EXPORT_ALL:
       cmd += ['--export-all']
 
-    logger.debug('emcc: lld-linking: %s to %s', args, target)
-    check_call(cmd)
+    cmd += opts
+
+    run_process(cmd)
     return target
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+    # "Full-featured" linking: looks into archives (duplicates lld functionality)
     if not temp_files:
       temp_files = configuration.get_temp_files()
     actual_files = []
@@ -1973,7 +1996,7 @@ class Building(object):
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        logger.warning('object %s is not LLVM bitcode, cannot link' % (f))
+        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2047,7 +2070,7 @@ class Building(object):
           if has_ar:
             consider_object(absolute_path_f, force_add=True)
           else:
-            # If there are no archives then we can simply link all valid bitcode
+            # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
       else:
@@ -2100,9 +2123,8 @@ class Building(object):
           f.write("\"" + arg + "\"\n")
 
     if not just_calculate:
-      logger.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
-      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
+      Building.link_llvm(link_args, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
@@ -2186,7 +2208,7 @@ class Building(object):
         continue # e.g.  filename.o:  , saying which file it's from
       parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
-      if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
+      if len(parts) == 3 and parts[0] == "--------" or re.match(r'^\d\d\d\d\d\d\d\d$', parts[0]):
         parts.pop(0)
       if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
@@ -2687,9 +2709,6 @@ class Building(object):
       b = open(filename, 'rb').read(4)
       if b[:2] == b'BC':
         return True
-      # look for ar signature
-      elif Building.is_ar(filename):
-        return True
       # on macOS, there is a 20-byte prefix which starts with little endian
       # encoding of 0x0B17C0DE
       elif b == b'\xDE\xC0\x17\x0B':
@@ -2703,8 +2722,8 @@ class Building(object):
 
   @staticmethod
   def is_wasm(filename):
-    magic = asstr(open(filename, 'rb').read(4))
-    return magic == '\0asm'
+    magic = open(filename, 'rb').read(4)
+    return magic == b'\0asm'
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library

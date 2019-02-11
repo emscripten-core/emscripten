@@ -35,7 +35,7 @@ def get(ports, settings, shared):
         o_s.append(o)
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
-      shared.Building.link(o_s, final)
+      shared.Building.link_to_object(o_s, final)
       return final
     return [shared.Cache.get('sdl2', create, what='port')]
   else:

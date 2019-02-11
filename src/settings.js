@@ -1029,7 +1029,7 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
-var WASM_OBJECT_FILES = 0;
+var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.

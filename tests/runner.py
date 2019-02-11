@@ -222,18 +222,18 @@ core_test_modes = [
   'asm3',
   'asm2g',
   'asm2f',
-  'binaryen0',
-  'binaryen1',
-  'binaryen2',
-  'binaryen3',
-  'binaryens',
-  'binaryenz',
+  'wasm0',
+  'wasm1',
+  'wasm2',
+  'wasm3',
+  'wasms',
+  'wasmz',
   'asmi',
   'asm2i',
 ]
 
 # The default core test mode, used when none is specified
-default_core_test_mode = 'binaryen0'
+default_core_test_mode = 'wasm0'
 
 # The non-core test modes
 non_core_test_modes = [
@@ -515,7 +515,7 @@ class RunnerCore(unittest.TestCase):
       if len(additional_files) + len(libraries):
         shutil.move(object_file, object_file + '.alone')
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        Building.link(inputs, object_file)
+        Building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
@@ -1413,7 +1413,7 @@ def get_poppler_library(runner_core):
   # Combine libraries
 
   combined = os.path.join(runner_core.get_dir(), 'poppler-combined.bc')
-  Building.link(poppler + freetype, combined)
+  Building.link_to_object(poppler + freetype, combined)
 
   return combined
 

@@ -46,15 +46,15 @@ def files_in_path(path_components, filenames):
 
 def get_cflags():
   flags = []
-  if shared.Settings.WASM_OBJECT_FILES:
-     flags += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+    flags += ['-s', 'WASM_OBJECT_FILES=0']
   return flags
 
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   if libname.endswith('.bc'):
-    shared.Building.link(inputs, libname)
+    shared.Building.link_to_object(inputs, libname)
   elif libname.endswith('.a'):
     shared.Building.emar('cr', libname, inputs)
   else:
@@ -143,7 +143,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)

@@ -225,7 +225,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           print('(no output)')
           continue
         syms = Building.llvm_nm(target)
-        assert len(syms.defs) == 1 and 'main' in syms.defs, 'Failed to generate valid bitcode'
+        assert len(syms.defs) == 1 and ('main' in syms.defs or '__original_main' in syms.defs), 'Failed to generate valid bitcode'
         if target == 'js': # make sure emcc can recognize the target as a bitcode file
           shutil.move(target, target + '.bc')
           target += '.bc'
@@ -410,21 +410,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         self.assertContained('missing function', run_js(target, stderr=STDOUT, assert_returncode=None))
         try_delete(target)
 
-        # Combining those bc files into js should work
+        # Combining those object files into js should work
         proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE)
         assert os.path.exists(target), proc.stdout + '\n' + proc.stderr
         self.assertContained('side got: hello from main, over', run_js(target))
 
-        # Combining bc files into another bc should also work
+        # Combining object files into another object should also work
         try_delete(target)
         assert not os.path.exists(target)
-        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.bc'] + args, stdout=PIPE, stderr=PIPE)
-        syms = Building.llvm_nm('combined.bc')
-        assert len(syms.defs) == 2 and 'main' in syms.defs, 'Failed to generate valid bitcode'
-        proc = run_process([PYTHON, compiler, 'combined.bc', '-o', 'combined.bc.js'], stdout=PIPE, stderr=PIPE)
+        proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'] + args, stdout=PIPE, stderr=PIPE)
+        syms = Building.llvm_nm('combined.o')
+        assert len(syms.defs) in (2, 3) and 'main' in syms.defs, 'Should be two functions (and in the wasm backend, also __original_main)'
+        proc = run_process([PYTHON, compiler, 'combined.o', '-o', 'combined.o.js'], stdout=PIPE, stderr=PIPE)
         assert len(proc.stdout) == 0, proc.stdout
-        assert os.path.exists('combined.bc.js'), 'Expected %s to exist' % ('combined.bc.js')
-        self.assertContained('side got: hello from main, over', run_js('combined.bc.js'))
+        assert os.path.exists('combined.o.js'), 'Expected %s to exist' % ('combined.o.js')
+        self.assertContained('side got: hello from main, over', run_js('combined.o.js'))
 
   def test_emcc_7(self):
     for compiler in [EMCC, EMXX]:
@@ -506,7 +506,7 @@ f.close()
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
     # Exactly one child process should have triggered libc build!
@@ -527,7 +527,7 @@ f.close()
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc'
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_bc', 'libc.bc')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
@@ -553,6 +553,7 @@ f.close()
     assert not output.stderr
     self.assertContained('LLVM', output.stdout)
 
+  @no_wasm_backend("see https://bugs.llvm.org/show_bug.cgi?id=40470")
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
@@ -712,29 +713,40 @@ f.close()
       emcmake = path_from_root('emcmake')
 
     # Test that building static libraries by default generates UNIX archives (.a, with the emar tool)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.a'))
-      assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.a'))
+    self.clear()
+    run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    assert Building.is_ar('libstatic_lib.a')
+    run_process([PYTHON, EMAR, 'x', 'libstatic_lib.a'])
+    found = False # hashing makes the object name random
+    for x in os.listdir('.'):
+      if x.endswith('.o'):
+        found = True
+        if self.is_wasm_backend():
+          assert Building.is_wasm(x)
+        else:
+          assert Building.is_bitcode(x)
+    assert found
 
     # Test that passing the -DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON
     # directive causes CMake to generate LLVM bitcode files as static libraries
     # (.bc)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_bitcode(os.path.join(tempdirname, 'libstatic_lib.bc'))
-      assert not Building.is_ar(os.path.join(tempdirname, 'libstatic_lib.bc'))
+    self.clear()
+    run_process([emcmake, 'cmake', '-DEMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES=ON', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    if self.is_wasm_backend():
+      assert Building.is_wasm('libstatic_lib.bc')
+    else:
+      assert Building.is_bitcode('libstatic_lib.bc')
+    assert not Building.is_ar('libstatic_lib.bc')
 
     # Test that one is able to fake custom suffixes for static libraries.
     # (sometimes projects want to emulate stuff, and do weird things like files
     # with ".so" suffix which are in fact either ar archives or bitcode files)
-    with temp_directory(self.get_dir()) as tempdirname:
-      run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
-      run_process([Building.which('cmake'), '--build', '.'])
-      assert Building.is_bitcode(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
-      assert Building.is_ar(os.path.join(tempdirname, 'myprefix_static_lib.somecustomsuffix'))
+    self.clear()
+    run_process([emcmake, 'cmake', '-DSET_FAKE_SUFFIX_IN_PROJECT=1', path_from_root('tests', 'cmake', 'static_lib')])
+    run_process([Building.which('cmake'), '--build', '.'])
+    assert Building.is_ar('myprefix_static_lib.somecustomsuffix')
 
   # Tests that the CMake variable EMSCRIPTEN_VERSION is properly provided to user CMake scripts
   def test_cmake_emscripten_version(self):
@@ -1347,7 +1359,7 @@ int f() {
     run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
     proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE)
-    self.assertContained('is not LLVM bitcode, cannot link', proc.stderr)
+    self.assertContained('is not a valid object file for emscripten, cannot link', proc.stderr)
 
   def test_export_all(self):
     lib = r'''
@@ -2438,6 +2450,7 @@ int f() {
         output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0, engine=NODE_JS)
         assert "FAIL" not in output, output
 
+  @no_wasm_backend('cannot nativize a wasm object file (...yet?)')
   @no_windows('test_llvm_nativizer does not work on Windows')
   def test_llvm_nativizer(self):
     if MACOS:
@@ -3699,6 +3712,7 @@ int main() { printf("t:1\n"); }
     self.assertNotContained('__GLOBAL__sub_', open('a.out.js').read())
     self.assertContained('t:1', run_js('a.out.js'))
 
+  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40472')
   def test_implicit_func(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
@@ -6803,6 +6817,7 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', run_js('a.out.js'))
 
+  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40412 and https://bugs.llvm.org/show_bug.cgi?id=40470')
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
@@ -6824,6 +6839,7 @@ Resolved: "/" => "/"
         assert ('''warning: emterpreter bytecode is fairly large''' in stderr) == need_warning, stderr
         assert ('''It is recommended to use  -s EMTERPRETIFY_FILE=..''' in stderr) == need_warning, stderr
 
+  @no_wasm_backend('needs LTO with WASM_OBJECT_FILES')
   def test_llvm_lto(self):
     sizes = {}
     lto_levels = [0, 1, 2, 3]
@@ -7067,6 +7083,7 @@ int main() {
     test('hello_123.c', ['-O1'], 1, 2)
     test('fasta.cpp', ['-O3', '-g2'], 2, 3)
 
+  @no_wasm_backend('tests our python linking logic')
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
     if not os.path.exists(with_space):
@@ -7508,6 +7525,7 @@ int main() {
     stderr = run_process([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'], stderr=PIPE, check=False).stderr
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
+  @no_wasm_backend('assumes object files are bitcode')
   def test_disable_inlining(self):
     create_test_file('test.c', r'''
 #include <stdio.h>
@@ -7525,14 +7543,12 @@ int main() {
     run_process([PYTHON, EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1'])
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
-    Building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test.bc')
+    Building.llvm_opt('test.bc', ['-internalize', '-internalize-public-api-list=main', '-globaldce'], 'test2.bc')
 
     # To this test to be successful, foo() shouldn't have been inlined above and
     # foo() should be in the function list
-    syms = Building.llvm_nm('test.bc', include_internal=True)
+    syms = Building.llvm_nm('test2.bc', include_internal=True)
     assert 'foo' in syms.defs, 'foo() should not be inlined'
-    try_delete('test.c')
-    try_delete('test.bc')
 
   @no_wasm_backend()
   def test_output_eol(self):
@@ -7879,7 +7895,7 @@ int main() {
 
     if self.is_wasm_backend():
       self.run_metadce_tests('minimal.c', [
-        ([],      16, [], ['waka'], 11457,  9, 15, 24), # noqa
+        ([],      11, [], ['waka'],  9336,  5, 13, 16), # noqa
         (['-O1'],  9, [], ['waka'],  8095,  2, 12, 10), # noqa
         (['-O2'],  9, [], ['waka'],  8077,  2, 12, 10), # noqa
         # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7916,7 +7932,7 @@ int main() {
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 29296, 10,  15, 70), # noqa
+        ([],      16, [], ['waka'], 29296, 10,  15, 67), # noqa
         (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
         (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
         (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
@@ -8062,16 +8078,24 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  def test_wasm_backend(self):
-    if not shared.has_wasm_target(shared.get_llc_targets()):
-      self.skipTest('wasm backend was not built')
-    if self.is_wasm_backend():
-      return # already the default
-    with env_modify({'EMCC_WASM_BACKEND': '1'}):
-      for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
-        print(args)
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args)
-        self.assertContained('hello, world!', run_js('a.out.js'))
+  def test_wasm_backend_lto(self):
+    if not self.is_wasm_backend():
+      self.skipTest('not using wasm backend')
+    # test codegen in lto mode, and compare to normal (wasm object) mode
+    for args in [[], ['-O1'], ['-O2'], ['-O3'], ['-Os'], ['-Oz']]:
+      print(args)
+      print('wasm in object')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-c', '-o', 'a.o'])
+      assert Building.is_wasm('a.o') and not Building.is_bitcode('a.o')
+      print('bitcode in object')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-c', '-o', 'a.o', '-s', 'WASM_OBJECT_FILES=0'])
+      assert not Building.is_wasm('a.o') and Building.is_bitcode('a.o')
+      print('build bitcode object')
+      run_process([PYTHON, EMCC, 'a.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      print('build with bitcode')
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -8137,7 +8161,7 @@ int main() {
   def test_native_link_error_message(self):
     run_process([CLANG, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', 'hello_world.o'])
     err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
-    self.assertContained('hello_world.o is not valid LLVM bitcode', err)
+    self.assertContained('hello_world.o is not a valid input', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
