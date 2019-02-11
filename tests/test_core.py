@@ -936,7 +936,7 @@ int main() {
       self.do_run(src, '*throw...caught!infunc...done!*')
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0')
+      self.do_run(src, 'exception')
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)

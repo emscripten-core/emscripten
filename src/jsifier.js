@@ -15,6 +15,11 @@ var STRUCT_LIST = set('struct', 'list');
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
 
+var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow', 'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan', 'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min', 'Math_max', 'Math_clz32', 'Math_fround',
+                           'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'];
+// Specifies the set of referenced built-in primitives such as Math.max etc.
+var usedExternPrimitives = {};
+
 var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
@@ -178,7 +183,9 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
+      if (allExternPrimitives.indexOf(ident) != -1) {
+        usedExternPrimitives[ident] = 1;
+      } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
@@ -471,6 +478,11 @@ function JSify(data, functionsOnly) {
 
     if (SUPPORT_BASE64_EMBEDDING) {
       print(preprocess(read('base64Utils.js')));
+    }
+
+    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
+    if (usedExternPrimitiveNames.length > 0) {
+      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
     }
 
     if (asmLibraryFunctions.length > 0) {

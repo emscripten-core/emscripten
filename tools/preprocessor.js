@@ -132,7 +132,7 @@ set = function() {}
 
 var settings_file = arguments_[0];
 var shell_file = arguments_[1];
-var process_macros = arguments_.length >= 3 && arguments_[2];
+var process_macros = arguments_.indexOf('--expandMacros') >= 0;
 
 load(settings_file);
 load('parseTools.js');
