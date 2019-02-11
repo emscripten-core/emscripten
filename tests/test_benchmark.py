@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import sys
-import tempfile
 import time
 import unittest
 import zlib
@@ -272,13 +271,14 @@ class CheerpBenchmarker(Benchmarker):
       cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
-        'AR': CHEERP_BIN + 'llvm-ar',
+        'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
         'LD': CHEERP_BIN + 'clang',
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + 'llvm-ranlib',
         'CFLAGS': ' '.join(cheerp_args),
         'CXXFLAGS': ' '.join(cheerp_args),
+        'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     # cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
@@ -286,12 +286,6 @@ class CheerpBenchmarker(Benchmarker):
     try_delete(final)
     dirs_to_delete = []
     try:
-      for arg in cheerp_args[:]:
-        if arg.endswith('.a'):
-          info = self.handle_static_lib(arg)
-          cheerp_args += info['files']
-          dirs_to_delete += [info['dir']]
-      cheerp_args = [arg for arg in cheerp_args if not arg.endswith('.a')]
       # print(cheerp_args)
       cmd = [CHEERP_BIN + 'clang++'] + cheerp_args + [
         '-cheerp-linear-heap-size=256',
@@ -315,44 +309,6 @@ class CheerpBenchmarker(Benchmarker):
 
   def get_output_files(self):
     return [self.filename, self.filename + '.wasm']
-
-  def handle_static_lib(self, f):
-    temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-    with chdir(temp_dir):
-      contents = [x for x in run_process([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).stdout.splitlines() if len(x)]
-      shared.warn_if_duplicate_entries(contents, f)
-      if len(contents) == 0:
-        print('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-        return {
-          'returncode': 0,
-          'dir': temp_dir,
-          'files': []
-        }
-
-      # We are about to ask llvm-ar to extract all the files in the .a archive file, but
-      # it will silently fail if the directory for the file does not exist, so make all the necessary directories
-      for content in contents:
-        dirname = os.path.dirname(content)
-        if dirname:
-          shared.safe_ensure_dirs(dirname)
-      proc = run_process([CHEERP_BIN + 'llvm-ar', 'xo', f], stdout=PIPE, stderr=PIPE)
-      # if absolute paths, files will appear there. otherwise, in this directory
-      contents = list(map(os.path.abspath, contents))
-      nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-      if len(nonexisting_contents) != 0:
-        raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '!  Error:' + str(proc.stdout) + str(proc.stderr))
-
-      return {
-        'returncode': proc.returncode,
-        'dir': temp_dir,
-        'files': contents
-      }
-
-    return {
-      'returncode': 1,
-      'dir': None,
-      'files': []
-    }
 
   def cleanup(self):
     pass
