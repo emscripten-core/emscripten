@@ -7992,6 +7992,32 @@ int main() {
         assert not e_f32_f64, 'f32 converted to f64 in exports'
         assert e_i64_i64,     'i64 converted to i64 in exports'
 
+  def test_no_legalize_js_ffi(self):
+    # test minimal JS FFI legalization for invoke and dyncalls
+    wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
+    for (args, js_ffi) in [
+        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0'], False),
+      ]:
+      print(args)
+      try_delete('a.out.wasm')
+      try_delete('a.out.wast')
+      with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'noffi.cpp'), '-g', '-o', 'a.out.js'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wast'])
+      text = open('a.out.wast').read()
+      # remove internal comments and extra whitespace
+      text = re.sub(r'\(;[^;]+;\)', '', text)
+      text = re.sub(r'\$var\$*.', '', text)
+      text = re.sub(r'param \$\d+', 'param ', text)
+      text = re.sub(r' +', ' ', text)
+      # print("text: %s" % text)
+      i_legalimport_i64 = re.search('\(import.*\$legalimport\$invoke_j.*', text)
+      e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      assert i_legalimport_i64, 'legal import not generated for invoke call'
+      assert e_legalstub_i32, 'legal stub not generated for dyncall'
+
   def test_sysconf_phys_pages(self):
     for args, expected in [
         ([], 1024),
