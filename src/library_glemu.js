@@ -2879,7 +2879,9 @@ var LibraryGLEmulation = {
 #endif
     }
   },
+
   glColor4d: 'glColor4f',
+
   glColor4ub__deps: ['glColor4f'],
   glColor4ub: function(r, g, b, a) {
     _glColor4f((r&255)/255, (g&255)/255, (b&255)/255, (a&255)/255);

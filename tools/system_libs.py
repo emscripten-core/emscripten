@@ -645,9 +645,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
   gl_name = 'libgl'
-  if shared.Settings.USE_PTHREADS: gl_name += '-mt'
-  if shared.Settings.LEGACY_GL_EMULATION: gl_name += '-emu'
-  if shared.Settings.USE_WEBGL2: gl_name += '-webgl2'
+  if shared.Settings.USE_PTHREADS:
+    gl_name += '-mt'
+  if shared.Settings.LEGACY_GL_EMULATION:
+    gl_name += '-emu'
+  if shared.Settings.USE_WEBGL2:
+    gl_name += '-webgl2'
   system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
