@@ -8,6 +8,8 @@ import json
 import logging
 import os
 import re
+import shutil
+import sys
 import tarfile
 import zipfile
 from collections import namedtuple
@@ -95,6 +97,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
+  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
 
@@ -275,6 +278,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       ])
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+
+  def create_pthreads_stub(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_stub.c')]
+    return build_libc(libname, pthreads_files, ['-O2'])
 
   def create_pthreads_asmjs(libname):
     pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
@@ -613,6 +620,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       always_include.add('libpthreads_asmjs')
     else:
       always_include.add('libpthreads_wasm')
+  else:
+    always_include.add('libpthreads_stub')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
@@ -637,6 +646,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     else:
       system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
+    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
     if shared.Settings.LEGACY_GL_EMULATION:
       system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
     else:
@@ -810,6 +820,39 @@ class Ports(object):
   @staticmethod
   def fetch_project(name, url, subdir, is_tarbz2=False):
     fullname = os.path.join(Ports.get_dir(), name)
+
+    # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
+    # for testing. This env var should be in format
+    #     name=dir,name=dir
+    # e.g.
+    #     sdl2=/home/username/dev/ports/SDL2
+    # so you could run
+    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
+    # this will simply copy that directory into the ports directory for sdl2, and use that. It also
+    # clears the build, so that it is rebuilt from that source.
+    local_ports = os.environ.get('EMCC_LOCAL_PORTS')
+    if local_ports:
+      logging.warning('using local ports: %s' % local_ports)
+      local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
+      for local in local_ports:
+        if name == local[0]:
+          path = local[1]
+          if name not in ports.ports_by_name:
+            logging.error('%s is not a known port' % name)
+            sys.exit(1)
+          port = ports.ports_by_name[name]
+          if not hasattr(port, 'SUBDIR'):
+            logging.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+            sys.exit(1)
+          subdir = port.SUBDIR
+          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+          shared.try_delete(fullname)
+          shutil.copytree(path, os.path.join(fullname, subdir))
+          Ports.clear_project_build(name)
+          return
+      logging.error('could not find port %s' % name)
+      sys.exit(1)
+
     fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -822,37 +865,6 @@ class Ports(object):
       unpacked = False
 
     def retrieve():
-      # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
-      # for testing. This env var should be in format
-      #     name=dir|tag,name=dir|tag
-      # e.g.
-      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
-      # so you could run
-      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
-      # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
-      local_ports = os.environ.get('EMCC_LOCAL_PORTS')
-      if local_ports:
-        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-        for local in local_ports:
-          if name == local[0]:
-            path, subdir = local[1].split('|')
-            logging.warning('grabbing local port: ' + name + ' from ' + path + ', into ' + subdir)
-            # zip up the directory, so it looks the same as if we downloaded a zip from the remote server
-            z = zipfile.ZipFile(fullpath, 'w')
-
-            def add_dir(p):
-              for f in os.listdir(p):
-                full = os.path.join(p, f)
-                if os.path.isdir(full):
-                  add_dir(full)
-                else:
-                  if not f.startswith('.'): # ignore hidden files, including .git/ etc.
-                    z.write(full, os.path.join(subdir, os.path.relpath(full, path)))
-
-            add_dir(path)
-            z.close()
-            State.retrieved = True
-            return
       # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
       try:

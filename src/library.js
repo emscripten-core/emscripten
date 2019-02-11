@@ -481,13 +481,19 @@ LibraryManager.library = {
     return TOTAL_MEMORY;
   },
 
+#if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
+#if ASSERTIONS
 #if WASM
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #else
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#endif
+#else
+    abort('OOM');
 #endif
   },
+#endif
 
 #if TEST_MEMORY_GROWTH_FAILS
   $emscripten_realloc_buffer: function(size) {
@@ -539,7 +545,10 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__deps: ['emscripten_get_heap_size', '$abortOnCannotGrowMemory'
+  emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+#if ABORTING_MALLOC
+  , '$abortOnCannotGrowMemory'
+#endif
 #if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
   , '$emscripten_realloc_buffer'
 #endif
@@ -697,7 +706,11 @@ LibraryManager.library = {
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
   sbrk__asm: true,
   sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
+  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
+#if ABORTING_MALLOC
+  , '$abortOnCannotGrowMemory'
+#endif
+  ],
   sbrk: function(increment) {
     increment = increment|0;
     var oldDynamicTop = 0;
@@ -756,7 +769,11 @@ LibraryManager.library = {
 
   brk__asm: true,
   brk__sig: ['ii'],
-  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap', '$abortOnCannotGrowMemory'],
+  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
+#if ABORTING_MALLOC
+  , '$abortOnCannotGrowMemory'
+#endif
+  ],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
     var totalMemory = 0;

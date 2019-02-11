@@ -9,18 +9,38 @@
   #error EXPLICIT_SWAP is required.
 #endif
 
+#include <stdlib.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
+
+#ifdef REPORT_RESULT
+#define DIE() do { REPORT_RESULT(1); exit(1); } while (0)
+#else
+#define DIE() do { exit(1); } while (0)
+#endif
 
 int main()
 {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = 1;
+#if TEST_WEBGL2
+  attr.majorVersion = 2;
+#endif
+#if !TEST_ANTIALIAS
+  attr.antialias = 0;
+#endif
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
+
+#if !TEST_WEBGL2 && TEST_VAO
+  // This test cannot run without browser support for OES_vertex_array_object.
+  if (!emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object")) {
+    DIE();
+  }
+#endif
 
   glClearColor(0, 1, 0, 1);
   glClear(GL_COLOR_BUFFER_BIT);
@@ -28,9 +48,23 @@ int main()
   glEnableVertexAttribArray(1);
   emscripten_webgl_commit_frame();
 
+  if (glGetError() != GL_NO_ERROR) {
+    DIE();
+  }
+
+  // C doesn't have access to the "frontbuffer" (canvas contents).
+  // Escape via JavaScript to ensure the test passed.
+  int canvas_is_green = EM_ASM_INT({
+    GLctx.bindFramebuffer(GLctx.FRAMEBUFFER, null);
+    var pixels = new Uint8Array(4);
+    GLctx.readPixels(5, 5, 1, 1, GLctx.RGBA, GLctx.UNSIGNED_BYTE, pixels);
+    return pixels[0] == 0 && pixels[1] == 255 && pixels[2] == 0 && pixels[3] == 255;
+  });
+  if (!canvas_is_green) {
+    DIE();
+  }
+
 #ifdef REPORT_RESULT
-  // This program doesn't have access to the "frontbuffer" (canvas contents), so
-  // it can't check them. The result on the screen should be fullscreen green.
   REPORT_RESULT(0);
 #endif
 }

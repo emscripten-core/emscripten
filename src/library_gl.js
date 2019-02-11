@@ -533,12 +533,20 @@ var LibraryGL = {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       context.defaultFbo = fbo;
 
-      // The WebGL 2 blit path doesn't work in Firefox currently (except in
-      // fullscreen). The bug has not been identified yet.
-      // https://bugzilla.mozilla.org/show_bug.cgi?id=1519571
 #if USE_WEBGL2
-      var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-      context.defaultFboForbidBlitFramebuffer = isFirefox;
+      context.defaultFboForbidBlitFramebuffer = false;
+      if (gl.getContextAttributes().antialias) {
+        context.defaultFboForbidBlitFramebuffer = true;
+      } else {
+        // The WebGL 2 blit path doesn't work in Firefox < 67 (except in fullscreen).
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1523030
+        // TODO: Remove this workaround once Firefox 67 is obsolete.
+        var firefoxMatch = navigator.userAgent.toLowerCase().match(/firefox\/(\d\d)/);
+        if (firefoxMatch != null) {
+          var firefoxVersion = firefoxMatch[1];
+          context.defaultFboForbidBlitFramebuffer = firefoxVersion < 67;
+        }
+      }
 #endif
 
       // Create render targets to the FBO
@@ -684,7 +692,7 @@ var LibraryGL = {
 #if !OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH
         if (context.defaultVao) {
           // WebGL 2 or OES_vertex_array_object
-          var prevVAO = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
+          var prevVAO = gl.getParameter(0x85B5); // GL_VERTEX_ARRAY_BINDING
           gl.bindVertexArray(context.defaultVao);
           draw();
           gl.bindVertexArray(prevVAO);

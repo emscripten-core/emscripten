@@ -2118,7 +2118,9 @@ int f() {
           assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals']
     for input, expected, passes in [
+
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
        ['eliminateDeadGlobals']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-output.js')).read(),
@@ -2191,30 +2193,32 @@ int f() {
        ['splitMemory']),
       (path_from_root('tests', 'optimizer', 'JSDCE.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-output.js')).read(),
        ['JSDCE']),
-      (path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-uglifyjsNodeTypes-output.js')).read(),
-       ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-hasOwnProperty-output.js')).read(),
+       ['JSDCE']),
+      (path_from_root('tests', 'optimizer', 'JSDCE-fors.js'), open(path_from_root('tests', 'optimizer', 'JSDCE-fors-output.js')).read(),
        ['JSDCE']),
       (path_from_root('tests', 'optimizer', 'AJSDCE.js'), open(path_from_root('tests', 'optimizer', 'AJSDCE-output.js')).read(),
        ['AJSDCE']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph2.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph2-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph3.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph3-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph4.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph4-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph5.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph5-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
        ['applyImportAndExportNameChanges']),
+      (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges2-output.js')).read(),
+       ['applyImportAndExportNameChanges']),
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
-       ['emitDCEGraph', 'noEmitAst']),
+       ['emitDCEGraph', 'noPrint']),
     ]:
       print(input, passes)
 
@@ -2222,9 +2226,15 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      # test calling js optimizer
-      print('  js')
-      output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      acorn = any([p for p in passes if p in ACORN_PASSES])
+
+      # test calling optimizer
+      if not acorn:
+        print('  js')
+        output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+      else:
+        print('  acorn')
+        output = run_process(NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
 
       def check_js(js, expected):
         # print >> sys.stderr, 'chak\n==========================\n', js, '\n===========================\n'
@@ -2357,11 +2367,10 @@ int f() {
           else:
             self.assertNotIn(' -g ', finalize)
         else:
-          opts = '\n'.join([l for l in lines if os.path.sep + 'opt' in l])
           if expect_debug:
-            self.assertNotIn('strip-debug', opts)
+            self.assertNotIn('strip-debug', err)
           else:
-            self.assertIn('strip-debug', opts)
+            self.assertIn('strip-debug', err)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -4701,7 +4710,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4720,7 +4729,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -7909,15 +7918,15 @@ int main() {
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, [], ['waka'], 226582,  22,  32, 565), # noqa
+        (['-O2'], 32, [], ['waka'], 226582,  20,  32, 565), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, [], ['waka'], 226582,  22,  32, 565), # noqa
+                  32, [], ['waka'], 226582,  20,  32, 565), # noqa
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   39, 659), # noqa
+        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   37, 660), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   20, 620), # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   18, 621), # noqa
       ]) # noqa
 
   def test_binaryen_metadce_hello(self):
@@ -7946,7 +7955,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1556, [],        [],      226057,  28,   75, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1533, [],        [],      226057,  28,   85, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ]) # noqa
 
   # ensures runtime exports work, even with metadce
@@ -8369,10 +8378,28 @@ int main() {
 }
 ''')
     output = run_process([PYTHON, EMCC, 'src.cpp', '-O2'], stdout=PIPE, stderr=PIPE, check=False)
-    self.assertContained('''
+    # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
-''', output.stderr)
+''', '''
+var ASM_CONSTS = [function() {var x = !<->5.;}];
+                                       ^
+'''), output.stderr)
+
+  def test_EM_ASM_ES6(self):
+    # check we show a proper understandable error for JS parse problems
+    create_test_file('src.cpp', r'''
+#include <emscripten.h>
+int main() {
+  EM_ASM({
+    var x = (a, b) => 5; // valid ES6!
+    out('hello!');
+  });
+}
+''')
+    run_process([PYTHON, EMCC, 'src.cpp', '-O2'])
+    self.assertContained('hello!', run_js('a.out.js'))
 
   def test_check_sourcemapurl(self):
     if not self.is_wasm():
@@ -8909,8 +8936,8 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 5307, 'a.asm.js': 10932, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5380, 'a.wasm': 8978})
+      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 4949, 'a.asm.js': 10975, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5015, 'a.wasm': 8978})
     ]
 
     success = True

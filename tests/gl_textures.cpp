@@ -65,7 +65,7 @@ int main()
   attr.premultipliedAlpha = 0;
   attr.majorVersion = 1;
   attr.minorVersion = 0;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   const char *vss = "attribute vec4 vPosition; uniform mat4 mat; varying vec2 texCoord; void main() { gl_Position = vPosition; texCoord = (vPosition.xy + vec2(1.0)) * vec2(0.5); }";

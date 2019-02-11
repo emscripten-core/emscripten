@@ -27,7 +27,7 @@ void *ThreadMain(void *arg)
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = EM_TRUE;
-  ctx = emscripten_webgl_create_context(0, &attr);
+  ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
   double color = 0;

@@ -1,4 +1,5 @@
 var name;
+
 var asmLibraryArg = {
  "a": 1,
  "A": 33,
@@ -12,10 +13,9 @@ var asmLibraryArg = {
  "d": ___syscall140,
  "q": ___syscall146
 };
+
 var expD1 = Module["expD1"] = asm["c"];
-var expI1 = Module["expI1"] = (function() {
+
+var expI1 = Module["expI1"] = function() {
  return Module["asm"]["d"].apply(null, arguments);
-});
-
-
-
+};

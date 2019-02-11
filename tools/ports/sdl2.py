@@ -6,16 +6,17 @@
 import os, shutil, logging
 
 TAG = 'version_17'
+SUBDIR = 'SDL2-' + TAG
 
 def get(ports, settings, shared):
   if settings.USE_SDL == 2:
     # get the port
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', 'SDL2-' + TAG)
+    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
     def create():
       # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
       ports.clear_project_build('sdl2-image')
       # copy includes to a location so they can be used as 'SDL2/'
-      source_include_path = os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG + '', 'include')
+      source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
       dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
       shared.try_delete(dest_include_path)
       shutil.copytree(source_include_path, dest_include_path)
@@ -30,7 +31,7 @@ def get(ports, settings, shared):
       for src in srcs:
         o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
         shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', 'SDL2-' + TAG, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
+        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
         o_s.append(o)
       ports.run_commands(commands)
       final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
