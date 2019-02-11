@@ -115,7 +115,7 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx})
+      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"})
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -278,6 +278,7 @@ void webMain() {
     })
     cheerp_args = [
       '-target', 'cheerp',
+      '-Wno-c++11-narrowing',
       '-cheerp-mode=wasm'
     ]
     cheerp_args += self.args
@@ -961,7 +962,12 @@ class benchmark(RunnerCore):
       return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                              configure_args=['--disable-demos', '--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
+                              # The --host parameter is needed for 2 reasons:
+                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
+                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
+                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
+                              #    cross compile mode, which lets configure complete happily.
+                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + path_from_root('tests', 'bullet', 'src'), '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')],
