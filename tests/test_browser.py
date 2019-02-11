@@ -661,6 +661,9 @@ If manually bisecting:
     # create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
+  def test_dev_random(self):
+    self.btest(os.path.join('filesystem', 'dev_random.cpp'), expected='0')
+
   def test_sdl_swsurface(self):
     self.btest('sdl_swsurface.c', args=['-lSDL', '-lGL'], expected='1')
 
