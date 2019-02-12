@@ -32,6 +32,10 @@ v1.38.27: 02/10/2019
    ad hoc constructed rules around default Emscripten uses. The old behavior
    will be deprecated and removed in the future. Build with -s ASSERTIONS=1
    to get diagnostics messages related to this transition.
+ - Breaking change with -s USE_PTHREADS=1 + -s FETCH=1: When building with
+   -o a.html, the generated worker script is now named "a.fetch.js" according
+   to the base name of the specified output, instead of having a fixed name
+   "fetch-worker.js".
 
 v1.38.26: 02/04/2019
 --------------------
