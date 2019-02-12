@@ -32,7 +32,6 @@
       request.addEventListener("load", function() {
         if (request.responseText.startsWith(COMMAND_PREFIX)) {
           var url = request.responseText.substr(COMMAND_PREFIX.length);
-          console.log('commanded to load ' + url);
           iframe.src = url;
           document.getElementById('count').textContent = counter++;
         }
