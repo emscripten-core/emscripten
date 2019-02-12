@@ -51,6 +51,9 @@ void init_webgl(int width, int height)
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.alpha = 0;
+#ifdef USE_WEBGL2
+  attrs.majorVersion = 2;
+#endif
   glContext = emscripten_webgl_create_context("canvas", &attrs);
   assert(glContext);
   emscripten_webgl_make_context_current(glContext);
