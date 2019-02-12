@@ -781,5 +781,27 @@ void *emscripten_webgl1_get_proc_address(const char *name)
   RETURN_FN(glGetQueryObjectuivEXT);
   RETURN_FN(glGetQueryObjecti64vEXT);
   RETURN_FN(glGetQueryObjectui64vEXT);
+
+  // WebGL 1 Extensions
+  RETURN_FN(glBindVertexArrayOES);
+  RETURN_FN(glDeleteVertexArraysOES);
+  RETURN_FN(glGenVertexArraysOES);
+  RETURN_FN(glIsVertexArrayOES);
+  RETURN_FN(glDrawBuffersWEBGL);
+  RETURN_FN(glDrawArraysInstancedANGLE);
+  RETURN_FN(glDrawElementsInstancedANGLE);
+  RETURN_FN(glVertexAttribDivisorANGLE);
+  RETURN_FN(glGenQueriesEXT);
+  RETURN_FN(glDeleteQueriesEXT);
+  RETURN_FN(glIsQueryEXT);
+  RETURN_FN(glBeginQueryEXT);
+  RETURN_FN(glEndQueryEXT);
+  RETURN_FN(glQueryCounterEXT);
+  RETURN_FN(glGetQueryivEXT);
+  RETURN_FN(glGetQueryObjectivEXT);
+  RETURN_FN(glGetQueryObjectuivEXT);
+  RETURN_FN(glGetQueryObjecti64vEXT);
+  RETURN_FN(glGetQueryObjectui64vEXT);
+
   return 0;
 }

@@ -15,6 +15,8 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
+#include "webgl1_ext.h"
+
 // Define emscripten_ versions of gl functions, to avoid name collisions
 
 /*
@@ -1194,7 +1196,7 @@ GLAPI void APIENTRY emscripten_glGetVertexAttribPointerv (GLuint index, GLenum p
 GLAPI GLboolean APIENTRY emscripten_glIsProgram (GLuint program);
 GLAPI GLboolean APIENTRY emscripten_glIsShader (GLuint shader);
 GLAPI void APIENTRY emscripten_glLinkProgram (GLuint program);
-GLAPI void APIENTRY emscripten_glShaderSource (GLuint shader, GLsizei count, const GLchar* *string, const GLint *length);
+GLAPI void APIENTRY emscripten_glShaderSource (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
 GLAPI void APIENTRY emscripten_glUseProgram (GLuint program);
 GLAPI void APIENTRY emscripten_glUniform1f (GLint location, GLfloat v0);
 GLAPI void APIENTRY emscripten_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
@@ -1761,10 +1763,43 @@ for line in open('a').readlines():
   RETURN_GL_EMU_FN(glGetTexLevelParameterfv);
   RETURN_GL_EMU_FN(glGetTexLevelParameteriv);
   RETURN_GL_EMU_FN(glShadeModel);
+
+  // GL emulation library "sloppy" lookup:
+  // WebGL 1 extensions are offered without their EXT suffixes.
+  if (!strcmp(name, "glBindVertexArray")) return emscripten_glBindVertexArrayOES;
+  if (!strcmp(name, "glDeleteVertexArrays")) return emscripten_glDeleteVertexArraysOES;
+  if (!strcmp(name, "glGenVertexArrays")) return emscripten_glGenVertexArraysOES;
+  if (!strcmp(name, "glIsVertexArray")) return emscripten_glIsVertexArrayOES;
+  if (!strcmp(name, "glDrawBuffers")) return emscripten_glDrawBuffersWEBGL;
+  if (!strcmp(name, "glDrawArraysInstanced")) return emscripten_glDrawArraysInstancedANGLE;
+  if (!strcmp(name, "glDrawElementsInstanced")) return emscripten_glDrawElementsInstancedANGLE;
+  if (!strcmp(name, "glVertexAttribDivisor")) return emscripten_glVertexAttribDivisorANGLE;
+  if (!strcmp(name, "glGenQueries")) return emscripten_glGenQueriesEXT;
+  if (!strcmp(name, "glDeleteQueries")) return emscripten_glDeleteQueriesEXT;
+  if (!strcmp(name, "glIsQuery")) return emscripten_glIsQueryEXT;
+  if (!strcmp(name, "glBeginQuery")) return emscripten_glBeginQueryEXT;
+  if (!strcmp(name, "glEndQuery")) return emscripten_glEndQueryEXT;
+  if (!strcmp(name, "glQueryCounter")) return emscripten_glQueryCounterEXT;
+  if (!strcmp(name, "glGetQueryiv")) return emscripten_glGetQueryivEXT;
+  if (!strcmp(name, "glGetQueryObjectiv")) return emscripten_glGetQueryObjectivEXT;
+  if (!strcmp(name, "glGetQueryObjectuiv")) return emscripten_glGetQueryObjectuivEXT;
+  if (!strcmp(name, "glGetQueryObjecti64v")) return emscripten_glGetQueryObjecti64vEXT;
+  if (!strcmp(name, "glGetQueryObjectui64v")) return emscripten_glGetQueryObjectui64vEXT;
+
   return 0;
 }
 #endif
 
+// "Sloppy" desktop OpenGL/mobile GLES emulating
+// behavior: different functionality is available under
+// different vendor suffixes. In emscripten_GetProcAddress()
+// function, all these suffixes will be ignored when performing
+// the function pointer lookup. The functions
+// emscripten_webgl_get_proc_address(),
+// emscripten_webgl1_get_proc_address() and 
+// emscripten_webgl2_get_proc_address() however are "strict"
+// lookups, that provide WebGL specific function entry points that
+// look up the exact function name with suffixes.
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);

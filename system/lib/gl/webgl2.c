@@ -259,5 +259,9 @@ void *emscripten_webgl2_get_proc_address(const char *name)
 	RETURN_FN(glIsVertexArrayOES);
 	RETURN_FN(glDrawBuffersEXT);
 	RETURN_FN(glDrawBuffersWEBGL);
+
+	// WebGL 2 extensions:
+	// (currently none)
+
 	return 0;
 }
