@@ -7878,8 +7878,8 @@ int main() {
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
-      print('Running metadce test:', args, expected_len, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    for args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
+      print('Running metadce test:', args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
       run_process([PYTHON, EMCC, filename, '-g2'] + args)
       # find the imports we send from JS
       js = open('a.out.js').read()
@@ -7891,12 +7891,12 @@ int main() {
       sent = [x.split(':')[0].strip() for x in relevant]
       sent = [x for x in sent if x]
       sent.sort()
-      print('   seen: ' + str(sent))
+      print('   sent: ' + str(sent))
       for exists in expected_exists:
         self.assertIn(exists, sent)
       for not_exists in expected_not_exists:
         self.assertNotIn(not_exists, sent)
-      self.assertEqual(len(sent), expected_len)
+      self.assertEqual(len(sent), expected_sent)
       wasm_size = os.path.getsize('a.out.wasm')
       if expected_size is not None:
         ratio = abs(wasm_size - expected_size) / float(expected_size)
