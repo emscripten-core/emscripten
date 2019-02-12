@@ -41,7 +41,7 @@ void *threadMain(void *arg)
 {
   registeringThreadId = pthread_self();
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_mousemove_callback(0, (void*)0x42, 1, mouse_callback);
+  EMSCRIPTEN_RESULT ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, (void*)0x42, 1, mouse_callback);
   assert(ret == EMSCRIPTEN_RESULT_SUCCESS);
 
   printf("Please move the mouse cursor.\n");

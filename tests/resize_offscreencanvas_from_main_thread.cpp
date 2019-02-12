@@ -40,7 +40,7 @@ void *thread_main(void *arg)
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = EM_TRUE;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 
   // To start off, change the size of the OffscreenCanvas, main thread will test that it sees this change.

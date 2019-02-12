@@ -1029,7 +1029,7 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
-var WASM_OBJECT_FILES = 0;
+var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
@@ -1390,7 +1390,6 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // (think of this as advanced manual DCE)
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
 
-
 // If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
 // Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
 // the smallest code size possible.
@@ -1419,3 +1418,8 @@ var TARGET_BASENAME = '';
 // If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
 // this to 0 to save a little bit of code size and performance when catching exceptions.
 var SUPPORT_LONGJMP = 1;
+
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
+// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
+// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;

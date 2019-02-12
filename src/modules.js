@@ -454,9 +454,24 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
   ];
+
   if (!MINIMAL_RUNTIME) {
     runtimeElements.push('Pointer_stringify');
   }
+
+  if (MODULARIZE) {
+    // In MODULARIZE=1 mode, the following functions need to be exported out to Module for worker.js to access.
+    if (STACK_OVERFLOW_CHECK) {
+      runtimeElements.push('writeStackCookie');
+      runtimeElements.push('checkStackCookie');
+      runtimeElements.push('abortStackOverflow');
+    }
+    if (USE_PTHREADS) {
+      runtimeElements.push('PThread');
+      runtimeElements.push('ExitStatus');
+    }
+  }
+
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');

@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
 import os, sys
 from tools import shared
-from tools.response_file import substitute_response_files
+from tools.response_file import substitute_response_files, create_response_file
 
 #
 # Main run() function
@@ -66,6 +66,12 @@ def run():
                 pass
           break
         i += 1
+
+  response_filename = None
+  if len(newargs) > 3:
+    response_filename = create_response_file(newargs[3:], shared.get_emscripten_temp_dir())
+    to_delete += [response_filename]
+    newargs = newargs[:3] + ['@' + response_filename]
 
   try:
     return shared.run_process(newargs, stdin=sys.stdin).returncode

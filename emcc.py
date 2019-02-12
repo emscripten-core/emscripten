@@ -819,7 +819,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
                                   # right now we just assume that what is left contains no more |-x OPT| things
       arg = newargs[i]
-
       if i > 0:
         prev = newargs[i - 1]
         if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
@@ -846,7 +845,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
-          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg): # this should be bitcode, make sure it is valid
+          elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
+            input_files.append((i, arg))
+          elif 'WASM_OBJECT_FILES=0' not in settings_changes and shared.Building.is_wasm(arg):
+            # this is before libraries, since wasm static libraries (wasm.so that contains wasm) are just
+            # object files to be linked
             input_files.append((i, arg))
           elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
@@ -859,10 +862,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                 break
             libs.append((i, l))
             newargs[i] = ''
-          elif 'WASM_OBJECT_FILES=1' in settings_changes and shared.Building.is_wasm(arg):
-            input_files.append((i, arg))
           else:
-            logger.warning(arg + ' is not valid LLVM bitcode')
+            logger.warning(arg + ' is not a valid input file')
         elif file_suffix.endswith(STATICLIB_ENDINGS):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
@@ -951,7 +952,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if error_on_missing_libraries_cmdline:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
-    settings_changes.append(system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files))
+    settings_changes.append(process_libraries(libs, lib_dirs, settings_changes, input_files))
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
     # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -990,6 +991,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.verify_settings()
 
     # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
+    # TODO: remove
     shared.reconfigure_cache()
 
     # Note the exports the user requested
@@ -1007,8 +1009,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
     if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
-      logger.error('WASM_OBJECT_FILES can only be used with wasm backend')
-      return 1
+      if 'WASM_OBJECT_FILES=1' in settings_changes:
+        logger.error('WASM_OBJECT_FILES can only be used with wasm backend')
+        return 1
+      shared.Settings.WASM_OBJECT_FILES = 0
 
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -1081,6 +1085,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
+
+    if shared.Settings.MODULARIZE:
+      assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -1187,11 +1194,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('USE_PTHREADS=2 is not longer supported')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         exit_with_error('Memory growth is not yet supported with pthreads')
-      if shared.Settings.MODULARIZE:
-        # currently worker.js uses the global namespace, so it's setting of
-        # ENVIRONMENT_IS_PTHREAD is not picked up, in addition to all the other
-        # modifications it performs.
-        exit_with_error('MODULARIZE is not yet supported with pthreads')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
@@ -1225,6 +1227,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
+      if shared.Settings.MODULARIZE:
+        # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
+        # can access them:
+
+        # general threading variables:
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread', 'ExitStatus']
+
+        # pthread stack setup:
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
+        shared.Settings.EXPORTED_FUNCTIONS += ['establishStackSpaceInJsModule']
+
+        # stack check:
+        if shared.Settings.STACK_OVERFLOW_CHECK:
+          shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+
       if shared.Settings.LINKABLE:
         exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
       if shared.Settings.SIDE_MODULE:
@@ -1298,7 +1315,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = 1
 
       # Always use the new HTML5 API event target lookup rules (TODO: enable this when the other PR lands)
-      # shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
+      shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
 
       # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
       if not shared.Settings.WASM:
@@ -1678,8 +1695,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # We have a specified target (-o <target>), which is not JavaScript or HTML, and
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
-            # Sort arg tuples and pass the extracted values to link.
-            shared.Building.link(linker_inputs, specified_target)
+            shared.Building.link_to_object(linker_inputs, specified_target)
         logger.debug('stopping at bitcode')
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting LLVM bitcode. That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an LLVM bitcode file, which you should then compile to .wasm or .js with SIDE_MODULE.')
@@ -1756,7 +1772,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = options.opt_level
           else:
             lto_level = 0
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, options.llvm_opts, lto_level)
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
       else:
@@ -1948,60 +1964,72 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      if shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options):
+      # for the wasm backend, use a memfile exactly when using pthreads (until
+      # we can remove this temporary hack)
+      if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
+         (shared.Settings.WASM_BACKEND and shared.Settings.USE_PTHREADS):
         if shared.Settings.MINIMAL_RUNTIME:
           # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
           memfile = target.replace('.html', '.mem').replace('.js', '.mem')
         else:
           memfile = target + '.mem'
 
-      if memfile and not shared.Settings.WASM_BACKEND:
-        # Strip the memory initializer out of the asmjs file
-        shared.try_delete(memfile)
-
-        def repl(m):
-          # handle chunking of the memory initializer
-          s = m.group(1)
-          if len(s) == 0:
-            return '' # don't emit 0-size ones
-          membytes = [int(x or '0') for x in s.split(',')]
-          while membytes and membytes[-1] == 0:
-            membytes.pop()
-          if not membytes:
-            return ''
-          if shared.Settings.MEM_INIT_METHOD == 2:
-            # memory initializer in a string literal
-            return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
-          open(memfile, 'wb').write(bytearray(membytes))
-          if DEBUG:
-            # Copy into temp dir as well, so can be run there too
-            shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
-          if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
-            return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
-          else:
-            return ''
-
-        src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-        open(final + '.mem.js', 'w').write(src)
-        final += '.mem.js'
-        src = None
-        js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
-        if os.path.exists(memfile):
-          save_intermediate('meminit')
-          logger.debug('wrote memory initialization to %s', memfile)
+      if memfile:
+        if shared.Settings.WASM_BACKEND:
+          # For the wasm backend, we don't have any memory info in JS. All we need to do
+          # is set the memory initializer url.
+          src = open(final).read()
+          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
+          open(final + '.mem.js', 'w').write(src)
+          final += '.mem.js'
         else:
-          logger.debug('did not see memory initialization')
+          # Non-wasm backend path: Strip the memory initializer out of the asmjs file
+          shared.try_delete(memfile)
+
+          def repl(m):
+            # handle chunking of the memory initializer
+            s = m.group(1)
+            if len(s) == 0:
+              return '' # don't emit 0-size ones
+            membytes = [int(x or '0') for x in s.split(',')]
+            while membytes and membytes[-1] == 0:
+              membytes.pop()
+            if not membytes:
+              return ''
+            if shared.Settings.MEM_INIT_METHOD == 2:
+              # memory initializer in a string literal
+              return "memoryInitializer = '%s';" % shared.JS.generate_string_initializer(membytes)
+            open(memfile, 'wb').write(bytearray(membytes))
+            if DEBUG:
+              # Copy into temp dir as well, so can be run there too
+              shared.safe_copy(memfile, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(memfile)))
+            if not shared.Settings.WASM or not shared.Settings.MEM_INIT_IN_WASM:
+              return 'memoryInitializer = "%s";' % shared.JS.get_subresource_location(memfile, embed_memfile(options))
+            else:
+              return ''
+
+          src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+          open(final + '.mem.js', 'w').write(src)
+          final += '.mem.js'
+          src = None
+          js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
+          if os.path.exists(memfile):
+            save_intermediate('meminit')
+            logger.debug('wrote memory initialization to %s', memfile)
+          else:
+            logger.debug('did not see memory initialization')
 
       if shared.Settings.USE_PTHREADS:
         target_dir = os.path.dirname(os.path.abspath(target))
-        shutil.copyfile(shared.path_from_root('src', 'worker.js'),
-                        os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE))
+        worker_output = os.path.join(target_dir, shared.Settings.PTHREAD_WORKER_FILE)
+        with open(worker_output, 'w') as f:
+          f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
       # Generate the fetch-worker.js script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
         if shared.Settings.WASM:
           # FIXME(https://github.com/emscripten-core/emscripten/issues/7024)
-          logger.warning('Blocking calls the fetch API do not work under WASM')
+          logger.warning('Blocking calls to the fetch API do not work under WASM')
         else:
           shared.make_fetch_worker(final, os.path.join(os.path.dirname(os.path.abspath(target)), 'fetch-worker.js'))
 
@@ -2167,7 +2195,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.proxy_to_worker:
           generate_worker_js(target, js_target, target_basename)
 
-      if embed_memfile(options):
+      if embed_memfile(options) and memfile:
         shared.try_delete(memfile)
 
       for f in generated_text_files_with_native_eols:
@@ -2754,6 +2782,9 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   memfile, optimizer):
   logger.debug('generating HTML for minimal runtime')
   shell = read_and_preprocess(options.shell_path)
+  if re.search('{{{\s*SCRIPT\s*}}}', shell):
+    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+
   html_contents = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   with open(target, 'wb') as f:
@@ -2971,12 +3002,12 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def system_js_libraries_setting_str(libs, lib_dirs, settings_changes, input_files):
+def process_libraries(libs, lib_dirs, settings_changes, input_files):
   libraries = []
 
   # Find library files
   for i, lib in libs:
-    logger.debug('looking for library "%s"', lib)
+    logger.debug('looking for library "%s" (%s)', lib)
     found = False
     for prefix in LIB_PREFIXES:
       for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:

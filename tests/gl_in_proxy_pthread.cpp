@@ -33,7 +33,7 @@ int main()
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = EM_TRUE;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   printf("Created context with handle %u\n", (unsigned int)ctx);
   emscripten_webgl_make_context_current(ctx);
 
