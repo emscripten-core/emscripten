@@ -3008,7 +3008,7 @@ def process_libraries(libs, lib_dirs, settings_changes, input_files):
 
   # Find library files
   for i, lib in libs:
-    logger.debug('looking for library "%s" (%s)', lib)
+    logger.debug('looking for library "%s"', lib)
     found = False
     for prefix in LIB_PREFIXES:
       for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:

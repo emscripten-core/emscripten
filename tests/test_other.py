@@ -225,7 +225,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           print('(no output)')
           continue
         syms = Building.llvm_nm(target)
-        assert len(syms.defs) == 1 and ('main' in syms.defs or '__original_main' in syms.defs), 'Failed to generate valid bitcode'
+        assert 'main' in syms.defs
+        if self.is_wasm_backend():
+          # wasm backend will also have '__original_main' or such
+          assert len(syms.defs) == 2
+        else:
+          assert len(syms.defs) == 1
         if target == 'js': # make sure emcc can recognize the target as a bitcode file
           shutil.move(target, target + '.bc')
           target += '.bc'
