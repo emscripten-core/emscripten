@@ -3249,9 +3249,6 @@ def read_and_preprocess(filename, expand_macros=False):
   run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
   out = open(stdout, 'r').read()
 
-  os.remove(stdout)
-  os.remove(settings_file)
-
   return out
 
 

@@ -26,7 +26,7 @@ function processMacros(text) {
 // to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
   var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
-  var isHtml = (fileExt == 'html' || fileExt == 'htm') ? true : false;
+  var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   var inStyle = false;
   var lines = text.split('\n');
   var ret = '';
@@ -34,39 +34,45 @@ function preprocess(text, filenameHint) {
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     try {
-      if (line[line.length-1] == '\r') {
+      if (line[line.length-1] === '\r') {
         line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-      if (isHtml && line.indexOf('<style') != -1 && !inStyle) {
+      if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
         inStyle = true;
       }
-      if (isHtml && line.indexOf('</style') != -1 && inStyle) {
+      if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
         inStyle = false;
       }
 
-      if (!inStyle && line.indexOf('#if') === 0) {
-        var parts = line.split(' ');
-        var after = parts.slice(1).join(' ');
-        var truthy = !!eval(after);
-        showStack.push(truthy);
-      } else if (!inStyle && line.indexOf('#include') === 0) {
-        var filename = line.substr(line.indexOf(' ')+1);
-        if (filename.indexOf('"') === 0) {
-          filename = filename.substr(1, filename.length - 2);
+      if (!inStyle) {
+        if (line.indexOf('#if') === 0) {
+          var parts = line.split(' ');
+          var after = parts.slice(1).join(' ');
+          var truthy = !!eval(after);
+          showStack.push(truthy);
+        } else if (line.indexOf('#include') === 0) {
+          var filename = line.substr(line.indexOf(' ')+1);
+          if (filename.indexOf('"') === 0) {
+            filename = filename.substr(1, filename.length - 2);
+          }
+          var included = read(filename);
+          ret += '\n' + preprocess(included, filename) + '\n';
+        } else if (line.indexOf('#else') === 0) {
+          assert(showStack.length > 0);
+          showStack.push(!showStack.pop());
+        } else if (line.indexOf('#endif') === 0) {
+          assert(showStack.length > 0);
+          showStack.pop();
+        } else {
+          if (line[0] === '#') {
+            printErr("Ignoring unclear preprocessor command: " + line);
+          }
+          if (showStack.indexOf(false) === -1) {
+            ret += line + '\n';
+          }
         }
-        var included = read(filename);
-        ret += '\n' + preprocess(included, filename) + '\n';
-      } else if (!inStyle && line.indexOf('#else') === 0) {
-        assert(showStack.length > 0);
-        showStack.push(!showStack.pop());
-      } else if (!inStyle && line.indexOf('#endif') === 0) {
-        assert(showStack.length > 0);
-        showStack.pop();
-      } else {
-        if (!inStyle && line[0] == '#') {
-          printErr("Ignoring unclear preprocessor command: " + line);
-        }
-        if (showStack.indexOf(false) == -1) {
+      } else { // !inStyle
+        if (showStack.indexOf(false) === -1) {
           ret += line + '\n';
         }
       }
