@@ -2719,13 +2719,15 @@ function(%(EXPORT_NAME)s) {
   }
 
   if not shared.Settings.MODULARIZE_INSTANCE:
-    # When MODULARIZE this JS may be executed later,
-    # after document.currentScript is gone, so we save it.
-    # (when MODULARIZE_INSTANCE, an instance is created
-    # immediately anyhow, like in non-modularize mode)
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS:
+      # Single threaded MINIMAL_RUNTIME programs do not need access to
+      # document.currentScript, so a simple export declaration is enough.
       src = 'var %s=%s' % (shared.Settings.EXPORT_NAME, src)
     else:
+      # When MODULARIZE this JS may be executed later,
+      # after document.currentScript is gone, so we save it.
+      # (when MODULARIZE_INSTANCE, an instance is created
+      # immediately anyhow, like in non-modularize mode)
       src = '''
 var %(EXPORT_NAME)s = (function() {
   var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
