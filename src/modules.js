@@ -162,7 +162,7 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_gl.js',
+        'library_webgl.js',
         'library_openal.js',
         'library_vr.js'
       ]);
@@ -180,6 +180,10 @@ var LibraryManager = {
           'library_async.js'
         ]);
       }
+    }
+
+    if (USE_WEBGL2) {
+      libraries.push('library_webgl2.js');
     }
 
     if (LEGACY_GL_EMULATION) {

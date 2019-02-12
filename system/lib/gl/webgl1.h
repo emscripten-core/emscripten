@@ -190,5 +190,20 @@ GL_APICALL void GL_APIENTRY emscripten_glViewport (GLint x, GLint y, GLsizei wid
 #define VOID_SYNC_GL_FUNCTION_10(sig, ret, functionName, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5, t6 p6, t7 p7, t8 p8, t9 p9) { GL_FUNCTION_TRACE(functionName); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9); else emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9); }
 #define VOID_SYNC_GL_FUNCTION_11(sig, ret, functionName, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10) ret functionName(t0 p0, t1 p1, t2 p2, t3 p3, t4 p4, t5 p5, t6 p6, t7 p7, t8 p8, t9 p9, t10 p10) { GL_FUNCTION_TRACE(functionName); if (pthread_getspecific(currentThreadOwnsItsWebGLContext)) emscripten_##functionName(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10); else emscripten_sync_run_in_main_runtime_thread(sig, &emscripten_##functionName, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10); }
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+
+#include <pthread.h>
+
 extern pthread_key_t currentActiveWebGLContext;
 extern pthread_key_t currentThreadOwnsItsWebGLContext;
+
+// When building with multithreading, return pointers to C functions that can perform proxying.
+#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return functionName;
+
+#else
+
+// When building with singlethreading, return pointers to JS library layer so that C code (Regal library)
+// can override them.
+#define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return emscripten_##functionName;
+
+#endif

@@ -733,7 +733,6 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'libc++'], ['success'], True, ['libc++.a']),
       ([PYTHON, EMBUILDER, 'build', 'libc++_noexcept'], ['success'], True, ['libc++_noexcept.a']),
       ([PYTHON, EMBUILDER, 'build', 'libc++abi'], ['success'], True, ['libc++abi.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'gl'], ['success'], True, ['libgl.bc']),
       ([PYTHON, EMBUILDER, 'build', 'native_optimizer'], ['success'], True, ['optimizer.2.exe']),
       ([PYTHON, EMBUILDER, 'build', 'zlib'], ['building and verifying zlib', 'success'], True, ['zlib.bc']),
       ([PYTHON, EMBUILDER, 'build', 'libpng'], ['building and verifying libpng', 'success'], True, ['libpng.bc']),
@@ -754,6 +753,13 @@ fi
       ([PYTHON, EMBUILDER, 'build', 'libc-wasm'], ['building and verifying libc-wasm', 'success'], True, ['libc-wasm.bc']),
       ([PYTHON, EMBUILDER, 'build', 'regal'], ['building and verifying regal', 'success'], True, ['regal.bc']),
     ]
+    for mt in ['', '-mt']:
+      for emu in ['', '-emu']:
+        for webgl2 in ['', '-webgl2']:
+          case = 'gl' + mt + emu + webgl2
+          lib = 'lib' + case + '.bc'
+          tests += [([PYTHON, EMBUILDER, 'build', case], ['success'], True, [lib])]
+
     if Settings.WASM_BACKEND:
       tests.append(([PYTHON, EMBUILDER, 'build', 'libcompiler_rt_wasm'], ['building and verifying libcompiler_rt_wasm', 'success'], True, ['libcompiler_rt_wasm.a']),)
 

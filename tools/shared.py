@@ -2734,8 +2734,8 @@ class Building(object):
       'c': '',
       'dl': '',
       'EGL': 'library_egl.js',
-      'GL': 'library_gl.js',
-      'GLESv2': 'library_gl.js',
+      'GL': 'library_webgl.js',
+      'GLESv2': 'library_webgl.js',
       'GLEW': 'library_glew.js',
       'glfw': 'library_glfw.js',
       'glfw3': 'library_glfw.js',
@@ -2753,7 +2753,7 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += [js_system_libraries[library_name]]
+        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
@@ -2779,7 +2779,9 @@ class Building(object):
     if 'USE_SDL=1' in link_settings:
       system_js_libraries += ['library_sdl.js']
     if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_gl.js']
+      system_js_libraries += ['library_egl.js', 'library_webgl.js']
+    if 'USE_WEBGL2=1' in link_settings:
+      system_js_libraries += ['library_webgl2.js']
     return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod

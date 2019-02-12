@@ -1,5 +1,3 @@
-#ifdef __EMSCRIPTEN_PTHREADS__
-
 #include <emscripten/threading.h>
 #include <emscripten.h>
 #include <string.h>
@@ -7,6 +5,8 @@
 
 #include "webgl1.h"
 #include "webgl2.h"
+
+#ifdef __EMSCRIPTEN_PTHREADS__
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glReadBuffer, GLenum);
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glDrawRangeElements, GLenum, GLuint, GLuint, GLsizei, GLenum, const void *); // TODO: Not async if rendering from client side memory
@@ -113,6 +113,8 @@ ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glTexStorage2D, GLenum, GLsizei, G
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glTexStorage3D, GLenum, GLsizei, GLenum, GLsizei, GLsizei, GLsizei);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetInternalformativ, GLenum, GLenum, GLenum, GLsizei, GLint *);
 
+#endif // ~__EMSCRIPTEN_PTHREADS__
+
 // Extensions:
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorNV(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorEXT(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
@@ -133,4 +135,133 @@ GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsV
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 
-#endif // ~__EMSCRIPTEN_PTHREADS__
+void *emscripten_webgl2_get_proc_address(const char *name)
+{
+	RETURN_FN(glReadBuffer);
+	RETURN_FN(glDrawRangeElements);
+	RETURN_FN(glTexImage3D);
+	RETURN_FN(glTexSubImage3D);
+	RETURN_FN(glCopyTexSubImage3D);
+	RETURN_FN(glCompressedTexImage3D);
+	RETURN_FN(glCompressedTexSubImage3D);
+	RETURN_FN(glGenQueries);
+	RETURN_FN(glDeleteQueries);
+	RETURN_FN(glIsQuery);
+	RETURN_FN(glBeginQuery);
+	RETURN_FN(glEndQuery);
+	RETURN_FN(glGetQueryiv);
+	RETURN_FN(glGetQueryObjectuiv);
+	RETURN_FN(glUnmapBuffer);
+	RETURN_FN(glGetBufferPointerv);
+	RETURN_FN(glDrawBuffers);
+	RETURN_FN(glUniformMatrix2x3fv);
+	RETURN_FN(glUniformMatrix3x2fv);
+	RETURN_FN(glUniformMatrix2x4fv);
+	RETURN_FN(glUniformMatrix4x2fv);
+	RETURN_FN(glUniformMatrix3x4fv);
+	RETURN_FN(glUniformMatrix4x3fv);
+	RETURN_FN(glBlitFramebuffer);
+	RETURN_FN(glRenderbufferStorageMultisample);
+	RETURN_FN(glFramebufferTextureLayer);
+	RETURN_FN(glMapBufferRange);
+	RETURN_FN(glFlushMappedBufferRange);
+	RETURN_FN(glBindVertexArray);
+	RETURN_FN(glDeleteVertexArrays);
+	RETURN_FN(glGenVertexArrays);
+	RETURN_FN(glIsVertexArray);
+	RETURN_FN(glGetIntegeri_v);
+	RETURN_FN(glBeginTransformFeedback);
+	RETURN_FN(glEndTransformFeedback);
+	RETURN_FN(glBindBufferRange);
+	RETURN_FN(glBindBufferBase);
+	RETURN_FN(glTransformFeedbackVaryings);
+	RETURN_FN(glGetTransformFeedbackVarying);
+	RETURN_FN(glVertexAttribIPointer);
+	RETURN_FN(glGetVertexAttribIiv);
+	RETURN_FN(glGetVertexAttribIuiv);
+	RETURN_FN(glVertexAttribI4i);
+	RETURN_FN(glVertexAttribI4ui);
+	RETURN_FN(glVertexAttribI4iv);
+	RETURN_FN(glVertexAttribI4uiv);
+	RETURN_FN(glGetUniformuiv);
+	RETURN_FN(glGetFragDataLocation);
+	RETURN_FN(glUniform1ui);
+	RETURN_FN(glUniform2ui);
+	RETURN_FN(glUniform3ui);
+	RETURN_FN(glUniform4ui);
+	RETURN_FN(glUniform1uiv);
+	RETURN_FN(glUniform2uiv);
+	RETURN_FN(glUniform3uiv);
+	RETURN_FN(glUniform4uiv);
+	RETURN_FN(glClearBufferiv);
+	RETURN_FN(glClearBufferuiv);
+	RETURN_FN(glClearBufferfv);
+	RETURN_FN(glClearBufferfi);
+	RETURN_FN(glGetStringi);
+	RETURN_FN(glCopyBufferSubData);
+	RETURN_FN(glGetUniformIndices);
+	RETURN_FN(glGetActiveUniformsiv);
+	RETURN_FN(glGetUniformBlockIndex);
+	RETURN_FN(glGetActiveUniformBlockiv);
+	RETURN_FN(glGetActiveUniformBlockName);
+	RETURN_FN(glUniformBlockBinding);
+	RETURN_FN(glDrawArraysInstanced);
+	RETURN_FN(glDrawElementsInstanced);
+	RETURN_FN(glFenceSync);
+	RETURN_FN(glIsSync);
+	RETURN_FN(glDeleteSync);
+	RETURN_FN(glClientWaitSync);
+	RETURN_FN(glWaitSync);
+	RETURN_FN(glGetInteger64v);
+	RETURN_FN(glGetSynciv);
+	RETURN_FN(glGetInteger64i_v);
+	RETURN_FN(glGetBufferParameteri64v);
+	RETURN_FN(glGenSamplers);
+	RETURN_FN(glDeleteSamplers);
+	RETURN_FN(glIsSampler);
+	RETURN_FN(glBindSampler);
+	RETURN_FN(glSamplerParameteri);
+	RETURN_FN(glSamplerParameteriv);
+	RETURN_FN(glSamplerParameterf);
+	RETURN_FN(glSamplerParameterfv);
+	RETURN_FN(glGetSamplerParameteriv);
+	RETURN_FN(glGetSamplerParameterfv);
+	RETURN_FN(glVertexAttribDivisor);
+	RETURN_FN(glBindTransformFeedback);
+	RETURN_FN(glDeleteTransformFeedbacks);
+	RETURN_FN(glGenTransformFeedbacks);
+	RETURN_FN(glIsTransformFeedback);
+	RETURN_FN(glPauseTransformFeedback);
+	RETURN_FN(glResumeTransformFeedback);
+	RETURN_FN(glGetProgramBinary);
+	RETURN_FN(glProgramBinary);
+	RETURN_FN(glProgramParameteri);
+	RETURN_FN(glInvalidateFramebuffer);
+	RETURN_FN(glInvalidateSubFramebuffer);
+	RETURN_FN(glTexStorage2D);
+	RETURN_FN(glTexStorage3D);
+	RETURN_FN(glGetInternalformativ);
+	RETURN_FN(glVertexAttribDivisorNV);
+	RETURN_FN(glVertexAttribDivisorEXT);
+	RETURN_FN(glVertexAttribDivisorARB);
+	RETURN_FN(glVertexAttribDivisorANGLE);
+	RETURN_FN(glDrawArraysInstancedNV);
+	RETURN_FN(glDrawArraysInstancedEXT);
+	RETURN_FN(glDrawArraysInstancedARB);
+	RETURN_FN(glDrawArraysInstancedANGLE);
+	RETURN_FN(glDrawElementsInstancedNV);
+	RETURN_FN(glDrawElementsInstancedEXT);
+	RETURN_FN(glDrawElementsInstancedARB);
+	RETURN_FN(glDrawElementsInstancedANGLE);
+	RETURN_FN(glBindVertexArrayOES);
+	RETURN_FN(glDeleteVertexArraysOES);
+	RETURN_FN(glGenVertexArraysOES);
+	RETURN_FN(glIsVertexArrayOES);
+	RETURN_FN(glDrawBuffersEXT);
+	RETURN_FN(glDrawBuffersWEBGL);
+
+	// WebGL 2 extensions:
+	// (currently none)
+
+	return 0;
+}
