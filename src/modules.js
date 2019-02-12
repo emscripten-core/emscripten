@@ -182,16 +182,17 @@ var LibraryManager = {
       }
     }
 
+    // If there are any explicitly specified system JS libraries to link to, add those to link.
+    if (SYSTEM_JS_LIBRARIES) {
+      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
     if (USE_WEBGL2) {
       libraries.push('library_webgl2.js');
     }
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
-    }
-    // If there are any explicitly specified system JS libraries to link to, add those to link.
-    if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
     }
 
     libraries = libraries.concat(additionalLibraries);
