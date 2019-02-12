@@ -15,6 +15,9 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
+   this allows matching static functions with conflicting names that
+   the linker distinguishes by appending a random suffix.
  - Normalize mouse wheel delta in `library_browser.js`. This changes the scroll
    amount in SDL, GLFW, and GLUT. (#7968)
 

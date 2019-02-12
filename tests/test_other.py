@@ -5705,6 +5705,34 @@ function _main() {
       run_process([PYTHON, EMCC, 'src.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_fleefl"]', '-s', 'PRECISE_F32=1'])
       self.assertContained('result: ' + out, run_js('a.out.js'))
 
+  @no_wasm_backend('uses emterpreter')
+  def test_emterpreter_async_whitelist_wildcard(self):
+    # using wildcard to match homonymous functions that the linker
+    # unpredictably renamed
+    create_test_file('src1.c', r'''
+      #include <stdio.h>
+      extern void call_other_module();
+      static void homonymous() {
+          printf("result: 1\n");
+      }
+      int main() {
+          homonymous();
+          call_other_module();
+      }
+      ''')
+    create_test_file('src2.c', r'''
+      #include <emscripten.h>
+      static void homonymous() {
+          emscripten_sleep(1);
+          printf("result: 2\n");
+      }
+      void call_other_module() {
+          homonymous();
+      }
+      ''')
+    run_process([PYTHON, EMCC, 'src1.c', 'src2.c', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main", "_call_other_module", "_homonymous*"]'])
+    self.assertContained('result: 1\nresult: 2', run_js('a.out.js'))
+
   @no_wasm_backend('uses EMTERPRETIFY')
   def test_call_nonemterpreted_during_sleep(self):
     create_test_file('src.c', r'''
