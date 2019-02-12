@@ -1026,20 +1026,23 @@ def harness_server_func(in_queue, out_queue, port):
 
     def do_GET(self):
       if self.path == '/run_harness':
-        print('[server startup]')
+        if DEBUG:
+          print('[server startup]')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
-        print('[server response:', self.path, ']')
+        if DEBUG:
+          print('[server response:', self.path, ']')
         if out_queue.empty():
           out_queue.put(self.path)
         else:
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
           # later tests)
-          print('[excessive response, ignoring]')
+          if DEBUG:
+            print('[excessive response, ignoring]')
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
@@ -1056,14 +1059,16 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[server logging:', urllib.unquote_plus(self.path), ']')
+        if DEBUG:
+          print('[server logging:', urllib.unquote_plus(self.path), ']')
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         if not in_queue.empty():
           url, dir = in_queue.get()
-          print('[queue command:', url, dir, ']')
+          if DEBUG:
+            print('[queue command:', url, dir, ']')
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
@@ -1075,7 +1080,8 @@ def harness_server_func(in_queue, out_queue, port):
           self.wfile.write('(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
+        if DEBUG:
+          print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
@@ -1143,7 +1149,8 @@ class BrowserCore(RunnerCore):
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
-    print('[browser launch:', html_file, ']')
+    if DEBUG:
+      print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
         self.harness_in_queue.put((
