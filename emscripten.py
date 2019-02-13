@@ -715,9 +715,9 @@ def apply_forwarded_data(forwarded_data):
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
   # Be aware of JS static code hooks
-  StaticCodeHooks.atinits = forwarded_json['STATIC_ATINITS']
-  StaticCodeHooks.atmains = forwarded_json['STATIC_ATMAINS']
-  StaticCodeHooks.atexits = forwarded_json['STATIC_ATEXITS']
+  StaticCodeHooks.atinits = str(forwarded_json['STATIC_ATINITS'])
+  StaticCodeHooks.atmains = str(forwarded_json['STATIC_ATMAINS'])
+  StaticCodeHooks.atexits = str(forwarded_json['STATIC_ATEXITS'])
 
 
 def compile_settings(compiler_engine, libraries, temp_files):
