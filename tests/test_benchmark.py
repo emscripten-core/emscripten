@@ -28,9 +28,9 @@ from tools import shared, jsrun
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '3'
+DEFAULT_ARG = '4'
 
-TEST_REPS = 2
+TEST_REPS = 3
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
