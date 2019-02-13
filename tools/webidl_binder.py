@@ -760,7 +760,7 @@ mid_js += ['''
   function setupEnums() {
     %s
   }
-  if (Module['calledRun']) setupEnums();
+  if (runtimeInitialized) setupEnums();
   else addOnPreMain(setupEnums);
 })();
 ''' % '\n    '.join(deferred_js)]
