@@ -2133,6 +2133,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        global_initializers))
 
   pre = apply_memory(pre)
+  pre = apply_static_code_hooks(pre)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
