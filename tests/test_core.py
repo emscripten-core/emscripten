@@ -964,15 +964,14 @@ int main() {
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
-    src = open(path_from_root('tests', 'test_exception.cpp'), 'r').read()
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run(src, '*throw...caught!infunc...done!*')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'exception')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
 
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
@@ -980,15 +979,14 @@ int main() {
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
-    src = open(path_from_root('tests', 'test_exception.cpp'), 'r').read()
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run(src, '*throw...caught!infunc...done!*')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'exception')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)

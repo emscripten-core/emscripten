@@ -1049,6 +1049,8 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
+// When dynamically linking, some things like dynCalls may not exist in one module and
+// be provided by a linked module, so they must be accessed indirectly using Module
 function exportedAsmFunc(func) {
   if (!MAIN_MODULE && !SIDE_MODULE) {
     return func;
