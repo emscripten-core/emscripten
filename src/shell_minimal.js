@@ -21,7 +21,7 @@ var ENVIRONMENT_IS_NODE = typeof process === 'object';
 var ENVIRONMENT_IS_SHELL = typeof read === 'function';
 #endif
 
-#if ASSERTIONS && ENVIRONMENT_MAY_BE_SHELL && ENVIRONMENT_MAY_BE_SHELL
+#if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
   throw 'unclear environment';
 }
