@@ -562,8 +562,8 @@ function exitRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
-  {{{ getQuoted('STATIC_ATEXITS') }}}
   callRuntimeCallbacks(__ATEXIT__);
+  {{{ getQuoted('STATIC_ATEXITS') }}}
 #endif
   runtimeExited = true;
 }
