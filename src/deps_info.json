@@ -53,6 +53,7 @@
   "__cxa_allocate_exception": ["malloc"],
   "__cxa_free_exception": ["free"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
+  "__gxx_personality_v0": ["malloc", "free"],
   "emscripten_log": ["strlen"],
   "setjmp": ["realloc"],
   "saveSetjmp": ["realloc"],
