@@ -542,7 +542,7 @@ function ensureInitRuntime() {
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
   callRuntimeCallbacks(__ATINIT__);
-  {{{ emitStaticAtInitCalls() }}}
+  {{{ getQuoted('STATIC_ATINITS') }}}
 }
 
 function preMain() {
@@ -553,7 +553,7 @@ function preMain() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
   callRuntimeCallbacks(__ATMAIN__);
-  {{{ emitStaticAtMainCalls() }}}
+  {{{ getQuoted('STATIC_ATMAINS') }}}
 }
 
 function exitRuntime() {
@@ -565,7 +565,7 @@ function exitRuntime() {
 #endif
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
-  {{{ emitStaticAtExitCalls() }}}
+  {{{ getQuoted('STATIC_ATEXITS') }}}
 #endif
   runtimeExited = true;
 }

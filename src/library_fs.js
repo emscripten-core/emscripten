@@ -23,8 +23,8 @@ mergeInto(LibraryManager.library, {
     'stdin', 'stdout', 'stderr'],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
-    addStaticAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });');
-    addStaticAtMain('FS.ignorePermissions = false });');
+    addStaticAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addStaticAtMain('FS.ignorePermissions = false;');
     addStaticAtExit('FS.quit();');
     return 'FS.staticInit();' +
            // Get module methods from settings

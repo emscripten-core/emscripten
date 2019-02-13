@@ -35,7 +35,7 @@ function initRuntime(asm) {
 
   /*** RUN_GLOBAL_INITIALIZERS(); ***/
 
-  {{{ emitStaticAtInitCalls() }}}
+  {{{ getQuoted('STATIC_ATINITS') }}}
 }
 
 #if WASM

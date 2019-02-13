@@ -554,10 +554,5 @@ function JSify(data, functionsOnly) {
     data.functionStubs.forEach(functionStubHandler);
   }
 
-  //B.start('jsifier-fc');
   finalCombiner();
-  //B.stop('jsifier-fc');
-
-  dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
-  //B.stop('jsifier');
 }

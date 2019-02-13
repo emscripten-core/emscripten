@@ -517,7 +517,10 @@ var PassManager = {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
-      STATIC_BUMP: STATIC_BUMP // updated with info from JS
+      STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      STATIC_ATINITS: STATIC_ATINITS.join('\n'),
+      STATIC_ATMAINS: STATIC_ATMAINS.join('\n'),
+      STATIC_ATEXITS: STATIC_ATEXITS.join('\n'),
     }));
   },
   load: function(json) {

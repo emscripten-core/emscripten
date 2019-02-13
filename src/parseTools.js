@@ -1481,36 +1481,24 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
-var staticAtInits = [];
+var STATIC_ATINITS = [];
 
 function addStaticAtInit(code) {
-  staticAtInits.push(code);
+  STATIC_ATINITS.push(code);
 }
 
-function emitStaticAtInits() {
-  return staticAtInits.join('\n');
-}
-
-var staticAtMains = [];
+var STATIC_ATMAINS = [];
 
 function addStaticAtMain(code) {
-  staticAtMains.push(code);
+  STATIC_ATMAINS.push(code);
 }
 
-function emitStaticAtMains() {
-  return staticAtMains.join('\n');
-}
-
-var staticAtExits = [];
+var STATIC_ATEXITS = [];
 
 function addStaticAtExit(code) {
   if (EXIT_RUNTIME) {
-    staticAtExits.push(code);
+    STATIC_ATEXITS.push(code);
   }
-}
-
-function emitStaticAtExits() {
-  return staticAtExits.join('\n');
 }
 
 // Generates access to module exports variable in pthreads worker.js. Depending on whether main code is built with MODULARIZE
