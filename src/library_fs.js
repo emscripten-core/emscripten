@@ -22,9 +22,11 @@ mergeInto(LibraryManager.library, {
 #endif
     'stdin', 'stdout', 'stderr'],
   $FS__postset: 'FS.staticInit();' +
+#if !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATINIT__/__ATMAIN__/__ATEXIT__
                 '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
                 '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
                 '__ATEXIT__.push(function() { FS.quit() });' +
+#endif
                 // Get module methods from settings
                 '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
   $FS: {
@@ -508,7 +510,9 @@ mergeInto(LibraryManager.library, {
       var completed = 0;
 
       function doCallback(err) {
+#if ASSERTIONS
         assert(FS.syncFSRequests > 0);
+#endif
         FS.syncFSRequests--;
         return callback(err);
       }
@@ -613,7 +617,9 @@ mergeInto(LibraryManager.library, {
 
       // remove this mount from the child mounts
       var idx = node.mount.mounts.indexOf(mount);
+#if ASSERTIONS
       assert(idx !== -1);
+#endif
       node.mount.mounts.splice(idx, 1);
     },
     lookup: function(parent, name) {
@@ -1383,13 +1389,13 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-
       var stdout = FS.open('/dev/stdout', 'w');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-
       var stderr = FS.open('/dev/stderr', 'w');
+#if ASSERTIONS
+      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
+      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
       assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+#endif
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
@@ -1414,7 +1420,7 @@ mergeInto(LibraryManager.library, {
 #endif
         // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
         if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS
+#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif
       };
@@ -1451,7 +1457,9 @@ mergeInto(LibraryManager.library, {
       };
     },
     init: function(input, output, error) {
+#if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+#endif
       FS.init.initialized = true;
 
       FS.ensureErrnoError();
@@ -1812,7 +1820,9 @@ mergeInto(LibraryManager.library, {
         if (position >= contents.length)
           return 0;
         var size = Math.min(contents.length - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];

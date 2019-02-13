@@ -50,6 +50,8 @@
   "emscripten_GetAlcProcAddress": ["strcmp"],
   "emscripten_GetAlProcAddress": ["strcmp"],
   "emscripten_get_preloaded_image_data_from_FILE": ["fileno"],
+  "__cxa_allocate_exception": ["malloc"],
+  "__cxa_free_exception": ["free"],
   "__cxa_begin_catch": ["__cxa_can_catch", "__cxa_is_pointer_type"],
   "emscripten_log": ["strlen"],
   "setjmp": ["realloc"],
@@ -70,6 +72,9 @@
   "tzset": ["_get_tzname", "_get_daylight", "_get_timezone"],
   "emscripten_set_canvas_element_size_calling_thread": ["emscripten_async_queue_on_thread_"],
   "emscripten_webgl_destroy_context": ["emscripten_webgl_make_context_current", "emscripten_webgl_get_current_context"],
-  "emscripten_webgl_create_context": ["malloc", "free"]
+  "emscripten_webgl_create_context": ["malloc", "free"],
+  "stringToNewUTF8": ["malloc"],
+  "_embind_register_std_string": ["malloc", "free"],
+  "_embind_register_std_wstring": ["malloc", "free"]
 }
 

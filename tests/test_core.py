@@ -7747,6 +7747,15 @@ extern "C" {
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
+  # Test that printf() works in MINIMAL_RUNTIME=1
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_hello_world_printf(self):
+    for fs in [['-s', 'NO_FILESYSTEM=1'], ['-s', 'FORCE_FILESYSTEM=1']]:
+      self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + fs
+      self.maybe_closure()
+      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')

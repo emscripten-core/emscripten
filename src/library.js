@@ -75,7 +75,6 @@ LibraryManager.library = {
   // JavaScript <-> C string interop
   // ==========================================================================
 
-  $stringToNewUTF8__deps: ['malloc'],
   $stringToNewUTF8: function(jsString) {
     var length = lengthBytesUTF8(jsString)+1;
     var cString = _malloc(length);
@@ -911,10 +910,12 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
+#if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
       envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
       {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
       {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+#endif
     } else {
       envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
       poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
@@ -1481,11 +1482,10 @@ LibraryManager.library = {
   },
 
   // Exceptions
-  __cxa_allocate_exception__deps: ['malloc'],
   __cxa_allocate_exception: function(size) {
     return _malloc(size);
   },
-  __cxa_free_exception__deps: ['free'],
+
   __cxa_free_exception: function(ptr) {
     try {
       return _free(ptr);

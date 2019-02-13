@@ -1205,7 +1205,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
-    if shared.Settings.FORCE_FILESYSTEM:
+    if shared.Settings.FORCE_FILESYSTEM and not shared.Settings.MINIMAL_RUNTIME:
       # when the filesystem is forced, we export by default methods that filesystem usage
       # may need, including filesystem usage from standalone file packager output (i.e.
       # file packages not built together with emcc, but that are loaded at runtime
