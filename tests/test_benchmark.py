@@ -427,13 +427,9 @@ class benchmark(RunnerCore):
     code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
     code += '''
       int main() {
-        // use volatiles so the compiler doesn't optimize all the work away
-        volatile int argc = 2;
-        typedef char** charStarStar;
-        volatile charStarStar argv;
-        argv[0] = (char*)"./program.exe";
-        argv[1] = (char*)"%s";
-        volatile int ret = benchmark_main(argc, argv);
+        int newArgc = 2;
+        char* newArgv[] = { (char*)"./program.exe", (char*)"%s" };
+        int ret = benchmark_main(newArgc, newArgv);
         return ret;
       }
     ''' % DEFAULT_ARG
