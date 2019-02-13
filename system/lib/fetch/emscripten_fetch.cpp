@@ -69,7 +69,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	if (!url) return 0;
 
 	const bool synchronous = (fetch_attr->attributes & EMSCRIPTEN_FETCH_SYNCHRONOUS) != 0;
-	const bool readFromIndexedDB = (fetch_attr->attributes & (EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD)) != 0;
+	const bool readFromIndexedDB = (fetch_attr->attributes & (EMSCRIPTEN_FETCH_APPEND | EMSCRIPTEN_FETCH_NO_DOWNLOAD)) != 0 || ((fetch_attr->attributes & EMSCRIPTEN_FETCH_REPLACE) == 0);
 	const bool writeToIndexedDB = (fetch_attr->attributes & EMSCRIPTEN_FETCH_PERSIST_FILE) != 0 || !strncmp(fetch_attr->requestMethod, "EM_IDB_", strlen("EM_IDB_"));
 	const bool performXhr = (fetch_attr->attributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD) == 0;
 	const bool isMainBrowserThread = emscripten_is_main_browser_thread() != 0;
