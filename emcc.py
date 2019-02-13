@@ -2552,7 +2552,7 @@ def parse_args(newargs):
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
-      settings_changes.append('SUPPORT_CPP_THROW_EXCEPTION=0')
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]

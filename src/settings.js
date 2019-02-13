@@ -1337,7 +1337,7 @@ var SUPPORT_ERRNO = 1;
 // support library. This does not need to be set directly, but pass -fno-exceptions
 // to the build disable exceptions support. (This is basically -fno-exceptions, but
 // checked at final link time instead of individual .cpp file compile time)
-var SUPPORT_CPP_THROW_EXCEPTION = 1;
+var DISABLE_EXCEPTION_THROWING = 0;
 
 // Internal: An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];

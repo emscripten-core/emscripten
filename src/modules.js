@@ -68,7 +68,7 @@ var LibraryManager = {
       'library_html5.js'
     ];
 
-    if (SUPPORT_CPP_THROW_EXCEPTION) {
+    if (!DISABLE_EXCEPTION_THROWING) {
       libraries.push('library_exceptions.js');
     }
 
