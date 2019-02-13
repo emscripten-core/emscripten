@@ -235,39 +235,10 @@ class CheerpBenchmarker(Benchmarker):
     open(cheerp_temp, 'w').write('''
       %(code)s
 #include <cheerp/client.h>
-namespace client
-{
-    extern client::TArray<client::String>& args;
-}
-class [[cheerp::genericjs]] Arguments
-{
-public:
-    static int getArgumentsCount()
-    {
-        return client::args.get_length();
-    }
-    static int getArgumentLength(int arg)
-    {
-        return client::args[arg]->get_length();
-    }
-    static void copyArgument(int arg, char* buf)
-    {
-        client::String* a = client::args[arg];
-        for(int i=0;i<a->get_length();i++)
-            *(buf++) = a->charCodeAt(i);
-        *buf = 0;
-    }
-};
 void webMain() {
-    int arg1Len = Arguments::getArgumentLength(0);
-    char arg1Buf[arg1Len+1];
-    Arguments::copyArgument(0, arg1Buf);
-    const char* args[2];
-    args[0]="benchmark";
-    args[1]=arg1Buf;
-    int argc = Arguments::getArgumentsCount() + 1;
-    const char** argv=&args[0];
-    main(argc, ( char**)argv);
+  // The values here don't matter - the benchmark harness has created a main()
+  // with hardcoded parameters anyhow.
+  main(1, NULL);
 }\n''' % {
       'code': code,
     })
