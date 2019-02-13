@@ -199,8 +199,7 @@ emscripten_fetch() returns.
     pthreads, but not on the main thread.
   - **--proxy-to-worker** + **-s USE_PTHREADS=1**: Synchronous Fetch operations
     are available both on the main thread and pthreads.
-  - **-s WASM=1** + **-s USE_PTHREADS=1**: Synchronous Fetch operations do not 
-    work under WASM.
+  - **-s WASM=1**: Synchronous Fetch operations do not work under WASM.
 
 Waitable Fetches
 ================
