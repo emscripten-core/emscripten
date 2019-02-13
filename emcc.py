@@ -3006,10 +3006,8 @@ def minify_html(filename, options):
 
   logger.debug('minifying HTML file ' + filename)
   size_before = os.path.getsize(filename)
-  cmd = shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts
-  logger.debug(str(cmd))
   start_time = time.time()
-  run_process(cmd)
+  run_process(shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts)
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
