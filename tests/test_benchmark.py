@@ -28,9 +28,9 @@ from tools import shared, jsrun
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '4'
+DEFAULT_ARG = '3'
 
-TEST_REPS = 3
+TEST_REPS = 2
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -175,26 +175,16 @@ class EmscriptenBenchmarker(Benchmarker):
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
-    open('hardcode.py', 'w').write('''
-def process(filename):
-  js = open(filename).read()
-  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
-  assert js != replaced
-  open(filename, 'w').write(replaced)
-import sys
-process(sys.argv[1])
-''' % str(args[:-1])) # do not hardcode in the last argument, the default arg
-
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
+      '-s', 'MINIMAL_RUNTIME=0',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
@@ -202,6 +192,7 @@ process(sys.argv[1])
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
       cmd += ['--profiling-funcs']
+    self.cmd = cmd
     output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -213,8 +204,12 @@ process(sys.argv[1])
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' in self.extra_args:
-      ret.append(self.filename + '.mem')
+    if 'WASM=0' in self.cmd:
+      if 'MINIMAL_RUNTIME=1' in self.cmd:
+        ret.append(self.filename[:-3] + '.asm.js')
+        ret.append(self.filename[:-3] + '.mem')
+      else:
+        ret.append(self.filename + '.mem')
     else:
       ret.append(self.filename[:-3] + '.wasm')
     return ret
@@ -423,6 +418,27 @@ class benchmark(RunnerCore):
     Building.COMPILER = CLANG
     Building.COMPILER_TEST_OPTS = [OPTIMIZATIONS]
 
+  # avoid depending on argument reception from the commandline
+  def hardcode_arguments(self, code):
+    if not code:
+      return code
+    main_pattern = 'int main(int argc, char **argv)'
+    assert main_pattern in code
+    code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
+    code += '''
+      int main() {
+        // use volatiles so the compiler doesn't optimize all the work away
+        volatile int argc = 2;
+        typedef char** charStarStar;
+        volatile charStarStar argv;
+        argv[0] = (char*)"./program.exe";
+        argv[1] = (char*)"%s";
+        volatile int ret = benchmark_main(argc, argv);
+        return ret;
+      }
+    ''' % DEFAULT_ARG
+    return code
+
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0:
       raise Exception('error, no benchmarkers: ' + benchmarkers_error)
@@ -433,6 +449,7 @@ class benchmark(RunnerCore):
 
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
+    src = self.hardcode_arguments(src)
     with open(filename, 'w') as f:
       f.write(src)
 
@@ -530,7 +547,7 @@ class benchmark(RunnerCore):
       #include <assert.h>
       #include <unistd.h>
 
-      int main() {
+      int main(int argc, char **argv) {
         int N = 100;
         int M = 1000;
         int K = 1000;
@@ -631,7 +648,7 @@ class benchmark(RunnerCore):
         return (x++) & 16384;
       }
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
@@ -670,7 +687,7 @@ class benchmark(RunnerCore):
       #include <stdio.h>
       #include <stdlib.h>
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
