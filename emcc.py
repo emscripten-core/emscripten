@@ -2770,10 +2770,11 @@ def module_export_name_substitution():
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
   with open(final, 'w') as f:
     src = src.replace(shared.JS.module_export_name_substitution_pattern, replacement)
-    # For Node.js, create an unminified Module object so that loading external .asm.js file that assigns to Module['asm'] works
-    # even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and shared.Settings.target_environment_may_be('node'):
-      src = 'if(typeof process!=="undefined"){var Module={};}' + src
+    # For Node.js and other shell environments, create an unminified Module object so that
+    # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
+    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or
+                                            shared.Settings.target_environment_may_be('shell')):
+      src = 'if(typeof Module==="undefined"){var Module={};}' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')
 
