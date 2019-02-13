@@ -88,6 +88,11 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
 #define EMSCRIPTEN_RESULT_TIMED_OUT           -8
 
+#define EMSCRIPTEN_EVENT_TARGET_INVALID        0
+#define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
+#define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
+#define EMSCRIPTEN_EVENT_TARGET_SCREEN         ((const char*)3)
+
 #define EM_BOOL int
 #define EM_TRUE 1
 #define EM_FALSE 0
@@ -141,6 +146,7 @@ typedef struct EmscriptenMouseEvent {
   long movementY;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
   long padding;
@@ -356,6 +362,7 @@ typedef struct EmscriptenTouchPoint
   EM_BOOL onTarget;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
 } EmscriptenTouchPoint;
@@ -473,11 +480,24 @@ typedef EM_BOOL (*em_webgl_context_callback)(int eventType, const void *reserved
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 
-extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+extern EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 
 extern EM_BOOL emscripten_supports_offscreencanvas(void);
+
+// Returns function pointers to WebGL 1 functions. Please avoid using this function ever - all WebGL1/GLES2 functions, even those for WebGL1 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl1_get_proc_address(const char *name);
+
+// Returns function pointers to WebGL 2 functions. Please avoid using this function ever - all WebGL2/GLES3 functions, even those for WebGL2 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl2_get_proc_address(const char *name);
+
+// Combines emscripten_webgl1_get_proc_address() and emscripten_webgl2_get_proc_address() to return function pointers to both WebGL1 and WebGL2 functions. Same drawbacks apply.
+extern void *emscripten_webgl_get_proc_address(const char *name);
 
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);

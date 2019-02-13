@@ -1,36 +1,9 @@
+
+#if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
+
 /** @type {function(number, number=)} */
 function Pointer_stringify(ptr, length) {
-  if (length === 0 || !ptr) return '';
-  // Find the length, and check for UTF while doing so
-  var hasUtf = 0;
-  var t;
-  var i = 0;
-  while (1) {
-#if ASSERTIONS
-    assert(ptr + i < TOTAL_MEMORY);
-#endif
-    t = {{{ makeGetValue('ptr', 'i', 'i8', 0, 1) }}};
-    hasUtf |= t;
-    if (t == 0 && !length) break;
-    i++;
-    if (length && i == length) break;
-  }
-  if (!length) length = i;
-
-  var ret = '';
-
-  if (hasUtf < 128) {
-    var MAX_CHUNK = 1024; // split up into chunks, because .apply on a huge string can overflow the stack
-    var curr;
-    while (length > 0) {
-      curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
-      ret = ret ? ret + curr : curr;
-      ptr += MAX_CHUNK;
-      length -= MAX_CHUNK;
-    }
-    return ret;
-  }
-  return UTF8ToString(ptr);
+  abort("this function has been removed - you should use UTF8ToString(ptr, maxBytesToRead) instead!");
 }
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
@@ -51,6 +24,8 @@ function AsciiToString(ptr) {
 function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
+
+#endif
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
@@ -148,7 +123,14 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
  * @return {string}
  */
 function UTF8ToString(ptr, maxBytesToRead) {
-  return ptr ? UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}}, maxBytesToRead) : '';
+#if TEXTDECODER == 2
+  if (!ptr) return '';
+  var maxPtr = ptr + maxBytesToRead;
+  for(var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+  return UTF8Decoder.decode(HEAPU8.subarray(ptr, end));
+#else
+  return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+#endif
 }
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
@@ -221,6 +203,8 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 {{{ lengthBytesUTF8 }}}
+
+#if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -444,3 +428,5 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
   // Null-terminate the pointer to the HEAP.
   if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
+
+#endif

@@ -31,8 +31,8 @@ GLuint program;
 
 void draw()
 {
-  int w, h, fs;
-  emscripten_get_canvas_size(&w, &h, &fs);
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
   float xs = (float)h / w;
   float ys = 1.0f;
   float mat[] = { xs, 0, 0, 0, 0, ys, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
@@ -57,7 +57,7 @@ void draw()
 
 int main()
 {
-  emscripten_set_canvas_size(256, 256);
+  emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;
@@ -65,7 +65,7 @@ int main()
   attr.premultipliedAlpha = 0;
   attr.majorVersion = 1;
   attr.minorVersion = 0;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   const char *vss = "attribute vec4 vPosition; uniform mat4 mat; varying vec2 texCoord; void main() { gl_Position = vPosition; texCoord = (vPosition.xy + vec2(1.0)) * vec2(0.5); }";

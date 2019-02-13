@@ -112,29 +112,7 @@ uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_add_u64(void *addr, uint64_t val
 	return oldVal;
 }
 
-// This variant is implemented for emulating GCC 64-bit __sync_fetch_and_add. Not to be called directly.
-uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_add_u64(void *addr, uint64_t val)
-{
-	uintptr_t m = (uintptr_t)addr >> 3;
-	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	uint64_t oldVal = *(uint64_t *)addr;
-	*(uint64_t *)addr = oldVal + val;
-	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	return oldVal;
-}
-
 uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_sub_u64(void *addr, uint64_t val)
-{
-	uintptr_t m = (uintptr_t)addr >> 3;
-	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	uint64_t oldVal = *(uint64_t *)addr;
-	*(uint64_t *)addr = oldVal - val;
-	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	return oldVal;
-}
-
-// This variant is implemented for emulating GCC 64-bit __sync_fetch_and_sub. Not to be called directly.
-uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_sub_u64(void *addr, uint64_t val)
 {
 	uintptr_t m = (uintptr_t)addr >> 3;
 	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
@@ -154,29 +132,7 @@ uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_and_u64(void *addr, uint64_t val
 	return oldVal;
 }
 
-// This variant is implemented for emulating GCC 64-bit __sync_fetch_and_and. Not to be called directly.
-uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_and_u64(void *addr, uint64_t val)
-{
-	uintptr_t m = (uintptr_t)addr >> 3;
-	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	uint64_t oldVal = *(uint64_t *)addr;
-	*(uint64_t *)addr = oldVal & val;
-	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	return oldVal;
-}
-
 uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_or_u64(void *addr, uint64_t val)
-{
-	uintptr_t m = (uintptr_t)addr >> 3;
-	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	uint64_t oldVal = *(uint64_t *)addr;
-	*(uint64_t *)addr = oldVal | val;
-	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	return oldVal;
-}
-
-// This variant is implemented for emulating GCC 64-bit __sync_fetch_and_or. Not to be called directly.
-uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_or_u64(void *addr, uint64_t val)
 {
 	uintptr_t m = (uintptr_t)addr >> 3;
 	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
@@ -196,15 +152,29 @@ uint64_t EMSCRIPTEN_KEEPALIVE emscripten_atomic_xor_u64(void *addr, uint64_t val
 	return oldVal;
 }
 
-// This variant is implemented for emulating GCC 64-bit __sync_fetch_and_xor. Not to be called directly.
+uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_add_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_add_u64(addr, val);
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_sub_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_sub_u64(addr, val);
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_and_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_and_u64(addr, val);
+}
+
+uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_or_u64(void *addr, uint64_t val)
+{
+	return emscripten_atomic_or_u64(addr, val);
+}
+
 uint64_t EMSCRIPTEN_KEEPALIVE _emscripten_atomic_fetch_and_xor_u64(void *addr, uint64_t val)
 {
-	uintptr_t m = (uintptr_t)addr >> 3;
-	SPINLOCK_ACQUIRE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	uint64_t oldVal = *(uint64_t *)addr;
-	*(uint64_t *)addr = oldVal ^ val;
-	SPINLOCK_RELEASE(&emulated64BitAtomicsLocks[m&(NUM_64BIT_LOCKS-1)]);
-	return oldVal;
+	return emscripten_atomic_xor_u64(addr, val);
 }
 
 uint64_t __atomic_load_8(void *ptr, int memmodel)

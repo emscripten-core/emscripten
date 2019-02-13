@@ -21,7 +21,7 @@ GLuint CompileShader(GLenum type, const char *src)
 
 int main(int argc, char *argv[])
 {
-  emscripten_set_canvas_size(256, 256);
+  emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
   attr.majorVersion = 1;
 #endif
   attr.minorVersion = 0;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
   GLuint vs = CompileShader(GL_VERTEX_SHADER,

@@ -254,7 +254,9 @@ mergeInto(LibraryManager.library, {
         var contents = stream.node.contents;
         if (position >= stream.node.usedBytes) return 0;
         var size = Math.min(stream.node.usedBytes - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
         } else {

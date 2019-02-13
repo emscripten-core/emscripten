@@ -8,59 +8,27 @@ var LibraryPThreadStub = {
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
   // ===================================================================================
 
-  emscripten_has_threading_support: function() {
-    return 0;
-  },
-
-  emscripten_num_logical_cores: function() {
-    return 1;
-  },
-
-  emscripten_force_num_logical_cores: function(cores) {
-    // Ignored, no threading available.
-  },
-
-  emscripten_is_main_runtime_thread: function() {
-    return 1;
-  },
-
+#if ENVIRONMENT_MAY_BE_WORKER || WASM_BACKEND
   emscripten_is_main_browser_thread: function() {
+#if MINIMAL_RUNTIME
+    return typeof importScripts === 'undefined';
+#else
     return !ENVIRONMENT_IS_WORKER;
+#endif
   },
-
-  emscripten_main_thread_process_queued_calls: function() {
-    // We will never have any queued calls to process, so no-op.
+#else
+  emscripten_is_main_browser_thread__asm: true,
+  emscripten_is_main_browser_thread__sig: 'i',
+  emscripten_is_main_browser_thread: function() {
+    return 1;
   },
+#endif
 
-  pthread_barrier_init: function() {},
-  pthread_barrier_wait: function() {},
-  pthread_barrier_destroy: function() {},
-  pthread_mutex_init: function() {},
-  pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
   pthread_mutexattr_setschedparam: function() {},
   pthread_mutexattr_setprotocol: function() {},
   pthread_mutexattr_settype: function() {},
   pthread_mutexattr_destroy: function() {},
-
-  pthread_mutex_lock__asm: true,
-  pthread_mutex_lock__sig: 'ii',
-  pthread_mutex_lock: function(x) {
-    x = x | 0;
-    return 0;
-  },
-  pthread_mutex_unlock__asm: true,
-  pthread_mutex_unlock__sig: 'ii',
-  pthread_mutex_unlock: function(x) {
-    x = x | 0;
-    return 0;
-  },
-  pthread_mutex_trylock__asm: true,
-  pthread_mutex_trylock__sig: 'ii',
-  pthread_mutex_trylock: function(x) {
-    x = x | 0;
-    return 0;
-  },
 
   pthread_mutexattr_setpshared: function(attr, pshared) {
     // XXX implement if/when getpshared is required
@@ -114,50 +82,6 @@ var LibraryPThreadStub = {
 
   pthread_setcancelstate: function() { return 0; },
 
-  pthread_once: function(ptr, func) {
-    if (!_pthread_once.seen) _pthread_once.seen = {};
-    if (ptr in _pthread_once.seen) return;
-    {{{ makeDynCall('v') }}}(func);
-    _pthread_once.seen[ptr] = 1;
-  },
-
-  $PTHREAD_SPECIFIC: {},
-  $PTHREAD_SPECIFIC_NEXT_KEY: 1,
-  pthread_key_create__deps: ['$PTHREAD_SPECIFIC', '$PTHREAD_SPECIFIC_NEXT_KEY', '$ERRNO_CODES'],
-  pthread_key_create: function(key, destructor) {
-    if (key == 0) {
-      return ERRNO_CODES.EINVAL;
-    }
-    {{{ makeSetValue('key', '0', 'PTHREAD_SPECIFIC_NEXT_KEY', 'i32*') }}};
-    // values start at 0
-    PTHREAD_SPECIFIC[PTHREAD_SPECIFIC_NEXT_KEY] = 0;
-    PTHREAD_SPECIFIC_NEXT_KEY++;
-    return 0;
-  },
-
-  pthread_getspecific__deps: ['$PTHREAD_SPECIFIC'],
-  pthread_getspecific: function(key) {
-    return PTHREAD_SPECIFIC[key] || 0;
-  },
-
-  pthread_setspecific__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_setspecific: function(key, value) {
-    if (!(key in PTHREAD_SPECIFIC)) {
-      return ERRNO_CODES.EINVAL;
-    }
-    PTHREAD_SPECIFIC[key] = value;
-    return 0;
-  },
-
-  pthread_key_delete__deps: ['$PTHREAD_SPECIFIC', '$ERRNO_CODES'],
-  pthread_key_delete: function(key) {
-    if (key in PTHREAD_SPECIFIC) {
-      delete PTHREAD_SPECIFIC[key];
-      return 0;
-    }
-    return ERRNO_CODES.EINVAL;
-  },
-
   pthread_cleanup_push: function(routine, arg) {
     __ATEXIT__.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
@@ -169,7 +93,10 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
+  _pthread_cleanup_push__sig: 'vii',
   _pthread_cleanup_push: 'pthread_cleanup_push',
+
+  _pthread_cleanup_pop__sig: 'v',
   _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
   pthread_sigmask: function() { return 0; },
@@ -343,15 +270,37 @@ var LibraryPThreadStub = {
     {{{ makeStructuralReturn(['l', 'h']) }}};
   },
 
+  emscripten_atomic_add_u32__sig: 'iii',
   emscripten_atomic_add_u32: 'llvm_atomic_load_add_i32_p0i32',
+
+  emscripten_atomic_load_u64__sig: 'iii',
   emscripten_atomic_load_u64: '__atomic_load_8',
+
+  emscripten_atomic_store_u64__sig: 'viiii',
   emscripten_atomic_store_u64: '__atomic_store_8',
+
+  emscripten_atomic_cas_u64__sig: 'iiiiiiii',
   emscripten_atomic_cas_u64: '__atomic_compare_exchange_8',
+
+  emscripten_atomic_exchange_u64__sig: 'iiiii',
   emscripten_atomic_exchange_u64: '__atomic_exchange_8',
+
+  _emscripten_atomic_fetch_and_add_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+
+  _emscripten_atomic_fetch_and_add_u64__sig: 'iiiii',
+  _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+
+  _emscripten_atomic_fetch_and_sub_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_sub_u64: '__atomic_fetch_sub_8',
+
+  _emscripten_atomic_fetch_and_and_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
+
+  _emscripten_atomic_fetch_and_or_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
+
+  _emscripten_atomic_fetch_and_xor_u64__sig: 'iiiii',
   _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
 
   __wait: function() {},

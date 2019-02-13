@@ -57,8 +57,6 @@ function assert(condition, text) {
   }
 }
 
-var globalScope = this;
-
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
@@ -184,40 +182,6 @@ function setValue(ptr, value, type, noSafe) {
 #endif
 }
 
-/** @type {function(number, string, boolean=)} */
-function getValue(ptr, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
-#if SAFE_HEAP
-  if (noSafe) {
-    switch(type) {
-      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32', undefined, undefined, undefined, undefined, '1') }}};
-      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
-      case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
-      case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
-      default: abort('invalid type for getValue: ' + type);
-    }
-  } else {
-#endif
-    switch(type) {
-      case 'i1': return {{{ makeGetValue('ptr', '0', 'i1') }}};
-      case 'i8': return {{{ makeGetValue('ptr', '0', 'i8') }}};
-      case 'i16': return {{{ makeGetValue('ptr', '0', 'i16') }}};
-      case 'i32': return {{{ makeGetValue('ptr', '0', 'i32') }}};
-      case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
-      case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
-      case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-      default: abort('invalid type for getValue: ' + type);
-    }
-#if SAFE_HEAP
-  }
-#endif
-  return null;
-}
-
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
@@ -237,9 +201,6 @@ var ALLOC_NONE = 3; // Do not allocate
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
 /** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
-#if DECLARE_ASM_MODULE_EXPORTS == 0
-var stackAlloc; // Statically reference stackAlloc function that will be exported later from asm.js/wasm so that allocate() function below will see it.
-#endif
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
@@ -256,7 +217,13 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [_malloc, stackAlloc, dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [_malloc,
+#if DECLARE_ASM_MODULE_EXPORTS    
+    stackAlloc,
+#else
+    typeof stackAlloc !== 'undefined' ? stackAlloc : null,
+#endif
+    dynamicAlloc][allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
@@ -386,14 +353,6 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
-}
-#endif
-
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-#if SEPARATE_ASM != 0
-  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
-#endif
 }
 #endif
 
@@ -1059,7 +1018,13 @@ function createWasm(env) {
 
 Module['asm'] = function(global, env, providedBuffer) {
   // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory;
+  env['memory'] = wasmMemory
+#if MODULARIZE && USE_PTHREADS
+  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+  // Module scope, so lookup via Module as well.
+  || Module['wasmMemory']
+#endif
+  ;
   // import table
   env['table'] = wasmTable = new WebAssembly.Table({
     'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},

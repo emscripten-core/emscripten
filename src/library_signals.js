@@ -129,6 +129,7 @@ var funs = {
     ___setErrNo(ERRNO_CODES.EINTR);
     return -1;
   },
+#if SUPPORT_LONGJMP
 #if ASSERTIONS
   siglongjmp__deps: ['longjmp'],
   siglongjmp: function(env, value) {
@@ -140,8 +141,11 @@ var funs = {
     _longjmp(env, value);
   },
 #else
+  siglongjmp__sig: 'vii',
   siglongjmp: 'longjmp',
 #endif
+#endif
+
   sigpending: function(set) {
     {{{ makeSetValue('set', 0, 0, 'i32') }}};
     return 0;

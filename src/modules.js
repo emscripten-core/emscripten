@@ -31,6 +31,15 @@ var Types = {
 
 var firstTableIndex = RESERVED_FUNCTION_POINTERS + 1;
 
+// Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
+function genArgSequence(n) {
+  var args = [];
+  for(var i = 0; i < n; ++i) {
+    args.push('a'+i);
+  }
+  return args;
+}
+
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
@@ -106,13 +115,16 @@ var LibraryManager = {
     // Core system libraries (always linked against)
     var libraries = [
       'library.js',
-      'library_browser.js',
       'library_formatString.js',
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
       'library_html5.js'
     ];
+
+    if (!MINIMAL_RUNTIME) {
+      libraries.push('library_browser.js');
+    }
 
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
@@ -150,27 +162,37 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_sdl.js',
-        'library_gl.js',
-        'library_glut.js',
-        'library_xlib.js',
-        'library_egl.js',
+        'library_webgl.js',
         'library_openal.js',
-        'library_glfw.js',
-        'library_uuid.js',
-        'library_glew.js',
-        'library_idbstore.js',
-        'library_async.js',
         'library_vr.js'
       ]);
+
+      if (!MINIMAL_RUNTIME) {
+        libraries = libraries.concat([
+          'library_sdl.js',
+          'library_glut.js',
+          'library_xlib.js',
+          'library_egl.js',
+          'library_glfw.js',
+          'library_uuid.js',
+          'library_glew.js',
+          'library_idbstore.js',
+          'library_async.js'
+        ]);
+      }
+    }
+
+    // If there are any explicitly specified system JS libraries to link to, add those to link.
+    if (SYSTEM_JS_LIBRARIES) {
+      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    if (USE_WEBGL2) {
+      libraries.push('library_webgl2.js');
     }
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
-    }
-    // If there are any explicitly specified system JS libraries to link to, add those to link.
-    if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
     }
 
     libraries = libraries.concat(additionalLibraries);
@@ -220,7 +242,19 @@ var LibraryManager = {
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
-          lib[x] = new Function('return _' + target + '.apply(null, arguments)');
+          // If the alias provides a signature, then construct a specific 'function foo(a0, a1, a2) { [return] _target(a0, a1, a2); }' form of forwarding.
+          // Otherwise construct a generic 'function foo() { return _target.apply(null, arguments); }' forwarding.
+          // The benefit of the first form is that Closure is able to fully inline and reason about the function.
+          // Note that the signature is checked on the alias function, not on the target function. That allows aliases to choose individually which form
+          // to use. 
+          if (lib[x + '__sig']) {
+            var argCount = lib[x + '__sig'].length - 1;
+            var ret = lib[x + '__sig'] == 'v' ? '' : 'return ';
+            var args = genArgSequence(argCount).join(',');
+            lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
+          } else {
+            lib[x] = new Function('return _' + target + '.apply(null, arguments)');
+          }
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);
         }
@@ -365,7 +399,6 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'Pointer_stringify',
     'AsciiToString',
     'stringToAscii',
     'UTF8ArrayToString',
@@ -426,6 +459,24 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
   ];
+
+  if (!MINIMAL_RUNTIME) {
+    runtimeElements.push('Pointer_stringify');
+  }
+
+  if (MODULARIZE) {
+    // In MODULARIZE=1 mode, the following functions need to be exported out to Module for worker.js to access.
+    if (STACK_OVERFLOW_CHECK) {
+      runtimeElements.push('writeStackCookie');
+      runtimeElements.push('checkStackCookie');
+      runtimeElements.push('abortStackOverflow');
+    }
+    if (USE_PTHREADS) {
+      runtimeElements.push('PThread');
+      runtimeElements.push('ExitStatus');
+    }
+  }
+
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');

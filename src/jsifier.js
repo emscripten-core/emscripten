@@ -15,6 +15,11 @@ var STRUCT_LIST = set('struct', 'list');
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
 
+var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow', 'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan', 'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min', 'Math_max', 'Math_clz32', 'Math_fround',
+                           'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'];
+// Specifies the set of referenced built-in primitives such as Math.max etc.
+var usedExternPrimitives = {};
+
 var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
@@ -48,7 +53,7 @@ function JSify(data, functionsOnly) {
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : 'shell.js');
+    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
 
     // We will start to print out the data, but must do so carefully - we are
     // dealing with potentially *huge* strings. Convenient replacements and
@@ -74,6 +79,8 @@ function JSify(data, functionsOnly) {
     var pre;
     if (SIDE_MODULE) {
       pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
+    } else if (MINIMAL_RUNTIME) {
+      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
     } else {
       pre = processMacros(preprocess(read('support.js'), 'support.js')) +
             processMacros(preprocess(read('preamble.js'), 'preamble.js'));
@@ -176,7 +183,9 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
+      if (allExternPrimitives.indexOf(ident) != -1) {
+        usedExternPrimitives[ident] = 1;
+      } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
@@ -461,12 +470,19 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
+    if (!MINIMAL_RUNTIME) {
+      print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
 
-    print(preprocess(read('arrayUtils.js')));
+      print(preprocess(read('arrayUtils.js')));
+    }
 
     if (SUPPORT_BASE64_EMBEDDING) {
       print(preprocess(read('base64Utils.js')));
+    }
+
+    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
+    if (usedExternPrimitiveNames.length > 0) {
+      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
     }
 
     if (asmLibraryFunctions.length > 0) {
@@ -503,7 +519,7 @@ function JSify(data, functionsOnly) {
       print(read('deterministic.js'));
     }
 
-    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : 'postamble.js';
+    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : (MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js');
     var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
     print(postParts[0]);
 

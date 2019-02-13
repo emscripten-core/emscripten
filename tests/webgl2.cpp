@@ -29,7 +29,7 @@ int main()
 
   int result = 0;
 
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   if (context)
   {
     memset(&attrs, -1, sizeof(attrs));

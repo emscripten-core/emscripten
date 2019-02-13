@@ -24,6 +24,11 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
 {
   printf("result: %d\n", result);
   EM_ASM({
+    // Only report one result per test, even if the test misbehaves and tries to report more.
+    if (Module['__reportedResult']) {
+      throw 'trying to report more than one result!';
+    }
+    Module['__reportedResult'] = true;
     var xhr = new XMLHttpRequest();
     var result = $0;
     if (Module['pageThrewException']) result = 12345;

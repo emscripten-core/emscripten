@@ -24,7 +24,6 @@ import atexit
 import contextlib
 import difflib
 import fnmatch
-import functools
 import glob
 import hashlib
 import json
@@ -46,13 +45,11 @@ import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
-  from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+  from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from httplib import HTTPConnection
   from urllib import unquote
 else:
-  from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
-  from http.client import HTTPConnection
+  from http.server import HTTPServer, SimpleHTTPRequestHandler
   from urllib.parse import unquote
 
 # Setup
@@ -225,18 +222,18 @@ core_test_modes = [
   'asm3',
   'asm2g',
   'asm2f',
-  'binaryen0',
-  'binaryen1',
-  'binaryen2',
-  'binaryen3',
-  'binaryens',
-  'binaryenz',
+  'wasm0',
+  'wasm1',
+  'wasm2',
+  'wasm3',
+  'wasms',
+  'wasmz',
   'asmi',
   'asm2i',
 ]
 
 # The default core test mode, used when none is specified
-default_core_test_mode = 'binaryen0'
+default_core_test_mode = 'wasm0'
 
 # The non-core test modes
 non_core_test_modes = [
@@ -518,7 +515,7 @@ class RunnerCore(unittest.TestCase):
       if len(additional_files) + len(libraries):
         shutil.move(object_file, object_file + '.alone')
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
-        Building.link(inputs, object_file)
+        Building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
           print("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
@@ -1005,37 +1002,49 @@ class RunnerCore(unittest.TestCase):
 # Run a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
 # it this way then allows the page to close() itself when done.
-def harness_server_func(q, port):
-  class TestServerHandler(BaseHTTPRequestHandler):
-    def do_GET(s):
-      s.send_response(200)
-      s.send_header("Content-type", "text/html")
-      s.end_headers()
-      if s.path == '/run_harness':
-        s.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
-      else:
-        result = b'False'
-        if not q.empty():
-          result = q.get()
-        s.wfile.write(result)
-
-    def log_request(code=0, size=0):
-      # don't log; too noisy
-      pass
-
-  httpd = HTTPServer(('localhost', port), TestServerHandler)
-  httpd.serve_forever() # test runner will kill us
-
-
-def server_func(dir, q, port):
+def harness_server_func(in_queue, out_queue, port):
   class TestServerHandler(SimpleHTTPRequestHandler):
-    def do_GET(self):
-      if 'report_' in self.path:
-        print('[server response:', self.path, ']')
-        q.put(self.path)
-        # Send a default OK response to the browser.
+    # Request header handler for default do_GET() path in
+    # SimpleHTTPRequestHandler.do_GET(self) below.
+    def send_head(self):
+      if self.path.endswith('.js'):
+        path = self.translate_path(self.path)
+        try:
+          f = open(path, 'rb')
+        except IOError:
+          self.send_error(404, "File not found: " + path)
+          return None
         self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_header("Content-type", 'application/javascript')
+        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+        self.send_header('Connection', 'close')
+        self.send_header('Expires', '-1')
+        self.end_headers()
+        return f
+      else:
+        return SimpleHTTPRequestHandler.send_head(self)
+
+    def do_GET(self):
+      if self.path == '/run_harness':
+        if DEBUG:
+          print('[server startup]')
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
+      elif 'report_' in self.path:
+        if DEBUG:
+          print('[server response:', self.path, ']')
+        if out_queue.empty():
+          out_queue.put(self.path)
+        else:
+          # a badly-behaving test may send multiple xhrs with reported results; we just care
+          # about the first (if we queued the others, they might be read as responses for
+          # later tests)
+          if DEBUG:
+            print('[excessive response, ignoring]')
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
         self.send_header('Connection', 'close')
         self.send_header('Expires', '-1')
@@ -1050,17 +1059,38 @@ def server_func(dir, q, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[server logging:', urllib.unquote_plus(self.path), ']')
+        if DEBUG:
+          print('[server logging:', urllib.unquote_plus(self.path), ']')
+      elif self.path == '/check':
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        if not in_queue.empty():
+          url, dir = in_queue.get()
+          if DEBUG:
+            print('[queue command:', url, dir, ']')
+          assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
+          assert out_queue.empty(), 'the single response from the last test was read'
+          # tell the browser to load the test
+          self.wfile.write('COMMAND:' + url)
+          # move us to the right place to serve the files
+          os.chdir(dir)
+        else:
+          # the browser must keep polling
+          self.wfile.write('(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
+        if DEBUG:
+          print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
       pass
 
+  # allows streaming compilation to work
   SimpleHTTPRequestHandler.extensions_map['.wasm'] = 'application/wasm'
-  os.chdir(dir)
+
   httpd = HTTPServer(('localhost', port), TestServerHandler)
   httpd.serve_forever() # test runner will kill us
 
@@ -1081,8 +1111,7 @@ class BrowserCore(RunnerCore):
   def setUpClass(cls):
     super(BrowserCore, cls).setUpClass()
     cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
-    cls.test_port = int(os.getenv('EMTEST_BROWSER_TEST_PORT', '8888'))
-    cls.harness_port = int(os.getenv('EMTEST_BROWSER_HARNESS_PORT', '9999'))
+    cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
     if not EMTEST_BROWSER:
@@ -1096,11 +1125,12 @@ class BrowserCore(RunnerCore):
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
     cls.browser_timeout = 30
-    cls.harness_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_queue, cls.harness_port))
+    cls.harness_in_queue = multiprocessing.Queue()
+    cls.harness_out_queue = multiprocessing.Queue()
+    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % cls.harness_port)
+    webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
   def tearDownClass(cls):
@@ -1119,34 +1149,22 @@ class BrowserCore(RunnerCore):
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
-    print('[browser launch:', html_file, ']')
+    if DEBUG:
+      print('[browser launch:', html_file, ']')
     if expectedResult is not None:
       try:
-        queue = multiprocessing.Queue()
-        server = multiprocessing.Process(target=functools.partial(server_func, self.get_dir()), args=(queue, self.test_port))
-        server.start()
-        # Starting the web page server above is an asynchronous procedure, so before we tell the browser below to navigate to
-        # the test page, we need to know that the server has started up and is ready to process the site navigation.
-        # Therefore block until we can make a connection to the server.
-        for i in range(10):
-          httpconn = HTTPConnection('localhost:%s' % self.test_port, timeout=1)
-          try:
-            httpconn.connect()
-            httpconn.close()
-            break
-          except:
-            time.sleep(1)
-        else:
-          raise Exception('[Test harness server failed to start up in a timely manner]')
-        self.harness_queue.put(asbytes('http://localhost:%s/%s' % (self.test_port, html_file)))
+        self.harness_in_queue.put((
+          asbytes('http://localhost:%s/%s' % (self.port, html_file)),
+          self.get_dir()
+        ))
         received_output = False
         output = '[no http server activity]'
         start = time.time()
         if timeout is None:
           timeout = self.browser_timeout
         while time.time() - start < timeout:
-          if not queue.empty():
-            output = queue.get()
+          if not self.harness_out_queue.empty():
+            output = self.harness_out_queue.get()
             received_output = True
             break
           time.sleep(0.1)
@@ -1158,7 +1176,6 @@ class BrowserCore(RunnerCore):
         else:
           self.assertIdentical(expectedResult, output)
       finally:
-        server.terminate()
         time.sleep(0.1) # see comment about Windows above
     else:
       webbrowser.open_new(os.path.abspath(html_file))
@@ -1169,7 +1186,7 @@ class BrowserCore(RunnerCore):
       print('(moving on..)')
 
   def with_report_result(self, code):
-    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.test_port, path_from_root('tests', 'report_result.h')) + code
+    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.port, path_from_root('tests', 'report_result.h')) + code
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
@@ -1270,7 +1287,7 @@ class BrowserCore(RunnerCore):
           setTimeout(realDoReftest, 1);
         };
       }
-''' % (self.test_port, basename, int(manually_trigger)))
+''' % (self.port, basename, int(manually_trigger)))
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
@@ -1281,7 +1298,7 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args:
+    if 'USE_PTHREADS=1' in args and not self.is_wasm_backend():
       if EMTEST_WASM_PTHREADS:
         also_asmjs = True
       elif 'WASM=0' not in args:
@@ -1289,7 +1306,7 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.test_port, '-include', path_from_root('tests', 'report_result.h')]
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port, '-include', path_from_root('tests', 'report_result.h')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
@@ -1403,7 +1420,7 @@ def get_poppler_library(runner_core):
   # Combine libraries
 
   combined = os.path.join(runner_core.get_dir(), 'poppler-combined.bc')
-  Building.link(poppler + freetype, combined)
+  Building.link_to_object(poppler + freetype, combined)
 
   return combined
 
