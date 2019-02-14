@@ -78,7 +78,7 @@ USER_TASKS = [
     'icu',
     'libpng',
     'ogg',
-    'regal'
+    'regal',
     'sdl2',
     'sdl2-gfx',
     'sdl2-image',
