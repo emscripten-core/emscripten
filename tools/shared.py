@@ -435,7 +435,6 @@ def check_llvm():
       print('===========================================================================', file=sys.stderr)
       print(targets, file=sys.stderr)
       print('===========================================================================', file=sys.stderr)
-      logger.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       return False
   else:
     if not has_wasm_target(targets):
