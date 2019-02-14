@@ -28,7 +28,9 @@
 extern "C" {
 #endif
 
+#if !defined(EMSCRIPTEN_NO_STDIO_H)
 #include <stdio.h>
+#endif
 
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
@@ -233,7 +235,9 @@ int emscripten_get_compiler_setting(const char *name);
 void emscripten_debugger(void);
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
+#if !defined(EMSCRIPTEN_NO_STDIO_H)
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
+#endif
 
 #define EM_LOG_CONSOLE   1
 #define EM_LOG_WARN      2
