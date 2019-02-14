@@ -1036,8 +1036,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.error('Compiler settings error: {}'.format(e))
       exit_with_error('Very old compiler settings (pre-fastcomp) are no longer supported.')
 
-    assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
-
     if options.debug_level > 1 and options.use_closure_compiler:
       logger.warning('disabling closure because debug info was requested')
       options.use_closure_compiler = False
