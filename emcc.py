@@ -1034,7 +1034,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
     except Exception as e:
       logger.error('Compiler settings error: {}'.format(e))
-      exit_with_error('Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
+      exit_with_error('Very old compiler settings (pre-fastcomp) are no longer supported.')
 
     assert not shared.Settings.PGO, 'cannot run PGO in ASM_JS mode'
 
