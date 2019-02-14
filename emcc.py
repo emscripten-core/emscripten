@@ -2793,16 +2793,11 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
     f.write(asbytes(html_contents))
 
 
-def generate_html(target, options, js_target, target_basename,
-                  asm_target, wasm_binary_target,
-                  memfile, optimizer):
-  if shared.Settings.MINIMAL_RUNTIME:
-    return generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
-                                         wasm_binary_target, memfile, optimizer)
-
+def generate_traditional_runtime_html(target, options, js_target, target_basename,
+                                      asm_target, wasm_binary_target,
+                                      memfile, optimizer):
   script = ScriptSource()
 
-  logger.debug('generating HTML')
   shell = read_and_preprocess(options.shell_path)
   assert '{{{ SCRIPT }}}' in shell, 'HTML shell must contain  {{{ SCRIPT }}}  , see src/shell.html for an example'
   base_js_target = os.path.basename(js_target)
@@ -2975,6 +2970,65 @@ def generate_html(target, options, js_target, target_basename,
   html_contents = tools.line_endings.convert_line_endings(html_contents, '\n', options.output_eol)
   with open(target, 'wb') as f:
     f.write(asbytes(html_contents))
+
+
+def minify_html(filename, options):
+  opts = []
+  # -g1 and greater retain whitespace and comments in source
+  if options.debug_level == 0:
+    opts += ['--collapse-whitespace',
+             '--collapse-inline-tag-whitespace',
+             '--remove-comments',
+             '--remove-tag-whitespace',
+             '--sort-attributes',
+             '--sort-class-name']
+  # -g2 and greater do not minify HTML at all
+  if options.debug_level <= 1:
+    opts += ['--decode-entities',
+             '--collapse-boolean-attributes',
+             '--remove-attribute-quotes',
+             '--remove-redundant-attributes',
+             '--remove-script-type-attributes',
+             '--remove-style-link-type-attributes',
+             '--use-short-doctype',
+             '--minify-css', 'true',
+             '--minify-js', 'true']
+
+  # html-minifier also has the following options, but they look unsafe for use:
+  # '--remove-optional-tags': removes e.g. <head></head> and <body></body> tags from the page.
+  #                           (Breaks at least browser.test_sdl2glshader)
+  # '--remove-empty-attributes': removes all attributes with whitespace-only values.
+  #                              (Breaks at least browser.test_asmfs_hello_file)
+  # '--remove-empty-elements': removes all elements with empty contents.
+  #                            (Breaks at least browser.test_asm_swapping)
+
+  if options.debug_level >= 2:
+    return
+
+  logger.debug('minifying HTML file ' + filename)
+  size_before = os.path.getsize(filename)
+  start_time = time.time()
+  run_process(shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts)
+  elapsed_time = time.time() - start_time
+  size_after = os.path.getsize(filename)
+  delta = size_after - size_before
+  logger.debug('HTML minification took {:.2f}'.format(elapsed_time) + ' seconds, and shrunk size of ' + filename + ' from ' + str(size_before) + ' to ' + str(size_after) + ' bytes, delta=' + str(delta) + ' ({:+.2f}%)'.format(delta * 100.0 / size_before))
+
+
+def generate_html(target, options, js_target, target_basename,
+                  asm_target, wasm_binary_target,
+                  memfile, optimizer):
+  logger.debug('generating HTML')
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
+                                  wasm_binary_target, memfile, optimizer)
+  else:
+    generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
+                                      wasm_binary_target, memfile, optimizer)
+
+  if shared.Settings.MINIFY_HTML and (options.opt_level >= 1 or options.shrink_level >= 1):
+    minify_html(target, options)
 
 
 def generate_worker_js(target, js_target, target_basename):
