@@ -60,7 +60,7 @@ SYSTEM_TASKS = [
     'gl-mt-emu-webgl2',
     'gl-mt-webgl2',
     'gl-webgl2',
-    'html5'
+    'html5',
     'libc',
     'libc++',
     'libc++_noexcept',
