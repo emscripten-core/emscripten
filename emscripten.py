@@ -1609,7 +1609,7 @@ def create_asm_runtime_funcs():
 
 
 def function_tables(function_table_data):
-  if not shared.Settings.EMULATED_FUNCTION_POINTERS:
+  if not asm_js_emulated_function_pointers():
     return ['dynCall_' + table for table in function_table_data]
   else:
     return []
