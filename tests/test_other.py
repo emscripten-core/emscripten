@@ -9010,11 +9010,11 @@ int main () {
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 993, 'a.js': 289, 'a.asm.js': 110, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 952, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 817, 'a.js': 4969, 'a.asm.js': 10972, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 788, 'a.js': 5035, 'a.wasm': 8978}),
-      (opts, hello_webgl2_sources, {'a.html': 788, 'a.js': 6170, 'a.wasm': 8978}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_world_sources, {'a.html': 985, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 972, 'a.js': 624, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 885, 'a.js': 4969, 'a.asm.js': 10972, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 861, 'a.js': 5035, 'a.wasm': 8978}),
+      (opts, hello_webgl2_sources, {'a.html': 861, 'a.js': 6170, 'a.wasm': 8978}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
