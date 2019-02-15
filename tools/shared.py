@@ -288,6 +288,7 @@ PYTHON = None
 JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
+FROZEN_CACHE = False
 
 
 def parse_config_file():
@@ -316,6 +317,7 @@ def parse_config_file():
     'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
+    'FROZEN_CACHE',
   )
 
   # Only popogate certain settings from the config file.
