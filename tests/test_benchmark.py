@@ -450,7 +450,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -488,7 +488,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('memops', src, 'final:')
+    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def zzztest_files(self):
     src = r'''
@@ -666,7 +666,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
