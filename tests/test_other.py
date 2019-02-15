@@ -1538,7 +1538,7 @@ int f() {
 
     self.assertContained('result: 12346.', run_js('a.out.js'))
 
-  def test_dup_o_in_a(self):
+  def test_multiple_archives_duplicate_basenames(self):
     create_test_file('common.c', r'''
       #include <stdio.h>
       void a(void) {
@@ -1565,30 +1565,37 @@ int f() {
         b();
       }
     ''')
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb'])
 
+    run_process([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb'])
     self.assertContained('a\nb\n', run_js('a.out.js'))
 
-  @no_wasm_backend('warning do not exist under lld')
-  def test_dup_o_in_one_a(self):
-    create_test_file('common.c', r'''
+  def test_archive_duplicate_basenames(self):
+    os.mkdir('a')
+    create_test_file(os.path.join('a', 'common.c'), r'''
       #include <stdio.h>
       void a(void) {
         printf("a\n");
       }
     ''')
-    run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    run_process([PYTHON, EMCC, os.path.join('a', 'common.c'), '-c', '-o', os.path.join('a', 'common.o')])
 
-    os.mkdir('libdir')
-    open(os.path.join('libdir', 'common.c'), 'w').write(r'''
+    os.mkdir('b')
+    create_test_file(os.path.join('b', 'common.c'), r'''
       #include <stdio.h>
       void b(void) {
         printf("b...\n");
       }
     ''')
-    run_process([PYTHON, EMCC, os.path.join('libdir', 'common.c'), '-c', '-o', os.path.join('libdir', 'common.o')])
+    run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    run_process([PYTHON, EMAR, 'rc', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
+    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+
+    # Verify that archive contains basenames with hashes to avoid duplication
+    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    self.assertNotIn('common.o', text)
+    assert text.count('common_') == 2, text
+    for line in text.split('\n'):
+      assert len(line) < 20, line # should not have huge hash names
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1599,26 +1606,22 @@ int f() {
       }
     ''')
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    self.assertNotIn('loading from archive', err)
-    self.assertNotIn('liba.a', err)
-    self.assertNotIn('which has duplicate entries', err)
-    self.assertNotIn('duplicate: common.o', err)
+    self.assertNotIn('archive file contains duplicate entries', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
 
+    # Using llvm-ar directly should cause duplicate basenames
+    run_process([LLVM_AR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
     text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
-    self.assertNotIn('common.o', text)
-    assert text.count('common_') == 2, text
-    for line in text.split('\n'):
-      assert len(line) < 20, line # should not have huge hash names
+    assert text.count('common.o') == 2, text
 
-    # make the hashing fail: 'q' is just a quick append, no replacement, so hashing is not done, and dupes are easy
-    run_process([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    self.assertIn('loading from archive', err)
-    self.assertIn('liba.a', err)
-    self.assertIn('which has duplicate entries', err)
-    self.assertIn('duplicate: common.o', err)
-    assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
+    # This should generate a warning, but only with fastcomp
+    if self.is_wasm_backend():
+      self.assertEqual(err, "")
+    else:
+      self.assertIn('liba.a: archive file contains duplicate entries', err)
+      # others are not duplicates - the hashing keeps them separate
+      self.assertEqual(err.count('duplicate: '), 1)
 
   def test_export_in_a(self):
     export_name = 'this_is_an_entry_point'
