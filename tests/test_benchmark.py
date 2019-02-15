@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import sys
-import tempfile
 import time
 import unittest
 import zlib
@@ -116,7 +115,7 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx})
+      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"})
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -236,32 +235,51 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
-    cheerp_temp = filename + '.cheerp.' + suffix
+    cheerp_temp = filename[:-len(suffix) - 1] + '.cheerp.cpp'
     code = open(filename).read()
-    if 'int main()' in code:
-      main_args = ''
-    else:
-      main_args = 'argc, (%(const)s char**)argv' % {
-        'const': 'const' if 'const char *argv' in code else ''
-      }
     open(cheerp_temp, 'w').write('''
       %(code)s
-      void webMain() {
-        // TODO: how to read from commandline?
-        volatile int argc = 2;
-        typedef char** charStarStar;
-        volatile charStarStar argv;
-        argv[0] = "./cheerp.exe";
-        argv[1] = "%(arg)s";
-        volatile int exit_code = main(%(main_args)s);
-      }
-    ''' % {
-      'arg': args[-1],
+#include <cheerp/client.h>
+namespace client
+{
+    extern client::TArray<client::String>& args;
+}
+class [[cheerp::genericjs]] Arguments
+{
+public:
+    static int getArgumentsCount()
+    {
+        return client::args.get_length();
+    }
+    static int getArgumentLength(int arg)
+    {
+        return client::args[arg]->get_length();
+    }
+    static void copyArgument(int arg, char* buf)
+    {
+        client::String* a = client::args[arg];
+        for(int i=0;i<a->get_length();i++)
+            *(buf++) = a->charCodeAt(i);
+        *buf = 0;
+    }
+};
+void webMain() {
+    int arg1Len = Arguments::getArgumentLength(0);
+    char arg1Buf[arg1Len+1];
+    Arguments::copyArgument(0, arg1Buf);
+    const char* args[2];
+    args[0]="benchmark";
+    args[1]=arg1Buf;
+    int argc = Arguments::getArgumentsCount() + 1;
+    const char** argv=&args[0];
+    main(argc, ( char**)argv);
+}\n''' % {
       'code': code,
-      'main_args': main_args
     })
     cheerp_args = [
       '-target', 'cheerp',
+      '-fno-math-errno',
+      '-Wno-c++11-narrowing',
       '-cheerp-mode=wasm'
     ]
     cheerp_args += self.args
@@ -272,40 +290,42 @@ class CheerpBenchmarker(Benchmarker):
       cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
-        'AR': CHEERP_BIN + 'llvm-ar',
+        'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
         'LD': CHEERP_BIN + 'clang',
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + 'llvm-ranlib',
         'CFLAGS': ' '.join(cheerp_args),
         'CXXFLAGS': ' '.join(cheerp_args),
+        'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     # cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
-    final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     dirs_to_delete = []
+    cheerp_args += ['-cheerp-preexecute']
     try:
-      for arg in cheerp_args[:]:
-        if arg.endswith('.a'):
-          info = self.handle_static_lib(arg)
-          cheerp_args += info['files']
-          dirs_to_delete += [info['dir']]
-      cheerp_args = [arg for arg in cheerp_args if not arg.endswith('.a')]
       # print(cheerp_args)
-      cmd = [CHEERP_BIN + 'clang++'] + cheerp_args + [
+      if filename.endswith('.c'):
+        compiler = CHEERP_BIN + '/clang'
+      else:
+        compiler = CHEERP_BIN + '/clang++'
+      cmd = [compiler] + cheerp_args + [
         '-cheerp-linear-heap-size=256',
         '-cheerp-wasm-loader=' + final,
         cheerp_temp,
         '-Wno-writable-strings', # for how we set up webMain
-        '-o', final + '.wasm'
+        '-o', final.replace('.js', '.wasm')
       ] + shared_args
       # print(' '.join(cmd))
       run_process(cmd)
       self.filename = final
+      # Inject command line arguments
+      run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
       Building.get_binaryen()
       if self.binaryen_opts:
-        run_binaryen_opts(final + '.wasm', self.binaryen_opts)
+        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         try_delete(dir_)
@@ -314,45 +334,7 @@ class CheerpBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
   def get_output_files(self):
-    return [self.filename, self.filename + '.wasm']
-
-  def handle_static_lib(self, f):
-    temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-    with chdir(temp_dir):
-      contents = [x for x in run_process([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).stdout.splitlines() if len(x)]
-      shared.warn_if_duplicate_entries(contents, f)
-      if len(contents) == 0:
-        print('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-        return {
-          'returncode': 0,
-          'dir': temp_dir,
-          'files': []
-        }
-
-      # We are about to ask llvm-ar to extract all the files in the .a archive file, but
-      # it will silently fail if the directory for the file does not exist, so make all the necessary directories
-      for content in contents:
-        dirname = os.path.dirname(content)
-        if dirname:
-          shared.safe_ensure_dirs(dirname)
-      proc = run_process([CHEERP_BIN + 'llvm-ar', 'xo', f], stdout=PIPE, stderr=PIPE)
-      # if absolute paths, files will appear there. otherwise, in this directory
-      contents = list(map(os.path.abspath, contents))
-      nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-      if len(nonexisting_contents) != 0:
-        raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '!  Error:' + str(proc.stdout) + str(proc.stderr))
-
-      return {
-        'returncode': proc.returncode,
-        'dir': temp_dir,
-        'files': contents
-      }
-
-    return {
-      'returncode': 1,
-      'dir': None,
-      'files': []
-    }
+    return [self.filename, self.filename.replace('.js', '.wasm')]
 
   def cleanup(self):
     pass
@@ -392,6 +374,7 @@ try:
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
       # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+      # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
     ]
 except Exception as e:
   benchmarkers_error = str(e)
@@ -985,7 +968,12 @@ class benchmark(RunnerCore):
       return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                              configure_args=['--disable-demos', '--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
+                              # The --host parameter is needed for 2 reasons:
+                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
+                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
+                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
+                              #    cross compile mode, which lets configure complete happily.
+                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + path_from_root('tests', 'bullet', 'src'), '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')],

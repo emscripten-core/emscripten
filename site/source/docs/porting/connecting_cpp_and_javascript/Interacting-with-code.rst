@@ -580,7 +580,7 @@ See the `library_*.js`_ files for other examples.
      ``autoAddDeps(myLibrary, name)`` where myLibrary is the object with
      all your methods, and ``name`` is the thing they all depend upon.
      This is useful when all the implemented methods use a JavaScript
-     singleton containing helper methods. See ``library_gl.js`` for
+     singleton containing helper methods. See ``library_webgl.js`` for
      an example.
    - If a JavaScript library depends on a compiled C library (like most
      of *libc*), you must edit `src/deps_info.json`_. Search for

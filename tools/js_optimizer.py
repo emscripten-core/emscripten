@@ -499,12 +499,11 @@ EMSCRIPTEN_FUNCS();
           temp_files.note(cld)
         elif cleanup:
           if DEBUG: print('running cleanup on shell code', file=sys.stderr)
-          next = cld + '.cl.js'
-          temp_files.note(next)
-          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
-          proc.communicate()
-          assert proc.returncode == 0
-          cld = next
+          passes = ['JSDCE']
+          if 'minifyWhitespace' in passes:
+            passes.append('minifyWhitespace')
+          cld = shared.Building.acorn_optimizer(cld, passes)
+          temp_files.note(cld)
         coutput = open(cld).read()
 
       coutput = coutput.replace('wakaUnknownBefore();', start_asm)

@@ -162,7 +162,7 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_gl.js',
+        'library_webgl.js',
         'library_openal.js',
         'library_vr.js'
       ]);
@@ -182,12 +182,17 @@ var LibraryManager = {
       }
     }
 
-    if (LEGACY_GL_EMULATION) {
-      libraries.push('library_glemu.js');
-    }
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    if (USE_WEBGL2) {
+      libraries.push('library_webgl2.js');
+    }
+
+    if (LEGACY_GL_EMULATION) {
+      libraries.push('library_glemu.js');
     }
 
     libraries = libraries.concat(additionalLibraries);

@@ -1,36 +1,62 @@
+-------- t ImageSize
+-------- t InitWebGLTls
+-------- C currentActiveWebGLContext
+-------- C currentThreadOwnsItsWebGLContext
 -------- T emscripten_GetProcAddress
          U emscripten_asm_const_int
+         U emscripten_async_queue_on_thread_
          U emscripten_async_run_in_main_runtime_thread_
          U emscripten_glActiveTexture
          U emscripten_glAttachShader
+         U emscripten_glBeginConditionalRender
+         U emscripten_glBeginQuery
+         U emscripten_glBeginQueryEXT
+         U emscripten_glBeginTransformFeedback
          U emscripten_glBindAttribLocation
          U emscripten_glBindBuffer
+         U emscripten_glBindBufferBase
+         U emscripten_glBindBufferRange
+         U emscripten_glBindFragDataLocation
          U emscripten_glBindFramebuffer
          U emscripten_glBindProgramARB
          U emscripten_glBindRenderbuffer
+         U emscripten_glBindSampler
          U emscripten_glBindTexture
+         U emscripten_glBindTransformFeedback
          U emscripten_glBindVertexArray
          U emscripten_glBlendColor
          U emscripten_glBlendEquation
          U emscripten_glBlendEquationSeparate
          U emscripten_glBlendFunc
          U emscripten_glBlendFuncSeparate
+         U emscripten_glBlitFramebuffer
          U emscripten_glBufferData
          U emscripten_glBufferSubData
          U emscripten_glCheckFramebufferStatus
+         U emscripten_glClampColor
          U emscripten_glClear
+         U emscripten_glClearBufferfi
+         U emscripten_glClearBufferfv
+         U emscripten_glClearBufferiv
+         U emscripten_glClearBufferuiv
          U emscripten_glClearColor
          U emscripten_glClearDepth
          U emscripten_glClearDepthf
          U emscripten_glClearStencil
          U emscripten_glClientActiveTexture
+         U emscripten_glClientWaitSync
          U emscripten_glColorMask
+         U emscripten_glColorMaski
          U emscripten_glColorPointer
          U emscripten_glCompileShader
          U emscripten_glCompressedTexImage2D
+         U emscripten_glCompressedTexImage3D
          U emscripten_glCompressedTexSubImage2D
+         U emscripten_glCompressedTexSubImage3D
+         U emscripten_glCopyBufferSubData
          U emscripten_glCopyTexImage2D
          U emscripten_glCopyTexSubImage2D
+         U emscripten_glCopyTexSubImage3D
          U emscripten_glCreateProgram
          U emscripten_glCreateShader
          U emscripten_glCullFace
@@ -38,9 +64,14 @@
          U emscripten_glDeleteFramebuffers
          U emscripten_glDeleteObjectARB
          U emscripten_glDeleteProgram
+         U emscripten_glDeleteQueries
+         U emscripten_glDeleteQueriesEXT
          U emscripten_glDeleteRenderbuffers
+         U emscripten_glDeleteSamplers
          U emscripten_glDeleteShader
+         U emscripten_glDeleteSync
          U emscripten_glDeleteTextures
+         U emscripten_glDeleteTransformFeedbacks
          U emscripten_glDeleteVertexArrays
          U emscripten_glDepthFunc
          U emscripten_glDepthMask
@@ -49,6 +80,7 @@
          U emscripten_glDetachShader
          U emscripten_glDisable
          U emscripten_glDisableVertexAttribArray
+         U emscripten_glDisablei
          U emscripten_glDrawArrays
          U emscripten_glDrawArraysInstanced
          U emscripten_glDrawBuffers
@@ -58,68 +90,133 @@
          U emscripten_glEnable
          U emscripten_glEnableClientState
          U emscripten_glEnableVertexAttribArray
+         U emscripten_glEnablei
+         U emscripten_glEndConditionalRender
+         U emscripten_glEndQuery
+         U emscripten_glEndQueryEXT
+         U emscripten_glEndTransformFeedback
+         U emscripten_glFenceSync
          U emscripten_glFinish
          U emscripten_glFlush
+         U emscripten_glFlushMappedBufferRange
          U emscripten_glFramebufferRenderbuffer
          U emscripten_glFramebufferTexture2D
+         U emscripten_glFramebufferTextureLayer
          U emscripten_glFrontFace
          U emscripten_glFrustum
          U emscripten_glGenBuffers
          U emscripten_glGenFramebuffers
+         U emscripten_glGenQueries
+         U emscripten_glGenQueriesEXT
          U emscripten_glGenRenderbuffers
+         U emscripten_glGenSamplers
          U emscripten_glGenTextures
+         U emscripten_glGenTransformFeedbacks
          U emscripten_glGenVertexArrays
          U emscripten_glGenerateMipmap
          U emscripten_glGetActiveAttrib
          U emscripten_glGetActiveUniform
+         U emscripten_glGetActiveUniformBlockName
+         U emscripten_glGetActiveUniformBlockiv
+         U emscripten_glGetActiveUniformName
+         U emscripten_glGetActiveUniformsiv
          U emscripten_glGetAttachedShaders
          U emscripten_glGetAttribLocation
+         U emscripten_glGetBooleani_v
          U emscripten_glGetBooleanv
+         U emscripten_glGetBufferParameteri64v
          U emscripten_glGetBufferParameteriv
+         U emscripten_glGetBufferPointerv
          U emscripten_glGetError
          U emscripten_glGetFloatv
+         U emscripten_glGetFragDataLocation
          U emscripten_glGetFramebufferAttachmentParameteriv
          U emscripten_glGetInfoLogARB
+         U emscripten_glGetInteger64i_v
+         U emscripten_glGetInteger64v
+         U emscripten_glGetIntegeri_v
          U emscripten_glGetIntegerv
+         U emscripten_glGetInternalformativ
          U emscripten_glGetObjectParameterivARB
          U emscripten_glGetPointerv
+         U emscripten_glGetProgramBinary
          U emscripten_glGetProgramInfoLog
          U emscripten_glGetProgramiv
+         U emscripten_glGetQueryObjecti64vEXT
+         U emscripten_glGetQueryObjectivEXT
+         U emscripten_glGetQueryObjectui64vEXT
+         U emscripten_glGetQueryObjectuiv
+         U emscripten_glGetQueryObjectuivEXT
+         U emscripten_glGetQueryiv
+         U emscripten_glGetQueryivEXT
          U emscripten_glGetRenderbufferParameteriv
+         U emscripten_glGetSamplerParameterfv
+         U emscripten_glGetSamplerParameteriv
          U emscripten_glGetShaderInfoLog
          U emscripten_glGetShaderPrecisionFormat
          U emscripten_glGetShaderSource
          U emscripten_glGetShaderiv
          U emscripten_glGetString
+         U emscripten_glGetStringi
+         U emscripten_glGetSynciv
+         U emscripten_glGetTexParameterIiv
+         U emscripten_glGetTexParameterIuiv
          U emscripten_glGetTexParameterfv
          U emscripten_glGetTexParameteriv
+         U emscripten_glGetTransformFeedbackVarying
+         U emscripten_glGetUniformBlockIndex
+         U emscripten_glGetUniformIndices
          U emscripten_glGetUniformLocation
          U emscripten_glGetUniformfv
          U emscripten_glGetUniformiv
+         U emscripten_glGetUniformuiv
+         U emscripten_glGetVertexAttribIiv
+         U emscripten_glGetVertexAttribIuiv
          U emscripten_glGetVertexAttribPointerv
          U emscripten_glGetVertexAttribfv
          U emscripten_glGetVertexAttribiv
          U emscripten_glHint
+         U emscripten_glInvalidateFramebuffer
+         U emscripten_glInvalidateSubFramebuffer
          U emscripten_glIsBuffer
          U emscripten_glIsEnabled
+         U emscripten_glIsEnabledi
          U emscripten_glIsFramebuffer
          U emscripten_glIsProgram
+         U emscripten_glIsQuery
+         U emscripten_glIsQueryEXT
          U emscripten_glIsRenderbuffer
+         U emscripten_glIsSampler
          U emscripten_glIsShader
+         U emscripten_glIsSync
          U emscripten_glIsTexture
+         U emscripten_glIsTransformFeedback
+         U emscripten_glIsVertexArray
          U emscripten_glLineWidth
          U emscripten_glLinkProgram
          U emscripten_glLoadIdentity
          U emscripten_glLoadMatrixf
+         U emscripten_glMapBufferRange
          U emscripten_glMatrixMode
          U emscripten_glNormalPointer
+         U emscripten_glPauseTransformFeedback
          U emscripten_glPixelStorei
          U emscripten_glPolygonOffset
+         U emscripten_glProgramBinary
+         U emscripten_glProgramParameteri
+         U emscripten_glQueryCounterEXT
+         U emscripten_glReadBuffer
          U emscripten_glReadPixels
          U emscripten_glReleaseShaderCompiler
          U emscripten_glRenderbufferStorage
+         U emscripten_glRenderbufferStorageMultisample
+         U emscripten_glResumeTransformFeedback
          U emscripten_glRotatef
          U emscripten_glSampleCoverage
+         U emscripten_glSamplerParameterf
+         U emscripten_glSamplerParameterfv
+         U emscripten_glSamplerParameteri
+         U emscripten_glSamplerParameteriv
          U emscripten_glScissor
          U emscripten_glShaderBinary
          U emscripten_glShaderSource
@@ -131,30 +228,53 @@
          U emscripten_glStencilOpSeparate
          U emscripten_glTexCoordPointer
          U emscripten_glTexImage2D
+         U emscripten_glTexImage3D
+         U emscripten_glTexParameterIiv
+         U emscripten_glTexParameterIuiv
          U emscripten_glTexParameterf
          U emscripten_glTexParameterfv
          U emscripten_glTexParameteri
          U emscripten_glTexParameteriv
+         U emscripten_glTexStorage2D
+         U emscripten_glTexStorage3D
          U emscripten_glTexSubImage2D
+         U emscripten_glTexSubImage3D
+         U emscripten_glTransformFeedbackVaryings
          U emscripten_glUniform1f
          U emscripten_glUniform1fv
          U emscripten_glUniform1i
          U emscripten_glUniform1iv
+         U emscripten_glUniform1ui
+         U emscripten_glUniform1uiv
          U emscripten_glUniform2f
          U emscripten_glUniform2fv
          U emscripten_glUniform2i
          U emscripten_glUniform2iv
+         U emscripten_glUniform2ui
+         U emscripten_glUniform2uiv
          U emscripten_glUniform3f
          U emscripten_glUniform3fv
          U emscripten_glUniform3i
          U emscripten_glUniform3iv
+         U emscripten_glUniform3ui
+         U emscripten_glUniform3uiv
          U emscripten_glUniform4f
          U emscripten_glUniform4fv
          U emscripten_glUniform4i
          U emscripten_glUniform4iv
+         U emscripten_glUniform4ui
+         U emscripten_glUniform4uiv
+         U emscripten_glUniformBlockBinding
          U emscripten_glUniformMatrix2fv
+         U emscripten_glUniformMatrix2x3fv
+         U emscripten_glUniformMatrix2x4fv
          U emscripten_glUniformMatrix3fv
+         U emscripten_glUniformMatrix3x2fv
+         U emscripten_glUniformMatrix3x4fv
          U emscripten_glUniformMatrix4fv
+         U emscripten_glUniformMatrix4x2fv
+         U emscripten_glUniformMatrix4x3fv
+         U emscripten_glUnmapBuffer
          U emscripten_glUseProgram
          U emscripten_glValidateProgram
          U emscripten_glVertexAttrib1f
@@ -166,52 +286,100 @@
          U emscripten_glVertexAttrib4f
          U emscripten_glVertexAttrib4fv
          U emscripten_glVertexAttribDivisor
+         U emscripten_glVertexAttribI1i
+         U emscripten_glVertexAttribI1iv
+         U emscripten_glVertexAttribI1ui
+         U emscripten_glVertexAttribI1uiv
+         U emscripten_glVertexAttribI2i
+         U emscripten_glVertexAttribI2iv
+         U emscripten_glVertexAttribI2ui
+         U emscripten_glVertexAttribI2uiv
+         U emscripten_glVertexAttribI3i
+         U emscripten_glVertexAttribI3iv
+         U emscripten_glVertexAttribI3ui
+         U emscripten_glVertexAttribI3uiv
+         U emscripten_glVertexAttribI4bv
+         U emscripten_glVertexAttribI4i
+         U emscripten_glVertexAttribI4iv
+         U emscripten_glVertexAttribI4sv
+         U emscripten_glVertexAttribI4ubv
+         U emscripten_glVertexAttribI4ui
+         U emscripten_glVertexAttribI4uiv
+         U emscripten_glVertexAttribI4usv
+         U emscripten_glVertexAttribIPointer
          U emscripten_glVertexAttribPointer
          U emscripten_glVertexPointer
          U emscripten_glViewport
+         U emscripten_glWaitSync
+         U emscripten_supports_offscreencanvas
          U emscripten_sync_run_in_main_runtime_thread_
 -------- T emscripten_webgl_commit_frame
 -------- T emscripten_webgl_create_context
          U emscripten_webgl_do_commit_frame
          U emscripten_webgl_do_create_context
-         U emscripten_webgl_do_get_current_context
          U emscripten_webgl_make_context_current_calling_thread
 -------- T emscripten_webgl_get_current_context
 -------- T emscripten_webgl_make_context_current
 -------- T glActiveTexture
 -------- T glAttachShader
+-------- T glBeginQuery
+-------- T glBeginQueryEXT
+-------- T glBeginTransformFeedback
 -------- T glBindAttribLocation
 -------- T glBindBuffer
+-------- T glBindBufferBase
+-------- T glBindBufferRange
 -------- T glBindFramebuffer
 -------- T glBindRenderbuffer
+-------- T glBindSampler
 -------- T glBindTexture
+-------- T glBindTransformFeedback
+-------- T glBindVertexArray
+-------- T glBindVertexArrayOES
 -------- T glBlendColor
 -------- T glBlendEquation
 -------- T glBlendEquationSeparate
 -------- T glBlendFunc
 -------- T glBlendFuncSeparate
+-------- T glBlitFramebuffer
 -------- T glBufferData
 -------- T glBufferSubData
 -------- T glCheckFramebufferStatus
 -------- T glClear
+-------- T glClearBufferfi
+-------- T glClearBufferfv
+-------- T glClearBufferiv
+-------- T glClearBufferuiv
 -------- T glClearColor
 -------- T glClearDepthf
 -------- T glClearStencil
+-------- T glClientWaitSync
 -------- T glColorMask
 -------- T glCompileShader
 -------- T glCompressedTexImage2D
+-------- T glCompressedTexImage3D
 -------- T glCompressedTexSubImage2D
+-------- T glCompressedTexSubImage3D
+-------- T glCopyBufferSubData
 -------- T glCopyTexImage2D
 -------- T glCopyTexSubImage2D
+-------- T glCopyTexSubImage3D
 -------- T glCreateProgram
 -------- T glCreateShader
 -------- T glCullFace
 -------- T glDeleteBuffers
 -------- T glDeleteFramebuffers
 -------- T glDeleteProgram
+-------- T glDeleteQueries
+-------- T glDeleteQueriesEXT
 -------- T glDeleteRenderbuffers
+-------- T glDeleteSamplers
 -------- T glDeleteShader
+-------- T glDeleteSync
 -------- T glDeleteTextures
+-------- T glDeleteTransformFeedbacks
+-------- T glDeleteVertexArrays
+-------- T glDeleteVertexArraysOES
 -------- T glDepthFunc
 -------- T glDepthMask
 -------- T glDepthRangef
@@ -219,61 +387,136 @@
 -------- T glDisable
 -------- T glDisableVertexAttribArray
 -------- T glDrawArrays
+-------- T glDrawArraysInstanced
+-------- T glDrawArraysInstancedANGLE
+-------- T glDrawArraysInstancedARB
+-------- T glDrawArraysInstancedEXT
+-------- T glDrawArraysInstancedNV
+-------- T glDrawBuffers
+-------- T glDrawBuffersEXT
+-------- T glDrawBuffersWEBGL
 -------- T glDrawElements
+-------- T glDrawElementsInstanced
+-------- T glDrawElementsInstancedANGLE
+-------- T glDrawElementsInstancedARB
+-------- T glDrawElementsInstancedEXT
+-------- T glDrawElementsInstancedNV
+-------- T glDrawRangeElements
 -------- T glEnable
 -------- T glEnableVertexAttribArray
+-------- T glEndQuery
+-------- T glEndQueryEXT
+-------- T glEndTransformFeedback
+-------- T glFenceSync
 -------- T glFinish
 -------- T glFlush
+-------- T glFlushMappedBufferRange
 -------- T glFramebufferRenderbuffer
 -------- T glFramebufferTexture2D
+-------- T glFramebufferTextureLayer
 -------- T glFrontFace
 -------- T glGenBuffers
 -------- T glGenFramebuffers
+-------- T glGenQueries
+-------- T glGenQueriesEXT
 -------- T glGenRenderbuffers
+-------- T glGenSamplers
 -------- T glGenTextures
+-------- T glGenTransformFeedbacks
+-------- T glGenVertexArrays
+-------- T glGenVertexArraysOES
 -------- T glGenerateMipmap
 -------- T glGetActiveAttrib
 -------- T glGetActiveUniform
+-------- T glGetActiveUniformBlockName
+-------- T glGetActiveUniformBlockiv
+-------- T glGetActiveUniformsiv
 -------- T glGetAttachedShaders
 -------- T glGetAttribLocation
 -------- T glGetBooleanv
+-------- T glGetBufferParameteri64v
 -------- T glGetBufferParameteriv
+-------- T glGetBufferPointerv
 -------- T glGetError
 -------- T glGetFloatv
+-------- T glGetFragDataLocation
 -------- T glGetFramebufferAttachmentParameteriv
+-------- T glGetInteger64i_v
+-------- T glGetInteger64v
+-------- T glGetIntegeri_v
 -------- T glGetIntegerv
+-------- T glGetInternalformativ
+-------- T glGetProgramBinary
 -------- T glGetProgramInfoLog
 -------- T glGetProgramiv
+-------- T glGetQueryObjecti64vEXT
+-------- T glGetQueryObjectivEXT
+-------- T glGetQueryObjectui64vEXT
+-------- T glGetQueryObjectuiv
+-------- T glGetQueryObjectuivEXT
+-------- T glGetQueryiv
+-------- T glGetQueryivEXT
 -------- T glGetRenderbufferParameteriv
+-------- T glGetSamplerParameterfv
+-------- T glGetSamplerParameteriv
 -------- T glGetShaderInfoLog
 -------- T glGetShaderPrecisionFormat
 -------- T glGetShaderSource
 -------- T glGetShaderiv
 -------- T glGetString
+-------- T glGetStringi
+-------- T glGetSynciv
 -------- T glGetTexParameterfv
 -------- T glGetTexParameteriv
+-------- T glGetTransformFeedbackVarying
+-------- T glGetUniformBlockIndex
+-------- T glGetUniformIndices
 -------- T glGetUniformLocation
 -------- T glGetUniformfv
 -------- T glGetUniformiv
+-------- T glGetUniformuiv
+-------- T glGetVertexAttribIiv
+-------- T glGetVertexAttribIuiv
 -------- T glGetVertexAttribPointerv
 -------- T glGetVertexAttribfv
 -------- T glGetVertexAttribiv
 -------- T glHint
+-------- T glInvalidateFramebuffer
+-------- T glInvalidateSubFramebuffer
 -------- T glIsBuffer
 -------- T glIsEnabled
 -------- T glIsFramebuffer
 -------- T glIsProgram
+-------- T glIsQuery
+-------- T glIsQueryEXT
 -------- T glIsRenderbuffer
+-------- T glIsSampler
 -------- T glIsShader
+-------- T glIsSync
 -------- T glIsTexture
+-------- T glIsTransformFeedback
+-------- T glIsVertexArray
+-------- T glIsVertexArrayOES
 -------- T glLineWidth
 -------- T glLinkProgram
+-------- T glMapBufferRange
+-------- T glPauseTransformFeedback
 -------- T glPixelStorei
 -------- T glPolygonOffset
+-------- T glProgramBinary
+-------- T glProgramParameteri
+-------- T glQueryCounterEXT
+-------- T glReadBuffer
 -------- T glReadPixels
 -------- T glReleaseShaderCompiler
 -------- T glRenderbufferStorage
+-------- T glRenderbufferStorageMultisample
+-------- T glResumeTransformFeedback
 -------- T glSampleCoverage
+-------- T glSamplerParameterf
+-------- T glSamplerParameterfv
+-------- T glSamplerParameteri
+-------- T glSamplerParameteriv
 -------- T glScissor
 -------- T glShaderBinary
 -------- T glShaderSource
@@ -284,30 +527,51 @@
 -------- T glStencilOp
 -------- T glStencilOpSeparate
 -------- T glTexImage2D
+-------- T glTexImage3D
 -------- T glTexParameterf
 -------- T glTexParameterfv
 -------- T glTexParameteri
 -------- T glTexParameteriv
+-------- T glTexStorage2D
+-------- T glTexStorage3D
 -------- T glTexSubImage2D
+-------- T glTexSubImage3D
+-------- T glTransformFeedbackVaryings
 -------- T glUniform1f
 -------- T glUniform1fv
 -------- T glUniform1i
 -------- T glUniform1iv
+-------- T glUniform1ui
+-------- T glUniform1uiv
 -------- T glUniform2f
 -------- T glUniform2fv
 -------- T glUniform2i
 -------- T glUniform2iv
+-------- T glUniform2ui
+-------- T glUniform2uiv
 -------- T glUniform3f
 -------- T glUniform3fv
 -------- T glUniform3i
 -------- T glUniform3iv
+-------- T glUniform3ui
+-------- T glUniform3uiv
 -------- T glUniform4f
 -------- T glUniform4fv
 -------- T glUniform4i
 -------- T glUniform4iv
+-------- T glUniform4ui
+-------- T glUniform4uiv
+-------- T glUniformBlockBinding
 -------- T glUniformMatrix2fv
+-------- T glUniformMatrix2x3fv
+-------- T glUniformMatrix2x4fv
 -------- T glUniformMatrix3fv
+-------- T glUniformMatrix3x2fv
+-------- T glUniformMatrix3x4fv
 -------- T glUniformMatrix4fv
+-------- T glUniformMatrix4x2fv
+-------- T glUniformMatrix4x3fv
+-------- T glUnmapBuffer
 -------- T glUseProgram
 -------- T glValidateProgram
 -------- T glVertexAttrib1f
@@ -318,10 +582,28 @@
 -------- T glVertexAttrib3fv
 -------- T glVertexAttrib4f
 -------- T glVertexAttrib4fv
+-------- T glVertexAttribDivisor
+-------- T glVertexAttribDivisorANGLE
+-------- T glVertexAttribDivisorARB
+-------- T glVertexAttribDivisorEXT
+-------- T glVertexAttribDivisorNV
+-------- T glVertexAttribI4i
+-------- T glVertexAttribI4iv
+-------- T glVertexAttribI4ui
+-------- T glVertexAttribI4uiv
+-------- T glVertexAttribIPointer
 -------- T glVertexAttribPointer
 -------- T glViewport
+-------- T glWaitSync
          U malloc
+-------- t memdup
+         U pthread_getspecific
+         U pthread_key_create
+         U pthread_once
+         U pthread_self
+         U pthread_setspecific
          U strcmp
          U strcpy
          U strlen
          U strstr
+-------- d tlsInit

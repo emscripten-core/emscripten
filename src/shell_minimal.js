@@ -15,6 +15,19 @@ var Module = {{{ EXPORT_NAME }}};
 
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process === 'object';
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+var ENVIRONMENT_IS_SHELL = typeof read === 'function';
+#endif
+
+#if ASSERTIONS && ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
+  throw 'unclear environment';
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
@@ -22,6 +35,17 @@ if (ENVIRONMENT_IS_NODE) {
 #else
   eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
+#endif
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+#if WASM
+  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+#else
+  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
 #endif

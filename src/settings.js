@@ -1029,7 +1029,7 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
-var WASM_OBJECT_FILES = 0;
+var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
@@ -1294,6 +1294,10 @@ var FETCH_DEBUG = 0;
 // If nonzero, enables emscripten_fetch API.
 var FETCH = 0;
 
+// Internal: name of the file containing the Fetch *.fetch.js, if relevant
+// Do not set yourself.
+var FETCH_WORKER_FILE = '';
+
 // If set to 1, uses the multithreaded filesystem that is implemented within the
 // asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 var ASMFS = 0;
@@ -1419,3 +1423,14 @@ var TARGET_BASENAME = '';
 // this to 0 to save a little bit of code size and performance when catching exceptions.
 var SUPPORT_LONGJMP = 1;
 
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
+// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
+// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
+
+// Specifies whether the generated .html file is run through html-minifier. The set of
+// optimization passes run by html-minifier depends on debug and optimization levels. In
+// -g2 and higher, no minification is performed. In -g1, minification is done, but whitespace
+// is retained. Minification requires at least -O1 or -Os to be used. Pass -s MINIFY_HTML=0
+// to explicitly choose to disable HTML minification altogether.
+var MINIFY_HTML = 1;

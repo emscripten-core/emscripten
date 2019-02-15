@@ -48,37 +48,6 @@ var LibraryJSEvents = {
     },
 #endif
 
-    // Find a DOM element with the given ID.
-    findEventTarget: function(target) {
-      try {
-        // The sensible "default" target varies between events, but use window as the default
-        // since DOM events mostly can default to that. Specific callback registrations
-        // override their own defaults.
-        if (!target) return window;
-        if (typeof target === "number") target = UTF8ToString(target);
-        if (target === '#window') return window;
-        else if (target === '#document') return document;
-        else if (target === '#screen') return window.screen;
-        else if (target === '#canvas') return Module['canvas'];
-        return (typeof target === 'string') ? document.getElementById(target) : target;
-      } catch(e) {
-        // In Web Workers, some objects above, such as '#document' do not exist. Gracefully
-        // return null for them.
-        return null;
-      }
-    },
-
-    // Like findEventTarget, but looks for OffscreenCanvas elements first
-    findCanvasEventTarget: function(target) {
-      if (typeof target === 'number') target = UTF8ToString(target);
-      if (!target || target === '#canvas') {
-        if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
-        return Module['canvas'];
-      }
-      if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
-      return JSEvents.findEventTarget(target);
-    },
-
     deferredCalls: [],
 
     // Queues the given function call to occur the next time we enter an event handler.
@@ -237,7 +206,7 @@ var LibraryJSEvents = {
     getNodeNameForTarget: function(target) {
       if (!target) return '';
       if (target == window) return '#window';
-      if (target == window.screen) return '#screen';
+      if (target == screen) return '#screen';
       return (target && target.nodeName) ? target.nodeName : '';
     },
 
@@ -251,7 +220,7 @@ var LibraryJSEvents = {
     },
   },
 
-  _registerKeyEventCallback__deps: ['$JSEvents'],
+  _registerKeyEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerKeyEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -288,7 +257,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -297,6 +266,92 @@ var LibraryJSEvents = {
     };
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
+
+  // In DOM capturing and bubbling sequence, there are two special elements at the top of the event chain that can be of interest
+  // to register many events to: document and window. These cannot be addressed by using document.querySelector(), so
+  // a special mechanism to address them is needed. (For any other special object, such as screen.orientation, no general access
+  // scheme should be needed, but the object-specific event callback registration functions should handle them individually)
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || USE_PTHREADS
+  _specialEventTargets: "[0, typeof document !== 'undefined' ? document : 0, typeof window !== 'undefined' ? window : 0]",
+#else
+  _specialEventTargets: "[0, document, window]",
+#endif
+
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+  _maybeCStringToJsString: function(cString) {
+    return cString === cString + 0 ? UTF8ToString(cString) : cString;
+  },
+
+  _findEventTarget__deps: ['_maybeCStringToJsString', '_specialEventTargets'],
+  _findEventTarget: function(target) {
+    var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
+#if ASSERTIONS
+    // TODO: Remove this check in the future, or move it to some kind of debugging mode, because it may be perfectly fine behavior
+    // for one to query an event target to test if any DOM element with given CSS selector exists. However for a migration period
+    // from old lookup over to new, it is very useful to get diagnostics messages related to a lookup failing.
+    if (!domElement) err('No DOM element was found with CSS selector "' + __maybeCStringToJsString(target) + '"');
+#endif
+    return domElement;
+  },
+
+#if OFFSCREENCANVAS_SUPPORT
+  _findCanvasEventTarget__deps: ['$GL', '_maybeCStringToJsString'],
+  _findCanvasEventTarget: function(target) {
+    target = __maybeCStringToJsString(target);
+
+    // First look up if there exists an OffscreenCanvas with the given name.
+    var offscreenCanvas;
+    // TODO: Once Module['canvas'] is removed, clean up the following line:
+    if (target == '#canvas') offscreenCanvas = GL.offscreenCanvases['canvas'];
+    if (!offscreenCanvas) offscreenCanvas = GL.offscreenCanvases[target] || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]); // First looks up by DOM ID ("#myCanvasElement"), second looks up by DOM element name (first found element of type <canvas>)
+    if (offscreenCanvas) return offscreenCanvas;
+
+#if USE_PTHREADS
+    return (typeof document !== 'undefined') ? document.querySelector(target) : null;
+#endif
+  },
+#else
+  _findCanvasEventTarget__deps: ['_findEventTarget'],
+  _findCanvasEventTarget: function(target) { return __findEventTarget(target); },
+#endif
+
+#else
+  // Find a DOM element with the given ID.
+  _findEventTarget__deps: ['_specialEventTargets'],
+  _findEventTarget: function(target) {
+#if ASSERTIONS
+    warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
+#endif
+    try {
+      // The sensible "default" target varies between events, but use window as the default
+      // since DOM events mostly can default to that. Specific callback registrations
+      // override their own defaults.
+      if (!target) return window;
+      if (typeof target === "number") target = __specialEventTargets[target] || UTF8ToString(target);
+      if (target === '#window') return window;
+      else if (target === '#document') return document;
+      else if (target === '#screen') return screen;
+      else if (target === '#canvas') return Module['canvas'];
+      return (typeof target === 'string') ? document.getElementById(target) : target;
+    } catch(e) {
+      // In Web Workers, some objects above, such as '#document' do not exist. Gracefully
+      // return null for them.
+      return null;
+    }
+  },
+
+  // Like findEventTarget, but looks for OffscreenCanvas elements first
+  _findCanvasEventTarget__deps: ['_findEventTarget'],
+  _findCanvasEventTarget: function(target) {
+    if (typeof target === 'number') target = UTF8ToString(target);
+    if (!target || target === '#canvas') {
+      if (typeof GL !== 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      return Module['canvas'];
+    }
+    if (typeof GL !== 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
+    return __findEventTarget(target);
+  },
+#endif
 
   emscripten_set_keypress_callback_on_thread__proxy: 'sync',
   emscripten_set_keypress_callback_on_thread__sig: 'iiiiii',
@@ -342,6 +397,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
 
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = Module['canvas'].getBoundingClientRect();
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
@@ -350,6 +406,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, '0', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
     }
+#endif
     if (target) {
       var rect = JSEvents.getBoundingClientRectOrZeros(target);
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
@@ -367,13 +424,13 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData'],
+  _registerMouseEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_findEventTarget'],
   _registerMouseEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.mouseEvent) JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
-    target = JSEvents.findEventTarget(target);
+    target = __findEventTarget(target);
 
     var mouseEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -488,14 +545,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerWheelEventCallback__deps: ['$JSEvents', '_fillMouseEventData'],
+  _registerWheelEventCallback__deps: ['$JSEvents', '_fillMouseEventData', '_findEventTarget'],
   _registerWheelEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.wheelEvent) JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
-    target = JSEvents.findEventTarget(target);
-
 
     // The DOM Level 3 events spec event 'wheel'
     var wheelHandlerFunc = function(event) {
@@ -543,9 +598,9 @@ var LibraryJSEvents = {
 
   emscripten_set_wheel_callback_on_thread__proxy: 'sync',
   emscripten_set_wheel_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_wheel_callback_on_thread__deps: ['$JSEvents', '_registerWheelEventCallback'],
+  emscripten_set_wheel_callback_on_thread__deps: ['$JSEvents', '_registerWheelEventCallback', '_findEventTarget'],
   emscripten_set_wheel_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    target = JSEvents.findEventTarget(target);
+    target = __findEventTarget(target);
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -557,18 +612,23 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerUiEventCallback__deps: ['$JSEvents'],
+  _registerUiEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerUiEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.uiEvent) JSEvents.uiEvent = _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} );
 
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
     if (eventTypeString == "scroll" && !target) {
       target = document; // By default read scroll events on document rather than window.
     } else {
-      target = JSEvents.findEventTarget(target);
+      target = __findEventTarget(target);
     }
+#else
+#endif
 
     var uiEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -629,7 +689,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerFocusEventCallback__deps: ['$JSEvents'],
+  _registerFocusEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerFocusEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -658,7 +718,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -709,7 +769,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
   },
 
-  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_fillDeviceOrientationEventData'],
+  _registerDeviceOrientationEventCallback__deps: ['$JSEvents', '_fillDeviceOrientationEventData', '_findEventTarget'],
   _registerDeviceOrientationEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -732,7 +792,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -746,7 +806,7 @@ var LibraryJSEvents = {
   emscripten_set_deviceorientation_callback_on_thread__sig: 'iiiii',
   emscripten_set_deviceorientation_callback_on_thread__deps: ['_registerDeviceOrientationEventCallback'],
   emscripten_set_deviceorientation_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    __registerDeviceOrientationEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEORIENTATION') }}}, "deviceorientation", targetThread);
+    __registerDeviceOrientationEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEORIENTATION') }}}, "deviceorientation", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -776,7 +836,7 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
   },
 
-  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_fillDeviceMotionEventData'],
+  _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_fillDeviceMotionEventData', '_findEventTarget'],
   _registerDeviceMotionEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -799,7 +859,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -813,7 +873,7 @@ var LibraryJSEvents = {
   emscripten_set_devicemotion_callback_on_thread__sig: 'iiiii',
   emscripten_set_devicemotion_callback_on_thread__deps: ['_registerDeviceMotionEventCallback'],
   emscripten_set_devicemotion_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    __registerDeviceMotionEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEMOTION') }}}, "devicemotion", targetThread);
+    __registerDeviceMotionEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_DEVICEMOTION') }}}, "devicemotion", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -830,8 +890,8 @@ var LibraryJSEvents = {
   },
 
   _screenOrientation: function() {
-    if (!window.screen) return undefined;
-    return window.screen.orientation || window.screen.mozOrientation || window.screen.webkitOrientation || window.screen.msOrientation;
+    if (!screen) return undefined;
+    return screen.orientation || screen.mozOrientation || screen.webkitOrientation || screen.msOrientation;
   },
 
   _fillOrientationChangeEventData__deps: ['_screenOrientation'],
@@ -849,18 +909,12 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'window.orientation', 'i32') }}};
   },
 
-  _registerOrientationChangeEventCallback__deps: ['$JSEvents', '_fillOrientationChangeEventData'],
+  _registerOrientationChangeEventCallback__deps: ['$JSEvents', '_fillOrientationChangeEventData', '_findEventTarget'],
   _registerOrientationChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.orientationChangeEvent) JSEvents.orientationChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}} );
-
-    if (!target) {
-      target = window.screen; // Orientation events need to be captured from 'window.screen' instead of 'window'
-    } else {
-      target = JSEvents.findEventTarget(target);
-    }
 
     var orientationChangeEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -880,7 +934,7 @@ var LibraryJSEvents = {
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
-    if (eventTypeString == "orientationchange" && window.screen.mozOrientation !== undefined) {
+    if (eventTypeString == "orientationchange" && screen.mozOrientation !== undefined) {
       eventTypeString = "mozorientationchange";
     }
 
@@ -899,8 +953,8 @@ var LibraryJSEvents = {
   emscripten_set_orientationchange_callback_on_thread__sig: 'iiiii',
   emscripten_set_orientationchange_callback_on_thread__deps: ['_registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    if (!window.screen || !window.screen.addEventListener) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    __registerOrientationChangeEventCallback(window.screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange", targetThread);
+    if (!screen || !screen.addEventListener) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    __registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
@@ -922,14 +976,14 @@ var LibraryJSEvents = {
     if (allowedOrientations & 4) orientations.push("landscape-primary");
     if (allowedOrientations & 8) orientations.push("landscape-secondary");
     var succeeded;
-    if (window.screen.lockOrientation) {
-      succeeded = window.screen.lockOrientation(orientations);
-    } else if (window.screen.mozLockOrientation) {
-      succeeded = window.screen.mozLockOrientation(orientations);
-    } else if (window.screen.webkitLockOrientation) {
-      succeeded = window.screen.webkitLockOrientation(orientations);
-    } else if (window.screen.msLockOrientation) {
-      succeeded = window.screen.msLockOrientation(orientations);
+    if (screen.lockOrientation) {
+      succeeded = screen.lockOrientation(orientations);
+    } else if (screen.mozLockOrientation) {
+      succeeded = screen.mozLockOrientation(orientations);
+    } else if (screen.webkitLockOrientation) {
+      succeeded = screen.webkitLockOrientation(orientations);
+    } else if (screen.msLockOrientation) {
+      succeeded = screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -943,14 +997,14 @@ var LibraryJSEvents = {
   emscripten_unlock_orientation__proxy: 'sync',
   emscripten_unlock_orientation__sig: 'i',
   emscripten_unlock_orientation: function() {
-    if (window.screen.unlockOrientation) {
-      window.screen.unlockOrientation();
-    } else if (window.screen.mozUnlockOrientation) {
-      window.screen.mozUnlockOrientation();
-    } else if (window.screen.webkitUnlockOrientation) {
-      window.screen.webkitUnlockOrientation();
-    } else if (window.screen.msUnlockOrientation) {
-      window.screen.msUnlockOrientation();
+    if (screen.unlockOrientation) {
+      screen.unlockOrientation();
+    } else if (screen.mozUnlockOrientation) {
+      screen.mozUnlockOrientation();
+    } else if (screen.webkitUnlockOrientation) {
+      screen.webkitUnlockOrientation();
+    } else if (screen.msUnlockOrientation) {
+      screen.msUnlockOrientation();
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -979,15 +1033,12 @@ var LibraryJSEvents = {
     }
   },
 
-  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData'],
+  _registerFullscreenChangeEventCallback__deps: ['$JSEvents', '_fillFullscreenChangeEventData', '_findEventTarget'],
   _registerFullscreenChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.fullscreenChangeEvent) JSEvents.fullscreenChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} );
-
-    if (!target) target = document; // Fullscreen change events need to be captured from 'document' by default instead of 'window'
-    else target = JSEvents.findEventTarget(target);
 
     var fullscreenChangeEventhandlerFunc = function(event) {
       var e = event || window.event;
@@ -1020,14 +1071,15 @@ var LibraryJSEvents = {
 
   emscripten_set_fullscreenchange_callback_on_thread__proxy: 'sync',
   emscripten_set_fullscreenchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback'],
+  emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
   emscripten_set_fullscreenchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    if (!target) target = document;
-    else {
-      target = JSEvents.findEventTarget(target);
-      if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-    }
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
+    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+#endif
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "fullscreenchange", targetThread);
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "mozfullscreenchange", targetThread);
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "webkitfullscreenchange", targetThread);
@@ -1318,12 +1370,14 @@ var LibraryJSEvents = {
   },
 
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
-  _emscripten_do_request_fullscreen__deps: ['$JSEvents', '_setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '_get_canvas_element_size', '_set_canvas_element_size', 'JSEvents_requestFullscreen'],
+  _emscripten_do_request_fullscreen__deps: ['$JSEvents', '_setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '_get_canvas_element_size', '_set_canvas_element_size', 'JSEvents_requestFullscreen', '_findEventTarget'],
   _emscripten_do_request_fullscreen: function(target, strategy) {
     if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = '#canvas';
-    target = JSEvents.findEventTarget(target);
+#endif
+    target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     if (!target.requestFullscreen && !target.msRequestFullscreen && !target.mozRequestFullScreen && !target.mozRequestFullscreen && !target.webkitRequestFullscreen) {
@@ -1379,12 +1433,14 @@ var LibraryJSEvents = {
     return __emscripten_do_request_fullscreen(target, strategy);
   },
 
-  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '_setLetterbox', '_hideEverythingExceptGivenElement', '_restoreOldWindowedStyle', '_registerRestoreOldStyle', '_restoreHiddenElements', '_currentFullscreenStrategy', '_softFullscreenResizeWebGLRenderTarget', '_get_canvas_element_size', '_set_canvas_element_size', 'JSEvents_resizeCanvasForFullscreen'],
+  emscripten_enter_soft_fullscreen__deps: ['$JSEvents', '_setLetterbox', '_hideEverythingExceptGivenElement', '_restoreOldWindowedStyle', '_registerRestoreOldStyle', '_restoreHiddenElements', '_currentFullscreenStrategy', '_softFullscreenResizeWebGLRenderTarget', '_get_canvas_element_size', '_set_canvas_element_size', 'JSEvents_resizeCanvasForFullscreen', '_findEventTarget'],
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen__sig: 'iii',
   emscripten_enter_soft_fullscreen: function(target, fullscreenStrategy) {
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = '#canvas';
-    target = JSEvents.findEventTarget(target);
+#endif
+    target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     var strategy = {};
@@ -1418,6 +1474,7 @@ var LibraryJSEvents = {
 #endif
         {{{ makeDynCall('iiii') }}}(strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
       }
+      __currentFullscreenStrategy = 0;
     }
     __restoreOldWindowedStyle = restoreWindowedState;
     __currentFullscreenStrategy = strategy;
@@ -1445,7 +1502,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen'],
+  emscripten_exit_fullscreen__deps: ['$JSEvents', '_currentFullscreenStrategy', 'JSEvents_requestFullscreen', '_specialEventTargets'],
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
@@ -1453,14 +1510,15 @@ var LibraryJSEvents = {
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
 
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
+    var d = __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
+    if (d.exitFullscreen) {
+      d.fullscreenElement && d.exitFullscreen();
+    } else if (d.msExitFullscreen) {
+      d.msFullscreenElement && d.msExitFullscreen();
+    } else if (d.mozCancelFullScreen) {
+      d.mozFullScreenElement && d.mozCancelFullScreen();
+    } else if (d.webkitExitFullscreen) {
+      d.webkitFullscreenElement && d.webkitExitFullscreen();
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -1471,6 +1529,7 @@ var LibraryJSEvents = {
         else
 #endif
       {{{ makeDynCall('iiii') }}}(__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
+      __currentFullscreenStrategy = 0;
     }
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
@@ -1487,15 +1546,12 @@ var LibraryJSEvents = {
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefine('EM_HTML5_LONG_STRING_LEN_BYTES') }}});
   },
 
-  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData'],
+  _registerPointerlockChangeEventCallback__deps: ['$JSEvents', '_fillPointerlockChangeEventData', '_findEventTarget'],
   _registerPointerlockChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.pointerlockChangeEvent) JSEvents.pointerlockChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} );
-
-    if (!target) target = document; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
-    else target = JSEvents.findEventTarget(target);
 
     var pointerlockChangeEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -1527,17 +1583,19 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockchange_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback'],
+  emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
   emscripten_set_pointerlockchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
     if (!document || !document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    if (!target) target = document;
-    else {
-      target = JSEvents.findEventTarget(target);
-      if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-    }
+
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
+    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+#endif
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKCHANGE') }}}, "pointerlockchange", targetThread);
     __registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKCHANGE') }}}, "mozpointerlockchange", targetThread);
     __registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKCHANGE') }}}, "webkitpointerlockchange", targetThread);
@@ -1545,11 +1603,8 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerPointerlockErrorEventCallback__deps: ['$JSEvents'],
+  _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '_specialEventTargets'],
   _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    if (!target) target = document; // Pointer lock events need to be captured from 'document' by default instead of 'window'
-    else target = JSEvents.findEventTarget(target);
-
     var pointerlockErrorEventHandlerFunc = function(event) {
       var e = event || window.event;
 
@@ -1573,17 +1628,20 @@ var LibraryJSEvents = {
 
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockerror_callback_on_thread__sig: 'iiiiii',
-  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback'],
+  emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '_specialEventTargets'],
   emscripten_set_pointerlockerror_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
     if (!document || !document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
-    if (!target) target = document;
-    else {
-      target = JSEvents.findEventTarget(target);
-      if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-    }
+
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
+    target = target ? __findEventTarget(target) : __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
+#endif
+
+    if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKERROR') }}}, "pointerlockerror", targetThread);
     __registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKERROR') }}}, "mozpointerlockerror", targetThread);
     __registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_POINTERLOCKERROR') }}}, "webkitpointerlockerror", targetThread);
@@ -1625,10 +1683,12 @@ var LibraryJSEvents = {
 
   emscripten_request_pointerlock__proxy: 'sync',
   emscripten_request_pointerlock__sig: 'iii',
-  emscripten_request_pointerlock__deps: ['$JSEvents', '_requestPointerLock'],
+  emscripten_request_pointerlock__deps: ['$JSEvents', '_requestPointerLock', '_findEventTarget'],
   emscripten_request_pointerlock: function(target, deferUntilInEventHandler) {
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = '#canvas';
-    target = JSEvents.findEventTarget(target);
+#endif
+    target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     if (!target.requestPointerLock && !target.mozRequestPointerLock && !target.webkitRequestPointerLock && !target.msRequestPointerLock) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1700,15 +1760,12 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
-  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_fillVisibilityChangeEventData'],
+  _registerVisibilityChangeEventCallback__deps: ['$JSEvents', '_fillVisibilityChangeEventData', '_findEventTarget'],
   _registerVisibilityChangeEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.visibilityChangeEvent) JSEvents.visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
-
-    if (!target) target = document; // Visibility change events need to be captured from 'document' by default instead of 'window'
-    else target = JSEvents.findEventTarget(target);
 
     var visibilityChangeEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -1741,9 +1798,14 @@ var LibraryJSEvents = {
 
   emscripten_set_visibilitychange_callback_on_thread__proxy: 'sync',
   emscripten_set_visibilitychange_callback_on_thread__sig: 'iiiii',
-  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback'],
+  emscripten_set_visibilitychange_callback_on_thread__deps: ['_registerVisibilityChangeEventCallback', '_specialEventTargets'],
   emscripten_set_visibilitychange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    __registerVisibilityChangeEventCallback(document, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+  if (!__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}]) {
+    return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
+  }
+#endif
+    __registerVisibilityChangeEventCallback(__specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}], userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_VISIBILITYCHANGE') }}}, "visibilitychange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1758,14 +1820,14 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerTouchEventCallback__deps: ['$JSEvents'],
+  _registerTouchEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerTouchEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
     if (!JSEvents.touchEvent) JSEvents.touchEvent = _malloc( {{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}} );
 
-    target = JSEvents.findEventTarget(target);
+    target = __findEventTarget(target);
 
     var touchEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -1796,7 +1858,9 @@ var LibraryJSEvents = {
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.altKey, 'e.altKey', 'i32') }}};
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
       ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? Module['canvas'].getBoundingClientRect() : undefined;
+#endif
       var targetRect = JSEvents.getBoundingClientRectOrZeros(target);
       var numTouches = 0;
       for(var i in touches) {
@@ -1810,6 +1874,7 @@ var LibraryJSEvents = {
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.pageY, 't.pageY', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.isChanged, 't.changed', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.onTarget, 't.onTarget', 'i32') }}};
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
         if (canvasRect) {
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, 't.clientX - canvasRect.left', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, 't.clientY - canvasRect.top', 'i32') }}};
@@ -1817,6 +1882,7 @@ var LibraryJSEvents = {
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasX, '0', 'i32') }}};
           {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.canvasY, '0', 'i32') }}};            
         }
+#endif
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetX, 't.clientX - targetRect.left', 'i32') }}};
         {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchPoint.targetY, 't.clientY - targetRect.top', 'i32') }}};
 
@@ -1905,7 +1971,7 @@ var LibraryJSEvents = {
     stringToUTF8(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}}, {{{ cDefine('EM_HTML5_MEDIUM_STRING_LEN_BYTES') }}});
   },
 
-  _registerGamepadEventCallback__deps: ['$JSEvents', '_fillGamepadEventData'],
+  _registerGamepadEventCallback__deps: ['$JSEvents', '_fillGamepadEventData', '_findEventTarget'],
   _registerGamepadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1930,7 +1996,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: true,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -1945,7 +2011,7 @@ var LibraryJSEvents = {
   emscripten_set_gamepadconnected_callback_on_thread__deps: ['_registerGamepadEventCallback'],
   emscripten_set_gamepadconnected_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    __registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADCONNECTED') }}}, "gamepadconnected", targetThread);
+    __registerGamepadEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADCONNECTED') }}}, "gamepadconnected", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
@@ -1954,7 +2020,7 @@ var LibraryJSEvents = {
   emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['_registerGamepadEventCallback'],
   emscripten_set_gamepaddisconnected_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
     if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    __registerGamepadEventCallback(window, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected", targetThread);
+    __registerGamepadEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED') }}}, "gamepaddisconnected", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
@@ -1999,7 +2065,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
   
-  _registerBeforeUnloadEventCallback__deps: ['$JSEvents'],
+  _registerBeforeUnloadEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerBeforeUnloadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
     var beforeUnloadEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -2018,7 +2084,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -2036,7 +2102,7 @@ var LibraryJSEvents = {
     // beforeunload callback can only be registered on the main browser thread, because the page will go away immediately after returning from the handler,
     // and there is no time to start proxying it anywhere.
     if (targetThread !== {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD') }}}) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
-    __registerBeforeUnloadEventCallback(window, userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BEFOREUNLOAD') }}}, "beforeunload"); 
+    __registerBeforeUnloadEventCallback({{{ cDefine('EMSCRIPTEN_EVENT_TARGET_WINDOW') }}}, userData, true, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_BEFOREUNLOAD') }}}, "beforeunload");
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -2049,7 +2115,7 @@ var LibraryJSEvents = {
 
   _battery: function() { return navigator.battery || navigator.mozBattery || navigator.webkitBattery; },
 
-  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData', '_battery'],
+  _registerBatteryEventCallback__deps: ['$JSEvents', '_fillBatteryEventData', '_battery', '_findEventTarget'],
   _registerBatteryEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -2074,7 +2140,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -2146,7 +2212,7 @@ var LibraryJSEvents = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
-  emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences'],
+  emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
     var contextAttributes = {};
@@ -2167,13 +2233,11 @@ var LibraryJSEvents = {
     contextAttributes.proxyContextToMainThread = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)];
     contextAttributes.renderViaOffscreenBackBuffer = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)];
 
-    target = UTF8ToString(target);
-    var canvas;
-    if ((!target || target === '#canvas') && Module['canvas']) {
-      canvas = (Module['canvas'].id && GL.offscreenCanvases[Module['canvas'].id]) ? (GL.offscreenCanvases[Module['canvas'].id].offscreenCanvas || JSEvents.findEventTarget(Module['canvas'].id)) : Module['canvas'];
-    } else {
-      canvas = GL.offscreenCanvases[target] ? GL.offscreenCanvases[target].offscreenCanvas : JSEvents.findEventTarget(target);
-    }
+    var canvas = __findCanvasEventTarget(target);
+
+#if GL_DEBUG
+    var targetStr = UTF8ToString(target);
+#endif
 
 #if USE_PTHREADS
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
@@ -2185,7 +2249,7 @@ var LibraryJSEvents = {
         // then this can be avoided, since OffscreenCanvas enables explicit swap control.
 #if GL_DEBUG
         if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}}) console.error('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) console.error('Specified canvas target "' + target + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
+        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}}) console.error('Specified canvas target "' + targetStr + '" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.');
         console.error('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
@@ -2200,15 +2264,17 @@ var LibraryJSEvents = {
 
     if (!canvas) {
 #if GL_DEBUG
-      console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + target + '"!');
+      console.error('emscripten_webgl_create_context failed: Unknown canvas target "' + targetStr + '"!');
 #endif
       return 0;
     }
 
 #if OFFSCREENCANVAS_SUPPORT
+    canvas = canvas.offscreenCanvas;
+
 #if GL_DEBUG
-    if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + target + '"');
-    else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) console.log('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + target + '"');
+    if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');
+    else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) console.log('emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "' + targetStr + '"');
 #endif
 
     if (contextAttributes.explicitSwapControl) {
@@ -2232,12 +2298,15 @@ var LibraryJSEvents = {
 
       if (canvas.transferControlToOffscreen) {
 #if GL_DEBUG
-        console.log('explicitSwapControl requested: canvas.transferControlToOffscreen() on canvas "' + target + '" to get .commit() function and not rely on implicit WebGL swap');
+        console.log('explicitSwapControl requested: canvas.transferControlToOffscreen() on canvas "' + targetStr + '" to get .commit() function and not rely on implicit WebGL swap');
 #endif
         if (!canvas.controlTransferredOffscreen) {
-          GL.offscreenCanvases[canvas.id] = canvas.transferControlToOffscreen();
+          GL.offscreenCanvases[canvas.id] = {
+            canvas: canvas.transferControlToOffscreen(),
+            canvasSharedPtr: _malloc(12),
+            id: canvas.id
+          };
           canvas.controlTransferredOffscreen = true;
-          GL.offscreenCanvases[canvas.id].id = canvas.id;
         } else if (!GL.offscreenCanvases[canvas.id]) {
 #if GL_DEBUG
           console.error('OffscreenCanvas is supported, and canvas "' + canvas.id + '" has already before been transferred offscreen, but there is no known OffscreenCanvas with that name!');
@@ -2440,12 +2509,15 @@ var LibraryJSEvents = {
   emscripten_webgl_enable_extension: 'emscripten_webgl_enable_extension_calling_thread',
 #endif
 
-  _registerWebGlEventCallback__deps: ['$JSEvents'],
+  _registerWebGlEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerWebGlEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
+
+#if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = Module['canvas'];
+#endif
 
     var webGlEventHandlerFunc = function(event) {
       var e = event || window.event;
@@ -2458,7 +2530,7 @@ var LibraryJSEvents = {
     };
 
     var eventHandler = {
-      target: JSEvents.findEventTarget(target),
+      target: __findEventTarget(target),
       allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -2496,9 +2568,9 @@ var LibraryJSEvents = {
   },
 
 #if USE_PTHREADS
-  emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread'],
+  emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size_calling_thread: function(target, width, height) {
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     if (canvas.canvasSharedPtr) {
@@ -2583,22 +2655,22 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size_main_thread__deps: ['emscripten_set_canvas_element_size_calling_thread'],
   emscripten_set_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_set_canvas_element_size_calling_thread(target, width, height); },
 
-  emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread'],
+  emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (canvas) return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
     else return _emscripten_set_canvas_element_size_main_thread(target, width, height);
   }, 
 #else
-  emscripten_set_canvas_element_size__deps: ['$JSEvents'],
+  emscripten_set_canvas_element_size__deps: ['$JSEvents', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size: function(target, width, height) {
 #if GL_DEBUG
     console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     canvas.width = width;
     canvas.height = height;
@@ -2633,9 +2705,9 @@ var LibraryJSEvents = {
   }, 
 
 #if USE_PTHREADS
-  emscripten_get_canvas_element_size_calling_thread__deps: ['$JSEvents'],
+  emscripten_get_canvas_element_size_calling_thread__deps: ['$JSEvents', '_findCanvasEventTarget'],
   emscripten_get_canvas_element_size_calling_thread: function(target, width, height) {
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     if (canvas.canvasSharedPtr) {
@@ -2666,16 +2738,16 @@ var LibraryJSEvents = {
   emscripten_get_canvas_element_size_main_thread__deps: ['emscripten_get_canvas_element_size_calling_thread'],
   emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height); },
 
-  emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread'],
+  emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '_findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (canvas) return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
     else return _emscripten_get_canvas_element_size_main_thread(target, width, height);
   }, 
 #else
-  emscripten_get_canvas_element_size__deps: ['$JSEvents'],
+  emscripten_get_canvas_element_size__deps: ['$JSEvents', '_findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
-    var canvas = JSEvents.findCanvasEventTarget(target);
+    var canvas = __findCanvasEventTarget(target);
     if (!canvas) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
@@ -2703,10 +2775,13 @@ var LibraryJSEvents = {
 
   emscripten_set_element_css_size__proxy: 'sync',
   emscripten_set_element_css_size__sig: 'iiii',
-  emscripten_set_element_css_size__deps: ['$JSEvents'],
+  emscripten_set_element_css_size__deps: ['$JSEvents', '_findEventTarget'],
   emscripten_set_element_css_size: function(target, width, height) {
-    if (target) target = JSEvents.findEventTarget(target);
-    else target = Module['canvas'];
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
+    target = target ? __findEventTarget(target) : Module['canvas'];
+#endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     target.style.width = width + "px";
@@ -2717,10 +2792,13 @@ var LibraryJSEvents = {
 
   emscripten_get_element_css_size__proxy: 'sync',
   emscripten_get_element_css_size__sig: 'iiii',
-  emscripten_get_element_css_size__deps: ['$JSEvents'],
+  emscripten_get_element_css_size__deps: ['$JSEvents', '_findEventTarget'],
   emscripten_get_element_css_size: function(target, width, height) {
-    if (target) target = JSEvents.findEventTarget(target);
-    else target = Module['canvas'];
+#if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
+    target = __findEventTarget(target);
+#else
+    target = target ? __findEventTarget(target) : Module['canvas'];
+#endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     if (target.getBoundingClientRect) {

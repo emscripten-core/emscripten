@@ -188,7 +188,7 @@ static const char alu[] =
    "CCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTG"
    "CACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
 
-int main( int argc, const char *argv[] ) {
+int main( int argc, char *argv[] ) {
    const size_t n = ( argc > 1 ) ? atoi( argv[1] ) : 512;
 
    Repeater(alu)

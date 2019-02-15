@@ -5,8 +5,10 @@
 
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
+#if !MINIMAL_RUNTIME
   $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
                  '__ATEXIT__.push(function() { TTY.shutdown() });',
+#endif
   $TTY: {
     ttys: [],
     init: function () {
