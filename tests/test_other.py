@@ -8066,6 +8066,8 @@ int main() {
 
   def test_no_legalize_js_ffi(self):
     # test minimal JS FFI legalization for invoke and dyncalls
+    if self.is_wasm_backend():
+      self.skipTest('not testing legalize with main module and wasm backend')
     wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
     for (args, js_ffi) in [
         (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0'], False),
