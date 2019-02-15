@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, no_macos, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
 
@@ -5706,7 +5706,6 @@ return malloc(size);
         assert len(old) > len(new)
         assert old.count('tempBigInt') > new.count('tempBigInt')
 
-  @no_macos('https://bugs.llvm.org/show_bug.cgi?id=40503 may be harming the bot due to output size')
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   @is_slow_test
   def test_poppler(self):
