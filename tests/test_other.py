@@ -1546,6 +1546,7 @@ int f() {
       }
     ''')
     run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    try_delete('liba.a')
     run_process([PYTHON, EMAR, 'rc', 'liba.a', 'common.o'])
 
     create_test_file('common.c', r'''
@@ -1555,6 +1556,7 @@ int f() {
       }
     ''')
     run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    try_delete('libb.a')
     run_process([PYTHON, EMAR, 'rc', 'libb.a', 'common.o'])
 
     create_test_file('main.c', r'''
@@ -1588,6 +1590,7 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
+    try_delete('liba.a')
     run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
 
     # Verify that archive contains basenames with hashes to avoid duplication
@@ -1610,20 +1613,27 @@ int f() {
     self.assertContained('a\nb...\n', run_js('a.out.js'))
 
     # Using llvm-ar directly should cause duplicate basenames
-    run_process([LLVM_AR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    try_delete('libdup.a')
+    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
     assert text.count('common.o') == 2, text
 
-    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    # This should generate a warning, but only with fastcomp
+    # With fastcomp we don't support duplicate members so this should generate
+    # a warning.  With the wasm backend (lld) this is fully supported.
+    proc = run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'], check=False, stderr=PIPE)
     if self.is_wasm_backend():
-      self.assertEqual(err, "")
+      self.assertEqual(proc.returncode, 0)
+      self.assertEqual(proc.stderr, '')
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
     else:
-      self.assertIn('liba.a: archive file contains duplicate entries', err)
+      self.assertNotEqual(proc.returncode, 0)
+      self.assertIn('libdup.a: archive file contains duplicate entries', proc.stderr)
+      self.assertIn('error: undefined symbol: a', proc.stderr)
       # others are not duplicates - the hashing keeps them separate
-      self.assertEqual(err.count('duplicate: '), 1)
+      self.assertEqual(proc.stderr.count('duplicate: '), 1)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
-  def test_export_in_a(self):
+  def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
     full_export_name = '_' + export_name
 
