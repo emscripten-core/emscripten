@@ -110,7 +110,7 @@ Usage:
 
   embuilder.py OPERATION TASK1 [TASK2..]
 
-Available operationsand tasks:
+Available operations and tasks:
 
   build %s
 
