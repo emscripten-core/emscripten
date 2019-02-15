@@ -7723,7 +7723,7 @@ function prepDotZero(ast) {
 }
 function fixDotZero(js) {
   return js.replace(/-DOT\$ZERO\(-/g, '- DOT$ZERO(-') // avoid x - (-y.0) turning into x--y.0 when minified
-           .replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]+([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
+           .replace(/DOT\$ZERO\(([-+]?(0x)?[0-9a-f]*\.?[0-9]*([eE][-+]?[0-9]+)?)\)/g, function(m, num) {
     if (num.substr(0, 2) === '0x' || num.substr(0, 3) === '-0x') {
       var ret = eval(num).toString();
       if (ret.indexOf('.') < 0) return ret + '.0';

@@ -38,6 +38,13 @@ var Atomics_store = Atomics.store;
 var Atomics_sub = Atomics.sub;
 var Atomics_xor = Atomics.xor;
 
+function load1(ptr) { return HEAP8[ptr>>2]; }
+function store1(ptr, value) { HEAP8[ptr>>2] = value; }
+function load2(ptr) { return HEAP16[ptr>>2]; }
+function store2(ptr, value) { HEAP16[ptr>>2] = value; }
+function load4(ptr) { return HEAP32[ptr>>2]; }
+function store4(ptr, value) { HEAP32[ptr>>2] = value; }
+
 var ENVIRONMENT_IS_FETCH_WORKER = true;
 var ENVIRONMENT_IS_WORKER = true;
 var ENVIRONMENT_IS_PTHREAD = true;

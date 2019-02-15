@@ -11,7 +11,7 @@ Currently this requires the asm.js code to have been built with -s FINALIZE_ASM_
 '''
 
 from __future__ import print_function
-import os, sys, re, json, shutil
+import os, sys, re, json, shutil, fnmatch
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,6 +49,12 @@ def handle_arg(arg):
     elif l == 'FILE': OUTPUT_FILE = r[1:-1]
     return False
   return True
+
+def wildcards_match(func, whitelist):
+  for w in whitelist:
+    if fnmatch.fnmatch(func, w):
+      return True
+  return False
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
@@ -782,7 +788,7 @@ if __name__ == '__main__':
 
   if len(WHITELIST):
     # we are using a whitelist: fill the blacklist with everything not whitelisted
-    BLACKLIST = set([func for func in asm.funcs if func not in WHITELIST])
+    BLACKLIST = set([func for func in asm.funcs if not wildcards_match(func, WHITELIST)])
 
   # decide which functions will be emterpreted, and find which are externally reachable (from outside other emterpreted code; those will need trampolines)
 

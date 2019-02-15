@@ -46,15 +46,15 @@ def files_in_path(path_components, filenames):
 
 def get_cflags():
   flags = []
-  if shared.Settings.WASM_OBJECT_FILES:
-     flags += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+    flags += ['-s', 'WASM_OBJECT_FILES=0']
   return flags
 
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   if libname.endswith('.bc'):
-    shared.Building.link(inputs, libname)
+    shared.Building.link_to_object(inputs, libname)
   elif libname.endswith('.a'):
     shared.Building.emar('cr', libname, inputs)
   else:
@@ -97,6 +97,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
+  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
 
@@ -142,7 +143,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -164,6 +165,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       return ['-DLEGACY_GL_EMULATION=1']
     else:
       assert '-emu' not in libname
+      return []
+
+  def gl_version_flags(libname):
+    if shared.Settings.USE_WEBGL2:
+      assert '-webgl2' in libname
+      return ['-DUSE_WEBGL2=1']
+    else:
+      assert '-webgl2' not in libname
       return []
 
   # libc
@@ -278,6 +287,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_pthreads_stub(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_stub.c')]
+    return build_libc(libname, pthreads_files, ['-O2'])
+
   def create_pthreads_asmjs(libname):
     pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
@@ -373,9 +386,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for dirpath, dirnames, filenames in os.walk(src_dir):
       filenames = filter(lambda f: f.endswith('.c'), filenames)
       files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz']
+    flags = ['-Oz', '-s', 'USE_WEBGL2=1']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
+    flags += gl_version_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -615,6 +629,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       always_include.add('libpthreads_asmjs')
     else:
       always_include.add('libpthreads_wasm')
+  else:
+    always_include.add('libpthreads_stub')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
@@ -628,21 +644,23 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
+  gl_name = 'libgl'
+  if shared.Settings.USE_PTHREADS:
+    gl_name += '-mt'
+  if shared.Settings.LEGACY_GL_EMULATION:
+    gl_name += '-emu'
+  if shared.Settings.USE_WEBGL2:
+    gl_name += '-webgl2'
+  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
+
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
     if not shared.Settings.WASM_BACKEND:
       system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
     else:
       system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 
@@ -842,8 +860,6 @@ class Ports(object):
           shutil.copytree(path, os.path.join(fullname, subdir))
           Ports.clear_project_build(name)
           return
-      logging.error('could not find port %s' % name)
-      sys.exit(1)
 
     fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
 

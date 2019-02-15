@@ -1,6 +1,6 @@
 #pragma once
 
-#include "webgl2.h"
+#include "webgl1.h"
 #include <emscripten/html5.h>
 
 // 1. https://www.khronos.org/registry/webgl/extensions/OES_texture_float/

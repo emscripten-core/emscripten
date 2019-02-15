@@ -705,23 +705,6 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
-#if PGO
-var PGOMonitor = {
-  called: {},
-  dump: function() {
-    var dead = [];
-    for (var i = 0; i < this.allGenerated.length; i++) {
-      var func = this.allGenerated[i];
-      if (!this.called[func]) dead.push(func);
-    }
-    out('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
-  }
-};
-Module['PGOMonitor'] = PGOMonitor;
-__ATEXIT__.push(function() { PGOMonitor.dump() });
-addOnPreRun(function() { addRunDependency('pgo') });
-#endif
-
 #if RELOCATABLE
 {{{
 (function() {

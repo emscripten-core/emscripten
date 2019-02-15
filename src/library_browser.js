@@ -565,17 +565,37 @@ var LibraryBrowser = {
     // opposite of native code: In native APIs the positive scroll direction is to scroll up (away from the user).
     // NOTE: The mouse wheel delta is a decimal number, and can be a fractional value within -1 and 1. If you need to represent
     //       this as an integer, don't simply cast to int, or you may receive scroll events for wheel delta == 0.
+    // NOTE: We convert all units returned by events into steps, i.e. individual wheel notches.
+    //       These conversions are only approximations. Changing browsers, operating systems, or even settings can change the values.
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
         case 'DOMMouseScroll':
-          delta = event.detail;
+          // 3 lines make up a step
+          delta = event.detail / 3;
           break;
         case 'mousewheel':
-          delta = event.wheelDelta;
+          // 120 units make up a step
+          delta = event.wheelDelta / 120;
           break;
         case 'wheel':
-          delta = event['deltaY'];
+          delta = event.deltaY
+          switch(event.deltaMode) {
+            case 0:
+              // DOM_DELTA_PIXEL: 100 pixels make up a step
+              delta /= 100;
+              break;
+            case 1:
+              // DOM_DELTA_LINE: 3 lines make up a step
+              delta /= 3;
+              break;
+            case 2:
+              // DOM_DELTA_PAGE: A page makes up 80 steps
+              delta *= 80;
+              break;
+            default:
+              throw 'unrecognized mouse wheel delta mode: ' + event.deltaMode;
+          }
           break;
         default:
           throw 'unrecognized mouse wheel event: ' + event.type;

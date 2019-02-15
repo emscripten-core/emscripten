@@ -125,7 +125,7 @@ int main()
 #if TEST_EXPLICIT_CONTEXT_SWAP
   attr.explicitSwapControl = EM_TRUE;
 #endif
-  ctx = emscripten_webgl_create_context(0, &attr);
+  ctx = emscripten_webgl_create_context("#canvas", &attr);
   printf("Created context with handle %u\n", (unsigned int)ctx);
   if (!ctx)
   {

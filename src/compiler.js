@@ -210,6 +210,14 @@ if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVI
   throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
 }
 
+if (!ENVIRONMENT_MAY_BE_WORKER && PROXY_TO_WORKER) {
+  throw 'If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
+}
+
+if (!ENVIRONMENT_MAY_BE_WORKER && USE_PTHREADS) {
+  throw 'When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
+}
+
 //===============================
 // Main
 //===============================

@@ -28,13 +28,17 @@ extern "C" {
 // If passed, the final download will be stored in IndexedDB. If not specified, the file will only reside in browser memory.
 #define EMSCRIPTEN_FETCH_PERSIST_FILE 4
 
-// If the file already exists in IndexedDB, it is returned without redownload. If a partial transfer exists in IndexedDB,
-// the download will resume from where it left off and run to completion.
+// Looks up if the file already exists in IndexedDB, and if so, it is returned without redownload. If a partial transfer
+// exists in IndexedDB, the download will resume from where it left off and run to completion.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
+// If none of these three flags is specified, the fetch operation is implicitly treated as if EMSCRIPTEN_FETCH_APPEND
+// had been passed.
 #define EMSCRIPTEN_FETCH_APPEND 8
 
 // If the file already exists in IndexedDB, the old file will be deleted and a new download is started.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.
+// If you would like to perform an XHR that neither reads or writes to IndexedDB, pass this flag EMSCRIPTEN_FETCH_REPLACE,
+// and do not pass the flag EMSCRIPTEN_FETCH_PERSIST_FILE.
 #define EMSCRIPTEN_FETCH_REPLACE 16
 
 // If specified, the file will only be looked up in IndexedDB, but if it does not exist, it is not attempted to be downloaded

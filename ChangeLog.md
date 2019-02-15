@@ -15,7 +15,27 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
+   this allows matching static functions with conflicting names that
+   the linker distinguishes by appending a random suffix.
+ - Normalize mouse wheel delta in `library_browser.js`. This changes the scroll
+   amount in SDL, GLFW, and GLUT. (#7968)
+
+v1.38.27: 02/10/2019
+--------------------
+ - Change how EMCC_LOCAL_PORTS works, to be more usable. See #7963
  - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
+ - Added a new option -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 that
+   changes the lookup semantics of DOM elements in html5.h event handler
+   callback and WebGL context creation. New behavior is to use CSS selector
+   strings to look up DOM elements over the old behavior, which was somewhat
+   ad hoc constructed rules around default Emscripten uses. The old behavior
+   will be deprecated and removed in the future. Build with -s ASSERTIONS=1
+   to get diagnostics messages related to this transition.
+ - Breaking change with -s USE_PTHREADS=1 + -s FETCH=1: When building with
+   -o a.html, the generated worker script is now named "a.fetch.js" according
+   to the base name of the specified output, instead of having a fixed name
+   "fetch-worker.js".
 
 v1.38.26: 02/04/2019
 --------------------
