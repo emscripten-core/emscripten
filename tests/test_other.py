@@ -550,13 +550,12 @@ f.close()
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_emar_em_config_flag(self):
+    # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
     config = os.path.expanduser(shared.EM_CONFIG)
-    # We pass -version twice to work around the newargs > 2 check in emar
-    output = run_process([PYTHON, EMAR, '--em-config', config, '-version', '-version'], stdout=PIPE, stderr=PIPE)
-    assert output.stdout
-    assert not output.stderr
-    self.assertContained('LLVM', output.stdout)
+    proc = run_process([PYTHON, EMAR, '--em-config', config, '-version'], stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.stderr, "")
+    self.assertContained('LLVM', proc.stdout)
 
   @no_wasm_backend("see https://bugs.llvm.org/show_bug.cgi?id=40470")
   def test_cmake(self):
