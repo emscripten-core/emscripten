@@ -197,6 +197,33 @@ def with_env_modify(updates):
 
 
 @contextlib.contextmanager
+def shared_modify(updates):
+  """A context manager that updates shared."""
+  # This could also be done with mock.patch.dict() but taking a dependency
+  # on the mock library is probably not worth the benefit.
+  print("shared_modify: " + str(updates))
+  old = {}
+  for key, value in updates:
+    old[key] = shared[key]
+    shared[key] = value
+  try:
+    yield
+  finally:
+    for key, value in old:
+      shared[key] = old[key]
+
+
+# Decorator version of shared_modify
+def with_shared_modify(updates):
+  def decorated(f):
+    def modified(self):
+      with shared_modify(updates):
+        return f(self)
+    return modified
+  return decorated
+
+
+@contextlib.contextmanager
 def chdir(dir):
   """A context manager that performs actions in the given directory."""
   orig_cwd = os.getcwd()
