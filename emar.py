@@ -49,9 +49,9 @@ def run():
       # normally the output file is then arg 2, except in the case were the
       # a or b modifiers are used in which case its arg 3.
       if 'a' in cmd or 'b' in cmd:
-        new_member_args_start = 3
+        new_member_args_start = 4
       else:
-        new_member_args_start = 2
+        new_member_args_start = 3
 
       # we add a hash to each input, to make them unique as
       # possible, as llvm-ar cannot extract duplicate names
