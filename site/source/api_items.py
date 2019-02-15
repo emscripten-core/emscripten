@@ -1,5 +1,6 @@
 # Auto-generated file (see get_api_items.py)
 
+
 def get_mapped_items():
     mapped_wiki_inline_code = dict()
     mapped_wiki_inline_code['*emscripten_get_preloaded_image_data'] = ':c:func:`*emscripten_get_preloaded_image_data`'
