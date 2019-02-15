@@ -3731,7 +3731,6 @@ int main() { printf("t:1\n"); }
     self.assertNotContained('__GLOBAL__sub_', open('a.out.js').read())
     self.assertContained('t:1', run_js('a.out.js'))
 
-  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40472')
   def test_implicit_func(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
@@ -3747,11 +3746,18 @@ int main()
     IMPLICIT_WARNING = '''warning: implicit declaration of function 'strnlen' is invalid in C99'''
     IMPLICIT_ERROR = '''error: implicit declaration of function 'strnlen' is invalid in C99'''
 
-    for opts, expected, compile_expected in [
-      ([], None, [IMPLICIT_ERROR]),
-      (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNING]), # turn error into warning
-      (['-Wno-implicit-function-declaration'], ['hello '], []), # turn error into nothing at all (runtime output is incorrect)
-    ]:
+    testcases = [
+      ([], None, [IMPLICIT_ERROR])
+    ]
+    # the LLVM backend will only error on this - it cannot compile the code
+    # see https://bugs.llvm.org/show_bug.cgi?id=40472
+    if not self.is_wasm_backend():
+      testcases += [
+        (['-Wno-error=implicit-function-declaration'], ['hello '], [IMPLICIT_WARNING]), # turn error into warning
+        (['-Wno-implicit-function-declaration'], ['hello '], []) # turn error into nothing at all (runtime output is incorrect)
+      ]
+
+    for opts, expected, compile_expected in testcases:
       print(opts, expected)
       try_delete('a.out.js')
       stderr = run_process([PYTHON, EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
