@@ -8453,7 +8453,6 @@ int main() {
 #endif {background-color: green;}
 #xxx {background-color: purple;}
 </style>
-#xif Expect a warning on invalid preprocessor command
 T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
@@ -8471,7 +8470,6 @@ T6:!ASSERTIONS""", output)
 #endif {background-color: green;}
 #xxx {background-color: purple;}
 </style>
-#xif Expect a warning on invalid preprocessor command
 T1:ASSERTIONS == 1
 T2:(else) ASSERTIONS == 1
 T3:ASSERTIONS < 2
@@ -8489,7 +8487,6 @@ T6:(else) !ASSERTIONS""", output)
 #endif {background-color: green;}
 #xxx {background-color: purple;}
 </style>
-#xif Expect a warning on invalid preprocessor command
 T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:(else) ASSERTIONS >= 2

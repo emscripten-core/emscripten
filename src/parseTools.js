@@ -65,7 +65,7 @@ function preprocess(text, filenameHint) {
           showStack.pop();
         } else {
           if (line[0] === '#') {
-            printErr("Ignoring unclear preprocessor command: " + line);
+            throw "Unclear preprocessor command on line " + i + ': ' + line;
           }
           if (showStack.indexOf(false) === -1) {
             ret += line + '\n';
