@@ -1625,4 +1625,4 @@ namespace emscripten {
     } EmscriptenBindingInitializer_##name##_instance;                   \
     EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
 
-// __emscripten_bind_h__
+#endif // __emscripten_bind_h__
