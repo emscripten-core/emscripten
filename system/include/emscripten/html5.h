@@ -5,8 +5,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_events_h__
-#define __emscripten_events_h__
+#ifndef __emscripten_html5_h__
+#define __emscripten_html5_h__
 
 #ifdef __cplusplus
 #if !defined(__DEFINED_pthread_t)
@@ -577,4 +577,4 @@ extern void emscripten_throw_string(const char *utf8String);
 } // ~extern "C"
 #endif
 
-#endif
+#endif // __emscripten_html5_h__

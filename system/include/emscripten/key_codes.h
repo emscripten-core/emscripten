@@ -5,7 +5,8 @@
  * found in the LICENSE file.
  */
 
-#pragma once
+#ifndef __emscripten_key_codes_h__
+#define __emscripten_key_codes_h__
 
 // The following are definitions of "virtual" key codes from
 // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
@@ -211,3 +212,5 @@ extern const char *emscripten_dom_vk_to_string(int dom_vk_code);
 #endif
 
 #include "dom_pk_codes.h"
+
+#endif // __emscripten_key_codes_h__

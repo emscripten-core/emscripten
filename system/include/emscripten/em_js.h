@@ -5,8 +5,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef __em_js_h__
-#define __em_js_h__
+#ifndef __emscripten_em_js_h__
+#define __emscripten_em_js_h__
 
 #ifdef __cplusplus
 #define _EM_JS_CPP_BEGIN extern "C" {
@@ -64,4 +64,4 @@
   }                                            \
   _EM_JS_CPP_END
 
-#endif // __em_js_h__
+#endif // __emscripten_em_js_h__

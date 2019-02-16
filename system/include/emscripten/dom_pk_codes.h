@@ -13,7 +13,8 @@
  * in Emscripten root directory to regenerate this file.
  */
 
-#pragma once
+#ifndef __emscripten_dom_pk_nodes_h__
+#define __emscripten_dom_pk_nodes_h__
 
 #define DOM_PK_CODE_TYPE int
 
@@ -186,3 +187,5 @@ const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code);
 #ifdef __cplusplus
 }
 #endif
+
+#endif // __emscripten_dom_pk_nodes_h__

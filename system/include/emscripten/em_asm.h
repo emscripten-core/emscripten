@@ -5,8 +5,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef __em_asm_h__
-#define __em_asm_h__
+#ifndef __emscripten_em_asm_h__
+#define __emscripten_em_asm_h__
 
 #ifndef __asmjs__
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
@@ -216,4 +216,4 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 #define EM_ASM_INT_V(code) EM_ASM_INT(#code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
 
-#endif // __em_asm_h__
+#endif // __emscripten_em_asm_h__

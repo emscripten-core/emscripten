@@ -368,4 +368,4 @@ struct thread_profiler_block
 }
 #endif
 
-#endif
+#endif // __emscripten_threading_h__
