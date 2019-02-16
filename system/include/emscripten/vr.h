@@ -153,4 +153,4 @@ extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
 } // ~extern "C"
 #endif
 
-#endif
+#endif // __emscripten_vr_h__

@@ -5,11 +5,12 @@
  * found in the LICENSE file.
  */
 
-#pragma once
+#ifndef __emscripten_wire_h__
+#define __emscripten_wire_h__
 
 #if __cplusplus < 201103L
 #error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
-#else
+#endif
 
 // A value moving between JavaScript and C++ has three representations:
 // - The original JS value: a String
@@ -43,7 +44,7 @@ namespace emscripten {
         // We don't need the full std::type_info implementation.  We
         // just need a unique identifier per type and polymorphic type
         // identification.
-        
+
         template<typename T>
         struct CanonicalizedID {
             static char c;
@@ -128,7 +129,7 @@ namespace emscripten {
                 return LightTypeID<T*>::get();
             }
         };
-        
+
         // ExecutePolicies<>
 
         template<typename... Policies>
@@ -141,7 +142,7 @@ namespace emscripten {
                 typedef T type;
             };
         };
-        
+
         template<typename Policy, typename... Remaining>
         struct ExecutePolicies<Policy, Remaining...> {
             template<typename T, int Index>
@@ -458,4 +459,4 @@ namespace emscripten {
     }
 }
 
-#endif // ~C++11 version check
+#endif // __emscripten_wire_h__

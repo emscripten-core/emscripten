@@ -5,11 +5,12 @@
  * found in the LICENSE file.
  */
 
-#pragma once
+#ifndef __emscripten_val_h__
+#define __emscripten_val_h__
 
 #if __cplusplus < 201103L
 #error Including <emscripten/val.h> requires building with -std=c++11 or newer!
-#else
+#endif
 
 #include <stdint.h> // uintptr_t
 #include <emscripten/wire.h>
@@ -586,4 +587,4 @@ namespace emscripten {
     };
 }
 
-#endif // ~C++11 version check
+#endif // __emscripten_val_h__

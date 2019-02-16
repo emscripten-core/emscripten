@@ -234,5 +234,4 @@ uint64_t emscripten_asmfs_compute_memory_usage();
 }
 #endif
 
-// ~__emscripten_fetch_h__
-#endif
+#endif // __emscripten_fetch_h__
