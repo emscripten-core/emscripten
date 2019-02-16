@@ -836,6 +836,14 @@ var DETERMINISTIC = 0;
 // the module. (This allows, in particular, for you to create multiple
 // instantiations, etc.)
 //
+// The default .html shell file provided in MINIMAL_RUNTIME mode shows
+// an example to how the module is instantiated from within the html file.
+// The default .html shell file provided by traditional runtime mode is only
+// compatible with MODULARIZE=0 mode, so when building with traditional
+// runtime, you should provided your own html shell file to perform the
+// instantiation when building with MODULARIZE=1. (For more details, see
+// https://github.com/emscripten-core/emscripten/issues/7950)
+//
 // If you add --pre-js or --post-js files, they will be included inside
 // the module with the rest of the emitted code. That way, they can be
 // optimized together with it. (If you want something outside of the module,
