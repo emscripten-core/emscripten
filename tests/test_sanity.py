@@ -44,7 +44,7 @@ def wipe():
 
 def add_to_config(content):
   with open(CONFIG_FILE, 'a') as f:
-    f.write(content + '\n')
+    f.write('\n' + content + '\n')
 
 
 def mtime(filename):
@@ -500,6 +500,17 @@ fi
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
       self.assertFalse(os.path.exists(EMCC_CACHE))
+
+    # FROZEN_CACHE prevents cache clears, and prevents building
+    ensure_cache()
+    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
+    add_to_config('FROZEN_CACHE = True')
+    self.do([PYTHON, EMCC])
+    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
+    output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
   def test_nostdincxx(self):
     restore_and_set_up()

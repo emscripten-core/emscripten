@@ -33,7 +33,7 @@ from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
-from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
+from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, with_shared_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
 import tools.js_optimizer
@@ -489,7 +489,7 @@ f.close()
   # Test that if multiple processes attempt to access or build stuff to the
   # cache on demand, that exactly one of the processes will, and the other
   # processes will block to wait until that process finishes.
-  @with_shared_modify({'FROZEN_CACHE': '0'}):
+  @with_shared_modify({'FROZEN_CACHE': '0'})
   def test_emcc_multiprocess_cache_access(self):
     create_test_file('test.c', r'''
       #include <stdio.h>
@@ -518,7 +518,7 @@ f.close()
     # Exactly one child process should have triggered libc build!
     self.assertEqual(num_times_libc_was_built, 1)
 
-  @with_shared_modify({'FROZEN_CACHE': '0'}):
+  @with_shared_modify({'FROZEN_CACHE': '0'})
   def test_emcc_cache_flag(self):
     cache_dir_name = self.in_dir('emscripten_cache')
     self.assertFalse(os.path.exists(cache_dir_name))
