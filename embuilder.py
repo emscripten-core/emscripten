@@ -254,21 +254,7 @@ def main():
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('libgl')])
-    elif what == 'gl-mt':
-      build('''
-        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
-        int main() {
-          return int(emscripten_GetProcAddress("waka waka"));
-        }
-      ''', [static_library_name('libgl-mt')], ['-s', 'USE_PTHREADS=1'])
-    elif what == 'gl-emu':
-      build('''
-        extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
-        int main() {
-          return int(emscripten_GetProcAddress("waka waka"));
-        }
-      ''', [static_library_name('libgl-emu')], ['-s', 'LEGACY_GL_EMULATION=1'])
+      ''', [static_library_name('lib' + what)], opts)
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':
