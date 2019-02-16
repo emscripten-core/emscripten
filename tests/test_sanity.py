@@ -1062,4 +1062,3 @@ BINARYEN_ROOT = ''
       print('build with bitcode')
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-s', 'WASM_OBJECT_FILES=0'])
       self.assertContained('hello, world!', run_js('a.out.js'))
-
