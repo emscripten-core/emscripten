@@ -222,9 +222,9 @@ def main():
         cmd += ['-s', 'USE_PTHREADS=1']
       if '_tracing' in what:
         cmd += ['-s', 'EMSCRIPTEN_TRACING=1']
-      build(C_WITH_MALLOC, [static_library_name('lib' + what + '.bc')], cmd)
+      build(C_WITH_MALLOC, [static_library_name('lib' + what)], cmd)
     elif what in ('libc-mt', 'pthreads'):
-      build(C_WITH_MALLOC, [static_library_name('libc-mt.bc'), static_library_name('libpthreads.bc')], ['-s', 'USE_PTHREADS=1'])
+      build(C_WITH_MALLOC, [static_library_name('libc-mt'), static_library_name('libpthreads')], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libc-wasm':
       build(C_WITH_STDLIB, [static_library_name('libc-wasm')], ['-s', 'WASM=1'])
     elif what == 'libc++':
@@ -254,21 +254,21 @@ def main():
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', ['libgl.bc'])
+      ''', [static_library_name('libgl')])
     elif what == 'gl-mt':
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('libgl-mt.bc')], ['-s', 'USE_PTHREADS=1'])
+      ''', [static_library_name('libgl-mt')], ['-s', 'USE_PTHREADS=1'])
     elif what == 'gl-emu':
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('libgl-emu.bc')], ['-s', 'LEGACY_GL_EMULATION=1'])
+      ''', [static_library_name('libgl-emu')], ['-s', 'LEGACY_GL_EMULATION=1'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':
