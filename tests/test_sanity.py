@@ -12,7 +12,7 @@ import time
 import re
 import tempfile
 
-from runner import RunnerCore, path_from_root, env_modify, chdir
+from runner import RunnerCore, path_from_root, env_modify, chdir, create_test_file
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE, CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs, expected_llvm_version, generate_sanity
 from tools.shared import Cache, Settings
@@ -513,6 +513,60 @@ fi
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
+
+  # Test that if multiple processes attempt to access or build stuff to the
+  # cache on demand, that exactly one of the processes will, and the other
+  # processes will block to wait until that process finishes.
+  def test_emcc_multiprocess_cache_access(self):
+    restore_and_set_up()
+
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    cache_dir_name = self.in_dir('emscripten_cache')
+    tasks = []
+    num_times_libc_was_built = 0
+    for i in range(3):
+      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+      tasks += [p]
+    for p in tasks:
+      print('stdout:\n', p.stdout)
+      if 'generating system library: libc' in p.stdout:
+        num_times_libc_was_built += 1
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    # Exactly one child process should have triggered libc build!
+    self.assertEqual(num_times_libc_was_built, 1)
+
+  def test_emcc_cache_flag(self):
+    restore_and_set_up()
+
+    cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc'
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
   def test_nostdincxx(self):
     restore_and_set_up()

@@ -104,8 +104,8 @@ class Cache(object):
         return cachename
       # it doesn't exist yet, create it
       if shared.FROZEN_CACHE:
-        WHITELIST = ['is_vanilla.txt']
-        if shortname not in WHITELIST:
+        # it's ok to build small .txt marker files like "vanilla"
+        if not shortname.endswith('.txt'):
           raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
