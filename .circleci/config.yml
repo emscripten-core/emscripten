@@ -4,7 +4,6 @@ defaults: &defaults
       environment:
         LANG: C.UTF-8
         EMTEST_DETECT_TEMPFILE_LEAKS: 1
-        EMCC_BUILD_SYSTEM_LIBS_ON_DEMAND: 0 # disallow system lib building in general - only the initial build should do it, for everyone
 
 test-defaults: &test-defaults
   <<: *defaults
@@ -99,8 +98,10 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
-          environment:
-            EMCC_BUILD_SYSTEM_LIBS_ON_DEMAND: 1
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -320,7 +321,6 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=sanity
-      - EMCC_BUILD_SYSTEM_LIBS_ON_DEMAND=1
   build-upstream:
     <<: *defaults
     working_directory: ~/
@@ -355,8 +355,10 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
-          environment:
-            EMCC_BUILD_SYSTEM_LIBS_ON_DEMAND: 1
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
