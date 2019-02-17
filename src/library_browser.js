@@ -879,7 +879,7 @@ var LibraryBrowser = {
 
     // LOAD
     http.onload = function http_onload(e) {
-      if (http.status == 200) {
+      if (http.status >= 200 && http.status < 300) {
         // if a file exists there, we overwrite it
         try {
           FS.unlink(_file);
@@ -947,7 +947,7 @@ var LibraryBrowser = {
 
     // LOAD
     http.onload = function http_onload(e) {
-      if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
+      if (http.status >= 200 && http.status < 300 || _url.substr(0,4).toLowerCase() != "http") {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
