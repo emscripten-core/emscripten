@@ -18,13 +18,13 @@ LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '{{{ LLVM_ROOT }}}')) # directo
 BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # if not set, we will use it from ports
 
 # If not specified, defaults to sys.executable.
-#PYTHON = 'python'
+# PYTHON = 'python'
 
 # Add this if you have manually built the JS optimizer executable (in
 # Emscripten/tools/optimizer) and want to run it from a custom location.
 # Alternatively, you can set this as the environment variable
 # EMSCRIPTEN_NATIVE_OPTIMIZER.
-#EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/custom/optimizer(.exe)'
+# EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/custom/optimizer(.exe)'
 
 # See below for notes on which JS engine(s) you need
 NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
@@ -35,7 +35,7 @@ JAVA = 'java' # executable
 
 TEMP_DIR = '{{{ TEMP }}}'
 
-#CLOSURE_COMPILER = '..' # define this to not use the bundled version
+# CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ################################################################################
 

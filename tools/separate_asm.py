@@ -9,16 +9,16 @@ Separates out the core asm module out of an emscripten output file.
 This is useful because it lets you load the asm module first, then the main script, which on some browsers uses less memory
 '''
 
-import os, sys
+import os
+import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from tools import asm_module
 
 infile = sys.argv[1]
 asmfile = sys.argv[2]
 otherfile = sys.argv[3]
 asm_module_name = sys.argv[4] if len(sys.argv) >= 5 else 'Module["asm"]'
+
 
 def find_index_of_closing_parens(string, idx):
   assert string[idx] == '('
@@ -32,7 +32,7 @@ def find_index_of_closing_parens(string, idx):
       if nesting_level == 0:
         return idx
     idx += 1
-  raise Exception('Failed to find closing parenthesis for string ' + string + ', start parentheses at idx='+str(idx))
+  raise Exception('Failed to find closing parenthesis for string ' + string + ', start parentheses at idx=' + str(idx))
 
 
 # Given a string of form // EMSCRIPTEN_START_ASM\n {asm.js here} // EMSCRIPTEN_END_ASM,
@@ -47,21 +47,22 @@ def find_asm_block(asm_js):
     asm_function_start = asm_js.find('function(', asm_start)
     start_idx = asm_js.rfind('(', 0, asm_function_start)
     close_idx = find_index_of_closing_parens(asm_js, start_idx)
-    asm_search = asm_replace = asm_js[start_idx:close_idx+1]
+    asm_search = asm_replace = asm_js[start_idx:close_idx + 1]
     # Strip redundant () parens around the module object if there are some
     if asm_replace[0] == '(' and asm_replace[-1] == ')':
       asm_replace = asm_replace[1:-1]
     # Strip redundant "(0,...)" that Closure generates
-    if asm_js[start_idx-3:start_idx] == '(0,':
+    if asm_js[start_idx - 3:start_idx] == '(0,':
       asm_search = '(0,' + asm_search
-      redundant_closing_parens = find_index_of_closing_parens(asm_js, start_idx-3)
-      asm_js = asm_js[0:redundant_closing_parens] + asm_js[redundant_closing_parens+1:]
+      redundant_closing_parens = find_index_of_closing_parens(asm_js, start_idx - 3)
+      asm_js = asm_js[0:redundant_closing_parens] + asm_js[redundant_closing_parens + 1:]
     return (asm_search, asm_replace, asm_js)
   elif asm_js.find('var ', asm_start) == asm_start: # asm.js content is of form var asm={asm.js expression};
     asmjs_end = asm_js.rfind('// EMSCRIPTEN_END_ASM')
-    asm_block = asm_js[asm_js.find('=', asm_start)+1:asmjs_end]
+    asm_block = asm_js[asm_js.find('=', asm_start) + 1:asmjs_end]
     return (asm_block, asm_block, asm_js)
   raise Exception('Unable to parse asm.js block in ' + asm_js)
+
 
 everything = open(infile).read()
 asm_search, asm_replace, everything = find_asm_block(everything)
@@ -78,16 +79,13 @@ else:
     m = re.search(r'\((\w+)\.ENVIRONMENT\)', everything)
   if not m:
     m = re.search(r'(\w+)\.arguments\s*=\s*\[\];', everything)
-  assert m, 'cannot figure out the closured name of Module statically'+ everything
+  assert m, 'cannot figure out the closured name of Module statically' + everything
   closured_name = m.group(1)
   everything = everything.replace(asm_search, closured_name + '["asm"]')
 
-o = open(asmfile, 'w')
-o.write(asm_module_name + ' = ')
-o.write(asm_replace)
-o.close()
+with open(asmfile, 'w') as o:
+  o.write(asm_module_name + ' = ')
+  o.write(asm_replace)
 
-o = open(otherfile, 'w')
-o.write(everything)
-o.close()
-
+with open(otherfile, 'w') as o:
+  o.write(everything)

@@ -19,16 +19,20 @@ def try_delete(pathname):
     os.unlink(pathname)
   except:
     pass
-  if not os.path.exists(pathname): return
+  if not os.path.exists(pathname):
+    return
   try:
     shutil.rmtree(pathname, ignore_errors=True)
   except:
     pass
-  if not os.path.exists(pathname): return
+  if not os.path.exists(pathname):
+    return
 
   write_bits = stat.S_IWRITE | stat.S_IWGRP | stat.S_IWOTH
+
   def is_writable(path):
     return (os.stat(path).st_mode & write_bits) == write_bits
+
   def make_writable(path):
     os.chmod(path, os.stat(path).st_mode | write_bits)
 
@@ -40,7 +44,7 @@ def try_delete(pathname):
 
   if os.path.isdir(pathname):
     for directory, subdirs, files in os.walk(pathname):
-      for item in files+subdirs:
+      for item in files + subdirs:
         i = os.path.join(directory, item)
         make_writable(i)
 
@@ -48,6 +52,7 @@ def try_delete(pathname):
     shutil.rmtree(pathname, ignore_errors=True)
   except:
     pass
+
 
 class TempFiles(object):
   def __init__(self, tmp, save_debug_files=False):
