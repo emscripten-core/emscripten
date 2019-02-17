@@ -2,6 +2,7 @@
 #include <emscripten.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include "webgl1.h"
 #include "webgl1_ext.h"
