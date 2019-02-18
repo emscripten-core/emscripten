@@ -28,8 +28,6 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
 #endif
@@ -231,6 +229,10 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 int emscripten_get_compiler_setting(const char *name);
 
 void emscripten_debugger(void);
+
+// Forward declare FILE from musl libc headers to avoid needing to #include <stdio.h> from emscripten.h
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);

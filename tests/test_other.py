@@ -3226,6 +3226,7 @@ mergeInto(LibraryManager.library, {
 ''')
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
+#include <stdio.h>
 extern "C" int jslibfunc(int x);
 int main() {
   printf("c calling: %d\n", jslibfunc(6));
@@ -5741,6 +5742,7 @@ function _main() {
       ''')
     create_test_file('src2.c', r'''
       #include <emscripten.h>
+      #include <stdio.h>
       static void homonymous() {
           emscripten_sleep(1);
           printf("result: 2\n");
