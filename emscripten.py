@@ -1497,11 +1497,11 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
 def setup_function_pointers(function_table_sigs):
   asm_setup = ''
-  # nothing special to do here for wasm, we just use dynCalls
-  if not shared.Settings.WASM:
-    for sig in function_table_sigs:
-      if shared.Settings.RESERVED_FUNCTION_POINTERS:
-        asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+  for sig in function_table_sigs:
+    if shared.Settings.RESERVED_FUNCTION_POINTERS:
+      asm_setup += '\n' + shared.JS.make_jscall(sig) + '\n'
+          # nothing special to do here for wasm, we just use dynCalls
+    if not shared.Settings.WASM:
       if shared.Settings.EMULATED_FUNCTION_POINTERS:
         args = ['a%d' % i for i in range(len(sig) - 1)]
         full_args = ['x'] + args
