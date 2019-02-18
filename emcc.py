@@ -1017,17 +1017,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Use settings
 
-    try:
-      assert shared.Settings.ASM_JS > 0, 'ASM_JS must be enabled in fastcomp'
-      assert shared.Settings.SAFE_HEAP in [0, 1], 'safe heap must be 0 or 1 in fastcomp'
-      assert shared.Settings.UNALIGNED_MEMORY == 0, 'forced unaligned memory not supported in fastcomp'
-      assert shared.Settings.FORCE_ALIGNED_MEMORY == 0, 'forced aligned memory is not supported in fastcomp'
-      assert shared.Settings.PGO == 0, 'pgo not supported in fastcomp'
-      assert shared.Settings.QUANTUM_SIZE == 4, 'altering the QUANTUM_SIZE is not supported'
-    except Exception as e:
-      logger.error('Compiler settings error: {}'.format(e))
-      exit_with_error('Very old compiler settings (pre-fastcomp) are no longer supported.')
-
     if options.debug_level > 1 and options.use_closure_compiler:
       logger.warning('disabling closure because debug info was requested')
       options.use_closure_compiler = False

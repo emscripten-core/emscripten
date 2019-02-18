@@ -1233,8 +1233,7 @@ class SettingsManager(object):
     def __setattr__(self, attr, value):
       for legacy_attr, fixed_values, error_message in self.attrs['REMOVED_SETTINGS']:
         if attr == legacy_attr and value not in fixed_values:
-          logger.error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-          sys.exit(1)
+          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
