@@ -163,6 +163,10 @@ How do I install a tool/SDK version?
 Use the ``install`` argument to download and install a new tool or SDK version: ::
 
   ./emsdk install <tool/sdk name>
+  
+For example: ::
+
+  ./emsdk install sdk-1.38.21-64bit
 
 .. note:: An installed tool is present on the local machine, but not necessarily the active environment. To make an installed SDK active, use the ``activate`` command.
 

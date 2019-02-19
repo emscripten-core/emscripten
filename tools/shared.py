@@ -435,7 +435,6 @@ def check_llvm():
       print('===========================================================================', file=sys.stderr)
       print(targets, file=sys.stderr)
       print('===========================================================================', file=sys.stderr)
-      logger.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       return False
   else:
     if not has_wasm_target(targets):
@@ -1301,7 +1300,7 @@ verify_settings()
 # are duplicate entries in the archive
 def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % archive_filename)
+    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
@@ -3287,7 +3286,7 @@ def read_and_preprocess(filename, expand_macros=False):
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
   funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
+  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
 }

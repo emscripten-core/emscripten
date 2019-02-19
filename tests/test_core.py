@@ -29,7 +29,7 @@ from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
 # decorators for limiting which modes a test can run in
 
 
-def ASM_SIMD(f):
+def asm_simd(f):
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
@@ -40,12 +40,12 @@ def ASM_SIMD(f):
   return decorated
 
 
-def WASM_SIMD(f):
+def wasm_simd(f):
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in empterpreter yet')
-    if not self.is_wasm():
-      self.skipTest('wasm simd not compatible with asm.js yet')
+    if not self.is_wasm_backend():
+      self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
     self.set_setting('SIMD', 1)
@@ -5496,7 +5496,7 @@ return malloc(size);
     self.set_setting('RELOCATABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
-  @WASM_SIMD
+  @wasm_simd
   def test_wasm_builtin_simd(self, js_engines):
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
@@ -5504,45 +5504,45 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=[])
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd2')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd5(self):
     # test_simd5 is to test shufflevector of SIMD path
     self.do_run_in_out_file_test('tests', 'core', 'test_simd5')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_float64x2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_float64x2')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_float32x4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_float32x4')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_int32x4(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int32x4')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_int16x8(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int16x8')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_int8x16(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_int8x16')
 
   # Tests that the vector SIToFP instruction generates an appropriate Int->Float type conversion operator and not a bitcasting/reinterpreting conversion
-  @ASM_SIMD
+  @asm_simd
   def test_simd_sitofp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_sitofp')
 
-  @ASM_SIMD
+  @asm_simd
   def test_simd_shift_right(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 

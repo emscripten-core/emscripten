@@ -15,82 +15,6 @@ import sys
 
 from tools import shared
 
-if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
-  print('''
-Emscripten System Builder Tool
-==============================
-
-You can use this tool to manually build parts of the emscripten system
-environment. In general emcc will build them automatically on demand, so
-you do not strictly need to use this tool, but it gives you more control
-over the process (in particular, if emcc does this automatically, and you
-are running multiple build commands in parallel, confusion can occur).
-
-Usage:
-
-  embuilder.py OPERATION TASK1 [TASK2..]
-
-Available operations and tasks:
-
-  build libc
-        libc-mt
-        libc-extras
-        struct_info
-        emmalloc
-        emmalloc_debug
-        dlmalloc
-        dlmalloc_debug
-        dlmalloc_threadsafe
-        dlmalloc_threadsafe_debug
-        dlmalloc_noerrno
-        dlmalloc_debug_noerrno
-        dlmalloc_threadsafe_noerrno
-        dlmalloc_threadsafe_debug_noerrno
-        pthreads
-        pthreads_stub
-        libc++
-        libc++_noexcept
-        libc++abi
-        gl
-        gl-mt
-        gl-emu
-        gl-mt-emu
-        gl-webgl2
-        gl-mt-webgl2
-        gl-emu-webgl2
-        gl-mt-emu-webgl2
-        native_optimizer
-        binaryen
-        bullet
-        freetype
-        libpng
-        ogg
-        sdl2
-        sdl2-image
-        sdl2-mixer
-        sdl2-ttf
-        sdl2-net
-        vorbis
-        zlib
-        cocos2d
-        libc-wasm
-        compiler_rt_wasm
-        regal
-
-Issuing 'embuilder.py build ALL' causes each task to be built.
-
-It is also possible to build native_optimizer manually by using CMake. To
-do that, run
-
-   1. cd $EMSCRIPTEN/tools/optimizer
-   2. cmake . -DCMAKE_BUILD_TYPE=Release
-   3. make (or mingw32-make/vcbuild/msbuild on Windows)
-
-and set up the location to the native optimizer in ~/.emscripten
-
-''')
-  sys.exit(0)
-
 C_BARE = '''
         int main() {}
       '''
@@ -116,22 +40,91 @@ CXX_WITH_STDLIB = '''
       '''
 
 SYSTEM_TASKS = [
-    'al', 'compiler-rt', 'gl', 'gl-mt', 'gl-emu', 'gl-mt-emu', 'gl-webgl2',
-    'gl-mt-webgl2', 'gl-emu-webgl2', 'gl-mt-emu-webgl2', 'libc', 'libc-mt', 'libc-extras',
-    'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads',
-    'pthreads_stub', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libc++',
-    'libc++_noexcept', 'dlmalloc_debug_noerrno', 'dlmalloc_threadsafe_debug_noerrno',
-    'dlmalloc_noerrno', 'dlmalloc_threadsafe_noerrno',
-    'libc++abi', 'html5'
+    'al',
+    'compiler-rt',
+    'dlmalloc',
+    'dlmalloc_debug',
+    'dlmalloc_debug_noerrno',
+    'dlmalloc_noerrno',
+    'dlmalloc_threadsafe',
+    'dlmalloc_threadsafe_debug',
+    'dlmalloc_threadsafe_debug_noerrno',
+    'dlmalloc_threadsafe_noerrno',
+    'emmalloc',
+    'emmalloc_debug',
+    'gl',
+    'gl-emu',
+    'gl-emu-webgl2',
+    'gl-mt',
+    'gl-mt-emu',
+    'gl-mt-emu-webgl2',
+    'gl-mt-webgl2',
+    'gl-webgl2',
+    'html5',
+    'libc',
+    'libc++',
+    'libc++_noexcept',
+    'libc++abi',
+    'libc-extras',
+    'libc-mt',
+    'pthreads',
+    'pthreads_stub',
 ]
+
 USER_TASKS = [
-    'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2',
-    'sdl2-gfx', 'sdl2-image', 'sdl2-mixer', 'sdl2-ttf', 'sdl2-net',
-    'vorbis', 'zlib', 'regal'
+    'binaryen',
+    'bullet',
+    'freetype',
+    'icu',
+    'libpng',
+    'ogg',
+    'regal',
+    'sdl2',
+    'sdl2-gfx',
+    'sdl2-image',
+    'sdl2-mixer',
+    'sdl2-net',
+    'sdl2-ttf',
+    'vorbis',
+    'zlib',
 ]
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
+
+
+def print_help():
+  all_tasks = SYSTEM_TASKS + USER_TASKS
+  all_tasks.sort()
+  print('''
+Emscripten System Builder Tool
+==============================
+
+You can use this tool to manually build parts of the emscripten system
+environment. In general emcc will build them automatically on demand, so
+you do not strictly need to use this tool, but it gives you more control
+over the process (in particular, if emcc does this automatically, and you
+are running multiple build commands in parallel, confusion can occur).
+
+Usage:
+
+  embuilder.py OPERATION TASK1 [TASK2..]
+
+Available operations and tasks:
+
+  build %s
+
+Issuing 'embuilder.py build ALL' causes each task to be built.
+
+It is also possible to build native_optimizer manually by using CMake. To
+do that, run
+
+   1. cd $EMSCRIPTEN/tools/optimizer
+   2. cmake . -DCMAKE_BUILD_TYPE=Release
+   3. make (or mingw32-make/vcbuild/msbuild on Windows)
+
+and set up the location to the native optimizer in ~/.emscripten
+''' % '\n        '.join(all_tasks))
 
 
 def build(src, result_libs, args=[]):
@@ -164,6 +157,10 @@ def static_library_name(name):
 
 
 def main():
+  if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
+    print_help()
+    return 0
+
   operation = sys.argv[1]
   if operation != 'build':
     shared.exit_with_error('unfamiliar operation: ' + operation)
@@ -328,7 +325,7 @@ def main():
       build_port('regal', 'libregal.bc', ['-s', 'USE_REGAL=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
-      sys.exit(1)
+      return 1
 
     logger.info('...success')
   return 0

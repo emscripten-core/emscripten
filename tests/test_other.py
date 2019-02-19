@@ -346,10 +346,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'WASM=0' in params:
             if opt_level >= 2 and '-g' in params:
               assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+            looks_unminified = ' = {}' in generated and ' = []' in generated
+            looks_minified = '={}' in generated and '=[]' and ';var' in generated
+            assert not (looks_minified and looks_unminified)
             if opt_level == 0 or '-g' in params:
-              assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
+              assert looks_unminified
             elif opt_level >= 2:
-              assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
+              assert looks_minified
 
   @no_wasm_backend('tests for asmjs optimzer')
   def test_emcc_5(self):
@@ -550,13 +553,12 @@ f.close()
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_emar_em_config_flag(self):
+    # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
     config = os.path.expanduser(shared.EM_CONFIG)
-    # We pass -version twice to work around the newargs > 2 check in emar
-    output = run_process([PYTHON, EMAR, '--em-config', config, '-version', '-version'], stdout=PIPE, stderr=PIPE)
-    assert output.stdout
-    assert not output.stderr
-    self.assertContained('LLVM', output.stdout)
+    proc = run_process([PYTHON, EMAR, '--em-config', config, '-version'], stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.stderr, "")
+    self.assertContained('LLVM', proc.stdout)
 
   @no_wasm_backend("see https://bugs.llvm.org/show_bug.cgi?id=40470")
   def test_cmake(self):
@@ -1538,7 +1540,7 @@ int f() {
 
     self.assertContained('result: 12346.', run_js('a.out.js'))
 
-  def test_dup_o_in_a(self):
+  def test_multiple_archives_duplicate_basenames(self):
     create_test_file('common.c', r'''
       #include <stdio.h>
       void a(void) {
@@ -1546,6 +1548,7 @@ int f() {
       }
     ''')
     run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    try_delete('liba.a')
     run_process([PYTHON, EMAR, 'rc', 'liba.a', 'common.o'])
 
     create_test_file('common.c', r'''
@@ -1555,6 +1558,7 @@ int f() {
       }
     ''')
     run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    try_delete('libb.a')
     run_process([PYTHON, EMAR, 'rc', 'libb.a', 'common.o'])
 
     create_test_file('main.c', r'''
@@ -1565,30 +1569,38 @@ int f() {
         b();
       }
     ''')
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb'])
 
+    run_process([PYTHON, EMCC, 'main.c', '-L.', '-la', '-lb'])
     self.assertContained('a\nb\n', run_js('a.out.js'))
 
-  @no_wasm_backend('warning do not exist under lld')
-  def test_dup_o_in_one_a(self):
-    create_test_file('common.c', r'''
+  def test_archive_duplicate_basenames(self):
+    os.mkdir('a')
+    create_test_file(os.path.join('a', 'common.c'), r'''
       #include <stdio.h>
       void a(void) {
         printf("a\n");
       }
     ''')
-    run_process([PYTHON, EMCC, 'common.c', '-c', '-o', 'common.o'])
+    run_process([PYTHON, EMCC, os.path.join('a', 'common.c'), '-c', '-o', os.path.join('a', 'common.o')])
 
-    os.mkdir('libdir')
-    open(os.path.join('libdir', 'common.c'), 'w').write(r'''
+    os.mkdir('b')
+    create_test_file(os.path.join('b', 'common.c'), r'''
       #include <stdio.h>
       void b(void) {
         printf("b...\n");
       }
     ''')
-    run_process([PYTHON, EMCC, os.path.join('libdir', 'common.c'), '-c', '-o', os.path.join('libdir', 'common.o')])
+    run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    run_process([PYTHON, EMAR, 'rc', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
+    try_delete('liba.a')
+    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+
+    # Verify that archive contains basenames with hashes to avoid duplication
+    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    self.assertNotIn('common.o', text)
+    assert text.count('common_') == 2, text
+    for line in text.split('\n'):
+      assert len(line) < 20, line # should not have huge hash names
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1599,28 +1611,31 @@ int f() {
       }
     ''')
     err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    self.assertNotIn('loading from archive', err)
-    self.assertNotIn('liba.a', err)
-    self.assertNotIn('which has duplicate entries', err)
-    self.assertNotIn('duplicate: common.o', err)
+    self.assertNotIn('archive file contains duplicate entries', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
 
-    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
-    self.assertNotIn('common.o', text)
-    assert text.count('common_') == 2, text
-    for line in text.split('\n'):
-      assert len(line) < 20, line # should not have huge hash names
+    # Using llvm-ar directly should cause duplicate basenames
+    try_delete('libdup.a')
+    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
+    assert text.count('common.o') == 2, text
 
-    # make the hashing fail: 'q' is just a quick append, no replacement, so hashing is not done, and dupes are easy
-    run_process([PYTHON, EMAR, 'q', 'liba.a', 'common.o', os.path.join('libdir', 'common.o')])
-    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    self.assertIn('loading from archive', err)
-    self.assertIn('liba.a', err)
-    self.assertIn('which has duplicate entries', err)
-    self.assertIn('duplicate: common.o', err)
-    assert err.count('duplicate: ') == 1, err # others are not duplicates - the hashing keeps them separate
+    # With fastcomp we don't support duplicate members so this should generate
+    # a warning.  With the wasm backend (lld) this is fully supported.
+    proc = run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'], check=False, stderr=PIPE)
+    if self.is_wasm_backend():
+      self.assertEqual(proc.returncode, 0)
+      self.assertEqual(proc.stderr, '')
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
+    else:
+      self.assertNotEqual(proc.returncode, 0)
+      self.assertIn('libdup.a: archive file contains duplicate entries', proc.stderr)
+      self.assertIn('error: undefined symbol: a', proc.stderr)
+      # others are not duplicates - the hashing keeps them separate
+      self.assertEqual(proc.stderr.count('duplicate: '), 1)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
-  def test_export_in_a(self):
+  def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
     full_export_name = '_' + export_name
 
@@ -2224,6 +2239,8 @@ int f() {
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'emittedJSPreservesParens.js'), open(path_from_root('tests', 'optimizer', 'emittedJSPreservesParens-output.js')).read(),
+       ['asm']),
     ]:
       print(input, passes)
 
@@ -3212,6 +3229,7 @@ mergeInto(LibraryManager.library, {
 ''')
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
+#include <stdio.h>
 extern "C" int jslibfunc(int x);
 int main() {
   printf("c calling: %d\n", jslibfunc(6));
@@ -5727,6 +5745,7 @@ function _main() {
       ''')
     create_test_file('src2.c', r'''
       #include <emscripten.h>
+      #include <stdio.h>
       static void homonymous() {
           emscripten_sleep(1);
           printf("result: 2\n");
@@ -5789,37 +5808,38 @@ int main() {
     self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
 
   def test_link_with_a_static(self):
-    for args in [[], ['-O2']]:
-      print(args)
-      self.clear()
-      create_test_file('x.c', r'''
+    create_test_file('x.c', r'''
 int init_weakref(int a, int b) {
-    return a + b;
+  return a + b;
 }
 ''')
-      create_test_file('y.c', r'''
+    create_test_file('y.c', r'''
 static int init_weakref(void) { // inlined in -O2, not in -O0 where it shows up in llvm-nm as 't'
-    return 150;
+  return 150;
 }
 
 int testy(void) {
-    return init_weakref();
+  return init_weakref();
 }
 ''')
-      create_test_file('z.c', r'''
+    create_test_file('z.c', r'''
 extern int init_weakref(int, int);
 extern int testy(void);
 
 int main(void) {
-    return testy() + init_weakref(5, 6);
+  return testy() + init_weakref(5, 6);
 }
 ''')
-      run_process([PYTHON, EMCC, 'x.c', '-o', 'x.o'])
-      run_process([PYTHON, EMCC, 'y.c', '-o', 'y.o'])
-      run_process([PYTHON, EMCC, 'z.c', '-o', 'z.o'])
-      run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
-      run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
-      run_process([PYTHON, EMRANLIB, 'libtest.a'])
+    run_process([PYTHON, EMCC, 'x.c', '-o', 'x.o'])
+    run_process([PYTHON, EMCC, 'y.c', '-o', 'y.o'])
+    run_process([PYTHON, EMCC, 'z.c', '-o', 'z.o'])
+    try_delete('libtest.a')
+    run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
+    run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
+    run_process([PYTHON, EMRANLIB, 'libtest.a'])
+
+    for args in [[], ['-O2']]:
+      print('args:', args)
       run_process([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'EXIT_RUNTIME=1'] + args)
       run_js('a.out.js', assert_returncode=161)
 
@@ -8502,7 +8522,15 @@ int main() {
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8511,7 +8539,15 @@ T6:!ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=1'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:ASSERTIONS == 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:ASSERTIONS == 1
 T2:(else) ASSERTIONS == 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8520,7 +8556,15 @@ T6:(else) !ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=2'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:(else) ASSERTIONS >= 2
 T4:ASSERTIONS > 1
@@ -8968,11 +9012,11 @@ int main () {
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 665, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 623, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 665, 'a.js': 4949, 'a.asm.js': 10975, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 623, 'a.js': 5015, 'a.wasm': 8978}),
-      (opts, hello_webgl2_sources, {'a.html': 623, 'a.js': 6150, 'a.wasm': 8978}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_world_sources, {'a.html': 476, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 452, 'a.js': 624, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 476, 'a.js': 4949, 'a.asm.js': 10975, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 452, 'a.js': 5015, 'a.wasm': 8978}),
+      (opts, hello_webgl2_sources, {'a.html': 452, 'a.js': 6150, 'a.wasm': 8978}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True

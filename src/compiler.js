@@ -180,16 +180,6 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
-  // Load struct and define information.
-  var temp = JSON.parse(read(STRUCT_INFO));
-  C_STRUCTS = temp.structs;
-  C_DEFINES = temp.defines;
-} else {
-  C_STRUCTS = {};
-  C_DEFINES = {};
-}
-
 // Load compiler code
 
 load('modules.js');

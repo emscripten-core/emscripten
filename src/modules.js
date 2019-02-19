@@ -315,6 +315,16 @@ var LibraryManager = {
   }
 };
 
+if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
+  // Load struct and define information.
+  var temp = JSON.parse(read(STRUCT_INFO));
+  C_STRUCTS = temp.structs;
+  C_DEFINES = temp.defines;
+} else {
+  C_STRUCTS = {};
+  C_DEFINES = {};
+}
+
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
 	if (key in C_DEFINES) return C_DEFINES[key];

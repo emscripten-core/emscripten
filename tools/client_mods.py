@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+
 class PreciseF32(object):
   name = 'PRECISE_F32 == 2'
 
@@ -18,7 +19,7 @@ code = code.replace("'use asm'", "'almost asm'").replace('"use asm"', '"almost a
 '''
       if not minified:
         # simple dumb replace
-        mod += "code = code.replace(/Math_fround\\(/g, '(')\n";
+        mod += "code = code.replace(/Math_fround\\(/g, '(')\n"
       else:
         # minified, not quite so simple
         mod += '''
@@ -40,12 +41,12 @@ try {
       return ['if (!Math.fround) { ' + mod + ' }']
     return []
 
-# Handlers
 
+# Handlers
 handlers = [PreciseF32]
 
-# client-side asm code modification
 
+# client-side asm code modification
 def get_mods(settings, minified, separate_asm):
   ret = []
   for handler in handlers:

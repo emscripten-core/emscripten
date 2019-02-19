@@ -289,7 +289,6 @@ class sanity(RunnerCore):
 
   def test_llvm_fastcomp(self):
     WARNING = 'fastcomp in use, but LLVM has not been built with the JavaScript backend as a target'
-    WARNING2 = 'you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html'
 
     restore_and_set_up()
 
@@ -297,7 +296,6 @@ class sanity(RunnerCore):
     self.assertTrue(shared.check_llvm())
     output = self.check_working(EMCC)
     self.assertNotIn(WARNING, output)
-    self.assertNotIn(WARNING2, output)
 
     # Fake incorrect llc output, no mention of js backend
     restore_and_set_up()
@@ -308,7 +306,6 @@ class sanity(RunnerCore):
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'no j-s backend for you!')
     self.check_working(EMCC, WARNING)
-    self.check_working(EMCC, WARNING2)
 
     # fake some more
     for fake in ['llvm-link', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
@@ -329,7 +326,7 @@ class sanity(RunnerCore):
 
     restore_and_set_up()
 
-    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], '''Compiler settings are incompatible with fastcomp. You can fall back to the older compiler core, although that is not recommended''')
+    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], '''Very old compiler settings (pre-fastcomp) are no longer supported.''')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -708,86 +705,6 @@ fi
           test() # still works
 
     try_delete(CANONICAL_TEMP_DIR)
-
-  def test_embuilder(self):
-    restore_and_set_up()
-
-    tests = [
-      ([PYTHON, EMBUILDER], ['Emscripten System Builder Tool', 'build libc', 'native_optimizer'], True, []),
-      ([PYTHON, EMBUILDER, 'build', 'waka'], 'ERROR', False, []),
-      ([PYTHON, EMBUILDER, 'build', 'struct_info'], ['building and verifying struct_info', 'success'], True, ['generated_struct_info.json']),
-      ([PYTHON, EMBUILDER, 'build', 'libc'], ['building and verifying libc', 'success'], True, ['libc.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libc-mt'], ['building and verifying libc-mt', 'success'], True, ['libc-mt.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libc-extras'], ['building and verifying libc-extras', 'success'], True, ['libc-extras.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_debug.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['libdlmalloc_threadsafe.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_debug'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_threadsafe_debug.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_noerrno.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_debug_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_debug_noerrno.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_noerrno'], ['building and verifying dlmalloc_threadsafe', 'success'], True, ['libdlmalloc_threadsafe_noerrno.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'dlmalloc_threadsafe_debug_noerrno'], ['building and verifying dlmalloc', 'success'], True, ['libdlmalloc_threadsafe_debug_noerrno.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'emmalloc'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'emmalloc_debug'], ['building and verifying emmalloc', 'success'], True, ['libemmalloc_debug.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'pthreads'], ['building and verifying pthreads', 'success'], True, ['libpthreads.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libc++'], ['success'], True, ['libc++.a']),
-      ([PYTHON, EMBUILDER, 'build', 'libc++_noexcept'], ['success'], True, ['libc++_noexcept.a']),
-      ([PYTHON, EMBUILDER, 'build', 'libc++abi'], ['success'], True, ['libc++abi.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'native_optimizer'], ['success'], True, ['optimizer.2.exe']),
-      ([PYTHON, EMBUILDER, 'build', 'zlib'], ['building and verifying zlib', 'success'], True, ['zlib.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libpng'], ['building and verifying libpng', 'success'], True, ['libpng.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'bullet'], ['building and verifying bullet', 'success'], True, ['bullet.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'vorbis'], ['building and verifying vorbis', 'success'], True, ['vorbis.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'ogg'], ['building and verifying ogg', 'success'], True, ['ogg.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2'], ['success'], True, ['sdl2.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2-gfx'], ['success'], True, ['sdl2-gfx.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2-image'], ['success'], True, ['sdl2-image.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'freetype'], ['building and verifying freetype', 'success'], True, ['freetype.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'harfbuzz'], ['building and verifying harfbuzz', 'success'], True, ['harfbuzz.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'icu'], ['building and verifying icu', 'success'], True, ['icu.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2-ttf'], ['building and verifying sdl2-ttf', 'success'], True, ['sdl2-ttf.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2-net'], ['building and verifying sdl2-net', 'success'], True, ['sdl2-net.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'sdl2-mixer'], ['building and verifying sdl2-mixer', 'success'], True, ['sdl2-mixer.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'binaryen'], ['building and verifying binaryen', 'success'], True, []),
-      ([PYTHON, EMBUILDER, 'build', 'cocos2d'], ['building and verifying cocos2d', 'success'], True, ['libCocos2d.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'libc-wasm'], ['building and verifying libc-wasm', 'success'], True, ['libc-wasm.bc']),
-      ([PYTHON, EMBUILDER, 'build', 'regal'], ['building and verifying regal', 'success'], True, ['regal.bc']),
-    ]
-    for mt in ['', '-mt']:
-      for emu in ['', '-emu']:
-        for webgl2 in ['', '-webgl2']:
-          case = 'gl' + mt + emu + webgl2
-          lib = 'lib' + case + '.bc'
-          tests += [([PYTHON, EMBUILDER, 'build', case], ['success'], True, [lib])]
-
-    if Settings.WASM_BACKEND:
-      tests.append(([PYTHON, EMBUILDER, 'build', 'libcompiler_rt_wasm'], ['building and verifying libcompiler_rt_wasm', 'success'], True, ['libcompiler_rt_wasm.a']),)
-
-    Cache.erase()
-
-    for command, expected, success, result_libs in tests:
-      print(command)
-      for lib in result_libs:
-        if os.path.sep in lib:
-          dirname = os.path.dirname(Cache.get_path(lib))
-          print('    erase dir', dirname)
-          try_delete(dirname)
-        else:
-          print('    erase file', lib)
-          try_delete(Cache.get_path(lib))
-      proc = run_process(command, stdout=PIPE, stderr=STDOUT, check=False)
-      out = proc.stdout
-      if success and proc.returncode != 0:
-        print(out)
-      assert (proc.returncode == 0) == success
-      if not isinstance(expected, list):
-        expected = [expected]
-      for ex in expected:
-        print('    seek', ex)
-        assert ex in out, out
-      for lib in result_libs:
-        print('    verify', lib)
-        assert os.path.exists(Cache.get_path(lib))
 
   def test_d8_path(self):
     """ Test that running JS commands works for node, d8, and jsc and is not path dependent """
