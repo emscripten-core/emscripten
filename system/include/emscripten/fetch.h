@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_fetch_h__
-#define __emscripten_fetch_h__
+#pragma once
 
 #include <limits.h>
 #include <stddef.h>
@@ -232,7 +231,4 @@ uint64_t emscripten_asmfs_compute_memory_usage();
 
 #ifdef __cplusplus
 }
-#endif
-
-// ~__emscripten_fetch_h__
 #endif
