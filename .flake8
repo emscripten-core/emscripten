@@ -1,39 +1,20 @@
 [flake8]
 ignore = E111,E114,E501,E261,E266,E121,E402,E241
 # TODO(sbc): Switch from the whitelist of a blacklist such as:
-# exclude = ./third_party/,emmaken.py,./tools/scons/,./tools/ports/,./tests/
-filename =
-  */emar.py
-  */emcc.py
-  */emscons.py
-  */emscripten.py
-  */embuilder.py
-  */tools/shared.py
-  */tools/response_file.py
-  */tools/python_selector.py
-  */tools/wasm-sourcemap.py
-  */tools/clean_webconsole.py
-  */tools/emconfiguren.py
-  */tools/emdebug_cd_merger.py
-  */tools/line_endings.py
-  */tools/nativize_llvm.py
-  */tools/exec_llvm.py
-  */tools/emmakenxx.py
-  */tools/exec_llvm.py
-  */tools/find_bigvars.py
-  */tools/merge_pair.py
-  */tools/system_libs.py
-  */tools/add_license.py
-  */tools/file_packager.py
-  */tools/emmaken.py
-  */tools/ctor_evaller.py
-  */tools/duplicate_function_eliminator.py
-  */tests/runner.py
-  */tests/test_browser.py
-  */tests/test_other.py
-  */tests/test_core.py
-  */tests/parallel_runner.py
-  */tests/test_sanity.py
-  */tests/test_benchmark.py
-  */tests/test_interactive.py
-  */tests/test_sockets.py
+exclude =
+ ./site/source/conf.py,
+ ./third_party/,
+ ./tools/scons/,
+ ./tools/debug
+ ./tools/ports/,
+ ./tools/emdump.py,
+ ./tools/emterpretify.py,
+ ./tools/js_optimizer.py,
+ ./tools/webidl_binder.py,
+ ./tools/create_dom_pk_codes.py,
+ ./tools/gen_struct_info.py,
+ ./tools/asm_module.py,
+ ./tools/colored_logger.py,
+ ./tools/ffdb.py,
+ ./tools/filelock.py, # third party code
+ ./tests/,

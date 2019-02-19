@@ -22,9 +22,10 @@ Relevant defines:
 '''
 
 from __future__ import print_function
-import os, sys
+import sys
 from tools import shared
 from subprocess import CalledProcessError
+
 
 #
 # Main run() function
@@ -42,15 +43,17 @@ def run():
   ''', file=sys.stderr)
   elif 'cmake' in sys.argv[1]:
     node_js = shared.NODE_JS
-    if type(node_js) is list: node_js = node_js[0]
+    if type(node_js) is list:
+      node_js = node_js[0]
     node_js = shared.Building.which(node_js)
     node_js = node_js.replace('"', '\"')
-    sys.argv = sys.argv[:2] + ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js +'"'] + sys.argv[2:]
+    sys.argv = sys.argv[:2] + ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js + '"'] + sys.argv[2:]
 
   try:
     shared.Building.configure(sys.argv[1:])
   except CalledProcessError as e:
     sys.exit(e.returncode)
+
 
 if __name__ == '__main__':
   run()

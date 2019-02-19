@@ -3,18 +3,18 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-Processes an LLVM assembly (.ll) file, adding debugging information.
+"""Processes an LLVM assembly (.ll) file, adding debugging information.
 
-You can then run the .ll file in the LLVM interpreter (lli) and 
+You can then run the .ll file in the LLVM interpreter (lli) and
 compare that to the output when compiled using emscripten.
 
 Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
          there may be weird errors.
-'''
+"""
 
 from __future__ import print_function
-import os, sys, re
+import re
+import sys
 
 ALLOW_POINTERS = True
 ALLOW_MISC = True
@@ -210,17 +210,17 @@ for i in range(len(lines)):
     elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
       # This is a good place to mark entry to this function
       added_entry = True
-      index = i+1+lines_added
+      index = i + 1 + lines_added
       pre = '  call void @emscripten_autodebug_i32(i32 -1, i32 %d)' % index
     elif in_func and lines[i].startswith('  ret '):
       # This is a good place to mark entry to this function
-      index = i+1+lines_added
+      index = i + 1 + lines_added
       pre = '  call void @emscripten_autodebug_i32(i32 -2, i32 %d)' % index
 
     if in_func:
       m = re.match(r'  store (?P<type>i64|i32|i16|i8|float|double|%?[\w\.\*]+) (?P<var>%?[\w.+_]+), .*', lines[i])
       if m:
-        index = i+1+lines_added
+        index = i + 1 + lines_added
         if m.group('type') in ['i8', 'i16', 'i32', 'i64', 'float', 'double']:
           lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %s)' % (m.group('type'), index, m.group('type'), m.group('var'))
           lines_added += 1
@@ -231,7 +231,7 @@ for i in range(len(lines)):
         continue
       m = re.match(r'  %(?P<var>[\w_.]+) = load (?P<type>i64|i32|i16|i8|float|double+)\* [^(].*.*', lines[i])
       if m:
-        index = i+1+lines_added
+        index = i + 1 + lines_added
         lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
         lines_added += 1
         continue
@@ -239,14 +239,14 @@ for i in range(len(lines)):
         # call is risky - return values can be i32 (i8*) (i16)
         m = re.match(r'  %(?P<var>[\w_.]+) = (mul|add) (nsw )?(?P<type>i64|i32|i16|i8|float|double+) .*', lines[i])
         if m:
-          index = i+1+lines_added
+          index = i + 1 + lines_added
           lines[i] += '\n  call void @emscripten_autodebug_%s(i32 %d, %s %%%s)' % (m.group('type'), index, m.group('type'), m.group('var'))
           lines_added += 1
           continue
         if MEMCPY2:
           m = re.match(r'  call void @llvm\.memcpy\.p0i8\.p0i8\.i32\(i8\* %(?P<dst>[\w_.]+), i8\* %(?P<src>[\w_.]+), i32 8, i32 (?P<align>\d+),.*', lines[i])
           if m:
-            index = i+1+lines_added
+            index = i + 1 + lines_added
             lines[i] += '\n  %%adtemp%d = load i8* %%%s, align 1' % (index, m.group('src')) + \
                         '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
             lines_added += 3
@@ -254,8 +254,8 @@ for i in range(len(lines)):
       m = re.match('[^ ].*; preds = ', lines[i])
       if m:
         # basic block
-        if len(lines) > i+1 and 'phi' not in lines[i+1] and 'landingpad' not in lines[i+1]:
-          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %d)' % (i+1+lines_added,)
+        if len(lines) > i + 1 and 'phi' not in lines[i + 1] and 'landingpad' not in lines[i + 1]:
+          lines[i] += '\n  call void @emscripten_autodebug_i32(i32 -10, i32 %d)' % (i + 1 + lines_added,)
           lines_added += 1
           continue
 
@@ -271,4 +271,3 @@ f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
 f.close()
 
 print('Success.')
-
