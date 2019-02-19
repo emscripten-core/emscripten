@@ -5,8 +5,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_trace_h__
-#define __emscripten_trace_h__
+#ifndef __emscripten_trace__h__
+#define __emscripten_trace__h__
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -101,4 +101,4 @@ void emscripten_trace_close(void);
 } // ~extern "C"
 #endif
 
-#endif // __emscripten_trace_h__
+#endif // __emscripten_trace__h__
