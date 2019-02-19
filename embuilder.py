@@ -72,6 +72,7 @@ for debug in ['', '_debug']:
 USER_TASKS = [
     'binaryen',
     'bullet',
+    'cocos2d',
     'freetype',
     'icu',
     'libpng',
@@ -80,6 +81,7 @@ USER_TASKS = [
     'sdl2',
     'sdl2-gfx',
     'sdl2-image',
+    'sdl2-image-png',
     'sdl2-mixer',
     'sdl2-net',
     'sdl2-ttf',
