@@ -346,10 +346,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'WASM=0' in params:
             if opt_level >= 2 and '-g' in params:
               assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+            looks_unminified = ' = {}' in generated and ' = []' in generated
+            looks_minified = '={}' in generated and '=[]' and ';var' in generated
+            assert not (looks_minified and looks_unminified)
             if opt_level == 0 or '-g' in params:
-              assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
+              assert looks_unminified
             elif opt_level >= 2:
-              assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
+              assert looks_minified
 
   @no_wasm_backend('tests for asmjs optimzer')
   def test_emcc_5(self):
