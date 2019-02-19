@@ -5,8 +5,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_emscripten_h__
-#define __emscripten_emscripten_h__
+#ifndef __emscripten_h__
+#define __emscripten_h__
 
 /**
  * This file contains a few useful things for compiling C/C++ code
@@ -273,4 +273,5 @@ void emscripten_yield(void);
 }
 #endif
 
-#endif // __emscripten_emscripten_h__
+#endif // __emscripten_h__
+

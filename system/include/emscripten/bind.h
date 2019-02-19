@@ -5,12 +5,11 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_bind_h__
-#define __emscripten_bind_h__
+#pragma once
 
 #if __cplusplus < 201103L
 #error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
-#endif
+#else
 
 #include <stddef.h>
 #include <assert.h>
@@ -1625,4 +1624,4 @@ namespace emscripten {
     } EmscriptenBindingInitializer_##name##_instance;                   \
     EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
 
-#endif // __emscripten_bind_h__
+#endif // ~C++11 version check

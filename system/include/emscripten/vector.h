@@ -478,4 +478,4 @@ int emscripten_bool8x16_allTrue(bool8x16 __a) __attribute__((__nothrow__, __cons
 }
 #endif
 
-#endif // __emscripten_vector_h__
+#endif

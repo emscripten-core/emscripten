@@ -1,12 +1,4 @@
-/*
- * Copyright 2019 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- */
-
-#ifndef __emscripten_asmfs_h__
-#define __emscripten_asmfs_h__
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,5 +19,3 @@ void emscripten_asmfs_discard_tree(const char *path);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __emscripten_asmfs_h__
