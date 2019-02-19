@@ -4,15 +4,16 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-'''
-Usage: creduce ./creduce_tester.py newfail1.c
-'''
+"""Usage: creduce ./creduce_tester.py newfail1.c
+"""
 
-import os, sys
-from subprocess import Popen, PIPE, STDOUT
+import os
+import sys
+from subprocess import Popen, PIPE
 
 sys.path += [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'tools')]
-import shared, jsrun
+import shared
+import jsrun
 
 # creduce will only pass the filename of the C file as the first arg, so other
 # configuration options will have to be hardcoded.
@@ -36,11 +37,13 @@ except Exception, e:
 
 print '4) Compile JS-ly and compare'
 
+
 def try_js(args):
   shared.run_process([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
-    [filename, '-o', js_filename])
+                     [filename, '-o', js_filename])
   js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
   assert correct == js
+
 
 # Try normally, then try unaligned because csmith does generate nonportable code that requires x86 alignment
 # If you are sure that alignment is not the cause, disable it for a faster reduction
