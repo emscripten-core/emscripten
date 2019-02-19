@@ -23,44 +23,57 @@ function processMacros(text) {
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting.
+// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
+  var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+  var inStyle = false;
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     try {
-      if (line[line.length-1] == '\r') {
+      if (line[line.length-1] === '\r') {
         line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-      if (!line[0] || line[0] != '#') {
-        if (showStack.indexOf(false) == -1) {
-          ret += line + '\n';
-        }
-      } else {
-        if (line[1] == 'i') {
-          if (line[2] == 'f') { // if
-            var parts = line.split(' ');
-            var after = parts.slice(1).join(' ');
-            var truthy = !!eval(after);
-            showStack.push(truthy);
-          } else if (line[2] == 'n') { // include
-            var filename = line.substr(line.indexOf(' ')+1);
-            if (filename.indexOf('"') === 0) {
-              filename = filename.substr(1, filename.length - 2);
-            }
-            var included = read(filename);
-            ret += '\n' + preprocess(included, filename) + '\n'
+      if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
+        inStyle = true;
+      }
+      if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
+        inStyle = false;
+      }
+
+      if (!inStyle) {
+        if (line.indexOf('#if') === 0) {
+          var parts = line.split(' ');
+          var after = parts.slice(1).join(' ');
+          var truthy = !!eval(after);
+          showStack.push(truthy);
+        } else if (line.indexOf('#include') === 0) {
+          var filename = line.substr(line.indexOf(' ')+1);
+          if (filename.indexOf('"') === 0) {
+            filename = filename.substr(1, filename.length - 2);
           }
-        } else if (line[2] == 'l') { // else
-          assert(showStack.length > 0, 'preprocessing error parsing #else on line ' + i + ': ' + line);
+          var included = read(filename);
+          ret += '\n' + preprocess(included, filename) + '\n';
+        } else if (line.indexOf('#else') === 0) {
+          assert(showStack.length > 0);
           showStack.push(!showStack.pop());
-        } else if (line[2] == 'n') { // endif
-          assert(showStack.length > 0, 'preprocessing error parsing #endif on line ' + i + ': ' + line);
+        } else if (line.indexOf('#endif') === 0) {
+          assert(showStack.length > 0);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command on line " + i + ': ' + line;
+          if (line[0] === '#') {
+            throw "Unclear preprocessor command on line " + i + ': ' + line;
+          }
+          if (showStack.indexOf(false) === -1) {
+            ret += line + '\n';
+          }
+        }
+      } else { // !inStyle
+        if (showStack.indexOf(false) === -1) {
+          ret += line + '\n';
         }
       }
     } catch(e) {
@@ -442,7 +455,7 @@ function splitI64(value, floatConversion) {
     asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
                asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' + 
+               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
       ')' +
     ' : 0',
     value,
@@ -987,7 +1000,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   if (value < 0) value += 256; // make it unsigned
   var values = {
     1: value,
-    2: value | (value << 8), 
+    2: value | (value << 8),
     4: value | (value << 8) | (value << 16) | (value << 24)
   };
   var ret = [];
