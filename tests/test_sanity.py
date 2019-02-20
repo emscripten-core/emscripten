@@ -973,3 +973,16 @@ BINARYEN_ROOT = ''
           if not side_module:
             assert os.path.exists('a.out.js')
             self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_embuilder_wasm_backend(self):
+    if not Settings.WASM_BACKEND:
+      self.skipTest('wasm backend only')
+    restore_and_set_up()
+    root_cache = os.path.expanduser('~/.emscripten_cache')
+    # the --lto flag makes us build wasm_bc
+    self.do([PYTHON, EMCC, '--clear-cache'])
+    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    assert os.path.exists(os.path.join(root_cache, 'wasm_o'))
+    self.do([PYTHON, EMCC, '--clear-cache'])
+    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc', '--lto'])
+    assert os.path.exists(os.path.join(root_cache, 'wasm_bc'))
