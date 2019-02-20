@@ -446,6 +446,9 @@ fi
 
     self.assertContained('hello from emcc with no config file', run_js('a.out.js'))
 
+  def ensure_cache(self):
+    self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+
   def test_emcc_caching(self):
     INCLUDING_MESSAGE = 'including X'
     BUILDING_MESSAGE = 'building X for cache'
@@ -481,11 +484,8 @@ fi
     try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
-    def ensure_cache():
-      self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
-
     # Manual cache clearing
-    ensure_cache()
+    self.ensure_cache()
     self.assertTrue(os.path.exists(EMCC_CACHE))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
@@ -495,7 +495,7 @@ fi
     self.assertIn(SANITY_MESSAGE, output)
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
-    ensure_cache()
+    self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(EMCC_CACHE))
@@ -503,8 +503,10 @@ fi
       self.assertIn(ERASING_MESSAGE, output)
       self.assertFalse(os.path.exists(EMCC_CACHE))
 
-    # FROZEN_CACHE prevents cache clears, and prevents building
-    ensure_cache()
+  # FROZEN_CACHE prevents cache clears, and prevents building
+  def test_FROZEN_CACHE(self):
+    restore_and_set_up()
+    self.ensure_cache()
     self.assertTrue(os.path.exists(EMCC_CACHE))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     add_to_config('FROZEN_CACHE = True')
