@@ -21,7 +21,8 @@ local function ItemCheck(tree)
   end
 end
 
-local N = tonumber(arg and arg[1]) or 4
+-- we don't look at commandline arguments anyhow
+local N = 4
 
 if N == 0 then
   N = 0

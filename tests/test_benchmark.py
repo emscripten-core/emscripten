@@ -174,26 +174,16 @@ class EmscriptenBenchmarker(Benchmarker):
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
-    open('hardcode.py', 'w').write('''
-def process(filename):
-  js = open(filename).read()
-  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
-  assert js != replaced
-  open(filename, 'w').write(replaced)
-import sys
-process(sys.argv[1])
-''' % str(args[:-1])) # do not hardcode in the last argument, the default arg
-
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
+      '-s', 'MINIMAL_RUNTIME=0',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
@@ -201,6 +191,7 @@ process(sys.argv[1])
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
       cmd += ['--profiling-funcs']
+    self.cmd = cmd
     output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -212,8 +203,12 @@ process(sys.argv[1])
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' in self.extra_args:
-      ret.append(self.filename + '.mem')
+    if 'WASM=0' in self.cmd:
+      if 'MINIMAL_RUNTIME=1' in self.cmd:
+        ret.append(self.filename[:-3] + '.asm.js')
+        ret.append(self.filename[:-3] + '.mem')
+      else:
+        ret.append(self.filename + '.mem')
     else:
       ret.append(self.filename[:-3] + '.wasm')
     return ret
@@ -240,39 +235,10 @@ class CheerpBenchmarker(Benchmarker):
     open(cheerp_temp, 'w').write('''
       %(code)s
 #include <cheerp/client.h>
-namespace client
-{
-    extern client::TArray<client::String>& args;
-}
-class [[cheerp::genericjs]] Arguments
-{
-public:
-    static int getArgumentsCount()
-    {
-        return client::args.get_length();
-    }
-    static int getArgumentLength(int arg)
-    {
-        return client::args[arg]->get_length();
-    }
-    static void copyArgument(int arg, char* buf)
-    {
-        client::String* a = client::args[arg];
-        for(int i=0;i<a->get_length();i++)
-            *(buf++) = a->charCodeAt(i);
-        *buf = 0;
-    }
-};
 void webMain() {
-    int arg1Len = Arguments::getArgumentLength(0);
-    char arg1Buf[arg1Len+1];
-    Arguments::copyArgument(0, arg1Buf);
-    const char* args[2];
-    args[0]="benchmark";
-    args[1]=arg1Buf;
-    int argc = Arguments::getArgumentsCount() + 1;
-    const char** argv=&args[0];
-    main(argc, ( char**)argv);
+  // The values here don't matter - the benchmark harness has created a main()
+  // with hardcoded parameters anyhow.
+  main(1, NULL);
 }\n''' % {
       'code': code,
     })
@@ -406,6 +372,23 @@ class benchmark(RunnerCore):
     Building.COMPILER = CLANG
     Building.COMPILER_TEST_OPTS = [OPTIMIZATIONS]
 
+  # avoid depending on argument reception from the commandline
+  def hardcode_arguments(self, code):
+    if not code:
+      return code
+    main_pattern = 'int main(int argc, char **argv)'
+    assert main_pattern in code
+    code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
+    code += '''
+      int main() {
+        int newArgc = 2;
+        char* newArgv[] = { (char*)"./program.exe", (char*)"%s" };
+        int ret = benchmark_main(newArgc, newArgv);
+        return ret;
+      }
+    ''' % DEFAULT_ARG
+    return code
+
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0:
       raise Exception('error, no benchmarkers: ' + benchmarkers_error)
@@ -416,6 +399,7 @@ class benchmark(RunnerCore):
 
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
+    src = self.hardcode_arguments(src)
     with open(filename, 'w') as f:
       f.write(src)
 
@@ -466,7 +450,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -504,7 +488,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('memops', src, 'final:')
+    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def zzztest_files(self):
     src = r'''
@@ -513,7 +497,7 @@ class benchmark(RunnerCore):
       #include <assert.h>
       #include <unistd.h>
 
-      int main() {
+      int main(int argc, char **argv) {
         int N = 100;
         int M = 1000;
         int K = 1000;
@@ -614,7 +598,7 @@ class benchmark(RunnerCore):
         return (x++) & 16384;
       }
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
@@ -653,7 +637,7 @@ class benchmark(RunnerCore):
       #include <stdio.h>
       #include <stdlib.h>
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
@@ -682,7 +666,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(

@@ -135,9 +135,11 @@ var shell_file = arguments_[1];
 var process_macros = arguments_.indexOf('--expandMacros') >= 0;
 
 load(settings_file);
+load('utility.js');
+load('modules.js');
 load('parseTools.js');
 
 var from_html = read(shell_file);
-var to_html = process_macros ? processMacros(preprocess(from_html)) : preprocess(from_html);
+var to_html = process_macros ? processMacros(preprocess(from_html, shell_file)) : preprocess(from_html, shell_file);
 
 print(to_html);

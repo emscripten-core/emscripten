@@ -346,10 +346,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if 'WASM=0' in params:
             if opt_level >= 2 and '-g' in params:
               assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+            looks_unminified = ' = {}' in generated and ' = []' in generated
+            looks_minified = '={}' in generated and '=[]' and ';var' in generated
+            assert not (looks_minified and looks_unminified)
             if opt_level == 0 or '-g' in params:
-              assert 'function _main() {' in generated or 'function _main(){' in generated, 'Should be unminified'
+              assert looks_unminified
             elif opt_level >= 2:
-              assert ('function _main(){' in generated or '"use asm";var a=' in generated), 'Should be whitespace-minified'
+              assert looks_minified
 
   @no_wasm_backend('tests for asmjs optimzer')
   def test_emcc_5(self):
@@ -3226,6 +3229,7 @@ mergeInto(LibraryManager.library, {
 ''')
     create_test_file('src.cpp', r'''
 #include <emscripten.h>
+#include <stdio.h>
 extern "C" int jslibfunc(int x);
 int main() {
   printf("c calling: %d\n", jslibfunc(6));
@@ -5741,6 +5745,7 @@ function _main() {
       ''')
     create_test_file('src2.c', r'''
       #include <emscripten.h>
+      #include <stdio.h>
       static void homonymous() {
           emscripten_sleep(1);
           printf("result: 2\n");
@@ -5803,37 +5808,38 @@ int main() {
     self.assertContained('cannot have an EM_ASM on the stack when emterpreter pauses/resumes', run_js('a.out.js', stderr=STDOUT, assert_returncode=None))
 
   def test_link_with_a_static(self):
-    for args in [[], ['-O2']]:
-      print(args)
-      self.clear()
-      create_test_file('x.c', r'''
+    create_test_file('x.c', r'''
 int init_weakref(int a, int b) {
-    return a + b;
+  return a + b;
 }
 ''')
-      create_test_file('y.c', r'''
+    create_test_file('y.c', r'''
 static int init_weakref(void) { // inlined in -O2, not in -O0 where it shows up in llvm-nm as 't'
-    return 150;
+  return 150;
 }
 
 int testy(void) {
-    return init_weakref();
+  return init_weakref();
 }
 ''')
-      create_test_file('z.c', r'''
+    create_test_file('z.c', r'''
 extern int init_weakref(int, int);
 extern int testy(void);
 
 int main(void) {
-    return testy() + init_weakref(5, 6);
+  return testy() + init_weakref(5, 6);
 }
 ''')
-      run_process([PYTHON, EMCC, 'x.c', '-o', 'x.o'])
-      run_process([PYTHON, EMCC, 'y.c', '-o', 'y.o'])
-      run_process([PYTHON, EMCC, 'z.c', '-o', 'z.o'])
-      run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
-      run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
-      run_process([PYTHON, EMRANLIB, 'libtest.a'])
+    run_process([PYTHON, EMCC, 'x.c', '-o', 'x.o'])
+    run_process([PYTHON, EMCC, 'y.c', '-o', 'y.o'])
+    run_process([PYTHON, EMCC, 'z.c', '-o', 'z.o'])
+    try_delete('libtest.a')
+    run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'y.o'])
+    run_process([PYTHON, EMAR, 'rc', 'libtest.a', 'x.o'])
+    run_process([PYTHON, EMRANLIB, 'libtest.a'])
+
+    for args in [[], ['-O2']]:
+      print('args:', args)
       run_process([PYTHON, EMCC, 'z.o', 'libtest.a', '-s', 'EXIT_RUNTIME=1'] + args)
       run_js('a.out.js', assert_returncode=161)
 
@@ -8544,7 +8550,15 @@ int main() {
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8553,7 +8567,15 @@ T6:!ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=1'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:ASSERTIONS == 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:ASSERTIONS == 1
 T2:(else) ASSERTIONS == 1
 T3:ASSERTIONS < 2
 T4:(else) ASSERTIONS <= 1
@@ -8562,7 +8584,15 @@ T6:(else) !ASSERTIONS""", output)
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=2'], stdout=PIPE, stderr=PIPE)
     output = open(output_file).read()
-    self.assertContained("""T1:(else) ASSERTIONS != 1
+    self.assertContained("""<style>
+/* Disable preprocessing inside style block as syntax is ambiguous with CSS */
+#include {background-color: black;}
+#if { background-color: red;}
+#else {background-color: blue;}
+#endif {background-color: green;}
+#xxx {background-color: purple;}
+</style>
+T1:(else) ASSERTIONS != 1
 T2:ASSERTIONS != 1
 T3:(else) ASSERTIONS >= 2
 T4:ASSERTIONS > 1

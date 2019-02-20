@@ -3,6 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
+
+
 # This class can be used to produce a set of minified names to be used as JS
 # variables
 class MinifiedJsNameGenerator(object):
