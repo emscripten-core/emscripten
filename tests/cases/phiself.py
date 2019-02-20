@@ -3,4 +3,4 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-assert '$phi' not in generated, 'we should optimize out self-phis'
+assert '$phi' not in generated, 'we should optimize out self-phis'  # noqa

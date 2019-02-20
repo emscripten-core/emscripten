@@ -499,10 +499,10 @@ EMSCRIPTEN_FUNCS();
           temp_files.note(cld)
         elif cleanup:
           if DEBUG: print('running cleanup on shell code', file=sys.stderr)
-          passes = ['JSDCE']
+          acorn_passes = ['JSDCE']
           if 'minifyWhitespace' in passes:
-            passes.append('minifyWhitespace')
-          cld = shared.Building.acorn_optimizer(cld, passes)
+            acorn_passes.append('minifyWhitespace')
+          cld = shared.Building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
         coutput = open(cld).read()
 
