@@ -909,70 +909,42 @@ BINARYEN_ROOT = ''
 
     assert not os.environ.get('BINARYEN') # must not have binaryen env var set
 
-    # test in 2 modes - with BINARYEN_ROOT in the config file, set to '', and without it entirely
-    for binaryen_root_in_config in [1, 0]:
-      print('binaryen_root_in_config:', binaryen_root_in_config)
+    # test with BINARYEN_ROOT in the config file, which is how developers usually
+    # have things set up. testing without it in the config file (which makes
+    # it get fetched from ports) is how the bots work, so it is tested there
 
-      def prep():
-        restore_and_set_up()
-        print('clearing ports...')
-        print(self.do([PYTHON, EMCC, '--clear-ports']))
-        wipe()
-        self.do([PYTHON, EMCC]) # first run stage
-        try_delete(tag_file)
-        # if BINARYEN_ROOT is set, we don't build the port. Check we do build it if not
-        if binaryen_root_in_config:
-          config = open(CONFIG_FILE).read()
-          assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
-          print('created config:')
-          print(config)
-          restore_and_set_up()
-          config = open(CONFIG_FILE).read()
-          config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
-        else:
-          restore_and_set_up()
-          config = open(CONFIG_FILE).read()
-          config = config.replace('BINARYEN_ROOT', '#')
-        print('modified config:')
-        print(config)
-        open(CONFIG_FILE, 'w').write(config)
+    def prep():
+      restore_and_set_up()
+      print('clearing ports...')
+      print(self.do([PYTHON, EMCC, '--clear-ports']))
+      wipe()
+      self.do([PYTHON, EMCC]) # first run stage
+      try_delete(tag_file)
+      config = open(CONFIG_FILE).read()
+      assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
+      print('created config:')
+      print(config)
+      restore_and_set_up()
+      config = open(CONFIG_FILE).read()
+      config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
+      print('modified config:')
+      print(config)
+      open(CONFIG_FILE, 'w').write(config)
 
-      print('build using embuilder')
-      prep()
-      run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
-      assert os.path.exists(tag_file)
-      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-      self.assertContained('hello, world!', run_js('a.out.js'))
+    print('build using embuilder')
+    prep()
+    run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
+    assert os.path.exists(tag_file)
+    run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
 
-      print('see we show an error for emmake (we cannot build natively under emmake)')
-      prep()
-      try_delete('a.out.js')
-      out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-      assert not os.path.exists(tag_file)
-      assert not os.path.exists('a.out.js')
-      self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
-
-      if not binaryen_root_in_config:
-        print('build on demand')
-        for side_module in (False, True):
-          print(side_module)
-          prep()
-          assert not os.path.exists(tag_file)
-          try_delete('a.out.js')
-          try_delete('a.out.wasm')
-          cmd = [PYTHON, EMCC]
-          if not side_module:
-            cmd += MINIMAL_HELLO_WORLD
-          else:
-            # EM_ASM doesn't work in a wasm side module, build a normal program
-            cmd += [path_from_root('tests', 'hello_world.c'), '-s', 'SIDE_MODULE=1']
-          cmd += ['-s', 'BINARYEN=1']
-          run_process(cmd)
-          assert os.path.exists(tag_file)
-          assert os.path.exists('a.out.wasm')
-          if not side_module:
-            assert os.path.exists('a.out.js')
-            self.assertContained('hello, world!', run_js('a.out.js'))
+    print('see we show an error for emmake (we cannot build natively under emmake)')
+    prep()
+    try_delete('a.out.js')
+    out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
+    assert not os.path.exists(tag_file)
+    assert not os.path.exists('a.out.js')
+    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
 
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:
