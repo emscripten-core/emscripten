@@ -7445,6 +7445,7 @@ int main() {
     self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value.js',
                                          'test-function-eliminator-replace-variable-value-output.js')
 
+  @no_wasm_backend('tests native asm.js optimizer, which is never build for wasm backend')
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).

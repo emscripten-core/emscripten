@@ -358,7 +358,7 @@ jobs:
       - run:
           name: embuilder build for lto
           command: |
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept native_optimizer --lto
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept --lto
             python3 ~/emscripten/tests/runner.py test_hello_world
       - run:
           name: freeze cache
