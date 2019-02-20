@@ -449,10 +449,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         extra += '_noerrno'
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
+      require_dlmalloc('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
       require_dlmalloc('tracing')
-      require_dlmalloc('pthreads')
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
     elif base == 'emmalloc':
