@@ -454,12 +454,10 @@ fi
     BUILDING_MESSAGE = 'building X for cache'
     ERASING_MESSAGE = 'clearing cache'
 
-    EMCC_CACHE = Cache.dirname
-
     restore_and_set_up()
 
     Cache.erase()
-    assert not os.path.exists(EMCC_CACHE)
+    assert not os.path.exists(Cache.dirname)
 
     with env_modify({'EMCC_DEBUG': '1'}):
       # Building a file that *does* need something *should* trigger cache
@@ -477,20 +475,20 @@ fi
             assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
           assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
           self.assertContained('hello, world!', run_js('a.out.js'))
-          assert os.path.exists(EMCC_CACHE)
+          assert os.path.exists(Cache.dirname)
           full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
+          assert os.path.exists(os.path.join(Cache.dirname, full_libname))
 
     try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
     # Manual cache clearing
     self.ensure_cache()
-    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
-    self.assertFalse(os.path.exists(EMCC_CACHE))
+    self.assertFalse(os.path.exists(Cache.dirname))
     self.assertFalse(os.path.exists(Cache.root_dirname))
     self.assertIn(SANITY_MESSAGE, output)
 
@@ -498,20 +496,20 @@ fi
     self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
-      self.assertTrue(os.path.exists(EMCC_CACHE))
+      self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
-      self.assertFalse(os.path.exists(EMCC_CACHE))
+      self.assertFalse(os.path.exists(Cache.dirname))
 
   # FROZEN_CACHE prevents cache clears, and prevents building
   def test_FROZEN_CACHE(self):
     restore_and_set_up()
     self.ensure_cache()
-    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     add_to_config('FROZEN_CACHE = True')
     self.do([PYTHON, EMCC])
-    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
