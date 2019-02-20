@@ -174,8 +174,6 @@ def main():
   def is_flag(arg):
     return arg.startswith('--')
 
-  lto = False
-
   for arg in args:
     if is_flag(arg):
       arg = arg[2:]
@@ -184,7 +182,7 @@ def main():
         # Reconfigure the cache dir to reflect the change
         shared.reconfigure_cache()
 
-  args = [arg for arg in args if not is_flag(arg)]
+  args = [a for a in args if not is_flag(a)]
 
   # process tasks
 
