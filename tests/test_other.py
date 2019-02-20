@@ -7971,9 +7971,9 @@ int main() {
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 32, [], ['waka'], 226582,  20,  32, 565), # noqa
+        (['-O2'], 32, [], ['waka'], 226582,  20,  32, 562), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  32, 565), # noqa
+                  32, [], ['waka'], 226582,  20,  32, 562), # noqa
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
@@ -7985,7 +7985,7 @@ int main() {
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 29296, 10,  15, 67), # noqa
+        ([],      16, [], ['waka'], 26641, 10,  15, 62), # noqa
         (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
         (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
         (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
