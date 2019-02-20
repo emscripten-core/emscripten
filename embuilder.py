@@ -128,6 +128,8 @@ and set up the location to the native optimizer in ~/.emscripten
 
 
 def build(src, result_libs, args=[]):
+  if shared.Settings.WASM_BACKEND:
+    args = args + ['-s', 'WASM_OBJECT_FILES=%d' % shared.Settings.WASM_OBJECT_FILES]
   # build in order to generate the libraries
   # do it all in a temp dir where everything will be cleaned up
   temp_dir = temp_files.get_dir()
@@ -150,7 +152,7 @@ def build_port(port_name, lib_name, params):
 
 
 def static_library_name(name):
-  if shared.Settings.WASM_BACKEND:
+  if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES:
     return name + '.a'
   else:
     return name + '.bc'
@@ -165,8 +167,27 @@ def main():
   if operation != 'build':
     shared.exit_with_error('unfamiliar operation: ' + operation)
 
+  # process flags
+
+  args = sys.argv[2:]
+
+  def is_flag(arg):
+    return arg.startswith('--')
+
+  for arg in args:
+    if is_flag(arg):
+      arg = arg[2:]
+      if arg == 'lto':
+        shared.Settings.WASM_OBJECT_FILES = 0
+        # Reconfigure the cache dir to reflect the change
+        shared.reconfigure_cache()
+
+  args = [a for a in args if not is_flag(a)]
+
+  # process tasks
+
   auto_tasks = False
-  tasks = sys.argv[2:]
+  tasks = args
   if 'SYSTEM' in tasks:
     tasks = SYSTEM_TASKS
     auto_tasks = True

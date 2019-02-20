@@ -46,29 +46,30 @@ data = '''
 
 total_time = 3000 # ms
 bin_size = 50 # ms
-bins = [0]*(total_time/bin_size)
+bins = [0] * (total_time / bin_size)
 
 for line in data.split('\n'):
   line = line.strip()
-  if 'frame ' not in line: continue
-  if 'starting' in line or 'complete' in line: continue
+  if 'frame ' not in line:
+    continue
+  if 'starting' in line or 'complete' in line:
+    continue
   line = line.replace(', ', ',').replace(' ', ',').replace('"', '')
-  #print line
+  # print line
   _, i, fps, wall, __ = line.split(',')
-  #print i, fps, wall
+  # print i, fps, wall
   fps = float(fps)
   wall = float(wall)
-  pos = wall/bin_size
+  pos = wall / bin_size
   start_bin = int(math.floor(pos))
   assert start_bin < len(bins)
   end_bin = int(math.ceil(pos))
   assert start_bin + 1 == end_bin
   frac = pos % 1
   old = bins[start_bin]
-  bins[start_bin] = frac * old + (1-frac)*fps # interpolate in this bin
+  bins[start_bin] = frac * old + (1 - frac) * fps # interpolate in this bin
   for i in range(end_bin, len(bins)): # fill in this fps for all future bins, we assume no degradation
     bins[i] = fps
 
 for i in range(len(bins)):
-  print i*bin_size, bins[i]
-
+  print i * bin_size, bins[i]

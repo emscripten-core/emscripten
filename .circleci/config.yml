@@ -356,6 +356,11 @@ jobs:
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
       - run:
+          name: embuilder build for lto
+          command: |
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ --lto
+            python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
