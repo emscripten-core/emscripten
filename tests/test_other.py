@@ -3735,7 +3735,6 @@ int main() { printf("t:1\n"); }
     self.assertNotContained('__GLOBAL__sub_', open('a.out.js').read())
     self.assertContained('t:1', run_js('a.out.js'))
 
-  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40472')
   def test_implicit_func(self):
     create_test_file('src.c', r'''
 #include <stdio.h>
