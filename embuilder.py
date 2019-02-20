@@ -108,13 +108,17 @@ are running multiple build commands in parallel, confusion can occur).
 
 Usage:
 
-  embuilder.py OPERATION TASK1 [TASK2..]
+  embuilder.py OPERATION TASK1 [TASK2..] [--lto]
 
 Available operations and tasks:
 
   build %s
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
+
+Flags:
+
+  --lto  Build bitcode files, for LTO with the LLVM wasm backend
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
