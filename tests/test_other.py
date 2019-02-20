@@ -7973,7 +7973,7 @@ int main() {
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
         (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   37, 660), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   18, 621), # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   38, 642), # noqa
       ]) # noqa
 
   def test_binaryen_metadce_hello(self):
@@ -8002,7 +8002,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1533, [],        [],      226057,  28,   85, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1533, [],        [],      226403,  28,   93, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ]) # noqa
 
   # ensures runtime exports work, even with metadce
