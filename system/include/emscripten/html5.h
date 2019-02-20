@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_events_h__
-#define __emscripten_events_h__
+#pragma once
 
 #ifdef __cplusplus
 #if !defined(__DEFINED_pthread_t)
@@ -575,6 +574,4 @@ extern void emscripten_throw_string(const char *utf8String);
 
 #ifdef __cplusplus
 } // ~extern "C"
-#endif
-
 #endif

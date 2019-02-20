@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_h__
-#define __emscripten_h__
+#pragma once
 
 /**
  * This file contains a few useful things for compiling C/C++ code
@@ -268,10 +267,6 @@ emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void
 int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
 
-
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __emscripten_h__
-
