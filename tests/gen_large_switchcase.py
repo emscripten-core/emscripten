@@ -30,7 +30,7 @@ const char *foo(int x)
 
 int main()
 {
-  for(int i = 0; i < ''' + str((num_cases + 99)//100) + '''; ++i)
+  for(int i = 0; i < ''' + str((num_cases + 99) // 100) + '''; ++i)
     printf("%d: %s\\n", i*301, foo(i*301));
   printf("Success!\\n");
 }''')
