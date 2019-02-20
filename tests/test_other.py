@@ -7979,7 +7979,7 @@ int main() {
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
         (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   17, 614), # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   37, 635), # noqa
       ]) # noqa
 
   def test_binaryen_metadce_hello(self):
@@ -8008,7 +8008,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
         # we don't metadce with linkable code! other modules may want stuff
         (['-O3', '-s', 'MAIN_MODULE=1'],
-                1533, [],        [],      226057,  28,   85, None), # noqa; don't compare the # of functions in a main module, which changes a lot
+                1533, [],        [],      226403,  28,   93, None), # noqa; don't compare the # of functions in a main module, which changes a lot
       ]) # noqa
 
   # ensures runtime exports work, even with metadce
@@ -8069,6 +8069,34 @@ int main() {
         assert not e_i64_i32, 'i64 converted to i32 in exports'
         assert not e_f32_f64, 'f32 converted to f64 in exports'
         assert e_i64_i64,     'i64 converted to i64 in exports'
+
+  def test_no_legalize_js_ffi(self):
+    # test minimal JS FFI legalization for invoke and dyncalls
+    if self.is_wasm_backend():
+      self.skipTest('not testing legalize with main module and wasm backend')
+    wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
+    for (args, js_ffi) in [
+        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0'], False),
+      ]:
+      print(args)
+      try_delete('a.out.wasm')
+      try_delete('a.out.wast')
+      with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+        cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'noffi.cpp'), '-g', '-o', 'a.out.js'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wast'])
+      text = open('a.out.wast').read()
+      # remove internal comments and extra whitespace
+      text = re.sub(r'\(;[^;]+;\)', '', text)
+      text = re.sub(r'\$var\$*.', '', text)
+      text = re.sub(r'param \$\d+', 'param ', text)
+      text = re.sub(r' +', ' ', text)
+      # print("text: %s" % text)
+      i_legalimport_i64 = re.search('\(import.*\$legalimport\$invoke_j.*', text)
+      e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      assert i_legalimport_i64, 'legal import not generated for invoke call'
+      assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
   def test_sysconf_phys_pages(self):
     for args, expected in [

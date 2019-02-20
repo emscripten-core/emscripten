@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_vr_h__
-#define __emscripten_vr_h__
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -151,6 +150,4 @@ extern bool emscripten_vr_display_presenting(VRDisplayHandle handle);
 
 #ifdef __cplusplus
 } // ~extern "C"
-#endif
-
 #endif
