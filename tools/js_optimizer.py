@@ -171,8 +171,7 @@ def get_native_optimizer():
           continue # perhaps the later compilers will succeed
         # success
         return output
-      logging.critical('Failed to build native optimizer')
-      sys.exit(1)
+      shared.exit_with_error('Failed to build native optimizer')
 
     use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
     if use_cmake_to_configure:
@@ -309,8 +308,7 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs or not suffix:
-      logging.critical('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
-      sys.exit(1)
+      shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
 
     minify_globals = 'minifyNames' in passes and 'asm' in passes
     if minify_globals:
