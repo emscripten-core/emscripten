@@ -2762,7 +2762,7 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
 
     if shared.Settings.EXPORT_ES6:
       f.write('''export default %s;''' % shared.Settings.EXPORT_NAME)
-    elif shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell'):
+    elif not shared.Settings.MINIMAL_RUNTIME:
       f.write('''if (typeof exports === 'object' && typeof module === 'object')
       module.exports = %(EXPORT_NAME)s;
     else if (typeof define === 'function' && define['amd'])
