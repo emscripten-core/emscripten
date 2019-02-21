@@ -4339,6 +4339,26 @@ function splitMemoryShell(ast) {
   splitMemory(ast, true);
 }
 
+function optimizeFrounds(ast) {
+  // collapse fround(fround(..)), which can happen due to elimination
+  // also emit f0 instead of fround(0) (except in returns)
+  var inReturn = false;
+  function fix(node) {
+    if (node[0] === 'return') inReturn = true;
+    traverseChildren(node, fix);
+    if (node[0] === 'return') inReturn = false;
+    if (node[0] === 'call' && node[1][0] === 'name' && node[1][1] === 'Math_fround') {
+      var arg = node[2][0];
+      if (arg[0] === 'num') {
+        if (!inReturn && arg[1] === 0) return ['name', 'f0'];
+      } else if (arg[0] === 'call' && arg[1][0] === 'name' && arg[1][1] === 'Math_fround') {
+        return arg;
+      }
+    }
+  }
+  traverseChildren(ast, fix);
+}
+
 // Ensures that if label exists, it is assigned an initial value (to not assume the asm declaration has an effect, which we normally do not)
 function ensureLabelSet(ast) {
   assert(asm);
@@ -6314,6 +6334,7 @@ var passes = {
   safeHeap: safeHeap,
   splitMemory: splitMemory,
   splitMemoryShell: splitMemoryShell,
+  optimizeFrounds: optimizeFrounds,
   ensureLabelSet: ensureLabelSet,
   emterpretify: emterpretify,
   findReachable: findReachable,
@@ -6369,6 +6390,9 @@ if (arguments_.indexOf('receiveJSON') < 0) {
 //printErr('ast: ' + JSON.stringify(ast));
 
 arguments_.slice(1).forEach(function(arg) {
+  if (!passes[arg]) {
+    throw 'JS optimizer does not support pass "' + arg + '". Perhaps due to trying to combine source maps with something?';
+  }
   passes[arg](ast);
 });
 if (asm && last) {

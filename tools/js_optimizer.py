@@ -37,7 +37,7 @@ def path_from_root(*pathelems):
 NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
 
 # Passes supported by both the native optimizer and the JS optimizer
-NATIVE_AND_JS_PASSES = set(['asm', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'asmLastOpts', 'cleanup', 'last', 'noop', 'closure'])
+NATIVE_AND_JS_PASSES = set(['asm', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'optimizeFrounds', 'asmLastOpts', 'cleanup', 'last', 'noop', 'closure'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
 
