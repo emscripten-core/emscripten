@@ -2148,7 +2148,9 @@ int f() {
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-asm.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-asm-output.js')).read(),
        ['asm', 'simplifyExpressions']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-si.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-si-output.js')).read(),
-       ['asm', 'simplifyIfs']),
+       ['simplifyIfs']),
+      (path_from_root('tests', 'optimizer', 'test-js-optimizer-regs.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-regs-output.js')).read(),
+       ['registerize']),
       (path_from_root('tests', 'optimizer', 'eliminator-test.js'), open(path_from_root('tests', 'optimizer', 'eliminator-test-output.js')).read(),
        ['eliminate']),
       (path_from_root('tests', 'optimizer', 'safe-eliminator-test.js'), open(path_from_root('tests', 'optimizer', 'safe-eliminator-test-output.js')).read(),
@@ -2246,17 +2248,13 @@ int f() {
         expected = [expected]
       expected = [out.replace('\n\n', '\n').replace('\n\n', '\n') for out in expected]
 
-      # Can run in native asm.js optimizer
-      native = tools.js_optimizer.use_native(passes)
-      # Can run in acorn optimizer
       acorn = any([p for p in passes if p in ACORN_PASSES])
-      # Can run in JS optimizer
-      js = all([(p in tools.js_optimizer.NATIVE_AND_JS_PASSES) for p in passes]) or not (native or acorn)
 
-      if js and not acorn:
+      # test calling optimizer
+      if not acorn:
         print('  js')
         output = run_process(NODE_JS + [path_from_root('tools', 'js-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
-      elif acorn:
+      else:
         print('  acorn')
         output = run_process(NODE_JS + [path_from_root('tools', 'acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
 
@@ -2295,14 +2293,11 @@ int f() {
         path_from_root('tests', 'optimizer', 'asmLastOpts.js'),
         path_from_root('tests', 'optimizer', '3154.js')
       ]:
-        if js:
-          check_js(output, expected)
-        else:
-          print('(skip non-js)')
+        check_js(output, expected)
       else:
         print('(skip non-native)')
 
-      if native:
+      if not self.is_wasm_backend() and tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           run_process(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w'))
