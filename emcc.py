@@ -645,11 +645,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
-    # noop ar
-    logger.debug('just ar')
-    return 0
-
   # Check if a target is specified
   target = None
   if any(arg.startswith('-o=') for arg in sys.argv):
