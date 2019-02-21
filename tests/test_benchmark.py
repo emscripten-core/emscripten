@@ -236,9 +236,7 @@ class CheerpBenchmarker(Benchmarker):
       %(code)s
 #include <cheerp/client.h>
 void webMain() {
-  // The values here don't matter - the benchmark harness has created a main()
-  // with hardcoded parameters anyhow.
-  main(1, NULL);
+  main();
 }\n''' % {
       'code': code,
     })
@@ -265,7 +263,8 @@ void webMain() {
         'CXXFLAGS': ' '.join(cheerp_args),
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
-    # cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
+    if PROFILING:
+      cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
@@ -285,7 +284,7 @@ void webMain() {
         '-o', final.replace('.js', '.wasm')
       ] + shared_args
       # print(' '.join(cmd))
-      run_process(cmd)
+      run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
       # Inject command line arguments
       run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
