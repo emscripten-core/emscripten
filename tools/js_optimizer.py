@@ -82,6 +82,8 @@ def get_native_optimizer():
     logging.debug('config forcing native optimizer at ' + opt)
     return opt
 
+  log_output = None if DEBUG else subprocess.PIPE
+
   def get_optimizer(name, args):
     def create_optimizer_cmake():
       shared.logging.debug('building native optimizer via CMake: ' + name)
@@ -98,7 +100,6 @@ def get_native_optimizer():
       build_path = shared.Cache.get_path('optimizer_build_' + cmake_build_type)
       shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
 
-      log_output = None if DEBUG else subprocess.PIPE
       if not os.path.exists(build_path):
         os.mkdir(build_path)
 
@@ -163,10 +164,13 @@ def get_native_optimizer():
                               shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
                               shared.path_from_root('tools', 'optimizer', 'optimizer-shared.cpp'),
                               shared.path_from_root('tools', 'optimizer', 'optimizer-main.cpp'),
-                              '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args)
-        except OSError:
-          if compiler == shared.CLANG: raise # otherwise, OSError is likely due to g++ or clang++ not being in the path
-        if os.path.exists(output): return output
+                              '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args,
+                             stdout=log_output, stderr=log_output)
+        except Exception as e:
+          logging.debug(str(e))
+          continue # perhaps the later compilers will succeed
+        # success
+        return output
       logging.critical('Failed to build native optimizer')
       sys.exit(1)
 
