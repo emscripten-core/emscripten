@@ -446,6 +446,10 @@ fi
 
     self.assertContained('hello from emcc with no config file', run_js('a.out.js'))
 
+  def erase_cache(self):
+    Cache.erase()
+    assert not os.path.exists(Cache.dirname)
+
   def ensure_cache(self):
     self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
@@ -455,9 +459,7 @@ fi
     ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
-
-    Cache.erase()
-    assert not os.path.exists(Cache.dirname)
+    self.erase_cache()
 
     with env_modify({'EMCC_DEBUG': '1'}):
       # Building a file that *does* need something *should* trigger cache
@@ -504,13 +506,16 @@ fi
   # FROZEN_CACHE prevents cache clears, and prevents building
   def test_FROZEN_CACHE(self):
     restore_and_set_up()
+    self.erase_cache()
     self.ensure_cache()
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
+    # changing config file should not clear cache
     add_to_config('FROZEN_CACHE = True')
     self.do([PYTHON, EMCC])
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
+    # building libraries is disallowed
     output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
