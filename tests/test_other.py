@@ -714,6 +714,22 @@ f.close()
 
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
+  def test_nostdincxx(self):
+    path_from_root('tests', 'hello_world.cpp')
+    cmd = [PYTHON, EMCC] + [path_from_root('tests', 'hello_world.cpp')]
+
+    err1 = run_process(cmd + ['-v'], stderr=PIPE).stderr
+    err2 = run_process(cmd + ['-v', '-nostdinc++'], stderr=PIPE).stderr
+
+    def focus(e):
+      assert 'search starts here:' in e, e
+      assert e.count('End of search list.') == 1, e
+      return e[e.index('search starts here:'):e.index('End of search list.') + 20]
+
+    err1 = focus(err1)
+    err2 = focus(err2)
+    assert err1 == err2, err1 + '\n\n\n\n' + err2
+
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.
