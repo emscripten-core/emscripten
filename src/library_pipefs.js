@@ -5,7 +5,7 @@
 
 mergeInto(LibraryManager.library, {
   $PIPEFS__postset: function() {
-    addStaticAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);');
+    addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);');
   },
   $PIPEFS__deps: ['$FS'],
   $PIPEFS: {

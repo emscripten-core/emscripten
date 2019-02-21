@@ -528,9 +528,9 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
-      STATIC_ATINITS: STATIC_ATINITS.join('\n'),
-      STATIC_ATMAINS: STATIC_ATMAINS.join('\n'),
-      STATIC_ATEXITS: STATIC_ATEXITS.join('\n'),
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
     }));
   },
   load: function(json) {

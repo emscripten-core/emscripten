@@ -23,9 +23,9 @@ mergeInto(LibraryManager.library, {
     'stdin', 'stdout', 'stderr'],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
-    addStaticAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
-    addStaticAtMain('FS.ignorePermissions = false;');
-    addStaticAtExit('FS.quit();');
+    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addAtMain('FS.ignorePermissions = false;');
+    addAtExit('FS.quit();');
     return 'FS.staticInit();' +
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';

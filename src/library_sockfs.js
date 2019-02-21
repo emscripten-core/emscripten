@@ -5,7 +5,7 @@
 
 mergeInto(LibraryManager.library, {
   $SOCKFS__postset: function() {
-    addStaticAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
+    addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {

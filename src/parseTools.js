@@ -1497,23 +1497,23 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
-var STATIC_ATINITS = [];
+var ATINITS = [];
 
-function addStaticAtInit(code) {
-  STATIC_ATINITS.push(code);
+function addAtInit(code) {
+  ATINITS.push(code);
 }
 
-var STATIC_ATMAINS = [];
+var ATMAINS = [];
 
-function addStaticAtMain(code) {
-  STATIC_ATMAINS.push(code);
+function addAtMain(code) {
+  ATMAINS.push(code);
 }
 
-var STATIC_ATEXITS = [];
+var ATEXITS = [];
 
-function addStaticAtExit(code) {
+function addAtExit(code) {
   if (EXIT_RUNTIME) {
-    STATIC_ATEXITS.push(code);
+    ATEXITS.push(code);
   }
 }
 

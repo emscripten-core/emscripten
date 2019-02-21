@@ -704,9 +704,9 @@ class StaticCodeHooks:
 
 
 def apply_static_code_hooks(code):
-  code = code.replace('{{{ STATIC_ATINITS }}}', StaticCodeHooks.atinits)
-  code = code.replace('{{{ STATIC_ATMAINS }}}', StaticCodeHooks.atmains)
-  code = code.replace('{{{ STATIC_ATEXITS }}}', StaticCodeHooks.atexits)
+  code = code.replace('{{{ ATINITS }}}', StaticCodeHooks.atinits)
+  code = code.replace('{{{ ATMAINS }}}', StaticCodeHooks.atmains)
+  code = code.replace('{{{ ATEXITS }}}', StaticCodeHooks.atexits)
   return code
 
 
@@ -715,9 +715,9 @@ def apply_forwarded_data(forwarded_data):
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
   # Be aware of JS static code hooks
-  StaticCodeHooks.atinits = str(forwarded_json['STATIC_ATINITS'])
-  StaticCodeHooks.atmains = str(forwarded_json['STATIC_ATMAINS'])
-  StaticCodeHooks.atexits = str(forwarded_json['STATIC_ATEXITS'])
+  StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
+  StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
+  StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
 def compile_settings(compiler_engine, libraries, temp_files):

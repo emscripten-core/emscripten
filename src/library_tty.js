@@ -7,8 +7,8 @@ mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
 #if !MINIMAL_RUNTIME
   $TTY__postset: function() {
-    addStaticAtInit('TTY.init();');
-    addStaticAtExit('TTY.shutdown();');
+    addAtInit('TTY.init();');
+    addAtExit('TTY.shutdown();');
   },
 #endif
   $TTY: {
