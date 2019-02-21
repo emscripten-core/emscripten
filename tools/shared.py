@@ -1383,6 +1383,13 @@ def g_multiprocessing_initializer(*args):
       os.environ[key] = value
 
 
+def print_compiler_stage(cmd):
+  """Emulate the '-v' of clang/gcc by printing the name of the sub-command
+  before executing it."""
+  if '-v' in COMPILER_OPTS:
+    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])))
+
+
 #  Building
 class Building(object):
   COMPILER = CLANG
@@ -1907,7 +1914,9 @@ class Building(object):
   @staticmethod
   def link_llvm(linker_inputs, target):
     # runs llvm-link to link things.
-    output = run_process([LLVM_LINK] + linker_inputs + ['-o', target], stdout=PIPE).stdout
+    cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
+    print_compiler_stage(cmd)
+    output = run_process(cmd, stdout=PIPE).stdout
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
     return target
 
@@ -1961,6 +1970,7 @@ class Building(object):
 
     cmd += opts
 
+    print_compiler_stage(cmd)
     check_call(cmd)
     return target
 
@@ -2155,8 +2165,10 @@ class Building(object):
       opts += ['-force-vector-width=4']
 
     target = out or (filename + '.opt.bc')
+    cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
+    print_compiler_stage(cmd)
     try:
-      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+      run_process(cmd, stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
       for i in inputs:
@@ -2173,7 +2185,9 @@ class Building(object):
   def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
     if Building.LLVM_OPTS:
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = run_process([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).stdout
+      cmd = [LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o']
+      print_compiler_stage(cmd)
+      output = run_process(cmd, stdout=PIPE).stdout
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
