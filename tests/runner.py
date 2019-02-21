@@ -427,6 +427,11 @@ class RunnerCore(unittest.TestCase):
       with open(ll_filename, 'w') as f:
         f.write(contents)
 
+    def llvm_opt(filename):
+      shutil.move(filename + '.o', filename + '.o.pre')
+      output = run_process([LLVM_OPT, filename + '.o.pre', '-O3', '-o', filename + '.o'], stdout=PIPE).stdout
+      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
+
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
@@ -441,7 +446,7 @@ class RunnerCore(unittest.TestCase):
       Building.llvm_as(filename)
       shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
       if Building.LLVM_OPTS:
-        Building.llvm_opts(filename)
+        llvm_opt(filename)
       Building.llvm_dis(filename)
       if build_ll_hook and need_post:
         build_ll_hook(filename)
@@ -470,8 +475,6 @@ class RunnerCore(unittest.TestCase):
   def build(self, src, dirname, filename, main_file=None,
             additional_files=[], libraries=[], includes=[], build_ll_hook=None,
             post_build=None, js_outfile=True):
-
-    Building.LLVM_OPT_OPTS = ['-O3'] # pick llvm opts here, so we include changes to Settings in the test case code
 
     # Copy over necessary files for compiling the source
     if main_file is None:
