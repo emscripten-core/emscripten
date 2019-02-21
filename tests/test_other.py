@@ -6398,7 +6398,7 @@ int main(int argc, char** argv) {
       assert percent_diff(full[0], printf[0]) < 4
       assert percent_diff(dce[0], dce_fail[0]) < 4
       assert dce[0] < 0.2 * full[0] # big effect, 80%+ is gone
-      assert dce_save[0] > 1.1 * dce[0] # save exported all of printf
+      assert dce_save[0] > 1.05 * dce[0] # save exported all of printf
 
       # side module tests
 
@@ -7971,21 +7971,21 @@ int main() {
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 32, [], ['waka'], 226582,  20,  32, 565), # noqa
+        (['-O2'], 32, [], ['waka'], 226582,  20,  32, 562), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  32, 565), # noqa
+                  32, [], ['waka'], 226582,  20,  32, 562), # noqa
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   37, 660), # noqa
+        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653), # noqa
         (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   38, 642), # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   37, 635), # noqa
       ]) # noqa
 
   def test_binaryen_metadce_hello(self):
     if self.is_wasm_backend():
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 29296, 10,  15, 67), # noqa
+        ([],      16, [], ['waka'], 26641, 10,  15, 62), # noqa
         (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
         (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
         (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
@@ -7997,7 +7997,7 @@ int main() {
       ]) # noqa
     else:
       self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      20, ['abort'], ['waka'], 46505,  20,   15, 58), # noqa
+        ([],      20, ['abort'], ['waka'], 42701,  20,   14, 49), # noqa
         (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
         (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
         (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
