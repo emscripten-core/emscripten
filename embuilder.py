@@ -42,14 +42,6 @@ CXX_WITH_STDLIB = '''
 SYSTEM_TASKS = [
     'al',
     'compiler-rt',
-    'dlmalloc',
-    'dlmalloc_debug',
-    'dlmalloc_debug_noerrno',
-    'dlmalloc_noerrno',
-    'dlmalloc_threadsafe',
-    'dlmalloc_threadsafe_debug',
-    'dlmalloc_threadsafe_debug_noerrno',
-    'dlmalloc_threadsafe_noerrno',
     'emmalloc',
     'emmalloc_debug',
     'gl',
@@ -71,9 +63,16 @@ SYSTEM_TASKS = [
     'pthreads_stub',
 ]
 
+for debug in ['', '_debug']:
+  for noerrno in ['', '_noerrno']:
+    for threadsafe in ['', '_threadsafe']:
+      for tracing in ['', '_tracing']:
+        SYSTEM_TASKS += ['dlmalloc' + debug + noerrno + threadsafe + tracing]
+
 USER_TASKS = [
     'binaryen',
     'bullet',
+    'cocos2d',
     'freetype',
     'icu',
     'libpng',
@@ -82,6 +81,7 @@ USER_TASKS = [
     'sdl2',
     'sdl2-gfx',
     'sdl2-image',
+    'sdl2-image-png',
     'sdl2-mixer',
     'sdl2-net',
     'sdl2-ttf',
@@ -108,13 +108,17 @@ are running multiple build commands in parallel, confusion can occur).
 
 Usage:
 
-  embuilder.py OPERATION TASK1 [TASK2..]
+  embuilder.py OPERATION TASK1 [TASK2..] [--lto]
 
 Available operations and tasks:
 
   build %s
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
+
+Flags:
+
+  --lto  Build bitcode files, for LTO with the LLVM wasm backend
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -196,7 +200,10 @@ def main():
     auto_tasks = True
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
-      skip_tasks = {'libc-mt', 'gl-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
+      skip_tasks = [task for task in SYSTEM_TASKS + USER_TASKS if '-mt' in task or 'thread' in task]
+      # cocos2d: must be ported, errors on
+      # "Cannot recognize the target platform; are you targeting an unsupported platform?"
+      skip_tasks += ['cocos2d']
       print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
       tasks = [x for x in tasks if x not in skip_tasks]
     else:
@@ -232,22 +239,19 @@ def main():
       build(C_WITH_MALLOC, [static_library_name('libemmalloc')], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
       build(C_WITH_MALLOC, [static_library_name('libemmalloc_debug')], ['-s', 'MALLOC="emmalloc"', '-g'])
-    elif what == 'dlmalloc':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc')], ['-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_debug':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_debug')], ['-g', '-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_threadsafe_debug':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_threadsafe_debug')], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
-    elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
-      build(C_WITH_MALLOC, [static_library_name('libc-mt'), static_library_name('libdlmalloc_threadsafe'), static_library_name('libpthreads')], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
-    elif what == 'dlmalloc_noerrno':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_noerrno')], ['-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_debug_noerrno':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_debug_noerrno')], ['-g', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_threadsafe_debug_noerrno':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_threadsafe_debug_noerrno')], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
-    elif what == 'dlmalloc_threadsafe_noerrno':
-      build(C_WITH_MALLOC, [static_library_name('libdlmalloc_threadsafe_noerrno')], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"', '-s', 'SUPPORT_ERRNO=0'])
+    elif what.startswith('dlmalloc'):
+      cmd = ['-s', 'MALLOC="dlmalloc"']
+      if '_debug' in what:
+        cmd += ['-g']
+      if '_noerrno' in what:
+        cmd += ['-s', 'SUPPORT_ERRNO=0']
+      if '_threadsafe' in what:
+        cmd += ['-s', 'USE_PTHREADS=1']
+      if '_tracing' in what:
+        cmd += ['-s', 'EMSCRIPTEN_TRACING=1']
+      build(C_WITH_MALLOC, [static_library_name('lib' + what)], cmd)
+    elif what in ('libc-mt', 'pthreads'):
+      build(C_WITH_MALLOC, [static_library_name('libc-mt'), static_library_name('libpthreads')], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libc-wasm':
       build(C_WITH_STDLIB, [static_library_name('libc-wasm')], ['-s', 'WASM=1'])
     elif what == 'libc++':
@@ -277,7 +281,7 @@ def main():
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('lib%s' % what)], opts)
+      ''', [static_library_name('lib' + what)], opts)
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':
@@ -328,6 +332,8 @@ def main():
       build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'sdl2-image-png':
+      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':

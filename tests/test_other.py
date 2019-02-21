@@ -489,56 +489,6 @@ f.close()
           else:
             assert 'use asm' in src
 
-  # Test that if multiple processes attempt to access or build stuff to the
-  # cache on demand, that exactly one of the processes will, and the other
-  # processes will block to wait until that process finishes.
-  def test_emcc_multiprocess_cache_access(self):
-    create_test_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    cache_dir_name = self.in_dir('emscripten_cache')
-    tasks = []
-    num_times_libc_was_built = 0
-    for i in range(3):
-      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
-      tasks += [p]
-    for p in tasks:
-      print('stdout:\n', p.stdout)
-      if 'generating system library: libc' in p.stdout:
-        num_times_libc_was_built += 1
-    # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
-    # The cache directory must contain a built libc
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
-    # Exactly one child process should have triggered libc build!
-    self.assertEqual(num_times_libc_was_built, 1)
-
-  def test_emcc_cache_flag(self):
-    cache_dir_name = self.in_dir('emscripten_cache')
-    self.assertFalse(os.path.exists(cache_dir_name))
-    create_test_file('test.c', r'''
-      #include <stdio.h>
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
-    # The cache directory must exist after the build
-    self.assertTrue(os.path.exists(cache_dir_name))
-    # The cache directory must contain a built libc'
-    if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
-    else:
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
-
   @uses_canonical_tmp
   def test_emcc_cflags(self):
     # see we print them out
@@ -2297,7 +2247,7 @@ int f() {
       else:
         print('(skip non-native)')
 
-      if tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
+      if not self.is_wasm_backend() and tools.js_optimizer.use_native(passes) and tools.js_optimizer.get_native_optimizer():
         # test calling native
         def check_json():
           run_process(listify(NODE_JS) + [path_from_root('tools', 'js-optimizer.js'), output_temp, 'receiveJSON'], stdin=PIPE, stdout=open(output_temp + '.js', 'w'))
@@ -7495,6 +7445,7 @@ int main() {
     self.function_eliminator_test_helper('test-function-eliminator-replace-variable-value.js',
                                          'test-function-eliminator-replace-variable-value-output.js')
 
+  @no_wasm_backend('tests native asm.js optimizer, which is never build for wasm backend')
   def test_function_eliminator_double_parsed_correctly(self):
     # This is a test that makes sure that when we perform final optimization on
     # the JS file, doubles are preserved (and not converted to ints).
@@ -8127,7 +8078,7 @@ int main() {
     ):
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
-        print (opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
+        print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
 
         self.clear()
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
@@ -8160,6 +8111,7 @@ int main() {
       self.assertIn(b'dylink', open(target, 'rb').read())
 
   def test_wasm_backend_lto(self):
+    # test building of non-wasm-object-files libraries, building with them, and running them
     if not self.is_wasm_backend():
       self.skipTest('not using wasm backend')
     # test codegen in lto mode, and compare to normal (wasm object) mode
@@ -8167,10 +8119,10 @@ int main() {
       print(args)
       print('wasm in object')
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-c', '-o', 'a.o'])
-      assert Building.is_wasm('a.o') and not Building.is_bitcode('a.o')
+      assert shared.Building.is_wasm('a.o') and not shared.Building.is_bitcode('a.o')
       print('bitcode in object')
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')] + args + ['-c', '-o', 'a.o', '-s', 'WASM_OBJECT_FILES=0'])
-      assert not Building.is_wasm('a.o') and Building.is_bitcode('a.o')
+      assert not shared.Building.is_wasm('a.o') and shared.Building.is_bitcode('a.o')
       print('build bitcode object')
       run_process([PYTHON, EMCC, 'a.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
       self.assertContained('hello, world!', run_js('a.out.js'))

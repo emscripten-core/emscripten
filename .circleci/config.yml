@@ -98,6 +98,10 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -354,8 +358,12 @@ jobs:
       - run:
           name: embuilder build for lto
           command: |
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ --lto
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept --lto
             python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/

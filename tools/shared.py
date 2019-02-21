@@ -288,6 +288,7 @@ PYTHON = None
 JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
+FROZEN_CACHE = False
 
 
 def parse_config_file():
@@ -316,6 +317,7 @@ def parse_config_file():
     'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
+    'FROZEN_CACHE',
   )
 
   # Only popogate certain settings from the config file.
@@ -586,11 +588,14 @@ def check_sanity(force=False):
           return # all is well
 
     if reason:
-      logger.warning('(Emscripten: %s, clearing cache)' % reason)
-      Cache.erase()
-      # the check actually failed, so definitely write out the sanity file, to
-      # avoid others later seeing failures too
-      force = False
+      if FROZEN_CACHE:
+        logger.warning('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
+      else:
+        logger.warning('(Emscripten: %s, clearing cache)' % reason)
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_node_version()
