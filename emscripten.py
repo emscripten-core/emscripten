@@ -377,6 +377,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
                                exported_implemented_functions, metadata['initializers'])
 
   post = apply_table(post)
+  post = apply_static_code_hooks(post)
 
   if shared.Settings.MINIMAL_RUNTIME:
     # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
@@ -695,10 +696,28 @@ def update_settings_glue(metadata):
     shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
 
 
+# static code hooks
+class StaticCodeHooks:
+  atinits = []
+  atmains = []
+  atexits = []
+
+
+def apply_static_code_hooks(code):
+  code = code.replace('{{{ ATINITS }}}', StaticCodeHooks.atinits)
+  code = code.replace('{{{ ATMAINS }}}', StaticCodeHooks.atmains)
+  code = code.replace('{{{ ATEXITS }}}', StaticCodeHooks.atexits)
+  return code
+
+
 def apply_forwarded_data(forwarded_data):
   forwarded_json = json.loads(forwarded_data)
   # Be aware of JS static allocations
   shared.Settings.STATIC_BUMP = forwarded_json['STATIC_BUMP']
+  # Be aware of JS static code hooks
+  StaticCodeHooks.atinits = str(forwarded_json['ATINITS'])
+  StaticCodeHooks.atmains = str(forwarded_json['ATMAINS'])
+  StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
 def compile_settings(compiler_engine, libraries, temp_files):
@@ -803,6 +822,7 @@ STATICTOP = STATIC_BASE + {staticbump};
     pre = pre.replace('GLOBAL_BASE', 'gb')
 
   pre = apply_memory(pre)
+  pre = apply_static_code_hooks(pre)
 
   return pre
 
@@ -2107,6 +2127,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        global_initializers))
 
   pre = apply_memory(pre)
+  pre = apply_static_code_hooks(pre)
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']

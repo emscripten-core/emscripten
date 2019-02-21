@@ -21,14 +21,15 @@ mergeInto(LibraryManager.library, {
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
     'stdin', 'stdout', 'stderr'],
-  $FS__postset: 'FS.staticInit();' +
-#if !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATINIT__/__ATMAIN__/__ATEXIT__
-                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
-                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
-                '__ATEXIT__.push(function() { FS.quit() });' +
-#endif
-                // Get module methods from settings
-                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
+  $FS__postset: function() {
+    // TODO: do we need noFSInit?
+    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addAtMain('FS.ignorePermissions = false;');
+    addAtExit('FS.quit();');
+    return 'FS.staticInit();' +
+           // Get module methods from settings
+           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+  },
   $FS: {
     root: null,
     mounts: [],

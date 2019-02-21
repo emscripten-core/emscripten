@@ -4,7 +4,9 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: '__ATINIT__.push(function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); });',
+  $SOCKFS__postset: function() {
+    addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
+  },
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
     mount: function(mount) {

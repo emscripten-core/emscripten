@@ -248,12 +248,19 @@ function JSify(data, functionsOnly) {
 
       var postsetId = ident + '__postset';
       var postset = LibraryManager.library[postsetId];
-      if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
-        addedLibraryItems[postsetId] = true;
-        itemsDict.GlobalVariablePostSet.push({
-          intertype: 'GlobalVariablePostSet',
-          JS: postset + ';'
-        });
+      if (postset) {
+        // A postset is either code to run right now, or some text we should emit.
+        // If it's code, it may return some text to emit as well.
+        if (typeof postset === 'function') {
+          postset = postset();
+        }
+        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
+          addedLibraryItems[postsetId] = true;
+          itemsDict.GlobalVariablePostSet.push({
+            intertype: 'GlobalVariablePostSet',
+            JS: postset + ';'
+          });
+        }
       }
 
       if (redirectedIdent) {
@@ -544,10 +551,5 @@ function JSify(data, functionsOnly) {
     data.functionStubs.forEach(functionStubHandler);
   }
 
-  //B.start('jsifier-fc');
   finalCombiner();
-  //B.stop('jsifier-fc');
-
-  dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
-  //B.stop('jsifier');
 }

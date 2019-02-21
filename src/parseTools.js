@@ -1497,6 +1497,26 @@ function makeStaticString(string) {
   return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
 }
 
+var ATINITS = [];
+
+function addAtInit(code) {
+  ATINITS.push(code);
+}
+
+var ATMAINS = [];
+
+function addAtMain(code) {
+  ATMAINS.push(code);
+}
+
+var ATEXITS = [];
+
+function addAtExit(code) {
+  if (EXIT_RUNTIME) {
+    ATEXITS.push(code);
+  }
+}
+
 // Generates access to module exports variable in pthreads worker.js. Depending on whether main code is built with MODULARIZE
 // or not, asm module exports need to either be accessed via a local exports object obtained from instantiating the module (in src/worker.js), or via
 // the global Module exports object.

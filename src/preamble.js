@@ -541,6 +541,7 @@ function ensureInitRuntime() {
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
+  {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -551,6 +552,7 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+  {{{ getQuoted('ATMAINS') }}}
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -561,7 +563,10 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
+  {{{ getQuoted('ATEXITS') }}}
+#endif
   runtimeExited = true;
 }
 
@@ -595,7 +600,9 @@ function addOnPreMain(cb) {
 }
 
 function addOnExit(cb) {
+#if EXIT_RUNTIME
   __ATEXIT__.unshift(cb);
+#endif
 }
 
 function addOnPostRun(cb) {
