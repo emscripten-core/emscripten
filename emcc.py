@@ -401,10 +401,6 @@ def run(args):
 
   # Handle some global flags
 
-  if len(args) == 1:
-    logger.warning('no input files')
-    return 1
-
   # read response files very early on
   args = substitute_response_files(args)
 
@@ -444,14 +440,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  shared.check_sanity(force=DEBUG)
-
   if len(args) == 2 and args[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
+
+  shared.check_sanity(force=DEBUG)
+
+  # This check comes after check_sanity because test_sanity expects this.
+  if len(args) == 1:
+    logger.warning('no input files')
+    return 1
 
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
