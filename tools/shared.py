@@ -1387,7 +1387,7 @@ def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
   if '-v' in COMPILER_OPTS:
-    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])))
+    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
 
 
 #  Building
