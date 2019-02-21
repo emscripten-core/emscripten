@@ -57,3 +57,7 @@ COMPILER_ENGINE = NODE_JS
 #                 coverage.
 
 JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]
+
+# Other options
+#
+# FROZEN_CACHE = True # never clears the cache, and disallows building to the cache

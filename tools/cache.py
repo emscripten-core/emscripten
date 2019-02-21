@@ -107,6 +107,11 @@ class Cache(object):
     try:
       if os.path.exists(cachename) and not force:
         return cachename
+      # it doesn't exist yet, create it
+      if shared.FROZEN_CACHE:
+        # it's ok to build small .txt marker files like "vanilla"
+        if not shortname.endswith('.txt'):
+          raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
       if what is None:
         if shortname.endswith(('.bc', '.so', '.a')):
           what = 'system library'

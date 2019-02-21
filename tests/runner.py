@@ -350,7 +350,10 @@ class RunnerCore(unittest.TestCase):
         # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
         # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
         # ignore some temp file names that we see on our CI infrastructure.
-        ignorable_files = ['/tmp/tmpaddon']
+        ignorable_files = [
+          '/tmp/tmpaddon',
+          '/tmp/circleci-no-output-timeout'
+        ]
 
         left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
         if len(left_over_files):

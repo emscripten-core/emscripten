@@ -12,7 +12,7 @@ import time
 import re
 import tempfile
 
-from runner import RunnerCore, path_from_root, env_modify, chdir
+from runner import RunnerCore, path_from_root, env_modify, chdir, create_test_file
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE, CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs, expected_llvm_version, generate_sanity
 from tools.shared import Cache, Settings
@@ -34,6 +34,8 @@ def restore_and_set_up():
     f.write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
     # make LLVM_ROOT sensitive to the LLVM env var, as we test that
     f.write('\nLLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
+    # unfreeze the cache, so we can test that
+    f.write('\nFROZEN_CACHE = False\n')
 
 
 # wipe the config and sanity files, creating a blank slate
@@ -44,7 +46,7 @@ def wipe():
 
 def add_to_config(content):
   with open(CONFIG_FILE, 'a') as f:
-    f.write(content + '\n')
+    f.write('\n' + content + '\n')
 
 
 def mtime(filename):
@@ -444,17 +446,20 @@ fi
 
     self.assertContained('hello from emcc with no config file', run_js('a.out.js'))
 
+  def erase_cache(self):
+    Cache.erase()
+    assert not os.path.exists(Cache.dirname)
+
+  def ensure_cache(self):
+    self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
+
   def test_emcc_caching(self):
     INCLUDING_MESSAGE = 'including X'
     BUILDING_MESSAGE = 'building X for cache'
     ERASING_MESSAGE = 'clearing cache'
 
-    EMCC_CACHE = Cache.dirname
-
     restore_and_set_up()
-
-    Cache.erase()
-    assert not os.path.exists(EMCC_CACHE)
+    self.erase_cache()
 
     with env_modify({'EMCC_DEBUG': '1'}):
       # Building a file that *does* need something *should* trigger cache
@@ -472,34 +477,101 @@ fi
             assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
           assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
           self.assertContained('hello, world!', run_js('a.out.js'))
-          assert os.path.exists(EMCC_CACHE)
+          assert os.path.exists(Cache.dirname)
           full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          assert os.path.exists(os.path.join(EMCC_CACHE, full_libname))
+          assert os.path.exists(os.path.join(Cache.dirname, full_libname))
 
     try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
-    def ensure_cache():
-      self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
-
     # Manual cache clearing
-    ensure_cache()
-    self.assertTrue(os.path.exists(EMCC_CACHE))
+    self.ensure_cache()
+    self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     output = self.do([PYTHON, EMCC, '--clear-cache'])
     self.assertIn(ERASING_MESSAGE, output)
-    self.assertFalse(os.path.exists(EMCC_CACHE))
+    self.assertFalse(os.path.exists(Cache.dirname))
     self.assertFalse(os.path.exists(Cache.root_dirname))
     self.assertIn(SANITY_MESSAGE, output)
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
-    ensure_cache()
+    self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
-      self.assertTrue(os.path.exists(EMCC_CACHE))
+      self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
-      self.assertFalse(os.path.exists(EMCC_CACHE))
+      self.assertFalse(os.path.exists(Cache.dirname))
+
+  # FROZEN_CACHE prevents cache clears, and prevents building
+  def test_FROZEN_CACHE(self):
+    restore_and_set_up()
+    self.erase_cache()
+    self.ensure_cache()
+    self.assertTrue(os.path.exists(Cache.dirname))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
+    # changing config file should not clear cache
+    add_to_config('FROZEN_CACHE = True')
+    self.do([PYTHON, EMCC])
+    self.assertTrue(os.path.exists(Cache.dirname))
+    self.assertTrue(os.path.exists(Cache.root_dirname))
+    # building libraries is disallowed
+    output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    self.assertIn('FROZEN_CACHE disallows building system libs', output)
+
+  # Test that if multiple processes attempt to access or build stuff to the
+  # cache on demand, that exactly one of the processes will, and the other
+  # processes will block to wait until that process finishes.
+  def test_emcc_multiprocess_cache_access(self):
+    restore_and_set_up()
+
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    cache_dir_name = self.in_dir('emscripten_cache')
+    tasks = []
+    num_times_libc_was_built = 0
+    for i in range(3):
+      p = run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name, '-o', '%d.js' % i], stderr=STDOUT, stdout=PIPE)
+      tasks += [p]
+    for p in tasks:
+      print('stdout:\n', p.stdout)
+      if 'generating system library: libc' in p.stdout:
+        num_times_libc_was_built += 1
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
+    # Exactly one child process should have triggered libc build!
+    self.assertEqual(num_times_libc_was_built, 1)
+
+  def test_emcc_cache_flag(self):
+    restore_and_set_up()
+
+    cache_dir_name = self.in_dir('emscripten_cache')
+    self.assertFalse(os.path.exists(cache_dir_name))
+    create_test_file('test.c', r'''
+      #include <stdio.h>
+      int main() {
+        printf("hello, world!\n");
+        return 0;
+      }
+      ''')
+    run_process([PYTHON, EMCC, 'test.c', '--cache', cache_dir_name], stderr=PIPE)
+    # The cache directory must exist after the build
+    self.assertTrue(os.path.exists(cache_dir_name))
+    # The cache directory must contain a built libc'
+    if self.is_wasm_backend():
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+    else:
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
   def test_nostdincxx(self):
     restore_and_set_up()
@@ -973,3 +1045,16 @@ BINARYEN_ROOT = ''
           if not side_module:
             assert os.path.exists('a.out.js')
             self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_embuilder_wasm_backend(self):
+    if not Settings.WASM_BACKEND:
+      self.skipTest('wasm backend only')
+    restore_and_set_up()
+    root_cache = os.path.expanduser('~/.emscripten_cache')
+    # the --lto flag makes us build wasm_bc
+    self.do([PYTHON, EMCC, '--clear-cache'])
+    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    assert os.path.exists(os.path.join(root_cache, 'wasm_o'))
+    self.do([PYTHON, EMCC, '--clear-cache'])
+    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc', '--lto'])
+    assert os.path.exists(os.path.join(root_cache, 'wasm_bc'))

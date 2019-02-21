@@ -764,7 +764,7 @@ int buildBaseLoop(MaoCFG *cfg, int from) {
 }
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
   int NUM;
 
   int arg = argc > 1 ? argv[1][0] - '0' : 3;

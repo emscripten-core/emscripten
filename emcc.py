@@ -113,10 +113,6 @@ if LEAVE_INPUTS_RAW:
 # builds
 AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
 
-# Additional compiler flags that we treat as if they were passed to us on the
-# commandline
-EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
-
 # Target options
 final = None
 
@@ -383,36 +379,39 @@ def apply_settings(changes):
 #
 # Main run() function
 #
-def run():
+def run(args):
   global final
   target = None
 
+  # Additional compiler flags that we treat as if they were passed to us on the
+  # commandline
+  EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS', '')
   if DEBUG:
-    logger.warning('invocation: ' + ' '.join(sys.argv) + (' + ' + EMCC_CFLAGS if EMCC_CFLAGS else '') + '  (in ' + os.getcwd() + ')')
+    logger.warning('invocation: ' + ' '.join(args) + (' + ' + EMCC_CFLAGS) + '  (in ' + os.getcwd() + ')')
   if EMCC_CFLAGS:
-    sys.argv.extend(shlex.split(EMCC_CFLAGS))
+    args.extend(shlex.split(EMCC_CFLAGS))
 
   if DEBUG and LEAVE_INPUTS_RAW:
     logger.warning('leaving inputs raw')
 
-  EMCC_CXX = '--emscripten-cxx' in sys.argv
-  sys.argv = [x for x in sys.argv if x != '--emscripten-cxx']
+  EMCC_CXX = '--emscripten-cxx' in args
+  args = [x for x in args if x != '--emscripten-cxx']
 
-  if len(sys.argv) <= 1 or ('--help' not in sys.argv and len(sys.argv) >= 2 and sys.argv[1] != '--version'):
+  if len(args) <= 1 or ('--help' not in args and len(args) >= 2 and args[1] != '--version'):
     shared.check_sanity(force=DEBUG)
 
   misc_temp_files = shared.configuration.get_temp_files()
 
   # Handle some global flags
 
-  if len(sys.argv) == 1:
+  if len(args) == 1:
     logger.warning('no input files')
     return 1
 
   # read response files very early on
-  sys.argv = substitute_response_files(sys.argv)
+  args = substitute_response_files(args)
 
-  if len(sys.argv) == 1 or '--help' in sys.argv:
+  if len(args) == 1 or '--help' in args:
     # Documentation for emcc and its options must be updated in:
     #    site/source/docs/tools_reference/emcc.rst
     # A prebuilt local version of the documentation is available at:
@@ -431,7 +430,7 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
 ''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
     return 0
 
-  elif sys.argv[1] == '--version':
+  elif args[1] == '--version':
     revision = '(unknown revision)'
     here = os.getcwd()
     os.chdir(shared.path_from_root())
@@ -448,26 +447,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  elif len(sys.argv) == 2 and sys.argv[1] == '-v': # -v with no inputs
+  elif len(args) == 2 and args[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
-  elif '-dumpmachine' in sys.argv:
+  elif '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
 
-  elif '-dumpversion' in sys.argv: # gcc's doc states "Print the compiler version [...] and don't do anything else."
+  elif '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
 
-  elif '--cflags' in sys.argv:
+  elif '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
     debug_env = os.environ.copy()
     debug_env['EMCC_DEBUG'] = '1'
-    args = [x for x in sys.argv if x != '--cflags']
+    args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
       err = run_process([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=PIPE, env=debug_env).stderr
@@ -492,8 +491,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
-  CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in sys.argv) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
-  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(sys.argv)# or 'CMakeCCompilerId' in ' '.join(sys.argv)
+  CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
+  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)# or 'CMakeCCompilerId' in ' '.join(args)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
     debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
 
@@ -512,7 +511,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         open(tempout, 'w').write('//\n')
 
     src = None
-    for arg in sys.argv:
+    for arg in args:
       if arg.endswith(SOURCE_ENDINGS):
         try:
           src = open(arg).read()
@@ -537,7 +536,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
     compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    if not ('CXXCompiler' in ' '.join(sys.argv) or EMCC_CXX):
+    if not ('CXXCompiler' in ' '.join(args) or EMCC_CXX):
       compiler = shared.to_cc(compiler)
 
     def filter_emscripten_options(argv):
@@ -560,7 +559,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       compiler = [shared.PYTHON, shared.EMCC]
     else:
       compiler = [compiler]
-    cmd = compiler + list(filter_emscripten_options(sys.argv[1:]))
+    cmd = compiler + list(filter_emscripten_options(args[1:]))
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -624,11 +623,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if EMCC_CXX:
     CC = CXX
 
-  CC_ADDITIONAL_ARGS = shared.COMPILER_OPTS
-
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
-    sys.argv += shlex.split(EMMAKEN_CFLAGS)
+    args += shlex.split(EMMAKEN_CFLAGS)
 
   # ---------------- Utilities ---------------
 
@@ -645,20 +642,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  if len(sys.argv) == 1 or sys.argv[1] in ['x', 't']:
-    # noop ar
-    logger.debug('just ar')
-    return 0
-
   # Check if a target is specified
   target = None
-  if any(arg.startswith('-o=') for arg in sys.argv):
+  if any(arg.startswith('-o=') for arg in args):
     raise Exception('Invalid syntax: do not use -o=X, use -o X')
 
-  for i in reversed(range(len(sys.argv) - 1)): # Last -o directive should take precedence, if multiple are specified
-    if sys.argv[i] == '-o':
-      target = sys.argv[i + 1]
-      sys.argv = sys.argv[:i] + sys.argv[i + 2:]
+  for i in reversed(range(len(args) - 1)): # Last -o directive should take precedence, if multiple are specified
+    if args[i] == '-o':
+      target = args[i + 1]
+      args = args[:i] + args[i + 2:]
       break
 
   specified_target = target
@@ -691,7 +683,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
-    newargs = sys.argv[1:]
+    newargs = args[1:]
 
     # Scan and strip emscripten specific cmdline warning flags
     # This needs to run before other cmdline flags have been parsed, so that warnings are properly printed during arg parse
@@ -969,7 +961,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if len(input_files) == 0:
       exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
 
-    newargs = CC_ADDITIONAL_ARGS + newargs
+    newargs = shared.COMPILER_OPTS + newargs
 
     if options.separate_asm and final_suffix != '.html':
       shared.WarningManager.warn('SEPARATE_ASM')
@@ -1691,7 +1683,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
                 out_dep.write(deps)
           else:
-            assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(sys.argv) + ':' + str(original_input_files)
+            assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(args) + ':' + str(original_input_files)
             # We have a specified target (-o <target>), which is not JavaScript or HTML, and
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
@@ -3207,7 +3199,7 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
 
 if __name__ == '__main__':
   try:
-    sys.exit(run())
+    sys.exit(run(sys.argv))
   except KeyboardInterrupt:
     logger.warning("KeyboardInterrupt")
     sys.exit(1)

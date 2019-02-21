@@ -101,7 +101,7 @@ void encode(int size, const char* str, int* out_size, char** output) {
   *out_size = out - *output;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
   int TRIES;
 
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
