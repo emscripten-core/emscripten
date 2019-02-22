@@ -3,36 +3,40 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, shutil, logging
-from . import zlib
+import os
+import shutil
+import logging
 
 TAG = 'version_1'
 
+
 def get(ports, settings, shared):
-  if settings.USE_LIBPNG == 1:
-    ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
-    def create():
-      logging.info('building port: libpng')
-
-      source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
-      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'libpng')
-
-      shutil.rmtree(dest_path, ignore_errors=True)
-      shutil.copytree(source_path, dest_path)
-
-      open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
-
-      final = os.path.join(ports.get_build_dir(), 'libpng', 'libpng.bc')
-      ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
-      return final
-    return [shared.Cache.get('libpng', create, what='port')]
-  else:
+  if settings.USE_LIBPNG != 1:
     return []
+
+  ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
+
+  def create():
+    logging.info('building port: libpng')
+
+    source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
+    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'libpng')
+
+    shutil.rmtree(dest_path, ignore_errors=True)
+    shutil.copytree(source_path, dest_path)
+
+    open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
+
+    final = os.path.join(ports.get_build_dir(), 'libpng', 'libpng.bc')
+    ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
+    return final
+  return [shared.Cache.get('libpng', create, what='port')]
 
 
 def process_dependencies(settings):
   if settings.USE_LIBPNG == 1:
     settings.USE_ZLIB = 1
+
 
 def process_args(ports, args, settings, shared):
   if settings.USE_LIBPNG == 1:
@@ -40,8 +44,10 @@ def process_args(ports, args, settings, shared):
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'libpng')]
   return args
 
+
 def show():
   return 'libpng (USE_LIBPNG=1; zlib license)'
+
 
 pnglibconf_h = r'''/* libpng 1.6.17 STANDARD API DEFINITION */
 

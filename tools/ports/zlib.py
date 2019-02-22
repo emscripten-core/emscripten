@@ -3,44 +3,48 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, shutil, logging
+import os
+import shutil
 from subprocess import Popen
 
 TAG = 'version_1'
 
+
 def get(ports, settings, shared):
-  if settings.USE_ZLIB == 1:
-    ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
-    def create():     
-      ports.clear_project_build('zlib')
-
-      source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + TAG)
-      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'zlib')
-      shared.try_delete(dest_path)
-      os.makedirs(dest_path)
-      shutil.rmtree(dest_path, ignore_errors=True)
-      shutil.copytree(source_path, dest_path)
-      open(os.path.join(dest_path, 'zconf.h'), 'w').write(zconf_h)
-
-      # build
-      srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split(' ')
-      commands = []
-      o_s = []
-      for src in srcs:
-        o = os.path.join(ports.get_build_dir(), 'zlib', src + '.o')
-        shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path,'-w',])
-        o_s.append(o)
-
-      ports.run_commands(commands)
-      final = os.path.join(ports.get_build_dir(), 'zlib', 'libz.a')
-      shared.try_delete(final)
-      Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
-      assert os.path.exists(final)
-      return final
-    return [shared.Cache.get('zlib', create, what='port')]
-  else:
+  if settings.USE_ZLIB != 1:
     return []
+
+  ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
+
+  def create():
+    ports.clear_project_build('zlib')
+
+    source_path = os.path.join(ports.get_dir(), 'zlib', 'zlib-' + TAG)
+    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'zlib')
+    shared.try_delete(dest_path)
+    os.makedirs(dest_path)
+    shutil.rmtree(dest_path, ignore_errors=True)
+    shutil.copytree(source_path, dest_path)
+    open(os.path.join(dest_path, 'zconf.h'), 'w').write(zconf_h)
+
+    # build
+    srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split(' ')
+    commands = []
+    o_s = []
+    for src in srcs:
+      o = os.path.join(ports.get_build_dir(), 'zlib', src + '.o')
+      shared.safe_ensure_dirs(os.path.dirname(o))
+      commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w'])
+      o_s.append(o)
+
+    ports.run_commands(commands)
+    final = os.path.join(ports.get_build_dir(), 'zlib', 'libz.a')
+    shared.try_delete(final)
+    Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
+    assert os.path.exists(final)
+    return final
+  return [shared.Cache.get('zlib', create, what='port')]
+
 
 def process_args(ports, args, settings, shared):
   if settings.USE_ZLIB == 1:
@@ -48,9 +52,9 @@ def process_args(ports, args, settings, shared):
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'zlib')]
   return args
 
+
 def show():
   return 'zlib (USE_ZLIB=1; zlib license)'
-
 
 
 zconf_h = r'''/* zconf.h -- configuration of the zlib compression library

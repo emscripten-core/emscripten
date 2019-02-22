@@ -3,43 +3,48 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, shutil, logging
+import os
+import shutil
 
 TAG = 'version_17'
 SUBDIR = 'SDL2-' + TAG
 
+
 def get(ports, settings, shared):
-  if settings.USE_SDL == 2:
-    # get the port
-    ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
-    def create():
-      # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
-      ports.clear_project_build('sdl2-image')
-      # copy includes to a location so they can be used as 'SDL2/'
-      source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
-      dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
-      shared.try_delete(dest_include_path)
-      shutil.copytree(source_include_path, dest_include_path)
-      shutil.copytree(source_include_path, os.path.join(dest_include_path, 'SDL2'))
-      # write out an SDL_config.h file, that configure would normally emit
-      open(os.path.join(dest_include_path, 'SDL_config.h'), 'w').write(sdl_config_h)
-      open(os.path.join(dest_include_path, 'SDL2', 'SDL_config.h'), 'w').write(sdl_config_h)
-      # build
-      srcs = 'SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_log.c libm/e_pow.c libm/e_rem_pio2.c libm/e_sqrt.c libm/k_cos.c libm/k_rem_pio2.c libm/k_sin.c libm/k_tan.c libm/s_atan.c libm/s_copysign.c libm/s_cos.c libm/s_fabs.c libm/s_floor.c libm/s_scalbn.c libm/s_sin.c libm/s_tan.c power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c render/SDL_yuv_mmx.c render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c render/opengles2/SDL_render_gles2.c render/opengles2/SDL_shaders_gles2.c render/psp/SDL_render_psp.c render/software/SDL_blendfillrect.c render/software/SDL_blendline.c render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c render/software/SDL_render_sw.c render/software/SDL_rotate.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c stdlib/SDL_stdlib.c stdlib/SDL_string.c thread/SDL_thread.c timer/SDL_timer.c video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c video/SDL_blit_N.c video/SDL_blit_auto.c video/SDL_blit_copy.c video/SDL_blit_slow.c video/SDL_bmp.c video/SDL_clipboard.c video/SDL_egl.c video/SDL_fillrect.c video/SDL_pixels.c video/SDL_rect.c video/SDL_shape.c video/SDL_stretch.c video/SDL_surface.c video/SDL_video.c video/emscripten/SDL_emscriptenevents.c video/emscripten/SDL_emscriptenframebuffer.c video/emscripten/SDL_emscriptenmouse.c video/emscripten/SDL_emscriptenopengles.c video/emscripten/SDL_emscriptenvideo.c audio/emscripten/SDL_emscriptenaudio.c video/dummy/SDL_nullevents.c video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c thread/generic/SDL_syscond.c thread/generic/SDL_sysmutex.c thread/generic/SDL_syssem.c thread/generic/SDL_systhread.c thread/generic/SDL_systls.c main/dummy/SDL_dummy_main.c'.split(' ')
-      commands = []
-      o_s = []
-      for src in srcs:
-        o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
-        shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
-        o_s.append(o)
-      ports.run_commands(commands)
-      final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
-      shared.Building.link_to_object(o_s, final)
-      return final
-    return [shared.Cache.get('sdl2', create, what='port')]
-  else:
+  if settings.USE_SDL != 2:
     return []
+
+  # get the port
+  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
+
+  def create():
+    # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
+    ports.clear_project_build('sdl2-image')
+    # copy includes to a location so they can be used as 'SDL2/'
+    source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
+    dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
+    shared.try_delete(dest_include_path)
+    shutil.copytree(source_include_path, dest_include_path)
+    shutil.copytree(source_include_path, os.path.join(dest_include_path, 'SDL2'))
+    # write out an SDL_config.h file, that configure would normally emit
+    open(os.path.join(dest_include_path, 'SDL_config.h'), 'w').write(sdl_config_h)
+    open(os.path.join(dest_include_path, 'SDL2', 'SDL_config.h'), 'w').write(sdl_config_h)
+    # build
+    srcs = 'SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c audio/SDL_audiodev.c audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_dropevents.c events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c libm/e_atan2.c libm/e_log.c libm/e_pow.c libm/e_rem_pio2.c libm/e_sqrt.c libm/k_cos.c libm/k_rem_pio2.c libm/k_sin.c libm/k_tan.c libm/s_atan.c libm/s_copysign.c libm/s_cos.c libm/s_fabs.c libm/s_floor.c libm/s_scalbn.c libm/s_sin.c libm/s_tan.c power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c render/SDL_yuv_mmx.c render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c render/opengles2/SDL_render_gles2.c render/opengles2/SDL_shaders_gles2.c render/psp/SDL_render_psp.c render/software/SDL_blendfillrect.c render/software/SDL_blendline.c render/software/SDL_blendpoint.c render/software/SDL_drawline.c render/software/SDL_drawpoint.c render/software/SDL_render_sw.c render/software/SDL_rotate.c stdlib/SDL_getenv.c stdlib/SDL_iconv.c stdlib/SDL_malloc.c stdlib/SDL_qsort.c stdlib/SDL_stdlib.c stdlib/SDL_string.c thread/SDL_thread.c timer/SDL_timer.c video/SDL_RLEaccel.c video/SDL_blit.c video/SDL_blit_0.c video/SDL_blit_1.c video/SDL_blit_A.c video/SDL_blit_N.c video/SDL_blit_auto.c video/SDL_blit_copy.c video/SDL_blit_slow.c video/SDL_bmp.c video/SDL_clipboard.c video/SDL_egl.c video/SDL_fillrect.c video/SDL_pixels.c video/SDL_rect.c video/SDL_shape.c video/SDL_stretch.c video/SDL_surface.c video/SDL_video.c video/emscripten/SDL_emscriptenevents.c video/emscripten/SDL_emscriptenframebuffer.c video/emscripten/SDL_emscriptenmouse.c video/emscripten/SDL_emscriptenopengles.c video/emscripten/SDL_emscriptenvideo.c audio/emscripten/SDL_emscriptenaudio.c video/dummy/SDL_nullevents.c video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c thread/generic/SDL_syscond.c thread/generic/SDL_sysmutex.c thread/generic/SDL_syssem.c thread/generic/SDL_systhread.c thread/generic/SDL_systls.c main/dummy/SDL_dummy_main.c'.split(' ')
+    commands = []
+    o_s = []
+    for src in srcs:
+      o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
+      shared.safe_ensure_dirs(os.path.dirname(o))
+      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
+      o_s.append(o)
+    ports.run_commands(commands)
+    final = os.path.join(ports.get_build_dir(), 'sdl2', 'libsdl2.bc')
+    shared.Building.link_to_object(o_s, final)
+    return final
+
+  return [shared.Cache.get('sdl2', create, what='port')]
+
 
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL == 1:
@@ -49,8 +54,10 @@ def process_args(ports, args, settings, shared):
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')]
   return args
 
+
 def show():
   return 'SDL2 (USE_SDL=2; zlib license)'
+
 
 sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by configure.  */
 /*
@@ -88,7 +95,7 @@ sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by c
 
 /* Make sure that this isn't included by Visual C++ */
 #ifdef _MSC_VER
-#error You should run hg revert SDL_config.h 
+#error You should run hg revert SDL_config.h
 #endif
 
 /* C language features */
@@ -404,4 +411,3 @@ sdl_config_h = r'''/* include/SDL_config.h.  Generated from SDL_config.h.in by c
 
 #endif /* _SDL_config_h */
 '''
-

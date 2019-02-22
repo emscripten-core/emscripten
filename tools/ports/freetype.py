@@ -3,98 +3,103 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, shutil, logging
+import os
+import shutil
 from subprocess import Popen
 
 TAG = 'version_1'
 
+
 def get(ports, settings, shared):
-  if settings.USE_FREETYPE == 1:
-    ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG)
-    def create():     
-      ports.clear_project_build('freetype')
-
-      source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
-      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'freetype')
-      shared.try_delete(dest_path)
-      os.makedirs(dest_path)
-      shutil.rmtree(dest_path, ignore_errors=True)
-      shutil.copytree(source_path, dest_path)
-      open(os.path.join(dest_path, 'include/ftconfig.h'), 'w').write(ftconf_h)
-
-      # build
-      srcs = ['src/autofit/autofit.c',
-              'src/base/ftadvanc.c',
-              'src/base/ftbbox.c',
-              'src/base/ftbdf.c',
-              'src/base/ftbitmap.c',
-              'src/base/ftcalc.c',
-              'src/base/ftcid.c',
-              'src/base/ftdbgmem.c',
-              'src/base/ftdebug.c',
-              'src/base/ftfntfmt.c',
-              'src/base/ftfstype.c',
-              'src/base/ftgasp.c',
-              'src/base/ftgloadr.c',
-              'src/base/ftglyph.c',
-              'src/base/ftgxval.c',
-              'src/base/ftinit.c',
-              'src/base/ftlcdfil.c',
-              'src/base/ftmm.c',
-              'src/base/ftobjs.c',
-              'src/base/ftotval.c',
-              'src/base/ftoutln.c',
-              'src/base/ftpatent.c',
-              'src/base/ftpfr.c',
-              'src/base/ftrfork.c',
-              'src/base/ftsnames.c',
-              'src/base/ftstream.c',
-              'src/base/ftstroke.c',
-              'src/base/ftsynth.c',
-              'src/base/ftsystem.c',
-              'src/base/fttrigon.c',
-              'src/base/fttype1.c',
-              'src/base/ftutil.c',
-              'src/base/ftwinfnt.c',
-              'src/bdf/bdf.c',
-              'src/bzip2/ftbzip2.c',
-              'src/cache/ftcache.c',
-              'src/cff/cff.c',
-              'src/cid/type1cid.c',
-              'src/gzip/ftgzip.c',
-              'src/lzw/ftlzw.c',
-              'src/pcf/pcf.c',
-              'src/pfr/pfr.c',
-              'src/psaux/psaux.c',
-              'src/pshinter/pshinter.c',
-              'src/psnames/psmodule.c',
-              'src/raster/raster.c',
-              'src/sfnt/sfnt.c',
-              'src/smooth/smooth.c',
-              'src/truetype/truetype.c',
-              'src/type1/type1.c',
-              'src/type42/type42.c',
-              'src/winfonts/winfnt.c']
-      commands = []
-      o_s = []
-      for src in srcs:
-        o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
-        shared.safe_ensure_dirs(os.path.dirname(o))
-        commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-DFT2_BUILD_LIBRARY', '-O2', '-o', o, '-I' + dest_path + '/include',
-                         '-I' + dest_path + '/truetype', '-I' + dest_path + '/sfnt', '-I' + dest_path + '/autofit', '-I' + dest_path + '/smooth', 
-                         '-I' + dest_path + '/raster', '-I' + dest_path + '/psaux', '-I' + dest_path + '/psnames', '-I' + dest_path + '/truetype', 
-                         '-w',])
-        o_s.append(o)
-
-      ports.run_commands(commands)
-      final = os.path.join(ports.get_build_dir(), 'freetype', 'libfreetype.a')
-      shared.try_delete(final)
-      Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
-      assert os.path.exists(final)
-      return final
-    return [shared.Cache.get('freetype', create, what='port')]
-  else:
+  if settings.USE_FREETYPE != 1:
     return []
+
+  ports.fetch_project('freetype', 'https://github.com/emscripten-ports/FreeType/archive/' + TAG + '.zip', 'FreeType-' + TAG)
+
+  def create():
+    ports.clear_project_build('freetype')
+
+    source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
+    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'freetype')
+    shared.try_delete(dest_path)
+    os.makedirs(dest_path)
+    shutil.rmtree(dest_path, ignore_errors=True)
+    shutil.copytree(source_path, dest_path)
+    open(os.path.join(dest_path, 'include/ftconfig.h'), 'w').write(ftconf_h)
+
+    # build
+    srcs = ['src/autofit/autofit.c',
+            'src/base/ftadvanc.c',
+            'src/base/ftbbox.c',
+            'src/base/ftbdf.c',
+            'src/base/ftbitmap.c',
+            'src/base/ftcalc.c',
+            'src/base/ftcid.c',
+            'src/base/ftdbgmem.c',
+            'src/base/ftdebug.c',
+            'src/base/ftfntfmt.c',
+            'src/base/ftfstype.c',
+            'src/base/ftgasp.c',
+            'src/base/ftgloadr.c',
+            'src/base/ftglyph.c',
+            'src/base/ftgxval.c',
+            'src/base/ftinit.c',
+            'src/base/ftlcdfil.c',
+            'src/base/ftmm.c',
+            'src/base/ftobjs.c',
+            'src/base/ftotval.c',
+            'src/base/ftoutln.c',
+            'src/base/ftpatent.c',
+            'src/base/ftpfr.c',
+            'src/base/ftrfork.c',
+            'src/base/ftsnames.c',
+            'src/base/ftstream.c',
+            'src/base/ftstroke.c',
+            'src/base/ftsynth.c',
+            'src/base/ftsystem.c',
+            'src/base/fttrigon.c',
+            'src/base/fttype1.c',
+            'src/base/ftutil.c',
+            'src/base/ftwinfnt.c',
+            'src/bdf/bdf.c',
+            'src/bzip2/ftbzip2.c',
+            'src/cache/ftcache.c',
+            'src/cff/cff.c',
+            'src/cid/type1cid.c',
+            'src/gzip/ftgzip.c',
+            'src/lzw/ftlzw.c',
+            'src/pcf/pcf.c',
+            'src/pfr/pfr.c',
+            'src/psaux/psaux.c',
+            'src/pshinter/pshinter.c',
+            'src/psnames/psmodule.c',
+            'src/raster/raster.c',
+            'src/sfnt/sfnt.c',
+            'src/smooth/smooth.c',
+            'src/truetype/truetype.c',
+            'src/type1/type1.c',
+            'src/type42/type42.c',
+            'src/winfonts/winfnt.c']
+    commands = []
+    o_s = []
+    for src in srcs:
+      o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
+      shared.safe_ensure_dirs(os.path.dirname(o))
+      commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-DFT2_BUILD_LIBRARY', '-O2', '-o', o, '-I' + dest_path + '/include',
+                       '-I' + dest_path + '/truetype', '-I' + dest_path + '/sfnt', '-I' + dest_path + '/autofit', '-I' + dest_path + '/smooth',
+                       '-I' + dest_path + '/raster', '-I' + dest_path + '/psaux', '-I' + dest_path + '/psnames', '-I' + dest_path + '/truetype',
+                       '-w'])
+      o_s.append(o)
+
+    ports.run_commands(commands)
+    final = os.path.join(ports.get_build_dir(), 'freetype', 'libfreetype.a')
+    shared.try_delete(final)
+    Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
+    assert os.path.exists(final)
+    return final
+
+  return [shared.Cache.get('freetype', create, what='port')]
+
 
 def process_args(ports, args, settings, shared):
   if settings.USE_FREETYPE == 1:
@@ -102,9 +107,9 @@ def process_args(ports, args, settings, shared):
     args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'freetype/include')]
   return args
 
+
 def show():
   return 'freetype (USE_FREETYPE=1; freetype license)'
-
 
 
 ftconf_h = r'''/***************************************************************************/
