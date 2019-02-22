@@ -1065,11 +1065,9 @@ if USE_EMSDK:
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
 
-  EMSDK_CXX_OPTS = []
   COMPILER_OPTS += EMSDK_OPTS
 else:
   EMSDK_OPTS = []
-  EMSDK_CXX_OPTS = []
 
 # Engine tweaks
 

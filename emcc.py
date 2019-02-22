@@ -1523,7 +1523,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         headers = [header for _, header in input_files]
         for header in headers:
           assert header.endswith(HEADER_ENDINGS), 'if you have one header input, we assume you want to precompile headers, and cannot have source files or other inputs as well: ' + str(headers) + ' : ' + header
-        args = newargs + shared.EMSDK_CXX_OPTS + headers
+        args = newargs + headers
         if specified_target:
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
@@ -1557,8 +1557,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       def get_clang_args(input_files):
         file_ending = get_file_suffix(input_files[0])
         args = [call] + newargs + input_files
-        if file_ending.endswith(CXX_ENDINGS):
-          args += shared.EMSDK_CXX_OPTS
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
         # For fastcomp backend, no LLVM IR functions should ever be annotated
