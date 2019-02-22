@@ -8,29 +8,38 @@ orig_size = len(f)
 f = f.strip()
 
 if '"use asm";' in f:
-    f = re.sub(r'\s*/\*\* @suppress {uselessCode} \*/\s*', '', f)
-    f = re.sub(r'\s*//\s*EMSCRIPTEN_START_FUNCS\s*', '', f)
-    f = re.sub(r'\s*//\s*EMSCRIPTEN_END_FUNCS\s*', '', f)
-    f = f.replace('Module["asm"] = (function(global,env,buffer) {', 'Module["asm"]=(function(global,env,buffer){')
+  f = re.sub(r'\s*/\*\* @suppress {uselessCode} \*/\s*', '', f)
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_START_FUNCS\s*', '', f)
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_END_FUNCS\s*', '', f)
+  f = f.replace('Module["asm"] = (function(global,env,buffer) {', 'Module["asm"]=(function(global,env,buffer){')
 else:
-    # The following are introduced to the output after Closure has run, so need to manually optimize them out.
-    f = re.sub(r'\s*//\s*EMSCRIPTEN_START_ASM\s*', '', f)
-    f = re.sub(r'\s*//\s*EMSCRIPTEN_END_ASM\s*', '', f)
+  # The following are introduced to the output after Closure has run, so need to manually optimize them out.
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_START_ASM\s*', '', f)
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_END_ASM\s*', '', f)
 
-    # https://github.com/google/closure-compiler/issues/3185
-    f = re.sub(r';new Int8Array\(\w+\);', ';', f)
-    f = re.sub(r';new Int16Array\(\w+\);', ';', f)
-    f = re.sub(r';new Int32Array\(\w+\);', ';', f)
-    f = re.sub(r';new Uint8Array\(\w+\);', ';', f)
-    f = re.sub(r';new Uint16Array\(\w+\);', ';', f)
-    f = re.sub(r';new Uint32Array\(\w+\);', ';', f)
-    f = re.sub(r';new Float32Array\(\w+\);', ';', f)
-    f = re.sub(r';new Float64Array\(\w+\);', ';', f)
-    f = f.replace(';new TextDecoder("utf8");', ';')
-    f = f.replace('}new TextDecoder("utf8");', '}')
-    f = f.replace(';new TextDecoder("utf-16le");', ';')
-    f = f.replace('}new TextDecoder("utf-16le");', '}')
-    f = re.sub(r'var (\w);\1\|\|\(\1=Module\);', r'var \1=Module;', f)
+  # https://github.com/google/closure-compiler/issues/3185
+  f = re.sub(r';new Int8Array\(\w+\);', ';', f)
+  f = re.sub(r';new Int16Array\(\w+\);', ';', f)
+  f = re.sub(r';new Int32Array\(\w+\);', ';', f)
+  f = re.sub(r';new Uint8Array\(\w+\);', ';', f)
+  f = re.sub(r';new Uint16Array\(\w+\);', ';', f)
+  f = re.sub(r';new Uint32Array\(\w+\);', ';', f)
+  f = re.sub(r';new Float32Array\(\w+\);', ';', f)
+  f = re.sub(r';new Float64Array\(\w+\);', ';', f)
+  f = f.replace(';new TextDecoder("utf8");', ';')
+  f = f.replace('}new TextDecoder("utf8");', '}')
+  f = f.replace(';new TextDecoder("utf-16le");', ';')
+  f = f.replace('}new TextDecoder("utf-16le");', '}')
+
+  # var a;a||(a=Module)
+  # ->
+  # var a=Module;
+  f = re.sub(r'var (\w);\1\|\|\(\1=Module\);', r'var \1=Module;', f)
+
+  # var Module=function(Module){Module =Module || {};var a=Module;
+  # ->
+  # var Module=function(a){
+  f = re.sub(r'\s*function\s*\(Module\)\s*{\s*Module\s*=\s*Module\s*\|\|\s*{\s*}\s*;\s*var\s+(\w+)\s*=\s*Module\s*;', r'function(\1){', f)
 
 f = re.sub(r'\s+', ' ', f)
 f = re.sub(r'[\n\s]+\n\s*', '\n', f)
