@@ -4543,7 +4543,7 @@ LibraryManager.library = {
           callstack = callstack.replace(/\s+$/, '');
           callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
         }
-        //stack_args = __emscripten_traverse_stack(stack_args[0]);
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
       }
     }
     // Trim extra whitespace at the end of the output.
