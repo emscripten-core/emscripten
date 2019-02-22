@@ -619,7 +619,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   CC = shared.to_cc(CXX)
 
-  # If we got here from a redirection through emmakenxx.py, then force a C++ compiler here
+  # If we got here from a redirection through em++.py, then force a C++ compiler here
   if EMCC_CXX:
     CC = CXX
 
