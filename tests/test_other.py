@@ -714,6 +714,24 @@ f.close()
 
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
+  def test_system_include_paths(self):
+    # Verify that all default include paths are within `emscripten/system`
+
+    def verify_includes(stderr):
+      self.assertContained('<...> search starts here:', stderr)
+      assert stderr.count('End of search list.') == 1, stderr
+      start = stderr.index('<...> search starts here:')
+      end = stderr.index('End of search list.')
+      includes = stderr[start:end]
+      includes = [i.strip() for i in includes.splitlines()[1:-1]]
+      for i in includes:
+        self.assertContained(path_from_root('system'), i)
+
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-v'], stderr=PIPE).stderr
+    verify_includes(err)
+    err = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-v'], stderr=PIPE).stderr
+    verify_includes(err)
+
   def test_failure_error_code(self):
     for compiler in [EMCC, EMXX]:
       # Test that if one file is missing from the build, then emcc shouldn't succeed, and shouldn't produce an output file.

@@ -573,30 +573,6 @@ fi
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
-  def test_nostdincxx(self):
-    restore_and_set_up()
-    Cache.erase()
-
-    for compiler in [EMCC]:
-      print(compiler)
-      run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v']) # run once to ensure binaryen port is all ready
-      proc = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v'], stdout=PIPE, stderr=PIPE)
-      out = proc.stdout
-      err = proc.stderr
-      proc2 = run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-v', '-nostdinc++'], stdout=PIPE, stderr=PIPE)
-      out2 = proc2.stdout
-      err2 = proc2.stderr
-      self.assertIdentical(out, out2)
-
-      def focus(e):
-        assert 'search starts here:' in e, e
-        assert e.count('End of search list.') == 1, e
-        return e[e.index('search starts here:'):e.index('End of search list.') + 20]
-
-      err = focus(err)
-      err2 = focus(err2)
-      assert err == err2, err + '\n\n\n\n' + err2
-
   def test_emconfig(self):
     restore_and_set_up()
 
