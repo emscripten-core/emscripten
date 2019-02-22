@@ -7,7 +7,6 @@ exclude =
  ./tests/freetype/src/, # third-party code
  ./site/source/conf.py,
  ./tools/debug/,
- ./tools/ports/,
  ./tools/emdump.py,
  ./tools/emterpretify.py,
  ./tools/js_optimizer.py,

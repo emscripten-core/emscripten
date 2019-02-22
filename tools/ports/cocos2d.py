@@ -12,61 +12,61 @@ TAG = 'version_3_3'
 
 
 def get(ports, settings, shared):
-  if settings.USE_COCOS2D == 3:
-    ports.fetch_project(
-      'Cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
-
-    def create():
-      logging.info('building port: Cocos2d v3')
-      logging.warn('Cocos2d: library is experimental, do not expect that it will work out of the box')
-
-      cocos2d_build = os.path.join(ports.get_dir(), 'Cocos2d')
-      cocos2d_root = os.path.join(cocos2d_build, 'Cocos2d-' + TAG)
-      cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
-      cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
-      cocos2dx_includes = make_includes(cocos2d_root, cocos2dx_root)
-
-      shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
-              os.path.join(ports.get_build_dir(), 'Cocos2d', 'samples'))
-
-      commands = []
-      o_s = []
-      for src in cocos2dx_src:
-        o = os.path.join(cocos2d_build, 'Cocos2d-' +
-                 TAG, 'build', src + '.o')
-        shared.safe_ensure_dirs(os.path.dirname(o))
-        command = [shared.PYTHON,
-               shared.EMCC,
-               os.path.join(cocos2dx_root, 'proj.emscripten', src),
-               '-Wno-overloaded-virtual',
-               '-Wno-deprecated-declarations',
-               '-D__CC_PLATFORM_FILEUTILS_CPP__',
-               '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
-               '-DCC_KEYBOARD_SUPPORT',
-               '-DGL_ES=1',
-               '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
-               '-DCP_USE_DOUBLES=0',
-               '-O2',
-               '-s', 'USE_ZLIB=1',
-               '-s', 'USE_LIBPNG=1',
-               '-o', o, '-w']
-
-        for include in cocos2dx_includes:
-          command.append('-I' + include)
-
-        if src.endswith('.cpp'):
-          command.append('-std=c++11')
-
-        commands.append(command)
-        o_s.append(o)
-      shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
-      ports.run_commands(commands)
-      final = os.path.join(ports.get_build_dir(), 'Cocos2d', 'libcocos2d.bc')
-      shared.Building.link_to_object(o_s, final)
-      return final
-    return [shared.Cache.get('cocos2d', create, what='port')]
-  else:
+  if settings.USE_COCOS2D != 3:
     return []
+
+  ports.fetch_project(
+    'Cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
+
+  def create():
+    logging.info('building port: Cocos2d v3')
+    logging.warn('Cocos2d: library is experimental, do not expect that it will work out of the box')
+
+    cocos2d_build = os.path.join(ports.get_dir(), 'Cocos2d')
+    cocos2d_root = os.path.join(cocos2d_build, 'Cocos2d-' + TAG)
+    cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
+    cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
+    cocos2dx_includes = make_includes(cocos2d_root, cocos2dx_root)
+
+    shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
+                    os.path.join(ports.get_build_dir(), 'Cocos2d', 'samples'))
+
+    commands = []
+    o_s = []
+    for src in cocos2dx_src:
+      o = os.path.join(cocos2d_build, 'Cocos2d-' + TAG, 'build', src + '.o')
+      shared.safe_ensure_dirs(os.path.dirname(o))
+      command = [shared.PYTHON,
+                 shared.EMCC,
+                 os.path.join(cocos2dx_root, 'proj.emscripten', src),
+                 '-Wno-overloaded-virtual',
+                 '-Wno-deprecated-declarations',
+                 '-D__CC_PLATFORM_FILEUTILS_CPP__',
+                 '-DCC_ENABLE_CHIPMUNK_INTEGRATION',
+                 '-DCC_KEYBOARD_SUPPORT',
+                 '-DGL_ES=1',
+                 '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
+                 '-DCP_USE_DOUBLES=0',
+                 '-O2',
+                 '-s', 'USE_ZLIB=1',
+                 '-s', 'USE_LIBPNG=1',
+                 '-o', o, '-w']
+
+      for include in cocos2dx_includes:
+        command.append('-I' + include)
+
+      if src.endswith('.cpp'):
+        command.append('-std=c++11')
+
+      commands.append(command)
+      o_s.append(o)
+    shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
+    ports.run_commands(commands)
+    final = os.path.join(ports.get_build_dir(), 'Cocos2d', 'libcocos2d.bc')
+    shared.Building.link_to_object(o_s, final)
+    return final
+
+  return [shared.Cache.get('cocos2d', create, what='port')]
 
 
 def process_dependencies(settings):
@@ -127,28 +127,28 @@ def make_source_list(cocos2d_root, cocos2dx_root):
 
 def make_includes(cocos2d_root, cocos2dx_root):
   return [os.path.join(cocos2d_root, 'CocosDenshion', 'include'),
-      os.path.join(cocos2d_root, 'extensions'),
-      os.path.join(cocos2d_root, 'extensions', 'AssetsManager'),
-      os.path.join(cocos2d_root, 'extensions', 'CCArmature'),
-      os.path.join(cocos2d_root, 'extensions', 'CCBReader'),
-      os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCControlExtension'),
-      os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCEditBox'),
-      os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCScrollView'),
-      os.path.join(cocos2d_root, 'extensions', 'network'),
-      os.path.join(cocos2d_root, 'extensions', 'Components'),
-      os.path.join(cocos2d_root, 'extensions', 'LocalStorage'),
-      os.path.join(cocos2d_root, 'extensions', 'physics_nodes'),
-      os.path.join(cocos2d_root, 'extensions', 'spine'),
-      os.path.join(cocos2d_root, 'external'),
-      os.path.join(cocos2d_root, 'external', 'chipmunk', 'include', 'chipmunk'),
-      cocos2dx_root,
-      os.path.join(cocos2dx_root, 'cocoa'),
-      os.path.join(cocos2dx_root, 'include'),
-      os.path.join(cocos2dx_root, 'kazmath', 'include'),
-      os.path.join(cocos2dx_root, 'platform'),
-      os.path.join(cocos2dx_root, 'platform', 'emscripten'),
-      os.path.join(cocos2dx_root, 'platform', 'third_party', 'linux', 'libfreetype2'),
-      os.path.join(cocos2dx_root, 'platform', 'third_party', 'common', 'etc'),
-      os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libtiff', 'include'),
-      os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libjpeg'),
-      os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libwebp')]
+          os.path.join(cocos2d_root, 'extensions'),
+          os.path.join(cocos2d_root, 'extensions', 'AssetsManager'),
+          os.path.join(cocos2d_root, 'extensions', 'CCArmature'),
+          os.path.join(cocos2d_root, 'extensions', 'CCBReader'),
+          os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCControlExtension'),
+          os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCEditBox'),
+          os.path.join(cocos2d_root, 'extensions', 'GUI', 'CCScrollView'),
+          os.path.join(cocos2d_root, 'extensions', 'network'),
+          os.path.join(cocos2d_root, 'extensions', 'Components'),
+          os.path.join(cocos2d_root, 'extensions', 'LocalStorage'),
+          os.path.join(cocos2d_root, 'extensions', 'physics_nodes'),
+          os.path.join(cocos2d_root, 'extensions', 'spine'),
+          os.path.join(cocos2d_root, 'external'),
+          os.path.join(cocos2d_root, 'external', 'chipmunk', 'include', 'chipmunk'),
+          cocos2dx_root,
+          os.path.join(cocos2dx_root, 'cocoa'),
+          os.path.join(cocos2dx_root, 'include'),
+          os.path.join(cocos2dx_root, 'kazmath', 'include'),
+          os.path.join(cocos2dx_root, 'platform'),
+          os.path.join(cocos2dx_root, 'platform', 'emscripten'),
+          os.path.join(cocos2dx_root, 'platform', 'third_party', 'linux', 'libfreetype2'),
+          os.path.join(cocos2dx_root, 'platform', 'third_party', 'common', 'etc'),
+          os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libtiff', 'include'),
+          os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libjpeg'),
+          os.path.join(cocos2dx_root, 'platform', 'third_party', 'emscripten', 'libwebp')]
