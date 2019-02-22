@@ -385,9 +385,12 @@ def run(args):
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
-  EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS', '')
+  EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if DEBUG:
-    logger.warning('invocation: ' + ' '.join(args) + (' + ' + EMCC_CFLAGS) + '  (in ' + os.getcwd() + ')')
+    cmd =  ' '.join(args)
+    if EMCC_CFLAGS:
+      cmd += ' + ' + EMCC_CFLAGS
+    logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
 
