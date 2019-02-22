@@ -978,10 +978,10 @@ var LibraryGL = {
         var name = u.name;
         ptable.maxUniformLength = Math.max(ptable.maxUniformLength, name.length+1);
 
-        // Strip off any trailing array specifier we might have got, e.g. "[0]".
-        var ls = name.lastIndexOf('[');
-        if (ls > 0) {
-          name = name.slice(0, ls);
+        // If we are dealing with an array, e.g. vec4 foo[3], strip off the array index part to canonicalize that "foo", "foo[]",
+        // and "foo[0]" will mean the same. Loop below will populate foo[1] and foo[2].
+        if (name.slice(-1) == ']') {
+          name = name.slice(0, name.lastIndexOf('['));
         }
 
         // Optimize memory usage slightly: If we have an array of uniforms, e.g. 'vec3 colors[3];', then
