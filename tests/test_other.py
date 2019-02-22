@@ -9056,3 +9056,11 @@ int main () {
       if total_output_size != total_expected_size:
         success = False
     assert success
+
+  # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
+  def test_legacy_settings_forbidden_to_change(self):
+    output = run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=0', path_from_root('tests', 'hello_world.c')], check=False, stderr=PIPE).stderr
+    assert 'MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported' in output
+
+    run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
+    run_process([PYTHON, EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
