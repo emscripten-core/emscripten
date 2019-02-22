@@ -387,7 +387,7 @@ def run(args):
   # commandline
   EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
   if DEBUG:
-    cmd =  ' '.join(args)
+    cmd = ' '.join(args)
     if EMCC_CFLAGS:
       cmd += ' + ' + EMCC_CFLAGS
     logger.warning('invocation: ' + cmd + '  (in ' + os.getcwd() + ')')
