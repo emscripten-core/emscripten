@@ -15,6 +15,9 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+
+v1.38.28: 02/22/2019
+--------------------
  - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
    this allows matching static functions with conflicting names that
    the linker distinguishes by appending a random suffix.
