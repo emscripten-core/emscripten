@@ -394,6 +394,9 @@ def run(args):
   if EMCC_CFLAGS:
     args.extend(shlex.split(EMCC_CFLAGS))
 
+  # Strip args[0] (program name)
+  args = args[1:]
+
   if DEBUG and LEAVE_INPUTS_RAW:
     logger.warning('leaving inputs raw')
 
@@ -443,7 +446,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  if len(args) == 2 and args[1] == '-v': # -v with no inputs
+  if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
@@ -453,7 +456,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   shared.check_sanity(force=DEBUG)
 
   # This check comes after check_sanity because test_sanity expects this.
-  if len(args) == 1:
+  if not args:
     logger.warning('no input files')
     return 1
 
@@ -472,7 +475,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      err = run_process([shared.PYTHON] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=PIPE, env=debug_env).stderr
+      err = run_process([shared.PYTHON, sys.argv[0]] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=PIPE, env=debug_env).stderr
       lines = [x for x in err.split('\n') if shared.CLANG_CC in x and input_file in x]
       line = re.search('running: (.*)', lines[0]).group(1)
       parts = shlex.split(line.replace('\\', '\\\\'))
@@ -562,7 +565,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       compiler = [shared.PYTHON, shared.EMCC]
     else:
       compiler = [compiler]
-    cmd = compiler + list(filter_emscripten_options(args[1:]))
+    cmd = compiler + list(filter_emscripten_options(args))
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -686,15 +689,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
-    newargs = args[1:]
+    newargs = list(args)
 
-    # Scan and strip emscripten specific cmdline warning flags
-    # This needs to run before other cmdline flags have been parsed, so that warnings are properly printed during arg parse
+    # Scan and strip emscripten specific cmdline warning flags.
+    # This needs to run before other cmdline flags have been parsed, so that
+    # warnings are properly printed during arg parse.
     newargs = shared.WarningManager.capture_warnings(newargs)
 
     for i in range(len(newargs)):
-      if newargs[i] in ['-l', '-L', '-I']:
-        # Scan for individual -l/-L/-I arguments and concatenate the next arg on if there is no suffix
+      if newargs[i] in ('-l', '-L', '-I'):
+        # Scan for individual -l/-L/-I arguments and concatenate the next arg on
+        # if there is no suffix
         newargs[i] += newargs[i + 1]
         newargs[i + 1] = ''
 
@@ -702,13 +707,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       check_next = False
       for item in args:
         if check_next:
-          if item in ("c++", "c"):
+          if item in ('c++', 'c'):
             return True
           else:
             check_next = False
-        if item.startswith("-x"):
+        if item.startswith('-x'):
           lmode = item[2:] if len(item) > 2 else None
-          if lmode in ("c++", "c"):
+          if lmode in ('c++', 'c'):
             return True
           else:
             check_next = True
