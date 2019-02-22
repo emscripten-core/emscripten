@@ -1555,7 +1555,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bitcode args generation code
       def get_clang_args(input_files):
-        file_ending = get_file_suffix(input_files[0])
         args = [call] + newargs + input_files
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
