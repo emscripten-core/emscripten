@@ -715,13 +715,10 @@ f.close()
     run_process([emcmake, 'cmake', path_from_root('tests', 'cmake', 'emscripten_version')])
 
   def test_system_include_paths(self):
-    # Verify that all our default include paths are within `emscripten/system`
-    path_from_root('tests', 'hello_world.cpp')
-    cmd = [PYTHON, EMCC] + [path_from_root('tests', 'hello_world.c')]
-    cmd = [PYTHON, EMXX] + [path_from_root('tests', 'hello_world.cpp')]
+    # Verify that all default include paths are within `emscripten/system`
 
     def verify_includes(stderr):
-      assert '<...> search starts here:' in stderr, stderr
+      self.assertContained('<...> search starts here:', stderr)
       assert stderr.count('End of search list.') == 1, stderr
       start = stderr.index('<...> search starts here:')
       end = stderr.index('End of search list.')
