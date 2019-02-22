@@ -2490,7 +2490,7 @@ def run(infile, outfile, memfile, libraries):
         gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
         return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info, extension='json')
+    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
   outfile_obj = open(outfile, 'w')

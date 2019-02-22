@@ -133,7 +133,7 @@ def get_native_optimizer():
       for cmake_generator in cmake_generators:
         # Delete CMakeCache.txt so that we can switch to a new CMake generator.
         shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
-        proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
+        proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_outpu, stdout=log_output, stderr=log_output)
         proc.communicate()
         if proc.returncode == 0:
           make = ['cmake', '--build', build_path]
@@ -175,9 +175,9 @@ def get_native_optimizer():
 
     use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
     if use_cmake_to_configure:
-      return shared.Cache.get(name, create_optimizer_cmake, extension='exe')
+      return shared.Cache.get(name, create_optimizer_cmake)
     else:
-      return shared.Cache.get(name, create_optimizer, extension='exe')
+      return shared.Cache.get(name, create_optimizer)
 
   if NATIVE_OPTIMIZER == '1':
     return get_optimizer('optimizer.exe', [])
