@@ -397,21 +397,14 @@ def run(args):
   EMCC_CXX = '--emscripten-cxx' in args
   args = [x for x in args if x != '--emscripten-cxx']
 
-  if len(args) <= 1 or ('--help' not in args and len(args) >= 2 and args[1] != '--version'):
-    shared.check_sanity(force=DEBUG)
-
   misc_temp_files = shared.configuration.get_temp_files()
 
   # Handle some global flags
 
-  if len(args) == 1:
-    logger.warning('no input files')
-    return 1
-
   # read response files very early on
   args = substitute_response_files(args)
 
-  if len(args) == 1 or '--help' in args:
+  if '--help' in args:
     # Documentation for emcc and its options must be updated in:
     #    site/source/docs/tools_reference/emcc.rst
     # A prebuilt local version of the documentation is available at:
@@ -430,7 +423,7 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
 ''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
     return 0
 
-  elif args[1] == '--version':
+  if '--version' in args:
     revision = '(unknown revision)'
     here = os.getcwd()
     os.chdir(shared.path_from_root())
@@ -447,22 +440,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   ''' % (shared.EMSCRIPTEN_VERSION, revision))
     return 0
 
-  elif len(args) == 2 and args[1] == '-v': # -v with no inputs
+  if len(args) == 2 and args[1] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
     code = run_process([shared.CLANG, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
-  elif '-dumpmachine' in args:
+  shared.check_sanity(force=DEBUG)
+
+  # This check comes after check_sanity because test_sanity expects this.
+  if len(args) == 1:
+    logger.warning('no input files')
+    return 1
+
+  if '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
 
-  elif '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
+  if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
     print(shared.EMSCRIPTEN_VERSION)
     return 0
 
-  elif '--cflags' in args:
+  if '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
     debug_env = os.environ.copy()
     debug_env['EMCC_DEBUG'] = '1'
