@@ -4446,37 +4446,12 @@ LibraryManager.library = {
       );
   },
 
-  // Returns [parentFuncArguments, functionName, paramListName]
-  /*_emscripten_traverse_stack: function(args) {
-    if (!args || !args.callee || !args.callee.name) {
-      return [null, '', ''];
-    }
-
-    var funstr = args.callee.toString();
-    var funcname = args.callee.name;
-    var str = '(';
-    var first = true;
-    for (var i in args) {
-      var a = args[i];
-      if (!first) {
-        str += ", ";
-      }
-      first = false;
-      if (typeof a === 'number' || typeof a === 'string') {
-        str += a;
-      } else {
-        str += '(' + typeof a + ')';
-      }
-    }
-    str += ')';
-    var caller = args.callee.caller;
-    args = caller ? caller.arguments : [];
-    if (first)
-      str = '';
-    return [args, funcname, str];
+  // Function disabled
+  _emscripten_traverse_stack: function(args) {
+    return null;
   },
-  */
-  //emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4496,9 +4471,9 @@ LibraryManager.library = {
     var stack_args = null;
     if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
       // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      /*stack_args = __emscripten_traverse_stack(arguments);
+      stack_args = __emscripten_traverse_stack(arguments);
       while (stack_args[1].indexOf('_emscripten_') >= 0)
-        stack_args = __emscripten_traverse_stack(stack_args[0]);*/
+        stack_args = __emscripten_traverse_stack(stack_args[0]);
     }
 
     // Process all lines:
