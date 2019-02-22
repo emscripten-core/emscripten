@@ -1035,11 +1035,13 @@ if get_llvm_target() == WASM_TARGET:
 #   -Wno-implicit-function-declaration
 COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
-USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
+def emsdk_opts():
+  if os.environ.get('EMMAKEN_NO_SDK')
+    return []
 
-if USE_EMSDK:
-  # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
-  # allows projects to override them)
+  # Disable system C and C++ include directories, and add our own (using
+  # -idirafter so they are last, like system dirs, which allows projects to
+  # override them)
   C_INCLUDE_PATHS = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
@@ -1063,11 +1065,10 @@ if USE_EMSDK:
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
+  return C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
 
-  COMPILER_OPTS += EMSDK_OPTS
-else:
-  EMSDK_OPTS = []
+EMSDK_OPTS = emsdk_opts()
+COMPILER_OPTS += EMSDK_OPTS
 
 # Engine tweaks
 
