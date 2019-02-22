@@ -5,7 +5,6 @@
 
 import os
 import shutil
-from subprocess import Popen
 
 TAG = 'version_1'
 
@@ -28,7 +27,7 @@ def get(ports, settings, shared):
     open(os.path.join(dest_path, 'zconf.h'), 'w').write(zconf_h)
 
     # build
-    srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split(' ')
+    srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
     commands = []
     o_s = []
     for src in srcs:
@@ -36,14 +35,15 @@ def get(ports, settings, shared):
       shared.safe_ensure_dirs(os.path.dirname(o))
       commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w'])
       o_s.append(o)
-
     ports.run_commands(commands)
+
     final = os.path.join(ports.get_build_dir(), 'zlib', 'libz.a')
     shared.try_delete(final)
-    Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
+    ports.run_commands([[shared.EMAR, 'rc', final] + o_s])
     assert os.path.exists(final)
     return final
-  return [shared.Cache.get('zlib', create, what='port')]
+
+  return [shared.Cache.get('libz.a', create, what='port')]
 
 
 def process_args(ports, args, settings, shared):

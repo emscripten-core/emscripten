@@ -712,7 +712,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     def do_create():
       return lib.create(name)
 
-    libfile = shared.Cache.get(name, do_create, extension=lib.suffix)
+    libfile = shared.Cache.get(name, do_create)
     need_whole_archive = lib.shortname in force_include and lib.suffix != 'bc'
     libs_to_link.append((libfile, need_whole_archive))
 
@@ -754,8 +754,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(lib)
 
   if shared.Settings.WASM_BACKEND:
-    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a'), extension='a'), False))
-    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a'), extension='a'), False))
+    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
@@ -993,16 +993,14 @@ class Ports(object):
 def get_ports(settings):
   ret = []
 
-  ok = False
   try:
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-    ok = True
-  finally:
-    if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-ports    and then run this command again')
+  except:
+    logging.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+    raise
 
   ret.reverse()
   return ret
