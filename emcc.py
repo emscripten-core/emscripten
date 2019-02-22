@@ -453,7 +453,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   shared.check_sanity(force=DEBUG)
 
   # This check comes after check_sanity because test_sanity expects this.
-  if len(args) == 1:
+  if not args:
     logger.warning('no input files')
     return 1
 
