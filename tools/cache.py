@@ -98,9 +98,11 @@ class Cache(object):
 
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension='.bc', what=None, force=False):
-    if not shortname.endswith(extension):
+  def get(self, shortname, creator, extension=None, what=None, force=False):
+    if extension is not None:
       shortname += extension
+    elif not os.path.splitext(shortname)[1]:
+      shortname += '.bc'
     cachename = os.path.abspath(os.path.join(self.dirname, shortname))
 
     self.acquire_cache_lock()
