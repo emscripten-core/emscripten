@@ -712,10 +712,10 @@ var SyscallsLibrary = {
     var buf = SYSCALLS.get();
     if (!buf) return -ERRNO_CODES.EFAULT
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
-    function copyString(element, value) {
+    var copyString = function(element, value) {
       var offset = layout[element];
       writeAsciiToMemory(value, buf + offset);
-    }
+    };
     copyString('sysname', 'Emscripten');
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
@@ -781,9 +781,9 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    function check(fd, low, high, val) {
+    var check = function(fd, low, high, val) {
       return (fd < 32 ? (low & val) : (high & val));
-    }
+    };
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);

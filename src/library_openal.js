@@ -544,7 +544,7 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
-        function inverseMagnitude(x, y, z) {
+        var inverseMagnitude = function(x, y, z) {
           var length = Math.sqrt(x * x + y * y + z * z);
 
           if (length < Number.EPSILON) {
@@ -552,7 +552,7 @@ var LibraryOpenAL = {
           }
 
           return 1.0 / length;
-        }
+        };
 
         // Normalize the Back vector
         var invMag = inverseMagnitude(lBackX, lBackY, lBackZ);
@@ -2020,9 +2020,9 @@ var LibraryOpenAL = {
       // https://github.com/jpernst/emscripten/issues/2#issuecomment-312729735
       // if you're curious about why.
 
-      function lerp(from, to, progress) {
+      var lerp = function(from, to, progress) {
         return (1 - progress) * from + progress * to;
-      }
+      };
 
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
 

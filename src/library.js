@@ -2951,7 +2951,7 @@ LibraryManager.library = {
       var date = initDate();
       var value;
 
-      function getMatch(symbol) {
+      var getMatch = function(symbol) {
         var pos = capture.indexOf(symbol);
         // check if symbol appears in regexp
         if (pos >= 0) {
@@ -2959,7 +2959,7 @@ LibraryManager.library = {
           return matches[pos+1];
         }
         return;
-      }
+      };
 
       // seconds
       if ((value=getMatch('S'))) {

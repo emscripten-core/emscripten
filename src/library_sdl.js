@@ -2818,13 +2818,12 @@ var LibrarySDL = {
       // after loading. Therefore prepare an array of callback handlers to run when this audio decoding is complete, which
       // will then start the playback (with some delay).
       webAudio.onDecodeComplete = []; // While this member array exists, decoding hasn't finished yet.
-      function onDecodeComplete(data) {
+      var onDecodeComplete = function(data) {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
         webAudio.onDecodeComplete.forEach(function(e) { e(); });
         webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
-      }
-
+      };
       SDL.audioContext['decodeAudioData'](arrayBuffer, onDecodeComplete);
     } else if (audio === undefined && bytes) {
       // Here, we didn't find a preloaded audio but we either were passed a filepath for
