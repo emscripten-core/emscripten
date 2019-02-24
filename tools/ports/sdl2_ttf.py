@@ -13,10 +13,11 @@ def get(ports, settings, shared):
   if settings.USE_SDL_TTF != 2:
     return []
 
-  ports.fetch_project('sdl2-ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
+  ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
+  libname = ports.get_lib_name('libSDL2_ttf')
 
   def create():
-    sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2-ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
+    sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
 
     shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'include'))
     shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include'))
@@ -27,20 +28,24 @@ def get(ports, settings, shared):
     o_s = []
 
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2-ttf', src + '.o')
+      o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
       command = [shared.PYTHON, shared.EMCC]
-      command += [os.path.join(ports.get_dir(), 'sdl2-ttf', 'SDL2_ttf-' + TAG, src)]
+      command += [os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, src)]
       command += ['-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)
 
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2-ttf', 'libsdl2_ttf.bc')
+    final = os.path.join(ports.get_build_dir(), 'sdl2_ttf', libname)
     shared.Building.link_to_object(o_s, final)
     return final
 
-  return [shared.Cache.get('sdl2-ttf', create, what='port')]
+  return [shared.Cache.get(libname, create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libSDL2_ttf'))
 
 
 def process_dependencies(settings):

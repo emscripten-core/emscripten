@@ -98,7 +98,11 @@ def get(ports, settings, shared):
     assert os.path.exists(final)
     return final
 
-  return [shared.Cache.get('freetype', create, what='port')]
+  return [shared.Cache.get('libfreetype.a', create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file('libfreetype.a')
 
 
 def process_args(ports, args, settings, shared):
