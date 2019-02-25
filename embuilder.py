@@ -74,6 +74,7 @@ USER_TASKS = [
     'bullet',
     'cocos2d',
     'freetype',
+    'harfbuzz',
     'icu',
     'libpng',
     'ogg',
@@ -152,7 +153,7 @@ def build(src, result_libs, args=[]):
 
 
 def build_port(port_name, lib_name, params):
-  build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else [], params)
+  build(C_BARE, [lib_name] if lib_name else [], params)
 
 
 def static_library_name(name):
@@ -195,7 +196,10 @@ def main():
   if 'SYSTEM' in tasks:
     tasks = SYSTEM_TASKS
     auto_tasks = True
-  if 'ALL' in tasks:
+  elif 'USER' in tasks:
+    tasks = USER_TASKS
+    auto_tasks = True
+  elif 'ALL' in tasks:
     tasks = SYSTEM_TASKS + USER_TASKS
     auto_tasks = True
   if auto_tasks:
@@ -315,41 +319,41 @@ def main():
         }
       ''', [static_library_name('libal')])
     elif what == 'icu':
-      build_port('icu', 'libicuuc.bc', ['-s', 'USE_ICU=1'])
+      build_port('icu', 'icu.bc', ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
-      build_port('bullet', 'libbullet.bc', ['-s', 'USE_BULLET=1'])
+      build_port('bullet', 'bullet.bc', ['-s', 'USE_BULLET=1'])
     elif what == 'vorbis':
-      build_port('vorbis', 'libvorbis.bc', ['-s', 'USE_VORBIS=1'])
+      build_port('vorbis', 'vorbis.bc', ['-s', 'USE_VORBIS=1'])
     elif what == 'ogg':
-      build_port('ogg', 'libogg.bc', ['-s', 'USE_OGG=1'])
+      build_port('ogg', 'ogg.bc', ['-s', 'USE_OGG=1'])
     elif what == 'libpng':
       build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
-      build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
+      build_port('sdl2', 'sdl2.bc', ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-gfx':
-      build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
+      build_port('sdl2-gfx', 'sdl2-gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
-      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+      build_port('sdl2-image', 'sdl2-image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
-      build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+      build_port('sdl2-image', 'sdl2-image-png.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
     elif what == 'sdl2-net':
-      build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
+      build_port('sdl2-net', 'sdl2-net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', 'libsdl2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      build_port('sdl2-mixer', 'sdl2-mixer.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
-      build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
+      build_port('freetype', 'freetype.bc', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':
-      build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
+      build_port('harfbuzz', 'harfbuzz.bc', ['-s', 'USE_HARFBUZZ=1'])
     elif what == 'sdl2-ttf':
-      build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+      build_port('sdl2-ttf', 'sdl2-ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
-      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+      build_port('cocos2d', 'cocos2d.bc', ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
-      build_port('regal', 'libregal.bc', ['-s', 'USE_REGAL=1'])
+      build_port('regal', 'regal.bc', ['-s', 'USE_REGAL=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1
