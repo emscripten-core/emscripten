@@ -890,7 +890,8 @@ The following JavaScript can be used to interact with the above C++.
     // to make vectors available
     var mapKeys = retMap.keys();
     for (var i = 0; i < mapKeys.size(); i++) {
-        console.log("Map key/value: ", retVector.get(i), retMap.get(retVector.get(i)));
+        var key = mapKeys.get(i);
+        console.log("Map key/value: ", key, retMap.get(key));
     }
 
     // reset the value at the given index position
