@@ -83,12 +83,12 @@ function processWorkQueue() {
   for(var i = 0; i < numQueuedItems; ++i) {
     var fetch = Atomics_load(HEAPU32, (queuedOperations >> 2)+i);
     function successcb(fetch) {
-      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1);
     }
     function errorcb(fetch) {
-      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1);
     }
     function progresscb(fetch) {
     }

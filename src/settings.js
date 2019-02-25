@@ -1296,6 +1296,10 @@ var OFFSCREENCANVAS_SUPPORT = 0;
 // back to Offscreen Framebuffer otherwise.
 var OFFSCREEN_FRAMEBUFFER = 0;
 
+// If nonzero, Fetch API (and hence ASMFS) supports backing to IndexedDB. If 0, IndexedDB is not utilized. Set to 0 if
+// IndexedDB support is not interesting for target application, to save a few kBytes.
+var FETCH_SUPPORT_INDEXEDDB = 1;
+
 // If nonzero, prints out debugging information in library_fetch.js
 var FETCH_DEBUG = 0;
 

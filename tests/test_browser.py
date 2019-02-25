@@ -4113,10 +4113,11 @@ window.close = function() {
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/to_memory.cpp',
-               expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
-               also_asmjs=True)
+    for arg in [[], ['-s', 'FETCH_SUPPORT_INDEXEDDB=0']]:
+      self.btest('fetch/to_memory.cpp',
+                 expected='1',
+                 args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'] + arg,
+                 also_asmjs=True)
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
