@@ -202,8 +202,6 @@ var _glGetTexEnviv;
  */
 var _glGetTexEnvfv;
 
-var _glutPostRedisplay = function() {};
-
 /**
  * @suppress {undefinedVars}
  */
