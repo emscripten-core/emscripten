@@ -288,7 +288,6 @@ void webMain() {
       self.filename = final
       # Inject command line arguments
       run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
-      Building.get_binaryen()
       if self.binaryen_opts:
         run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:

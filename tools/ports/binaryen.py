@@ -14,10 +14,9 @@ def needed(settings, shared, ports):
     return False
   if shared.BINARYEN_ROOT: # if defined, and not falsey, we don't need the port
     logging.debug('binaryen root already set to ' + shared.BINARYEN_ROOT)
-    settings.BINARYEN_ROOT = shared.BINARYEN_ROOT
     return False
-  settings.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
-  logging.debug('setting binaryen root to ' + settings.BINARYEN_ROOT)
+  shared.BINARYEN_ROOT = os.path.join(ports.get_dir(), 'binaryen', 'binaryen-' + TAG)
+  logging.debug('setting binaryen root to ' + shared.BINARYEN_ROOT)
   return True
 
 

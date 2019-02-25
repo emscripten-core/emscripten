@@ -991,14 +991,10 @@ class Ports(object):
 def get_ports(settings):
   ret = []
 
-  try:
-    process_dependencies(settings)
-    for port in ports.ports:
-      # ports return their output files, which will be linked, or a txt file
-      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except:
-    logging.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
-    raise
+  process_dependencies(settings)
+  for port in ports.ports:
+    # ports return their output files, which will be linked, or a txt file
+    ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
 
   ret.reverse()
   return ret

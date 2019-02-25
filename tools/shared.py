@@ -2821,19 +2821,14 @@ class Building(object):
     return ret
 
   @staticmethod
-  def get_binaryen():
-    # fetch the port, so we have binaryen set up. indicate we need binaryen
-    # using the settings
-    from . import system_libs
-    old = Settings.WASM
-    Settings.WASM = 1
-    system_libs.get_port('binaryen', Settings)
-    Settings.WASM = old
-
-  @staticmethod
   def get_binaryen_bin():
-    Building.get_binaryen()
-    return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+    assert Settings.WASM, 'non wasm builds should not ask for binaryen'
+    if not BINARYEN_ROOT:
+      # ensure we have the port available if needed.
+      from . import system_libs
+      system_libs.get_port('binaryen', Settings)
+      assert os.path.exists(BINARYEN_ROOT)
+    return os.path.join(BINARYEN_ROOT, 'bin')
 
 
 # compatibility with existing emcc, etc. scripts

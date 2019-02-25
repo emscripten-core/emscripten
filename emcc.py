@@ -2632,7 +2632,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
-    binaryen_scripts = os.path.join(shared.Settings.BINARYEN_ROOT, 'scripts')
+    binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
     script_env = os.environ.copy()
     root_dir = os.path.abspath(os.path.dirname(__file__))
     if script_env.get('PYTHONPATH'):

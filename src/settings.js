@@ -1078,10 +1078,6 @@ var WASM_MEM_MAX = -1;
 // smallest modules to run in V8
 var BINARYEN_ASYNC_COMPILATION = 1;
 
-// Directory where we can find Binaryen. Will be automatically set for you, but
-// you can set it to override if you are a Binaryen developer.
-var BINARYEN_ROOT = "";
-
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in. Emscripten does not emit this by default, as it
 // increases code size, and some users may not want information about their tools
