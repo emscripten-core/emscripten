@@ -4119,6 +4119,12 @@ window.close = function() {
                  args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'] + arg,
                  also_asmjs=True)
 
+    # Test a case where the fetch is closed while still in progress.
+    self.btest('fetch/to_memory.cpp',
+               expected='1',
+               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DCLOSE_IMMEDIATELY', '-g'],
+               also_asmjs=True)
+
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/to_indexeddb.cpp',
