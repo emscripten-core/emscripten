@@ -109,20 +109,19 @@ def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
 def compile_js(infile, temp_files, DEBUG):
   """Compile infile with asm.js backend, return the contents of the compiled js"""
   with temp_files.get_file('.4.js') as temp_js:
-    backend_args = create_backend_args(infile, temp_js)
+    backend_cmd = create_backend_cmd(infile, temp_js)
 
     if DEBUG:
-      logger.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+      logger.debug('emscript: llvm backend: ' + ' '.join(backend_cmd))
       t = time.time()
+    shared.print_compiler_stage(backend_cmd)
     with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
+      shared.check_call(backend_cmd)
     if DEBUG:
       logger.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
     # Split up output
     backend_output = open(temp_js).read()
-    # if DEBUG:
-    #   print >> sys.stderr, backend_output
   return backend_output
 
 
@@ -544,8 +543,8 @@ def write_cyberdwarf_data(outfile, metadata):
     json.dump({'cyberdwarf': metadata['cyberdwarf_data']}, f)
 
 
-def create_backend_args(infile, temp_js):
-  """Create args for asm.js backend from settings dict"""
+def create_backend_cmd(infile, temp_js):
+  """Create asm.js backend command from settings dict"""
   args = [
     shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
     '-emscripten-stack-size=%d' % shared.Settings.TOTAL_STACK,
