@@ -39,7 +39,7 @@ extern "C" {
  */
 #define EMSCRIPTEN_VR_API_VERSION 10101
 
-typedef int32_t VRDisplayHandle;
+typedef uint64_t VRDisplayHandle;
 
 typedef void (*em_vr_callback_func)(void);
 typedef void (*em_vr_arg_callback_func)(void*);
@@ -61,9 +61,9 @@ typedef struct VRQuaternion {
 } VRQuaternion;
 
 typedef struct VRDisplayCapabilities {
-    int32_t hasPosition;
-    int32_t hasExternalDisplay;
-    int32_t canPresent;
+    uint64_t hasPosition;
+    uint64_t hasExternalDisplay;
+    uint64_t canPresent;
     unsigned long maxLayers;
 } VRDisplayCapabilities;
 
