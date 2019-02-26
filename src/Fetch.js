@@ -540,7 +540,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb) {
   };
 
   // Should we try IndexedDB first?
-  if (!fetchAttrReplace || requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE') {
+  if (requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE') {
     if (!Fetch.dbInstance) {
 #if FETCH_DEBUG
       console.error('fetch: failed to read IndexedDB! Database is not open.');

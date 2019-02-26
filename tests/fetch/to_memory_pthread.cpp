@@ -23,7 +23,7 @@ void *ThreadMain(void *arg)
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
   attr.userData = (void*)0x12345678;
-  attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
+  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
 
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
     assert(fetch);
