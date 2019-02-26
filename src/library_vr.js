@@ -128,9 +128,9 @@ var LibraryWebVR = {
 
     var caps = display.capabilities;
 
-    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasPosition, 'caps.hasPosition ? 1 : 0', 'ui64') }}};
-    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasExternalDisplay, 'caps.hasExternalDisplay ? 1 : 0', 'ui64') }}};
-    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.canPresent, 'caps.canPresent ? 1 : 0', 'ui64') }}};
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasPosition, 'caps.hasPosition ? 1 : 0', 'uint64') }}};
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.hasExternalDisplay, 'caps.hasExternalDisplay ? 1 : 0', 'uint64') }}};
+    {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.canPresent, 'caps.canPresent ? 1 : 0', 'uint64') }}};
 
     {{{ makeSetValue('capsPtr', C_STRUCTS.VRDisplayCapabilities.maxLayers, 'caps.maxLayers', 'i64') }}};
 
