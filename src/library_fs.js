@@ -21,12 +21,15 @@ mergeInto(LibraryManager.library, {
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
     'stdin', 'stdout', 'stderr'],
-  $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
-                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
-                '__ATEXIT__.push(function() { FS.quit() });' +
-                // Get module methods from settings
-                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
+  $FS__postset: function() {
+    // TODO: do we need noFSInit?
+    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addAtMain('FS.ignorePermissions = false;');
+    addAtExit('FS.quit();');
+    return 'FS.staticInit();' +
+           // Get module methods from settings
+           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+  },
   $FS: {
     root: null,
     mounts: [],
@@ -508,7 +511,9 @@ mergeInto(LibraryManager.library, {
       var completed = 0;
 
       function doCallback(err) {
+#if ASSERTIONS
         assert(FS.syncFSRequests > 0);
+#endif
         FS.syncFSRequests--;
         return callback(err);
       }
@@ -613,7 +618,9 @@ mergeInto(LibraryManager.library, {
 
       // remove this mount from the child mounts
       var idx = node.mount.mounts.indexOf(mount);
+#if ASSERTIONS
       assert(idx !== -1);
+#endif
       node.mount.mounts.splice(idx, 1);
     },
     lookup: function(parent, name) {
@@ -1174,7 +1181,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+path+"') threw an exception: " + e.message);
+        console.log("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
@@ -1305,19 +1312,21 @@ mergeInto(LibraryManager.library, {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else if (ENVIRONMENT_IS_NODE) {
+      } else
 #if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
         // for nodejs with or without crypto support included
         try {
-            var crypto = require('crypto');
+            var crypto_module = require('crypto');
             // nodejs has crypto support
-            random_device = function() { return crypto['randomBytes'](1)[0]; };
+            random_device = function() { return crypto_module['randomBytes'](1)[0]; };
         } catch (e) {
             // nodejs doesn't have crypto support so fallback to Math.random
             random_device = function() { return (Math.random()*256)|0; };
         }
+      } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-      } else {
+      {
         // default for ES5 platforms
         random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see emscripten-core/emscripten/pull/7096 */ };
       }
@@ -1381,13 +1390,13 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-
       var stdout = FS.open('/dev/stdout', 'w');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-
       var stderr = FS.open('/dev/stderr', 'w');
+#if ASSERTIONS
+      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
+      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
       assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+#endif
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
@@ -1412,7 +1421,7 @@ mergeInto(LibraryManager.library, {
 #endif
         // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
         if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS
+#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif
       };
@@ -1449,7 +1458,9 @@ mergeInto(LibraryManager.library, {
       };
     },
     init: function(input, output, error) {
+#if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+#endif
       FS.init.initialized = true;
 
       FS.ensureErrnoError();
@@ -1810,7 +1821,9 @@ mergeInto(LibraryManager.library, {
         if (position >= contents.length)
           return 0;
         var size = Math.min(contents.length - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];

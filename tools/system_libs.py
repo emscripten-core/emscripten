@@ -8,6 +8,8 @@ import json
 import logging
 import os
 import re
+import shutil
+import sys
 import tarfile
 import zipfile
 from collections import namedtuple
@@ -44,15 +46,15 @@ def files_in_path(path_components, filenames):
 
 def get_cflags():
   flags = []
-  if shared.Settings.WASM_OBJECT_FILES:
-     flags += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+    flags += ['-s', 'WASM_OBJECT_FILES=0']
   return flags
 
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   if libname.endswith('.bc'):
-    shared.Building.link(inputs, libname)
+    shared.Building.link_to_object(inputs, libname)
   elif libname.endswith('.a'):
     shared.Building.emar('cr', libname, inputs)
   else:
@@ -95,6 +97,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
+  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
 
@@ -140,7 +143,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -162,6 +165,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       return ['-DLEGACY_GL_EMULATION=1']
     else:
       assert '-emu' not in libname
+      return []
+
+  def gl_version_flags(libname):
+    if shared.Settings.USE_WEBGL2:
+      assert '-webgl2' in libname
+      return ['-DUSE_WEBGL2=1']
+    else:
+      assert '-webgl2' not in libname
       return []
 
   # libc
@@ -276,8 +287,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_pthreads_stub(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_stub.c')]
+    return build_libc(libname, pthreads_files, ['-O2'])
+
   def create_pthreads_asmjs(libname):
     pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
+    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+
+  def create_pthreads_wasm(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_wasm.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
   def create_wasm_libc(libname):
@@ -367,9 +386,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for dirpath, dirnames, filenames in os.walk(src_dir):
       filenames = filter(lambda f: f.endswith('.c'), filenames)
       files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz']
+    flags = ['-Oz', '-s', 'USE_WEBGL2=1']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
+    flags += gl_version_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -421,20 +441,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.exit_with_error('only dlmalloc is possible when using %s' % what)
 
     extra = ''
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      extra += '_debug'
+    if not shared.Settings.SUPPORT_ERRNO:
+      # emmalloc does not use errno anyhow
+      if base != 'emmalloc':
+        extra += '_noerrno'
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
       require_dlmalloc('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
       require_dlmalloc('tracing')
-    if shared.Settings.DEBUG_LEVEL >= 3:
-      extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
-
-      # Only dlmalloc interacts with errno, emmalloc does not
-      if not shared.Settings.SUPPORT_ERRNO:
-        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -476,8 +496,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.path_from_root('system', 'lib', src),
         '-O2', '-fno-builtin', '-o', o] +
         musl_internal_includes() +
-        # TODO(sbc): Remove this once we fix https://bugs.llvm.org/show_bug.cgi?id=38711
-        ['-fno-slp-vectorize'] +
         shared.COMPILER_OPTS)
       o_s.append(o)
     run_commands(commands)
@@ -605,7 +623,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_PTHREADS:
     libc_name = 'libc-mt'
     always_include.add('libpthreads')
-    always_include.add('libpthreads_asmjs')
+    if not shared.Settings.WASM_BACKEND:
+      always_include.add('libpthreads_asmjs')
+    else:
+      always_include.add('libpthreads_wasm')
+  else:
+    always_include.add('libpthreads_stub')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
@@ -619,18 +642,23 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
+  gl_name = 'libgl'
   if shared.Settings.USE_PTHREADS:
-    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False), # noqa
-                    Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name],  False)] # noqa
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    gl_name += '-mt'
+  if shared.Settings.LEGACY_GL_EMULATION:
+    gl_name += '-emu'
+  if shared.Settings.USE_WEBGL2:
+    gl_name += '-webgl2'
+  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
+
+  if shared.Settings.USE_PTHREADS:
+    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
+    if not shared.Settings.WASM_BACKEND:
+      system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
     else:
-      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+      system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
   else:
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 
@@ -682,7 +710,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     def do_create():
       return lib.create(name)
 
-    libfile = shared.Cache.get(name, do_create, extension=lib.suffix)
+    libfile = shared.Cache.get(name, do_create)
     need_whole_archive = lib.shortname in force_include and lib.suffix != 'bc'
     libs_to_link.append((libfile, need_whole_archive))
 
@@ -724,8 +752,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(lib)
 
   if shared.Settings.WASM_BACKEND:
-    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a'), extension='a'), False))
-    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a'), extension='a'), False))
+    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
@@ -800,6 +828,37 @@ class Ports(object):
   @staticmethod
   def fetch_project(name, url, subdir, is_tarbz2=False):
     fullname = os.path.join(Ports.get_dir(), name)
+
+    # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
+    # for testing. This env var should be in format
+    #     name=dir,name=dir
+    # e.g.
+    #     sdl2=/home/username/dev/ports/SDL2
+    # so you could run
+    #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2" ./tests/runner.py browser.test_sdl2_mouse
+    # this will simply copy that directory into the ports directory for sdl2, and use that. It also
+    # clears the build, so that it is rebuilt from that source.
+    local_ports = os.environ.get('EMCC_LOCAL_PORTS')
+    if local_ports:
+      logging.warning('using local ports: %s' % local_ports)
+      local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
+      for local in local_ports:
+        if name == local[0]:
+          path = local[1]
+          if name not in ports.ports_by_name:
+            logging.error('%s is not a known port' % name)
+            sys.exit(1)
+          port = ports.ports_by_name[name]
+          if not hasattr(port, 'SUBDIR'):
+            logging.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+            sys.exit(1)
+          subdir = port.SUBDIR
+          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+          shared.try_delete(fullname)
+          shutil.copytree(path, os.path.join(fullname, subdir))
+          Ports.clear_project_build(name)
+          return
+
     fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
 
     if name not in Ports.name_cache: # only mention each port once in log
@@ -812,37 +871,6 @@ class Ports(object):
       unpacked = False
 
     def retrieve():
-      # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
-      # for testing. This env var should be in format
-      #     name=dir|tag,name=dir|tag
-      # e.g.
-      #     sdl2=/home/username/dev/ports/SDL2|SDL2-master
-      # so you could run
-      #     EMCC_LOCAL_PORTS="sdl2=/home/alon/Dev/ports/SDL2|SDL2-master" ./tests/runner.py browser.test_sdl2_mouse
-      # note that tag **must** be the tag in sdl.py, it is where we store to (not where we load from, we just load the local dir)
-      local_ports = os.environ.get('EMCC_LOCAL_PORTS')
-      if local_ports:
-        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-        for local in local_ports:
-          if name == local[0]:
-            path, subdir = local[1].split('|')
-            logging.warning('grabbing local port: ' + name + ' from ' + path + ', into ' + subdir)
-            # zip up the directory, so it looks the same as if we downloaded a zip from the remote server
-            z = zipfile.ZipFile(fullpath, 'w')
-
-            def add_dir(p):
-              for f in os.listdir(p):
-                full = os.path.join(p, f)
-                if os.path.isdir(full):
-                  add_dir(full)
-                else:
-                  if not f.startswith('.'): # ignore hidden files, including .git/ etc.
-                    z.write(full, os.path.join(subdir, os.path.relpath(full, path)))
-
-            add_dir(path)
-            z.close()
-            State.retrieved = True
-            return
       # retrieve from remote server
       logging.warning('retrieving port: ' + name + ' from ' + url)
       try:
@@ -963,16 +991,14 @@ class Ports(object):
 def get_ports(settings):
   ret = []
 
-  ok = False
   try:
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-    ok = True
-  finally:
-    if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-ports    and then run this command again')
+  except:
+    logging.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+    raise
 
   ret.reverse()
   return ret

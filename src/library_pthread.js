@@ -356,12 +356,13 @@ var LibraryPThread = {
           // it could load up the same file. In that case, developer must either deliver the Blob
           // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
           // independently load up the same main application file.
-          urlOrBlob: Module['mainScriptUrlOrBlob'] || currentScriptUrl,
+          urlOrBlob: Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
           wasmMemory: wasmMemory,
           wasmModule: wasmModule,
 #else
           buffer: HEAPU8.buffer,
+          asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
 #endif
           tempDoublePtr: tempDoublePtr,
           TOTAL_MEMORY: TOTAL_MEMORY,
@@ -832,6 +833,10 @@ var LibraryPThread = {
   pthread_exit: function(status) {
     if (!ENVIRONMENT_IS_PTHREAD) _exit(status);
     else PThread.threadExit(status);
+#if WASM_BACKEND
+    // pthread_exit is marked noReturn, so we must not return from it.
+    throw 'pthread_exit';
+#endif
   },
 
   _pthread_ptr: 0,
@@ -1181,6 +1186,13 @@ var LibraryPThread = {
 #endif
     return func.apply(null, callArgs);
   },
+
+#if MODULARIZE
+  $establishStackSpaceInJsModule: function(stackBase, stackMax) {
+    STACK_BASE = STACKTOP = stackBase;
+    STACK_MAX = stackMax;
+  },
+#endif
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

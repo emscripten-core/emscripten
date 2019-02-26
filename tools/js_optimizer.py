@@ -33,6 +33,7 @@ temp_files = configuration.get_temp_files()
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 
+# Passes supported by the native optimizer
 NATIVE_PASSES = set(['asm', 'asmPreciseF32', 'receiveJSON', 'emitJSON', 'eliminateDeadFuncs', 'eliminate', 'eliminateMemSafe', 'simplifyExpressions', 'simplifyIfs', 'optimizeFrounds', 'registerize', 'registerizeHarder', 'minifyNames', 'minifyLocals', 'minifyWhitespace', 'cleanup', 'asmLastOpts', 'last', 'noop', 'closure'])
 
 JS_OPTIMIZER = path_from_root('tools', 'js-optimizer.js')
@@ -49,7 +50,7 @@ func_sig = re.compile(r'function ([_\w$]+)\(')
 func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
 import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
-NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default, unless disabled by EMCC_NATIVE_OPTIMIZER=0 in the env
+NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimized native optimizer by default (can also be '1' or 'g')
 
 def split_funcs(js, just_split=False):
   if just_split: return [('(json)', line) for line in js.split('\n')]
@@ -81,127 +82,109 @@ def get_native_optimizer():
     logging.debug('config forcing native optimizer at ' + opt)
     return opt
 
-  FAIL_MARKER = shared.Cache.get_path('optimizer.building_failed')
-  if os.path.exists(FAIL_MARKER):
-    shared.logging.debug('seeing that optimizer could not be built (run emcc --clear-cache or erase "optimizer.building_failed" in cache dir to retry)')
-    return None
+  log_output = None if DEBUG else subprocess.PIPE
 
-  def get_optimizer(name, args, handle_build_errors=None):
-    class NativeOptimizerCreationException(Exception): pass
-    outs = []
-    errs = []
-    try:
-      def create_optimizer_cmake():
-        shared.logging.debug('building native optimizer via CMake: ' + name)
-        output = shared.Cache.get_path(name)
-        shared.try_delete(output)
+  def get_optimizer(name, args):
+    def create_optimizer_cmake():
+      shared.logging.debug('building native optimizer via CMake: ' + name)
+      output = shared.Cache.get_path(name)
+      shared.try_delete(output)
 
-        if NATIVE_OPTIMIZER == '1':
-          cmake_build_type = 'RelWithDebInfo'
-        elif NATIVE_OPTIMIZER == '2':
-          cmake_build_type = 'Release'
-        elif NATIVE_OPTIMIZER == 'g':
-          cmake_build_type = 'Debug'
+      if NATIVE_OPTIMIZER == '1':
+        cmake_build_type = 'RelWithDebInfo'
+      elif NATIVE_OPTIMIZER == '2':
+        cmake_build_type = 'Release'
+      elif NATIVE_OPTIMIZER == 'g':
+        cmake_build_type = 'Debug'
 
-        build_path = shared.Cache.get_path('optimizer_build_' + cmake_build_type)
-        shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
+      build_path = shared.Cache.get_path('optimizer_build_' + cmake_build_type)
+      shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
 
-        log_output = None if DEBUG else subprocess.PIPE
-        if not os.path.exists(build_path):
-          os.mkdir(build_path)
+      if not os.path.exists(build_path):
+        os.mkdir(build_path)
 
-        if WINDOWS:
-          # Poor man's check for whether or not we should attempt 64 bit build
-          if os.environ.get('ProgramFiles(x86)'):
-            cmake_generators = [
-              'Visual Studio 15 2017 Win64',
-              'Visual Studio 15 2017',
-              'Visual Studio 14 2015 Win64',
-              'Visual Studio 14 2015',
-              'Visual Studio 12 Win64', # The year component is omitted for compatibility with older CMake.
-              'Visual Studio 12',
-              'Visual Studio 11 Win64',
-              'Visual Studio 11',
-              'MinGW Makefiles',
-              'Unix Makefiles',
-            ]
-          else:
-            cmake_generators = [
-              'Visual Studio 15 2017',
-              'Visual Studio 14 2015',
-              'Visual Studio 12',
-              'Visual Studio 11',
-              'MinGW Makefiles',
-              'Unix Makefiles',
-            ]
+      if WINDOWS:
+        # Poor man's check for whether or not we should attempt 64 bit build
+        if os.environ.get('ProgramFiles(x86)'):
+          cmake_generators = [
+            'Visual Studio 15 2017 Win64',
+            'Visual Studio 15 2017',
+            'Visual Studio 14 2015 Win64',
+            'Visual Studio 14 2015',
+            'Visual Studio 12 Win64', # The year component is omitted for compatibility with older CMake.
+            'Visual Studio 12',
+            'Visual Studio 11 Win64',
+            'Visual Studio 11',
+            'MinGW Makefiles',
+            'Unix Makefiles',
+          ]
         else:
-          cmake_generators = ['Unix Makefiles']
+          cmake_generators = [
+            'Visual Studio 15 2017',
+            'Visual Studio 14 2015',
+            'Visual Studio 12',
+            'Visual Studio 11',
+            'MinGW Makefiles',
+            'Unix Makefiles',
+          ]
+      else:
+        cmake_generators = ['Unix Makefiles']
 
-        for cmake_generator in cmake_generators:
-          # Delete CMakeCache.txt so that we can switch to a new CMake generator.
-          shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
-          proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
+      for cmake_generator in cmake_generators:
+        # Delete CMakeCache.txt so that we can switch to a new CMake generator.
+        shared.try_delete(os.path.join(build_path, 'CMakeCache.txt'))
+        proc = subprocess.Popen(['cmake', '-G', cmake_generator, '-DCMAKE_BUILD_TYPE='+cmake_build_type, shared.path_from_root('tools', 'optimizer')], cwd=build_path, stdin=log_outpu, stdout=log_output, stderr=log_output)
+        proc.communicate()
+        if proc.returncode == 0:
+          make = ['cmake', '--build', build_path]
+          if 'Visual Studio' in cmake_generator:
+            make += ['--config', cmake_build_type, '--', '/nologo', '/verbosity:minimal']
+
+          proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
           proc.communicate()
           if proc.returncode == 0:
-            make = ['cmake', '--build', build_path]
-            if 'Visual Studio' in cmake_generator:
-              make += ['--config', cmake_build_type, '--', '/nologo', '/verbosity:minimal']
+            if WINDOWS and 'Visual Studio' in cmake_generator:
+              shutil.copyfile(os.path.join(build_path, cmake_build_type, 'optimizer.exe'), output)
+            else:
+              shutil.copyfile(os.path.join(build_path, 'optimizer'), output)
+            return output
 
-            proc = subprocess.Popen(make, cwd=build_path, stdin=log_output, stdout=log_output, stderr=log_output)
-            proc.communicate()
-            if proc.returncode == 0:
-              if WINDOWS and 'Visual Studio' in cmake_generator:
-                shutil.copyfile(os.path.join(build_path, cmake_build_type, 'optimizer.exe'), output)
-              else:
-                shutil.copyfile(os.path.join(build_path, 'optimizer'), output)
-              return output
+      raise NativeOptimizerCreationException()
 
-        raise NativeOptimizerCreationException()
+    def create_optimizer():
+      shared.logging.debug('building native optimizer: ' + name)
+      output = shared.Cache.get_path(name)
+      shared.try_delete(output)
+      for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
+        shared.logging.debug('  using ' + compiler)
+        try:
+          shared.run_process([compiler,
+                              shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
+                              shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
+                              shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
+                              shared.path_from_root('tools', 'optimizer', 'optimizer-shared.cpp'),
+                              shared.path_from_root('tools', 'optimizer', 'optimizer-main.cpp'),
+                              '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args,
+                             stdout=log_output, stderr=log_output)
+        except Exception as e:
+          logging.debug(str(e))
+          continue # perhaps the later compilers will succeed
+        # success
+        return output
+      shared.exit_with_error('Failed to build native optimizer')
 
-      def create_optimizer():
-        shared.logging.debug('building native optimizer: ' + name)
-        output = shared.Cache.get_path(name)
-        shared.try_delete(output)
-        for compiler in [shared.CLANG, 'g++', 'clang++']: # try our clang first, otherwise hope for a system compiler in the path
-          shared.logging.debug('  using ' + compiler)
-          try:
-            out, err = subprocess.Popen([compiler,
-                                         shared.path_from_root('tools', 'optimizer', 'parser.cpp'),
-                                         shared.path_from_root('tools', 'optimizer', 'simple_ast.cpp'),
-                                         shared.path_from_root('tools', 'optimizer', 'optimizer.cpp'),
-                                         shared.path_from_root('tools', 'optimizer', 'optimizer-shared.cpp'),
-                                         shared.path_from_root('tools', 'optimizer', 'optimizer-main.cpp'),
-                                         '-O3', '-std=c++11', '-fno-exceptions', '-fno-rtti', '-o', output] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-            outs.append(out)
-            errs.append(err)
-          except OSError:
-            if compiler == shared.CLANG: raise # otherwise, OSError is likely due to g++ or clang++ not being in the path
-          if os.path.exists(output): return output
-        raise NativeOptimizerCreationException()
-
-      use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
-      if use_cmake_to_configure:
-        return shared.Cache.get(name, create_optimizer_cmake, extension='exe')
-      else:
-        return shared.Cache.get(name, create_optimizer, extension='exe')
-    except NativeOptimizerCreationException as e:
-      shared.logging.debug('failed to build native optimizer')
-      handle_build_errors(outs, errs)
-      open(FAIL_MARKER, 'w').write(':(')
-      return None
-
-  def ignore_build_errors(outs, errs):
-    shared.logging.debug('to see compiler errors, build with EMCC_NATIVE_OPTIMIZER=g')
-  def show_build_errors(outs, errs):
-    for i in range(len(outs)):
-      shared.logging.debug('output from attempt ' + str(i) + ':\n' + shared.asstr(outs[i]) + '\n===========\n' + shared.asstr(errs[i]))
+    use_cmake_to_configure = WINDOWS # Currently only Windows uses CMake to drive the optimizer build, but set this to True to use on other platforms as well.
+    if use_cmake_to_configure:
+      return shared.Cache.get(name, create_optimizer_cmake)
+    else:
+      return shared.Cache.get(name, create_optimizer)
 
   if NATIVE_OPTIMIZER == '1':
-    return get_optimizer('optimizer.exe', [], ignore_build_errors)
+    return get_optimizer('optimizer.exe', [])
   elif NATIVE_OPTIMIZER == '2':
-    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'], ignore_build_errors)
+    return get_optimizer('optimizer.2.exe', ['-DNDEBUG'])
   elif NATIVE_OPTIMIZER == 'g':
-    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'], show_build_errors)
+    return get_optimizer('optimizer.g.exe', ['-O0', '-g', '-fno-omit-frame-pointer'])
 
 # Check if we should run a pass or set of passes natively. if a set of passes, they must all be valid to run in the native optimizer at once.
 def use_native(x, source_map=False):
@@ -325,8 +308,7 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs or not suffix:
-      logging.critical('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
-      sys.exit(1)
+      shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
 
     minify_globals = 'minifyNames' in passes and 'asm' in passes
     if minify_globals:
@@ -446,7 +428,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('run_optimizer'):
     if len(filenames):
-      if not use_native(passes, source_map) or not get_native_optimizer():
+      if not use_native(passes, source_map):
         commands = [js_engine +
             [JS_OPTIMIZER, filename, 'noPrintMetadata'] +
             (['--debug'] if source_map else []) + passes for filename in filenames]
@@ -499,12 +481,11 @@ EMSCRIPTEN_FUNCS();
           temp_files.note(cld)
         elif cleanup:
           if DEBUG: print('running cleanup on shell code', file=sys.stderr)
-          next = cld + '.cl.js'
-          temp_files.note(next)
-          proc = subprocess.Popen(js_engine + [JS_OPTIMIZER, cld, 'noPrintMetadata', 'JSDCE'] + (['minifyWhitespace'] if 'minifyWhitespace' in passes else []), stdout=open(next, 'w'))
-          proc.communicate()
-          assert proc.returncode == 0
-          cld = next
+          acorn_passes = ['JSDCE']
+          if 'minifyWhitespace' in passes:
+            acorn_passes.append('minifyWhitespace')
+          cld = shared.Building.acorn_optimizer(cld, acorn_passes)
+          temp_files.note(cld)
         coutput = open(cld).read()
 
       coutput = coutput.replace('wakaUnknownBefore();', start_asm)

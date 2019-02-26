@@ -712,10 +712,10 @@ var SyscallsLibrary = {
     var buf = SYSCALLS.get();
     if (!buf) return -ERRNO_CODES.EFAULT
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
-    function copyString(element, value) {
+    var copyString = function(element, value) {
       var offset = layout[element];
       writeAsciiToMemory(value, buf + offset);
-    }
+    };
     copyString('sysname', 'Emscripten');
     copyString('nodename', 'emscripten');
     copyString('release', '1.0');
@@ -781,9 +781,9 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    function check(fd, low, high, val) {
+    var check = function(fd, low, high, val) {
       return (fd < 32 ? (low & val) : (high & val));
-    }
+    };
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
@@ -850,7 +850,7 @@ var SyscallsLibrary = {
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   __syscall146__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1
+#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
   __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
@@ -1118,7 +1118,8 @@ var SyscallsLibrary = {
         return 0;
       }
       case {{{ cDefine('F_GETLK') }}}:
-      case {{{ cDefine('F_GETLK64') }}}: {
+      /* case {{{ cDefine('F_GETLK64') }}}: Currently in musl F_GETLK64 has same value as F_GETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */ {
+        {{{ assert(cDefine('F_GETLK') === cDefine('F_GETLK64')), '' }}}
         var arg = SYSCALLS.get();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
@@ -1127,8 +1128,10 @@ var SyscallsLibrary = {
       }
       case {{{ cDefine('F_SETLK') }}}:
       case {{{ cDefine('F_SETLKW') }}}:
-      case {{{ cDefine('F_SETLK64') }}}:
-      case {{{ cDefine('F_SETLKW64') }}}:
+      /* case {{{ cDefine('F_SETLK64') }}}: Currently in musl F_SETLK64 has same value as F_SETLK, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+      /* case {{{ cDefine('F_SETLKW64') }}}: Currently in musl F_SETLKW64 has same value as F_SETLKW, so omitted to avoid duplicate case blocks. If that changes, uncomment this */
+        {{{ assert(cDefine('F_SETLK64') === cDefine('F_SETLK')), '' }}}
+        {{{ assert(cDefine('F_SETLKW64') === cDefine('F_SETLKW')), '' }}}
         return 0; // Pretend that the locking is successful.
       case {{{ cDefine('F_GETOWN_EX') }}}:
       case {{{ cDefine('F_SETOWN') }}}:

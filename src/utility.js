@@ -179,41 +179,6 @@ function splitter(array, filter) {
   return { leftIn: leftIn, splitOut: splitOut };
 }
 
-function dcheck(tag) {
-  return DEBUG_TAGS_SHOWING.indexOf(arguments[0]) != -1;
-}
-var DPRINT_INDENT = '';
-function dprint_indent() {
-  DPRINT_INDENT += '   ';
-}
-function dprint_unindent() {
-  DPRINT_INDENT = DPRINT_INDENT.substr(3);
-}
-
-function dprint() {
-  var text;
-  if (arguments[1]) {
-    if (!dcheck(arguments[0])) return;
-    text = arguments[1];
-  } else {
-    text = arguments[0];
-  }
-  if (typeof text === 'function') {
-    text = text(); // Allows deferred calculation, so dprints don't slow us down when not needed
-  }
-  text = DPRINT_INDENT + '// ' + text;
-  printErr(text);
-}
-
-var _PROF_ORIGIN = Date.now();
-var _PROF_TIME = _PROF_ORIGIN;
-function PROF(pass) {
-  if (!pass) {
-    dprint("Profiling: " + ((Date.now() - _PROF_TIME)/1000) + ' seconds, total: ' + ((Date.now() - _PROF_ORIGIN)/1000));
-  }
-  PROF_TIME = Date.now();
-}
-
 // Usage: arrayOfArrays.reduce(concatenator, []);
 function concatenator(x, y) {
   return x.concat(y);

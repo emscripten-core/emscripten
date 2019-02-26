@@ -1222,6 +1222,12 @@
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
             "EMSCRIPTEN_RESULT_NO_DATA",
+            "EMSCRIPTEN_RESULT_TIMED_OUT",
+
+            "EMSCRIPTEN_EVENT_TARGET_INVALID",
+            "EMSCRIPTEN_EVENT_TARGET_DOCUMENT",
+            "EMSCRIPTEN_EVENT_TARGET_WINDOW",
+            "EMSCRIPTEN_EVENT_TARGET_SCREEN",
 
             "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT",
             "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH",
@@ -1545,5 +1551,50 @@
             ]
         },
         "defines": []
+    },
+    {
+        "file": "emscripten/fetch.h",
+        "structs": {
+            "emscripten_fetch_attr_t": [
+                "requestMethod",
+                "userData",
+                "onsuccess",
+                "onerror",
+                "onprogress",
+                "attributes",
+                "timeoutMSecs",
+                "withCredentials",
+                "destinationPath",
+                "userName",
+                "password",
+                "requestHeaders",
+                "overriddenMimeType",
+                "requestData",
+                "requestDataSize"
+            ],
+            "emscripten_fetch_t": [
+                "id",
+                "userData",
+                "url",
+                "data",
+                "numBytes",
+                "dataOffset",
+                "totalBytes",
+                "readyState",
+                "status",
+                "statusText",
+                "__proxyState",
+                "__attributes"
+            ]
+        },
+        "defines": ["EMSCRIPTEN_FETCH_LOAD_TO_MEMORY",
+            "EMSCRIPTEN_FETCH_STREAM_DATA",
+            "EMSCRIPTEN_FETCH_PERSIST_FILE",
+            "EMSCRIPTEN_FETCH_APPEND",
+            "EMSCRIPTEN_FETCH_REPLACE",
+            "EMSCRIPTEN_FETCH_NO_DOWNLOAD",
+            "EMSCRIPTEN_FETCH_SYNCHRONOUS",
+            "EMSCRIPTEN_FETCH_WAITABLE"
+        ]
     }
  ]

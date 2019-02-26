@@ -76,8 +76,8 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 int main()
 {
   printf("Press any keys on the keyboard to test the appropriate generated EmscriptenKeyboardEvent structure.\n");
-  emscripten_set_keydown_callback(0, 0, 1, key_callback);
-  emscripten_set_keyup_callback(0, 0, 1, key_callback);
-  emscripten_set_keypress_callback(0, 0, 1, key_callback);
+  emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
+  emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
+  emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   EM_ASM(Module['noExitRuntime'] = true);
 }

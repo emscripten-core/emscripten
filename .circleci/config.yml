@@ -98,6 +98,10 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -297,22 +301,22 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*
-  test-binaryen0:
+  test-wasm0:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen0
-  test-binaryen1:
+      - TEST_TARGET=wasm0
+  test-wasm1:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen1
-  test-binaryen2:
+      - TEST_TARGET=wasm1
+  test-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen2
-  test-binaryen3:
+      - TEST_TARGET=wasm2
+  test-wasm3:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen3
+      - TEST_TARGET=wasm3
   test-sanity:
     <<: *test-defaults
     environment:
@@ -351,6 +355,15 @@ jobs:
           command: |
             EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
             python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: embuilder build for lto
+          command: |
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept --lto
+            python3 ~/emscripten/tests/runner.py test_hello_world
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -360,22 +373,14 @@ jobs:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
-  test-upstream-binaryen0:
+  test-upstream-wasm0:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen0
-  test-upstream-binaryen2:
+      - TEST_TARGET=wasm0
+  test-upstream-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=binaryen2
-  test-upstream-wasmobj0:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasmobj0
-  test-upstream-wasmobj2:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasmobj2
+      - TEST_TARGET=wasm2
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -431,32 +436,26 @@ workflows:
       - test-uvwxyz:
           requires:
             - build
-      - test-binaryen0:
+      - test-wasm0:
           requires:
             - build
-      - test-binaryen1:
+      - test-wasm1:
           requires:
             - build
-      - test-binaryen2:
+      - test-wasm2:
           requires:
             - build
-      - test-binaryen3:
+      - test-wasm3:
           requires:
             - build
       - test-sanity:
           requires:
             - build
       - build-upstream
-      - test-upstream-binaryen0:
+      - test-upstream-wasm0:
           requires:
             - build-upstream
-      - test-upstream-binaryen2:
-          requires:
-            - build-upstream
-      - test-upstream-wasmobj0:
-          requires:
-            - build-upstream
-      - test-upstream-wasmobj2:
+      - test-upstream-wasm2:
           requires:
             - build-upstream
       - test-upstream-other:

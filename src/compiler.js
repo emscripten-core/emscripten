@@ -180,16 +180,6 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
-  // Load struct and define information.
-  var temp = JSON.parse(read(STRUCT_INFO));
-  C_STRUCTS = temp.structs;
-  C_DEFINES = temp.defines;
-} else {
-  C_STRUCTS = {};
-  C_DEFINES = {};
-}
-
 // Load compiler code
 
 load('modules.js');
@@ -208,6 +198,14 @@ ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENTS.indexOf('shell') >= 0;
 
 if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
   throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
+}
+
+if (!ENVIRONMENT_MAY_BE_WORKER && PROXY_TO_WORKER) {
+  throw 'If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
+}
+
+if (!ENVIRONMENT_MAY_BE_WORKER && USE_PTHREADS) {
+  throw 'When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
 }
 
 //===============================

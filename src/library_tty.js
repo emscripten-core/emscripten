@@ -5,8 +5,12 @@
 
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
-  $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
-                 '__ATEXIT__.push(function() { TTY.shutdown() });',
+#if !MINIMAL_RUNTIME
+  $TTY__postset: function() {
+    addAtInit('TTY.init();');
+    addAtExit('TTY.shutdown();');
+  },
+#endif
   $TTY: {
     ttys: [],
     init: function () {
@@ -99,6 +103,7 @@ mergeInto(LibraryManager.library, {
       get_char: function(tty) {
         if (!tty.input.length) {
           var result = null;
+#if ENVIRONMENT_MAY_BE_NODE
           if (ENVIRONMENT_IS_NODE) {
             // we will read data by chunks of BUFSIZE
             var BUFSIZE = 256;
@@ -132,8 +137,9 @@ mergeInto(LibraryManager.library, {
             } else {
               result = null;
             }
-
-          } else if (typeof window != 'undefined' &&
+          } else
+#endif
+          if (typeof window != 'undefined' &&
             typeof window.prompt == 'function') {
             // Browser.
             result = window.prompt('Input: ');  // returns null on cancel

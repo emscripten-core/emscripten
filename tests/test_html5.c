@@ -243,47 +243,47 @@ void report_result(void *arg)
 int main()
 {
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(0, 0, 1, key_callback);
+  EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keypress_callback);
-  ret = emscripten_set_keydown_callback(0, 0, 1, key_callback);
+  ret = emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keydown_callback);
-  ret = emscripten_set_keyup_callback(0, 0, 1, key_callback);
+  ret = emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keyup_callback);
 
-  ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_click_callback);
-  ret = emscripten_set_mousedown_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mousedown_callback);
-  ret = emscripten_set_mouseup_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseup_callback);
-  ret = emscripten_set_dblclick_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_dblclick_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_dblclick_callback);
-  ret = emscripten_set_mousemove_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mousemove_callback);
-  ret = emscripten_set_mouseenter_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseenter_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseenter_callback);
-  ret = emscripten_set_mouseleave_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseleave_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseleave_callback);
-  ret = emscripten_set_mouseover_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseover_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseover_callback);
-  ret = emscripten_set_mouseout_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseout_callback);
 
-  ret = emscripten_set_wheel_callback(0, 0, 1, wheel_callback);
+  ret = emscripten_set_wheel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, wheel_callback);
   TEST_RESULT(emscripten_set_wheel_callback);
 
-  ret = emscripten_set_resize_callback(0, 0, 1, uievent_callback);
+  ret = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_resize_callback);
-  ret = emscripten_set_scroll_callback(0, 0, 1, uievent_callback);
+  ret = emscripten_set_scroll_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_scroll_callback);
 
-  ret = emscripten_set_blur_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_blur_callback);
-  ret = emscripten_set_focus_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focus_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focus_callback);
-  ret = emscripten_set_focusin_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focusin_callback);
-  ret = emscripten_set_focusout_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focusout_callback);
 
   ret = emscripten_set_deviceorientation_callback(0, 1, deviceorientation_callback);
@@ -333,12 +333,12 @@ int main()
     fullscreenchange_callback(EMSCRIPTEN_EVENT_FULLSCREENCHANGE, &fsce, 0);
   }
 
-  ret = emscripten_set_fullscreenchange_callback(0, 0, 1, fullscreenchange_callback);
+  ret = emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, fullscreenchange_callback);
   TEST_RESULT(emscripten_set_fullscreenchange_callback);
 
   // These won't do anything, since fullscreen must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
-  ret = emscripten_request_fullscreen(0, 1);
+  ret = emscripten_request_fullscreen("#canvas", 1);
   TEST_RESULT(emscripten_request_fullscreen);
   ret = emscripten_exit_fullscreen();
   TEST_RESULT(emscripten_exit_fullscreen);
@@ -351,12 +351,12 @@ int main()
     pointerlockchange_callback(EMSCRIPTEN_EVENT_POINTERLOCKCHANGE, &plce, 0);
   }
 
-  ret = emscripten_set_pointerlockchange_callback(0, 0, 1, pointerlockchange_callback);
+  ret = emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, pointerlockchange_callback);
   TEST_RESULT(emscripten_set_pointerlockchange_callback);
 
   // These won't do anything, since pointer lock must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
-  ret = emscripten_request_pointerlock(0, 1);
+  ret = emscripten_request_pointerlock("#canvas", 1);
   TEST_RESULT(emscripten_request_pointerlock);
   ret = emscripten_exit_pointerlock();
   TEST_RESULT(emscripten_exit_pointerlock);
@@ -380,13 +380,13 @@ int main()
   ret = emscripten_set_visibilitychange_callback(0, 1, visibilitychange_callback);
   TEST_RESULT(emscripten_set_visibilitychange_callback);
 
-  ret = emscripten_set_touchstart_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchstart_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchstart_callback);
-  ret = emscripten_set_touchend_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchend_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchend_callback);
-  ret = emscripten_set_touchmove_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchmove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchmove_callback);
-  ret = emscripten_set_touchcancel_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchcancel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchcancel_callback);
 
   ret = emscripten_set_beforeunload_callback(0, beforeunload_callback);
@@ -405,9 +405,9 @@ int main()
     battery_callback(EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE, &bs, 0);
   }
 
-  ret = emscripten_set_webglcontextlost_callback(0, 0, 1, webglcontext_callback);
+  ret = emscripten_set_webglcontextlost_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextlost_callback);
-  ret = emscripten_set_webglcontextrestored_callback(0, 0, 1, webglcontext_callback);
+  ret = emscripten_set_webglcontextrestored_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextrestored_callback);
 
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 

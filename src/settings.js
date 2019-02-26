@@ -836,6 +836,14 @@ var DETERMINISTIC = 0;
 // the module. (This allows, in particular, for you to create multiple
 // instantiations, etc.)
 //
+// The default .html shell file provided in MINIMAL_RUNTIME mode shows
+// an example to how the module is instantiated from within the html file.
+// The default .html shell file provided by traditional runtime mode is only
+// compatible with MODULARIZE=0 mode, so when building with traditional
+// runtime, you should provided your own html shell file to perform the
+// instantiation when building with MODULARIZE=1. (For more details, see
+// https://github.com/emscripten-core/emscripten/issues/7950)
+//
 // If you add --pre-js or --post-js files, they will be included inside
 // the module with the rest of the emitted code. That way, they can be
 // optimized together with it. (If you want something outside of the module,
@@ -1029,7 +1037,7 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
-var WASM_OBJECT_FILES = 0;
+var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
@@ -1288,11 +1296,19 @@ var OFFSCREENCANVAS_SUPPORT = 0;
 // back to Offscreen Framebuffer otherwise.
 var OFFSCREEN_FRAMEBUFFER = 0;
 
+// If nonzero, Fetch API (and hence ASMFS) supports backing to IndexedDB. If 0, IndexedDB is not utilized. Set to 0 if
+// IndexedDB support is not interesting for target application, to save a few kBytes.
+var FETCH_SUPPORT_INDEXEDDB = 1;
+
 // If nonzero, prints out debugging information in library_fetch.js
 var FETCH_DEBUG = 0;
 
 // If nonzero, enables emscripten_fetch API.
 var FETCH = 0;
+
+// Internal: name of the file containing the Fetch *.fetch.js, if relevant
+// Do not set yourself.
+var FETCH_WORKER_FILE = '';
 
 // If set to 1, uses the multithreaded filesystem that is implemented within the
 // asm.js module, using emscripten_fetch. Implies -s FETCH=1.
@@ -1390,7 +1406,6 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // (think of this as advanced manual DCE)
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
 
-
 // If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
 // Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
 // the smallest code size possible.
@@ -1415,3 +1430,40 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // Internal: stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
+// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
+// this to 0 to save a little bit of code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;
+
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
+// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
+// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
+
+// Specifies whether the generated .html file is run through html-minifier. The set of
+// optimization passes run by html-minifier depends on debug and optimization levels. In
+// -g2 and higher, no minification is performed. In -g1, minification is done, but whitespace
+// is retained. Minification requires at least -O1 or -Os to be used. Pass -s MINIFY_HTML=0
+// to explicitly choose to disable HTML minification altogether.
+var MINIFY_HTML = 1;
+
+// Legacy settings that have been removed, and the values they are now fixed to. These can no
+// longer be changed:
+// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is an array of values that will
+// still be silently accepted by the compiler. First element in the list is the canonical/fixed value going forward.
+// This allows existing build systems to keep specifying one of the supported settings, for backwards compatibility.
+var LEGACY_SETTINGS = [
+  ['ASM_JS', [1, 2], 'ASM_JS must be enabled in fastcomp'],
+  ['SAFE_HEAP', [0, 1], 'safe heap must be 0 or 1 in fastcomp'],
+  ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
+  ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
+  ['PGO', [0], 'pgo not supported in fastcomp'],
+  ['QUANTUM_SIZE', [4], 'altering the QUANTUM_SIZE is not supported'],
+  ['FUNCTION_POINTER_ALIGNMENT', [2], 'Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091)'],
+  ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
+  ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
+  ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
+  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
+  ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
+  ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
+];

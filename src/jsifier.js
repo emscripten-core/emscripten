@@ -15,6 +15,11 @@ var STRUCT_LIST = set('struct', 'list');
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
 
+var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow', 'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan', 'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min', 'Math_max', 'Math_clz32', 'Math_fround',
+                           'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'];
+// Specifies the set of referenced built-in primitives such as Math.max etc.
+var usedExternPrimitives = {};
+
 var SETJMP_LABEL = -1;
 
 var INDENTATION = ' ';
@@ -178,7 +183,9 @@ function JSify(data, functionsOnly) {
 
       var noExport = false;
 
-      if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
+      if (allExternPrimitives.indexOf(ident) != -1) {
+        usedExternPrimitives[ident] = 1;
+      } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
             if (!LINKABLE) {
@@ -241,12 +248,19 @@ function JSify(data, functionsOnly) {
 
       var postsetId = ident + '__postset';
       var postset = LibraryManager.library[postsetId];
-      if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
-        addedLibraryItems[postsetId] = true;
-        itemsDict.GlobalVariablePostSet.push({
-          intertype: 'GlobalVariablePostSet',
-          JS: postset + ';'
-        });
+      if (postset) {
+        // A postset is either code to run right now, or some text we should emit.
+        // If it's code, it may return some text to emit as well.
+        if (typeof postset === 'function') {
+          postset = postset();
+        }
+        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
+          addedLibraryItems[postsetId] = true;
+          itemsDict.GlobalVariablePostSet.push({
+            intertype: 'GlobalVariablePostSet',
+            JS: postset + ';'
+          });
+        }
       }
 
       if (redirectedIdent) {
@@ -473,6 +487,11 @@ function JSify(data, functionsOnly) {
       print(preprocess(read('base64Utils.js')));
     }
 
+    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
+    if (usedExternPrimitiveNames.length > 0) {
+      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
+    }
+
     if (asmLibraryFunctions.length > 0) {
       print('// ASM_LIBRARY FUNCTIONS');
       function fix(f) { // fix indenting to not confuse js optimizer
@@ -516,11 +535,8 @@ function JSify(data, functionsOnly) {
     var shellParts = read(shellFile).split('{{BODY}}');
     print(processMacros(preprocess(shellParts[1], shellFile)));
     // Print out some useful metadata
-    if (RUNNING_JS_OPTS || PGO) {
+    if (RUNNING_JS_OPTS) {
       var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
-      if (PGO) {
-        print('PGOMonitor.allGenerated = ' + generatedFunctions + ';\nremoveRunDependency("pgo");\n');
-      }
       if (RUNNING_JS_OPTS) {
         print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
       }
@@ -535,10 +551,5 @@ function JSify(data, functionsOnly) {
     data.functionStubs.forEach(functionStubHandler);
   }
 
-  //B.start('jsifier-fc');
   finalCombiner();
-  //B.stop('jsifier-fc');
-
-  dprint('framework', 'Big picture: Finishing JSifier, main pass=' + mainPass);
-  //B.stop('jsifier');
 }

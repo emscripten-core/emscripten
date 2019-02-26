@@ -595,8 +595,10 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 			*(a=z-(p=1))=arg.i;
 			fl &= ~ZERO_PAD;
 			break;
+#ifndef __EMSCRIPTEN__ // 'm' is a gnu extension, and strerror brings in 2.5K of strings
 		case 'm':
 			if (1) a = strerror(errno); else
+#endif
 		case 's':
 			a = arg.p ? arg.p : "(null)";
 			z = memchr(a, 0, p);

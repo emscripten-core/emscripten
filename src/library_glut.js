@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser'],
+  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -106,7 +113,3 @@ EMSCRIPTEN_RESULT emscripten_websocket_delete(EMSCRIPTEN_WEBSOCKET_T socket);
 // even after the pthread quits, although be warned that if the target thread that was registered to handle events for a given WebSocket quits, then those
 // events will stop from being delivered altogether.
 void emscripten_websocket_deinitialize(void);
-
-#ifdef __cplusplus
-}
-#endif

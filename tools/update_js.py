@@ -9,8 +9,10 @@ Performs a search-replace in all of js/
 
 import os
 
+
 def all_children(subdir):
   return [os.path.join(dp, f) for dp, dn, fn in os.walk(subdir) for f in fn]
+
 
 for x in all_children('src') + all_children('tests') + all_children('tools') + all_children('system/lib') + ['emscripten.py', 'emcc.py']:
   if 'update_js.py' in x:
@@ -44,4 +46,3 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
 
   if fixed != orig:
     open(x, 'w').write(fixed)
-

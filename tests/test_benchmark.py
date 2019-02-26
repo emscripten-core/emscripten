@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import sys
-import tempfile
 import time
 import unittest
 import zlib
@@ -116,7 +115,7 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx})
+      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"})
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -175,26 +174,16 @@ class EmscriptenBenchmarker(Benchmarker):
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
-    open('hardcode.py', 'w').write('''
-def process(filename):
-  js = open(filename).read()
-  replaced = js.replace("run();", "run(%s.concat(Module[\\"arguments\\"]));")
-  assert js != replaced
-  open(filename, 'w').write(replaced)
-import sys
-process(sys.argv[1])
-''' % str(args[:-1])) # do not hardcode in the last argument, the default arg
-
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '--js-transform', 'python hardcode.py',
       '-s', 'TOTAL_MEMORY=256*1024*1024',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
+      '-s', 'MINIMAL_RUNTIME=0',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + self.extra_args
@@ -202,6 +191,7 @@ process(sys.argv[1])
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
       cmd += ['--profiling-funcs']
+    self.cmd = cmd
     output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
     assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
     if self.binaryen_opts:
@@ -213,8 +203,12 @@ process(sys.argv[1])
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' in self.extra_args:
-      ret.append(self.filename + '.mem')
+    if 'WASM=0' in self.cmd:
+      if 'MINIMAL_RUNTIME=1' in self.cmd:
+        ret.append(self.filename[:-3] + '.asm.js')
+        ret.append(self.filename[:-3] + '.mem')
+      else:
+        ret.append(self.filename + '.mem')
     else:
       ret.append(self.filename[:-3] + '.wasm')
     return ret
@@ -236,32 +230,20 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
-    cheerp_temp = filename + '.cheerp.' + suffix
+    cheerp_temp = filename[:-len(suffix) - 1] + '.cheerp.cpp'
     code = open(filename).read()
-    if 'int main()' in code:
-      main_args = ''
-    else:
-      main_args = 'argc, (%(const)s char**)argv' % {
-        'const': 'const' if 'const char *argv' in code else ''
-      }
     open(cheerp_temp, 'w').write('''
       %(code)s
-      void webMain() {
-        // TODO: how to read from commandline?
-        volatile int argc = 2;
-        typedef char** charStarStar;
-        volatile charStarStar argv;
-        argv[0] = "./cheerp.exe";
-        argv[1] = "%(arg)s";
-        volatile int exit_code = main(%(main_args)s);
-      }
-    ''' % {
-      'arg': args[-1],
+#include <cheerp/client.h>
+void webMain() {
+  main();
+}\n''' % {
       'code': code,
-      'main_args': main_args
     })
     cheerp_args = [
       '-target', 'cheerp',
+      '-fno-math-errno',
+      '-Wno-c++11-narrowing',
       '-cheerp-mode=wasm'
     ]
     cheerp_args += self.args
@@ -272,40 +254,43 @@ class CheerpBenchmarker(Benchmarker):
       cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
-        'AR': CHEERP_BIN + 'llvm-ar',
+        'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
         'LD': CHEERP_BIN + 'clang',
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + 'llvm-ranlib',
         'CFLAGS': ' '.join(cheerp_args),
         'CXXFLAGS': ' '.join(cheerp_args),
+        'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
-    # cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
-    final = os.path.dirname(filename) + os.path.sep + 'cheerp_' + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
+    if PROFILING:
+      cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
+    final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
     dirs_to_delete = []
+    cheerp_args += ['-cheerp-preexecute']
     try:
-      for arg in cheerp_args[:]:
-        if arg.endswith('.a'):
-          info = self.handle_static_lib(arg)
-          cheerp_args += info['files']
-          dirs_to_delete += [info['dir']]
-      cheerp_args = [arg for arg in cheerp_args if not arg.endswith('.a')]
       # print(cheerp_args)
-      cmd = [CHEERP_BIN + 'clang++'] + cheerp_args + [
+      if filename.endswith('.c'):
+        compiler = CHEERP_BIN + '/clang'
+      else:
+        compiler = CHEERP_BIN + '/clang++'
+      cmd = [compiler] + cheerp_args + [
         '-cheerp-linear-heap-size=256',
         '-cheerp-wasm-loader=' + final,
         cheerp_temp,
         '-Wno-writable-strings', # for how we set up webMain
-        '-o', final + '.wasm'
+        '-o', final.replace('.js', '.wasm')
       ] + shared_args
       # print(' '.join(cmd))
-      run_process(cmd)
+      run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
+      # Inject command line arguments
+      run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
       Building.get_binaryen()
       if self.binaryen_opts:
-        run_binaryen_opts(final + '.wasm', self.binaryen_opts)
+        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         try_delete(dir_)
@@ -314,45 +299,7 @@ class CheerpBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
 
   def get_output_files(self):
-    return [self.filename, self.filename + '.wasm']
-
-  def handle_static_lib(self, f):
-    temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
-    with chdir(temp_dir):
-      contents = [x for x in run_process([CHEERP_BIN + 'llvm-ar', 't', f], stdout=PIPE).stdout.splitlines() if len(x)]
-      shared.warn_if_duplicate_entries(contents, f)
-      if len(contents) == 0:
-        print('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % f)
-        return {
-          'returncode': 0,
-          'dir': temp_dir,
-          'files': []
-        }
-
-      # We are about to ask llvm-ar to extract all the files in the .a archive file, but
-      # it will silently fail if the directory for the file does not exist, so make all the necessary directories
-      for content in contents:
-        dirname = os.path.dirname(content)
-        if dirname:
-          shared.safe_ensure_dirs(dirname)
-      proc = run_process([CHEERP_BIN + 'llvm-ar', 'xo', f], stdout=PIPE, stderr=PIPE)
-      # if absolute paths, files will appear there. otherwise, in this directory
-      contents = list(map(os.path.abspath, contents))
-      nonexisting_contents = [x for x in contents if not os.path.exists(x)]
-      if len(nonexisting_contents) != 0:
-        raise Exception('llvm-ar failed to extract file(s) ' + str(nonexisting_contents) + ' from archive file ' + f + '!  Error:' + str(proc.stdout) + str(proc.stderr))
-
-      return {
-        'returncode': proc.returncode,
-        'dir': temp_dir,
-        'files': contents
-      }
-
-    return {
-      'returncode': 1,
-      'dir': None,
-      'files': []
-    }
+    return [self.filename, self.filename.replace('.js', '.wasm')]
 
   def cleanup(self):
     pass
@@ -392,6 +339,7 @@ try:
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
       # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+      # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
     ]
 except Exception as e:
   benchmarkers_error = str(e)
@@ -423,6 +371,23 @@ class benchmark(RunnerCore):
     Building.COMPILER = CLANG
     Building.COMPILER_TEST_OPTS = [OPTIMIZATIONS]
 
+  # avoid depending on argument reception from the commandline
+  def hardcode_arguments(self, code):
+    if not code:
+      return code
+    main_pattern = 'int main(int argc, char **argv)'
+    assert main_pattern in code
+    code = code.replace(main_pattern, 'int benchmark_main(int argc, char **argv)')
+    code += '''
+      int main() {
+        int newArgc = 2;
+        char* newArgv[] = { (char*)"./program.exe", (char*)"%s" };
+        int ret = benchmark_main(newArgc, newArgv);
+        return ret;
+      }
+    ''' % DEFAULT_ARG
+    return code
+
   def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
     if len(benchmarkers) == 0:
       raise Exception('error, no benchmarkers: ' + benchmarkers_error)
@@ -433,6 +398,7 @@ class benchmark(RunnerCore):
 
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
+    src = self.hardcode_arguments(src)
     with open(filename, 'w') as f:
       f.write(src)
 
@@ -483,7 +449,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -521,7 +487,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('memops', src, 'final:')
+    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def zzztest_files(self):
     src = r'''
@@ -530,7 +496,7 @@ class benchmark(RunnerCore):
       #include <assert.h>
       #include <unistd.h>
 
-      int main() {
+      int main(int argc, char **argv) {
         int N = 100;
         int M = 1000;
         int K = 1000;
@@ -631,7 +597,7 @@ class benchmark(RunnerCore):
         return (x++) & 16384;
       }
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
@@ -670,7 +636,7 @@ class benchmark(RunnerCore):
       #include <stdio.h>
       #include <stdlib.h>
 
-      int main(int argc, char *argv[]) {
+      int main(int argc, char **argv) {
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
@@ -699,7 +665,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -985,7 +951,12 @@ class benchmark(RunnerCore):
       return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                                          os.path.join('src', '.libs', 'libBulletCollision.a'),
                                          os.path.join('src', '.libs', 'libLinearMath.a')],
-                              configure_args=['--disable-demos', '--disable-dependency-tracking'], native=native, cache_name_extra=name, env_init=env_init)
+                              # The --host parameter is needed for 2 reasons:
+                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
+                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
+                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
+                              #    cross compile mode, which lets configure complete happily.
+                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + path_from_root('tests', 'bullet', 'src'), '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')],

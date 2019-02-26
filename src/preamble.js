@@ -57,8 +57,6 @@ function assert(condition, text) {
   }
 }
 
-var globalScope = this;
-
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
@@ -358,14 +356,6 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 }
 #endif
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-#if SEPARATE_ASM != 0
-  importScripts('{{{ SEPARATE_ASM }}}'); // load the separated-out asm.js
-#endif
-}
-#endif
-
 #if EMTERPRETIFY
 function abortStackOverflowEmterpreter() {
   abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
@@ -551,6 +541,7 @@ function ensureInitRuntime() {
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
+  {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -561,6 +552,7 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+  {{{ getQuoted('ATMAINS') }}}
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -571,7 +563,10 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
+  {{{ getQuoted('ATEXITS') }}}
+#endif
   runtimeExited = true;
 }
 
@@ -605,7 +600,9 @@ function addOnPreMain(cb) {
 }
 
 function addOnExit(cb) {
+#if EXIT_RUNTIME
   __ATEXIT__.unshift(cb);
+#endif
 }
 
 function addOnPostRun(cb) {
@@ -713,23 +710,6 @@ Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
 #if WASM && MAIN_MODULE
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
-#endif
-
-#if PGO
-var PGOMonitor = {
-  called: {},
-  dump: function() {
-    var dead = [];
-    for (var i = 0; i < this.allGenerated.length; i++) {
-      var func = this.allGenerated[i];
-      if (!this.called[func]) dead.push(func);
-    }
-    out('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
-  }
-};
-Module['PGOMonitor'] = PGOMonitor;
-__ATEXIT__.push(function() { PGOMonitor.dump() });
-addOnPreRun(function() { addRunDependency('pgo') });
 #endif
 
 #if RELOCATABLE
@@ -1028,7 +1008,13 @@ function createWasm(env) {
 
 Module['asm'] = function(global, env, providedBuffer) {
   // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory;
+  env['memory'] = wasmMemory
+#if MODULARIZE && USE_PTHREADS
+  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+  // Module scope, so lookup via Module as well.
+  || Module['wasmMemory']
+#endif
+  ;
   // import table
   env['table'] = wasmTable = new WebAssembly.Table({
     'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},

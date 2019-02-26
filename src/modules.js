@@ -162,7 +162,7 @@ var LibraryManager = {
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
     if (!STRICT) {
       libraries = libraries.concat([
-        'library_gl.js',
+        'library_webgl.js',
         'library_openal.js',
         'library_vr.js'
       ]);
@@ -182,12 +182,17 @@ var LibraryManager = {
       }
     }
 
-    if (LEGACY_GL_EMULATION) {
-      libraries.push('library_glemu.js');
-    }
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    if (USE_WEBGL2) {
+      libraries.push('library_webgl2.js');
+    }
+
+    if (LEGACY_GL_EMULATION) {
+      libraries.push('library_glemu.js');
     }
 
     libraries = libraries.concat(additionalLibraries);
@@ -310,6 +315,16 @@ var LibraryManager = {
   }
 };
 
+if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
+  // Load struct and define information.
+  var temp = JSON.parse(read(STRUCT_INFO));
+  C_STRUCTS = temp.structs;
+  C_DEFINES = temp.defines;
+} else {
+  C_STRUCTS = {};
+  C_DEFINES = {};
+}
+
 // Safe way to access a C define. We check that we don't add library functions with missing defines.
 function cDefine(key) {
 	if (key in C_DEFINES) return C_DEFINES[key];
@@ -394,7 +409,6 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'Pointer_stringify',
     'AsciiToString',
     'stringToAscii',
     'UTF8ArrayToString',
@@ -455,6 +469,24 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
   ];
+
+  if (!MINIMAL_RUNTIME) {
+    runtimeElements.push('Pointer_stringify');
+  }
+
+  if (MODULARIZE) {
+    // In MODULARIZE=1 mode, the following functions need to be exported out to Module for worker.js to access.
+    if (STACK_OVERFLOW_CHECK) {
+      runtimeElements.push('writeStackCookie');
+      runtimeElements.push('checkStackCookie');
+      runtimeElements.push('abortStackOverflow');
+    }
+    if (USE_PTHREADS) {
+      runtimeElements.push('PThread');
+      runtimeElements.push('ExitStatus');
+    }
+  }
+
   if (SUPPORT_BASE64_EMBEDDING) {
     runtimeElements.push('intArrayFromBase64');
     runtimeElements.push('tryParseAsDataURI');
@@ -495,7 +527,10 @@ var PassManager = {
     print('\n//FORWARDED_DATA:' + JSON.stringify({
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
-      STATIC_BUMP: STATIC_BUMP // updated with info from JS
+      STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
     }));
   },
   load: function(json) {

@@ -1736,7 +1736,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .element(&TupleVector::x)
         .element(&Vector::getY, &Vector::setY)
         .element(&readVectorZ, &writeVectorZ)
-        .element(index<3>())
+        .element(emscripten::index<3>())
         ;
 
     function("emval_test_return_TupleVector", &emval_test_return_TupleVector);
@@ -1752,7 +1752,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .field("x", &StructVector::x)
         .field("y", &Vector::getY, &Vector::setY)
         .field("z", &readVectorZ, &writeVectorZ)
-        .field("w", index<3>())
+        .field("w", emscripten::index<3>())
         ;
 
     function("emval_test_return_StructVector", &emval_test_return_StructVector);
@@ -1766,12 +1766,12 @@ EMSCRIPTEN_BINDINGS(tests) {
 
 
     value_array<std::array<int, 2>>("array_int_2")
-        .element(index<0>())
-        .element(index<1>())
+        .element(emscripten::index<0>())
+        .element(emscripten::index<1>())
         ;
     value_array<std::array<NestedStruct, 2>>("array_NestedStruct_2")
-        .element(index<0>())
-        .element(index<1>())
+        .element(emscripten::index<0>())
+        .element(emscripten::index<1>())
         ;
     value_object<NestedStruct>("NestedStruct")
         .field("x", &NestedStruct::x)
