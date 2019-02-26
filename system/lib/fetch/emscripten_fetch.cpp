@@ -224,9 +224,13 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 	// This fetch is aborted. Call the error handler if the fetch was still in progress and was canceled in flight.
 	if (fetch->readyState != 4 /*DONE*/ && fetch->__attributes.onerror)
 	{
+		fetch->readyState = 4;
 		fetch->status = (unsigned short)-1;
 		strcpy(fetch->statusText, "aborted with emscripten_fetch_close()");
+
 		fetch->__attributes.onerror(fetch);
+	} else {
+		fetch->readyState = 4;
 	}
 
 	fetch_free(fetch);
