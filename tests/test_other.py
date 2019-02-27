@@ -7867,42 +7867,41 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
-  def run_metadce_tests(self, filename, expectations):
+  def run_metadce_test(self, filename, args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs):
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    for args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs in expectations:
-      print('Running metadce test:', args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
-      run_process([PYTHON, EMCC, filename, '-g2'] + args)
-      # find the imports we send from JS
-      js = open('a.out.js').read()
-      start = js.find('asmLibraryArg = ')
-      end = js.find('}', start) + 1
-      start = js.find('{', start)
-      relevant = js[start + 2:end - 2]
-      relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
-      sent = [x.split(':')[0].strip() for x in relevant]
-      sent = [x for x in sent if x]
-      sent.sort()
-      print('   sent: ' + str(sent))
-      for exists in expected_exists:
-        self.assertIn(exists, sent)
-      for not_exists in expected_not_exists:
-        self.assertNotIn(not_exists, sent)
-      self.assertEqual(len(sent), expected_sent)
-      wasm_size = os.path.getsize('a.out.wasm')
-      if expected_size is not None:
-        ratio = abs(wasm_size - expected_size) / float(expected_size)
-        print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
-      self.assertLess(ratio, size_slack)
-      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-      imports = wast.count('(import ')
-      exports = wast.count('(export ')
-      funcs = wast.count('\n (func ')
-      self.assertEqual(imports, expected_imports)
-      self.assertEqual(exports, expected_exports)
-      if expected_funcs is not None:
-        self.assertEqual(funcs, expected_funcs)
+    print('Running metadce test:', args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    run_process([PYTHON, EMCC, filename, '-g2'] + args)
+    # find the imports we send from JS
+    js = open('a.out.js').read()
+    start = js.find('asmLibraryArg = ')
+    end = js.find('}', start) + 1
+    start = js.find('{', start)
+    relevant = js[start + 2:end - 2]
+    relevant = relevant.replace(' ', '').replace('"', '').replace("'", '').split(',')
+    sent = [x.split(':')[0].strip() for x in relevant]
+    sent = [x for x in sent if x]
+    sent.sort()
+    print('   sent: ' + str(sent))
+    for exists in expected_exists:
+      self.assertIn(exists, sent)
+    for not_exists in expected_not_exists:
+      self.assertNotIn(not_exists, sent)
+    self.assertEqual(len(sent), expected_sent)
+    wasm_size = os.path.getsize('a.out.wasm')
+    if expected_size is not None:
+      ratio = abs(wasm_size - expected_size) / float(expected_size)
+      print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
+    self.assertLess(ratio, size_slack)
+    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+    imports = wast.count('(import ')
+    exports = wast.count('(export ')
+    funcs = wast.count('\n (func ')
+    self.assertEqual(imports, expected_imports)
+    self.assertEqual(exports, expected_exports)
+    if expected_funcs is not None:
+      self.assertEqual(funcs, expected_funcs)
 
   def test_binaryen_metadce_minimal(self):
     create_test_file('minimal.c', '''
@@ -7914,70 +7913,67 @@ int main() {
       }
       ''')
 
+    def run(*args):
+      self.run_metadce_test('minimal.c', *args)
+
     if self.is_wasm_backend():
-      self.run_metadce_tests('minimal.c', [
-        ([],      11, [], ['waka'],  9336,  5, 13, 16), # noqa
-        (['-O1'],  9, [], ['waka'],  8095,  2, 12, 10), # noqa
-        (['-O2'],  9, [], ['waka'],  8077,  2, 12, 10), # noqa
-        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [], [],          61,  0,  1,  1), # noqa
-        (['-Os'],  0, [], [],          61,  0,  1,  1), # noqa
-        (['-Oz'],  0, [], [],           8,  0,  0,  0), # noqa
-      ])
+      run([],      11, [], ['waka'],  9336,  5, 13, 16) # noqa
+      run(['-O1'],  9, [], ['waka'],  8095,  2, 12, 10) # noqa
+      run(['-O2'],  9, [], ['waka'],  8077,  2, 12, 10) # noqa
+      # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
+      run(['-O3'],  0, [], [],          61,  0,  1,  1) # noqa
+      run(['-Os'],  0, [], [],          61,  0,  1,  1) # noqa
+      run(['-Oz'],  0, [], [],           8,  0,  0,  0) # noqa
     else:
-      self.run_metadce_tests('minimal.c', [
-        ([],      20, ['abort'], ['waka'], 22712, 20, 14, 27), # noqa
-        (['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
-        (['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
-        # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-        (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
-        (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
-        (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
-      ])
+      run([],      20, ['abort'], ['waka'], 22712, 20, 14, 27) # noqa
+      run(['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11) # noqa
+      run(['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11) # noqa
+      # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
+      run(['-O3'],  0, [],        [],          55,  0,  1, 1) # noqa
+      run(['-Os'],  0, [],        [],          55,  0,  1, 1) # noqa
+      run(['-Oz'],  0, [],        [],          55,  0,  1, 1) # noqa
 
   def test_binaryen_metadce_cxx(self):
+    def run(*args):
+      self.run_metadce_test(path_from_root('tests', 'hello_libcxx.cpp'), *args)
+
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 32, [], ['waka'], 226582,  20,  33, 564), # noqa
-        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  33, 564), # noqa
-      ]) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 564) # noqa
+      run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                  32, [], ['waka'], 226582,  20,  33, 564) # noqa
     else:
-      self.run_metadce_tests(path_from_root('tests', 'hello_libcxx.cpp'), [
-        (['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653), # noqa
-        (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   37, 635), # noqa
-      ]) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653) # noqa
+      run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
+                  34, ['abort'], ['waka'], 196709,  28,   37, 635) # noqa
 
   def test_binaryen_metadce_hello(self):
+    def run(*args):
+      self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
+
     if self.is_wasm_backend():
-      self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      16, [], ['waka'], 26641, 10,  15, 62), # noqa
-        (['-O1'], 14, [], ['waka'], 10668,  8,  14, 29), # noqa
-        (['-O2'], 14, [], ['waka'], 10490,  8,  14, 24), # noqa
-        (['-O3'],  5, [], [],        2453,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  5, [], [],        2408,  7,   3, 15), # noqa
-        (['-Oz'],  5, [], [],        2367,  7,   2, 14), # noqa
-        # finally, check what happens when we export nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [], [],          61,  0,   1,  1), # noqa
-      ]) # noqa
+      run([],      16, [], ['waka'], 26641, 10,  15, 62) # noqa
+      run(['-O1'], 14, [], ['waka'], 10668,  8,  14, 29) # noqa
+      run(['-O2'], 14, [], ['waka'], 10490,  8,  14, 24) # noqa
+      run(['-O3'],  5, [], [],        2453,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  5, [], [],        2408,  7,   3, 15) # noqa
+      run(['-Oz'],  5, [], [],        2367,  7,   2, 14) # noqa
+      # finally, check what happens when we export nothing. wasm should be almost empty
+      run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
+                   0, [], [],          61,  0,   1,  1) # noqa
     else:
-      self.run_metadce_tests(path_from_root('tests', 'hello_world.cpp'), [
-        ([],      20, ['abort'], ['waka'], 42701,  20,   14, 49), # noqa
-        (['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30), # noqa
-        (['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30), # noqa
-        (['-O3'],  6, [],        [],        2690,   9,    2, 21), # noqa; in -O3, -Os and -Oz we metadce
-        (['-Os'],  6, [],        [],        2690,   9,    2, 21), # noqa
-        (['-Oz'],  6, [],        [],        2690,   9,    2, 21), # noqa
-        # finally, check what happens when we export nothing. wasm should be almost empty
-        (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
-        # we don't metadce with linkable code! other modules may want stuff
-        (['-O3', '-s', 'MAIN_MODULE=1'],
-                1533, [],        [],      226403,  28,   93, None), # noqa; don't compare the # of functions in a main module, which changes a lot
-      ]) # noqa
+      run([],      20, ['abort'], ['waka'], 42701,  20,   14, 49) # noqa
+      run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
+      run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30) # noqa
+      run(['-O3'],  6, [],        [],        2690,   9,    2, 21) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  6, [],        [],        2690,   9,    2, 21) # noqa
+      run(['-Oz'],  6, [],        [],        2690,   9,    2, 21) # noqa
+      # finally, check what happens when we export nothing. wasm should be almost empty
+      run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
+                   0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
+      # we don't metadce with linkable code! other modules may want stuff
+      run(['-O3', '-s', 'MAIN_MODULE=1'],
+                1533, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
