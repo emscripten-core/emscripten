@@ -3214,7 +3214,7 @@ int main() {
 
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
-  foo__deps: ['Int8Array'],
+  foo__deps: ['Int8Array', 'NonPrimitive'],
   foo: function() {},
 });
 ''')
@@ -3226,9 +3226,9 @@ int main(int argc, char** argv) {
   return 0;
 }
 ''')
-    run_process([PYTHON, EMCC, '-O0', 'main.c', '--js-library', 'lib.js'])
+    run_process([PYTHON, EMCC, '-O0', 'main.c', '--js-library', 'lib.js', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
     generated = open('a.out.js').read()
-    self.assertNotContained('var Int8Array=', generated)
+    self.assertContained('var _NonPrimitive=', generated)
     self.assertNotContained('var _Int8Array=', generated)
 
   def test_js_lib_using_asm_lib(self):
