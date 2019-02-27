@@ -3175,7 +3175,7 @@ myreade(){
     run_process([PYTHON, EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c', '-o', 'obj/test.o'])
     self.assertContained(open('test.d').read(), 'obj/test.o: a.c\n')
 
-  def test_quoted_js_lib_key(self):
+  def test_js_lib_quoted_key(self):
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
    __internal_data:{
@@ -3189,7 +3189,7 @@ mergeInto(LibraryManager.library, {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '--js-library', 'lib.js'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_exported_js_lib(self):
+  def test_js_lib_exported(self):
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
  jslibfunc: function(x) { return 2 * x }
@@ -3208,6 +3208,29 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslibfunc"]'])
     self.assertContained('c calling: 12\njs calling: 10.', run_js('a.out.js'))
+
+  def test_js_lib_primitive_dep(self):
+    # Verify that primitive dependencies aren't generated in the output JS.
+
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  foo__deps: ['Int8Array'],
+  foo: function() {},
+});
+''')
+    create_test_file('main.c', r'''
+void foo(void);
+
+int main(int argc, char** argv) {
+  foo();
+  return 0;
+}
+''')
+    run_process([PYTHON, EMCC, '-O0', 'main.c', '--js-library', 'lib.js'])
+    generated = open('a.out.js').read()
+    self.assertNotContained('var Int8Array=', generated)
+    self.assertNotContained('var _Int8Array=', generated)
+
 
   def test_js_lib_using_asm_lib(self):
     create_test_file('lib.js', r'''
