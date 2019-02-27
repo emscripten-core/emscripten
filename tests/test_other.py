@@ -3231,7 +3231,6 @@ int main(int argc, char** argv) {
     self.assertNotContained('var Int8Array=', generated)
     self.assertNotContained('var _Int8Array=', generated)
 
-
   def test_js_lib_using_asm_lib(self):
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
