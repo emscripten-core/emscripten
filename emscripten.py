@@ -2432,7 +2432,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
   # functions marked llvm.used in the code are exports requested by the user
-  shared.Building.user_requested_exports += metadata['exports']
+  # and are protected from metadce.
+  # TODO(sbc): The exports list is a lot longer for wasm backend than for
+  # fastcomp. It should really be indentical.
+  shared.Building.user_requested_exports += [asmjs_mangle(e) for e in metadata['exports']]
 
   return metadata
 
