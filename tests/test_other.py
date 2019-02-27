@@ -7961,13 +7961,13 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 564) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  32, 561) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  33, 564) # noqa
+                  32, [], ['waka'], 226582,  20,  32, 561) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 662) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   37, 635) # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   37, 644) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
@@ -9039,8 +9039,8 @@ int main () {
       (asmjs + opts, hello_world_sources, {'a.html': 985, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 972, 'a.js': 624, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 885, 'a.js': 4980, 'a.asm.js': 10972, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 861, 'a.js': 5046, 'a.wasm': 8978}),
-      (opts, hello_webgl2_sources, {'a.html': 861, 'a.js': 6182, 'a.wasm': 8978}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl_sources, {'a.html': 861, 'a.js': 5046, 'a.wasm': 8922}),
+      (opts, hello_webgl2_sources, {'a.html': 861, 'a.js': 6182, 'a.wasm': 8922}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
