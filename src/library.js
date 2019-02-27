@@ -970,7 +970,7 @@ LibraryManager.library = {
 #if !WASM_BACKEND
   memcpy__asm: true,
   memcpy__sig: 'iiii',
-  memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
+  memcpy__deps: ['emscripten_memcpy_big'],
   memcpy: function(dest, src, num) {
     dest = dest|0; src = src|0; num = num|0;
     var ret = 0;
@@ -1073,7 +1073,6 @@ LibraryManager.library = {
   },
   memset__sig: 'iiii',
   memset__asm: true,
-  memset__deps: ['Int8Array', 'Int32Array'],
   memset: function(ptr, value, num) {
     ptr = ptr|0; value = value|0; num = num|0;
     var end = 0, aligned_end = 0, block_aligned_end = 0, value4 = 0;
