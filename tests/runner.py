@@ -429,7 +429,7 @@ class RunnerCore(unittest.TestCase):
 
     def llvm_opt(filename):
       shutil.move(filename + '.o', filename + '.o.pre')
-      output = run_process([LLVM_OPT, filename + '.o.pre', '-O3', '-o', filename + '.o'], stdout=PIPE).stdout
+      output = run_process([shared.LLVM_OPT, filename + '.o.pre', '-O3', '-o', filename + '.o'], stdout=PIPE).stdout
       assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
     if Building.LLVM_OPTS or force_recompile or build_ll_hook:
