@@ -7943,9 +7943,9 @@ int main() {
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
                   32, [], ['waka'], 226582,  20,  33, 564) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 653) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 662) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   37, 635) # noqa
+                  34, ['abort'], ['waka'], 196709,  28,   37, 644) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
