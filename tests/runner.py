@@ -427,12 +427,7 @@ class RunnerCore(unittest.TestCase):
       with open(ll_filename, 'w') as f:
         f.write(contents)
 
-    def llvm_opt(filename):
-      shutil.move(filename + '.o', filename + '.o.pre')
-      output = run_process([shared.LLVM_OPT, filename + '.o.pre', '-O3', '-o', filename + '.o'], stdout=PIPE).stdout
-      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
-
-    if Building.LLVM_OPTS or force_recompile or build_ll_hook:
+    if force_recompile or build_ll_hook:
       if ll_file.endswith(('.bc', '.o')):
         if ll_file != filename + '.o':
           shutil.copy(ll_file, filename + '.o')
@@ -445,8 +440,6 @@ class RunnerCore(unittest.TestCase):
         need_post = build_ll_hook(filename)
       Building.llvm_as(filename)
       shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
-      if Building.LLVM_OPTS:
-        llvm_opt(filename)
       Building.llvm_dis(filename)
       if build_ll_hook and need_post:
         build_ll_hook(filename)
