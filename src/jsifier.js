@@ -185,6 +185,7 @@ function JSify(data, functionsOnly) {
 
       if (allExternPrimitives.indexOf(ident) != -1) {
         usedExternPrimitives[ident] = 1;
+        return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
