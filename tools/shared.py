@@ -1043,7 +1043,7 @@ def emsdk_opts():
   # Disable system C and C++ include directories, and add our own (using
   # -idirafter so they are last, like system dirs, which allows projects to
   # override them)
-  C_INCLUDE_PATHS = [
+  c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'SSE'),
@@ -1052,12 +1052,12 @@ def emsdk_opts():
     path_from_root('system', 'local', 'include')
   ]
 
-  CXX_INCLUDE_PATHS = [
+  cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
@@ -1066,7 +1066,7 @@ def emsdk_opts():
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
+  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
 
 
 EMSDK_OPTS = emsdk_opts()
