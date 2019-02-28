@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from __future__ import print_function
+
 import difflib
 import os
 import json
@@ -60,8 +62,8 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
-             DEBUG):
+def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
+                      temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -87,7 +89,7 @@ def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
       backend_output = compile_js(infile, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+      funcs, metadata, mem_init = parse_fastcomp_output(backend_output, DEBUG)
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
@@ -125,7 +127,7 @@ def compile_js(infile, temp_files, DEBUG):
   return backend_output
 
 
-def parse_backend_output(backend_output, DEBUG):
+def parse_fastcomp_output(backend_output, DEBUG):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
   metadata_split_marker = '// EMSCRIPTEN_METADATA'
@@ -2131,7 +2133,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
-  exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata)
+  exports = get_exported_implemented_functions_wasm(pre, forwarded_json, metadata)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
@@ -2156,10 +2158,9 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
-  receiving = create_receiving_wasm(exported_implemented_functions)
+  receiving = create_receiving_wasm(exports)
 
-  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                              exported_implemented_functions, metadata)
+  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
 
   write_output_file(outfile, post, module)
   module = None
@@ -2219,8 +2220,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   return load_metadata_wasm(stdout, DEBUG)
 
 
-def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
-  exported_implemented_functions = set(metadata['exports'])
+def get_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
+  exports = set(metadata['exports'])
 
   all_exported_functions = set(shared.Settings.EXPORTED_FUNCTIONS) # both asm.js and otherwise
   for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE: # additional functions to export from asm, if they are implemented
@@ -2231,11 +2232,10 @@ def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
   export_all = shared.Settings.EXPORT_ALL
   for key in all_implemented:
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exported_implemented_functions.add(key)
+      exports.add(key)
 
   check_all_implemented(all_implemented, pre)
-  exported_implemented_functions = sorted(exported_implemented_functions)
-  return exported_implemented_functions
+  return sorted(exports)
 
 
 def create_asm_consts_wasm(forwarded_json, metadata):
@@ -2347,28 +2347,32 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-def create_receiving_wasm(exported_implemented_functions):
-  receiving = ''
+def create_receiving_wasm(exports):
+  receiving = []
   if not shared.Settings.ASSERTIONS:
     runtime_assertions = ''
   else:
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() { ''' + runtime_assertions + '''
-return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
-};
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', '_emscripten_replace_memory', '__start_module']])
+    for e in exports:
+      if e not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module'):
+        receiving.append('''var real_%(mangled)s = asm["%(e)s"]; asm["%(e)s"] = function() { %(assertions)s
+return real_%(mangled)s.apply(null, arguments);
+};''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    receiving += '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exported_implemented_functions]) + '\n'
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
   else:
-    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { ' + runtime_assertions + ' return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in exported_implemented_functions]) + '\n'
-  return receiving
+    receiving.append('Module["asm"] = asm;')
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = function() { %(assertions)s return Module["asm"]["%(e)s"].apply(null, arguments) };' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+
+  return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                       exported_implemented_functions, metadata):
+def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
@@ -2509,7 +2513,7 @@ def run(infile, outfile, memfile, libraries):
 
   outfile_obj = open(outfile, 'w')
 
-  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript
+  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
       infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, shared.DEBUG)
   )
