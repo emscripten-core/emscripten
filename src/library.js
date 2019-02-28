@@ -4446,12 +4446,6 @@ LibraryManager.library = {
       );
   },
 
-  // Function disabled
-  _emscripten_traverse_stack: function(args) {
-    return null;
-  },
-
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4466,14 +4460,6 @@ LibraryManager.library = {
       warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
       flags ^= 8/*EM_LOG_C_STACK*/;
       flags |= 16/*EM_LOG_JS_STACK*/;
-    }
-
-    var stack_args = null;
-    if (flags & 128 /*EM_LOG_FUNC_PARAMS*/) {
-      // To get the actual parameters to the functions, traverse the stack via the unfortunately deprecated 'arguments.callee' method, if it works:
-      stack_args = __emscripten_traverse_stack(arguments);
-      while (stack_args[1].indexOf('_emscripten_') >= 0)
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
     }
 
     // Process all lines:
@@ -4537,14 +4523,6 @@ LibraryManager.library = {
         callstack += (haveSourceMap ? ('     = '+jsSymbolName) : ('    at '+cSymbolName)) + ' (' + file + ':' + lineno + ':' + column + ')\n';
       }
 
-      // If we are still keeping track with the callstack by traversing via 'arguments.callee', print the function parameters as well.
-      if (flags & 128 /*EM_LOG_FUNC_PARAMS*/ && stack_args[0]) {
-        if (stack_args[1] == jsSymbolName && stack_args[2].length > 0) {
-          callstack = callstack.replace(/\s+$/, '');
-          callstack += ' with values: ' + stack_args[1] + stack_args[2] + '\n';
-        }
-        stack_args = __emscripten_traverse_stack(stack_args[0]);
-      }
     }
     // Trim extra whitespace at the end of the output.
     callstack = callstack.replace(/\s+$/, '');
