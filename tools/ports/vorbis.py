@@ -15,6 +15,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG)
+  libname = ports.get_lib_name('libvorbis')
 
   def create():
     logging.info('building port: vorbis')
@@ -25,12 +26,16 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    final = os.path.join(dest_path, 'libvorbis.bc')
+    final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
                      ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
     return final
 
-  return [shared.Cache.get('vorbis', create)]
+  return [shared.Cache.get(libname, create)]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libvorbis'))
 
 
 def process_dependencies(settings):

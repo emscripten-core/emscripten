@@ -15,6 +15,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('icu', 'https://github.com/unicode-org/icu/archive/' + TAG + '.zip', 'icu-' + TAG)
+  libname = ports.get_lib_name('libicuuc')
 
   def create():
     logging.info('building port: icu')
@@ -25,11 +26,15 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
 
-    final = os.path.join(dest_path, 'libicuuc.bc')
+    final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'icu4c', 'source', 'common'), final, [os.path.join(dest_path, 'icu4c', 'source', 'common')], ['--std=c++11', '-DU_COMMON_IMPLEMENTATION=1'])
     return final
 
-  return [shared.Cache.get('icu', create)]
+  return [shared.Cache.get(libname, create)]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libicuuc'))
 
 
 def process_args(ports, args, settings, shared):

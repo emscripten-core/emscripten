@@ -156,13 +156,6 @@ def build_port(port_name, lib_name, params):
   build(C_BARE, [lib_name] if lib_name else [], params)
 
 
-def static_library_name(name):
-  if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES:
-    return name + '.a'
-  else:
-    return name + '.bc'
-
-
 def main():
   if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
     print_help()
@@ -190,6 +183,7 @@ def main():
   args = [a for a in args if not is_flag(a)]
 
   # process tasks
+  libname = shared.static_library_name
 
   auto_tasks = False
   tasks = args
@@ -229,20 +223,20 @@ def main():
         }
       ''', ['libcompiler_rt.a'])
     elif what == 'libc':
-      build(C_WITH_MALLOC, [static_library_name('libc')])
+      build(C_WITH_MALLOC, [libname('libc')])
     elif what == 'libc-extras':
       build('''
         extern char **environ;
         int main() {
           return (int)environ;
         }
-      ''', [static_library_name('libc-extras')])
+      ''', [libname('libc-extras')])
     elif what == 'struct_info':
       build(C_BARE, ['generated_struct_info.json'])
     elif what == 'emmalloc':
-      build(C_WITH_MALLOC, [static_library_name('libemmalloc')], ['-s', 'MALLOC="emmalloc"'])
+      build(C_WITH_MALLOC, [libname('libemmalloc')], ['-s', 'MALLOC="emmalloc"'])
     elif what == 'emmalloc_debug':
-      build(C_WITH_MALLOC, [static_library_name('libemmalloc_debug')], ['-s', 'MALLOC="emmalloc"', '-g'])
+      build(C_WITH_MALLOC, [libname('libemmalloc_debug')], ['-s', 'MALLOC="emmalloc"', '-g'])
     elif what.startswith('dlmalloc'):
       cmd = ['-s', 'MALLOC="dlmalloc"']
       if '_debug' in what:
@@ -253,11 +247,11 @@ def main():
         cmd += ['-s', 'USE_PTHREADS=1']
       if '_tracing' in what:
         cmd += ['-s', 'EMSCRIPTEN_TRACING=1']
-      build(C_WITH_MALLOC, [static_library_name('lib' + what)], cmd)
+      build(C_WITH_MALLOC, [libname('lib' + what)], cmd)
     elif what in ('libc-mt', 'pthreads'):
-      build(C_WITH_MALLOC, [static_library_name('libc-mt'), static_library_name('libpthreads')], ['-s', 'USE_PTHREADS=1'])
+      build(C_WITH_MALLOC, [libname('libc-mt'), libname('libpthreads')], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libc-wasm':
-      build(C_WITH_STDLIB, [static_library_name('libc-wasm')], ['-s', 'WASM=1'])
+      build(C_WITH_STDLIB, [libname('libc-wasm')], ['-s', 'WASM=1'])
     elif what == 'libc++':
       build(CXX_WITH_STDLIB, ['libc++.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     elif what == 'libc++_noexcept':
@@ -271,7 +265,7 @@ def main():
           y->a();
           return y->y;
         }
-      ''', [static_library_name('libc++abi')])
+      ''', [libname('libc++abi')])
     elif what == 'gl' or what.startswith('gl-'):
       opts = []
       if '-mt' in what:
@@ -285,7 +279,7 @@ def main():
         int main() {
           return int(emscripten_GetProcAddress("waka waka"));
         }
-      ''', [static_library_name('lib' + what)], opts)
+      ''', [libname('lib' + what)], opts)
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'compiler_rt_wasm':
@@ -301,7 +295,7 @@ def main():
           return emscripten_compute_dom_pk_code(NULL);
         }
 
-      ''', [static_library_name('libhtml5')])
+      ''', [libname('libhtml5')])
     elif what == 'pthreads_stub':
       build('''
         #include <emscripten/threading.h>
@@ -309,7 +303,7 @@ def main():
           return emscripten_is_main_runtime_thread();
         }
 
-      ''', [static_library_name('libpthreads_stub')])
+      ''', [libname('libpthreads_stub')])
     elif what == 'al':
       build('''
         #include "AL/al.h"
@@ -317,43 +311,43 @@ def main():
           alGetProcAddress(0);
           return 0;
         }
-      ''', [static_library_name('libal')])
+      ''', [libname('libal')])
     elif what == 'icu':
-      build_port('icu', 'icu.bc', ['-s', 'USE_ICU=1'])
+      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
-      build_port('bullet', 'bullet.bc', ['-s', 'USE_BULLET=1'])
+      build_port('bullet', libname('libbullet'), ['-s', 'USE_BULLET=1'])
     elif what == 'vorbis':
-      build_port('vorbis', 'vorbis.bc', ['-s', 'USE_VORBIS=1'])
+      build_port('vorbis', libname('libvorbis'), ['-s', 'USE_VORBIS=1'])
     elif what == 'ogg':
-      build_port('ogg', 'ogg.bc', ['-s', 'USE_OGG=1'])
+      build_port('ogg', libname('libogg'), ['-s', 'USE_OGG=1'])
     elif what == 'libpng':
-      build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
+      build_port('libpng', libname('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
-      build_port('sdl2', 'sdl2.bc', ['-s', 'USE_SDL=2'])
+      build_port('sdl2', libname('libSDL2'), ['-s', 'USE_SDL=2'])
     elif what == 'sdl2-gfx':
-      build_port('sdl2-gfx', 'sdl2-gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
+      build_port('sdl2-gfx', libname('libSDL2_gfx'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
-      build_port('sdl2-image', 'sdl2-image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
-      build_port('sdl2-image', 'sdl2-image-png.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
     elif what == 'sdl2-net':
-      build_port('sdl2-net', 'sdl2-net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
+      build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', 'sdl2-mixer.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      build_port('sdl2-mixer', 'libSDL2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
-      build_port('freetype', 'freetype.bc', ['-s', 'USE_FREETYPE=1'])
+      build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':
-      build_port('harfbuzz', 'harfbuzz.bc', ['-s', 'USE_HARFBUZZ=1'])
+      build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
     elif what == 'sdl2-ttf':
-      build_port('sdl2-ttf', 'sdl2-ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+      build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
       build_port('binaryen', None, ['-s', 'WASM=1'])
     elif what == 'cocos2d':
-      build_port('cocos2d', 'cocos2d.bc', ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+      build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
-      build_port('regal', 'regal.bc', ['-s', 'USE_REGAL=1'])
+      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

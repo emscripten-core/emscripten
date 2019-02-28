@@ -15,6 +15,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('bullet', 'https://github.com/emscripten-ports/bullet/archive/' + TAG + '.zip', 'Bullet-' + TAG)
+  libname = ports.get_lib_name('libbullet')
 
   def create():
     logging.info('building port: bullet')
@@ -28,14 +29,18 @@ def get(ports, settings, shared):
     src_path = os.path.join(dest_path, 'bullet', 'src')
     includes = []
     for root, dirs, files in os.walk(src_path, topdown=False):
-        for dir in dirs:
-            includes.append(os.path.join(root, dir))
+      for dir in dirs:
+        includes.append(os.path.join(root, dir))
 
-    final = os.path.join(ports.get_build_dir(), 'bullet', 'libbullet.bc')
+    final = os.path.join(ports.get_build_dir(), 'bullet', libname)
     ports.build_port(src_path, final, includes=includes, exclude_dirs=['MiniCL'])
     return final
 
-  return [shared.Cache.get('bullet', create)]
+  return [shared.Cache.get(libname, create)]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libbullet'))
 
 
 def process_args(ports, args, settings, shared):
