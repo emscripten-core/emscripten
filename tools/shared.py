@@ -1234,7 +1234,7 @@ class SettingsManager(object):
           if value not in fixed_values:
             exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
           else:
-            logging.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+            logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
