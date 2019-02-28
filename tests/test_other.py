@@ -7970,9 +7970,9 @@ int main() {
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
                   32, [], ['waka'], 226582,  20,  33, 563) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 196709,  28,   36, 662) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 196709,  28,   37, 644) # noqa
+                  34, ['abort'], ['waka'], 186423,  28,   37, 516) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
@@ -7991,10 +7991,10 @@ int main() {
     else:
       run([],      20, ['abort'], ['waka'], 42701,  20,   14, 49) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
-      run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 30) # noqa
-      run(['-O3'],  6, [],        [],        2690,   9,    2, 21) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  6, [],        [],        2690,   9,    2, 21) # noqa
-      run(['-Oz'],  6, [],        [],        2690,   9,    2, 21) # noqa
+      run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 26) # noqa
+      run(['-O3'],  6, [],        [],        2515,   9,    2, 15) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  6, [],        [],        2515,   9,    2, 16) # noqa
+      run(['-Oz'],  6, [],        [],        2515,   9,    2, 16) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
@@ -8014,8 +8014,8 @@ int main() {
     # test disabling of JS FFI legalization
     wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
     for (args, js_ffi) in [
-        (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'], True),
-        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'EXPORT_ALL=1'], False),
+        (['-s', 'LEGALIZE_JS_FFI=1', '-s', 'SIDE_MODULE=1', '-O1', '-s', 'EXPORT_ALL=1'], True),
+        (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O1', '-s', 'EXPORT_ALL=1'], False),
         (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O0', '-s', 'EXPORT_ALL=1'], False),
         (['-s', 'LEGALIZE_JS_FFI=0', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
       ]:

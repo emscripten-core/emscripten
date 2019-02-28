@@ -6,7 +6,7 @@
 import os
 import logging
 
-TAG = 'version_69'
+TAG = 'version_70'
 
 
 def needed(settings, shared, ports):

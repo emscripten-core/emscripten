@@ -5857,7 +5857,7 @@ return malloc(size);
   # to process.
   @no_wasm_backend("uses bitcode compiled with asmjs, and we don't have unified triples")
   @is_slow_test
-  def test_cases(self):
+  def test_zzz_cases(self):
     if Building.LLVM_OPTS:
       self.skipTest("Our code is not exactly 'normal' llvm assembly")
 
@@ -7037,7 +7037,11 @@ err = err = function(){};
       self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
       seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
-    assert seen_lines.issuperset([6, 7, 11, 12])
+    # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
+    if is_optimizing(self.emcc_args):
+      assert seen_lines.issuperset([11, 12]), seen_lines
+    else:
+      assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
