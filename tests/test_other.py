@@ -7943,9 +7943,9 @@ int main() {
       run(['-O1'],  9, [], ['waka'],  8095,  2, 12, 10) # noqa
       run(['-O2'],  9, [], ['waka'],  8077,  2, 12, 10) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-      run(['-O3'],  0, [], [],          61,  0,  1,  1) # noqa
-      run(['-Os'],  0, [], [],          61,  0,  1,  1) # noqa
-      run(['-Oz'],  0, [], [],           8,  0,  0,  0) # noqa
+      run(['-O3'],  0, [], [],          85,  0,  2,  2) # noqa
+      run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
+      run(['-Oz'],  0, [], [],          54,  0,  1,  1) # noqa
     else:
       run([],      20, ['abort'], ['waka'], 22712, 20, 14, 27) # noqa
       run(['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11) # noqa
