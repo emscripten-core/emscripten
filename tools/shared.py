@@ -1035,8 +1035,9 @@ if get_llvm_target() == WASM_TARGET:
 #   -Wno-implicit-function-declaration
 COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
+
 def emsdk_opts():
-  if os.environ.get('EMMAKEN_NO_SDK')
+  if os.environ.get('EMMAKEN_NO_SDK'):
     return []
 
   # Disable system C and C++ include directories, and add our own (using
@@ -1067,19 +1068,16 @@ def emsdk_opts():
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
   return C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
 
+
 EMSDK_OPTS = emsdk_opts()
 COMPILER_OPTS += EMSDK_OPTS
 
 # Engine tweaks
-
-try:
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-except NameError:
-  pass
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 
 
 # Utilities
