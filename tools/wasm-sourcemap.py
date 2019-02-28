@@ -298,7 +298,6 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
 
 
 def main():
-  logger.debug('Saving to')
   options = parse_args()
 
   wasm_input = options.wasm
