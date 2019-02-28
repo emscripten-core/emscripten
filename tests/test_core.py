@@ -1560,8 +1560,6 @@ int main() {
       self.do_run_in_out_file_test('tests', 'core', 'test_sizeof')
 
   def test_llvm_used(self):
-    Building.LLVM_OPTS = 3
-
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
   def test_set_align(self):
@@ -2612,9 +2610,6 @@ The current type of b is: 9
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
-
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM opts will optimize out parent_func')
 
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -5858,9 +5853,6 @@ return malloc(size);
   @no_wasm_backend("uses bitcode compiled with asmjs, and we don't have unified triples")
   @is_slow_test
   def test_zzz_cases(self):
-    if Building.LLVM_OPTS:
-      self.skipTest("Our code is not exactly 'normal' llvm assembly")
-
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
@@ -6027,8 +6019,6 @@ return malloc(size);
   def test_autodebug(self):
     if self.get_setting('WASM_OBJECT_FILES'):
       self.skipTest('autodebugging only works with bitcode objects')
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM opts mess us up')
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Run a test that should work, generating some code
@@ -6883,8 +6873,6 @@ err = err = function(){};
       self.skipTest('We need SAFE_HEAP to test SAFE_HEAP')
     # TODO: Should we remove this test?
     self.skipTest('It is ok to violate the load-store assumption with TA2')
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM can optimize away the intermediate |x|')
 
     src = '''
       #include <stdio.h>
@@ -7788,7 +7776,6 @@ def make_run(name, emcc_args, settings=None, env=None):
 
       # clear global changes to Building
       Building.COMPILER_TEST_OPTS = []
-      Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
 
@@ -7803,7 +7790,6 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
-    Building.LLVM_OPTS = 0
     Building.COMPILER_TEST_OPTS += [
         '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
         '-Wno-format-extra-args', '-Wno-format-security',
