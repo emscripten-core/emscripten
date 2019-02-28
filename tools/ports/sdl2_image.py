@@ -15,15 +15,23 @@ def get(ports, settings, shared):
 
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-  ports.fetch_project('sdl2-image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG)
+  ports.fetch_project('sdl2_image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG)
+
+  settings.SDL2_IMAGE_FORMATS.sort()
+  formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
+
+  libname = 'libSDL2_image'
+  if formats != '':
+    libname += '_' + formats
+  libname = ports.get_lib_name(libname)
 
   def create():
     # although we shouldn't really do this and could instead use '-Xclang
     # -isystem' as a kind of 'overlay' as sdl_mixer does,
     # by now people may be relying on headers being pulled in by '-s USE_SDL=2'
     # if sdl_image was built in the past
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))
+    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
+    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))
     srcs = 'IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'.split(' ')
     commands = []
     o_s = []
@@ -36,23 +44,20 @@ def get(ports, settings, shared):
       defs += ['-s', 'USE_LIBPNG=1']
 
     for src in srcs:
-      o = os.path.join(ports.get_build_dir(), 'sdl2-image', src + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2-image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
+      o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
+      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'sdl2-image', 'libsdl2_image.bc')
-    shared.Building.link_to_object(o_s, final)
+    final = os.path.join(ports.get_build_dir(), 'sdl2_image', libname)
+    ports.create_lib(final, o_s)
     return final
 
-  settings.SDL2_IMAGE_FORMATS.sort()
-  formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
+  return [shared.Cache.get(libname, create, what='port')]
 
-  name = 'sdl2-image'
-  if formats != '':
-      name = name + '-' + formats
 
-  return [shared.Cache.get(name, create, what='port')]
+def clear(ports, shared):
+  shared.Cache.get_path(ports.get_lib_name('libSDL2_image'))
 
 
 def process_dependencies(settings):

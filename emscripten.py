@@ -2430,8 +2430,13 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
-  # functions marked llvm.used in the code are exports requested by the user
-  shared.Building.user_requested_exports += metadata['exports']
+  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # These are any exports that were not requested on the command line and are
+  # not known auto-generated system functions.
+  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
+  unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
+  shared.Building.user_requested_exports += unexpected_exports
 
   return metadata
 
@@ -2452,18 +2457,28 @@ def create_jscall_funcs(sigs):
   return jscall_funcs
 
 
+def treat_as_user_function(name):
+  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
+                                 'stackSave', 'stackRestore',
+                                 'establishStackSpace', '__growWasmMemory',
+                                 '__heap_base', '__data_end')
+  if name.startswith('dynCall_'):
+    return False
+  if name in library_functions_in_module:
+    return False
+  return True
+
+
 def asmjs_mangle(name):
   """Mangle a name the way asm.js/JSBackend globals are mangled.
 
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
-  if name.startswith('dynCall_'):
+  if treat_as_user_function(name):
+    return '_' + name
+  else:
     return name
-  if name in library_functions_in_module:
-    return name
-  return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
 
 def normalize_line_endings(text):

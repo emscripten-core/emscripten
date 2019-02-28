@@ -16,20 +16,22 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project(
-    'Cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
+    'cocos2d', 'https://github.com/emscripten-ports/Cocos2d/archive/' + TAG + '.zip', 'Cocos2d-' + TAG)
+  libname = ports.get_lib_name('libcocos2d')
 
   def create():
-    logging.info('building port: Cocos2d v3')
-    logging.warn('Cocos2d: library is experimental, do not expect that it will work out of the box')
+    logging.info('building port: cocos2d v3')
+    logging.warn('cocos2d: library is experimental, do not expect that it will work out of the box')
 
-    cocos2d_build = os.path.join(ports.get_dir(), 'Cocos2d')
-    cocos2d_root = os.path.join(cocos2d_build, 'Cocos2d-' + TAG)
+    cocos2d_src = os.path.join(ports.get_dir(), 'cocos2d')
+    cocos2d_root = os.path.join(cocos2d_src, 'Cocos2d-' + TAG)
     cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
     cocos2dx_src = make_source_list(cocos2d_root, cocos2dx_root)
     cocos2dx_includes = make_includes(cocos2d_root, cocos2dx_root)
 
+    cocos2d_build = os.path.join(ports.get_build_dir(), 'cocos2d')
     shutil.copytree(os.path.join(cocos2d_root, 'samples', 'Cpp'),
-                    os.path.join(ports.get_build_dir(), 'Cocos2d', 'samples'))
+                    os.path.join(cocos2d_build, 'samples'))
 
     commands = []
     o_s = []
@@ -62,11 +64,15 @@ def get(ports, settings, shared):
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'Cocos2d', 'libcocos2d.bc')
+    final = os.path.join(cocos2d_build, libname)
     shared.Building.link_to_object(o_s, final)
     return final
 
-  return [shared.Cache.get('cocos2d', create, what='port')]
+  return [shared.Cache.get(libname, create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libcocos2d'))
 
 
 def process_dependencies(settings):
@@ -78,7 +84,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_COCOS2D == 3:
     get(ports, settings, shared)
-    cocos2d_build = os.path.join(ports.get_dir(), 'Cocos2d')
+    cocos2d_build = os.path.join(ports.get_dir(), 'cocos2d')
     cocos2d_root = os.path.join(cocos2d_build, 'Cocos2d-' + TAG)
     cocos2dx_root = os.path.join(cocos2d_root, 'cocos2dx')
     cocos2dx_includes = make_includes(cocos2d_root, cocos2dx_root)

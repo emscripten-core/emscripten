@@ -11,17 +11,17 @@ def get(ports, settings, shared):
 
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_mixer'
-  ports.fetch_project('sdl2-mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG)
+  ports.fetch_project('sdl2_mixer', 'https://github.com/emscripten-ports/SDL2_mixer/archive/' + TAG + '.zip', 'SDL2_mixer-' + TAG)
 
   def create():
     cwd = os.getcwd()
     commonflags = ['--disable-shared', '--disable-music-cmd', '--enable-sdltest', '--disable-smpegtest']
     formatflags = ['--enable-music-wave', '--disable-music-mod', '--disable-music-midi', '--enable-music-ogg', '--disable-music-ogg-shared', '--disable-music-flac', '--disable-music-mp3']
-    configure = os.path.join(ports.get_dir(), 'sdl2-mixer', 'SDL2_mixer-' + TAG, 'configure')
-    build_dir = os.path.join(ports.get_build_dir(), 'sdl2-mixer')
-    dist_dir = os.path.join(ports.get_build_dir(), 'sdl2-mixer', 'dist')
+    configure = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL2_mixer-' + TAG, 'configure')
+    build_dir = os.path.join(ports.get_build_dir(), 'sdl2_mixer')
+    dist_dir = os.path.join(ports.get_build_dir(), 'sdl2_mixer', 'dist')
     out = os.path.join(dist_dir, 'lib', 'libSDL2_mixer.a')
-    final = os.path.join(ports.get_build_dir(), 'sdl2-mixer', 'libsdl2_mixer.a')
+    final = os.path.join(ports.get_build_dir(), 'sdl2_mixer', 'libSDL2_mixer.a')
     shared.safe_ensure_dirs(build_dir)
 
     try:
@@ -34,7 +34,11 @@ def get(ports, settings, shared):
       os.chdir(cwd)
     return final
 
-  return [shared.Cache.get('sdl2-mixer', create, what='port')]
+  return [shared.Cache.get('libSDL2_mixer.a', create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libSDL2_mixer'))
 
 
 def process_dependencies(settings):
@@ -46,7 +50,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_MIXER == 2:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2-mixer', 'dist', 'include')]
+    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'dist', 'include')]
   return args
 
 

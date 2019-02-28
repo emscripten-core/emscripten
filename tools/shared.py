@@ -977,10 +977,10 @@ def check_vanilla():
       open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
       return saved_file
 
-    is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt')
+    is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
     if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
       logger.debug('config file changed since we checked vanilla; re-checking')
-      is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+      is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
     try:
       contents = open(is_vanilla_file).read()
       middle = contents.index(':')
@@ -988,7 +988,7 @@ def check_vanilla():
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm')
-        temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+        temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
         is_vanilla = check_vanilla()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
@@ -1396,6 +1396,13 @@ def print_compiler_stage(cmd):
   before executing it."""
   if '-v' in COMPILER_OPTS:
     print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+
+
+def static_library_name(name):
+  if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+    return name + '.a'
+  else:
+    return name + '.bc'
 
 
 #  Building
@@ -1916,8 +1923,6 @@ class Building(object):
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
       Building.link(linker_inputs, target)
-    assert os.path.exists(target)
-    return target
 
   @staticmethod
   def link_llvm(linker_inputs, target):
