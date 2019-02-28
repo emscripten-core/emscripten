@@ -1359,6 +1359,11 @@ int f() {
     self.assertContained('libf1\nlibf2\n', run_js('a.out.js'))
 
   def test_stdin(self):
+    def make_js_command(filename, engine):
+      if engine is None:
+        engine = tools.shared.JS_ENGINES[0]
+      return jsrun.make_command(filename, engine)
+
     def _test():
       for engine in JS_ENGINES:
         if engine == V8_ENGINE:
@@ -1368,7 +1373,7 @@ int f() {
         # work around a bug in python's subprocess module
         # (we'd use run_js() normally)
         try_delete('out.txt')
-        jscommand = shared.make_js_command(os.path.normpath(exe), engine)
+        jscommand = make_js_command(os.path.normpath(exe), engine)
         if WINDOWS:
           os.system('type "in.txt" | {} >out.txt'.format(' '.join(Building.doublequote_spaces(jscommand))))
         else: # posix

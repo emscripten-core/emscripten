@@ -41,14 +41,15 @@ def make_command(filename, engine=None, args=[]):
   #
   # Check only the last part of the engine path to ensure we don't accidentally
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
-  jsengine = os.path.split(engine[0])[-1]
+  jsengine = os.path.basename(engine[0])
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
   is_d8 = 'd8' in jsengine
+  is_jsc = 'jsc' in jsengine
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
   # Separates engine flags from script flags
-  flag_separator = ['--'] if is_d8 or 'jsc' in jsengine else []
+  flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + [filename] + shell_option_flags + flag_separator + args
 
 
