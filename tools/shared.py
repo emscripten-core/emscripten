@@ -1035,12 +1035,15 @@ if get_llvm_target() == WASM_TARGET:
 #   -Wno-implicit-function-declaration
 COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
-USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
-if USE_EMSDK:
-  # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
-  # allows projects to override them)
-  C_INCLUDE_PATHS = [
+def emsdk_opts():
+  if os.environ.get('EMMAKEN_NO_SDK'):
+    return []
+
+  # Disable system C and C++ include directories, and add our own (using
+  # -idirafter so they are last, like system dirs, which allows projects to
+  # override them)
+  c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'SSE'),
@@ -1049,12 +1052,12 @@ if USE_EMSDK:
     path_from_root('system', 'local', 'include')
   ]
 
-  CXX_INCLUDE_PATHS = [
+  cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
@@ -1063,22 +1066,18 @@ if USE_EMSDK:
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
+  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
 
-  COMPILER_OPTS += EMSDK_OPTS
-else:
-  EMSDK_OPTS = []
+
+EMSDK_OPTS = emsdk_opts()
+COMPILER_OPTS += EMSDK_OPTS
 
 # Engine tweaks
-
-try:
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-except NameError:
-  pass
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 
 
 # Utilities
