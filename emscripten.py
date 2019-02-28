@@ -2459,8 +2459,9 @@ def create_jscall_funcs(sigs):
 
 def treat_as_user_function(name):
   library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
-      'stackSave', 'stackRestore', 'establishStackSpace', '__growWasmMemory',
-      '__heap_base', '__data_end')
+                                 'stackSave', 'stackRestore',
+                                 'establishStackSpace', '__growWasmMemory',
+                                 '__heap_base', '__data_end')
   if name.startswith('dynCall_'):
     return False
   if name in library_functions_in_module:
