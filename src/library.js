@@ -1403,6 +1403,7 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+#if WASM_BACKEND == 0
   setThrew__asm: true,
   setThrew__sig: 'vii',
   setThrew: function(threw, value) {
@@ -1413,6 +1414,7 @@ LibraryManager.library = {
       threwValue = value;
     }
   },
+#endif
 
   $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
@@ -1760,6 +1762,7 @@ LibraryManager.library = {
     STACK_MAX = stackMax;
   },
 
+#if WASM_BACKEND == 0
   $setThrew__asm: true,
   $setThrew__sig: 'vii',
   $setThrew: function(threw, value) {
@@ -1770,6 +1773,7 @@ LibraryManager.library = {
       threwValue = value;
     }
   },
+#endif
 #endif
 
   __cxa_pure_virtual: function() {
