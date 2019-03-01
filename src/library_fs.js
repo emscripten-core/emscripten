@@ -1317,18 +1317,22 @@ mergeInto(LibraryManager.library, {
       if (ENVIRONMENT_IS_NODE) {
         // for nodejs with or without crypto support included
         try {
-            var crypto_module = require('crypto');
-            // nodejs has crypto support
-            random_device = function() { return crypto_module['randomBytes'](1)[0]; };
+          var crypto_module = require('crypto');
+          // nodejs has crypto support
+          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
         } catch (e) {
-            // nodejs doesn't have crypto support so fallback to Math.random
-            random_device = function() { return (Math.random()*256)|0; };
+          // nodejs doesn't have crypto support
         }
       } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-      {
-        // default for ES5 platforms
-        random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see emscripten-core/emscripten/pull/7096 */ };
+      {}
+      if (!random_device) {
+        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+#else
+        random_device = function() { abort("random_device"); };
+#endif
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
