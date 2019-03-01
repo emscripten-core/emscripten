@@ -2137,6 +2137,9 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
+  all_implemented = metadata['exports']
+  check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
+
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
   pre = pre.replace(
@@ -2160,7 +2163,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
-  receiving = create_receiving_wasm(metadata['exports'])
+  receiving = create_receiving_wasm(all_implemented)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
 
