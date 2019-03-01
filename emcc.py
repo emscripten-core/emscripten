@@ -1395,8 +1395,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          passes += ['--post-emscripten']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
-            passes += ['--post-emscripten']
+            passes += ['--low-memory-unused']
           if options.debug_level < 3:
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:

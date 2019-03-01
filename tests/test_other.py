@@ -7966,9 +7966,9 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 563) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 562) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  33, 563) # noqa
+                  32, [], ['waka'], 226582,  20,  33, 562) # noqa
     else:
       run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
