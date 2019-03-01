@@ -2653,8 +2653,7 @@ var LibraryJSEvents = {
   emscripten_set_canvas_element_size_main_thread__proxy: 'sync',
   emscripten_set_canvas_element_size_main_thread__sig: 'iiii',
   emscripten_set_canvas_element_size_main_thread__deps: ['emscripten_set_canvas_element_size_calling_thread'],
-  emscripten_set_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
-},
+  emscripten_set_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_set_canvas_element_size_calling_thread(target, width, height); },
 
   emscripten_set_canvas_element_size__deps: ['$JSEvents', 'emscripten_set_canvas_element_size_calling_thread', 'emscripten_set_canvas_element_size_main_thread', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size: function(target, width, height) {
@@ -2740,8 +2739,7 @@ var LibraryJSEvents = {
   emscripten_get_canvas_element_size_main_thread__proxy: 'sync',
   emscripten_get_canvas_element_size_main_thread__sig: 'iiii',
   emscripten_get_canvas_element_size_main_thread__deps: ['emscripten_get_canvas_element_size_calling_thread'],
-  emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
-},
+  emscripten_get_canvas_element_size_main_thread: function(target, width, height) { return _emscripten_get_canvas_element_size_calling_thread(target, width, height); },
 
   emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '_findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
