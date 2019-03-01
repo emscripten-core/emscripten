@@ -2112,6 +2112,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+  assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -2132,8 +2133,6 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
-
-  exports = get_exported_implemented_functions_wasm(pre, forwarded_json, metadata)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
@@ -2158,7 +2157,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
-  receiving = create_receiving_wasm(exports)
+  receiving = create_receiving_wasm(metadata['exports'])
 
   module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
 
@@ -2218,24 +2217,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   debug_copy(wasm, 'post_finalize.wasm')
 
   return load_metadata_wasm(stdout, DEBUG)
-
-
-def get_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
-  exports = set(metadata['exports'])
-
-  all_exported_functions = set(shared.Settings.EXPORTED_FUNCTIONS) # both asm.js and otherwise
-  for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE: # additional functions to export from asm, if they are implemented
-    all_exported_functions.add('_' + additional_export)
-  all_implemented = get_all_implemented(forwarded_json, metadata)
-
-  export_bindings = shared.Settings.EXPORT_BINDINGS
-  export_all = shared.Settings.EXPORT_ALL
-  for key in all_implemented:
-    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exports.add(key)
-
-  check_all_implemented(all_implemented, pre)
-  return sorted(exports)
 
 
 def create_asm_consts_wasm(forwarded_json, metadata):
@@ -2356,8 +2337,7 @@ def create_receiving_wasm(exports):
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
     for e in exports:
-      if e not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module'):
-        receiving.append('''var real_%(mangled)s = asm["%(e)s"]; asm["%(e)s"] = function() { %(assertions)s
+      receiving.append('''var real_%(mangled)s = asm["%(e)s"]; asm["%(e)s"] = function() { %(assertions)s
 return real_%(mangled)s.apply(null, arguments);
 };''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
