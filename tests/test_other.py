@@ -2105,7 +2105,7 @@ int f() {
       if save:
         self.assertExists('my_bitcode.bc')
       else:
-        self.assertNoeExists('my_bitcode.bc')
+        self.assertNotExists('my_bitcode.bc')
       if save:
         try_delete('a.out.js')
         Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
