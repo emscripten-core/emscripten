@@ -1290,13 +1290,13 @@ int f() {
     # of 'libA.a' after 'libB.a' adds undefined symbol "x", so a.c.o will now be
     # included (and the link will succeed).
     libs = ['-Wl,--start-group'] + libs_list + ['-Wl,--end-group']
-    output = run_process([PYTHON, EMCC] + args + libs)
+    run_process([PYTHON, EMCC] + args + libs)
     self.assertContained('result: 42', run_js('a.out.js'))
 
     # -( and -) should also work.
     args = ['main.c', '-o', 'a2.out.js']
     libs = ['-Wl,-('] + libs_list + ['-Wl,-)']
-    output = run_process([PYTHON, EMCC] + args + libs)
+    run_process([PYTHON, EMCC] + args + libs)
     self.assertContained('result: 42', run_js('a2.out.js'))
 
   @needs_dlfcn

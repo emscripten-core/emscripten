@@ -4339,7 +4339,7 @@ window.close = function() {
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
     self.assertExists('test.html')
-    self.assertNotExists('test.js'))
+    self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
