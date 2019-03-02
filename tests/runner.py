@@ -507,7 +507,7 @@ class RunnerCore(unittest.TestCase):
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-        assert os.path.exists(f + '.o')
+        self.assertExists(f + '.o')
 
       # Link all files
       object_file = filename + '.o'
@@ -537,7 +537,7 @@ class RunnerCore(unittest.TestCase):
           all_files + ['-o', filename + suffix]
 
       run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
-      assert os.path.exists(filename + suffix)
+      self.assertExists(filename + suffix)
 
     if post_build:
       post_build(filename + suffix)
@@ -648,6 +648,16 @@ class RunnerCore(unittest.TestCase):
       print(ret, end='')
       print('-- end program output --')
     return ret
+
+  def assertExists(self, filename, msg=None):
+    if not msg:
+      msg = 'Expected file not found: ' + filename
+    self.assertTrue(os.path.exists(filename), msg)
+
+  def assertNotExists(self, filename, msg=None):
+    if not msg:
+      msg = 'Unexpected file exists: ' + filename
+    self.assertFalse(os.path.exists(filename), msg)
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
@@ -1322,7 +1332,7 @@ class BrowserCore(RunnerCore):
     # print('all args:', all_args)
     try_delete(outfile)
     run_process(all_args)
-    assert os.path.exists(outfile)
+    self.assertExists(outfile)
     if post_build:
       post_build()
     if not isinstance(expected, list):
