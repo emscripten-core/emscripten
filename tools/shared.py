@@ -1089,7 +1089,9 @@ def run_js(filename, engine=None, *args, **kw):
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
-  return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
 
 
 def line_splitter(data):
