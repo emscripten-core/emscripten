@@ -1565,6 +1565,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.debug_level = 4
           shared.Settings.DEBUG_LEVEL = 4
 
+      if options.debug_level > 3:
+          newargs.append('-fno-discard-value-names')
+
       # Bitcode args generation code
       def get_clang_args(input_files):
         args = [call] + newargs + input_files
