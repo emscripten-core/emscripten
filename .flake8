@@ -8,7 +8,6 @@ exclude =
  ./site/source/conf.py,
  ./tools/debug/,
  ./tools/emdump.py,
- ./tools/emterpretify.py,
  ./tools/js_optimizer.py,
  ./tools/webidl_binder.py,
  ./tools/create_dom_pk_codes.py,
