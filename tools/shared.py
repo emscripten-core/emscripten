@@ -1903,7 +1903,7 @@ class Building(object):
     # see binaryen#1054
     # and https://bugs.llvm.org/show_bug.cgi?id=39488
     args += ['-disable-lsr']
-    # see ???
+    # see https://github.com/emscripten-core/emscripten/pull/8233
     args += ['-disable-block-placement']
 
     return args
