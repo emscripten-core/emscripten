@@ -360,9 +360,7 @@ def apply_settings(changes):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
-      if key in DEFERRED_RESPONSE_FILES:
-        value = '"' + value + '"'
-      else:
+      if key not in DEFERRED_RESPONSE_FILES:
         value = open(value[1:]).read()
     else:
       value = value.replace('\\', '\\\\')
@@ -2479,35 +2477,47 @@ def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush('pre-emterpretify')
   logger.debug('emterpretifying')
+  blacklist = shared.Settings.EMTERPRETIFY_BLACKLIST
+  whitelist = shared.Settings.EMTERPRETIFY_WHITELIST
+  synclist = shared.Settings.EMTERPRETIFY_SYNCLIST
+  if type(blacklist) == list:
+    blacklist = json.dumps(blacklist)
+  if type(whitelist) == list:
+    whitelist = json.dumps(whitelist)
+  if type(synclist) == list:
+    synclist = json.dumps(synclist)
+
+  args = [shared.PYTHON,
+          shared.path_from_root('tools', 'emterpretify.py'),
+          js_target,
+          final + '.em.js',
+          blacklist,
+          whitelist,
+          synclist,
+          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+  if shared.Settings.EMTERPRETIFY_ASYNC:
+    args += ['ASYNC=1']
+  if shared.Settings.EMTERPRETIFY_ADVISE:
+    args += ['ADVISE=1']
+  if options.profiling or options.profiling_funcs:
+    args += ['PROFILING=1']
+  if shared.Settings.ASSERTIONS:
+    args += ['ASSERTIONS=1']
+  if shared.Settings.PRECISE_F32:
+    args += ['FROUND=1']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    args += ['MEMORY_SAFE=1']
+  if shared.Settings.EMTERPRETIFY_FILE:
+    args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
+
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
-    args = [shared.PYTHON,
-            shared.path_from_root('tools', 'emterpretify.py'),
-            js_target,
-            final + '.em.js',
-            json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
-            str(shared.Settings.SWAPPABLE_ASM_MODULE)]
-    if shared.Settings.EMTERPRETIFY_ASYNC:
-      args += ['ASYNC=1']
-    if shared.Settings.EMTERPRETIFY_ADVISE:
-      args += ['ADVISE=1']
-    if options.profiling or options.profiling_funcs:
-      args += ['PROFILING=1']
-    if shared.Settings.ASSERTIONS:
-      args += ['ASSERTIONS=1']
-    if shared.Settings.PRECISE_F32:
-      args += ['FROUND=1']
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      args += ['MEMORY_SAFE=1']
-    if shared.Settings.EMTERPRETIFY_FILE:
-      args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-    run_process(args)
-    final = final + '.em.js'
+    shared.check_call(args)
   finally:
     shared.try_delete(js_target)
+
+  final = final + '.em.js'
 
   if shared.Settings.EMTERPRETIFY_ADVISE:
     logger.warning('halting compilation due to EMTERPRETIFY_ADVISE')

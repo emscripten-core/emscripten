@@ -5655,6 +5655,8 @@ function _main() {
 }
 ''', [], '1\n')
 
+  @no_wasm_backend("uses emterpreter")
+  def test_emterpreter_logging(self):
     # codegen log tests
 
     def do_log_test(source, expected, func):
