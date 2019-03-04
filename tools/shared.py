@@ -1899,9 +1899,12 @@ class Building(object):
     # asm.js-style setjmp/longjmp handling
     args += ['-enable-emscripten-sjlj']
 
-    # better (smaller, sometimes faster) codegen, see binaryen#1054
+    # options for better (smaller, sometimes faster) codegen
+    # see binaryen#1054
     # and https://bugs.llvm.org/show_bug.cgi?id=39488
     args += ['-disable-lsr']
+    # see ???
+    args += ['-disable-block-placement']
 
     return args
 
