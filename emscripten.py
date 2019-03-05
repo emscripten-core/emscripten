@@ -372,7 +372,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{ ' + ', '.join(['"' + math_fix(minified) + '": ' + unminified for (minified, unminified) in sending_vars]) + ' }'
+  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -1498,13 +1498,14 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     def check(extern):
       if shared.Settings.ASSERTIONS:
-        return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
-                '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
-                'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
+        return ('\n  assert(%sModule["%s"], "external global `%s` is missing.' % (side, extern, extern) +
+                'perhaps a side module was not linked in? if this symbol was expected to arrive '
+                'from a system library, try to build the MAIN_MODULE with '
+                'EMCC_FORCE_STDLIBS=1 in the environment");')
       return ''
 
     for extern in metadata['externs']:
-      asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
+      asm_setup += 'var g$' + extern + ' = function() {' + check(extern) + '\n  return ' + side + 'Module["' + extern + '"];\n}\n'
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
@@ -1734,21 +1735,23 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
 
 def create_named_globals(metadata):
-  named_globals = ''
-  if shared.Settings.RELOCATABLE:
-    named_globals += '''
+  if not shared.Settings.RELOCATABLE:
+    return ''
+
+  named_globals = '''
 var NAMED_GLOBALS = { %s };
 for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
-    if shared.Settings.WASM:
-      # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-      # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-      #       we'll need another solution for that. one option is to scan the module imports, if/when
-      #       wasm supports that, then the loader can do this.
-      named_globals += '''
+
+  if shared.Settings.WASM:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
     var func = Module['_' + named];
@@ -1756,7 +1759,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+  named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
