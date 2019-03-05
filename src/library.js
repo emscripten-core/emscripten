@@ -4408,9 +4408,7 @@ LibraryManager.library = {
 #endif
                                "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
-                               "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function() { return self['performance']['now'](); };\n" +
-                               "} else if (typeof performance === 'object' && typeof performance['now'] === 'function') {\n" +
+                               "} else if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return performance['now'](); };\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
@@ -4422,13 +4420,14 @@ LibraryManager.library = {
       return 1; // nanoseconds
     } else
 #endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-    if (typeof dateNow !== 'undefined' ||
-               ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])) {
+#if ENVIRONMENT_MAY_BE_SHELL
+    if (typeof dateNow !== 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
-    {
+    if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
+      return 1000; // microseconds (1/1000 of a millisecond)
+    } else {
       return 1000*1000; // milliseconds
     }
   },
@@ -4445,7 +4444,7 @@ LibraryManager.library = {
       || (typeof dateNow !== 'undefined')
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-      || ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])
+      || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
 #endif
       );
   },
