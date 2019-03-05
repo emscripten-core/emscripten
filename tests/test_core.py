@@ -23,7 +23,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
+from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
@@ -1481,46 +1481,11 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
-  # Fails in wasm because of excessive slowness in the wasm-shell
-  @no_wasm()
   def test_life(self):
+    if EMTEST_SKIP_SLOW and self.is_emterpreter() and not is_optimizing(self.emcc_args):
+      return self.skipTest('skipping slow tests')
     self.emcc_args += ['-std=c99']
-    src = open(path_from_root('tests', 'life.c')).read()
-    self.do_run(src, '''--------------------------------
-[]                                    []                  [][][]
-                    []  []    []    [][]  []            []  []  
-[]                [][]  [][]              [][][]      []        
-                  []    []      []      []  [][]    []        []
-                  []  [][]    []        []    []  []    [][][][]
-                    [][]      [][]  []    [][][]  []        []  
-                                []  [][]  [][]    [][]  [][][]  
-                                    [][]          [][][]  []  []
-                                    [][]              [][]    []
-                                                          [][][]
-                                                            []  
-                                                                
-                                                                
-                                                                
-                                                                
-                                        [][][]                  
-                                      []      [][]      [][]    
-                                      [][]      []  [][]  [][]  
-                                                    [][]  [][]  
-                                                      []        
-                  [][]                                          
-                  [][]                                        []
-[]                                                      [][]  []
-                                                  [][][]      []
-                                                []      [][]    
-[]                                                    []      []
-                                                          []    
-[]                                                        []  []
-                                              [][][]            
-                                                                
-                                  []                            
-                              [][][]                          []
---------------------------------
-''', ['2'], force_c=True)  # noqa
+    self.do_run_in_out_file_test('tests', 'life', args=['2'], force_c=True)
 
   def test_array2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_array2')
