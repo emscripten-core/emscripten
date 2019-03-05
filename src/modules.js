@@ -49,54 +49,8 @@ var Functions = {
   nextIndex: firstTableIndex, // Start at a non-0 (even, see below) value
   neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
                                              // we always use), and we will need a function table for
-
   blockAddresses: {}, // maps functions to a map of block labels to label ids
-
   aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
-
-  getSignatureLetter: function(type) {
-    switch(type) {
-      case 'float': return 'f';
-      case 'double': return 'd';
-      case 'void': return 'v';
-      default: return 'i';
-    }
-  },
-
-  getSignatureType: function(letter) {
-    switch(letter) {
-      case 'v': return 'void';
-      case 'i': return 'i32';
-      case 'f': return 'float';
-      case 'd': return 'double';
-      default: throw 'what is this sig? ' + sig;
-    }
-  },
-
-  getSignature: function(returnType, argTypes, hasVarArgs) {
-    var sig = Functions.getSignatureLetter(returnType);
-    for (var i = 0; i < argTypes.length; i++) {
-      var type = argTypes[i];
-      if (!type) break; // varargs
-      if (type in Compiletime.FLOAT_TYPES) {
-        sig += Functions.getSignatureLetter(type);
-      } else {
-        var chunks = getNumIntChunks(type);
-        if (chunks > 0) {
-          for (var j = 0; j < chunks; j++) sig += 'i';
-        } else if (type !== '...') {
-          // some special type like a SIMD vector (anything but varargs, which we handle below)
-          sig += Functions.getSignatureLetter(type);
-        }
-      }
-    }
-    if (hasVarArgs) sig += 'i';
-    return sig;
-  },
-
-  getTable: function(sig) {
-    return 'FUNCTION_TABLE_' + sig
-  }
 };
 
 var LibraryManager = {
