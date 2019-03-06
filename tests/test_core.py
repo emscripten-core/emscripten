@@ -5601,12 +5601,13 @@ return malloc(size);
         var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
         out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
       };
-''')
+      ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      self.do_ll_run(get_poppler_library(self),
-                     str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
-                     args='-scale-to 512 paper.pdf filename'.split(' '))
+      ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
+      self.do_run('', ppm_data.replace(' ', ''),
+                  libraries=get_poppler_library(self),
+                  args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
     test()
 
