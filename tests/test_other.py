@@ -3236,8 +3236,8 @@ int main(int argc, char** argv) {
 ''')
     run_process([PYTHON, EMCC, '-O0', 'main.c', '--js-library', 'lib.js', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
     generated = open('a.out.js').read()
-    self.assertContained('var _NonPrimitive=', generated)
-    self.assertNotContained('var _Int8Array=', generated)
+    self.assertContained('missing function: NonPrimitive', generated)
+    self.assertNotContained('missing function: Int8Array', generated)
 
   def test_js_lib_using_asm_lib(self):
     create_test_file('lib.js', r'''
@@ -8006,7 +8006,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1533, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1537, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
