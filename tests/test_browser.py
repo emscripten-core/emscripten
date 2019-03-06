@@ -177,8 +177,8 @@ class browser(BrowserCore):
     try_delete(html_file)
     try_delete(html_file + '.map')
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'], cwd=self.get_dir())
-    assert os.path.exists(html_file)
-    assert os.path.exists(html_file + '.map')
+    self.assertExists(html_file)
+    self.assertExists(html_file + '.map')
     webbrowser.open_new('file://' + html_file)
     print('''
 If manually bisecting:
@@ -1585,7 +1585,7 @@ keydown(100);keyup(100); // trigger the end
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
       print(cmd)
       subprocess.check_call(cmd)
-      assert os.path.exists('worker.js')
+      self.assertExists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
 
   def test_worker(self):
@@ -2762,7 +2762,7 @@ Module['onRuntimeInitialized'] = function() {
       create_test_file('second.cpp', self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
       run_process([PYTHON, EMCC, 'second.cpp'] + opts)
       run_process([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in'])
-      assert os.path.exists('second.js')
+      self.assertExists('second.js')
 
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
@@ -3335,8 +3335,8 @@ window.close = function() {
     run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                  path_from_root('tests', 'webidl', 'test.idl'),
                  'glue'])
-    assert os.path.exists('glue.cpp')
-    assert os.path.exists('glue.js')
+    self.assertExists('glue.cpp')
+    self.assertExists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
@@ -3877,7 +3877,7 @@ window.close = function() {
       self.clear()
       assert not os.path.exists('tests.asm.js')
       self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
-      assert os.path.exists('test.asm.js')
+      self.assertExists('test.asm.js')
       os.unlink('test.asm.js')
 
       print('see a fail')
@@ -3905,11 +3905,11 @@ window.close = function() {
 ''')
     try_delete('code.dat')
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
-    assert os.path.exists('code.dat')
+    self.assertExists('code.dat')
 
     try_delete('code.dat')
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '-s', 'ASSERTIONS=1'])
-    assert os.path.exists('code.dat')
+    self.assertExists('code.dat')
 
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
@@ -4338,7 +4338,9 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
-    assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
+    self.assertExists('test.html')
+    self.assertNotExists('test.js')
+    self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
@@ -4379,7 +4381,8 @@ window.close = function() {
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
-    assert os.path.exists('test.js') and not os.path.exists('test.worker.js')
+    self.assertExists('test.js')
+    self.assertExists('test.worker.js')
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')

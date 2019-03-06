@@ -193,7 +193,7 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['--profiling-funcs']
     self.cmd = cmd
     output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
-    assert os.path.exists(final), 'Failed to compile file: ' + output + ' (looked for ' + final + ')'
+    self.assertExists(final, 'Failed to compile file: ' + output + ' (looked for ' + final + ')')
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final

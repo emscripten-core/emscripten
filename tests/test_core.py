@@ -4419,7 +4419,7 @@ Module = {
       self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
                   output_nicerizer=clean)
       if self.uses_memory_init_file():
-        assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
+        self.assertExists(mem_file)
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -6792,8 +6792,8 @@ someweirdtext
       run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                    path_from_root('tests', 'webidl', 'test.idl'),
                    'glue'])
-      assert os.path.exists('glue.cpp')
-      assert os.path.exists('glue.js')
+      self.assertExists('glue.cpp')
+      self.assertExists('glue.js')
 
       # Export things on "TheModule". This matches the typical use pattern of the bound library
       # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
@@ -7049,7 +7049,7 @@ err = err = function(){};
 
     def post(filename):
       map_filename = filename + '.map'
-      assert os.path.exists(map_filename)
+      self.assertExists(map_filename)
       mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         shared.NODE_JS, [map_filename]))

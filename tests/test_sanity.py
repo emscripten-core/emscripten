@@ -248,7 +248,7 @@ class sanity(RunnerCore):
     restore_and_set_up()
     try_delete('a.out.js')
     output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], '')
-    assert os.path.exists('a.out.js'), output
+    self.assertExists('a.out.js', output)
 
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
@@ -385,7 +385,7 @@ fi
     assert not os.path.exists(SANITY_FILE) # restore is just the settings, not the sanity
     output = self.check_working(EMCC)
     self.assertContained(SANITY_MESSAGE, output)
-    assert os.path.exists(SANITY_FILE) # EMCC should have checked sanity successfully
+    self.assertExists(SANITY_FILE) # EMCC should have checked sanity successfully
     assert mtime(SANITY_FILE) > mtime(CONFIG_FILE)
     assert generate_sanity() == open(SANITY_FILE).read()
     self.assertNotContained(SANITY_FAIL_MESSAGE, output)
@@ -480,9 +480,9 @@ fi
             assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
           assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
           self.assertContained('hello, world!', run_js('a.out.js'))
-          assert os.path.exists(Cache.dirname)
+          self.assertExists(Cache.dirname)
           full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          assert os.path.exists(os.path.join(Cache.dirname, full_libname))
+          self.assertExists(os.path.join(Cache.dirname, full_libname))
 
     try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
@@ -645,7 +645,7 @@ fi
         output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0', '-s', 'USE_SDL=2'])
         assert RETRIEVING_MESSAGE in output, output
         assert BUILDING_MESSAGE in output, output
-        assert os.path.exists(PORTS_DIR)
+        self.assertExists(PORTS_DIR)
         print('yes', output)
 
       def second_use():
@@ -840,15 +840,15 @@ fi
 
     with env_modify({'EMCC_WASM_BACKEND': '1'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-      assert os.path.exists(os.path.join(root_cache, 'wasm'))
+      self.assertExists(os.path.join(root_cache, 'wasm'))
 
     with env_modify({'EMCC_WASM_BACKEND': '0'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-      assert os.path.exists(os.path.join(root_cache, 'asmjs'))
+      self.assertExists(os.path.join(root_cache, 'asmjs'))
       shutil.rmtree(os.path.join(root_cache, 'asmjs'))
 
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
-    assert os.path.exists(os.path.join(root_cache, 'asmjs'))
+    self.assertExists(os.path.join(root_cache, 'asmjs'))
 
   def test_wasm_backend_builds(self):
     # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
@@ -900,7 +900,7 @@ BINARYEN_ROOT = ''
     print('build using embuilder')
     prep()
     run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
-    assert os.path.exists(tag_file)
+    self.assertExists(tag_file)
     run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
@@ -920,7 +920,7 @@ BINARYEN_ROOT = ''
     # the --lto flag makes us build wasm_bc
     self.do([PYTHON, EMCC, '--clear-cache'])
     run_process([PYTHON, EMBUILDER, 'build', 'emmalloc'])
-    assert os.path.exists(os.path.join(root_cache, 'wasm_o'))
+    self.assertExists(os.path.join(root_cache, 'wasm_o'))
     self.do([PYTHON, EMCC, '--clear-cache'])
     run_process([PYTHON, EMBUILDER, 'build', 'emmalloc', '--lto'])
-    assert os.path.exists(os.path.join(root_cache, 'wasm_bc'))
+    self.assertExists(os.path.join(root_cache, 'wasm_bc'))

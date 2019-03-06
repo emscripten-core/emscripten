@@ -147,7 +147,7 @@ class other(RunnerCore):
     for compiler in [EMCC, EMXX]:
       config_path = './emscripten_config'
       run_process([PYTHON, compiler, '--generate-config', config_path])
-      assert os.path.exists(config_path), 'A config file should have been created at %s' % config_path
+      self.assertExists(config_path, 'A config file should have been created at %s' % config_path)
       config_contents = open(config_path).read()
       self.assertContained('EMSCRIPTEN_ROOT', config_contents)
       self.assertContained('LLVM_ROOT', config_contents)
@@ -189,8 +189,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # emcc src.cpp ==> writes a.out.js and a.out.wasm
       self.clear()
       run_process([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)])
-      assert os.path.exists('a.out.js')
-      assert os.path.exists('a.out.wasm')
+      self.assertExists('a.out.js')
+      self.assertExists('a.out.wasm')
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       # properly report source code errors, and stop there
@@ -318,11 +318,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         output = run_process(args, stdout=PIPE, stderr=PIPE)
         assert len(output.stdout) == 0, output.stdout
         if bc_params is not None:
-          assert os.path.exists('something.bc'), output.stderr
+          self.assertExists('something.bc', output.stderr)
           bc_args = [PYTHON, compiler, 'something.bc', '-o', 'something.js'] + bc_params
           print('....', bc_args)
           output = run_process(bc_args, stdout=PIPE, stderr=PIPE)
-        assert os.path.exists('something.js'), output.stderr
+        self.assertExists('something.js', output.stderr)
         self.assertContained('hello, world!', run_js('something.js'))
 
         # Verify optimization level etc. in the generated code
@@ -420,7 +420,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         # Combining those object files into js should work
         proc = run_process([PYTHON, compiler, 'twopart_main.o', 'twopart_side.o'] + args, stdout=PIPE, stderr=PIPE)
-        assert os.path.exists(target), proc.stdout + '\n' + proc.stderr
+        self.assertExists(target, proc.stdout + '\n' + proc.stderr)
         self.assertContained('side got: hello from main, over', run_js(target))
 
         # Combining object files into another object should also work
@@ -431,7 +431,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert len(syms.defs) in (2, 3) and 'main' in syms.defs, 'Should be two functions (and in the wasm backend, also __original_main)'
         proc = run_process([PYTHON, compiler, 'combined.o', '-o', 'combined.o.js'], stdout=PIPE, stderr=PIPE)
         assert len(proc.stdout) == 0, proc.stdout
-        assert os.path.exists('combined.o.js'), 'Expected %s to exist' % ('combined.o.js')
+        self.assertExists('combined.o.js')
         self.assertContained('side got: hello from main, over', run_js('combined.o.js'))
 
   def test_emcc_7(self):
@@ -474,8 +474,9 @@ f.close()
         wasm = '=0' not in str(mode)
         print('  mode', mode, 'wasm?', wasm)
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + opts + mode)
-        assert os.path.exists('a.out.js')
-        assert os.path.exists('a.out.wasm') == wasm
+        self.assertExists('a.out.js')
+        if wasm:
+          self.assertExists('a.out.wasm')
         for engine in JS_ENGINES:
           print('    engine', engine)
           out = run_js('a.out.js', engine=engine, stderr=PIPE, full_output=True)
@@ -525,7 +526,7 @@ f.close()
         return 'Skipping NMake test for CMake support, since nmake was not found in PATH. Run this test in Visual Studio command prompt to easily access nmake.'
 
     def check_makefile(dirname):
-      assert os.path.exists(dirname + '/Makefile'), 'CMake call did not produce a Makefile!'
+      self.assertExists(dirname + '/Makefile', 'CMake call did not produce a Makefile!')
 
     configurations = {'MinGW Makefiles'     : {'prebuild': check_makefile, # noqa
                                                'build'   : ['mingw32-make'], # noqa
@@ -614,7 +615,7 @@ f.close()
             print('Failed command: ' + ' '.join(cmd))
             print('Result:\n' + ret.stdout)
             self.fail('make failed!')
-          assert os.path.exists(tempdirname + '/' + output_file), 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file
+          self.assertExists(tempdirname + '/' + output_file, 'Building a cmake-generated Makefile failed to produce an output file %s!' % tempdirname + '/' + output_file)
 
           # Run through node, if CMake produced a .js file.
           if output_file.endswith('.js'):
@@ -1185,7 +1186,7 @@ int main() {
       else:
         self.assertNotContained('undefined symbol', output.stderr)
         out_js = 'a.out.js'
-        assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
+        self.assertExists(out_js, output.stdout + '\n' + output.stderr)
         self.assertContained('result: 42', run_js(out_js))
 
     test(['-Wl,--start-group', lib_name, '-Wl,--start-group'], 'Nested --start-group, missing --end-group?')
@@ -1289,18 +1290,14 @@ int f() {
     # of 'libA.a' after 'libB.a' adds undefined symbol "x", so a.c.o will now be
     # included (and the link will succeed).
     libs = ['-Wl,--start-group'] + libs_list + ['-Wl,--end-group']
-    output = run_process([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE)
-    out_js = 'a.out.js'
-    assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
-    self.assertContained('result: 42', run_js(out_js))
+    run_process([PYTHON, EMCC] + args + libs)
+    self.assertContained('result: 42', run_js('a.out.js'))
 
     # -( and -) should also work.
     args = ['main.c', '-o', 'a2.out.js']
     libs = ['-Wl,-('] + libs_list + ['-Wl,-)']
-    output = run_process([PYTHON, EMCC] + args + libs, stdout=PIPE, stderr=PIPE)
-    out_js = 'a2.out.js'
-    assert os.path.exists(out_js), output.stdout + '\n' + output.stderr
-    self.assertContained('result: 42', run_js(out_js))
+    run_process([PYTHON, EMCC] + args + libs)
+    self.assertContained('result: 42', run_js('a2.out.js'))
 
   @needs_dlfcn
   def test_redundant_link(self):
@@ -1991,7 +1988,7 @@ int f() {
       }
       ''')
     run_process([PYTHON, EMCC, 'main.cpp'])
-    assert os.path.exists('a.out.js')
+    self.assertExists('a.out.js')
 
   def test_prepost(self):
     create_test_file('main.cpp', '''
@@ -2100,9 +2097,15 @@ int f() {
   def test_save_bc(self):
     for save in [0, 1]:
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')] + ([] if not save else ['--save-bc', 'my_bitcode.bc']))
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_loop_malloc.cpp')]
+      if save:
+        cmd += ['--save-bc', 'my_bitcode.bc']
+      run_process(cmd)
       assert 'hello, world!' in run_js('a.out.js')
-      assert os.path.exists('my_bitcode.bc') == save
+      if save:
+        self.assertExists('my_bitcode.bc')
+      else:
+        self.assertNotExists('my_bitcode.bc')
       if save:
         try_delete('a.out.js')
         Building.llvm_dis('my_bitcode.bc', 'my_ll.ll')
@@ -2328,17 +2331,17 @@ int f() {
           self.assertFalse(os.path.exists(self.canonical_temp_dir))
         elif debug == '1':
           if self.is_wasm_backend():
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
           else:
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-0-linktime.bc'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-1-original.js'))
         elif debug == '2':
           if self.is_wasm_backend():
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-0-original.js'))
           else:
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
-            assert os.path.exists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-0-basebc.bc'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
 
   @uses_canonical_tmp
   def test_debuginfo(self):
@@ -2529,7 +2532,7 @@ seeked= file.
       cmd = [PYTHON, EMCC, '-s', 'ASSERTIONS=1', 'conftest.c', '-o', 'conftest']
     output = run_process(cmd, stderr=PIPE)
     self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
-    assert os.path.exists('conftest')
+    self.assertExists('conftest')
 
   def test_file_packager(self):
     os.mkdir('subdir')
@@ -2726,7 +2729,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], stdout=PIPE, stderr=PIPE)
 
     # Check that compilation was successful
-    assert os.path.exists('test.js')
+    self.assertExists('test.js')
     test_js_closure_0 = open('test.js').read()
 
     # Check that test.js compiled with --closure 0 contains "module['exports'] = Module;"
@@ -2746,7 +2749,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '1', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], stdout=PIPE, stderr=PIPE)
 
     # Check that compilation was successful
-    assert os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
+    self.assertExists(path_from_root('tests', 'Module-exports', 'test.js'))
     test_js_closure_1 = open(path_from_root('tests', 'Module-exports', 'test.js')).read()
 
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
@@ -3156,7 +3159,7 @@ myreade(){
 
     run_process([PYTHON, EMCC, '-MMD', '-c', 'test.cpp', '-o', 'test.o'])
 
-    assert os.path.exists('test.d'), 'No dependency file generated'
+    self.assertExists('test.d')
     deps = open('test.d').read()
     # Look for ': ' instead of just ':' to not confuse C:\path\ notation with make "target: deps" rule. Not perfect, but good enough for this test.
     head, tail = deps.split(': ', 2)
@@ -3345,7 +3348,7 @@ var Module = { print: function(x) { throw '<{(' + x + ')}>' } };
 
       create_test_file('header.h', '#define X 5\n')
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-c'])
-      assert os.path.exists('header.h.gch') # default output is gch
+      self.assertExists('header.h.gch') # default output is gch
       if suffix != 'gch':
         run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
         assert open('header.h.gch', 'rb').read() == open('header.h.' + suffix, 'rb').read()
@@ -3373,7 +3376,7 @@ int main() {
       # with specified target via -o
       try_delete('header.h.' + suffix)
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'my.' + suffix])
-      assert os.path.exists('my.' + suffix)
+      self.assertExists('my.' + suffix)
 
       # -include-pch flag
       run_process([PYTHON, EMCC, '-xc++-header', 'header.h', '-o', 'header.h.' + suffix])
@@ -3971,10 +3974,10 @@ int main()
     # (the user would then need to build bc to js of course, but we need to actually
     # emit the bc)
     run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
-    assert os.path.exists('hello_world.o')
+    self.assertExists('hello_world.o')
     run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.bc'])
-    assert os.path.exists('hello_world.o')
-    assert os.path.exists('hello_world.bc')
+    self.assertExists('hello_world.o')
+    self.assertExists('hello_world.bc')
 
   def test_bad_function_pointer_cast(self):
     create_test_file('src.cpp', r'''
@@ -5919,7 +5922,7 @@ int main(void) {
             if i == 0 or i == 1:
               assert not os.path.exists('a.out.js') # native .o, not bitcode!
             else:
-              assert os.path.exists('a.out.js')
+              self.assertExists('a.out.js')
 
   @no_wasm_backend('tests fastcomp specific passes')
   @uses_canonical_tmp
@@ -5988,7 +5991,7 @@ Descriptor desc;
     ''')
     try_delete('a.out.js')
     run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1'])
-    assert os.path.exists('a.out.js')
+    self.assertExists('a.out.js')
 
   @no_wasm_backend('tests PRECISE_F32=1')
   def test_f0(self):
@@ -7745,8 +7748,9 @@ int main() {
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')] + args
         print(' '.join(cmd))
         run_process(cmd)
-        assert os.path.exists(os.path.join(temp_dir, 'a.asm.js')) == output_asmjs
-        assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
+        if output_asmjs:
+          self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
+        self.assertNotExists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
     # Test that outputting to .wasm does not nuke an existing .asm.js file, if
     # user wants to manually dual-deploy both to same directory.
@@ -7754,13 +7758,13 @@ int main() {
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-o', os.path.join(temp_dir, 'a.js'), '--separate-asm']
       print(' '.join(cmd))
       run_process(cmd)
-      assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
+      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
 
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join(temp_dir, 'a.js')]
       print(' '.join(cmd))
       run_process(cmd)
-      assert os.path.exists(os.path.join(temp_dir, 'a.asm.js'))
-      assert os.path.exists(os.path.join(temp_dir, 'a.wasm'))
+      self.assertExists(os.path.join(temp_dir, 'a.asm.js'))
+      self.assertExists(os.path.join(temp_dir, 'a.wasm'))
 
       assert not os.path.exists(os.path.join(temp_dir, 'a.temp.asm.js'))
 
@@ -8124,7 +8128,7 @@ int main() {
 
         self.clear()
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
-        assert os.path.exists('out.wasm')
+        self.assertExists('out.wasm')
         if target.endswith('.wasm'):
           assert not os.path.exists('out.js'), 'only wasm requested'
         wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
@@ -8240,10 +8244,11 @@ int main() {
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
-      err = run_process([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).stderr
-      assert os.path.exists('a.out.js'), '-O' + str(level) + ' should produce output'
+      err = run_process([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
       if level > 3:
         self.assertContained("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err)
+      else:
+        self.assertEqual(err, '')
 
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
