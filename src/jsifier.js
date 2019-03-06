@@ -107,13 +107,7 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach(function(ident) {
-      var finalName = '_' + ident;
-      if (ident[0] === '$') {
-        finalName = ident.substr(1);
-      }
       data.functionStubs.push({
-        intertype: 'functionStub',
-        finalName: finalName,
         ident: '_' + ident
       });
     });
@@ -144,11 +138,6 @@ function JSify(data, functionsOnly) {
       LibraryManager.library[item.ident.substr(1)] = function() {
         return ___cxa_find_matching_catch.apply(null, arguments);
       };
-    }
-
-    // note the signature
-    if (item.returnType && item.params) {
-      functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
     function addFromLibrary(ident) {
@@ -259,7 +248,6 @@ function JSify(data, functionsOnly) {
         if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
           addedLibraryItems[postsetId] = true;
           itemsDict.GlobalVariablePostSet.push({
-            intertype: 'GlobalVariablePostSet',
             JS: postset + ';'
           });
         }
