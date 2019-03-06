@@ -94,7 +94,7 @@ var LibraryManager = {
         libraries = libraries.concat([
           'library_lz4.js',
         ]);
-        if (ENVIRONMENT_MAY_BE_WEB) {
+        if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
           libraries = libraries.concat([
             'library_idbfs.js',
             'library_proxyfs.js',
