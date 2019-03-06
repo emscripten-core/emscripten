@@ -38,7 +38,7 @@ def get(ports, settings, shared):
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'sdl2_ttf', libname)
-    shared.Building.link_to_object(o_s, final)
+    ports.create_lib(final, o_s)
     return final
 
   return [shared.Cache.get(libname, create, what='port')]
