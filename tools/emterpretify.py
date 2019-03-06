@@ -783,33 +783,23 @@ if __name__ == '__main__':
   infile = sys.argv[1]
   outfile = sys.argv[2]
 
+  def read_json_list(arg):
+    if arg[0] == '@':
+      arg = open(arg[1:]).read()
+    return json.loads(arg)
+
   extra_blacklist = []
   if len(sys.argv) >= 4:
-    temp = sys.argv[3]
-    if temp[0] == '"':
-      # response file
-      assert temp[1] == '@'
-      temp = open(temp[2:-1]).read()
-    extra_blacklist = json.loads(temp)
+    extra_blacklist = read_json_list(sys.argv[3])
 
-    if len(sys.argv) >= 5:
-      temp = sys.argv[4]
-      if temp[0] == '"':
-        # response file
-        assert temp[1] == '@'
-        temp = open(temp[2:-1]).read()
-      WHITELIST = json.loads(temp)
+  if len(sys.argv) >= 5:
+    WHITELIST = read_json_list(sys.argv[4])
 
-      if len(sys.argv) >= 6:
-        temp = sys.argv[5]
-        if temp[0] == '"':
-          # response file
-          assert temp[1] == '@'
-          temp = open(temp[2:-1]).read()
-        SYNC_FUNCS.update(json.loads(temp))
+  if len(sys.argv) >= 6:
+    SYNC_FUNCS.update(read_json_list(sys.argv[5]))
 
-        if len(sys.argv) >= 7:
-          SWAPPABLE = int(sys.argv[6])
+  if len(sys.argv) >= 7:
+    SWAPPABLE = int(sys.argv[6])
 
   if ADVISE:
     # Advise the user on which functions should likely be emterpreted
