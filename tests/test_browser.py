@@ -4382,7 +4382,7 @@ window.close = function() {
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
     self.assertExists('test.js')
-    self.assertExists('test.worker.js')
+    self.assertNotExists('test.worker.js')
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
