@@ -190,17 +190,17 @@ function JSify(data, functionsOnly) {
         }
         if (!(MAIN_MODULE || SIDE_MODULE)) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[shortident] = new Function("err('missing function: " + shortident + "'); abort(-1);");
+          LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
+          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + ident + "']";
           var assertion = '';
           if (ASSERTIONS)
-            assertion = '  if (!' + target + ')\n    abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
-          LibraryManager.library[shortident] = new Function(assertion + "  return " + target + ".apply(null, arguments);");
+            assertion = 'if (!' + target + ') abort("external function \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
+          LibraryManager.library[ident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;
-            return processLibraryFunction(LibraryManager.library[shortident], ident, finalName);
+            return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
           }
           noExport = true;
         }
