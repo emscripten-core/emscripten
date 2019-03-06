@@ -5271,7 +5271,7 @@ int main(void) {
 
     src = open(path_from_root('tests', 'raytrace.cpp')).read().replace('double', 'float')
     output = open(path_from_root('tests', 'raytrace.ppm')).read()
-    self.do_run(src, output, ['3', '16']) # , build_ll_hook=self.do_autodebug)
+    self.do_run(src, output, ['3', '16'])
 
   def test_fasta(self):
       results = [(1, '''GG*ctt**tgagc*'''),
@@ -5771,7 +5771,7 @@ return malloc(size);
                             os.path.join(self.get_build_dir(), 'openjpeg')],
                   force_c=True,
                   assert_returncode=0,
-                  output_nicerizer=image_compare) # , build_ll_hook=self.do_autodebug)
+                  output_nicerizer=image_compare)
 
     do_test()
 
@@ -5958,42 +5958,30 @@ return malloc(size);
 
     run_all('lto')
 
-  # Autodebug the code
-  def do_autodebug(self, filename):
-    Building.llvm_dis(filename)
-    output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
-    assert 'Success.' in output, output
-    # rebuild .bc
-    # TODO: use code in do_autodebug_post for this
-    self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
-
-  # Autodebug the code, after LLVM opts. Will only work once!
-  def do_autodebug_post(self, filename):
-    if not hasattr(self, 'post'):
-      print('Asking for post re-call')
-      self.post = True
-      return True
-    print('Autodebugging during post time')
-    delattr(self, 'post')
-    output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
-    assert 'Success.' in output, output
-    shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
-    Building.llvm_as(filename)
-    Building.llvm_dis(filename)
-
   def test_autodebug(self):
-    if self.get_setting('WASM_OBJECT_FILES'):
-      self.skipTest('autodebugging only works with bitcode objects')
+    if self.is_wasm_backend():
+      # autodebugging only works with bitcode objects
+      self.set_setting('WASM_OBJECT_FILES', 0)
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
+
+    # Autodebug the code
+    def do_autodebug(filename):
+      Building.llvm_dis(filename)
+      output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
+      assert 'Success.' in output, output
+      # rebuild .bc
+      # TODO: use code in do_autodebug_post for this
+      self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
     src = test_path + '.c'
     output = test_path + '.out'
-    self.do_run_from_file(src, output, build_ll_hook=lambda x: False) # add an ll hook, to force ll generation
+    # Add an ll hook, to force ll generation
+    self.do_run_from_file(src, output, build_ll_hook=lambda x: False)
 
     filename = 'src.cpp'
-    self.do_autodebug(filename)
+    do_autodebug(filename)
 
     # Compare to each other, and to expected output
     self.do_ll_run(filename + '.o.ll.ll', 'AD:-1,1')
@@ -6014,7 +6002,7 @@ return malloc(size);
           return 0;
         }
       '''
-    self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
+    self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
   ### Integration tests
 
