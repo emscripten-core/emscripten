@@ -102,8 +102,8 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
     }
 #if TEXTDECODER
   }
-  return str;
 #endif // TEXTDECODER
+  return str;
 #endif // TEXTDECODER == 2
 }
 
