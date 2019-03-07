@@ -602,7 +602,7 @@ Module['registerFunctions'] = registerFunctions;
 #if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
-#endif // EMULATED_FUNCTION_POINTERS == 0
+#endif // !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
 
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
@@ -671,7 +671,6 @@ function convertJsFunctionToWasm(func, sig) {
 }
 
 // Add a wasm function to the table.
-// Attempting to call this with JS function will cause of table.set() to fail
 function addWasmFunction(func, sig) {
   var table = wasmTable;
   var ret = table.length;
@@ -687,10 +686,12 @@ function addWasmFunction(func, sig) {
 
   // Insert new element
   try {
+    // Attempting to call this with JS function will cause of table.set() to fail
     table.set(ret, func);
   } catch (err) {
     if (!err instanceof TypeError)
       throw err;
+    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
     var wrapped = convertJsFunctionToWasm(func, sig);
     table.set(ret, wrapped);
   }
@@ -709,9 +710,6 @@ function addFunction(func, sig) {
 #endif // ASSERTIONS
 
 #if WASM_BACKEND
-  assert(typeof sig !== 'undefined',
-         'Second argument of addFunction should be a wasm function signature ' +
-         'string');
   return addWasmFunction(func, sig);
 #else
 
@@ -753,11 +751,13 @@ function removeFunction(index) {
 #if EMULATED_FUNCTION_POINTERS == 0
   functionPointers[index-jsCallStartIndex] = null;
 #else
+#if !WASM
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();
   for (var sig in tables) {
     tables[sig][index] = null;
   }
+#endif
 #endif
 #endif
 }

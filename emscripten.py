@@ -665,15 +665,6 @@ def update_settings_glue(metadata):
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
 
-  # addFunction support for Wasm backend
-  if shared.Settings.WASM_BACKEND and shared.Settings.RESERVED_FUNCTION_POINTERS > 0:
-    start_index = metadata['jsCallStartIndex']
-    # e.g. jsCallFunctionType ['v', 'ii'] -> sig2order{'v': 0, 'ii': 1}
-    sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
-    # Index in the Wasm function table in which jsCall thunk function starts
-    shared.Settings.JSCALL_START_INDEX = start_index
-    shared.Settings.JSCALL_SIG_ORDER = sig2order
-
   # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
   # the compiled code have, each signature will need a proxy function invoker
   # generated for it.
@@ -2382,8 +2373,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'externs': [],
     'simd': False,
     'maxGlobalAlign': 0,
-    'jsCallStartIndex': 0,
-    'jsCallFuncType': [],
     'staticBump': 0,
     'tableSize': 0,
     'initializers': [],
