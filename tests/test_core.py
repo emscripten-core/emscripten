@@ -2118,12 +2118,8 @@ The current type of b is: 9
   def test_copyop(self):
     # clang generated code is vulnerable to this, as it uses
     # memcpy for assignments, with hardcoded numbers of bytes
-    # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
-    # settings.js.
-    test_path = path_from_root('tests', 'core', 'test_copyop')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    # (llvm-gcc copies items one by one).
+    self.do_run_in_out_file_test('tests', 'core', 'test_copyop')
 
   def test_memcpy_memcmp(self):
     self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
