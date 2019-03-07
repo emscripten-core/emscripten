@@ -938,6 +938,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    wasm_source_map_target = wasm_binary_target + '.map'
 
     if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
       options.separate_asm = True
@@ -1903,7 +1904,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         if use_source_map(options):
-          shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
+          shutil.move(wasm_temp + '.map', wasm_source_map_target)
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
@@ -2178,7 +2179,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM:
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                    wasm_text_target, misc_temp_files, optimizer)
+                    wasm_text_target, wasm_source_map_target, misc_temp_files,
+                    optimizer)
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2567,7 +2569,8 @@ def separate_asm_js(final, asm_target):
 
 
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, misc_temp_files, optimizer):
+                wasm_text_target, wasm_source_map_target, misc_temp_files,
+                optimizer):
   global final
   logger.debug('using binaryen')
   binaryen_bin = shared.Building.get_binaryen_bin()
@@ -2631,7 +2634,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       if debug_info:
         cmd += ['-g']
         if use_source_map(options):
-          cmd += ['--source-map=' + wasm_binary_target + '.map']
+          cmd += ['--source-map=' + wasm_source_map_target]
           cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logger.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       shared.check_call(cmd)
@@ -2651,6 +2654,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g'] # preserve the debug info
+    if use_source_map(options):
+      cmd += ['--input-source-map=' + wasm_source_map_target]
+      cmd += ['--output-source-map=' + wasm_source_map_target]
+      cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
+      if DEBUG:
+        shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
     logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
