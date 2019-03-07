@@ -5586,20 +5586,6 @@ return malloc(size);
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
-      # TODO: test only worked in non-fastcomp (well, this section)
-      continue
-      assert 'asm2g' in core_test_modes
-      if self.run_name == 'asm2g' and not use_cmake:
-        # Test forced alignment
-        print('testing FORCE_ALIGNED_MEMORY', file=sys.stderr)
-        old = open('src.cpp.o.js').read()
-        self.set_setting('FORCE_ALIGNED_MEMORY', 1)
-        test()
-        new = open('src.cpp.o.js').read()
-        print(len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt'))
-        assert len(old) > len(new)
-        assert old.count('tempBigInt') > new.count('tempBigInt')
-
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   @is_slow_test
   def test_poppler(self):
