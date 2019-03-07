@@ -370,13 +370,7 @@ var LibraryBrowser = {
         if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
              document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
              document['webkitCurrentFullScreenElement']) === canvasContainer) {
-          canvas.exitFullscreen = document['exitFullscreen'] ||
-                                  document['cancelFullScreen'] ||
-                                  document['mozCancelFullScreen'] ||
-                                  document['msExitFullscreen'] ||
-                                  document['webkitCancelFullScreen'] ||
-                                  function() {};
-          canvas.exitFullscreen = canvas.exitFullscreen.bind(document);
+          canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
           if (Browser.resizeCanvas) {
@@ -432,6 +426,24 @@ var LibraryBrowser = {
           return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
         }
         return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+    },
+
+    exitFullscreen: function() {
+      // This is workaround for chrome. Trying to exit from fullscreen
+      // not in fullscreen state will cause "TypeError: Document not active"
+      // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
+      if (!Browser.isFullscreen) {
+        return false;
+      }
+
+      var CFS = document['exitFullscreen'] ||
+                document['cancelFullScreen'] ||
+                document['mozCancelFullScreen'] ||
+                document['msExitFullscreen'] ||
+                document['webkitCancelFullScreen'] ||
+          (function() {});
+      CFS.apply(document, []);
+      return true;
     },
 
     nextRAF: 0,
