@@ -2940,7 +2940,6 @@ class JS(object):
   def make_jscall(sig):
     fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
     args = (',' if fnargs else '') + fnargs
-    index = 'index'
     ret = '''\
 function jsCall_%s(index%s) {
     %sfunctionPointers[index](%s);
