@@ -829,8 +829,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     has_header_inputs = False
     lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
                 shared.path_from_root('system', 'lib')]
-    for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
-                                  # right now we just assume that what is left contains no more |-x OPT| things
+
+    # find input files this a simple heuristic. we should really analyze
+    # based on a full understanding of gcc params, right now we just assume that
+    # what is left contains no more |-x OPT| things
+    for i in range(len(newargs)):
       arg = newargs[i]
       if i > 0:
         prev = newargs[i - 1]
@@ -945,18 +948,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.separate_asm:
       shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
-    if 'EMCC_STRICT' in os.environ:
-      shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
-
-    # Libraries are searched before settings_changes are applied, so apply the value for STRICT and ERROR_ON_MISSING_LIBRARIES from
-    # command line already now.
+    # Libraries are searched before settings_changes are applied, so apply the
+    # value for STRICT and ERROR_ON_MISSING_LIBRARIES from command line already
+    # now.
 
     def get_last_setting_change(setting):
       return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
 
     strict_cmdline = get_last_setting_change('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
+      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
     if shared.Settings.STRICT:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1

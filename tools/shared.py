@@ -1138,8 +1138,15 @@ class SettingsManager(object):
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
 
-      for opt, fixed_values, _ in self.attrs['LEGACY_SETTINGS']:
-        self.attrs[opt] = fixed_values[0]
+      if 'EMCC_STRICT' in os.environ:
+        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+
+      self.legacy_settings = {}
+      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
+        self.legacy_settings[name] = (fixed_values, err)
+        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not self.attrs['STRICT']:
+          self.attrs[name] = fixed_values[0]
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1172,19 +1179,24 @@ class SettingsManager(object):
       if shrink_level >= 2:
         self.attrs['EVAL_CTORS'] = 1
 
+    def keys(self):
+      return self.attrs.keys()
+
     def __getattr__(self, attr):
       if attr in self.attrs:
         return self.attrs[attr]
       else:
-        raise AttributeError
+        raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
-      for legacy_attr, fixed_values, error_message in self.attrs['LEGACY_SETTINGS']:
-        if attr == legacy_attr:
-          if value not in fixed_values:
-            exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-          else:
-            logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+      if attr in self.legacy_settings:
+        if self.attrs['STRICT']:
+          exit_with_error('legacy setting used in strict mode: %s', attr)
+        fixed_values, error_message = self.legacy_settings[attr]
+        if value not in fixed_values:
+          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
+        else:
+          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
@@ -1230,6 +1242,12 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.ASM_JS not in [1, 2]:
+    exit_with_error('ASM_JS can only be set to either 1 or 2')
+
+  if Settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('SAVE_HEAP must be 0 or 1 in fastcomp')
+
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
