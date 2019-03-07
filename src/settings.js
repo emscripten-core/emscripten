@@ -1163,8 +1163,6 @@ var PTHREADS_DEBUG = 0;
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
-var JSCALL_START_INDEX = 0; // received from the backend
-var JSCALL_SIG_ORDER = {}; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++ or LLVM
