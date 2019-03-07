@@ -1018,9 +1018,8 @@ class benchmark(RunnerCore):
     def lib_builder(name, native, env_init):
       return [get_poppler_library(self)]
 
-    # TODO: poppler in native build
-    skip_native = True
+    # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
                       emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
-                      lib_builder=lib_builder, skip_native=skip_native)
+                      lib_builder=lib_builder, skip_native=True)
