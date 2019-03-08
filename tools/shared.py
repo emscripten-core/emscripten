@@ -22,6 +22,10 @@ import subprocess
 import sys
 import tempfile
 
+if sys.version_info < (2, 7, 12):
+  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
