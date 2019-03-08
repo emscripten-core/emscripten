@@ -360,9 +360,7 @@ def apply_settings(changes):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
-      if key in DEFERRED_RESPONSE_FILES:
-        value = '"' + value + '"'
-      else:
+      if key not in DEFERRED_RESPONSE_FILES:
         value = open(value[1:]).read()
     else:
       value = value.replace('\\', '\\\\')
@@ -500,12 +498,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
   CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)# or 'CMakeCCompilerId' in ' '.join(args)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
-    debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
+    # XXX use this to debug configure stuff. ./configure's generally hide our
+    # normal output including stderr so we write to a file
+    debug_configure = 0
 
-    # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-    # Neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-    # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
-    # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
+    # Whether we fake configure tests using clang - the local, native compiler -
+    # or not. if not we generate JS and use node with a shebang
+    # Neither approach is perfect, you can try both, but may need to edit
+    # configure scripts in some cases
+    # By default we configure in js, which can break on local filesystem access,
+    # etc., but is otherwise accurate so we
+    # disable this if we think we have to. A value of '2' here will force JS
+    # checks in all cases. In summary:
     # 0 - use native compilation for configure checks
     # 1 - use js when we think it will work
     # 2 - always use js for configure checks
@@ -541,8 +545,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if debug_configure:
           open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
-    compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    if not ('CXXCompiler' in ' '.join(args) or EMCC_CXX):
+    # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
+    compiler = os.environ.get('CONFIGURE_CC')
+    if not compiler:
+      compiler = shared.EMXX if use_js else shared.CLANG_CPP
+    if 'CXXCompiler' not in ' '.join(args) and not EMCC_CXX:
       compiler = shared.to_cc(compiler)
 
     def filter_emscripten_options(argv):
@@ -561,23 +568,29 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           yield el
         idx += 1
 
-    if compiler == shared.EMCC:
-      compiler = [shared.PYTHON, shared.EMCC]
+    if compiler in (shared.EMCC, shared.EMXX):
+      compiler = [shared.PYTHON, compiler]
     else:
       compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       if not shared.Settings.STRICT:
         cmd += ['-DEMSCRIPTEN']
     if use_js:
-      cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
-      cmd += ['-s', 'NODERAWFS=1'] # use node.js raw filesystem access, to behave just like a native executable
-      # Disable wasm in configuration checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
-      # to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
+      # configure tests want a more shell-like style, where we emit return codes on exit()
+      cmd += ['-s', 'NO_EXIT_RUNTIME=0']
+      # use node.js raw filesystem access, to behave just like a native executable
+      cmd += ['-s', 'NODERAWFS=1']
+      # Disable wasm in configuration checks so that (1) we do not depend on
+      # wasm support just for configuration (perhaps the user does not intend
+      # to build to wasm; using asm.js only depends on js which we need anyhow),
+      # and (2) we don't have issues with a separate .wasm file
       # on the side, async startup, etc..
-      cmd += ['-s', 'WASM=0']
+      if not shared.Settings.WASM_BACKEND:
+        cmd += ['-s', 'WASM=0']
 
     logger.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure:
@@ -585,38 +598,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if not use_js:
       return run_process(cmd, check=False).returncode
-    else:
-      only_object = '-c' in cmd
-      for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
-        if cmd[i] == '-o':
-          if not only_object:
-            cmd[i + 1] += '.js'
-          target = cmd[i + 1]
-          break
-      if not target:
-        target = 'a.out.js'
-      os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
-      ret = run_process(cmd, check=False).returncode
-      os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-      if not os.path.exists(target):
-        # note that emcc -c will cause target to have the wrong value here;
-        # but then, we don't care about bitcode outputs anyhow, below, so
-        # skipping returning early is fine
-        return ret
-      if target.endswith('.js'):
-        shutil.copyfile(target, unsuffixed(target))
-        target = unsuffixed(target)
-      if not target.endswith(BITCODE_ENDINGS):
-        src = open(target).read()
-        full_node = ' '.join(shared.NODE_JS)
-        if os.path.sep not in full_node:
-          full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-        open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-        try:
-          os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-        except:
-          pass # can fail if e.g. writing the executable to /dev/null
+
+    only_object = '-c' in cmd
+    for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
+      if cmd[i] == '-o':
+        if not only_object:
+          cmd[i + 1] += '.js'
+        target = cmd[i + 1]
+        break
+    if not target:
+      target = 'a.out.js'
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
+    ret = run_process(cmd, check=False).returncode
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
+    if not os.path.exists(target):
+      # note that emcc -c will cause target to have the wrong value here;
+      # but then, we don't care about bitcode outputs anyhow, below, so
+      # skipping returning early is fine
       return ret
+    if target.endswith('.js'):
+      shutil.copyfile(target, unsuffixed(target))
+      target = unsuffixed(target)
+    if not target.endswith(BITCODE_ENDINGS):
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except:
+        pass # can fail if e.g. writing the executable to /dev/null
+    return ret
 
   if os.environ.get('EMMAKEN_COMPILER'):
     CXX = os.environ['EMMAKEN_COMPILER']
@@ -1015,13 +1028,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WASM_OBJECT_FILES = 0
 
     if not shared.Settings.STRICT:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
-
-      # The system include path system/include/emscripten/ is deprecated, i.e. instead of #include <emscripten.h>, one should pass in #include <emscripten/emscripten.h>.
-      # This path is not available in Emscripten strict mode.
-      if shared.USE_EMSDK:
-        shared.C_INCLUDE_PATHS += [shared.path_from_root('system', 'include', 'emscripten')]
 
     # Use settings
 
@@ -1399,8 +1408,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          passes += ['--post-emscripten']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
-            passes += ['--post-emscripten']
+            passes += ['--low-memory-unused']
           if options.debug_level < 3:
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
@@ -2467,35 +2477,47 @@ def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush('pre-emterpretify')
   logger.debug('emterpretifying')
+  blacklist = shared.Settings.EMTERPRETIFY_BLACKLIST
+  whitelist = shared.Settings.EMTERPRETIFY_WHITELIST
+  synclist = shared.Settings.EMTERPRETIFY_SYNCLIST
+  if type(blacklist) == list:
+    blacklist = json.dumps(blacklist)
+  if type(whitelist) == list:
+    whitelist = json.dumps(whitelist)
+  if type(synclist) == list:
+    synclist = json.dumps(synclist)
+
+  args = [shared.PYTHON,
+          shared.path_from_root('tools', 'emterpretify.py'),
+          js_target,
+          final + '.em.js',
+          blacklist,
+          whitelist,
+          synclist,
+          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+  if shared.Settings.EMTERPRETIFY_ASYNC:
+    args += ['ASYNC=1']
+  if shared.Settings.EMTERPRETIFY_ADVISE:
+    args += ['ADVISE=1']
+  if options.profiling or options.profiling_funcs:
+    args += ['PROFILING=1']
+  if shared.Settings.ASSERTIONS:
+    args += ['ASSERTIONS=1']
+  if shared.Settings.PRECISE_F32:
+    args += ['FROUND=1']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    args += ['MEMORY_SAFE=1']
+  if shared.Settings.EMTERPRETIFY_FILE:
+    args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
+
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
-    args = [shared.PYTHON,
-            shared.path_from_root('tools', 'emterpretify.py'),
-            js_target,
-            final + '.em.js',
-            json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
-            str(shared.Settings.SWAPPABLE_ASM_MODULE)]
-    if shared.Settings.EMTERPRETIFY_ASYNC:
-      args += ['ASYNC=1']
-    if shared.Settings.EMTERPRETIFY_ADVISE:
-      args += ['ADVISE=1']
-    if options.profiling or options.profiling_funcs:
-      args += ['PROFILING=1']
-    if shared.Settings.ASSERTIONS:
-      args += ['ASSERTIONS=1']
-    if shared.Settings.PRECISE_F32:
-      args += ['FROUND=1']
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      args += ['MEMORY_SAFE=1']
-    if shared.Settings.EMTERPRETIFY_FILE:
-      args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-    run_process(args)
-    final = final + '.em.js'
+    shared.check_call(args)
   finally:
     shared.try_delete(js_target)
+
+  final = final + '.em.js'
 
   if shared.Settings.EMTERPRETIFY_ADVISE:
     logger.warning('halting compilation due to EMTERPRETIFY_ADVISE')

@@ -23,7 +23,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library
+from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
@@ -1481,46 +1481,11 @@ int main() {
 
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_void')
 
-  # Fails in wasm because of excessive slowness in the wasm-shell
-  @no_wasm()
   def test_life(self):
+    if EMTEST_SKIP_SLOW and self.is_emterpreter() and not is_optimizing(self.emcc_args):
+      return self.skipTest('skipping slow tests')
     self.emcc_args += ['-std=c99']
-    src = open(path_from_root('tests', 'life.c')).read()
-    self.do_run(src, '''--------------------------------
-[]                                    []                  [][][]
-                    []  []    []    [][]  []            []  []  
-[]                [][]  [][]              [][][]      []        
-                  []    []      []      []  [][]    []        []
-                  []  [][]    []        []    []  []    [][][][]
-                    [][]      [][]  []    [][][]  []        []  
-                                []  [][]  [][]    [][]  [][][]  
-                                    [][]          [][][]  []  []
-                                    [][]              [][]    []
-                                                          [][][]
-                                                            []  
-                                                                
-                                                                
-                                                                
-                                                                
-                                        [][][]                  
-                                      []      [][]      [][]    
-                                      [][]      []  [][]  [][]  
-                                                    [][]  [][]  
-                                                      []        
-                  [][]                                          
-                  [][]                                        []
-[]                                                      [][]  []
-                                                  [][][]      []
-                                                []      [][]    
-[]                                                    []      []
-                                                          []    
-[]                                                        []  []
-                                              [][][]            
-                                                                
-                                  []                            
-                              [][][]                          []
---------------------------------
-''', ['2'], force_c=True)  # noqa
+    self.do_run_in_out_file_test('tests', 'life', args=['2'], force_c=True)
 
   def test_array2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_array2')
@@ -1560,8 +1525,6 @@ int main() {
       self.do_run_in_out_file_test('tests', 'core', 'test_sizeof')
 
   def test_llvm_used(self):
-    Building.LLVM_OPTS = 3
-
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
   def test_set_align(self):
@@ -2023,68 +1986,6 @@ The current type of b is: 9
       }
     '''
     self.do_run(src, 'pre:  54,2\ndump: 55,3\ndump: 55,3\npost: 54,2\ndump: 55,3\ndump: 56,4\nlast: 56,4')
-
-    # Check for lack of warning in the generated code (they should appear in part 2)
-    generated = open('src.cpp.o.js').read()
-    assert 'Casting a function pointer type to another with a different number of arguments.' not in generated, 'Unexpected warning'
-
-    # part 2: make sure we warn about mixing c and c++ calling conventions here
-
-    if self.emcc_args != []:
-      # Optimized code is missing the warning comments
-      return
-
-    create_test_file('header.h', r'''
-      struct point
-      {
-        int x, y;
-      };
-    ''')
-
-    create_test_file('supp.cpp', r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      void dump(struct point p) {
-        p.x++; // should not modify
-        p.y++; // anything in the caller!
-        printf("dump: %d,%d\n", p.x, p.y);
-      }
-    ''')
-
-    create_test_file('main.cpp', r'''
-      #include <stdio.h>
-      #include "header.h"
-
-      #ifdef __cplusplus
-      extern "C" {
-      #endif
-        void dump(struct point p);
-      #ifdef __cplusplus
-      }
-      #endif
-
-      int main( int argc, const char *argv[] ) {
-        struct point p = { 54, 2 };
-        printf("pre:  %d,%d\n", p.x, p.y);
-        dump(p);
-        void (*dp)(struct point p) = dump; // And, as a function pointer
-        dp(p);
-        printf("post: %d,%d\n", p.x, p.y);
-        return 0;
-      }
-    ''')
-
-    Building.emcc('supp.cpp')
-    Building.emcc('main.cpp')
-    Building.link_to_object(['supp.cpp.o', 'main.cpp.o'], 'all.o')
-
-    # This will fail! See explanation near the warning we check for, in the compiler source code
-    run_process([PYTHON, EMCC, 'all.o'] + self.emcc_args, check=False, stderr=PIPE)
-
-    # Check for warning in the generated code
-    generated = open('src.cpp.o.js').read()
-    print('skipping C/C++ conventions warning check, since not i386-pc-linux-gnu', file=sys.stderr)
 
   def test_stdlibs(self):
     # safe heap prints a warning that messes up our output.
@@ -2612,9 +2513,6 @@ The current type of b is: 9
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
       self.banned_js_engines = [V8_ENGINE]
-
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM opts will optimize out parent_func')
 
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -4459,7 +4357,7 @@ Module = {
       self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
                   output_nicerizer=clean)
       if self.uses_memory_init_file():
-        assert os.path.exists(mem_file), 'File %s does not exist' % mem_file
+        self.assertExists(mem_file)
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -5311,7 +5209,7 @@ int main(void) {
 
     src = open(path_from_root('tests', 'raytrace.cpp')).read().replace('double', 'float')
     output = open(path_from_root('tests', 'raytrace.ppm')).read()
-    self.do_run(src, output, ['3', '16']) # , build_ll_hook=self.do_autodebug)
+    self.do_run(src, output, ['3', '16'])
 
   def test_fasta(self):
       results = [(1, '''GG*ctt**tgagc*'''),
@@ -5811,7 +5709,7 @@ return malloc(size);
                             os.path.join(self.get_build_dir(), 'openjpeg')],
                   force_c=True,
                   assert_returncode=0,
-                  output_nicerizer=image_compare) # , build_ll_hook=self.do_autodebug)
+                  output_nicerizer=image_compare)
 
     do_test()
 
@@ -5857,10 +5755,7 @@ return malloc(size);
   # to process.
   @no_wasm_backend("uses bitcode compiled with asmjs, and we don't have unified triples")
   @is_slow_test
-  def test_cases(self):
-    if Building.LLVM_OPTS:
-      self.skipTest("Our code is not exactly 'normal' llvm assembly")
-
+  def test_zzz_cases(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
@@ -6001,44 +5896,30 @@ return malloc(size);
 
     run_all('lto')
 
-  # Autodebug the code
-  def do_autodebug(self, filename):
-    Building.llvm_dis(filename)
-    output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
-    assert 'Success.' in output, output
-    # rebuild .bc
-    # TODO: use code in do_autodebug_post for this
-    self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
-
-  # Autodebug the code, after LLVM opts. Will only work once!
-  def do_autodebug_post(self, filename):
-    if not hasattr(self, 'post'):
-      print('Asking for post re-call')
-      self.post = True
-      return True
-    print('Autodebugging during post time')
-    delattr(self, 'post')
-    output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
-    assert 'Success.' in output, output
-    shutil.copyfile(filename + '.o.ll.ll', filename + '.o.ll')
-    Building.llvm_as(filename)
-    Building.llvm_dis(filename)
-
   def test_autodebug(self):
-    if self.get_setting('WASM_OBJECT_FILES'):
-      self.skipTest('autodebugging only works with bitcode objects')
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM opts mess us up')
+    if self.is_wasm_backend():
+      # autodebugging only works with bitcode objects
+      self.set_setting('WASM_OBJECT_FILES', 0)
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
+
+    # Autodebug the code
+    def do_autodebug(filename):
+      Building.llvm_dis(filename)
+      output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
+      assert 'Success.' in output, output
+      # rebuild .bc
+      # TODO: use code in do_autodebug_post for this
+      self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
     src = test_path + '.c'
     output = test_path + '.out'
-    self.do_run_from_file(src, output, build_ll_hook=lambda x: False) # add an ll hook, to force ll generation
+    # Add an ll hook, to force ll generation
+    self.do_run_from_file(src, output, build_ll_hook=lambda x: False)
 
     filename = 'src.cpp'
-    self.do_autodebug(filename)
+    do_autodebug(filename)
 
     # Compare to each other, and to expected output
     self.do_ll_run(filename + '.o.ll.ll', 'AD:-1,1')
@@ -6059,7 +5940,7 @@ return malloc(size);
           return 0;
         }
       '''
-    self.do_run(src, '''AD:-1,1''', build_ll_hook=self.do_autodebug)
+    self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
 
   ### Integration tests
 
@@ -6837,8 +6718,8 @@ someweirdtext
       run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                    path_from_root('tests', 'webidl', 'test.idl'),
                    'glue'])
-      assert os.path.exists('glue.cpp')
-      assert os.path.exists('glue.js')
+      self.assertExists('glue.cpp')
+      self.assertExists('glue.js')
 
       # Export things on "TheModule". This matches the typical use pattern of the bound library
       # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
@@ -6877,75 +6758,6 @@ err = err = function(){};
     do_test_in_mode('ALL', True)
 
   ### Tests for tools
-
-  def test_safe_heap(self):
-    if not self.get_setting('SAFE_HEAP'):
-      self.skipTest('We need SAFE_HEAP to test SAFE_HEAP')
-    # TODO: Should we remove this test?
-    self.skipTest('It is ok to violate the load-store assumption with TA2')
-    if Building.LLVM_OPTS:
-      self.skipTest('LLVM can optimize away the intermediate |x|')
-
-    src = '''
-      #include <stdio.h>
-      #include <stdlib.h>
-      int main() { int *x = (int*)malloc(sizeof(int));
-        *x = 20;
-        float *y = (float*)x;
-        printf("%f\\n", *y);
-        printf("*ok*\\n");
-        return 0;
-      }
-    '''
-
-    try:
-      self.do_run(src, '*nothingatall*', assert_returncode=None)
-    except Exception as e:
-      # This test *should* fail, by throwing this exception
-      assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
-
-    self.set_setting('SAFE_HEAP', 1)
-
-    # Linking multiple files should work too
-
-    module = '''
-      #include <stdio.h>
-      #include <stdlib.h>
-      void callFunc() { int *x = (int*)malloc(sizeof(int));
-        *x = 20;
-        float *y = (float*)x;
-        printf("%f\\n", *y);
-      }
-    '''
-    module_name = 'module.cpp'
-    create_test_file(module_name, module)
-
-    main = '''
-      #include <stdio.h>
-      #include <stdlib.h>
-      extern void callFunc();
-      int main() { callFunc();
-        int *x = (int*)malloc(sizeof(int));
-        *x = 20;
-        float *y = (float*)x;
-        printf("%f\\n", *y);
-        printf("*ok*\\n");
-        return 0;
-      }
-    '''
-    main_name = 'main.cpp'
-    create_test_file(main_name, main)
-
-    Building.emcc(module_name, ['-g'])
-    Building.emcc(main_name, ['-g'])
-    all_name = 'all.o'
-    Building.link_to_object([module_name + '.o', main_name + '.o'], all_name)
-
-    try:
-      self.do_ll_run(all_name, '*nothingatall*', assert_returncode=None)
-    except Exception as e:
-      # This test *should* fail, by throwing this exception
-      assert 'Assertion failed: Load-store consistency assumption failure!' in str(e), str(e)
 
   @no_emterpreter
   def test_source_map(self):
@@ -7037,7 +6849,11 @@ err = err = function(){};
       self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
       seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
-    assert seen_lines.issuperset([6, 7, 11, 12])
+    # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
+    if is_optimizing(self.emcc_args):
+      assert seen_lines.issuperset([11, 12]), seen_lines
+    else:
+      assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
@@ -7092,7 +6908,7 @@ err = err = function(){};
 
     def post(filename):
       map_filename = filename + '.map'
-      assert os.path.exists(map_filename)
+      self.assertExists(map_filename)
       mappings = json.loads(jsrun.run_js(
         path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
         shared.NODE_JS, [map_filename]))
@@ -7784,7 +7600,6 @@ def make_run(name, emcc_args, settings=None, env=None):
 
       # clear global changes to Building
       Building.COMPILER_TEST_OPTS = []
-      Building.LLVM_OPTS = 0
 
   TT.tearDown = tearDown
 
@@ -7799,7 +7614,6 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
-    Building.LLVM_OPTS = 0
     Building.COMPILER_TEST_OPTS += [
         '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
         '-Wno-format-extra-args', '-Wno-format-security',

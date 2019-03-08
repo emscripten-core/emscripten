@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+from __future__ import print_function
+
 import difflib
 import os
 import json
@@ -60,8 +62,8 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
-             DEBUG):
+def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
+                      temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -87,7 +89,7 @@ def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
 
     with ToolchainProfiler.profile_block('get_and_parse_backend'):
       backend_output = compile_js(infile, temp_files, DEBUG)
-      funcs, metadata, mem_init = parse_backend_output(backend_output, DEBUG)
+      funcs, metadata, mem_init = parse_fastcomp_output(backend_output, DEBUG)
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
@@ -109,24 +111,23 @@ def emscript(infile, outfile, memfile, libraries, compiler_engine, temp_files,
 def compile_js(infile, temp_files, DEBUG):
   """Compile infile with asm.js backend, return the contents of the compiled js"""
   with temp_files.get_file('.4.js') as temp_js:
-    backend_args = create_backend_args(infile, temp_js)
+    backend_cmd = create_backend_cmd(infile, temp_js)
 
     if DEBUG:
-      logger.debug('emscript: llvm backend: ' + ' '.join(backend_args))
+      logger.debug('emscript: llvm backend: ' + ' '.join(backend_cmd))
       t = time.time()
+    shared.print_compiler_stage(backend_cmd)
     with ToolchainProfiler.profile_block('emscript_llvm_backend'):
-      jsrun.timeout_run(subprocess.Popen(backend_args, stdout=subprocess.PIPE, universal_newlines=True), note_args=backend_args)
+      shared.check_call(backend_cmd)
     if DEBUG:
       logger.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
     # Split up output
     backend_output = open(temp_js).read()
-    # if DEBUG:
-    #   print >> sys.stderr, backend_output
   return backend_output
 
 
-def parse_backend_output(backend_output, DEBUG):
+def parse_fastcomp_output(backend_output, DEBUG):
   start_funcs_marker = '// EMSCRIPTEN_START_FUNCTIONS'
   end_funcs_marker = '// EMSCRIPTEN_END_FUNCTIONS'
   metadata_split_marker = '// EMSCRIPTEN_METADATA'
@@ -371,7 +372,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{ ' + ', '.join(['"' + math_fix(minified) + '": ' + unminified for (minified, unminified) in sending_vars]) + ' }'
+  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -544,8 +545,8 @@ def write_cyberdwarf_data(outfile, metadata):
     json.dump({'cyberdwarf': metadata['cyberdwarf_data']}, f)
 
 
-def create_backend_args(infile, temp_js):
-  """Create args for asm.js backend from settings dict"""
+def create_backend_cmd(infile, temp_js):
+  """Create asm.js backend command from settings dict"""
   args = [
     shared.LLVM_COMPILER, infile, '-march=js', '-filetype=asm', '-o', temp_js,
     '-emscripten-stack-size=%d' % shared.Settings.TOTAL_STACK,
@@ -1497,13 +1498,14 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     def check(extern):
       if shared.Settings.ASSERTIONS:
-        return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
-                '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
-                'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
+        return ('\n  assert(%sModule["%s"], "external global `%s` is missing.' % (side, extern, extern) +
+                'perhaps a side module was not linked in? if this symbol was expected to arrive '
+                'from a system library, try to build the MAIN_MODULE with '
+                'EMCC_FORCE_STDLIBS=1 in the environment");')
       return ''
 
     for extern in metadata['externs']:
-      asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
+      asm_setup += 'var g$' + extern + ' = function() {' + check(extern) + '\n  return ' + side + 'Module["' + extern + '"];\n}\n'
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
@@ -1733,21 +1735,23 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
 
 def create_named_globals(metadata):
-  named_globals = ''
-  if shared.Settings.RELOCATABLE:
-    named_globals += '''
+  if not shared.Settings.RELOCATABLE:
+    return ''
+
+  named_globals = '''
 var NAMED_GLOBALS = { %s };
 for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
-    if shared.Settings.WASM:
-      # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-      # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-      #       we'll need another solution for that. one option is to scan the module imports, if/when
-      #       wasm supports that, then the loader can do this.
-      named_globals += '''
+
+  if shared.Settings.WASM:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
     var func = Module['_' + named];
@@ -1755,7 +1759,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+  named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
@@ -2111,6 +2115,10 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
     t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
+  # For the wasm backend the implementedFunctions from compiler.js should
+  # alwasys be empty. This only gets populated for __asm function when using
+  # the JS backend.
+  assert not forwarded_json['Functions']['implementedFunctions']
 
   pre, post = glue.split('// EMSCRIPTEN_END_FUNCS')
 
@@ -2132,7 +2140,8 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
-  exported_implemented_functions = create_exported_implemented_functions_wasm(pre, forwarded_json, metadata)
+  all_implemented = metadata['exports']
+  check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
@@ -2157,10 +2166,9 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
                                 metadata)
-  receiving = create_receiving_wasm(exported_implemented_functions)
+  receiving = create_receiving_wasm(all_implemented)
 
-  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                              exported_implemented_functions, metadata)
+  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
 
   write_output_file(outfile, post, module)
   module = None
@@ -2218,25 +2226,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   debug_copy(wasm, 'post_finalize.wasm')
 
   return load_metadata_wasm(stdout, DEBUG)
-
-
-def create_exported_implemented_functions_wasm(pre, forwarded_json, metadata):
-  exported_implemented_functions = set(metadata['exports'])
-
-  all_exported_functions = set(shared.Settings.EXPORTED_FUNCTIONS) # both asm.js and otherwise
-  for additional_export in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE: # additional functions to export from asm, if they are implemented
-    all_exported_functions.add('_' + additional_export)
-  all_implemented = get_all_implemented(forwarded_json, metadata)
-
-  export_bindings = shared.Settings.EXPORT_BINDINGS
-  export_all = shared.Settings.EXPORT_ALL
-  for key in all_implemented:
-    if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
-      exported_implemented_functions.add(key)
-
-  check_all_implemented(all_implemented, pre)
-  exported_implemented_functions = sorted(exported_implemented_functions)
-  return exported_implemented_functions
 
 
 def create_asm_consts_wasm(forwarded_json, metadata):
@@ -2348,28 +2337,31 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-def create_receiving_wasm(exported_implemented_functions):
-  receiving = ''
+def create_receiving_wasm(exports):
+  receiving = []
   if not shared.Settings.ASSERTIONS:
     runtime_assertions = ''
   else:
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = '\n'.join(['var real_' + asmjs_mangle(s) + ' = asm["' + s + '"]; asm["' + s + '''"] = function() { ''' + runtime_assertions + '''
-return real_''' + asmjs_mangle(s) + '''.apply(null, arguments);
-};
-''' for s in exported_implemented_functions if s not in ['_memcpy', '_memset', '_emscripten_replace_memory', '__start_module']])
+    for e in exports:
+      receiving.append('''var real_%(mangled)s = asm["%(e)s"]; asm["%(e)s"] = function() { %(assertions)s
+return real_%(mangled)s.apply(null, arguments);
+};''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    receiving += '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exported_implemented_functions]) + '\n'
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
   else:
-    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = function() { ' + runtime_assertions + ' return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in exported_implemented_functions]) + '\n'
-  return receiving
+    receiving.append('Module["asm"] = asm;')
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = function() { %(assertions)s return Module["asm"]["%(e)s"].apply(null, arguments) };' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+
+  return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs,
-                       exported_implemented_functions, metadata):
+def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   jscall_funcs = create_jscall_funcs(jscall_sigs)
 
@@ -2431,8 +2423,13 @@ def load_metadata_wasm(metadata_raw, DEBUG):
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
 
-  # functions marked llvm.used in the code are exports requested by the user
-  shared.Building.user_requested_exports += metadata['exports']
+  # Calculate the subset of exports that were explicitly marked with llvm.used.
+  # These are any exports that were not requested on the command line and are
+  # not known auto-generated system functions.
+  unexpected_exports = [e for e in metadata['exports'] if treat_as_user_function(e)]
+  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
+  unexpected_exports = [e for e in unexpected_exports if e not in shared.Settings.EXPORTED_FUNCTIONS]
+  shared.Building.user_requested_exports += unexpected_exports
 
   return metadata
 
@@ -2453,18 +2450,28 @@ def create_jscall_funcs(sigs):
   return jscall_funcs
 
 
+def treat_as_user_function(name):
+  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
+                                 'stackSave', 'stackRestore',
+                                 'establishStackSpace', '__growWasmMemory',
+                                 '__heap_base', '__data_end')
+  if name.startswith('dynCall_'):
+    return False
+  if name in library_functions_in_module:
+    return False
+  return True
+
+
 def asmjs_mangle(name):
   """Mangle a name the way asm.js/JSBackend globals are mangled.
 
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace')
-  if name.startswith('dynCall_'):
+  if treat_as_user_function(name):
+    return '_' + name
+  else:
     return name
-  if name in library_functions_in_module:
-    return name
-  return '_' + ''.join(['_' if not c.isalnum() else c for c in name])
 
 
 def normalize_line_endings(text):
@@ -2495,7 +2502,7 @@ def run(infile, outfile, memfile, libraries):
 
   outfile_obj = open(outfile, 'w')
 
-  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript
+  emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
       infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, shared.DEBUG)
   )

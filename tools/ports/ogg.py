@@ -15,6 +15,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG)
+  libname = ports.get_lib_name('libogg')
 
   def create():
     logging.info('building port: ogg')
@@ -28,11 +29,15 @@ def get(ports, settings, shared):
 
     open(os.path.join(dest_path, 'include', 'ogg', 'config_types.h'), 'w').write(config_types_h)
 
-    final = os.path.join(dest_path, 'libogg.bc')
+    final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'src'), final, [os.path.join(dest_path, 'include')])
     return final
 
-  return [shared.Cache.get('ogg', create)]
+  return [shared.Cache.get(libname, create)]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libogg'))
 
 
 def process_args(ports, args, settings, shared):

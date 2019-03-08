@@ -46,6 +46,10 @@ def get(ports, settings, shared):
   return [shared.Cache.get('libz.a', create, what='port')]
 
 
+def clear(ports, shared):
+  shared.Cache.erase_file('libz.a')
+
+
 def process_args(ports, args, settings, shared):
   if settings.USE_ZLIB == 1:
     get(ports, settings, shared)

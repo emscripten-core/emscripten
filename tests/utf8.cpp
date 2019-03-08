@@ -12,6 +12,12 @@
 
 // This code tests that Unicode std::wstrings can be marshalled between C++ and JS.
 int main() {
+  const char latin1String[] = "\x26\xA0\xF7";
+  EM_ASM({
+    var str = Module.AsciiToString($0);
+    assert(str === "\\x26\\xA0\\xF7");
+  }, latin1String);
+
   const char asciiString[] = "Hello world!";
   char asciiString2[128] = {};
   EM_ASM({

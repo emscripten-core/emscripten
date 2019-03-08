@@ -6,7 +6,7 @@
 import os
 import logging
 
-TAG = 'version_68'
+TAG = 'version_71'
 
 
 def needed(settings, shared, ports):
@@ -34,7 +34,11 @@ def get(ports, settings, shared):
     open(tag_file, 'w').write(TAG)
     return tag_file
 
-  return [shared.Cache.get('binaryen_tag_' + TAG, create, what='port', extension='.txt')]
+  return [shared.Cache.get('binaryen_tag_' + TAG + '.txt', create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file('binaryen_tag_' + TAG + '.txt')
 
 
 def process_args(ports, args, settings, shared):
