@@ -26,16 +26,6 @@
 
 // Tuning
 
-// This is the size of an individual field in a structure. 1 would
-// lead to e.g. doubles and chars both taking 1 memory address. This
-// is a form of 'compressed' memory, with shrinking and stretching
-// according to the type, when compared to C/C++. On the other hand
-// the normal value of 4 means all fields take 4 memory addresses,
-// as per the norm on a 32-bit machine.
-//
-// Changing this from the default of 4 is deprecated.
-var QUANTUM_SIZE = 4;
-
 // Whether we should add runtime assertions, for example to
 // check that each allocation to the stack does not
 // exceed its size, whether all allocations (stack and static) are
