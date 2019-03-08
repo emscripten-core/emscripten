@@ -1094,23 +1094,6 @@ def to_cc(cxx):
   return os.path.join(dirname, basename)
 
 
-def line_splitter(data):
-  """Silly little tool to split JSON arrays over many lines."""
-
-  out = ''
-  counter = 0
-
-  for i in range(len(data)):
-    out += data[i]
-    if data[i] == ' ' and counter > 60:
-      out += '\n'
-      counter = 0
-    else:
-      counter += 1
-
-  return out
-
-
 def read_pgo_data(filename):
   '''
     Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options

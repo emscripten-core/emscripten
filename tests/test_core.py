@@ -5638,6 +5638,21 @@ return malloc(size);
 
   @is_slow_test
   def test_openjpeg(self):
+
+    def line_splitter(data):
+      out = ''
+      counter = 0
+
+      for ch in data:
+        out += ch
+        if ch == ' ' and counter > 60:
+          out += '\n'
+          counter = 0
+        else:
+          counter += 1
+
+      return out
+
     # remove -g, so we have one test without it by default
     Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g']
 
@@ -5648,7 +5663,7 @@ return malloc(size);
       Module.postRun = function() {
         out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));
       };
-      """ % shared.line_splitter(str(image_bytes)))
+      """ % line_splitter(str(image_bytes)))
 
     shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
