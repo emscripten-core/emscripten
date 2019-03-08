@@ -596,11 +596,6 @@ var EXPORTED_RUNTIME_METHODS = [];
 // this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
-// Log all FS operations.  This is especially helpful when you're porting a new
-// project and want to see a list of file system operations happening so that
-// you can create a virtual file system with all of the required files.
-var FS_LOG = 0;
-
 // If set to nonzero, the provided virtual filesystem if treated
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.
@@ -939,9 +934,6 @@ var PGO = 0;
 // optimizer pass?
 var DEAD_FUNCTIONS = [];
 
-// If 1, generate an explicit conversion of zext i1 to i32, using ?:
-var EXPLICIT_ZEXT = 0;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 var EXPORT_NAME = 'Module';
@@ -1150,19 +1142,6 @@ var USE_COCOS2D = 0;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 var SDL2_IMAGE_FORMATS = [];
-
-// Compiler debugging options
-//
-// Some useful items:
-//    framework
-//    frameworkLines
-//    gconst
-//    types
-//    vars
-//    unparsedFunctions
-//    metadata
-//    legalizer
-var DEBUG_TAGS_SHOWING = [];
 
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
