@@ -902,12 +902,6 @@ var SEPARATE_ASM = 0;
 // with --separate-asm) will contain only the functions you provide.
 var ONLY_MY_CODE = 0;
 
-// Enables profile-guided optimization in the form of runtime checks for which
-// functions are actually called. Emits a list during shutdown that you can pass
-// to DEAD_FUNCTIONS (you can also emit the list manually by calling
-// PGOMonitor.dump());
-var PGO = 0;
-
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
 // If a dead function is actually called, you will get a runtime error.
@@ -1414,7 +1408,7 @@ var LEGACY_SETTINGS = [
   ['SAFE_HEAP', [0, 1], 'safe heap must be 0 or 1 in fastcomp'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
-  ['PGO', [0], 'pgo not supported in fastcomp'],
+  ['PGO', [0], 'pgo no longer supported'],
   ['QUANTUM_SIZE', [4], 'altering the QUANTUM_SIZE is not supported'],
   ['FUNCTION_POINTER_ALIGNMENT', [2], 'Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091)'],
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],

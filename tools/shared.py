@@ -1094,34 +1094,6 @@ def to_cc(cxx):
   return os.path.join(dirname, basename)
 
 
-def read_pgo_data(filename):
-  '''
-    Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
-  '''
-  signs_lines = []
-  overflows_lines = []
-
-  for line in open(filename, 'r'):
-    try:
-      if line.rstrip() == '':
-        continue
-      if '%0 failures' in line:
-        continue
-      left, right = line.split(' : ')
-      signature = left.split('|')[1]
-      if 'Sign' in left:
-        signs_lines.append(signature)
-      elif 'Overflow' in left:
-        overflows_lines.append(signature)
-    except:
-      pass
-
-  return {
-    'signs_lines': signs_lines,
-    'overflows_lines': overflows_lines
-  }
-
-
 def unique_ordered(values):
   """return a list of unique values in an input list, without changing order
   (list(set(.)) would change order randomly).

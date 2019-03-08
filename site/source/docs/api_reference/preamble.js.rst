@@ -440,7 +440,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned)
   function SAFE_FT_MASK(value, mask)
   function CHECK_OVERFLOW(value, bits, ignore, sig)
-  Module['PGOMonitor'] = PGOMonitor; — a bit confusing
   Module["preloadedImages"]
   Module["preloadedAudios"]
 
