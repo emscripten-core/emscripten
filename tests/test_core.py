@@ -5790,8 +5790,6 @@ return malloc(size);
       '2xi40',
       # current fastcomp limitations FIXME
       'quoted',
-      # TODO XXX
-      'atomicrmw_unaligned'
     ]
     skip_emterp = [
       'funcptr', # test writes to memory we store out bytecode! test is invalid

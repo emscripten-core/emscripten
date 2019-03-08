@@ -154,12 +154,6 @@ var GLOBAL_BASE = -1;
 // infinite number.
 var DOUBLE_MODE = 1;
 
-// If enabled, all memory accesses are assumed to be unaligned.  In unaligned
-// memory mode, you can run nonportable code that typically would break in JS
-// (or on ARM for that matter, which also cannot do unaligned reads/writes), at
-// the cost of slowness
-var UNALIGNED_MEMORY = 0;
-
 // Warn at compile time about instructions that LLVM tells us are not fully
 // aligned.  This is useful to find places in your code where you might refactor
 // to ensure proper alignment.  This is currently only supported in asm.js, not
