@@ -753,14 +753,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return oldDynamicTop|0;
   },
@@ -798,14 +797,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return 0;
   },
