@@ -1392,14 +1392,14 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 // to explicitly choose to disable HTML minification altogether.
 var MINIFY_HTML = 1;
 
-// Legacy settings that have been removed, and the values they are now fixed to. These can no
-// longer be changed:
-// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is an array of values that will
-// still be silently accepted by the compiler. First element in the list is the canonical/fixed value going forward.
-// This allows existing build systems to keep specifying one of the supported settings, for backwards compatibility.
+// Legacy settings that have been removed, and the values they are now fixed to.
+// These can no longer be changed:
+// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
+// an array of values that will still be silently accepted by the compiler.
+// First element in the list is the canonical/fixed value going forward.
+// This allows existing build systems to keep specifying one of the supported
+// settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
-  ['ASM_JS', [1, 2], 'ASM_JS must be enabled in fastcomp'],
-  ['SAFE_HEAP', [0, 1], 'safe heap must be 0 or 1 in fastcomp'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
   ['PGO', [0], 'pgo no longer supported'],
