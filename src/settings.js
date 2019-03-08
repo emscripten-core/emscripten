@@ -160,14 +160,6 @@ var DOUBLE_MODE = 1;
 // the cost of slowness
 var UNALIGNED_MEMORY = 0;
 
-// If enabled, assumes all reads and writes are fully aligned for the type they
-// use. This is true in proper C code (no undefined behavior), but is sadly
-// common enough that we can't do it by default. See SAFE_HEAP.  For ways to
-// help find places in your code where unaligned reads/writes are done - you
-// might be able to refactor your codebase to prevent them, which leads to
-// smaller and faster code, or even the option to turn this flag on.
-var FORCE_ALIGNED_MEMORY = 0;
-
 // Warn at compile time about instructions that LLVM tells us are not fully
 // aligned.  This is useful to find places in your code where you might refactor
 // to ensure proper alignment.  This is currently only supported in asm.js, not
