@@ -374,6 +374,27 @@ def apply_settings(changes):
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
 
+def find_output_arg(args):
+  """Find and remove any -o argumnts.  The final one takes precedence.
+  Return the final -o target along with the remaining (non-o) arguments.
+  """
+  outargs = []
+  specified_target = None
+  use_next = False
+  for arg in args:
+    if use_next:
+      specified_target = arg
+      use_next = False
+      continue
+    if arg == '-o':
+      use_next = True
+    elif arg.startswith('-o'):
+      specified_target = arg[2:]
+    else:
+      outargs.append(arg)
+  return specified_target, outargs
+
+
 #
 # Main run() function
 #
@@ -484,7 +505,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
-  # Default to using C++.
+  # Default to using C++ even when run as `emcc`.
+  # This means that emcc will act as a C++ linker when no source files are
+  # specified.  However, when a C source is specified we do default to C.
+  # This differs to clang and gcc where the default is always C unless run as
+  # clang++/g++.
   use_cxx = True
 
   def get_language_mode(args):
@@ -686,28 +711,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  # Check if a target is specified
-
-  # Find and remove any -o argumnts.  Final one should take precedence, if
-  # multiple are specified.
-  def strip_specified_target(args):
-    outargs = []
-    specified_target = None
-    use_next = False
-    for arg in args:
-      if use_next:
-        specified_target = arg
-        use_next = False
-        continue
-      if arg == '-o':
-        use_next = True
-      elif arg.startswith('-o'):
-        specified_target = arg[2:]
-      else:
-        outargs.append(arg)
-    return specified_target, outargs
-
-  specified_target, args = strip_specified_target(args)
+  # Check if a target is specified on the command line
+  specified_target, args = find_output_arg(args)
 
   # specified_target is the user-specified one, target is what we will generate
   if specified_target:
