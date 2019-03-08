@@ -477,7 +477,10 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    return TOTAL_MEMORY;
+    // In pthreads we don't update the TOTAL_MEMORY global to all threads, but
+    // the views are always up to date. Little cost to just reading it from there
+    // in non-pthreads too.
+    return HEAP8.length;
   },
 
 #if ABORTING_MALLOC
@@ -648,7 +651,6 @@ LibraryManager.library = {
 #endif
 
     TOTAL_MEMORY = newSize;
-    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
@@ -712,7 +714,7 @@ LibraryManager.library = {
   // Changes the size of the memory area by |bytes|; returns the
   // address of the previous top ('break') of the memory area
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
-  sbrk__asm: true,
+  //sbrk__asm: true,
   sbrk__sig: ['ii'],
   sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
 #if ABORTING_MALLOC
@@ -727,14 +729,14 @@ LibraryManager.library = {
     var totalMemory = 0;
 #if USE_PTHREADS
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
-    // this function can becalled simultaneously in multiple threads.
+    // this function can be called simultaneously in multiple threads.
     do {
 #endif
 
 #if !USE_PTHREADS
       oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
 #else
-      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
+      oldDynamicTop = Atomics.load(HEAP32, DYNAMICTOP_PTR>>2)|0;
 #endif
       newDynamicTop = oldDynamicTop + increment | 0;
 
@@ -749,7 +751,13 @@ LibraryManager.library = {
 
       totalMemory = _emscripten_get_heap_size()|0;
       if ((newDynamicTop|0) > (totalMemory|0)) {
-        if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
+        if (_emscripten_resize_heap(newDynamicTop|0)|0) {
+          // We resized the heap. Start another loop iteration if we need to.
+#if USE_PTHREADS
+          continue;
+#endif
+        } else {
+          // We failed to resize the heap.
 #if USE_PTHREADS
           // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
           // start another loop iteration.
@@ -767,7 +775,7 @@ LibraryManager.library = {
 #else
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
+      oldDynamicTopOnChange = Atomics.compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
 #endif
 
@@ -785,6 +793,9 @@ LibraryManager.library = {
     newDynamicTop = newDynamicTop|0;
     var totalMemory = 0;
 #if USE_PTHREADS
+
+    throw 'TODO';
+
     totalMemory = _emscripten_get_heap_size()|0;
     // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
     // enlarge memory, so this needs to fail.
