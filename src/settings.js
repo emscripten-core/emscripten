@@ -1375,11 +1375,6 @@ var STATIC_BUMP = -1;
 // the total initial wasm table size.
 var WASM_TABLE_SIZE = 0;
 
-// if set to 1, then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-var EMIT_EMSCRIPTEN_METADATA = 0;
-
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
 // bit of generated code size in applications that do not care about
