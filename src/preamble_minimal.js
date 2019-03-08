@@ -55,11 +55,11 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
 #if ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
 var wasmMaximumMemory = {{{ WASM_MEM_MAX }}};
 #else
-var wasmMaximumMemory = HEAP8.length;
+var wasmMaximumMemory = {{{ TOTAL_MEMORY }}};
 #endif
 
 var wasmMemory = new WebAssembly.Memory({
-  'initial': HEAP8.length >> 16
+  'initial': {{{ TOTAL_MEMORY }}} >> 16
 #if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || WASM_MEM_MAX != -1
   , 'maximum': wasmMaximumMemory >> 16
 #endif
@@ -77,9 +77,9 @@ assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memo
 #else
 
 #if USE_PTHREADS
-var buffer = new SharedArrayBuffer(HEAP8.length);
+var buffer = new SharedArrayBuffer({{{ TOTAL_MEMORY }}});
 #else
-var buffer = new ArrayBuffer(HEAP8.length);
+var buffer = new ArrayBuffer({{{ TOTAL_MEMORY }}});
 #endif
 
 #if USE_PTHREADS
@@ -92,12 +92,12 @@ var buffer = new ArrayBuffer(HEAP8.length);
 var WASM_PAGE_SIZE = 65536;
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
 assert(({{{ getQuoted('DYNAMIC_BASE') }}}) % 16 === 0, 'heap must start aligned');
-assert(HEAP8.length >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + HEAP8.length + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
-assert(HEAP8.length % WASM_PAGE_SIZE === 0);
+assert({{{ TOTAL_MEMORY }}} >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ TOTAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert({{{ TOTAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
 #if WASM_MEM_MAX != -1
 assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-assert(buffer.byteLength === HEAP8.length);
+assert(buffer.byteLength === {{{ TOTAL_MEMORY }}});
 #endif // ASSERTIONS
 
 var HEAP8 = new Int8Array(buffer);
