@@ -671,7 +671,7 @@ function convertJsFunctionToWasm(func, sig) {
 }
 
 // Add a wasm function to the table.
-function addWasmFunction(func, sig) {
+function addFunctionWasm(func, sig) {
   var table = wasmTable;
   var ret = table.length;
 
@@ -679,8 +679,9 @@ function addWasmFunction(func, sig) {
   try {
     table.grow(1);
   } catch (err) {
-    if (!err instanceof RangeError)
+    if (!err instanceof RangeError) {
       throw err;
+    }
     throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
   }
 
@@ -689,8 +690,9 @@ function addWasmFunction(func, sig) {
     // Attempting to call this with JS function will cause of table.set() to fail
     table.set(ret, func);
   } catch (err) {
-    if (!err instanceof TypeError)
+    if (!err instanceof TypeError) {
       throw err;
+    }
     assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
     var wrapped = convertJsFunctionToWasm(func, sig);
     table.set(ret, wrapped);
@@ -698,10 +700,14 @@ function addWasmFunction(func, sig) {
 
   return ret;
 }
+
+function removeFunctionWasm(index) {
+  // TODO(sbc): Look into implementing this to allow re-using of table slots
+}
 #endif
 
 // 'sig' parameter is required for the llvm backend but only when func is not
-// already as WebAssembly function.
+// already a WebAssembly function.
 function addFunction(func, sig) {
 #if ASSERTIONS == 2
   if (typeof sig === 'undefined') {
@@ -710,7 +716,7 @@ function addFunction(func, sig) {
 #endif // ASSERTIONS
 
 #if WASM_BACKEND
-  return addWasmFunction(func, sig);
+  return addFunctionWasm(func, sig);
 #else
 
 #if EMULATED_FUNCTION_POINTERS == 0
@@ -726,9 +732,9 @@ function addFunction(func, sig) {
 #else // EMULATED_FUNCTION_POINTERS == 0
 
 #if WASM
-  return addWasmFunction(func, sig);
+  return addFunctionWasm(func, sig);
 #else
-  alignFunctionTables(); // XXX we should rely on this being an invariant
+  alignFunctionTables(); // TODO: we should rely on this being an invariant
   var tables = getFunctionTables();
   var ret = -1;
   for (var sig in tables) {
@@ -738,28 +744,32 @@ function addFunction(func, sig) {
     table.push(func);
   }
   return ret;
-#endif
+#endif // WASM
 
 #endif // EMULATED_FUNCTION_POINTERS == 0
-
 #endif // WASM_BACKEND
 }
 
 function removeFunction(index) {
 #if WASM_BACKEND
+  removeFunctionWasm(index);
 #else
+
 #if EMULATED_FUNCTION_POINTERS == 0
   functionPointers[index-jsCallStartIndex] = null;
 #else
-#if !WASM
+#if WASM
+  removeFunctionWasm(index);
+#else
   alignFunctionTables(); // XXX we should rely on this being an invariant
   var tables = getFunctionTables();
   for (var sig in tables) {
     tables[sig][index] = null;
   }
-#endif
-#endif
-#endif
+#endif // WASM
+
+#endif // EMULATE_FUNCTION_POINTER_CASTS == 0
+#endif // WASM_BACKEND
 }
 
 var funcWrappers = {};
