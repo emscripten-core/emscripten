@@ -504,14 +504,14 @@ LibraryManager.library = {
 #if WASM
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = Module['buffer'];
+    var old = buffer;
     var oldSize = old.byteLength;
     // native wasm support
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = wasmMemory.buffer;
+        return buffer = wasmMemory.buffer;
       } else {
         return null;
       }
@@ -544,18 +544,17 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
+  emscripten_resize_heap__proxy: 'sync',
+  emscripten_resize_heap__sig: 'ii',
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
 #if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
-#if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
+#if ALLOW_MEMORY_GROWTH
   , '$emscripten_realloc_buffer'
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
-#if USE_PTHREADS
-    abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
-#else
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -565,8 +564,15 @@ LibraryManager.library = {
 #else
     var oldSize = _emscripten_get_heap_size();
     // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
-#if ASSERTIONS
-    assert(requestedSize > oldSize); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+    // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the heap.
+    // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
+#if USE_PTHREADS
+    if (requestedSize <= oldSize) {
+      return false;
+    }
+#endif // USE_PTHREADS
+#if ASSERTIONS && !USE_PTHREADS
+    assert(requestedSize > oldSize);
 #endif
 
 #if EMSCRIPTEN_TRACING
@@ -633,9 +639,13 @@ LibraryManager.library = {
       return false;
     }
 
-    // everything worked
+    // Everything worked, update the buffer and views (except with pthreads, since in that case
+    // the buffer and views are modified in place by the VM - otherwise things couldn't work, as
+    // we'd need to update the views in the Workers too).
+#if !USE_PTHREADS
     updateGlobalBuffer(replacement);
     updateGlobalBufferViews();
+#endif
 
     TOTAL_MEMORY = newSize;
     HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
@@ -652,7 +662,6 @@ LibraryManager.library = {
 
     return true;
 #endif // ALLOW_MEMORY_GROWTH
-#endif // USE_PTHREADS
   },
 
 #if MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH
@@ -717,52 +726,51 @@ LibraryManager.library = {
     var newDynamicTop = 0;
     var totalMemory = 0;
 #if USE_PTHREADS
-    totalMemory = _emscripten_get_heap_size()|0;
-
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can becalled simultaneously in multiple threads.
     do {
+#endif
+
+#if !USE_PTHREADS
+      oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+#else
       oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
+#endif
       newDynamicTop = oldDynamicTop + increment | 0;
-      // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
-      // enlarge memory, so this needs to fail.
+
       if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-        | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
-        | (newDynamicTop|0) > (totalMemory|0)) {
+        | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
 #if ABORTING_MALLOC
         abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#else
+#endif
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
-#endif
       }
+
+      totalMemory = _emscripten_get_heap_size()|0;
+      if ((newDynamicTop|0) > (totalMemory|0)) {
+        if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
+#if USE_PTHREADS
+          // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
+          // start another loop iteration.
+          if ((_emscripten_get_heap_size()|0) > totalMemory) {
+            continue;
+          }
+#endif
+          ___setErrNo({{{ cDefine('ENOMEM') }}});
+          return -1;
+        }
+      }
+
+#if !USE_PTHREADS
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+#else
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
       oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
-#else // singlethreaded build: (-s USE_PTHREADS=0)
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    newDynamicTop = oldDynamicTop + increment | 0;
-
-    if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-      | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
-      return -1;
-    }
 
-    totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
-      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-    }
-#endif
     return oldDynamicTop|0;
   },
 

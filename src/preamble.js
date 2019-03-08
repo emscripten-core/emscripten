@@ -322,7 +322,7 @@ var HEAP,
   HEAPF64;
 
 function updateGlobalBuffer(buf) {
-  Module['buffer'] = buffer = buf;
+  buffer = buf;
 }
 
 function updateGlobalBufferViews() {
@@ -458,7 +458,6 @@ if (Module['buffer']) {
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY);
 #endif // ASSERTIONS
-  Module['buffer'] = buffer;
 }
 updateGlobalBufferViews();
 
