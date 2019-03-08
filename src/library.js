@@ -638,7 +638,6 @@ LibraryManager.library = {
     updateGlobalBufferViews();
 
     TOTAL_MEMORY = newSize;
-    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
