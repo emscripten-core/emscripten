@@ -1016,7 +1016,7 @@ class benchmark(RunnerCore):
       ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
-      return [get_poppler_library(self)]
+      return get_poppler_library(self)
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
