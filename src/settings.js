@@ -26,16 +26,6 @@
 
 // Tuning
 
-// This is the size of an individual field in a structure. 1 would
-// lead to e.g. doubles and chars both taking 1 memory address. This
-// is a form of 'compressed' memory, with shrinking and stretching
-// according to the type, when compared to C/C++. On the other hand
-// the normal value of 4 means all fields take 4 memory addresses,
-// as per the norm on a 32-bit machine.
-//
-// Changing this from the default of 4 is deprecated.
-var QUANTUM_SIZE = 4;
-
 // Whether we should add runtime assertions, for example to
 // check that each allocation to the stack does not
 // exceed its size, whether all allocations (stack and static) are
@@ -164,20 +154,6 @@ var GLOBAL_BASE = -1;
 // infinite number.
 var DOUBLE_MODE = 1;
 
-// If enabled, all memory accesses are assumed to be unaligned.  In unaligned
-// memory mode, you can run nonportable code that typically would break in JS
-// (or on ARM for that matter, which also cannot do unaligned reads/writes), at
-// the cost of slowness
-var UNALIGNED_MEMORY = 0;
-
-// If enabled, assumes all reads and writes are fully aligned for the type they
-// use. This is true in proper C code (no undefined behavior), but is sadly
-// common enough that we can't do it by default. See SAFE_HEAP.  For ways to
-// help find places in your code where unaligned reads/writes are done - you
-// might be able to refactor your codebase to prevent them, which leads to
-// smaller and faster code, or even the option to turn this flag on.
-var FORCE_ALIGNED_MEMORY = 0;
-
 // Warn at compile time about instructions that LLVM tells us are not fully
 // aligned.  This is useful to find places in your code where you might refactor
 // to ensure proper alignment.  This is currently only supported in asm.js, not
@@ -305,9 +281,7 @@ var ALIASING_FUNCTION_POINTERS = 0;
 // By default we use a wasm Table for function pointers, which is fast and
 // efficient. When enabling emulation, we also use the Table *outside* the wasm
 // module, exactly as when emulating in asm.js, just replacing the plain JS
-// array with a Table. However, Tables have some limitations currently, like not
-// being able to assign an arbitrary JS method to them, which we have yet to
-// work around.
+// array with a Table.
 var EMULATED_FUNCTION_POINTERS = 0;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
@@ -595,11 +569,6 @@ var EXPORTED_RUNTIME_METHODS = [];
 // lets you remove methods that would be exported by default; setting values in
 // this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
-
-// Log all FS operations.  This is especially helpful when you're porting a new
-// project and want to see a list of file system operations happening so that
-// you can create a virtual file system with all of the required files.
-var FS_LOG = 0;
 
 // If set to nonzero, the provided virtual filesystem if treated
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
@@ -925,12 +894,6 @@ var SEPARATE_ASM = 0;
 // with --separate-asm) will contain only the functions you provide.
 var ONLY_MY_CODE = 0;
 
-// Enables profile-guided optimization in the form of runtime checks for which
-// functions are actually called. Emits a list during shutdown that you can pass
-// to DEAD_FUNCTIONS (you can also emit the list manually by calling
-// PGOMonitor.dump());
-var PGO = 0;
-
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
 // If a dead function is actually called, you will get a runtime error.
@@ -938,9 +901,6 @@ var PGO = 0;
 // TODO: make this work on compiled methods as well, perhaps by adding a JS
 // optimizer pass?
 var DEAD_FUNCTIONS = [];
-
-// If 1, generate an explicit conversion of zext i1 to i32, using ?:
-var EXPLICIT_ZEXT = 0;
 
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
@@ -1151,19 +1111,6 @@ var USE_COCOS2D = 0;
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm, tga, xcf, xpm, xv
 var SDL2_IMAGE_FORMATS = [];
 
-// Compiler debugging options
-//
-// Some useful items:
-//    framework
-//    frameworkLines
-//    gconst
-//    types
-//    vars
-//    unparsedFunctions
-//    metadata
-//    legalizer
-var DEBUG_TAGS_SHOWING = [];
-
 // The list of defines (C_DEFINES) was moved into struct_info.json in the same
 // directory.  That file is automatically parsed by tools/gen_struct_info.py.
 // If you modify the headers, just clear your cache and emscripten libc should
@@ -1204,8 +1151,6 @@ var PTHREADS_DEBUG = 0;
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
-var JSCALL_START_INDEX = 0; // received from the backend
-var JSCALL_SIG_ORDER = {}; // received from the backend
 
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++ or LLVM
@@ -1443,17 +1388,17 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 // to explicitly choose to disable HTML minification altogether.
 var MINIFY_HTML = 1;
 
-// Legacy settings that have been removed, and the values they are now fixed to. These can no
-// longer be changed:
-// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is an array of values that will
-// still be silently accepted by the compiler. First element in the list is the canonical/fixed value going forward.
-// This allows existing build systems to keep specifying one of the supported settings, for backwards compatibility.
+// Legacy settings that have been removed, and the values they are now fixed to.
+// These can no longer be changed:
+// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
+// an array of values that will still be silently accepted by the compiler.
+// First element in the list is the canonical/fixed value going forward.
+// This allows existing build systems to keep specifying one of the supported
+// settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
-  ['ASM_JS', [1, 2], 'ASM_JS must be enabled in fastcomp'],
-  ['SAFE_HEAP', [0, 1], 'safe heap must be 0 or 1 in fastcomp'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
-  ['PGO', [0], 'pgo not supported in fastcomp'],
+  ['PGO', [0], 'pgo no longer supported'],
   ['QUANTUM_SIZE', [4], 'altering the QUANTUM_SIZE is not supported'],
   ['FUNCTION_POINTER_ALIGNMENT', [2], 'Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091)'],
   ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],

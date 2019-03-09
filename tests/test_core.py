@@ -2118,12 +2118,8 @@ The current type of b is: 9
   def test_copyop(self):
     # clang generated code is vulnerable to this, as it uses
     # memcpy for assignments, with hardcoded numbers of bytes
-    # (llvm-gcc copies items one by one). See QUANTUM_SIZE in
-    # settings.js.
-    test_path = path_from_root('tests', 'core', 'test_copyop')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    # (llvm-gcc copies items one by one).
+    self.do_run_in_out_file_test('tests', 'core', 'test_copyop')
 
   def test_memcpy_memcmp(self):
     self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
@@ -5590,20 +5586,6 @@ return malloc(size);
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
-      # TODO: test only worked in non-fastcomp (well, this section)
-      continue
-      assert 'asm2g' in core_test_modes
-      if self.run_name == 'asm2g' and not use_cmake:
-        # Test forced alignment
-        print('testing FORCE_ALIGNED_MEMORY', file=sys.stderr)
-        old = open('src.cpp.o.js').read()
-        self.set_setting('FORCE_ALIGNED_MEMORY', 1)
-        test()
-        new = open('src.cpp.o.js').read()
-        print(len(old), len(new), old.count('tempBigInt'), new.count('tempBigInt'))
-        assert len(old) > len(new)
-        assert old.count('tempBigInt') > new.count('tempBigInt')
-
   @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
   @is_slow_test
   def test_poppler(self):
@@ -5619,12 +5601,13 @@ return malloc(size);
         var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
         out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
       };
-''')
+      ''')
       self.emcc_args += ['--pre-js', 'pre.js']
 
-      self.do_ll_run(get_poppler_library(self),
-                     str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read()))).replace(' ', ''),
-                     args='-scale-to 512 paper.pdf filename'.split(' '))
+      ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
+      self.do_run('', ppm_data.replace(' ', ''),
+                  libraries=get_poppler_library(self),
+                  args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
     test()
 
@@ -5638,6 +5621,21 @@ return malloc(size);
 
   @is_slow_test
   def test_openjpeg(self):
+
+    def line_splitter(data):
+      out = ''
+      counter = 0
+
+      for ch in data:
+        out += ch
+        if ch == ' ' and counter > 60:
+          out += '\n'
+          counter = 0
+        else:
+          counter += 1
+
+      return out
+
     # remove -g, so we have one test without it by default
     Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g']
 
@@ -5648,7 +5646,7 @@ return malloc(size);
       Module.postRun = function() {
         out('Data: ' + JSON.stringify(MEMFS.getFileDataAsRegularArray(FS.analyzePath('image.raw').object)));
       };
-      """ % shared.line_splitter(str(image_bytes)))
+      """ % line_splitter(str(image_bytes)))
 
     shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
 
@@ -5793,8 +5791,6 @@ return malloc(size);
       '2xi40',
       # current fastcomp limitations FIXME
       'quoted',
-      # TODO XXX
-      'atomicrmw_unaligned'
     ]
     skip_emterp = [
       'funcptr', # test writes to memory we store out bytecode! test is invalid
@@ -6116,130 +6112,6 @@ return malloc(size);
     test('abort(')
     test('abort(', args=['x'], no_build=True)
 
-  def test_pgo(self):
-    if self.get_setting('ASM_JS'):
-      self.skipTest('PGO does not work in asm mode')
-
-    def run_all(name, src):
-      print(name)
-
-      def test(expected, args=[], no_build=False):
-        self.do_run(src, expected, args=args, no_build=no_build)
-        return open('src.cpp.o.js').read()
-
-      # Sanity check that it works and the dead function is emitted
-      js = test('*9*')
-      assert 'function _unused(' in js
-
-      # Run with PGO, see that unused is true to its name
-      self.set_setting('PGO', 1)
-      test("*9*\n-s DEAD_FUNCTIONS='[\"_free\",\"_unused\"]'")
-      self.set_setting('PGO', 0)
-
-      # Kill off the dead function, still works and it is not emitted
-      self.set_setting('DEAD_FUNCTIONS', ['_unused'])
-      js = test('*9*')
-      assert 'function _unused($' not in js # no compiled code
-      assert 'function _unused(' in js # lib-generated stub
-      self.set_setting('DEAD_FUNCTIONS', [])
-
-      # Run the same code with argc that uses the dead function, see abort
-      test(('dead function: unused'), args=['a', 'b'], no_build=True)
-
-    # Normal stuff
-    run_all('normal', r'''
-      #include <stdio.h>
-      extern "C" {
-      int used(int x) {
-        if (x == 0) return -1;
-        return used(x/3) + used(x/17) + x%5;
-      }
-      int unused(int x) {
-        if (x == 0) return -1;
-        return unused(x/4) + unused(x/23) + x%7;
-      }
-      }
-      int main(int argc, char **argv) {
-        printf("*%d*\n", argc == 3 ? unused(argv[0][0] + 1024) : used(argc + 1555));
-        return 0;
-      }
-    ''')
-
-    # Call by function pointer
-    run_all('function pointers', r'''
-      #include <stdio.h>
-      extern "C" {
-      int used(int x) {
-        if (x == 0) return -1;
-        return used(x/3) + used(x/17) + x%5;
-      }
-      int unused(int x) {
-        if (x == 0) return -1;
-        return unused(x/4) + unused(x/23) + x%7;
-      }
-      }
-      typedef int (*ii)(int);
-      int main(int argc, char **argv) {
-        ii pointers[256];
-        for (int i = 0; i < 256; i++) {
-          pointers[i] = (i == 3) ? unused : used;
-        }
-        printf("*%d*\n", pointers[argc](argc + 1555));
-        return 0;
-      }
-    ''')
-
-  # TODO: test only worked in non-fastcomp
-  def test_asm_pgo(self):
-    self.skipTest('non-fastcomp is deprecated and fails in 3.5')
-
-    src = open(path_from_root('tests', 'hello_libcxx.cpp')).read()
-    output = 'hello, world!'
-
-    self.do_run(src, output)
-    shutil.move('src.cpp.o.js', 'normal.js')
-
-    self.set_setting('ASM_JS', 0)
-    self.set_setting('PGO', 1)
-    self.do_run(src, output)
-    self.set_setting('ASM_JS', 1)
-    self.set_setting('PGO', 0)
-
-    shutil.move('src.cpp.o.js', 'pgo.js')
-    pgo_output = run_js('pgo.js').split('\n')[1]
-    create_test_file('pgo_data.rsp', pgo_output)
-
-    # with response file
-
-    self.emcc_args += ['@pgo_data.rsp']
-    self.do_run(src, output)
-    self.emcc_args.pop()
-    shutil.move('src.cpp.o.js', 'pgoed.js')
-
-    before = len(open('normal.js').read())
-    after = len(open('pgoed.js').read())
-    assert after < 0.90 * before, [before, after] # expect a size reduction
-
-    # with response in settings element itself
-
-    create_test_file('dead_funcs', pgo_output[pgo_output.find('['):-1])
-    self.emcc_args += ['-s', 'DEAD_FUNCTIONS=@dead_funcs']
-    self.do_run(src, output)
-    self.emcc_args.pop()
-    self.emcc_args.pop()
-    shutil.move('src.cpp.o.js', 'pgoed2.js')
-    assert open('pgoed.js').read() == open('pgoed2.js').read()
-
-    # with relative response in settings element itself
-
-    create_test_file('dead_funcs', pgo_output[pgo_output.find('['):-1])
-    self.emcc_args += ['-s', 'DEAD_FUNCTIONS=@dead_funcs']
-    self.do_run(src, output)
-    self.emcc_args.pop()
-    self.emcc_args.pop()
-    shutil.move('src.cpp.o.js', 'pgoed2.js')
-    assert open('pgoed.js').read() == open('pgoed2.js').read()
-
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
@@ -6320,39 +6192,44 @@ return malloc(size);
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
-
-    test_path = path_from_root('tests', 'interop')
-    src, expected = (os.path.join(test_path, s) for s in ('test_add_function.cpp', 'test_add_function.out'))
-
-    post_js = os.path.join(test_path, 'test_add_function_post.js')
+    src = path_from_root('tests', 'interop', 'test_add_function.cpp')
+    post_js = path_from_root('tests', 'interop', 'test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
-    self.do_run_from_file(src, expected)
 
-    if self.get_setting('ASM_JS'):
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
-      self.do_run(open(src).read(), '''Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.''')
-      generated = open('src.cpp.o.js').read()
-      assert 'jsCall_' not in generated
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
+    print('basics')
+    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
-      # flip the test
-      self.set_setting('ALIASING_FUNCTION_POINTERS', 1 - self.get_setting('ALIASING_FUNCTION_POINTERS'))
-      self.do_run_from_file(src, expected)
-
-    assert 'asm2' in core_test_modes
-    if self.run_name == 'asm2':
-      print('closure')
+    if not self.is_wasm_backend():
+      print('with --closure')
+      old = list(self.emcc_args)
       self.emcc_args += ['--closure', '1']
-      self.do_run_from_file(src, expected)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+      self.emcc_args = old
+      print(old)
 
-    # when emulating, we use a wasm Table, but we can't just assign a JS function to it
-    # TODO: wrap the JS in wasm, see settings.js
+    print('with ALIASING_FUNCTION_POINTERS')
+    self.set_setting('ALIASING_FUNCTION_POINTERS', 1)
+    self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+    self.clear_setting('ALIASING_FUNCTION_POINTERS')
+
+    print('with RESERVED_FUNCTION_POINTERS=0')
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
+
+    if self.is_wasm_backend():
+      self.do_run(open(src).read(), 'Unable to grow wasm table')
+      print('- with table growth')
+      self.set_setting('ALLOW_TABLE_GROWTH', 1)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
+    else:
+      self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.')
+      self.assertNotContained('jsCall_', open('src.cpp.o.js').read())
+
     if not self.is_wasm():
-      print('function pointer emulation')
-      self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
-      # with emulation, we don't need to reserve
+      # with emulation, we don't need to reserve, except with wasm where
+      # we still do.
+      print('- with function pointer emulation')
       self.set_setting('EMULATED_FUNCTION_POINTERS', 1)
-      self.do_run_from_file(src, expected)
+      self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
   def test_getFuncWrapper_sig_alias(self):
     src = r'''
