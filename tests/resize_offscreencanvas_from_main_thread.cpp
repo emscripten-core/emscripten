@@ -77,11 +77,21 @@ void resize_canvas(void *)
   emscripten_set_canvas_element_size("#canvas", 699, 299);
 }
 
+//should be able to do this regardless of offscreen canvas support
+void get_canvas_size()
+{
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
+  assert(h == 150);
+  assert(w == 300);
+}
+
 int main()
 {
+  get_canvas_size();
   if (!emscripten_supports_offscreencanvas())
   {
-    printf("Current browser does not support OffscreenCanvas. Skipping this test.\n");
+    printf("Current browser does not support OffscreenCanvas. Skipping the rest of the tests.\n");
 #ifdef REPORT_RESULT
     REPORT_RESULT(1);
 #endif
@@ -95,6 +105,7 @@ int main()
   pthread_t thread;
   printf("Creating thread.\n");
   pthread_create(&thread, &attr, thread_main, NULL);
+  pthread_detach(thread);
   EM_ASM(Module['noExitRuntime']=true);
 
   // Wait for a while, then change the canvas size on the main thread.

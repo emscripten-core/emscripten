@@ -331,7 +331,7 @@ class sanity(RunnerCore):
 
     restore_and_set_up()
 
-    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], '''ASM_JS must be enabled in fastcomp''')
+    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], 'ASM_JS can only be set to either 1 or 2')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'

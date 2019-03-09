@@ -2215,7 +2215,7 @@ LibraryManager.library = {
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
-    return addWasmFunction(result);
+    return addFunctionWasm(result);
 #else
     // convert the exported function into a function pointer using our generic
     // JS mechanism.
@@ -2248,9 +2248,9 @@ LibraryManager.library = {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 #endif // MAIN_MODULE != 0

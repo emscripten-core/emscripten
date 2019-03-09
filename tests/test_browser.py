@@ -4092,9 +4092,10 @@ window.close = function() {
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        cmd = args1 + args2 + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
-        print(str(cmd))
-        self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1']]:
+          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+          print(str(cmd))
+          self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
