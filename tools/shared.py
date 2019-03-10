@@ -22,6 +22,10 @@ import subprocess
 import sys
 import tempfile
 
+if sys.version_info < (2, 7, 12):
+  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
@@ -1094,51 +1098,6 @@ def to_cc(cxx):
   return os.path.join(dirname, basename)
 
 
-def line_splitter(data):
-  """Silly little tool to split JSON arrays over many lines."""
-
-  out = ''
-  counter = 0
-
-  for i in range(len(data)):
-    out += data[i]
-    if data[i] == ' ' and counter > 60:
-      out += '\n'
-      counter = 0
-    else:
-      counter += 1
-
-  return out
-
-
-def read_pgo_data(filename):
-  '''
-    Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
-  '''
-  signs_lines = []
-  overflows_lines = []
-
-  for line in open(filename, 'r'):
-    try:
-      if line.rstrip() == '':
-        continue
-      if '%0 failures' in line:
-        continue
-      left, right = line.split(' : ')
-      signature = left.split('|')[1]
-      if 'Sign' in left:
-        signs_lines.append(signature)
-      elif 'Overflow' in left:
-        overflows_lines.append(signature)
-    except:
-      pass
-
-  return {
-    'signs_lines': signs_lines,
-    'overflows_lines': overflows_lines
-  }
-
-
 def unique_ordered(values):
   """return a list of unique values in an input list, without changing order
   (list(set(.)) would change order randomly).
@@ -1183,8 +1142,15 @@ class SettingsManager(object):
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
 
-      for opt, fixed_values, _ in self.attrs['LEGACY_SETTINGS']:
-        self.attrs[opt] = fixed_values[0]
+      if 'EMCC_STRICT' in os.environ:
+        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+
+      self.legacy_settings = {}
+      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
+        self.legacy_settings[name] = (fixed_values, err)
+        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not self.attrs['STRICT']:
+          self.attrs[name] = fixed_values[0]
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1217,19 +1183,24 @@ class SettingsManager(object):
       if shrink_level >= 2:
         self.attrs['EVAL_CTORS'] = 1
 
+    def keys(self):
+      return self.attrs.keys()
+
     def __getattr__(self, attr):
       if attr in self.attrs:
         return self.attrs[attr]
       else:
-        raise AttributeError
+        raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
-      for legacy_attr, fixed_values, error_message in self.attrs['LEGACY_SETTINGS']:
-        if attr == legacy_attr:
-          if value not in fixed_values:
-            exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-          else:
-            logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+      if attr in self.legacy_settings:
+        if self.attrs['STRICT']:
+          exit_with_error('legacy setting used in strict mode: %s', attr)
+        fixed_values, error_message = self.legacy_settings[attr]
+        if value not in fixed_values:
+          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
+        else:
+          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
@@ -1275,6 +1246,12 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.ASM_JS not in [1, 2]:
+    exit_with_error('ASM_JS can only be set to either 1 or 2')
+
+  if Settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('SAVE_HEAP must be 0 or 1 in fastcomp')
+
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
@@ -2954,29 +2931,13 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_order=None):
+  def make_jscall(sig):
     fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = 'index' + (',' if fnargs else '') + fnargs
-    # While asm.js/fastcomp's addFunction support preallocates
-    # Settings.RESERVED_FUNCTION_POINTERS slots in functionPointers array, on
-    # the Wasm backend we reserve that number of slots for each possible
-    # function signature, so it is (Settings.RESERVED_FUNCTION_POINTERS * # of
-    # indirectly called function signatures) slots in total. So the index to
-    # functionPointers array should be adjusted according to the order of the
-    # function signature. The reason we do this is Wasm has a single unified
-    # function table while asm.js maintains separate function table per
-    # signature.
-    # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
-    # the 'sig_order' parameter will be 0 for 'v', 1 for 'ii', and so on.
-    if Settings.WASM_BACKEND:
-      assert sig_order is not None
-      index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_order)
-    else:
-      index = 'index'
+    args = (',' if fnargs else '') + fnargs
     ret = '''\
-function jsCall_%s(%s) {
-    %sfunctionPointers[%s](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', index, fnargs)
+function jsCall_%s(index%s) {
+    %sfunctionPointers[index](%s);
+}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
   @staticmethod

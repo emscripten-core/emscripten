@@ -3236,8 +3236,8 @@ int main(int argc, char** argv) {
 ''')
     run_process([PYTHON, EMCC, '-O0', 'main.c', '--js-library', 'lib.js', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
     generated = open('a.out.js').read()
-    self.assertContained('var _NonPrimitive=', generated)
-    self.assertNotContained('var _Int8Array=', generated)
+    self.assertContained('missing function: NonPrimitive', generated)
+    self.assertNotContained('missing function: Int8Array', generated)
 
   def test_js_lib_using_asm_lib(self):
     create_test_file('lib.js', r'''
@@ -8006,7 +8006,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1533, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1537, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -9042,9 +9042,16 @@ int main () {
     asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']
     opts = ['-O3', '--closure', '1', '-DNDEBUG', '-ffast-math']
 
-    hello_world_sources = [path_from_root('tests', 'small_hello_world.c'), '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=0', '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
-    hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'), path_from_root('tests', 'minimal_webgl', 'webgl.c'), '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'),
-                           '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]', '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL', '-s', 'MODULARIZE=1']
+    hello_world_sources = [path_from_root('tests', 'small_hello_world.c'),
+                           '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
+                           '-s', 'USES_DYNAMIC_ALLOC=0',
+                           '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
+    hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'),
+                           path_from_root('tests', 'minimal_webgl', 'webgl.c'),
+                           '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'),
+                           '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
+                           '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL',
+                           '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
 
     test_cases = [
@@ -9102,3 +9109,16 @@ int main () {
 
     run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
     run_process([PYTHON, EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
+
+  def test_legacy_settings_strict_mode(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
+    run_process(cmd)
+
+    with env_modify({'EMCC_STRICT': '1'}):
+      proc = run_process(cmd, stderr=PIPE, check=False)
+      self.assertNotEqual(proc.returncode, 0)
+      self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', proc.stderr)
+
+    proc = run_process(cmd + ['-s', 'STRICT=1'], stderr=PIPE, check=False)
+    self.assertNotEqual(proc.returncode, 0)
+    self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', proc.stderr)

@@ -316,12 +316,7 @@ var LibraryGLUT = {
     },
 
     exitFullscreen: function() {
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (function() {});
-      CFS.apply(document, []);
+      Browser.exitFullscreen();
     },
 
     cancelFullScreen: function() {
