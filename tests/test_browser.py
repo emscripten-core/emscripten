@@ -3128,15 +3128,23 @@ window.close = function() {
   def test_sdl2_canvas_write(self):
     self.btest('sdl2_canvas_write.cpp', expected='0', args=['-s', 'USE_SDL=2'])
 
-  @requires_graphics_hardware
-  def test_sdl2_gl_frames_swap(self):
+  def _test_sdl2_gl_frames_swap_base(self, *args):
     def post_build(*args):
       self.post_manual_reftest(*args)
       html = open('test.html').read()
       html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
       assert html != html2
       create_test_file('test.html', html2)
-    self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-s', 'USE_SDL=2'], manual_reference=True, post_build=post_build)
+    self.btest('sdl2_gl_frames_swap.c', reference='sdl2_gl_frames_swap.png', args=['-s', 'GL_TESTING=1', '-s', 'USE_SDL=2'] + list(args), manual_reference=True, post_build=post_build)
+
+  @requires_graphics_hardware
+  def test_sdl2_gl_frames_swap_with_proxy_to_worker(self):
+      self._test_sdl2_gl_frames_swap_base('--proxy-to-worker')
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_sdl2_gl_frames_swap_with_proxy_to_pthread(self):
+      self._test_sdl2_gl_frames_swap_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1')
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
