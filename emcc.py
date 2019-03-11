@@ -375,7 +375,7 @@ def apply_settings(changes):
 
 
 def find_output_arg(args):
-  """Find and remove any -o argumnts.  The final one takes precedence.
+  """Find and remove any -o arguments.  The final one takes precedence.
   Return the final -o target along with the remaining (non-o) arguments.
   """
   outargs = []
