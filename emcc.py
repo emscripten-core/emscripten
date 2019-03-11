@@ -324,11 +324,11 @@ class JSOptimizer(object):
 
 
 def embed_memfile(options):
-  return shared.Settings.SINGLE_FILE \
-          or (shared.Settings.MEM_INIT_METHOD == 0 \
-              and (not shared.Settings.MAIN_MODULE \
-                   and not shared.Settings.SIDE_MODULE \
-                   and not use_source_map(options)))
+  return (shared.Settings.SINGLE_FILE or
+          (shared.Settings.MEM_INIT_METHOD == 0 and
+           (not shared.Settings.MAIN_MODULE and
+            not shared.Settings.SIDE_MODULE and
+            not use_source_map(options))))
 
 
 def apply_settings(changes):
