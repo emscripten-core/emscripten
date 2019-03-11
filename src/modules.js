@@ -29,8 +29,6 @@ var Types = {
   types: {},
 };
 
-var firstTableIndex = RESERVED_FUNCTION_POINTERS + 1;
-
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
@@ -43,14 +41,8 @@ function genArgSequence(n) {
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: {}, // functions added from the library. value 2 means asmLibraryFunction
-  unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
-
-  nextIndex: firstTableIndex, // Start at a non-0 (even, see below) value
-  neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
-                                             // we always use), and we will need a function table for
-  blockAddresses: {}, // maps functions to a map of block labels to label ids
-  aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
+  // functions added from the library. value 2 means asmLibraryFunction
+  libraryFunctions: {},
 };
 
 var LibraryManager = {
