@@ -1450,9 +1450,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.BINARYEN_PASSES:
           shared.Settings.BINARYEN_PASSES += ','
         shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+        if not shared.Settings.WASM_BACKEND:
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
