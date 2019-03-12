@@ -5900,19 +5900,6 @@ int main(void) {
     output = run_process(NODE_JS + ['-e', 'var m; (global.define = function(deps, factory) { m = factory(); }).amd = true; require("./a.out.js"); m();'], stdout=PIPE, stderr=PIPE)
     assert output.stdout == 'hello, world!\n' and output.stderr == '', 'expected output, got\n===\nSTDOUT\n%s\n===\nSTDERR\n%s\n===\n' % (output.stdout, output.stderr)
 
-  @no_wasm_backend('tests asmjs optimizer')
-  @uses_canonical_tmp
-  def test_native_optimizer(self):
-    def test(args, expected):
-      print(args, expected)
-      with env_modify({'EMCC_DEBUG': '1', 'EMCC_NATIVE_OPTIMIZER': '1'}):
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'WASM=0'] + args)
-      #assert err.count('js optimizer using native') == expected, [err, expected]
-      self.assertContained('hello, world!', run_js('a.out.js'))
-
-    test([], 1)
-    test(['-s', 'OUTLINING_LIMIT=100000'], 2) # 2, because we run them before and after outline, which is non-native
-
   def test_emconfigure_js_o(self):
     # issue 2994
     for i in [0, 1, 2]:
