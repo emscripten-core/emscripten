@@ -324,7 +324,7 @@ var LibraryPThread = {
               Module['noExitRuntime'] = false;
               exit(d.returnCode);
             } else if (d.cmd === 'exit' || d.cmd === 'cancelDone') {
-              var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+              var detached = Atomics.load(HEAPU32, (d.threadId + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
               if (detached) {
                 PThread.freeThreadData(worker.pthread);
                 worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
