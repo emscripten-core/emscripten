@@ -324,7 +324,11 @@ class JSOptimizer(object):
 
 
 def embed_memfile(options):
-  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not use_source_map(options)))
+  return (shared.Settings.SINGLE_FILE or
+          (shared.Settings.MEM_INIT_METHOD == 0 and
+           (not shared.Settings.MAIN_MODULE and
+            not shared.Settings.SIDE_MODULE and
+            not use_source_map(options))))
 
 
 def apply_settings(changes):
@@ -1156,7 +1160,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.RELOCATABLE:
       assert shared.Settings.GLOBAL_BASE < 1
-      if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes:
+      if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes and not shared.Settings.WASM_BACKEND:
         shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
@@ -1446,9 +1450,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.BINARYEN_PASSES:
           shared.Settings.BINARYEN_PASSES += ','
         shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+        if not shared.Settings.WASM_BACKEND:
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
@@ -1857,7 +1862,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             save_intermediate('lto', 'bc')
             link_opts = []
           else:
-            # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+            # At minimum remove dead functions etc., this potentially saves a
+            # lot in the size of the generated code (and the time to compile it)
             link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
           if options.cfi:
@@ -2683,12 +2689,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
+
   # after generating the wasm, do some final operations
-  if shared.Settings.SIDE_MODULE:
+  if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
     wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
-    # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+    # replace the wasm binary output with the dynamic library.
+    # TODO: use a specific suffix for such files?
     shutil.move(wso, wasm_binary_target)
-    if not shared.Settings.WASM_BACKEND and not DEBUG:
+    if not DEBUG:
       os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:

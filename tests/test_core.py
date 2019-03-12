@@ -250,16 +250,17 @@ class TestCoreBase(RunnerCore):
     assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
-    test_path = path_from_root('tests', 'core', 'test_bswap64')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
+  @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
+  def test_bswap64_emulate_fps(self):
     # extra coverages
     for emulate_casts in [0, 1]:
       for emulate_fps in [0, 1, 2]:
         print(emulate_casts, emulate_fps)
         self.set_setting('EMULATE_FUNCTION_POINTER_CASTS', emulate_casts)
         self.set_setting('EMULATED_FUNCTION_POINTERS', emulate_fps)
-        self.do_run_from_file(src, output)
+        self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
   def test_sha1(self):
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
@@ -2359,7 +2360,7 @@ The current type of b is: 9
     self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
+    self.clear_setting('EXPORTED_FUNCTIONS')
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2376,10 +2377,14 @@ The current type of b is: 9
           puts(dlerror());
           abort();
         }
-        printf("load %p\n", lib_handle);
+        printf("dll handle: %p\n", lib_handle);
         intfunc x = (intfunc)dlsym(lib_handle, "foo");
-        printf("foo func %p\n", x);
+        printf("foo func handle: %p\n", x);
         if (p == 0) return 1;
+        if (!x) {
+          printf("dlsym failed: %s\n", dlerror());
+          return 1;
+        }
         printf("|%d|\n", x(81234567));
         return 0;
       }
@@ -2941,8 +2946,7 @@ The current type of b is: 9
       '''
     self.set_setting('EXPORTED_FUNCTIONS', ['_callvoid', '_callint', '_getvoid', '_getint'])
     dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib(lib_src, dirname, os.path.join(dirname, 'liblib.c'))
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2959,8 +2963,8 @@ The current type of b is: 9
       typedef voidfunc (*voidgetter)(int);
       typedef intfunc (*intgetter)(int);
 
-      void void_main() { printf("main.\n"); }
-      void int_main(int x) { printf("main %d\n", x); }
+      void void_main() { printf("void_main.\n"); }
+      void int_main(int x) { printf("int_main %d\n", x); }
 
       int main() {
         printf("go\n");
@@ -2994,8 +2998,8 @@ The current type of b is: 9
       '''
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, '''go
-main.
-main 201
+void_main.
+int_main 201
 void 0
 void 1
 int 0 54
@@ -3272,13 +3276,13 @@ ok
     def test():
       self.dylink_test('''
         #include <stdio.h>
-        extern int sidey();
+        extern "C" int sidey();
         int main() {
           printf("other says %d.\\n", sidey());
           return 0;
         }
       ''', '''
-        int sidey() { return 11; }
+        extern "C" int sidey() { return 11; }
       ''', 'other says 11.')
     test()
 
