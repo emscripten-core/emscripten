@@ -64,7 +64,7 @@ var LibraryEGL = {
             EGL.contextAttributes.antialias = (samples == 1);
           } else if (param == 0x3100 /*EGL_CONTEXT_PRIORITY_LEVEL_IMG*/) {
             var requestedPriority = {{{ makeGetValue('attribList', '4', 'i32') }}};
-            EGL.contextAttributes.lowLatency = requestedPriority < 0x3103 /*EGL_CONTEXT_PRIORITY_LOW_IMG*/;
+            EGL.contextAttributes.lowLatency = (requestedPriority != 0x3103 /*EGL_CONTEXT_PRIORITY_LOW_IMG*/);
           } else if (param == 0x3038 /*EGL_NONE*/) {
               break;
           }
