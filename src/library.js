@@ -634,7 +634,6 @@ LibraryManager.library = {
     }
 
     // everything worked
-    updateGlobalBuffer(replacement);
     updateGlobalBufferViews();
 
     TOTAL_MEMORY = newSize;
