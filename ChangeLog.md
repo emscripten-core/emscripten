@@ -16,6 +16,9 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+v1.38.29: 03/11/2019
+--------------------
+
 v1.38.28: 02/22/2019
 --------------------
  - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
