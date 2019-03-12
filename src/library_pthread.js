@@ -185,7 +185,7 @@ var LibraryPThread = {
           delete Module['canvas'];
 #endif
 
-          postMessage({ cmd: 'exit' });
+          postMessage({ cmd: 'exit', threadId: tb });
         }
       }
     },
@@ -324,10 +324,13 @@ var LibraryPThread = {
               Module['noExitRuntime'] = false;
               exit(d.returnCode);
             } else if (d.cmd === 'exit' || d.cmd === 'cancelDone') {
-              PThread.freeThreadData(worker.pthread);
-              worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-              PThread.unusedWorkerPool.push(worker);
-              PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+              var detached = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+              if (detached) {
+                PThread.freeThreadData(worker.pthread);
+                worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+                PThread.unusedWorkerPool.push(worker);
+                PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+              }
             } else if (d.cmd === 'objectTransfer') {
               PThread.receiveObjectTransfer(e.data);
             } else if (e.data.target === 'setimmediate') {
