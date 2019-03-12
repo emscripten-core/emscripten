@@ -638,7 +638,6 @@ LibraryManager.library = {
     updateGlobalBufferViews();
 
     TOTAL_MEMORY = newSize;
-    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
@@ -754,14 +753,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return oldDynamicTop|0;
   },
@@ -799,14 +797,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return 0;
   },
@@ -2215,7 +2212,7 @@ LibraryManager.library = {
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
-    return addWasmFunction(result);
+    return addFunctionWasm(result);
 #else
     // convert the exported function into a function pointer using our generic
     // JS mechanism.
@@ -2248,9 +2245,9 @@ LibraryManager.library = {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 #endif // MAIN_MODULE != 0

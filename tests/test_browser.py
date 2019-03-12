@@ -1546,18 +1546,33 @@ keydown(100);keyup(100); // trigger the end
   def test_glfw_time(self):
     self.btest('test_glfw_time.c', '1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
-  @requires_graphics_hardware
-  def test_egl(self):
+  def _test_egl_base(self, *args):
     create_test_file('test_egl.c', self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
 
-    run_process([PYTHON, EMCC, '-O2', 'test_egl.c', '-o', 'page.html', '-lEGL', '-lGL'])
+    run_process([PYTHON, EMCC, '-O2', 'test_egl.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_egl_width_height(self):
+  @requires_graphics_hardware
+  def test_egl(self):
+    self._test_egl_base()
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_egl_with_proxy_to_pthread(self):
+    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1')
+
+  def _test_egl_width_height_base(self, *args):
     create_test_file('test_egl_width_height.c', self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
 
-    run_process([PYTHON, EMCC, '-O2', 'test_egl_width_height.c', '-o', 'page.html', '-lEGL', '-lGL'])
+    run_process([PYTHON, EMCC, '-O2', 'test_egl_width_height.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
+
+  def test_egl_width_height(self):
+    self._test_egl_width_height_base()
+
+  @requires_threads
+  def test_egl_width_height_with_proxy_to_pthread(self):
+    self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
 
   def do_test_worker(self, args=[]):
     # Test running in a web worker
@@ -4092,9 +4107,10 @@ window.close = function() {
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        cmd = args1 + args2 + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
-        print(str(cmd))
-        self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1']]:
+          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+          print(str(cmd))
+          self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
