@@ -15,7 +15,6 @@ else {
   // Grab imports from the pthread to local scope.
   var buffer = {{{EXPORT_NAME}}}.buffer;
   var tempDoublePtr = {{{EXPORT_NAME}}}.tempDoublePtr;
-  var TOTAL_MEMORY = {{{EXPORT_NAME}}}.TOTAL_MEMORY;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
   var DYNAMIC_BASE = {{{EXPORT_NAME}}}.DYNAMIC_BASE;
   var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;

@@ -367,7 +367,6 @@ var LibraryPThread = {
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
 #endif
           tempDoublePtr: tempDoublePtr,
-          TOTAL_MEMORY: TOTAL_MEMORY,
           DYNAMIC_BASE: DYNAMIC_BASE,
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit
