@@ -162,6 +162,13 @@ class other(RunnerCore):
     # any tests for EXPORT_ES6 but once we do this should be enabled.
     # self.assertContained('hello, world!', run_js('hello_world.mjs'))
 
+  def test_emcc_out_file(self):
+    # Verify that "-ofile" works in addition to "-o" "file"
+    run_process([PYTHON, EMCC, '-c', '-ofoo.o', path_from_root('tests', 'hello_world.c')])
+    assert os.path.exists('foo.o')
+    run_process([PYTHON, EMCC, '-ofoo.js', 'foo.o'])
+    assert os.path.exists('foo.js')
+
   def test_emcc_1(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
       # --version
@@ -903,6 +910,7 @@ f.close()
     # Case 4: emulate so it works
     test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], 'my func\n')
 
+  @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
   def test_emulate_function_pointer_casts_assertions_2(self):
     # check empty tables work with assertions 2 in this mode (#6554)
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'ASSERTIONS=2'])
@@ -4003,9 +4011,11 @@ int main() {
           for emulate_fps in [0, 1]:
             for relocate in [0, 1]:
               for wasm in [0, 1]:
-                if self.is_wasm_backend() and not wasm:
+                if self.is_wasm_backend() and (not wasm or emulate_fps):
                   continue
-                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe), '-s', 'WASM=' + str(wasm)]
+                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+                if not wasm:
+                  cmd += ['-s', 'WASM=0']
                 if emulate_casts:
                   cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
                 if emulate_fps:
@@ -7973,8 +7983,6 @@ int main() {
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
       run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 562) # noqa
-      run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  32, [], ['waka'], 226582,  20,  33, 562) # noqa
     else:
       run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
