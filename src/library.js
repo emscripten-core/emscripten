@@ -504,8 +504,7 @@ LibraryManager.library = {
 #if WASM
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = buffer;
-    var oldSize = old.byteLength;
+    var oldSize = buffer.byteLength;
     // native wasm support
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
