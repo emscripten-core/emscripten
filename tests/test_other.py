@@ -8102,7 +8102,13 @@ int main() {
       e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
-
+    args = ['-s', 'LEGALIZE_JS_FFI=0', '-s', 'SIDE_MODULE=1', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+    print(args)
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'noffi-side.cpp'), '-g', '-o', 'side.wasm'] + args
+    print(' '.join(cmd))
+    ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
+    self.assertContained('1152921504606846975', ret)
+    
   def test_sysconf_phys_pages(self):
     for args, expected in [
         ([], 1024),
