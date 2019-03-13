@@ -10,7 +10,7 @@ OBJECTS = \
 all: lzma.a
 
 %.o: %.c
-	$(CC) $(CFLAGS) -I. $< -o $@ -O2 -c
+	$(CC) $(CFLAGS) -I. $< -o $@ -c
 
 lzma.a: $(OBJECTS)
 	$(AR) rv $@ $(OBJECTS)
