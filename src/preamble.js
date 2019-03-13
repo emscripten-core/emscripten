@@ -321,10 +321,6 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBuffer(buf) {
-  Module['buffer'] = buffer = buf;
-}
-
 function updateGlobalBufferViews() {
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
@@ -458,7 +454,6 @@ if (Module['buffer']) {
 #if ASSERTIONS
   assert(buffer.byteLength === TOTAL_MEMORY);
 #endif // ASSERTIONS
-  Module['buffer'] = buffer;
 }
 updateGlobalBufferViews();
 

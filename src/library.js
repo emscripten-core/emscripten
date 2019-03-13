@@ -504,14 +504,13 @@ LibraryManager.library = {
 #if WASM
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = Module['buffer'];
-    var oldSize = old.byteLength;
+    var oldSize = buffer.byteLength;
     // native wasm support
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = wasmMemory.buffer;
+        return buffer = wasmMemory.buffer;
       } else {
         return null;
       }
@@ -634,7 +633,6 @@ LibraryManager.library = {
     }
 
     // everything worked
-    updateGlobalBuffer(replacement);
     updateGlobalBufferViews();
 
     TOTAL_MEMORY = newSize;
