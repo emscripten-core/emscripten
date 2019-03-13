@@ -21,7 +21,6 @@ var STACK_MAX = 0;
 // These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
 var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
 var DYNAMICTOP_PTR = 0;
-var TOTAL_MEMORY = 0;
 var DYNAMIC_BASE = 0;
 
 var ENVIRONMENT_IS_PTHREAD = true;
@@ -92,7 +91,6 @@ this.onmessage = function(e) {
       {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('TOTAL_MEMORY') }}} = e.data.TOTAL_MEMORY;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
 

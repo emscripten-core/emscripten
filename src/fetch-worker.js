@@ -50,7 +50,6 @@ var ENVIRONMENT_IS_WORKER = true;
 var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
 var DYNAMICTOP_PTR = 0;
-var TOTAL_MEMORY = 0;
 var nan = NaN;
 var inf = Infinity;
 
@@ -115,7 +114,6 @@ this.onmessage = function(e) {
     STACKTOP = e.data.STACKTOP;
     STACK_MAX = e.data.STACK_MAX;
     DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
-    TOTAL_MEMORY = e.data.TOTAL_MEMORY;
     HEAP8 = new Int8Array(buffer);
     HEAPU8 = new Uint8Array(buffer);
     HEAP16 = new Int16Array(buffer);
