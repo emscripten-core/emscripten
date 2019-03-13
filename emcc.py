@@ -1566,7 +1566,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           shared.Settings.DEBUG_LEVEL = 4
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if options.debug_level > 3 and not shared.Settings.WASM:
+      if options.debug_level >= 3 and not shared.Settings.WASM:
         newargs.append('-fno-discard-value-names')
 
       # Bitcode args generation code
