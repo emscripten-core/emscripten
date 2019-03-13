@@ -82,13 +82,13 @@ jobs:
             tar -xf master.tar.gz
             cd emsdk-master
             ./emsdk --notty update-tags
-            ./emsdk --notty install latest
-            ./emsdk --notty activate latest
-            cd -
+            ./emsdk --notty install latest-fastcomp
+            ./emsdk --notty activate latest-fastcomp
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
-            rm -r ~/emsdk-master/emscripten/
+            rm -Rf `find -name emscripten`
+            cd -
             # Use Binaryen from the ports version.
             echo BINARYEN_ROOT="''" >> ~/.emscripten
             echo "final .emscripten:"
