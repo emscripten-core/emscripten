@@ -36,7 +36,7 @@ int main()
 
     void *handle = dlopen("side.wasm", RTLD_NOW);
     typedef void (*sideModule_fn)(void);
-    sideModule_fn exportedfn = (sideModule_fn)dlsym(handle, "__Z10passBigInty");
+    sideModule_fn exportedfn = (sideModule_fn)dlsym(handle, "_Z9callPassBigIntv");
     exportedfn();
 
     try{

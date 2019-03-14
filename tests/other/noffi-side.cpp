@@ -6,8 +6,9 @@
  */
 
 #include <cstdint>
-
-extern void passBigInt(uint64_t);
+extern "C"{
+    extern void passBigInt(uint64_t);
+}
 
 void callPassBigInt(){
     passBigInt(1152921504606846975);
