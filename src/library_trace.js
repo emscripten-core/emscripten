@@ -267,7 +267,7 @@ var LibraryTracing = {
         'stack_max':    STACK_MAX,
         'dynamic_base': DYNAMIC_BASE,
         'dynamic_top':  HEAP32[DYNAMICTOP_PTR>>2],
-        'total_memory': TOTAL_MEMORY
+        'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_MEMORY_LAYOUT,

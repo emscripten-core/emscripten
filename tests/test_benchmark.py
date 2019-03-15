@@ -124,10 +124,8 @@ class NativeBenchmarker(Benchmarker):
         filename,
         '-o', filename + '.native'
       ] + self.args + shared_args + native_args + shared.get_clang_native_args()
-      proc = run_process(cmd, stdout=PIPE, stderr=parent.stderr_redirect, env=shared.get_clang_native_env())
-      if proc.returncode != 0:
-        print("Building native executable with command failed", ' '.join(cmd), file=sys.stderr)
-        print("Output: " + str(proc.stdout) + '\n' + str(proc.stderr))
+      # print(cmd)
+      run_process(cmd, env=shared.get_clang_native_env())
     else:
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
@@ -192,8 +190,7 @@ class EmscriptenBenchmarker(Benchmarker):
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
-    output = run_process(cmd, stdout=PIPE, stderr=PIPE, env=self.env).stdout
-    self.assertExists(final, 'Failed to compile file: ' + output + ' (looked for ' + final + ')')
+    run_process(cmd, env=self.env)
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final
@@ -305,44 +302,39 @@ void webMain() {
 
 
 # Benchmarkers
-try:
-  benchmarkers_error = ''
-  benchmarkers = [
-    NativeBenchmarker('clang', CLANG_CC, CLANG),
-    # NativeBenchmarker('gcc',   'gcc',    'g++')
+benchmarkers = [
+  NativeBenchmarker('clang', CLANG_CC, CLANG),
+  # NativeBenchmarker('gcc',   'gcc',    'g++')
+]
+if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
+  benchmarkers += [
+    # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
+    # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
+    # EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
+    #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+    # }),
+    # EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
+    #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+    # }),
   ]
-  if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
-    benchmarkers += [
-      # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
-      # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
-      # EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
-      #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-      # }),
-      # EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
-      #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-      # }),
-    ]
-  if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
-    benchmarkers += [
-      EmscriptenBenchmarker('v8-asmjs', V8_ENGINE, ['-s', 'WASM=0']),
-      EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE, env={
-       'LLVM': os.path.expanduser('~/Dev/fastcomp/build/bin'),
-      }),
-      EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
-       'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-      }),
-      EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
-       'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-      }),
-    ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
-      # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
-    ]
-except Exception as e:
-  benchmarkers_error = str(e)
-  benchmarkers = []
+if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
+  benchmarkers += [
+    EmscriptenBenchmarker('v8-asmjs', V8_ENGINE, ['-s', 'WASM=0']),
+    EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE, env={
+     'LLVM': os.path.expanduser('~/Dev/fastcomp/build/bin'),
+    }),
+    EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
+     'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+    }),
+    EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
+     'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
+    }),
+  ]
+if os.path.exists(CHEERP_BIN):
+  benchmarkers += [
+    # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+    # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
+  ]
 
 
 class benchmark(RunnerCore):
@@ -387,9 +379,13 @@ class benchmark(RunnerCore):
     ''' % DEFAULT_ARG
     return code
 
-  def do_benchmark(self, name, src, expected_output='FAIL', args=[], emcc_args=[], native_args=[], shared_args=[], force_c=False, reps=TEST_REPS, native_exec=None, output_parser=None, args_processor=None, lib_builder=None):
-    if len(benchmarkers) == 0:
-      raise Exception('error, no benchmarkers: ' + benchmarkers_error)
+  def do_benchmark(self, name, src, expected_output='FAIL', args=[],
+                   emcc_args=[], native_args=[], shared_args=[],
+                   force_c=False, reps=TEST_REPS, native_exec=None,
+                   output_parser=None, args_processor=None, lib_builder=None,
+                   skip_native=False):
+    if not benchmarkers:
+      raise Exception('error, no benchmarkers')
 
     args = args or [DEFAULT_ARG]
     if args_processor:
@@ -402,10 +398,15 @@ class benchmark(RunnerCore):
       f.write(src)
 
     print()
+    baseline = None
     for b in benchmarkers:
+      if skip_native and isinstance(b, NativeBenchmarker):
+        continue
+      baseline = b
+      print('Running benchmarker: ' + b.name)
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps)
-      b.display(benchmarkers[0])
+      b.display(baseline)
       b.cleanup()
 
   def test_primes(self, check=True):
@@ -1015,10 +1016,10 @@ class benchmark(RunnerCore):
       ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
-      return [get_poppler_library(self)]
+      return get_poppler_library(self)
 
-    # TODO: poppler in native build
+    # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
                       emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
-                      lib_builder=lib_builder)
+                      lib_builder=lib_builder, skip_native=True)

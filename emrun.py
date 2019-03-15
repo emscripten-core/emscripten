@@ -1455,7 +1455,7 @@ def run():
       if not options.browser:
         options.browser = 'firefox'
     elif MACOS:
-      options.browser = 'safari'
+      options.browser = 'open'
 
   if options.list_browsers:
     if options.android:
