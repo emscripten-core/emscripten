@@ -442,6 +442,12 @@ module({
             assert.equal('ABCD', e);
         });
 
+        test("can pass long string to std::basic_string<unsigned char>", function() {
+            var s = 'this string is long enough to exceed the short string optimization';
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(s);
+            assert.equal(s, e);
+        });
+
         test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8ClampedArray([65, 66, 67, 68]));
             assert.equal('ABCD', e);

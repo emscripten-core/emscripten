@@ -22,6 +22,10 @@ import subprocess
 import sys
 import tempfile
 
+if sys.version_info < (2, 7, 12):
+  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
@@ -1089,52 +1093,9 @@ def run_js(filename, engine=None, *args, **kw):
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
-  return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
-
-
-def line_splitter(data):
-  """Silly little tool to split JSON arrays over many lines."""
-
-  out = ''
-  counter = 0
-
-  for i in range(len(data)):
-    out += data[i]
-    if data[i] == ' ' and counter > 60:
-      out += '\n'
-      counter = 0
-    else:
-      counter += 1
-
-  return out
-
-
-def read_pgo_data(filename):
-  '''
-    Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
-  '''
-  signs_lines = []
-  overflows_lines = []
-
-  for line in open(filename, 'r'):
-    try:
-      if line.rstrip() == '':
-        continue
-      if '%0 failures' in line:
-        continue
-      left, right = line.split(' : ')
-      signature = left.split('|')[1]
-      if 'Sign' in left:
-        signs_lines.append(signature)
-      elif 'Overflow' in left:
-        overflows_lines.append(signature)
-    except:
-      pass
-
-  return {
-    'signs_lines': signs_lines,
-    'overflows_lines': overflows_lines
-  }
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
 
 
 def unique_ordered(values):
@@ -1181,8 +1142,15 @@ class SettingsManager(object):
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
 
-      for opt, fixed_values, _ in self.attrs['LEGACY_SETTINGS']:
-        self.attrs[opt] = fixed_values[0]
+      if 'EMCC_STRICT' in os.environ:
+        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+
+      self.legacy_settings = {}
+      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
+        self.legacy_settings[name] = (fixed_values, err)
+        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not self.attrs['STRICT']:
+          self.attrs[name] = fixed_values[0]
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1215,19 +1183,24 @@ class SettingsManager(object):
       if shrink_level >= 2:
         self.attrs['EVAL_CTORS'] = 1
 
+    def keys(self):
+      return self.attrs.keys()
+
     def __getattr__(self, attr):
       if attr in self.attrs:
         return self.attrs[attr]
       else:
-        raise AttributeError
+        raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
-      for legacy_attr, fixed_values, error_message in self.attrs['LEGACY_SETTINGS']:
-        if attr == legacy_attr:
-          if value not in fixed_values:
-            exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-          else:
-            logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+      if attr in self.legacy_settings:
+        if self.attrs['STRICT']:
+          exit_with_error('legacy setting used in strict mode: %s', attr)
+        fixed_values, error_message = self.legacy_settings[attr]
+        if value not in fixed_values:
+          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
+        else:
+          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
@@ -1273,6 +1246,12 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.ASM_JS not in [1, 2]:
+    exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
+
+  if Settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
@@ -1291,7 +1270,10 @@ def verify_settings():
       exit_with_error('emcc: EMTERPRETIFY is not supported by the LLVM wasm backend')
 
     if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
-      exit_with_error('WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
+      exit_with_error('emcc: WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
+
+    if Settings.EMULATED_FUNCTION_POINTERS:
+      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
     if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
       exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
@@ -2952,29 +2934,13 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_order=None):
+  def make_jscall(sig):
     fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = 'index' + (',' if fnargs else '') + fnargs
-    # While asm.js/fastcomp's addFunction support preallocates
-    # Settings.RESERVED_FUNCTION_POINTERS slots in functionPointers array, on
-    # the Wasm backend we reserve that number of slots for each possible
-    # function signature, so it is (Settings.RESERVED_FUNCTION_POINTERS * # of
-    # indirectly called function signatures) slots in total. So the index to
-    # functionPointers array should be adjusted according to the order of the
-    # function signature. The reason we do this is Wasm has a single unified
-    # function table while asm.js maintains separate function table per
-    # signature.
-    # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
-    # the 'sig_order' parameter will be 0 for 'v', 1 for 'ii', and so on.
-    if Settings.WASM_BACKEND:
-      assert sig_order is not None
-      index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_order)
-    else:
-      index = 'index'
+    args = (',' if fnargs else '') + fnargs
     ret = '''\
-function jsCall_%s(%s) {
-    %sfunctionPointers[%s](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', index, fnargs)
+function jsCall_%s(index%s) {
+    %sfunctionPointers[index](%s);
+}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
   @staticmethod
@@ -3152,18 +3118,14 @@ class WebAssembly(object):
   @staticmethod
   def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    (mem_size, table_size, mem_align) = WebAssembly.get_js_data(js_file, True)
+    assert not Settings.WASM_BACKEND
+    mem_size, table_size, mem_align = WebAssembly.get_js_data(js_file, True)
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
-    wso = js_file + '.wso'
-    # write the binary
+
+    # Write new wasm binary with 'dylink' section
     wasm = open(wasm_file, 'rb').read()
-    f = open(wso, 'wb')
-    f.write(wasm[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
-    name = b"\06dylink" # section name, including prefixed size
+    section_name = b"\06dylink" # section name, including prefixed size
     contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
                 WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
 
@@ -3194,12 +3156,18 @@ class WebAssembly(object):
       contents += WebAssembly.lebify(len(dyn_needed))
       contents += dyn_needed
 
-    size = len(name) + len(contents)
-    f.write(WebAssembly.lebify(size))
-    f.write(name)
-    f.write(contents)
-    f.write(wasm[8:]) # copy rest of binary
-    f.close()
+    section_size = len(section_name) + len(contents)
+    wso = js_file + '.wso'
+    with open(wso, 'wb') as f:
+      # copy magic number and version
+      f.write(wasm[0:8])
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.lebify(section_size))
+      f.write(section_name)
+      f.write(contents)
+      # copy rest of binary
+      f.write(wasm[8:])
     return wso
 
 

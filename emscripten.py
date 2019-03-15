@@ -372,7 +372,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{ ' + ', '.join(['"' + math_fix(minified) + '": ' + unminified for (minified, unminified) in sending_vars]) + ' }'
+  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -664,15 +664,6 @@ def update_settings_glue(metadata):
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
-
-  # addFunction support for Wasm backend
-  if shared.Settings.WASM_BACKEND and shared.Settings.RESERVED_FUNCTION_POINTERS > 0:
-    start_index = metadata['jsCallStartIndex']
-    # e.g. jsCallFunctionType ['v', 'ii'] -> sig2order{'v': 0, 'ii': 1}
-    sig2order = {sig: i for i, sig in enumerate(metadata['jsCallFuncType'])}
-    # Index in the Wasm function table in which jsCall thunk function starts
-    shared.Settings.JSCALL_START_INDEX = start_index
-    shared.Settings.JSCALL_SIG_ORDER = sig2order
 
   # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
   # the compiled code have, each signature will need a proxy function invoker
@@ -1498,13 +1489,14 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     def check(extern):
       if shared.Settings.ASSERTIONS:
-        return ('assert(' + side + 'Module["' + extern + '"], "external function \'' + extern +
-                '\' is missing. perhaps a side module was not linked in? if this symbol was expected to arrive '
-                'from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");')
+        return ('\n  assert(%sModule["%s"], "external global `%s` is missing.' % (side, extern, extern) +
+                'perhaps a side module was not linked in? if this symbol was expected to arrive '
+                'from a system library, try to build the MAIN_MODULE with '
+                'EMCC_FORCE_STDLIBS=1 in the environment");')
       return ''
 
     for extern in metadata['externs']:
-      asm_setup += 'var g$' + extern + ' = function() { ' + check(extern) + ' return ' + side + 'Module["' + extern + '"] };\n'
+      asm_setup += 'var g$' + extern + ' = function() {' + check(extern) + '\n  return ' + side + 'Module["' + extern + '"];\n}\n'
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
@@ -1734,21 +1726,23 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
 
 def create_named_globals(metadata):
-  named_globals = ''
-  if shared.Settings.RELOCATABLE:
-    named_globals += '''
+  if not shared.Settings.RELOCATABLE:
+    return ''
+
+  named_globals = '''
 var NAMED_GLOBALS = { %s };
 for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
 ''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
-    if shared.Settings.WASM:
-      # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
-      # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
-      #       we'll need another solution for that. one option is to scan the module imports, if/when
-      #       wasm supports that, then the loader can do this.
-      named_globals += '''
+
+  if shared.Settings.WASM:
+    # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
+    # TODO: this works if we are the main module, but if the supplying module is later, it won't, so
+    #       we'll need another solution for that. one option is to scan the module imports, if/when
+    #       wasm supports that, then the loader can do this.
+    named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
     var func = Module['_' + named];
@@ -1756,7 +1750,7 @@ for (var named in NAMED_GLOBALS) {
   })(named);
 }
 '''
-    named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
+  named_globals += ''.join(["Module['%s'] = Module['%s']\n" % (k, v) for k, v in metadata['aliases'].items()])
   return named_globals
 
 
@@ -2153,19 +2147,16 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   pre = None
 
   invoke_funcs = metadata.get('invokeFuncs', [])
-  # List of function signatures used in jsCall functions, e.g.['v', 'vi']
-  jscall_sigs = metadata.get('jsCallFuncType', [])
 
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
   except:
     pass
 
-  sending = create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json,
-                                metadata)
+  sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
   receiving = create_receiving_wasm(all_implemented)
 
-  module = create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata)
+  module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
   write_output_file(outfile, post, module)
   module = None
@@ -2202,9 +2193,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     debug_copy(base_source_map, 'base_wasm.map')
 
   cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
-         '--global-base=%s' % shared.Settings.GLOBAL_BASE,
-         ('--emscripten-reserved-function-pointers=%d' %
-          shared.Settings.RESERVED_FUNCTION_POINTERS)]
+         '--global-base=%s' % shared.Settings.GLOBAL_BASE]
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
@@ -2291,7 +2280,7 @@ def create_em_js(forwarded_json, metadata):
   return em_js_funcs
 
 
-def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
+def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
@@ -2307,10 +2296,7 @@ def create_sending_wasm(invoke_funcs, jscall_sigs, forwarded_json, metadata):
   library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
   global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
 
-  jscall_funcs = ['jsCall_' + sig for sig in jscall_sigs]
-
-  send_items = (basic_funcs + invoke_funcs + jscall_funcs + global_funcs +
-                basic_vars + global_vars)
+  send_items = (basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
@@ -2358,9 +2344,8 @@ return real_%(mangled)s.apply(null, arguments);
   return '\n'.join(receiving) + '\n'
 
 
-def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
+def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
-  jscall_funcs = create_jscall_funcs(jscall_sigs)
 
   module = []
   module.append('var asmGlobalArg = {};\n')
@@ -2372,7 +2357,6 @@ def create_module_wasm(sending, receiving, invoke_funcs, jscall_sigs, metadata):
 
   module.append(receiving)
   module.append(invoke_wrappers)
-  module.append(jscall_funcs)
   return module
 
 
@@ -2389,8 +2373,6 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'externs': [],
     'simd': False,
     'maxGlobalAlign': 0,
-    'jsCallStartIndex': 0,
-    'jsCallFuncType': [],
     'staticBump': 0,
     'tableSize': 0,
     'initializers': [],
@@ -2438,13 +2420,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def create_jscall_funcs(sigs):
-  jscall_funcs = ''
-  for i, sig in enumerate(sigs):
-    jscall_funcs += '\n' + shared.JS.make_jscall(sig, i) + '\n'
-  return jscall_funcs
 
 
 def treat_as_user_function(name):

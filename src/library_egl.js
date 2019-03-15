@@ -86,6 +86,8 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLDisplay EGLAPIENTRY eglGetDisplay(EGLNativeDisplayType display_id);
+  eglGetDisplay__proxy: 'sync',
+  eglGetDisplay__sig: 'ii',
   eglGetDisplay: function(nativeDisplayType) {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     // Note: As a 'conformant' implementation of EGL, we would prefer to init here only if the user
@@ -103,6 +105,8 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor);
+  eglInitialize__proxy: 'sync',
+  eglInitialize__sig: 'iiii',
   eglInitialize: function(display, majorVersion, minorVersion) {
     if (display == 62000 /* Magic ID for Emscripten 'default display' */) {
       if (majorVersion) {
@@ -122,6 +126,8 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglTerminate(EGLDisplay dpy);
+  eglTerminate__proxy: 'sync',
+  eglTerminate__sig: 'ii',
   eglTerminate: function(display) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -136,16 +142,22 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, EGLint config_size, EGLint *num_config);
-  eglGetConfigs: function(display, configs, config_size, numConfigs) { 
+  eglGetConfigs__proxy: 'sync',
+  eglGetConfigs__sig: 'iiiii',
+  eglGetConfigs: function(display, configs, config_size, numConfigs) {
     return EGL.chooseConfig(display, 0, configs, config_size, numConfigs);
   },
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs, EGLint config_size, EGLint *num_config);
-  eglChooseConfig: function(display, attrib_list, configs, config_size, numConfigs) { 
+  eglChooseConfig__proxy: 'sync',
+  eglChooseConfig__sig: 'iiiiii',
+  eglChooseConfig: function(display, attrib_list, configs, config_size, numConfigs) {
     return EGL.chooseConfig(display, attrib_list, configs, config_size, numConfigs);
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute, EGLint *value);
+  eglGetConfigAttrib__proxy: 'sync',
+  eglGetConfigAttrib__sig: 'iiiii',
   eglGetConfigAttrib: function(display, config, attribute, value) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -262,7 +274,9 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLSurface EGLAPIENTRY eglCreateWindowSurface(EGLDisplay dpy, EGLConfig config, EGLNativeWindowType win, const EGLint *attrib_list);
-  eglCreateWindowSurface: function(display, config, win, attrib_list) { 
+  eglCreateWindowSurface__proxy: 'sync',
+  eglCreateWindowSurface__sig: 'iiiii',
+  eglCreateWindowSurface: function(display, config, win, attrib_list) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
@@ -280,7 +294,9 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroySurface(EGLDisplay display, EGLSurface surface);
-  eglDestroySurface: function(display, surface) { 
+  eglDestroySurface__proxy: 'sync',
+  eglDestroySurface__sig: 'iii',
+  eglDestroySurface: function(display, surface) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0; 
@@ -300,8 +316,10 @@ var LibraryEGL = {
   },
 
   eglCreateContext__deps: ['$GL'],
-  
+
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
+  eglCreateContext__proxy: 'sync',
+  eglCreateContext__sig: 'iiiii',
   eglCreateContext: function(display, config, hmm, contextAttribs) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -363,8 +381,10 @@ var LibraryEGL = {
   },
 
   eglDestroyContext__deps: ['$GL'],
-  
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext context);
+  eglDestroyContext__proxy: 'sync',
+  eglDestroyContext__sig: 'iii',
   eglDestroyContext: function(display, context) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -400,7 +420,9 @@ var LibraryEGL = {
   }, 
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
-  eglQuerySurface: function(display, surface, attribute, value) { 
+  eglQuerySurface__proxy: 'sync',
+  eglQuerySurface__sig: 'iiiii',
+  eglQuerySurface: function(display, surface, attribute, value) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
@@ -465,6 +487,8 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglQueryContext(EGLDisplay dpy, EGLContext ctx, EGLint attribute, EGLint *value);
+  eglQueryContext__proxy: 'sync',
+  eglQueryContext__sig: 'iiiii',
   eglQueryContext: function(display, context, attribute, value) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -503,11 +527,15 @@ var LibraryEGL = {
   },
   
   // EGLAPI EGLint EGLAPIENTRY eglGetError(void);
-  eglGetError: function() { 
+  eglGetError__proxy: 'sync',
+  eglGetError__sig: 'i',
+  eglGetError: function() {
     return EGL.errorCode;
   },
 
   // EGLAPI const char * EGLAPIENTRY eglQueryString(EGLDisplay dpy, EGLint name);
+  eglQueryString__proxy: 'sync',
+  eglQueryString__sig: 'iii',
   eglQueryString: function(display, name) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -529,8 +557,10 @@ var LibraryEGL = {
     EGL.stringCache[name] = ret;
     return ret;
   },
-  
+
   // EGLAPI EGLBoolean EGLAPIENTRY eglBindAPI(EGLenum api);
+  eglBindAPI__proxy: 'sync',
+  eglBindAPI__sig: 'ii',
   eglBindAPI: function(api) {
     if (api == 0x30A0 /* EGL_OPENGL_ES_API */) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -542,18 +572,24 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLenum EGLAPIENTRY eglQueryAPI(void);
+  eglQueryAPI__proxy: 'sync',
+  eglQueryAPI__sig: 'i',
   eglQueryAPI: function() {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 0x30A0; // EGL_OPENGL_ES_API
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglWaitClient(void);
+  eglWaitClient__proxy: 'sync',
+  eglWaitClient__sig: 'i',
   eglWaitClient: function() {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
   },
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglWaitNative(EGLint engine);
+  eglWaitNative__proxy: 'sync',
+  eglWaitNative__sig: 'ii',
   eglWaitNative: function(nativeEngineId) {
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;
@@ -565,6 +601,8 @@ var LibraryEGL = {
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapInterval(EGLDisplay dpy, EGLint interval);
   eglSwapInterval__deps: ['emscripten_set_main_loop_timing'],
+  eglSwapInterval__proxy: 'sync',
+  eglSwapInterval__sig: 'iii',
   eglSwapInterval: function(display, interval) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
@@ -579,7 +617,9 @@ var LibraryEGL = {
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
   eglMakeCurrent__deps: ['$GL'],
-  eglMakeCurrent: function(display, draw, read, context) { 
+  eglMakeCurrent__proxy: 'sync',
+  eglMakeCurrent__sig: 'iiiii',
+  eglMakeCurrent: function(display, draw, read, context) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0 /* EGL_FALSE */;
@@ -604,11 +644,15 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLContext EGLAPIENTRY eglGetCurrentContext(void);
+  eglGetCurrentContext__proxy: 'sync',
+  eglGetCurrentContext__sig: 'i',
   eglGetCurrentContext: function() {
     return EGL.currentContext;
   },
 
   // EGLAPI EGLSurface EGLAPIENTRY eglGetCurrentSurface(EGLint readdraw);
+  eglGetCurrentSurface__proxy: 'sync',
+  eglGetCurrentSurface__sig: 'ii',
   eglGetCurrentSurface: function(readdraw) {
     if (readdraw == 0x305A /* EGL_READ */) {
       return EGL.currentReadSurface;
@@ -621,11 +665,15 @@ var LibraryEGL = {
   },
 
   // EGLAPI EGLDisplay EGLAPIENTRY eglGetCurrentDisplay(void);
+  eglGetCurrentDisplay__proxy: 'sync',
+  eglGetCurrentDisplay__sig: 'i',
   eglGetCurrentDisplay: function() {
     return EGL.currentContext ? 62000 /* Magic ID for Emscripten 'default display' */ : 0;
   },
   
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
+  eglSwapBuffers__proxy: 'sync',
+  eglSwapBuffers__sig: 'iii',
   eglSwapBuffers: function() {
 #if PROXY_TO_WORKER
     if (Browser.doSwapBuffers) Browser.doSwapBuffers();
@@ -649,10 +697,14 @@ var LibraryEGL = {
   },
 
   eglGetProcAddress__deps: ['emscripten_GetProcAddress'],
+  eglGetProcAddress__proxy: 'sync',
+  eglGetProcAddress__sig: 'ii',
   eglGetProcAddress: function(name_) {
     return _emscripten_GetProcAddress(name_);
   },
 
+  eglReleaseThread__proxy: 'sync',
+  eglReleaseThread__sig: 'i',
   eglReleaseThread: function() {
     // Equivalent to eglMakeCurrent with EGL_NO_CONTEXT and EGL_NO_SURFACE.
     EGL.currentContext = 0;

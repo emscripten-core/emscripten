@@ -3129,7 +3129,7 @@ var LibraryGLEmulation = {
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
     if (!GL.currArrayBuffer) {
-      GLImmediate.firstVertex = end ? start : TOTAL_MEMORY; // if we don't know the start, set an invalid value and we will calculate it later from the indices
+      GLImmediate.firstVertex = end ? start : HEAP8.length; // if we don't know the start, set an invalid value and we will calculate it later from the indices
       GLImmediate.lastVertex = end ? end+1 : 0;
       GLImmediate.vertexData = HEAPF32.subarray(GLImmediate.vertexPointer >> 2, end ? (GLImmediate.vertexPointer + (end+1)*GLImmediate.stride) >> 2 : undefined); // XXX assuming float
     }
