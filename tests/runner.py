@@ -1054,9 +1054,9 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
-          # later tests)
+          # later tests, or maybe the test sends more than one in a racy manner)
           if DEBUG:
-            print('[excessive response, ignoring]')
+            raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
