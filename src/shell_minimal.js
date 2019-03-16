@@ -63,6 +63,15 @@ function err(text) {
   console.error(text);
 }
 
+// These functions are called from stdout functions (printf, puts etc) when UNBUFFERED_PRINT is set to 1
+function outp(text) {
+  process.stdout.write(text);
+}
+
+function errp(text) {
+  process.stderr.write(text);
+}
+
 // Override this function in a --pre-js file to get a signal for when
 // compilation is ready. In that callback, call the function run() to start
 // the program.
@@ -83,7 +92,7 @@ var PthreadWorkerInit; // Collects together variables that are needed at initial
 if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 
 if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
-  // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread. 
+  // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
   // N.B. this line needs to appear without 'var' keyword to avoid 'var hoisting' from occurring. (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var)
   ENVIRONMENT_IS_PTHREAD = false;
   var PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
