@@ -1569,3 +1569,17 @@ function getPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 
+// Receives a function as text, and returns modified text.
+function modifyFunction(text, func) {
+  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  assert(match, 'could not match function ' + text + '.');
+  var name = match[1];
+  var args = match[2];
+  var rest = text.substr(match[0].length);
+  var bodyStart = rest.indexOf('{');
+  assert(bodyStart > 0);
+  var bodyEnd = rest.lastIndexOf('}');
+  assert(bodyEnd > 0);
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}
+
