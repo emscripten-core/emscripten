@@ -822,7 +822,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
 
     if options.memory_profiler:
-      options.post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+      shared.Settings.MEMORYPROFILER = 1
 
     if options.thread_profiler:
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'

@@ -754,6 +754,10 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
+#if MEMORYPROFILER
+#include "memoryprofiler.js"
+#endif
+
 #if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');

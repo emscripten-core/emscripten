@@ -1247,6 +1247,9 @@ var PTHREADS_PROFILING = 0;
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
+// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+var MEMORYPROFILER = 0;
+
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
 

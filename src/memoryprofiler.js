@@ -317,6 +317,7 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(STACK_MAX, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + this.formatBytes(STACKTOP - STACK_BASE) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + this.formatBytes(this.stackTopWatermark - STACK_BASE);
 
+    var DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}};
     var DYNAMICTOP = HEAP32[DYNAMICTOP_PTR>>2];
     html += "<br />DYNAMIC memory area size: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
     html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
@@ -376,8 +377,9 @@ var emscriptenMemoryProfiler = {
           calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
         }
         html += '<h4>Allocation sites with more than ' + this.formatBytes(this.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + this.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
+        var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
         for (var i in calls) {
-          if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangleAll(calls[i][2])];
+          if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangler(calls[i][2])];
           html += "<b>" + this.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
         }
       }
