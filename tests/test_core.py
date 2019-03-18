@@ -1050,7 +1050,9 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 50)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list')
+    test_path = path_from_root('tests', 'core', 'test_exceptions_white_list')
+    src, output = (test_path + s for s in ('.cpp', '.out'))
+    self.do_run_from_file(src, output)
     size = len(open('src.cpp.o.js').read())
     shutil.copyfile('src.cpp.o.js', 'orig.js')
 
