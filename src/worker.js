@@ -35,6 +35,10 @@ var __performance_now_clock_drift = 0;
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
+#if EXPORT_ES6
+var PThread;
+var HEAPU32;
+#endif
 
 #if ASSERTIONS
 function assert(condition, text) {
