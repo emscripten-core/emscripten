@@ -2527,8 +2527,8 @@ seeked= file.
 
     run_process([PYTHON, EMCC, 'main.o', '-s', 'supp.o', '-s', 'SAFE_HEAP=1'])
     self.assertContained('yello', run_js('a.out.js'))
-    code = open('a.out.js').read()
-    assert 'SAFE_HEAP' in code, 'valid -s option had an effect'
+    # Check that valid -s option had an effect'
+    self.assertContained('SAFE_HEAP', open('a.out.js').read())
 
   def test_conftest_s_flag_passing(self):
     create_test_file('conftest.c', r'''
@@ -9117,3 +9117,14 @@ int main () {
     proc = run_process(cmd + ['-s', 'STRICT=1'], stderr=PIPE, check=False)
     self.assertNotEqual(proc.returncode, 0)
     self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', proc.stderr)
+
+  def test_safe_heap_log(self):
+    self.set_setting('SAFE_HEAP')
+    self.set_setting('SAFE_HEAP_LOG')
+    self.set_setting('EXIT_RUNTIME')
+    src = open(path_from_root('tests', 'hello_world.c')).read()
+    self.do_run(src, 'SAFE_HEAP load: ')
+
+    if not self.is_wasm_backend():
+      self.set_setting('WASM', 0)
+      self.do_run(src, 'SAFE_HEAP load: ')
