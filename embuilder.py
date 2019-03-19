@@ -80,6 +80,7 @@ USER_TASKS = [
     'ogg',
     'regal',
     'sdl2',
+    'sdl2-mt',
     'sdl2-gfx',
     'sdl2-image',
     'sdl2-image-png',
@@ -326,6 +327,8 @@ def main():
       build_port('libpng', libname('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build_port('sdl2', libname('libSDL2'), ['-s', 'USE_SDL=2'])
+    elif what == 'sdl2-mt':
+      build_port('sdl2', libname('libSDL2-mt'), ['-s', 'USE_SDL=2', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-gfx':
       build_port('sdl2-gfx', libname('libSDL2_gfx'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
