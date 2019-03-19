@@ -529,22 +529,16 @@ class TestCoreBase(RunnerCore):
     self.do_run(src, expected)
 
   def test_math_lgamma(self):
-    test_path = path_from_root('tests', 'math', 'lgamma')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'math', 'lgamma')
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'math', 'lgamma')
 
   # Test that fmodf with -s PRECISE_F32=1 properly validates as asm.js (% operator cannot take in f32, only f64)
   def test_math_fmodf(self):
-    test_path = path_from_root('tests', 'math', 'fmodf')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'math', 'fmodf')
 
   def test_frexp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
@@ -630,10 +624,8 @@ base align: 0, 0, 0, 0'''])
     if self.is_wasm():
       self.skipTest('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
-    test_path = path_from_root('tests', 'core', 'test_stack_restore')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore')
 
     generated = open('src.cpp.o.js').read()
 
@@ -648,10 +640,7 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _stack_usage', 1)
 
   def test_strings(self):
-    test_path = path_from_root('tests', 'core', 'test_strings')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, ['wowie', 'too', '74'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_strings', args=['wowie', 'too', '74'])
 
   def test_strcmp_uni(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strcmp_uni')
@@ -669,10 +658,7 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_funcs')
 
   def test_structs(self):
-    test_path = path_from_root('tests', 'core', 'test_structs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_structs')
 
   gen_struct_src = '''
         #include <stdio.h>
@@ -1603,7 +1589,7 @@ int main() {
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.c', '.out'))
 
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs3')
 
     print('no debugger, check validation')
     src = open(src).read().replace('emscripten_debugger();', '')
@@ -2124,14 +2110,12 @@ The current type of b is: 9
 
   def test_memcpy_memcmp(self):
     self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
-    test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
     def check(result, err):
       result = result.replace('\n \n', '\n') # remove extra node output
       return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
-    self.do_run_from_file(src, output, output_nicerizer=check)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memcpy_memcmp', output_nicerizer=check)
 
   def test_memcpy2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memcpy2')
@@ -2149,16 +2133,10 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_memset')
 
   def test_getopt(self):
-    test_path = path_from_root('tests', 'core', 'test_getopt')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, args=['-t', '12', '-n', 'foobar'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_getopt', args=['-t', '12', '-n', 'foobar'])
 
   def test_getopt_long(self):
-    test_path = path_from_root('tests', 'core', 'test_getopt_long')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, args=['--file', 'foobar', '-b'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_getopt_long', args=['--file', 'foobar', '-b'])
 
   def test_memmove(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memmove')
@@ -2747,10 +2725,7 @@ The current type of b is: 9
       # ensure there aren't too many globals; we don't want unnamed_addr
       assert table.count(',') <= 30, table.count(',')
 
-    test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
@@ -4416,9 +4391,7 @@ Module = {
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_fwrite_0(self):
-    test_path = path_from_root('tests', 'core', 'test_fwrite_0')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_fwrite_0')
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
@@ -4601,9 +4574,7 @@ name: .
       FS.createDataFile('/', 'file', 'abcdef', true, true, false);
       FS.mkdev('/device', dummy_device);
     ''')
-    test_path = path_from_root('tests', 'core', 'test_poll')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_poll')
 
   def test_statvfs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_statvfs')
@@ -4644,17 +4615,11 @@ name: .
 
   @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
-    test_path = path_from_root('tests', 'core', 'test_wprintf')
-    src, output = (test_path + s for s in ('.cpp', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_wprintf')
 
   def test_write_stdout_fileno(self):
-    test_path = path_from_root('tests', 'core', 'test_write_stdout_fileno')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    orig_args = self.emcc_args
-    for mode in [[], ['-s', 'FILESYSTEM=0']]:
-      self.emcc_args = orig_args + mode
-      self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_write_stdout_fileno')
+    self.do_run_in_out_file_test('tests', 'core', 'test_write_stdout_fileno', args=['-s', 'FILESYSTEM=0'])
 
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
@@ -4667,14 +4632,12 @@ name: .
   def test_istream(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    test_path = path_from_root('tests', 'core', 'test_istream')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
     for linkable in [0]: # , 1]:
       print(linkable)
       # regression check for issue #273
       self.set_setting('LINKABLE', linkable)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_istream')
 
   def test_fs_base(self):
     # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
@@ -4839,9 +4802,7 @@ name: .
     self.skipTest('fails on some node versions and OSes, e.g. 10.13.0 on linux')
 
     self.emcc_args += ['-s', 'NODERAWFS=1']
-    test_path = path_from_root('tests', 'unistd', 'truncate')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output, js_engines=[NODE_JS])
+    self.do_run_in_out_file_test('tests', 'unistd', 'truncate', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c')).read()
@@ -5000,23 +4961,21 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
   def test_atomic_cxx(self):
-    test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
     Building.COMPILER_TEST_OPTS += ['-std=c++11']
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
     is_lock_free = self.is_wasm_backend()
     Building.COMPILER_TEST_OPTS += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
     # TODO
     # elif self.is_wasm_backend():
     #   print('pthreads')
     #   self.set_setting('USE_PTHREADS', 1)
-    #   self.do_run_from_file(src, output)
+    #   self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -5315,11 +5274,8 @@ return malloc(size);
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
-    test_path = path_from_root('tests', 'core', 'test_mmap')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
-    self.do_run_from_file(src, output, force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_mmap')
+    self.do_run_in_out_file_test('tests', 'core', 'test_mmap', force_c=True)
 
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
