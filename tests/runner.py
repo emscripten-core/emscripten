@@ -612,7 +612,7 @@ class RunnerCore(unittest.TestCase):
       if '[' + what + ']' in line:
         ret = line.split(':')[1].strip()
         return int(ret)
-    self.fail('Failed to find [%s] in wasm-opt output' % what)
+    self.fail('Failed to find [%s] in wasm-opt output, %s' % (what, out))
 
   def get_wasm_text(self, wasm_binary):
     return run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), wasm_binary], stdout=PIPE).stdout

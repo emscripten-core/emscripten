@@ -3854,7 +3854,7 @@ int main()
       else:
         self.assertNotContained(warning, err)
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @needs_dlfcn
   def test_side_module_without_proper_target(self):
     # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
     # otherwise, we are just linking bitcode, and should show an error
@@ -6327,7 +6327,7 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @needs_dlfcn
   def test_minimal_dynamic(self):
     for wasm in (1, 0):
       print('wasm?', wasm)
@@ -6405,7 +6405,7 @@ int main(int argc, char** argv) {
 
       assert side_dce_fail[1] < 0.95 * side_dce_work[1] # removing that function saves a chunk
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @needs_dlfcn
   def test_ld_library_path(self):
     create_test_file('hello1.c', r'''
 #include <stdio.h>
@@ -6512,7 +6512,7 @@ main()
     self.assertContained('Hello4', out)
     self.assertContained('Ok', out)
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @needs_dlfcn
   def test_dlopen_rtld_global(self):
     # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
     #       before the module providing a global it needs is. in asm.js we use JS
@@ -7108,29 +7108,37 @@ int main() {
       self.assertContained('nan\n', out)
       self.assertContained('0x7fc01234\n', out)
 
-  @no_wasm_backend()
   def test_only_my_code(self):
-    run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
-    count = open('a.out.asm.js').read().count('function ')
-    assert count > 29, count # libc brings in a bunch of stuff
+    run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c')])
+    count = self.count_wasm_contents('a.out.wasm', 'funcs')
+    self.assertGreater(count, 28) # libc brings in a bunch of stuff
 
-    def test(filename, opts, expected_funcs, expected_vars):
+    def test(filename, opts, expected_funcs, expected_vars, wasm):
+      if self.is_wasm_backend() and not wasm:
+        return
+      if not wasm:
+        opts += ['-s', 'WASM=0', '--separate-asm']
       print(filename, opts)
-      run_process([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
-      module = open('a.out.asm.js').read()
-      create_test_file('asm.js', 'var Module = {};\n' + module)
-      funcs = module.count('function ')
-      vars_ = module.count('var ')
-      self.assertEqual(funcs, expected_funcs)
-      self.assertEqual(vars_, expected_vars)
+      run_process([PYTHON, EMCC, path_from_root('tests', filename), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-s', 'ONLY_MY_CODE=1'] + opts)
+      if wasm:
+        num_funcs = self.count_wasm_contents('a.out.wasm', 'funcs')
+      else:
+        module = open('a.out.asm.js').read()
+        create_test_file('asm.js', 'var Module = {};\n' + module)
+        num_funcs = module.count('function ')
+        num_vars = module.count('var ')
+        self.assertEqual(num_vars, expected_vars)
+      self.assertEqual(num_funcs, expected_funcs)
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
         self.validate_asmjs(out)
       else:
         print('(skipping asm.js validation check)')
 
-    test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 3)
+    test('hello_123.c', ['-O1'], 7, 2, wasm=True)
+    test('hello_123.c', ['-O1'], 1, 2, wasm=False)
+    test('fasta.cpp', ['-O3', '-g2'], 7, 3, wasm=True)
+    test('fasta.cpp', ['-O3', '-g2'], 2, 3, wasm=False)
 
   @no_wasm_backend('tests our python linking logic')
   def test_link_response_file_does_not_force_absolute_paths(self):
@@ -7924,10 +7932,9 @@ int main() {
       ratio = abs(wasm_size - expected_size) / float(expected_size)
       print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
     self.assertLess(ratio, size_slack)
-    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-    imports = wast.count('(import ')
-    exports = wast.count('(export ')
-    funcs = wast.count('\n (func ')
+    imports = self.count_wasm_contents('a.out.wasm', 'imports')
+    exports = self.count_wasm_contents('a.out.wasm', 'exports')
+    funcs = self.count_wasm_contents('a.out.wasm', 'funcs')
     self.assertEqual(imports, expected_imports)
     self.assertEqual(exports, expected_exports)
     if expected_funcs is not None:
@@ -8139,7 +8146,7 @@ int main() {
           assert 'a' not in exports_and_imports
         assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @needs_dlfcn
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
     for opts, target in [([], 'a.out.wasm'), (['-o', 'lib.wasm'], 'lib.wasm')]:
