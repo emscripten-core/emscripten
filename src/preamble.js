@@ -35,9 +35,11 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
+#if EXPORT_ES6
 if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {	//unnecessary?
   var ENVIRONMENT_IS_PTHREAD = false;
 }
+#endif
 #endif
 
 //========================================
