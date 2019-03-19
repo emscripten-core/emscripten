@@ -1541,9 +1541,9 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
   if shared.Settings.EMTERPRETIFY:
     basic_funcs += ['abortStackOverflowEmterpreter']
   if shared.Settings.SAFE_HEAP:
-    if asm_safe_heap():
+    if asm_safe_heap() or shared.Settings.WASM:
       basic_funcs += ['segfault', 'alignfault', 'ftfault']
-    else:
+    if not asm_safe_heap():
       basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
   if shared.Settings.ASSERTIONS:
     for sig in function_table_sigs:
