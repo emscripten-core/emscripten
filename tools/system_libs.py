@@ -179,7 +179,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libc
   def create_libc(libname):
-    logger.debug(' building libc for cache')
+    log_message('building libc for cache')
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 
@@ -316,7 +316,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libc++
   def create_libcxx(libname):
-    logger.debug('building libc++ for cache')
+    log_message('building libc++ for cache')
     libcxx_files = [
       'algorithm.cpp',
       'any.cpp',
@@ -697,6 +697,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       name += '_noexcept'
     return name
 
+  def log_message(msg, *args):
+    # -v is documented to always log information about system library usage
+    # https://github.com/emscripten-core/emscripten/wiki/Linking
+    if '-v' in shared.COMPILER_OPTS:
+      print(msg % args, file=sys.stderr)
+    else:
+      logging.debug(msg, *args)
+
   def add_library(lib):
     if lib.shortname in already_included:
       return
@@ -707,7 +715,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       shortname = maybe_noexcept(shortname)
     name = shortname + '.' + lib.suffix
 
-    logger.debug('including %s' % name)
+    log_message('including system library: %s', name)
 
     def do_create():
       return lib.create(name)

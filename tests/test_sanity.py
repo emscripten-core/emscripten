@@ -457,32 +457,38 @@ fi
     self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
   def test_emcc_caching(self):
-    INCLUDING_MESSAGE = 'including X'
+    INCLUDING_MESSAGE = 'including system library: X'
     BUILDING_MESSAGE = 'building X for cache'
     ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
     self.erase_cache()
 
-    with env_modify({'EMCC_DEBUG': '1'}):
-      # Building a file that *does* need something *should* trigger cache
-      # generation, but only the first time
-      for filename, libname in [('hello_libcxx.cpp', 'libc++')]:
-        for i in range(3):
-          print(filename, libname, i)
-          self.clear()
-          output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-          # print '\n\n\n', output
-          assert INCLUDING_MESSAGE.replace('X', libname) in output
-          if libname == 'libc':
-            assert INCLUDING_MESSAGE.replace('X', 'libc++') not in output # we don't need libc++ in this code
-          else:
-            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
-          assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          self.assertExists(Cache.dirname)
-          full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          self.assertExists(os.path.join(Cache.dirname, full_libname))
+    # Building a file that *does* need something *should* trigger cache
+    # generation, but only the first time
+    for filename, libname in [('hello_world.c', 'libc'), ('hello_libcxx.cpp', 'libc++')]:
+      for i in range(3):
+        print(filename, libname, i)
+        self.clear()
+        # DISABLE_EXCEPTION_CATCHING=0 otherwise libc++ ends up being called libc++_noexcept on disk
+        output = self.do([EMCC, '-v', '-O' + str(i), path_from_root('tests', filename), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+        # print '\n\n\n', output
+        self.assertContained(INCLUDING_MESSAGE.replace('X', libname), output)
+        if libname == 'libc':
+          # we don't need libc++ in this code
+          self.assertNotContained(INCLUDING_MESSAGE.replace('X', 'libc++'), output)
+        else:
+          # libc++ always forces inclusion of libc
+          self.assertContained(INCLUDING_MESSAGE.replace('X', 'libc'), output)
+        # Must only build the first time
+        if i == 0:
+          self.assertContained(BUILDING_MESSAGE.replace('X', libname), output)
+        else:
+          self.assertNotContained(BUILDING_MESSAGE.replace('X', libname), output)
+        self.assertContained('hello, world!', run_js('a.out.js'))
+        self.assertExists(Cache.dirname)
+        full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
+        self.assertExists(os.path.join(Cache.dirname, full_libname))
 
     try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
