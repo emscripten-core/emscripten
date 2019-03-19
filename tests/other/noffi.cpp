@@ -33,8 +33,11 @@ int main()
 {   
     float safeY = 0.0f;
     uint64_t mybig = 0;
-
-    void *handle = dlopen("side.wasm", RTLD_NOW);
+    EM_ASM({
+        FS.mkdir('/working');
+        FS.mount(NODEFS, { root: '.' }, '/working');
+    });
+    void *handle = dlopen("/working/side.wasm", RTLD_NOW);
     typedef void (*sideModule_fn)(void);
     sideModule_fn exportedfn = (sideModule_fn)dlsym(handle, "_Z9callPassBigIntv");
     exportedfn();
