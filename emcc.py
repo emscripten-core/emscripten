@@ -2773,7 +2773,10 @@ function(%(EXPORT_NAME)s) {
       # immediately anyhow, like in non-modularize mode)
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  if shared.Settings.EXPORT_ES6:
+    var _scriptDir = performance.getEntries().slice(-1)[0].name;
+  else:
+    var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
   return (%(src)s);
 })();
 ''' % {
