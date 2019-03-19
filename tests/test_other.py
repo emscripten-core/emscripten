@@ -8102,6 +8102,39 @@ int main() {
       e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
+  
+  def test_export_aliasee(self):
+    # test aliasee is exported when alias is exported
+    if self.is_wasm_backend():
+      self.skipTest('not testing export aliasee and wasm backend')
+    wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
+
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+      #build side module
+      args = ['-s','EXPORT_ALL=0','-s', 'SIDE_MODULE=1', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      print(args)
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'other','alias', 'side.cpp'), '-g', '-o', 'side.wasm'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+
+      #build main module
+      args = ['-s','EXPORT_ALL=0', '-s', 'EXPORTED_FUNCTIONS=["_main", "_wprintf","__ZTVSt12length_error","__ZNSt12length_errorD1Ev","__ZNSt11logic_errorC2EPKc"]', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.cpp'), '-g', '-o', 'main.out.js'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+      run_process([wasm_dis, 'main.out.wasm', '-o', 'main.out.wast'])
+      text = open('main.out.wast').read()
+      # remove internal comments and extra whitespace
+      text = re.sub(r'\(;[^;]+;\)', '', text)
+      text = re.sub(r'\$var\$*.', '', text)
+      text = re.sub(r'param \$\d+', 'param ', text)
+      text = re.sub(r' +', ' ', text)
+      #print("text: %s" % text)
+      e_aliasee_exported = re.search('\(export.*logic_errorD2Ev\)', text)
+      assert e_aliasee_exported, 'aliasee not exported'
+      
+      ret = run_process(NODE_JS + ['main.out.js'], stdout=PIPE, stderr=PIPE).stdout
+      self.assertContained('success', ret)
 
   def test_sysconf_phys_pages(self):
     for args, expected in [
