@@ -133,6 +133,18 @@ this.onmessage = function(e) {
 
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
 
+
+#if MODULARIZE && EXPORT_ES6 
+      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
+        Module = {{{ EXPORT_NAME }}}.default(Module);
+        PThread = Module['PThread'];
+        HEAPU32 = Module['HEAPU32'];
+#if !ASMFS
+        if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
+#endif
+        postMessage({ cmd: 'loaded' });
+      });
+#else
       if (typeof e.data.urlOrBlob === 'string') {
         importScripts(e.data.urlOrBlob);
       } else {
@@ -140,7 +152,6 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-
 #if MODULARIZE
       Module = {{{ EXPORT_NAME }}}(Module);
       PThread = Module['PThread'];
@@ -151,6 +162,7 @@ this.onmessage = function(e) {
       if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
 #endif
       postMessage({ cmd: 'loaded' });
+#endif
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
