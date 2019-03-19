@@ -8108,7 +8108,7 @@ int main() {
     print(' '.join(cmd))
     ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertContained('1152921504606846975', ret)
-    
+
   def test_sysconf_phys_pages(self):
     for args, expected in [
         ([], 1024),
