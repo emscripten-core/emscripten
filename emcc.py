@@ -2778,7 +2778,6 @@ function(%(EXPORT_NAME)s) {
       src = '''
 var %(EXPORT_NAME)s = (function() {
     var _scriptDir = %(GETSCRIPT)s;
-  else:
     return (%(src)s);
 })();
 ''' % {
