@@ -2777,8 +2777,8 @@ function(%(EXPORT_NAME)s) {
         GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefi$
       src = '''
 var %(EXPORT_NAME)s = (function() {
-    var _scriptDir = %(GETSCRIPT)s;
-    return (%(src)s);
+  var _scriptDir = %(GETSCRIPT)s;
+  return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
