@@ -2771,17 +2771,20 @@ function(%(EXPORT_NAME)s) {
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
+      if shared.Settings.EXPORT_ES6:
+        GETSCRIPT = "performance.getEntries().slice(-1)[0].name"
+      else:
+        GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefi$
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  if shared.Settings.EXPORT_ES6:
-    var _scriptDir = performance.getEntries().slice(-1)[0].name;
+    var _scriptDir = %(GETSCRIPT)s;
   else:
-    var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
-  return (%(src)s);
+    return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'src': src
+        'src': src,
+        'GETSCRIPT': GETSCRIPT
       }
   else:
     # Create the MODULARIZE_INSTANCE instance
