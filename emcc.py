@@ -2774,7 +2774,7 @@ function(%(EXPORT_NAME)s) {
       if shared.Settings.EXPORT_ES6:
         GETSCRIPT = "performance.getEntries().slice(-1)[0].name"
       else:
-        GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefi$
+        GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
 var %(EXPORT_NAME)s = (function() {
   var _scriptDir = %(GETSCRIPT)s;
