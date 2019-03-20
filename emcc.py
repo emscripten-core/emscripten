@@ -544,9 +544,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       use_cxx = False
 
   def is_minus_s_for_emcc(args, i):
+    if args[i] != '-s':
+      return False
+
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
-    assert args[i] == '-s'
     if len(args) > i + 1:
       arg = args[i + 1]
       if arg.split('=')[0].isupper():
@@ -620,7 +622,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if skip_next:
           skip_next = False
           continue
-        if not use_js and arg == '-s' and is_minus_s_for_emcc(argv, idx):
+        if not use_js and is_minus_s_for_emcc(argv, idx):
           # skip -s X=Y if not using js for configure
           skip_next = True
           continue
@@ -807,16 +809,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       start_time = time.time() # done after parsing arguments, which might affect debug state
 
     for i in range(len(newargs)):
-      if newargs[i] == '-s':
-        if is_minus_s_for_emcc(newargs, i):
-          key = newargs[i + 1]
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
-          settings_changes.append(key)
-          newargs[i] = newargs[i + 1] = ''
-          if key == 'WASM_BACKEND=1':
-            exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
+      if is_minus_s_for_emcc(newargs, i):
+        key = newargs[i + 1]
+        # If not = is specified default to 1
+        if '=' not in key:
+          key += '=1'
+        settings_changes.append(key)
+        newargs[i] = newargs[i + 1] = ''
+        if key == 'WASM_BACKEND=1':
+          exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
     newargs = [arg for arg in newargs if arg is not '']
 
     settings_key_changes = set()
