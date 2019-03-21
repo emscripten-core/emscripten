@@ -2772,7 +2772,7 @@ function(%(EXPORT_NAME)s) {
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
       if shared.Settings.EXPORT_ES6:
-        GETSCRIPT = "performance.getEntries().slice(-1)[0].name"
+        GETSCRIPT = "import.meta.url"
       else:
         GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
