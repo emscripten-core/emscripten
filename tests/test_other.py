@@ -8106,6 +8106,7 @@ int main() {
     print(args)
     cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'noffi-side.cpp'), '-g', '-o', 'side.wasm'] + args
     print(' '.join(cmd))
+    run_process(cmd)
     ret = run_process(NODE_JS + ['a.out.js'], stdout=PIPE).stdout
     self.assertContained('1152921504606846975', ret)
 
