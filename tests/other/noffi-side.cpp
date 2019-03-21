@@ -6,10 +6,11 @@
  */
 
 #include <cstdint>
+#include <emscripten.h>
+
 extern "C"{
     extern void passBigInt(uint64_t);
 }
-
-void callPassBigInt(){
+EMSCRIPTEN_KEEPALIVE void callPassBigInt(){
     passBigInt(1152921504606846975);
 }

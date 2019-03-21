@@ -11,14 +11,13 @@
 #include <stdexcept>
 #include <cstdint>
 #include <dlfcn.h>
-#include <iostream>
 #include <emscripten.h>
 
 using namespace std;
 
 extern "C"{
     EMSCRIPTEN_KEEPALIVE void passBigInt(uint64_t u){
-        std::cout << u << std::endl;
+        printf("got %lld\n", u);
     }
 }
 uint64_t getbigint(){
@@ -31,7 +30,7 @@ uint64_t getbigint(){
 }
 int main()
 {   
-    float safeY = 0.0f;
+    printf("start of main");
     uint64_t mybig = 0;
     EM_ASM({
         FS.mkdir('/working');
@@ -39,7 +38,13 @@ int main()
     });
     void *handle = dlopen("/working/side.wasm", RTLD_NOW);
     typedef void (*sideModule_fn)(void);
-    sideModule_fn exportedfn = (sideModule_fn)dlsym(handle, "_Z9callPassBigIntv");
+    sideModule_fn exportedfn = (sideModule_fn)dlsym(handle, "_Z14callPassBigIntv");
+    const char *err = dlerror();
+    if (err) {
+        printf("ERROR: dlsym failed: for sideModule_fn");
+        //abort();
+    }
+    printf("calling side.wasm \n");
     exportedfn();
 
     try{
