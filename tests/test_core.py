@@ -3304,8 +3304,6 @@ ok
   def test_dylink_floats(self):
     self.dylink_test('''
       #include <stdio.h>
-      #include "header.h"
-
       extern float sidey();
       int main() {
         printf("other says %.2f.\\n", sidey()+1);
@@ -3790,7 +3788,7 @@ ok
           ''', side=r'''
             #include <iostream>
             void side() { std::cout << "cout hello from side\n"; }
-          ''', expected=['cout hello from side\n'], need_reverse=False)
+          ''', expected=['cout hello from side\n'], need_reverse=need_reverse)
       except Exception as e:
         if expect_pass:
           raise
