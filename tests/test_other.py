@@ -3999,7 +3999,7 @@ int impl(int foo) {
 }
 
 int main() {
-  volatile callback f = (callback) impl;
+  callback f = (callback) impl;
   f(0); /* This fails with or without additional arguments. */
   return 0;
 }
@@ -4056,7 +4056,7 @@ int impl3(int foo) { return foo+2; }
 float implc(float foo) { return foo+2; }
 
 int main(int argc, char **argv) {
-  volatile void *f = (void*)impl1;
+  void *f = (void*)impl1;
   if (argc == 50) f = (void*)impla;
   if (argc == 51) f = (void*)impl2;
   if (argc == 52) f = (void*)implb;
@@ -6134,7 +6134,7 @@ int main() {
 #include <stdlib.h>
 
 int main() {
-  volatile int x = (int)malloc(1024 * 1024 * 1400);
+  int x = (int)malloc(1024 * 1024 * 1400);
   return x == 0; // can't alloc it, but don't fail catastrophically, expect null
 }
     ''')
@@ -6254,7 +6254,7 @@ int main(int argc, char** argv) {
       #include <emscripten.h>
       typedef void (*fp)();
       int main(int argc, char **argv) {
-        volatile fp f = 0;
+        fp f = 0;
         EM_ASM({
           if (typeof FUNCTION_TABLE_v !== 'undefined') {
             out('function table: ' + FUNCTION_TABLE_v);
@@ -6284,7 +6284,7 @@ int main(int argc, char** argv) {
       void one() { EM_ASM( out('one') ); }
       void two() { EM_ASM( out('two') ); }
       void test() {
-        volatile fp f = one;
+        fp f = one;
         f();
         f = two;
         f();

@@ -3351,14 +3351,14 @@ ok
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
           loadDynamicLibrary('liblib.so');
         });
-        volatilevoidfunc f;
-        f = (volatilevoidfunc)left1;
+        voidfunc f;
+        f = (voidfunc)left1;
         f();
-        f = (volatilevoidfunc)left2;
+        f = (voidfunc)left2;
         f();
-        f = (volatilevoidfunc)getright1();
+        f = (voidfunc)getright1();
         f();
-        f = (volatilevoidfunc)getright2();
+        f = (voidfunc)getright2();
         f();
         second();
         return 0;
@@ -3371,20 +3371,20 @@ ok
       voidfunc getright2() { return right2; }
       void second() {
         printf("second\n");
-        volatilevoidfunc f;
-        f = (volatilevoidfunc)getleft1();
+        voidfunc f;
+        f = (voidfunc)getleft1();
         f();
-        f = (volatilevoidfunc)getleft2();
+        f = (voidfunc)getleft2();
         f();
-        f = (volatilevoidfunc)right1;
+        f = (voidfunc)right1;
         f();
-        f = (volatilevoidfunc)right2;
+        f = (voidfunc)right2;
         f();
       }
     ''', 'main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n', header='''
       #include <stdio.h>
       typedef void (*voidfunc)();
-      typedef volatile voidfunc volatilevoidfunc;
+      typedef voidfunc voidfunc;
       voidfunc getleft1();
       voidfunc getleft2();
       voidfunc getright1();
@@ -3398,7 +3398,7 @@ ok
       #include <stdio.h>
       #include "header.h"
       int main(int argc, char **argv) {
-        volatile charfunc f = emscripten_run_script;
+        charfunc f = emscripten_run_script;
         f("out('one')");
         f = get();
         f("out('two')");
@@ -3427,7 +3427,7 @@ ok
       float areturn1(float f) { printf("hello 1: %f\n", f); return 1; }
       float areturn2(float f) { printf("hello 2: %f\n", f); return 2; }
       int main(int argc, char **argv) {
-        volatile floatfunc table[3] = { areturn0, areturn1, areturn2 };
+        floatfunc table[3] = { areturn0, areturn1, areturn2 };
         printf("got: %d\n", (int)table[sidey(NULL)](12.34));
         return 0;
       }
@@ -3871,7 +3871,7 @@ ok
         // is special and not present in the main module, so
         // it must be generated for the side module.
         DestructorCaller d;
-        volatile ifdi p = func_with_special_sig;
+        ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
@@ -5102,7 +5102,7 @@ int main(int argc, char** argv) {
   char buffer[11];
   buffer[10] = '\0';
   // call by a pointer, to force linking of memset, no llvm intrinsic here
-  volatile auto ptr = memset;
+  auto ptr = memset;
   (*ptr)(buffer, 'a', 10);
   depper(buffer);
   puts(buffer);
