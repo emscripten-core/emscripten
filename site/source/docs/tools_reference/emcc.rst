@@ -14,7 +14,7 @@ Command line syntax
 
   emcc [options] file...
 
-(Note that you will need ``emcc`` if you want to run emcc from your current directory.)
+(Note that you will need ``./emcc`` if you want to run emcc from your current directory.)
 
 The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
 
