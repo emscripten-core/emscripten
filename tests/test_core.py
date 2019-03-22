@@ -3206,7 +3206,6 @@ ok
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    print(self.is_wasm())
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
@@ -3246,30 +3245,67 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
+  def do_basic_dylink_test(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        printf("other says %d.\n", sidey());
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+
+      int sidey() {
+        return 11;
+      }
+    ''', 'other says 11.', 'extern "C" int sidey();')
+
   @needs_dlfcn
   def test_dylink_basics(self):
-    def test():
-      self.dylink_test('''
-        #include <stdio.h>
-        extern "C" int sidey();
-        int main() {
-          printf("other says %d.\\n", sidey());
-          return 0;
-        }
-      ''', '''
-        extern "C" int sidey() { return 11; }
-      ''', 'other says 11.')
-    test()
+    self.do_basic_dylink_test()
 
-    if self.is_wasm():
-      print('test memory growth with dynamic linking, which works in wasm')
-      self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-      test()
+  @needs_dlfcn
+  def test_dylink_memory_growth(self):
+    if not self.is_wasm():
+      self.skipTest('wasm only')
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  def test_dylink_function_pointer_equality(self):
+    # TODO(sbc): This is currently a known failure.
+    # See https://github.com/emscripten-core/emscripten/issues/8268
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        void* puts_side = get_address();
+        printf("main module address %p.\n", &puts);
+        printf("side module address address %p.\n", puts_side);
+        if (&puts == puts_side)
+          printf("success\n");
+        else
+          printf("failure\n");
+        return 0;
+      }
+    ''', '''
+      #include <stdio.h>
+      #include "header.h"
+
+      void* get_address() {
+        return (void*)&puts;
+      }
+    ''', 'failure', header='extern "C" void* get_address();')
 
   @needs_dlfcn
   def test_dylink_floats(self):
     self.dylink_test('''
       #include <stdio.h>
+      #include "header.h"
+
       extern float sidey();
       int main() {
         printf("other says %.2f.\\n", sidey()+1);
@@ -3754,7 +3790,7 @@ ok
           ''', side=r'''
             #include <iostream>
             void side() { std::cout << "cout hello from side\n"; }
-          ''', expected=['cout hello from side\n'], need_reverse=need_reverse)
+          ''', expected=['cout hello from side\n'], need_reverse=False)
       except Exception as e:
         if expect_pass:
           raise
