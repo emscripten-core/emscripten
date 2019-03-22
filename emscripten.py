@@ -1340,6 +1340,7 @@ def global_simd_funcs(access_quote, metadata):
 
   nonexisting_simd_symbols = ['Int8x16_fromInt8x16', 'Uint8x16_fromUint8x16', 'Int16x8_fromInt16x8', 'Uint16x8_fromUint16x8', 'Int32x4_fromInt32x4', 'Uint32x4_fromUint32x4', 'Float32x4_fromFloat32x4', 'Float64x2_fromFloat64x2']
   nonexisting_simd_symbols += ['Int32x4_addSaturate', 'Int32x4_subSaturate', 'Uint32x4_addSaturate', 'Uint32x4_subSaturate']
+  nonexisting_simd_symbols += [(t + 'x' + n + '_' + op) for t in ['Int8', 'Uint8', 'Int16', 'Uint16', 'Int32', 'Uint32', 'Int64', 'Uint64', 'Float32', 'Float64'] for op in ['load3', 'store3'] for n in ['2', '8', '16']]
   nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8', 'Float64x2'] for y in ['load2', 'store2']]
   nonexisting_simd_symbols += [(x + '_' + y) for x in ['Int8x16', 'Uint8x16', 'Int16x8', 'Uint16x8'] for y in ['load1', 'store1']]
 
@@ -1400,7 +1401,7 @@ def make_simd_types(metadata):
                          'equal', 'lessThan', 'greaterThan',
                          'notEqual', 'lessThanOrEqual', 'greaterThanOrEqual',
                          'select', 'swizzle', 'shuffle',
-                         'load', 'store', 'load1', 'store1', 'load2', 'store2']
+                         'load', 'store', 'load1', 'store1', 'load2', 'store2', 'load3', 'store3']
   simd_intbool_funcs = ['and', 'xor', 'or', 'not']
   if metadata['simdUint8x16']:
     simd_int_types += ['Uint8x16']
