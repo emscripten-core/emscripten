@@ -78,7 +78,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-    var ret = GLctx['getInternalFormatParameter'](target, internalformat, pname);
+    var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
