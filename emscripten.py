@@ -1665,6 +1665,10 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 ''' for s in receiving)
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
+  
+  #Should only need to do this in the main thread.
+  if shared.Settings.USE_PTHREADS:
+    receiving = "if (!ENVIRONMENT_IS_PTHREAD) {\n" + receiving + "}\n"
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
