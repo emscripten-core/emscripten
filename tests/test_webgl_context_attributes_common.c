@@ -266,17 +266,19 @@ static int resultStencil = 0;
 static int resultAlpha = 0;
 
 static void draw() {
-  
   if (!resultAA) resultAA = testAntiAliasing(antiAliasingActivated);
+  assert(resultAA == 1);
    
   if (!resultDepth) resultDepth = testDepth(depthActivated);
+  assert(resultDepth == 1);
   
   if (!resultStencil) resultStencil = testStencil(stencilActivated);
+  assert(resultStencil == 1);
   
   if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
+  assert(resultAlpha == 1);
   
   result = resultAA && resultDepth && resultStencil && resultAlpha;
- 
 }
 
 extern int webglAntialiasSupported(void);
