@@ -7947,7 +7947,7 @@ int main() {
       self.run_metadce_test('minimal.c', *args)
 
     if self.is_wasm_backend():
-      run([],      11, [], ['waka'],  9336,  5, 13, 16) # noqa
+      run([],      16, [], ['waka'], 11349,  9, 15, 24) # noqa
       run(['-O1'],  9, [], ['waka'],  8095,  2, 12, 10) # noqa
       run(['-O2'],  9, [], ['waka'],  8077,  2, 12, 10) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7969,7 +7969,7 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 562) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 563) # noqa
     else:
       run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
@@ -7980,7 +7980,7 @@ int main() {
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 26641, 10,  15, 62) # noqa
+      run([],      16, [], ['waka'], 26641, 10,  16, 65) # noqa
       run(['-O1'], 14, [], ['waka'], 10668,  8,  14, 29) # noqa
       run(['-O2'], 14, [], ['waka'], 10490,  8,  14, 24) # noqa
       run(['-O3'],  5, [], [],        2453,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
@@ -9143,6 +9143,12 @@ int main () {
       run_process([PYTHON, EMCC, 'src.c', '-O1'])
       return os.path.getsize('a.out.wasm')
 
-    i = test('printf("%d", (int)unknown_value)')
-    f = test('printf("%d", (double)unknown_value)')
-    print(i, f)
+    i = test('printf("%d", *(int*)unknown_value)')
+    f = test('printf("%f", *(double*)unknown_value)')
+    lf = test('printf("%Lf", *(long double*)unknown_value)')
+    print(i, f, lf)
+
+    # iprintf is much smaller than printf with float support
+    self.assertLess(i, f - 500)
+    # __small_printf is much smaller than printf with long double support
+    # TODO self.assertLess(f, lf - 1000)

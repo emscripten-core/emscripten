@@ -784,6 +784,7 @@
 -------- T __intscan
 -------- T ioctl
 -------- T __ipparse
+-------- T iprintf
 -------- T isalnum
 -------- T __isalnum_l
 -------- T isalnum_l
