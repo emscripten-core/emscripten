@@ -22,3 +22,5 @@ int siprintf(char *restrict s, const char *restrict fmt, ...)
 	va_end(ap);
 	return ret;
 }
+
+weak_alias(sprintf, __small_sprintf); // TODO

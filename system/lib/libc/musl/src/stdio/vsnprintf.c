@@ -68,3 +68,5 @@ int vsniprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap)
 	if (n) f.wpos[-(f.wpos == f.wend)] = 0;
 	return r;
 }
+
+weak_alias(vsnprintf, __small_vsnprintf); // TODO

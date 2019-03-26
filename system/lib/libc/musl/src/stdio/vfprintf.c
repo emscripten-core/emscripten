@@ -204,9 +204,9 @@ typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long double)
 #endif
 
 // XXX EMSCRIPTEN
-typedef int (*fmt_fp_t)(FILE *f, long double y, int w, int p, int fl, int t);
+typedef int (*fmt_fp_t)(FILE *f, void* yp, int w, int p, int fl, int t);
 
-static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
+static int fmt_fp(FILE *f, void* yp, int w, int p, int fl, int t)
 {
 	uint32_t big[(LDBL_MANT_DIG+28)/29 + 1          // mantissa expansion
 		+ (LDBL_MAX_EXP+LDBL_MANT_DIG+28+8)/9]; // exponent expansion
@@ -216,6 +216,9 @@ static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
 	const char *prefix="-0X+0X 0X-0x+0x 0x";
 	int pl;
 	char ebuf0[3*sizeof(int)], *ebuf=&ebuf0[3*sizeof(int)], *estr;
+	long double y;
+
+	y = *(long double*)yp;
 
 	pl=1;
 	if (signbit(y)) {
@@ -630,7 +633,7 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 			continue;
 		case 'e': case 'f': case 'g': case 'a':
 		case 'E': case 'F': case 'G': case 'A':
-			l = fmt_fp(f, arg.f, w, p, fl, t);
+			l = fmt_fp(f, &arg.f, w, p, fl, t);
 			continue;
 		}
 

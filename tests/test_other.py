@@ -9149,6 +9149,6 @@ int main () {
     print(i, f, lf)
 
     # iprintf is much smaller than printf with float support
-    self.assertLess(i, f - 500)
+    self.assertLess(i, f - 5000)
     # __small_printf is much smaller than printf with long double support
-    # TODO self.assertLess(f, lf - 1000)
+    # TODO self.assertLess(f, lf - 10000)
