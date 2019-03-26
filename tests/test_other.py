@@ -32,7 +32,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
-from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
+from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend, only_wasm_backend
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
@@ -9128,3 +9128,21 @@ int main () {
     if not self.is_wasm_backend():
       self.set_setting('WASM', 0)
       self.do_run(src, 'SAFE_HEAP load: ')
+
+  @only_wasm_backend('iprintf/__small_printf are wasm-backend-only features')
+  def test_mini_printfs(self):
+    def test(code):
+      with open('src.c', 'w') as f:
+        f.write('''
+          #include <stdio.h>
+          int main() {
+            volatile void* unknown_value;
+            %s;
+          }
+        ''' % code)
+      run_process([PYTHON, EMCC, 'src.c', '-O1'])
+      return os.path.getsize('a.out.wasm')
+
+    i = test('printf("%d", (int)unknown_value)')
+    f = test('printf("%d", (double)unknown_value)')
+    print(i, f)

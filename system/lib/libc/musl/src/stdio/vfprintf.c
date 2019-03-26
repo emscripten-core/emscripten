@@ -203,6 +203,9 @@ static char *fmt_u(uintmax_t x, char *s)
 typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long double)];
 #endif
 
+// XXX EMSCRIPTEN
+typedef int (*fmt_fp_t)(FILE *f, long double y, int w, int p, int fl, int t);
+
 static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
 {
 	uint32_t big[(LDBL_MANT_DIG+28)/29 + 1          // mantissa expansion
@@ -442,7 +445,9 @@ static int getint(char **s) {
 	return i;
 }
 
-static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg, int *nl_type)
+// XXX EMSCRIPTEN: pass in fmt_fp as a function pointer, so iprintf/__small_printf don't
+//                 force linking in of floating-point code.
+static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg, int *nl_type, fmt_fp_t fmt_fp)
 {
 	char *a, *z, *s=(char *)fmt;
 	unsigned l10n=0, fl;
@@ -652,7 +657,9 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 	return 1;
 }
 
-int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
+// XXX EMSCRIPTEN: pass in fmt_fp as a function pointer, so iprintf/__small_printf don't
+//                 force linking in of floating-point code.
+int __vfprintf_internal(FILE *restrict f, const char *restrict fmt, va_list ap, fmt_fp_t fmt_fp)
 {
 	va_list ap2;
 	int nl_type[NL_ARGMAX+1] = {0};
@@ -663,7 +670,7 @@ int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
 
 	/* the copy allows passing va_list* even if va_list is an array */
 	va_copy(ap2, ap);
-	if (printf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) {
+	if (printf_core(0, fmt, &ap2, nl_arg, nl_type, fmt_fp) < 0) {
 		va_end(ap2);
 		return -1;
 	}
@@ -677,7 +684,7 @@ int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
 		f->buf_size = sizeof internal_buf;
 		f->wend = internal_buf + sizeof internal_buf;
 	}
-	ret = printf_core(f, fmt, &ap2, nl_arg, nl_type);
+	ret = printf_core(f, fmt, &ap2, nl_arg, nl_type, fmt_fp);
 	if (saved_buf) {
 		f->write(f, 0, 0);
 		if (!f->wpos) ret = -1;
@@ -690,4 +697,9 @@ int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
 	FUNLOCK(f);
 	va_end(ap2);
 	return ret;
+}
+
+int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
+{
+	return __vfprintf_internal(f, fmt, ap, fmt_fp);
 }
