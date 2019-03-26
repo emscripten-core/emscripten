@@ -5,4 +5,3 @@ if (typeof window === 'object' && window) {
     xhr.send();
   };
 }
-
