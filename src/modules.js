@@ -161,20 +161,23 @@ var LibraryManager = {
         eval(processed);
       } catch(e) {
         var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : ''];
-        if (VERBOSE)
+        if (VERBOSE) {
           details.push((e.stack || "").toString().replace('Object.<anonymous>', filename));
+        }
         if (processed) {
           error('failure to execute js library "' + filename + '": ' + details);
-          if (VERBOSE)
+          if (VERBOSE) {
             error('preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============');
-          else
+          } else {
             error('use -s VERBOSE to see more details')
+          }
         } else {
           error('failure to process js library "' + filename + '": ' + details);
-          if (VERBOSE)
+          if (VERBOSE) {
             error('original source:\n=============\n' + src + '\n=============');
-          else
+          } else {
             error('use -s VERBOSE to see more details')
+          }
         }
         throw e;
       }
