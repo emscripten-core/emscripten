@@ -160,11 +160,24 @@ var LibraryManager = {
         processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
-        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
+        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : ''];
+        if (VERBOSE) {
+          details.push((e.stack || "").toString().replace('Object.<anonymous>', filename));
+        }
         if (processed) {
-          error('failure to execute js library "' + filename + '": ' + details + '\npreprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============\n');
+          error('failure to execute js library "' + filename + '": ' + details);
+          if (VERBOSE) {
+            error('preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============');
+          } else {
+            error('use -s VERBOSE to see more details')
+          }
         } else {
-          error('failure to process js library "' + filename + '": ' + details + '\noriginal source:\n=============\n' + src + '\n=============\n');
+          error('failure to process js library "' + filename + '": ' + details);
+          if (VERBOSE) {
+            error('original source:\n=============\n' + src + '\n=============');
+          } else {
+            error('use -s VERBOSE to see more details')
+          }
         }
         throw e;
       }
