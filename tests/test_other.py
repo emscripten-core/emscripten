@@ -9137,16 +9137,17 @@ int main () {
           #include <stdio.h>
           int main() {
             volatile void* unknown_value;
-            %s;
+            %s
           }
         ''' % code)
       run_process([PYTHON, EMCC, 'src.c', '-O1'])
       return os.path.getsize('a.out.wasm')
 
-    i = test('printf("%d", *(int*)unknown_value)')
-    f = test('printf("%f", *(double*)unknown_value)')
-    lf = test('printf("%Lf", *(long double*)unknown_value)')
-    print(i, f, lf)
+    i = test('printf("%d", *(int*)unknown_value);')
+    f = test('printf("%f", *(double*)unknown_value);')
+    lf = test('printf("%Lf", *(long double*)unknown_value);')
+    both = test('printf("%d", *(int*)unknown_value); printf("%Lf", *(long double*)unknown_value);')
+    print(i, f, lf, both)
 
     # iprintf is much smaller than printf with float support
     self.assertLess(i, f - 5000)
