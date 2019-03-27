@@ -456,12 +456,7 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #endif
 
 #include "runtime_stack_check.js"
-
-// Endianness check (note: assumes compiler arch was little-endian)
-#if ASSERTIONS
-HEAP16[1] = 0x6373;
-if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-#endif // ASSERTIONS
+#include "runtime_assertions.js"
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
