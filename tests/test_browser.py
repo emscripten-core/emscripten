@@ -2450,26 +2450,26 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    if EMTEST_BROWSER is not None:
+      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+      # so strip them out.
+      browser_cmd = shlex.split(EMTEST_BROWSER)
+      browser_path = browser_cmd[0]
+      args_base += ['--browser', browser_path]
+      if len(browser_cmd) > 1:
+        browser_args = browser_cmd[1:]
+        if 'firefox' in browser_path and '-profile' in browser_args:
+          # emrun uses its own -profile, strip it out
+          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+          parser.add_argument('-profile')
+          browser_args = parser.parse_known_args(browser_args)[1]
+        if browser_args:
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
     for args in [
         args_base,
         args_base + ['--no_private_browsing']
     ]:
-      if EMTEST_BROWSER is not None:
-        # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-        # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-        # so strip them out.
-        browser_cmd = shlex.split(EMTEST_BROWSER)
-        browser_path = browser_cmd[0]
-        args += ['--browser', browser_path]
-        if len(browser_cmd) > 1:
-          browser_args = browser_cmd[1:]
-          if 'firefox' in browser_path and '-profile' in browser_args:
-            # emrun uses its own -profile, strip it out
-            parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-            parser.add_argument('-profile')
-            browser_args = parser.parse_known_args(browser_args)[1]
-          if browser_args:
-            args += ['--browser_args', ' ' + ' '.join(browser_args)]
       args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
       proc = run_process(args, check=False)
       stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
