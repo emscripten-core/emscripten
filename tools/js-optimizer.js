@@ -5887,6 +5887,74 @@ function safeHeap(ast) {
   });
 }
 
+function growableHeap(ast) {
+  var GROWABLE_HEAP_FUNCS = set('GROWABLE_HEAP_LOAD', 'GROWABLE_HEAP_LOAD_D', 'GROWABLE_HEAP_STORE', 'GROWABLE_HEAP_STORE_D', 'GROWABLE_FT_MASK');
+  traverse(ast, function(node, type) {
+    var heap, ptr;
+    if (type === 'assign') {
+      if (node[1] === true && node[2][0] === 'sub') {
+        heap = node[2][1][1];
+        ptr = fixPtr(node[2][2], heap);
+        var value = node[3];
+        // GROWABLE_HEAP_STORE(ptr, value, bytes, isFloat)
+        switch (heap) {
+          case 'HEAP8':   case 'HEAPU8': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          }
+          case 'HEAP16':  case 'HEAPU16': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          }
+          case 'HEAP32':  case 'HEAPU32': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+          }
+          case 'HEAPF32': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F32'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+          }
+          case 'HEAPF64': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F64'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+          }
+          default: {}
+        }
+      }
+    } else if (type === 'sub') {
+      var target = node[1][1];
+      if (target[0] === 'H') {
+        // heap access
+        heap = target;
+        ptr = fixPtr(node[2], heap);
+        // GROWABLE_HEAP_LOAD(ptr, bytes, isFloat)
+        switch (heap) {
+          case 'HEAP8': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I8'], [ptr]], ASM_INT);
+          }
+          case 'HEAPU8': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U8'], [ptr]], ASM_INT);
+          }
+          case 'HEAP16': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I16'], [ptr]], ASM_INT);
+          }
+          case 'HEAPU16': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U16'], [ptr]], ASM_INT);
+          }
+          case 'HEAP32': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I32'], [ptr]], ASM_INT);
+          }
+          case 'HEAPU32': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U32'], [ptr]], ASM_INT);
+          }
+          case 'HEAPF32': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_F32'], [ptr]], ASM_DOUBLE);
+          }
+          case 'HEAPF64': {
+            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_F64'], [ptr]], ASM_DOUBLE);
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
 function fixPtrSlim(ptr, heap, shell) {
   switch (heap) {
     case 'HEAP8':   case 'HEAPU8': {
@@ -8010,6 +8078,7 @@ var passes = {
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
+  growableHeap: growableHeap,
   splitMemory: splitMemory,
   splitMemoryShell: splitMemoryShell,
   optimizeFrounds: optimizeFrounds,
