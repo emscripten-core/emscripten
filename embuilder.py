@@ -72,6 +72,7 @@ for debug in ['', '_debug']:
 USER_TASKS = [
     'binaryen',
     'bullet',
+    'bzip2',
     'cocos2d',
     'freetype',
     'harfbuzz',
@@ -317,6 +318,8 @@ def main():
       build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
+    elif what == 'bzip2':
+      build_port('bzip2', 'libbz2.a', ['-s', 'USE_BZIP2=1'])
     elif what == 'bullet':
       build_port('bullet', libname('libbullet'), ['-s', 'USE_BULLET=1'])
     elif what == 'vorbis':
