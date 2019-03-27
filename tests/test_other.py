@@ -1822,6 +1822,10 @@ int f() {
     run_process([PYTHON, EMCC, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', run_js('a.out.js'))
 
+  def test_sqlite(self):
+    Building.emcc(path_from_root('tests', 'sqlite_test.c'), ['-s', 'USE_SQLITE=1'], output_filename='a.out.js')
+    self.assertContained("ALL OK", run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
+
   def test_libpng(self):
     shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
     Building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')

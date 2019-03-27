@@ -86,6 +86,7 @@ USER_TASKS = [
     'sdl2-mixer',
     'sdl2-net',
     'sdl2-ttf',
+    'sqlite',
     'vorbis',
     'zlib',
 ]
@@ -336,6 +337,8 @@ def main():
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
       build_port('sdl2-mixer', 'libSDL2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+    elif what == 'sqlite':
+      build_port('sqlite', 'libsqlite3.a', ['-s', 'USE_SQLITE=1'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':

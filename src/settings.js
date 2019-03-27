@@ -1074,6 +1074,9 @@ var USE_SDL_TTF = 1;
 // Specify the SDL_net version that is being linked against. Must match USE_SDL
 var USE_SDL_NET = 1;
 
+// 1 = use sqlite from emscripten-ports
+var USE_SQLITE = 0;
+
 // 1 = use icu from emscripten-ports
 var USE_ICU = 0;
 
