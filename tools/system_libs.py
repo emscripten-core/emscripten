@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# test to see if circle CI tests pass on `incoming` branch
+
 from __future__ import print_function
 import json
 import logging
