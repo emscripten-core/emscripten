@@ -20,5 +20,6 @@ The topics in this section cover the main integration points that you need to co
   simd
   asyncify
   emterpreter
+  networking
   ../compiling/Building-Projects
 

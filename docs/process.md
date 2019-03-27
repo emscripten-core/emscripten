@@ -83,3 +83,15 @@ How:
    immediately, rather first we should at minimum see that CI and new builds are
    all green. If a problem occurs, we may only merge to master the minor version
    update that fixes things.
+
+Updating the emscripten.org Website
+===================================
+
+The site is currently hosted in `gh-pages` on the "site repo",
+`https://github.com/kripken/emscripten-site`. To update the docs, rebuild
+them and copy them to there, that is,
+
+1. In your emscripten repo checkout, enter `site`.
+2. Run `make html`.
+3. Run `cp -R build/html/* \[path-to-a-checkout-of-the-site-repo\]
+3. Go to the site repo, commit the changes, and push.
