@@ -1080,6 +1080,9 @@ var USE_ICU = 0;
 // 1 = use zlib from emscripten-ports
 var USE_ZLIB = 0;
 
+// 1 = use bzip2 from emscripten-ports
+var USE_BZIP2 = 0;
+
 // 1 = use libpng from emscripten-ports
 var USE_LIBPNG = 0;
 
