@@ -3839,14 +3839,6 @@ window.close = function() {
   def test_sigalrm(self):
     self.btest(path_from_root('tests', 'sigalrm.cpp'), expected='0', args=['-O3'], timeout=30)
 
-  @requires_threads
-  def test_pthread_growth(self):
-    def run(emcc_args=[]):
-       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_MEM_MAX=64MB'] + emcc_args, also_asmjs=False)
-
-    run()
-    run(emcc_args=['-s', 'ASSERTIONS=1'])
-
   @no_wasm_backend('mem init file')
   def test_meminit_pairs(self):
     d = 'const char *data[] = {\n  "'
@@ -4331,8 +4323,12 @@ window.close = function() {
 
   # Tests memory growth in pthreads.
   @requires_threads
-  def test_pthread_memory_growth(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB', '-s', 'ASSERTIONS=1', '-g'], timeout=30)
+  def test_pthread_growth(self):
+    def run(emcc_args=[]):
+       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB'] + emcc_args, also_asmjs=False)
+
+    run()
+    run(emcc_args=['-s', 'ASSERTIONS=1'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads

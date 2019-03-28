@@ -477,9 +477,6 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    // In pthreads we don't update the TOTAL_MEMORY global to all threads, but
-    // the views are always up to date. Little cost to just reading it from there
-    // in non-pthreads too.
     return HEAP8.length;
   },
 
