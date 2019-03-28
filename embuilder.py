@@ -77,6 +77,7 @@ USER_TASKS = [
     'freetype',
     'harfbuzz',
     'icu',
+    'libjpeg',
     'libpng',
     'ogg',
     'regal',
@@ -326,6 +327,8 @@ def main():
       build_port('vorbis', libname('libvorbis'), ['-s', 'USE_VORBIS=1'])
     elif what == 'ogg':
       build_port('ogg', libname('libogg'), ['-s', 'USE_OGG=1'])
+    elif what == 'libjpeg':
+      build_port('libjpeg', libname('libjpeg'), ['-s', 'USE_LIBJPEG=1'])
     elif what == 'libpng':
       build_port('libpng', libname('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
