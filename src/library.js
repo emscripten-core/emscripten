@@ -621,9 +621,6 @@ LibraryManager.library = {
     if (!emscripten_realloc_buffer(newSize)) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
-      if (replacement) {
-        err('Expected to get back a buffer of size ' + newSize + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
-      }
 #endif
       return false;
     }
