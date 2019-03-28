@@ -1212,7 +1212,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('Memory growth is not supported with pthreads without wasm')
         else:
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-          options.pre_js += open(shared.path_from_root('src', 'growableHeap.js')).read() + '\n'
+          options.force_js_opts = options.js_opts = True # for JS instrumentation
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))

@@ -5888,7 +5888,6 @@ function safeHeap(ast) {
 }
 
 function growableHeap(ast) {
-  var GROWABLE_HEAP_FUNCS = set('GROWABLE_HEAP_LOAD', 'GROWABLE_HEAP_LOAD_D', 'GROWABLE_HEAP_STORE', 'GROWABLE_HEAP_STORE_D', 'GROWABLE_FT_MASK');
   traverse(ast, function(node, type) {
     var heap, ptr;
     if (type === 'assign') {
@@ -5899,19 +5898,19 @@ function growableHeap(ast) {
         // GROWABLE_HEAP_STORE(ptr, value, bytes, isFloat)
         switch (heap) {
           case 'HEAP8':   case 'HEAPU8': {
-            return ['call', ['name', 'GROWABLE_HEAP_STORE_I8'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I8'], [ptr, value]];
           }
           case 'HEAP16':  case 'HEAPU16': {
-            return ['call', ['name', 'GROWABLE_HEAP_STORE_I16'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I16'], [ptr, value]];
           }
           case 'HEAP32':  case 'HEAPU32': {
-            return ['call', ['name', 'GROWABLE_HEAP_STORE_I32'], [ptr, makeAsmCoercion(value, ASM_INT)]];
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I32'], [ptr, value]];
           }
           case 'HEAPF32': {
-            return ['call', ['name', 'GROWABLE_HEAP_STORE_F32'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F32'], [ptr, value]];
           }
           case 'HEAPF64': {
-            return ['call', ['name', 'GROWABLE_HEAP_STORE_F64'], [ptr, makeAsmCoercion(value, ASM_DOUBLE)]];
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F64'], [ptr, value]];
           }
           default: {}
         }
@@ -5925,28 +5924,28 @@ function growableHeap(ast) {
         // GROWABLE_HEAP_LOAD(ptr, bytes, isFloat)
         switch (heap) {
           case 'HEAP8': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I8'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I8'], [ptr]];
           }
           case 'HEAPU8': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U8'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U8'], [ptr]];
           }
           case 'HEAP16': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I16'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I16'], [ptr]];
           }
           case 'HEAPU16': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U16'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U16'], [ptr]];
           }
           case 'HEAP32': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_I32'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I32'], [ptr]];
           }
           case 'HEAPU32': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_U32'], [ptr]], ASM_INT);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U32'], [ptr]];
           }
           case 'HEAPF32': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_F32'], [ptr]], ASM_DOUBLE);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_F32'], [ptr]];
           }
           case 'HEAPF64': {
-            return makeAsmCoercion(['call', ['name', 'GROWABLE_HEAP_LOAD_F64'], [ptr]], ASM_DOUBLE);
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_F64'], [ptr]];
           }
           default: {}
         }
