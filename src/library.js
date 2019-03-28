@@ -529,15 +529,6 @@ LibraryManager.library = {
       return false;
     }
     Module['_emscripten_replace_memory'](newBuffer);
-    HEAP8 = new Int8Array(newBuffer);
-    HEAP16 = new Int16Array(newBuffer);
-    HEAP32 = new Int32Array(newBuffer);
-    HEAPU8 = new Uint8Array(newBuffer);
-    HEAPU16 = new Uint16Array(newBuffer);
-    HEAPU32 = new Uint32Array(newBuffer);
-    HEAPF32 = new Float32Array(newBuffer);
-    HEAPF64 = new Float64Array(newBuffer);
-    buffer = newBuffer;
     return newBuffer;
 #endif
   },
@@ -638,11 +629,10 @@ LibraryManager.library = {
       return false;
     }
 
-    // Everything worked, update the buffer and views (except with pthreads, since in that case
+    // Everything worked, update the views (except with pthreads, since in that case
     // the buffer and views are modified in place by the VM - otherwise things couldn't work, as
     // we'd need to update the views in the Workers too).
 #if !USE_PTHREADS
-    updateGlobalBuffer(replacement);
     updateGlobalBufferViews();
 #endif
 
