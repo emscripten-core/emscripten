@@ -707,6 +707,7 @@ LibraryManager.library = {
     var oldDynamicTopOnChange = 0;
     var newDynamicTop = 0;
     var totalMemory = 0;
+    totalMemory = _emscripten_get_heap_size()|0;
 #if USE_PTHREADS
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
     // this function can be called simultaneously in multiple threads.
@@ -729,11 +730,11 @@ LibraryManager.library = {
         return -1;
       }
 
-      totalMemory = _emscripten_get_heap_size()|0;
       if ((newDynamicTop|0) > (totalMemory|0)) {
         if (_emscripten_resize_heap(newDynamicTop|0)|0) {
           // We resized the heap. Start another loop iteration if we need to.
 #if USE_PTHREADS
+          totalMemory = _emscripten_get_heap_size()|0;
           continue;
 #endif
         } else {
@@ -742,6 +743,7 @@ LibraryManager.library = {
           // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
           // start another loop iteration.
           if ((_emscripten_get_heap_size()|0) > totalMemory) {
+            totalMemory = _emscripten_get_heap_size()|0;
             continue;
           }
 #endif
