@@ -709,6 +709,7 @@ LibraryManager.library = {
   // address of the previous top ('break') of the memory area
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
   //sbrk__asm: true,
+  sbrk__asm: true,
   sbrk__sig: ['ii'],
   sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
 #if ABORTING_MALLOC
