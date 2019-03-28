@@ -776,6 +776,7 @@ LibraryManager.library = {
     return oldDynamicTop|0;
   },
 
+  brk__deps: ['sbrk'],
   brk__asm: true,
   brk__sig: ['ii'],
   brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
@@ -786,8 +787,8 @@ LibraryManager.library = {
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
     var diff = 0;
-    diff = newDynamicTop - (sbrk(0) | 0) | 0;
-    if ((sbrk(diff | 0) | 0) == -1) {
+    diff = newDynamicTop - (_sbrk(0) | 0) | 0;
+    if ((_sbrk(diff | 0) | 0) == -1) {
       return -1;
     }
     return 0;
