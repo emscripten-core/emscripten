@@ -475,6 +475,11 @@ EMSCRIPTEN_FUNCS();
           cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
           with open(cld, 'a') as f:
             f.write(suffix_marker)
+        if shared.USE_PTHREADS and shared.ALLOW_MEMORY_GROWTH:
+          if DEBUG: print('supporting wasm memory growth with pthreads', file=sys.stderr)
+          cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'growableHeap'])
+          with open(cld, 'a') as f:
+            f.write(suffix_marker)
         if closure:
           if DEBUG: print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
