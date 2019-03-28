@@ -553,8 +553,6 @@ LibraryManager.library = {
 #endif
 #else
     var oldSize = _emscripten_get_heap_size();
-    // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
-    // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the heap.
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
     if (requestedSize <= oldSize) {
@@ -629,12 +627,12 @@ LibraryManager.library = {
       return false;
     }
 
-    // Everything worked, update the views (except with pthreads, since in that case
-    // the buffer and views are modified in place by the VM - otherwise things couldn't work, as
-    // we'd need to update the views in the Workers too).
-#if !USE_PTHREADS
-    updateGlobalBufferViews();
+#if USE_PTHREADS
+    // Updating the views here is not strictly necessary, since we instrument each load and store
+    // to do so, but doing it here is clean and may be more efficient (avoid surprising the JIT
+    // later by taking a never-taken branch).
 #endif
+    updateGlobalBufferViews();
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
@@ -698,7 +696,6 @@ LibraryManager.library = {
   // Changes the size of the memory area by |bytes|; returns the
   // address of the previous top ('break') of the memory area
   // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
-  //sbrk__asm: true,
   sbrk__asm: true,
   sbrk__sig: ['ii'],
   sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
