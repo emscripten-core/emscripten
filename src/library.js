@@ -718,7 +718,7 @@ LibraryManager.library = {
 #if !USE_PTHREADS
       oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
 #else
-      oldDynamicTop = Atomics.load(HEAP32, DYNAMICTOP_PTR>>2)|0;
+      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
 #endif
       newDynamicTop = oldDynamicTop + increment | 0;
 
@@ -757,7 +757,7 @@ LibraryManager.library = {
 #else
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics.compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
+      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
 #endif
 
