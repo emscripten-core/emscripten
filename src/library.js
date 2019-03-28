@@ -496,7 +496,7 @@ LibraryManager.library = {
 
 #if TEST_MEMORY_GROWTH_FAILS
   $emscripten_realloc_buffer: function(size) {
-    return null;
+    return false;
   },
 #else
 
@@ -510,15 +510,16 @@ LibraryManager.library = {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
-        return buffer = wasmMemory.buffer;
+        buffer = wasmMemory.buffer;
+        return true;
       } else {
-        return null;
+        return false;
       }
     } catch(e) {
 #if ASSERTIONS
       console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
-      return null;
+      return false;
     }
 #else // asm.js:
     try {
@@ -528,8 +529,9 @@ LibraryManager.library = {
     } catch(e) {
       return false;
     }
+    buffer = newBuffer;
     Module['_emscripten_replace_memory'](newBuffer);
-    return newBuffer;
+    return true;
 #endif
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
@@ -616,8 +618,7 @@ LibraryManager.library = {
     var start = Date.now();
 #endif
 
-    var replacement = emscripten_realloc_buffer(newSize);
-    if (!replacement || replacement.byteLength != newSize) {
+    if (!emscripten_realloc_buffer(newSize)) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
       if (replacement) {
