@@ -785,41 +785,11 @@ LibraryManager.library = {
   ],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
-    var totalMemory = 0;
-#if USE_PTHREADS
-
-    throw 'TODO';
-
-    totalMemory = _emscripten_get_heap_size()|0;
-    // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
-    // enlarge memory, so this needs to fail.
-    if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#else
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
-      return -1;
-#endif
-    }
-    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0)|0;
-#else // singlethreaded build: (-s USE_PTHREADS=0)
-    if ((newDynamicTop|0) < 0) {
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#endif
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
+    var diff = 0;
+    diff = newDynamicTop - (sbrk(0) | 0) | 0;
+    if ((sbrk(diff | 0) | 0) == -1) {
       return -1;
     }
-
-    totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-    }
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-#endif
     return 0;
   },
 #endif // ~ (MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH)
