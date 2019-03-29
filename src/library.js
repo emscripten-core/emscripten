@@ -506,6 +506,11 @@ LibraryManager.library = {
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
     var oldSize = buffer.byteLength;
     // native wasm support
+    // note that this is *not* threadsafe. multiple threads can call .grow(), and each
+    // presents a delta, so in theory we may over-allocate here (e.g. if two threads
+    // ask to grow from 256MB to 512MB, we get 2 requests to add +256MB, and may end
+    // up growing to 768MB (even though we may have been able to make do with 512MB).
+    // TODO: consider decreasing the step sizes in emscripten_resize_heap
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
@@ -536,8 +541,6 @@ LibraryManager.library = {
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
-  emscripten_resize_heap__proxy: 'sync',
-  emscripten_resize_heap__sig: 'ii',
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
 #if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
@@ -583,6 +586,7 @@ LibraryManager.library = {
     var MIN_TOTAL_MEMORY = 16777216;
     var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
 
+    // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
       if (newSize <= 536870912) {
         newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
