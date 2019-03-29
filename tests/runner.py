@@ -1064,7 +1064,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
-      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
@@ -1075,6 +1075,8 @@ def harness_server_func(in_queue, out_queue, port):
         '''
         if DEBUG:
           print('[server logging:', urllib.unquote_plus(self.path), ']')
+      elif 'exception=' in self.path:
+        print('[client exception:', urllib.unquote_plus(self.path), ']')
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1333,6 +1335,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+    args += ['--pre-js', path_from_root('tests', 'browser_error_reporting.js')]
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)

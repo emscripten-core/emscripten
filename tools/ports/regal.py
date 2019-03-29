@@ -147,9 +147,7 @@ def get(ports, settings, shared):
 
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'regal', libname)
-    shared.try_delete(final)
     ports.create_lib(final, o_s)
-    assert os.path.exists(final)
     return final
 
   return [shared.Cache.get(libname, create, what='port')]
