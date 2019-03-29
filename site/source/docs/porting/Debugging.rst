@@ -42,7 +42,7 @@ The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug 
 .. code-block:: bash
 
   # Linux or macOS
-  EMCC_DEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
+  EMCC_DEBUG=1 emcc tests/hello_world.cpp -o hello.html
 
   # Windows
   set EMCC_DEBUG=1
@@ -67,7 +67,7 @@ Emscripten has a number of compiler settings that can be useful for debugging. T
 
 .. code-block:: bash
 
-  ./emcc -O1 -s ASSERTIONS=1 tests/hello_world
+  emcc -O1 -s ASSERTIONS=1 tests/hello_world
 
 The most important settings are:
 
@@ -133,7 +133,7 @@ For example, the following command enables :ref:`debugging-debug-information-g` 
 
 .. code-block:: bash
 
-  ./emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
+  emcc -O2 --js-opts 0 -g4 tests/hello_world_loop.cpp
 
 The result is code that can be more useful for debugging issues related to LLVM-optimized code:
 
@@ -228,7 +228,7 @@ To run the *AutoDebugger*, compile with the environment variable ``EMCC_AUTODEBU
 .. code-block:: bash
 
   # Linux or macOS
-  EMCC_AUTODEBUG=1 ./emcc tests/hello_world.cpp -o hello.html
+  EMCC_AUTODEBUG=1 emcc tests/hello_world.cpp -o hello.html
 
   # Windows
   set EMCC_AUTODEBUG=1
