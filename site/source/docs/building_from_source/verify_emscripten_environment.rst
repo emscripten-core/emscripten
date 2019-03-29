@@ -17,7 +17,7 @@ The first step in verifying the environment is to run Emscripten with the versio
 
 Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` as shown::
 
-  ./emcc -v
+  emcc -v
 
 .. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
 
@@ -31,7 +31,7 @@ For example, the following output reports an installation where Java is missing:
   INFO     root: (Emscripten: Running sanity checks)
   WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``./emcc -v`` should give no warnings, and if you just enter ``./emcc`` (without any input files), it should only give the following warning: ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc -v`` should give no warnings, and if you just enter ``emcc`` (without any input files), it should only give the following warning: ::
 
   WARNING  root: no input files
 
@@ -44,7 +44,7 @@ The next test is to actually build some code! On the command prompt navigate to 
 ::
 
   cd emscripten/<version of emscripten you installed>
-  ./emcc tests/hello_world.cpp
+  emcc tests/hello_world.cpp
 
 This command should complete without warnings and you should find the newly-compiled JavaScript file (**a.out.js**) in the current directory.
 

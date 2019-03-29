@@ -768,7 +768,7 @@ and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 
-   ./emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
+   emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
 
 
 Built-in type conversions
