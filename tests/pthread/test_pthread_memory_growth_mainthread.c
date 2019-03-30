@@ -11,6 +11,15 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
+static void *thread_start(void *arg)
+{
+  char* buffer = (char*)arg;
+  assert(buffer);
+  assert(*buffer == 42);
+  EM_ASM({ assert(HEAP8[$0] === 42, "readable from JS in worker") }, buffer);
+  pthread_exit((void*)43);
+}
+
 char* test() {
   // allocate more memory than we currently have, forcing a growth
   char* buffer = (char*)malloc(64 * 1024 * 1024);
@@ -31,17 +40,24 @@ int main()
     return 0;
   }
 
-  pthread_t thr;
-
-  printf("start\n");
+  printf("start main\n");
   EM_ASM({ assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB") });
-
-  printf("test\n");
   char* buffer = test();
+  assert(*buffer == 42); // should see the value the code wrote
+  EM_ASM({ assert(HEAP8[$0] === 42, "readable from JS") }, buffer);
+  EM_ASM({ assert(HEAP8.length > 64 * 1024 * 1024, "end with >64MB") });
+
+  printf("start thread\n");
+  pthread_t thr;
+  int s = pthread_create(&thr, NULL, thread_start, (void*)buffer);
+  assert(s == 0);
+  printf("join\n");
+  void* result = NULL;
+  s = pthread_join(thr, &result);
+  assert(result == (void*)43);
 
   printf("finish\n");
-  assert(*buffer == 42); // should see the value the code wrote
-  EM_ASM({ assert(HEAP8.length > 64 * 1024 * 1024, "end with >64MB") });
+
 #ifdef REPORT_RESULT
   REPORT_RESULT(1);
 #endif
