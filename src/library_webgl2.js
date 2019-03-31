@@ -57,7 +57,7 @@ var LibraryWebGL2 = {
   glGetInteger64v__sig: 'vii',
   glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Integer64');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
 
   glGetInternalformativ__sig: 'viiiii',
@@ -524,10 +524,10 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case 'Integer64': {{{ makeSetValue('data', '0', 'ret', 'i64') }}};    break;
-      case 'Integer': {{{ makeSetValue('data', '0', 'ret', 'i32') }}};    break;
-      case 'Float':   {{{ makeSetValue('data', '0', 'ret', 'float') }}};  break;
-      case 'Boolean': {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('data', '0', 'ret', 'i64') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
     }
   },
@@ -535,13 +535,13 @@ var LibraryWebGL2 = {
   glGetIntegeri_v__sig: 'viii',
   glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, 'Integer');
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetInteger64i_v__sig: 'viii',
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, 'Integer64');
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
 
   // Uniform Buffer objects
@@ -804,7 +804,7 @@ var LibraryWebGL2 = {
   glGetUniformuiv__sig: 'viii',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Integer');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetFragDataLocation__sig: 'iii',
@@ -820,7 +820,7 @@ var LibraryWebGL2 = {
   glGetVertexAttribIiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'Integer');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),

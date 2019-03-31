@@ -1102,7 +1102,7 @@ var LibraryGL = {
         ret = 1;
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-        if (type !== 'Integer' && type !== 'Integer64') {
+        if (type != {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}} && type != {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
@@ -1198,9 +1198,9 @@ var LibraryGL = {
                      result instanceof Array) {
             for (var i = 0; i < result.length; ++i) {
               switch (type) {
-                case 'Integer': {{{ makeSetValue('p', 'i*4', 'result[i]',     'i32') }}};   break;
-                case 'Float':   {{{ makeSetValue('p', 'i*4', 'result[i]',     'float') }}}; break;
-                case 'Boolean': {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}};    break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
                 default: throw 'internal glGet error, bad type: ' + type;
               }
             }
@@ -1225,10 +1225,10 @@ var LibraryGL = {
     }
 
     switch (type) {
-      case 'Integer64': {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
-      case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
-      case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
-      case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: throw 'internal glGet error, bad type: ' + type;
     }
   },
@@ -1236,19 +1236,19 @@ var LibraryGL = {
   glGetIntegerv__sig: 'vii',
   glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Integer');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetFloatv__sig: 'vii',
   glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Float');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetBooleanv__sig: 'vii',
   glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Boolean');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}});
   },
 
   glDeleteTextures__sig: 'vii',
@@ -1902,15 +1902,15 @@ var LibraryGL = {
     var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case 'Integer': {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case 'Float': {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
         }
       }
@@ -1920,13 +1920,13 @@ var LibraryGL = {
   glGetUniformfv__sig: 'viii',
   glGetUniformfv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformfv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Float');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetUniformiv__sig: 'viii',
   glGetUniformiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Integer');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetUniformLocation__sig: 'iii',
@@ -1972,17 +1972,17 @@ var LibraryGL = {
       {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
     } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
-        case 'FloatToInteger': {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
         default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case 'Integer': {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case 'Float': {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
-          case 'FloatToInteger': {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
           default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
         }
       }
@@ -1994,7 +1994,7 @@ var LibraryGL = {
   glGetVertexAttribfv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'Float');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetVertexAttribiv__sig: 'viii',
@@ -2002,7 +2002,7 @@ var LibraryGL = {
   glGetVertexAttribiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'FloatToInteger');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}});
   },
 
   glGetVertexAttribPointerv__sig: 'viii',
