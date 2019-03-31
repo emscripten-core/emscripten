@@ -1329,10 +1329,10 @@ int main() {
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
   def test_dynamic_cast(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
 
   def test_dynamic_cast_b(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
 
   def test_dynamic_cast_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_2')
@@ -3194,7 +3194,7 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)
 
@@ -3234,9 +3234,9 @@ ok
       # main is just a library
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.cpp.o.js'])
-      self.do_run(None, expected, no_build=True)
+      self.do_run(None, expected, no_build=True, **kwargs)
     else:
-      self.do_run(main, expected, force_c=force_c)
+      self.do_run(main, expected, force_c=force_c, **kwargs)
 
     self.emcc_args = old_args
 
@@ -4071,6 +4071,50 @@ ok
   #                    expected=[open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
   #                              open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
+
+  @needs_dlfcn
+  def test_dylink_rtti(self):
+    header = '''
+    #include <cstddef>
+
+    class Foo {
+    public:
+      virtual ~Foo() {}
+    };
+
+    class Bar : public Foo {
+    public:
+      virtual ~Bar() {}
+    };
+
+    bool is_bar(Foo* foo);
+    '''
+
+    main = '''
+    #include "header.h"
+
+    int main() {
+      Bar bar;
+      if (!is_bar(&bar))
+        return 1;
+      return 0;
+    }
+    '''
+
+    side = '''
+    #include "header.h"
+
+    bool is_bar(Foo* foo) {
+      return dynamic_cast<Bar*>(foo) != nullptr;
+    }
+    '''
+
+    # TODO(sbc): This tests should instead return zero.  Update expectations
+    # once we fix https://github.com/emscripten-core/emscripten/issues/8376
+    self.dylink_test(main=main,
+                     side=side,
+                     header=header,
+                     assert_returncode=1)
 
   def test_random(self):
     src = r'''#include <stdlib.h>
