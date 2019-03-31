@@ -2033,13 +2033,8 @@ var LibraryGL = {
     var info = GLctx.getActiveUniform(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
 
-    if (bufSize > 0 && name) {
-      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
-
+    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
@@ -2520,13 +2515,8 @@ var LibraryGL = {
     var info = GLctx.getActiveAttrib(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
 
-    if (bufSize > 0 && name) {
-      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
-
+    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
@@ -2629,12 +2619,8 @@ var LibraryGL = {
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
     if (!result) return; // If an error occurs, nothing will be written to length or source.
-    if (bufSize > 0 && source) {
-      var numBytesWrittenExclNull = stringToUTF8(result, source, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+    var numBytesWrittenExclNull = (bufSize > 0 && source) ? stringToUTF8(result, source, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glCompileShader__sig: 'vi',
@@ -2655,13 +2641,11 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
-    if (maxLength > 0 && infoLog) {
-      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+#endif
+    var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glGetShaderiv__sig: 'viii',
@@ -2680,7 +2664,9 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
+#endif
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
       var source = GLctx.getShaderSource(GL.shaders[shader]);
@@ -2725,7 +2711,9 @@ var LibraryGL = {
 
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getProgramInfoLog(GL.programs[program]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
+#endif
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
@@ -2833,14 +2821,11 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
 #endif
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
-
-    if (maxLength > 0 && infoLog) {
-      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+#endif
+    var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glUseProgram__sig: 'vi',
