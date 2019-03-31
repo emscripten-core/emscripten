@@ -1102,12 +1102,14 @@ var LibraryGL = {
         ret = 1;
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
+#if GL_TRACK_ERRORS
         if (type != {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}} && type != {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
 #endif
         }
+#endif
         return; // Do not write anything to the out pointer, since no binary formats are supported.
 #if USE_WEBGL2
       case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
@@ -1123,10 +1125,12 @@ var LibraryGL = {
         break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
+#if GL_TRACK_ERRORS
         if (GL.currentContext.version < 2) {
           GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
           return;
         }
+#endif
         var exts = GLctx.getSupportedExtensions();
         if (exts === null) {
           ret = 0;
@@ -1140,10 +1144,12 @@ var LibraryGL = {
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
+#if GL_TRACK_ERRORS
         if (GL.currentContext.version < 2) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
           return;
         }
+#endif
         ret = name_ == 0x821B ? 3 : 0; // return version 3.0
         break;
 #endif
@@ -1201,26 +1207,32 @@ var LibraryGL = {
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
                 case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
+#if GL_ASSERTIONS
                 default: throw 'internal glGet error, bad type: ' + type;
+#endif
               }
             }
             return;
           } else {
+#if GL_TRACK_ERRORS
             try {
+#endif
               ret = result.name | 0;
+#if GL_TRACK_ERRORS
             } catch(e) {
               GL.recordError(0x0500); // GL_INVALID_ENUM
               err('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')! (error: ' + e + ')');
               return;
             }
+#endif
           }
           break;
+#if GL_TRACK_ERRORS
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
           return;
+#endif
       }
     }
 
@@ -1229,7 +1241,9 @@ var LibraryGL = {
       case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+#if GL_ASSERTIONS
       default: throw 'internal glGet error, bad type: ' + type;
+#endif
     }
   },
 
