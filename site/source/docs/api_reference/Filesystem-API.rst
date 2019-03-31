@@ -727,10 +727,10 @@ Paths
 
 
 .. js:function:: FS.chdir(path)
-	
-	  Sets the current working directory.
-	
-	  :param string path: The path to set as current working directory.
+
+  Sets the current working directory.
+
+  :param string path: The path to set as current working directory.
 
 
 .. js:function:: FS.lookupPath(path, opts)
