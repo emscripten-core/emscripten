@@ -34,7 +34,7 @@ var LibraryFetch = {
 #if FETCH_SUPPORT_INDEXEDDB
   '$__emscripten_fetch_cache_data', '$__emscripten_fetch_load_cached_data', '$__emscripten_fetch_delete_cached_data',
 #endif
-  '_emscripten_get_fetch_work_queue', 'emscripten_is_main_runtime_thread']
+  '_emscripten_get_fetch_work_queue']
 };
 
 mergeInto(LibraryManager.library, LibraryFetch);
