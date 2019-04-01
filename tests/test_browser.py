@@ -2449,14 +2449,14 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
       browser_cmd = shlex.split(EMTEST_BROWSER)
       browser_path = browser_cmd[0]
-      args += ['--browser', browser_path]
+      args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
         browser_args = browser_cmd[1:]
         if 'firefox' in browser_path and '-profile' in browser_args:
@@ -2465,18 +2465,22 @@ void *getBindBuffer() {
           parser.add_argument('-profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
-          args += ['--browser_args', ' ' + ' '.join(browser_args)]
-    args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-    proc = run_process(args, check=False)
-    stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-    stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-    assert proc.returncode == 100
-    assert 'argc: 4' in stdout
-    assert 'argv[3]: --3' in stdout
-    assert 'hello, world!' in stdout
-    assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-    assert 'Testing char sequences: %20%21 &auml;' in stdout
-    assert 'hello, error stream!' in stderr
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+    for args in [
+        args_base,
+        args_base + ['--no_private_browsing']
+    ]:
+      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+      proc = run_process(args, check=False)
+      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
+      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
+      assert proc.returncode == 100
+      assert 'argc: 4' in stdout
+      assert 'argv[3]: --3' in stdout
+      assert 'hello, world!' in stdout
+      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
+      assert 'Testing char sequences: %20%21 &auml;' in stdout
+      assert 'hello, error stream!' in stderr
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.

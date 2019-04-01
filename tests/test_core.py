@@ -5645,8 +5645,8 @@ return malloc(size);
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                            os.path.join('bin', 'libopenjpeg.so.1.4.0')],
-                           configure=['cmake', '.'],
+                            os.path.join('bin', 'libopenjpeg.a')],
+                           configure=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
 
