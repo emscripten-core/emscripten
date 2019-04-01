@@ -8228,7 +8228,10 @@ int main() {
         }
       ''')
     err = run_process([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'TOTAL_MEMORY=64KB'], check=False, stderr=PIPE).stderr
-    self.assertContained('Memory is not large enough for static data (134032) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+    if self.is_wasm_backend():
+      self.assertContained('wasm-ld: error: initial memory too small', err)
+    else:
+      self.assertContained('Memory is not large enough for static data (134032) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
