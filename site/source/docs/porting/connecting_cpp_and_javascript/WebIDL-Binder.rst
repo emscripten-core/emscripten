@@ -103,7 +103,7 @@ The final *emcc* command includes both the C++ and JavaScript glue code, which a
 
 .. code-block:: bash
 
-  ./emcc my_classes.cpp my_glue_wrapper.cpp --post-js glue.js -o output.js
+  emcc my_classes.cpp my_glue_wrapper.cpp --post-js glue.js -o output.js
 
 The output now contains everything needed to use the C++ classes through JavaScript.
 

@@ -976,15 +976,16 @@ class RunnerCore(unittest.TestCase):
       # print 'test in', engine
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
-      try:
-        if assert_identical:
-          self.assertIdentical(expected_output, js_output)
-        else:
-          self.assertContained(expected_output, js_output)
-          self.assertNotContained('ERROR', js_output)
-      except Exception:
-        print('(test did not pass in JS engine: %s)' % engine)
-        raise
+      if expected_output:
+        try:
+          if assert_identical:
+            self.assertIdentical(expected_output, js_output)
+          else:
+            self.assertContained(expected_output, js_output)
+            self.assertNotContained('ERROR', js_output)
+        except Exception:
+          print('(test did not pass in JS engine: %s)' % engine)
+          raise
 
     # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
@@ -1064,7 +1065,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
-      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
@@ -1075,6 +1076,8 @@ def harness_server_func(in_queue, out_queue, port):
         '''
         if DEBUG:
           print('[server logging:', urllib.unquote_plus(self.path), ']')
+      elif 'exception=' in self.path:
+        print('[client exception:', urllib.unquote_plus(self.path), ']')
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1333,6 +1336,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+    args += ['--pre-js', path_from_root('tests', 'browser_error_reporting.js')]
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
@@ -1387,7 +1391,7 @@ def get_bullet_library(runner_core, use_cmake):
     configure_commands = ['sh', './configure']
     # Force a nondefault --host= so that the configure script will interpret that we are doing cross-compilation
     # and skip attempting to run the generated executable with './a.out', which would fail since we are building a .js file.
-    configure_args = ['--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+    configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
     generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                       os.path.join('src', '.libs', 'libBulletCollision.a'),
                       os.path.join('src', '.libs', 'libLinearMath.a')]
