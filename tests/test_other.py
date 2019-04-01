@@ -9088,10 +9088,15 @@ int main () {
         size = os.path.getsize(f)
         print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
 
-        # Hack: Generated .mem initializer files have different sizes on different platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home Linux gives x+2 bytes..)
-        # TODO: identify what is causing this (until that, expected .mem initializer file sizes are conservative estimates that do not contribute to total size)
+        # Hack: Generated .mem initializer files have different sizes on different
+        # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
+        # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
+        # the LLVM IR text names, which lead to asm.js names, which leads to
+        # difference code size, which leads to different relooper choices,
+        # as a result leading to slightly different total code sizes.
+        # TODO: identify what is causing this. meanwhile allow some amount of slop
         mem_slop = 20
-        if f.endswith('.mem') or f.endswith('.wasm') and size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+        if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
           size = expected_size
 
         total_output_size += size
