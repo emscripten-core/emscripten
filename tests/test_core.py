@@ -5585,7 +5585,7 @@ return malloc(size);
     use_cmake_configure = WINDOWS
     if use_cmake_configure:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
+      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -5690,7 +5690,7 @@ return malloc(size);
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
                             os.path.join('bin', 'libopenjpeg.a')],
-                           configure=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
+                           configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
 
