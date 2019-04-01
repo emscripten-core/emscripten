@@ -976,15 +976,16 @@ class RunnerCore(unittest.TestCase):
       # print 'test in', engine
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
-      try:
-        if assert_identical:
-          self.assertIdentical(expected_output, js_output)
-        else:
-          self.assertContained(expected_output, js_output)
-          self.assertNotContained('ERROR', js_output)
-      except Exception:
-        print('(test did not pass in JS engine: %s)' % engine)
-        raise
+      if expected_output:
+        try:
+          if assert_identical:
+            self.assertIdentical(expected_output, js_output)
+          else:
+            self.assertContained(expected_output, js_output)
+            self.assertNotContained('ERROR', js_output)
+        except Exception:
+          print('(test did not pass in JS engine: %s)' % engine)
+          raise
 
     # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
