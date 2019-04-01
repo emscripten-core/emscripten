@@ -1488,8 +1488,15 @@ LibraryManager.library = {
 #endif
 
   __cxa_pure_virtual: function() {
+#if !MINIMAL_RUNTIME
     ABORT = true;
+#endif
+
+#if MINIMAL_RUNTIME && !ASSERTIONS
+    throw 'pv';
+#else
     throw 'Pure virtual function called!';
+#endif
   },
 
   llvm_flt_rounds: function() {
