@@ -8246,28 +8246,17 @@ int main() {
     err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
     self.assertContained('hello_world.o is not a valid input', err)
 
-  # Tests that we should a clear error on TOTAL_MEMORY not being enough for static initialization + stack
+  # Tests that we should give a clear error on TOTAL_MEMORY not being enough for static initialization + stack
   def test_clear_error_on_massive_static_data(self):
     with open('src.cpp', 'w') as f:
       f.write('''
-        #include <stdio.h>
-        double muchData[] = {
-      ''')
-      for i in range(50 * 1000):
-        f.write('1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.9,\n')
-      f.write(r'''
-        };
+        char muchData[128 * 1024];
         int main() {
-          printf("%ld\n", sizeof muchData);
-          int ret = 0;
-          for (int i = 0; i < sizeof muchData; i++) {
-            ret += muchData[i];
-          }
-          return ret & 255;
+          return (int)&muchData;
         }
       ''')
-    err = run_process([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=64KB', '-s', 'TOTAL_MEMORY=512KB'], check=False, stderr=PIPE).stderr
-    self.assertContained('Memory is not large enough for static initialization (3603824) plus the stack (65536), please increase TOTAL_MEMORY (524288)', err)
+    err = run_process([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'TOTAL_MEMORY=64KB'], check=False, stderr=PIPE).stderr
+    self.assertContained('Memory is not large enough for static data (134032) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:

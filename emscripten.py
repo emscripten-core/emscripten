@@ -755,7 +755,7 @@ class Memory():
     self.dynamic_base = align_memory(self.stack_high)
 
     if self.dynamic_base >= shared.Settings.TOTAL_MEMORY:
-     exit_with_error('Memory is not large enough for static initialization (%d) plus the stack (%d), please increase TOTAL_MEMORY (%d) to at least %d' % (self.static_bump, shared.Settings.TOTAL_STACK, shared.Settings.TOTAL_MEMORY, self.dynamic_base))
+     exit_with_error('Memory is not large enough for static data (%d) plus the stack (%d), please increase TOTAL_MEMORY (%d) to at least %d' % (self.static_bump, shared.Settings.TOTAL_STACK, shared.Settings.TOTAL_MEMORY, self.dynamic_base))
 
 
 def apply_memory(js):
