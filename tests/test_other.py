@@ -1979,34 +1979,6 @@ int f() {
     # with it, it should work
     self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
 
-  @no_wasm_backend('linker detects out-of-memory')
-  def test_toobig(self):
-    # very large [N x i8], we should not oom in the compiler
-    create_test_file('main.cpp', r'''
-      #include <stdio.h>
-
-      #define BYTES (50 * 1024 * 1024)
-
-      int main(int argc, char **argv) {
-        if (argc == 100) {
-          static char buf[BYTES];
-          static char buf2[BYTES];
-          for (int i = 0; i < BYTES; i++) {
-            buf[i] = i*i;
-            buf2[i] = i/3;
-          }
-          for (int i = 0; i < BYTES; i++) {
-            buf[i] = buf2[i/2];
-            buf2[i] = buf[i/3];
-          }
-          printf("%d\n", buf[10] + buf2[20]);
-        }
-        return 0;
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'main.cpp'])
-    self.assertExists('a.out.js')
-
   def test_prepost(self):
     create_test_file('main.cpp', '''
       #include <stdio.h>
