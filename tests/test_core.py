@@ -1329,10 +1329,10 @@ int main() {
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
   def test_dynamic_cast(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
 
   def test_dynamic_cast_b(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
 
   def test_dynamic_cast_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_2')
@@ -3194,7 +3194,7 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)
 
@@ -3206,7 +3206,6 @@ ok
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    print(self.is_wasm())
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
@@ -3235,9 +3234,9 @@ ok
       # main is just a library
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.cpp.o.js'])
-      self.do_run(None, expected, no_build=True)
+      self.do_run(None, expected, no_build=True, **kwargs)
     else:
-      self.do_run(main, expected, force_c=force_c)
+      self.do_run(main, expected, force_c=force_c, **kwargs)
 
     self.emcc_args = old_args
 
@@ -3246,25 +3245,60 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
+  def do_basic_dylink_test(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        printf("other says %d.\n", sidey());
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+
+      int sidey() {
+        return 11;
+      }
+    ''', 'other says 11.', 'extern "C" int sidey();')
+
   @needs_dlfcn
   def test_dylink_basics(self):
-    def test():
-      self.dylink_test('''
-        #include <stdio.h>
-        extern "C" int sidey();
-        int main() {
-          printf("other says %d.\\n", sidey());
-          return 0;
-        }
-      ''', '''
-        extern "C" int sidey() { return 11; }
-      ''', 'other says 11.')
-    test()
+    self.do_basic_dylink_test()
 
-    if self.is_wasm():
-      print('test memory growth with dynamic linking, which works in wasm')
-      self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-      test()
+  @needs_dlfcn
+  def test_dylink_memory_growth(self):
+    if not self.is_wasm():
+      self.skipTest('wasm only')
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  def test_dylink_function_pointer_equality(self):
+    # TODO(sbc): This is currently a known failure.
+    # See https://github.com/emscripten-core/emscripten/issues/8268
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        void* puts_side = get_address();
+        printf("main module address %p.\n", &puts);
+        printf("side module address address %p.\n", puts_side);
+        if (&puts == puts_side)
+          printf("success\n");
+        else
+          printf("failure\n");
+        return 0;
+      }
+    ''', '''
+      #include <stdio.h>
+      #include "header.h"
+
+      void* get_address() {
+        return (void*)&puts;
+      }
+    ''', 'failure', header='extern "C" void* get_address();')
 
   @needs_dlfcn
   def test_dylink_floats(self):
@@ -4038,6 +4072,50 @@ ok
   #                              open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
 
+  @needs_dlfcn
+  def test_dylink_rtti(self):
+    header = '''
+    #include <cstddef>
+
+    class Foo {
+    public:
+      virtual ~Foo() {}
+    };
+
+    class Bar : public Foo {
+    public:
+      virtual ~Bar() {}
+    };
+
+    bool is_bar(Foo* foo);
+    '''
+
+    main = '''
+    #include "header.h"
+
+    int main() {
+      Bar bar;
+      if (!is_bar(&bar))
+        return 1;
+      return 0;
+    }
+    '''
+
+    side = '''
+    #include "header.h"
+
+    bool is_bar(Foo* foo) {
+      return dynamic_cast<Bar*>(foo) != nullptr;
+    }
+    '''
+
+    # TODO(sbc): This tests should instead return zero.  Update expectations
+    # once we fix https://github.com/emscripten-core/emscripten/issues/8376
+    self.dylink_test(main=main,
+                     side=side,
+                     header=header,
+                     assert_returncode=1)
+
   def test_random(self):
     src = r'''#include <stdlib.h>
 #include <stdio.h>
@@ -4141,12 +4219,9 @@ Have even and odd!
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase')
 
   def test_printf(self):
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    src = open(path_from_root('tests', 'printf', 'test.c')).read()
-    expected = open(path_from_root('tests', 'printf', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'printf', 'test')
 
   def test_printf_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_2')
@@ -5510,7 +5585,7 @@ return malloc(size);
     use_cmake_configure = WINDOWS
     if use_cmake_configure:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
+      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -5614,7 +5689,7 @@ return malloc(size);
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                            os.path.join('bin', 'libopenjpeg.so.1.4.0')],
+                            os.path.join('bin', 'libopenjpeg.a')],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail

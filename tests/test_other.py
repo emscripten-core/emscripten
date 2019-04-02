@@ -582,11 +582,9 @@ f.close()
       # while still keeping this test in sensible time limit.
       cases = [
         ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
-        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release',        '-DBUILD_SHARED_LIBS=OFF']),
-        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel',     '-DBUILD_SHARED_LIBS=OFF']),
+        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
+        ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
         ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-        ('target_library', 'libtest_cmake.so',      ['-DCMAKE_BUILD_TYPE=Release',        '-DBUILD_SHARED_LIBS=ON']),
-        ('target_library', 'libtest_cmake.so',      ['-DCMAKE_BUILD_TYPE=Release',        '-DBUILD_SHARED_LIBS=ON', '-DCPP_LIBRARY_TYPE=SHARED']),
         ('stdproperty',    'helloworld.js',         [])
       ]
       for test_dir, output_file, cmake_args in cases:
@@ -1827,6 +1825,11 @@ int f() {
     Building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
     self.assertContained('TESTS PASSED', run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
+  def test_libjpeg(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
+    Building.emcc(path_from_root('tests', 'jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG=1'], output_filename='a.out.js')
+    self.assertContained('Image is 600 by 450 with 3 components', run_process(JS_ENGINES[0] + ['a.out.js', 'screenshot.jpg'], stdout=PIPE, stderr=PIPE).stdout)
+
   def test_bullet(self):
     Building.emcc(path_from_root('tests', 'bullet_hello_world.cpp'), ['-s', 'USE_BULLET=1'], output_filename='a.out.js')
     self.assertContained('BULLET RUNNING', run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
@@ -1835,6 +1838,10 @@ int f() {
     # This will also test if ogg compiles, because vorbis depends on ogg
     Building.emcc(path_from_root('tests', 'vorbis_test.c'), ['-s', 'USE_VORBIS=1'], output_filename='a.out.js')
     self.assertContained('ALL OK', run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
+
+  def test_bzip2(self):
+    Building.emcc(path_from_root('tests', 'bzip2_test.c'), ['-s', 'USE_BZIP2=1'], output_filename='a.out.js')
+    self.assertContained("usage: unzcrash filename", run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
@@ -1969,34 +1976,6 @@ int f() {
     self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['0'], emcc_args=['-s', 'LEGACY_GL_EMULATION=0'])
     # with it, it should work
     self.do_other_test(os.path.join('other', 'GetProcAddress_LEGACY_GL_EMULATION'), run_args=['1'], emcc_args=['-s', 'LEGACY_GL_EMULATION=1'])
-
-  @no_wasm_backend('linker detects out-of-memory')
-  def test_toobig(self):
-    # very large [N x i8], we should not oom in the compiler
-    create_test_file('main.cpp', r'''
-      #include <stdio.h>
-
-      #define BYTES (50 * 1024 * 1024)
-
-      int main(int argc, char **argv) {
-        if (argc == 100) {
-          static char buf[BYTES];
-          static char buf2[BYTES];
-          for (int i = 0; i < BYTES; i++) {
-            buf[i] = i*i;
-            buf2[i] = i/3;
-          }
-          for (int i = 0; i < BYTES; i++) {
-            buf[i] = buf2[i/2];
-            buf2[i] = buf[i/3];
-          }
-          printf("%d\n", buf[10] + buf2[20]);
-        }
-        return 0;
-      }
-      ''')
-    run_process([PYTHON, EMCC, 'main.cpp'])
-    self.assertExists('a.out.js')
 
   def test_prepost(self):
     create_test_file('main.cpp', '''
@@ -8237,6 +8216,21 @@ int main() {
     err = run_process([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'], stdout=PIPE, stderr=PIPE, check=False).stderr
     self.assertContained('hello_world.o is not a valid input', err)
 
+  # Tests that we should give a clear error on TOTAL_MEMORY not being enough for static initialization + stack
+  def test_clear_error_on_massive_static_data(self):
+    with open('src.cpp', 'w') as f:
+      f.write('''
+        char muchData[128 * 1024];
+        int main() {
+          return (int)&muchData;
+        }
+      ''')
+    err = run_process([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'TOTAL_MEMORY=64KB'], check=False, stderr=PIPE).stderr
+    if self.is_wasm_backend():
+      self.assertContained('wasm-ld: error: initial memory too small', err)
+    else:
+      self.assertContained('Memory is not large enough for static data (134032) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
       err = run_process([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
@@ -9079,10 +9073,15 @@ int main () {
         size = os.path.getsize(f)
         print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
 
-        # Hack: Generated .mem initializer files have different sizes on different platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home Linux gives x+2 bytes..)
-        # TODO: identify what is causing this (until that, expected .mem initializer file sizes are conservative estimates that do not contribute to total size)
+        # Hack: Generated .mem initializer files have different sizes on different
+        # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
+        # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
+        # the LLVM IR text names, which lead to asm.js names, which leads to
+        # difference code size, which leads to different relooper choices,
+        # as a result leading to slightly different total code sizes.
+        # TODO: identify what is causing this. meanwhile allow some amount of slop
         mem_slop = 20
-        if f.endswith('.mem') or f.endswith('.wasm') and size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+        if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
           size = expected_size
 
         total_output_size += size

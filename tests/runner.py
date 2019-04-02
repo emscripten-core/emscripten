@@ -18,7 +18,7 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 # XXX Use EMTEST_ALL_ENGINES=1 in the env to test all engines!
 
 from __future__ import print_function
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import PIPE, STDOUT
 import argparse
 import atexit
 import contextlib
@@ -37,6 +37,7 @@ import re
 import shlex
 import shutil
 import string
+import subprocess
 import sys
 import tempfile
 import time
@@ -58,7 +59,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
@@ -90,7 +91,7 @@ EMTEST_ALL_ENGINES = os.getenv('EMTEST_ALL_ENGINES')
 
 EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
-EMTEST_VERBOSE = os.getenv('EMTEST_VERBOSE')
+EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
 
 # checks if browser testing is enabled
@@ -758,11 +759,10 @@ class RunnerCore(unittest.TestCase):
 
     print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
 
-    return Building.build_library(name, build_dir, output_dir, generated_libs,
-                                  configure, configure_args, make, make_args,
-                                  self.library_cache, cache_name,
-                                  copy_project=True, env_init=env_init,
-                                  native=native)
+    return build_library(name, build_dir, output_dir, generated_libs, configure,
+                         configure_args, make, make_args, self.library_cache,
+                         cache_name, copy_project=True, env_init=env_init,
+                         native=native)
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -985,15 +985,16 @@ class RunnerCore(unittest.TestCase):
       # print 'test in', engine
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
-      try:
-        if assert_identical:
-          self.assertIdentical(expected_output, js_output)
-        else:
-          self.assertContained(expected_output, js_output)
-          self.assertNotContained('ERROR', js_output)
-      except Exception:
-        print('(test did not pass in JS engine: %s)' % engine)
-        raise
+      if expected_output:
+        try:
+          if assert_identical:
+            self.assertIdentical(expected_output, js_output)
+          else:
+            self.assertContained(expected_output, js_output)
+            self.assertNotContained('ERROR', js_output)
+        except Exception:
+          print('(test did not pass in JS engine: %s)' % engine)
+          raise
 
     # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
 
@@ -1073,7 +1074,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
-      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
@@ -1084,6 +1085,8 @@ def harness_server_func(in_queue, out_queue, port):
         '''
         if DEBUG:
           print('[server logging:', urllib.unquote_plus(self.path), ']')
+      elif 'exception=' in self.path:
+        print('[client exception:', urllib.unquote_plus(self.path), ']')
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1143,7 +1146,7 @@ class BrowserCore(RunnerCore):
       cmd = shlex.split(EMTEST_BROWSER)
 
       def run_in_other_browser(url):
-        Popen(cmd + [url])
+        subprocess.Popen(cmd + [url])
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
@@ -1342,6 +1345,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
+    args += ['--pre-js', path_from_root('tests', 'browser_error_reporting.js')]
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
@@ -1376,7 +1380,7 @@ def get_zlib_library(runner_core):
   if WINDOWS:
     return runner_core.get_library('zlib', os.path.join('libz.a'),
                                    configure=[path_from_root('emconfigure.bat')],
-                                   configure_args=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
+                                   configure_args=['cmake', '.'],
                                    make=['mingw32-make'],
                                    make_args=[])
   else:
@@ -1396,7 +1400,7 @@ def get_bullet_library(runner_core, use_cmake):
     configure_commands = ['sh', './configure']
     # Force a nondefault --host= so that the configure script will interpret that we are doing cross-compilation
     # and skip attempting to run the generated executable with './a.out', which would fail since we are building a .js file.
-    configure_args = ['--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+    configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
     generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                       os.path.join('src', '.libs', 'libBulletCollision.a'),
                       os.path.join('src', '.libs', 'libLinearMath.a')]
@@ -1405,6 +1409,114 @@ def get_bullet_library(runner_core, use_cmake):
                                  configure=configure_commands,
                                  configure_args=configure_args,
                                  cache_name_extra=configure_commands[0])
+
+
+def build_library(name,
+                  build_dir,
+                  output_dir,
+                  generated_libs,
+                  configure=['sh', './configure'],
+                  configure_args=[],
+                  make=['make'],
+                  make_args='help',
+                  cache=None,
+                  cache_name=None,
+                  copy_project=False,
+                  env_init={},
+                  source_dir=None,
+                  native=False):
+  """Build a library into a .bc file. We build the .bc file once and cache it
+  for all our tests. (We cache in memory since the test directory is destroyed
+  and recreated for each test. Note that we cache separately for different
+  compilers).  This cache is just during the test runner. There is a different
+  concept of caching as well, see |Cache|.
+  """
+
+  if type(generated_libs) is not list:
+    generated_libs = [generated_libs]
+  if source_dir is None:
+    source_dir = path_from_root('tests', name.replace('_native', ''))
+  if make_args == 'help':
+    make_args = ['-j', str(multiprocessing.cpu_count())]
+
+  temp_dir = build_dir
+  if copy_project:
+    project_dir = os.path.join(temp_dir, name)
+    if os.path.exists(project_dir):
+      shutil.rmtree(project_dir)
+    shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+  else:
+    project_dir = build_dir
+  try:
+    old_dir = os.getcwd()
+  except:
+    old_dir = None
+  os.chdir(project_dir)
+  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+  # for lib in generated_libs:
+  #   try:
+  #     os.unlink(lib) # make sure compilation completed successfully
+  #   except:
+  #     pass
+  env = Building.get_building_env(native, True)
+  for k, v in env_init.items():
+    env[k] = v
+  if configure:
+    # Useful in debugging sometimes to comment this out (and the lines below
+    # up to and including the |link| call)
+    if EM_BUILD_VERBOSE < 2:
+      stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
+    else:
+      stdout = None
+    if EM_BUILD_VERBOSE < 1:
+      stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
+    else:
+      stderr = None
+    try:
+      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+    except subprocess.CalledProcessError as e:
+      pass # Ignore exit code != 0
+
+  def open_make_out(i, mode='r'):
+    return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
+
+  def open_make_err(i, mode='r'):
+    return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
+
+  if EM_BUILD_VERBOSE >= 3:
+    make_args += ['VERBOSE=1']
+
+  # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
+  for i in range(2):
+    with open_make_out(i, 'w') as make_out:
+      with open_make_err(i, 'w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        if i == 0:
+          try:
+            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+          except subprocess.CalledProcessError as e:
+            pass # Ignore exit code != 0
+        else:
+            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    try:
+      if cache is not None:
+        cache[cache_name] = []
+        for f in generated_libs:
+          basename = os.path.basename(f)
+          cache[cache_name].append((basename, open(f, 'rb').read()))
+      break
+    except Exception as e:
+      if i > 0:
+        if EM_BUILD_VERBOSE == 0:
+          # Due to the ugly hack above our best guess is to output the first run
+          with open_make_err(0) as ferr:
+            for line in ferr:
+              sys.stderr.write(line)
+        raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+  if old_dir:
+    os.chdir(old_dir)
+  return generated_libs
 
 
 def get_freetype_library(runner_core):

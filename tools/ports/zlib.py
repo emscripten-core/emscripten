@@ -38,9 +38,7 @@ def get(ports, settings, shared):
     ports.run_commands(commands)
 
     final = os.path.join(ports.get_build_dir(), 'zlib', 'libz.a')
-    shared.try_delete(final)
-    ports.run_commands([[shared.EMAR, 'rc', final] + o_s])
-    assert os.path.exists(final)
+    ports.create_lib(final, o_s)
     return final
 
   return [shared.Cache.get('libz.a', create, what='port')]
