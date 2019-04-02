@@ -23,7 +23,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
+from runner import RunnerCore, path_from_root, core_test_modes, get_zlib_library, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
@@ -4052,13 +4052,11 @@ ok
   def test_dylink_zlib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
+
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
-
-    run_process([PYTHON, path_from_root('embuilder.py'), 'build', 'zlib'])
-
-    zlib = shared.Cache.get_path(os.path.join('ports-builds', 'zlib', 'libz.a'))
+    zlib_archive = get_zlib_library(self)
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
-                     side=[zlib],
+                     side=zlib_archive,
                      expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
                      force_c=True)
 
