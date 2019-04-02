@@ -6132,7 +6132,6 @@ return malloc(size);
     js = test('*1*', ['x'])
     if self.run_name in ['default', 'asm1', 'asm2g']:
       assert 'function _unused($' in js
-    return
     test('*2*', no_build=True)
 
     # Kill off the dead function, and check a code path using it aborts
