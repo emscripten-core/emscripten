@@ -1013,6 +1013,49 @@ class RunnerCore(unittest.TestCase):
                 output_nicerizer=output_nicerizer,
                 assert_returncode=assert_returncode)
 
+  def get_freetype_library(self):
+    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
+
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+
+  def get_poppler_library(self):
+    # The fontconfig symbols are all missing from the poppler build
+    # e.g. FcConfigSubstitute
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+
+    Building.COMPILER_TEST_OPTS += [
+      '-I' + path_from_root('tests', 'freetype', 'include'),
+      '-I' + path_from_root('tests', 'poppler', 'include')
+    ]
+
+    freetype = self.get_freetype_library()
+
+    # Poppler has some pretty glaring warning.  Suppress them to keep the
+    # test output readable.
+    Building.COMPILER_TEST_OPTS += [
+      '-Wno-sentinel',
+      '-Wno-logical-not-parentheses',
+      '-Wno-unused-private-field',
+      '-Wno-tautological-compare',
+      '-Wno-unknown-pragmas',
+    ]
+    poppler = self.get_library(
+        'poppler',
+        [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
+        env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+
+    return poppler + freetype
+
+  def get_zlib_library(self):
+    if WINDOWS:
+      return self.get_library('zlib', os.path.join('libz.a'),
+                              configure=[path_from_root('emconfigure.bat')],
+                              configure_args=['cmake', '.'],
+                              make=['mingw32-make'],
+                              make_args=[])
+    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+
 
 # Run a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
@@ -1361,42 +1404,8 @@ class BrowserCore(RunnerCore):
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
                  original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
 
+
 ###################################################################################################
-
-
-def get_zlib_library(runner_core):
-  if WINDOWS:
-    return runner_core.get_library('zlib', os.path.join('libz.a'),
-                                   configure=[path_from_root('emconfigure.bat')],
-                                   configure_args=['cmake', '.'],
-                                   make=['mingw32-make'],
-                                   make_args=[])
-  else:
-    return runner_core.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
-
-
-# Both test_core and test_other access the Bullet library, share the access here to avoid duplication.
-def get_bullet_library(runner_core, use_cmake):
-  if use_cmake:
-    configure_commands = ['cmake', '.']
-    configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
-    # Depending on whether 'configure' or 'cmake' is used to build, Bullet places output files in different directory structures.
-    generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
-                      os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
-                      os.path.join('src', 'LinearMath', 'libLinearMath.a')]
-  else:
-    configure_commands = ['sh', './configure']
-    # Force a nondefault --host= so that the configure script will interpret that we are doing cross-compilation
-    # and skip attempting to run the generated executable with './a.out', which would fail since we are building a .js file.
-    configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
-    generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                      os.path.join('src', '.libs', 'libBulletCollision.a'),
-                      os.path.join('src', '.libs', 'libLinearMath.a')]
-
-  return runner_core.get_library('bullet', generated_libs,
-                                 configure=configure_commands,
-                                 configure_args=configure_args,
-                                 cache_name_extra=configure_commands[0])
 
 
 def build_library(name,
@@ -1505,42 +1514,6 @@ def build_library(name,
   if old_dir:
     os.chdir(old_dir)
   return generated_libs
-
-
-def get_freetype_library(runner_core):
-  runner_core.set_setting('DEAD_FUNCTIONS', runner_core.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
-  return runner_core.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
-
-
-def get_poppler_library(runner_core):
-  # The fontconfig symbols are all missing from the poppler build
-  # e.g. FcConfigSubstitute
-  runner_core.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
-
-  Building.COMPILER_TEST_OPTS += [
-    '-I' + path_from_root('tests', 'freetype', 'include'),
-    '-I' + path_from_root('tests', 'poppler', 'include')
-  ]
-
-  freetype = get_freetype_library(runner_core)
-
-  # Poppler has some pretty glaring warning.  Suppress them to keep the
-  # test output readable.
-  Building.COMPILER_TEST_OPTS += [
-    '-Wno-sentinel',
-    '-Wno-logical-not-parentheses',
-    '-Wno-unused-private-field',
-    '-Wno-tautological-compare',
-    '-Wno-unknown-pragmas',
-  ]
-  poppler = runner_core.get_library(
-      'poppler',
-      [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
-      env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-      configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
-
-  return poppler + freetype
 
 
 def check_js_engines():
