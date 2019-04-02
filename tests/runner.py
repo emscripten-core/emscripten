@@ -1013,6 +1013,49 @@ class RunnerCore(unittest.TestCase):
                 output_nicerizer=output_nicerizer,
                 assert_returncode=assert_returncode)
 
+  def get_freetype_library(self):
+    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
+
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+
+  def get_poppler_library(self):
+    # The fontconfig symbols are all missing from the poppler build
+    # e.g. FcConfigSubstitute
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
+
+    Building.COMPILER_TEST_OPTS += [
+      '-I' + path_from_root('tests', 'freetype', 'include'),
+      '-I' + path_from_root('tests', 'poppler', 'include')
+    ]
+
+    freetype = self.get_freetype_library()
+
+    # Poppler has some pretty glaring warning.  Suppress them to keep the
+    # test output readable.
+    Building.COMPILER_TEST_OPTS += [
+      '-Wno-sentinel',
+      '-Wno-logical-not-parentheses',
+      '-Wno-unused-private-field',
+      '-Wno-tautological-compare',
+      '-Wno-unknown-pragmas',
+    ]
+    poppler = self.get_library(
+        'poppler',
+        [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
+        env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+
+    return poppler + freetype
+
+  def get_zlib_library(self):
+    if WINDOWS:
+      return self.get_library('zlib', os.path.join('libz.a'),
+                              configure=[path_from_root('emconfigure.bat')],
+                              configure_args=['cmake', '.'],
+                              make=['mingw32-make'],
+                              make_args=[])
+    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+
 
 # Run a server and a web page. When a test runs, we tell the server about it,
 # which tells the web page, which then opens a window with the test. Doing
@@ -1363,49 +1406,6 @@ class BrowserCore(RunnerCore):
       # run proxied
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
                  original_args + ['--proxy-to-worker', '-s', 'GL_TESTING=1'], outfile, message, timeout=timeout)
-
-  def get_freetype_library(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
-
-  def get_poppler_library(self):
-    # The fontconfig symbols are all missing from the poppler build
-    # e.g. FcConfigSubstitute
-    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
-
-    Building.COMPILER_TEST_OPTS += [
-      '-I' + path_from_root('tests', 'freetype', 'include'),
-      '-I' + path_from_root('tests', 'poppler', 'include')
-    ]
-
-    freetype = self.get_freetype_library()
-
-    # Poppler has some pretty glaring warning.  Suppress them to keep the
-    # test output readable.
-    Building.COMPILER_TEST_OPTS += [
-      '-Wno-sentinel',
-      '-Wno-logical-not-parentheses',
-      '-Wno-unused-private-field',
-      '-Wno-tautological-compare',
-      '-Wno-unknown-pragmas',
-    ]
-    poppler = self.get_library(
-        'poppler',
-        [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
-        env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
-
-    return poppler + freetype
-
-  def get_zlib_library(self):
-    if WINDOWS:
-      return self.get_library('zlib', os.path.join('libz.a'),
-                              configure=[path_from_root('emconfigure.bat')],
-                              configure_args=['cmake', '.'],
-                              make=['mingw32-make'],
-                              make_args=[])
-    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
 
 
 ###################################################################################################
