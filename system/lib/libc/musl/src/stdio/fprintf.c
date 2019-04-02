@@ -23,4 +23,14 @@ int fiprintf(FILE *restrict f, const char *restrict fmt, ...)
 	return ret;
 }
 
-weak_alias(fprintf, __small_fprintf); // TODO
+extern int __small_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
+
+int __small_fprintf(FILE *restrict f, const char *restrict fmt, ...)
+{
+	int ret;
+	va_list ap;
+	va_start(ap, fmt);
+	ret = __small_vfprintf(f, fmt, ap);
+	va_end(ap);
+	return ret;
+}

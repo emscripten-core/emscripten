@@ -23,4 +23,15 @@ int siprintf(char *restrict s, const char *restrict fmt, ...)
 	return ret;
 }
 
-weak_alias(sprintf, __small_sprintf); // TODO
+extern int __small_vsprintf(char *restrict s, const char *restrict fmt, va_list ap);
+
+int __small_sprintf(char *restrict s, const char *restrict fmt, ...)
+{
+	int ret;
+	va_list ap;
+	va_start(ap, fmt);
+	ret = __small_vsprintf(s, fmt, ap);
+	va_end(ap);
+	return ret;
+}
+

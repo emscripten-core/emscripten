@@ -13,4 +13,10 @@ int vsiprintf(char *restrict s, const char *restrict fmt, va_list ap)
 	return vsniprintf(s, INT_MAX, fmt, ap);
 }
 
-weak_alias(vsprintf, __small_vsprintf); // TODO
+extern int __small_vsnprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap);
+
+int __small_vsprintf(char *restrict s, const char *restrict fmt, va_list ap)
+{
+	return __small_vsnprintf(s, INT_MAX, fmt, ap);
+}
+
