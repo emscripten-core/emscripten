@@ -23,8 +23,6 @@ int siprintf(char *restrict s, const char *restrict fmt, ...)
 	return ret;
 }
 
-extern int __small_vsprintf(char *restrict s, const char *restrict fmt, va_list ap);
-
 int __small_sprintf(char *restrict s, const char *restrict fmt, ...)
 {
 	int ret;

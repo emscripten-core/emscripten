@@ -23,8 +23,6 @@ int fiprintf(FILE *restrict f, const char *restrict fmt, ...)
 	return ret;
 }
 
-extern int __small_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
-
 int __small_fprintf(FILE *restrict f, const char *restrict fmt, ...)
 {
 	int ret;
