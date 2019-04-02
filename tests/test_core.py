@@ -23,7 +23,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_zlib_library, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
+from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
@@ -125,6 +125,31 @@ class TestCoreBase(RunnerCore):
     src = find_files('.c', '.cpp', '.cc')
     output = find_files('.out', '.txt')
     self.do_run_from_file(src, output, **kwargs)
+
+  def get_bullet_library(self, use_cmake):
+    if use_cmake:
+      configure_commands = ['cmake', '.']
+      configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
+      # Depending on whether 'configure' or 'cmake' is used to build, Bullet
+      # places output files in different directory structures.
+      generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                        os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                        os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+    else:
+      configure_commands = ['sh', './configure']
+      # Force a nondefault --host= so that the configure script will interpret
+      # that we are doing cross-compilation
+      # and skip attempting to run the generated executable with './a.out',
+      # which would fail since we are building a .js file.
+      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+      generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                        os.path.join('src', '.libs', 'libBulletCollision.a'),
+                        os.path.join('src', '.libs', 'libLinearMath.a')]
+
+    return self.get_library('bullet', generated_libs,
+                            configure=configure_commands,
+                            configure_args=configure_args,
+                            cache_name_extra=configure_commands[0])
 
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
@@ -4054,7 +4079,7 @@ ok
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
     Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
-    zlib_archive = get_zlib_library(self)
+    zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
                      expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
@@ -4063,7 +4088,7 @@ ok
   # @needs_dlfcn
   # def test_dylink_bullet(self):
   #   Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
-  #   side = get_bullet_library(self, True)
+  #   side = self.get_bullet_library(self, True)
   #   self.dylink_test(main=open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
   #                    side=side,
   #                    expected=[open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
@@ -5522,7 +5547,7 @@ return malloc(size);
       self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
                   open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
                   ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=get_freetype_library(self),
+                  libraries=self.get_freetype_library(),
                   includes=[path_from_root('tests', 'freetype', 'include')])
       self.set_setting('OUTLINING_LIMIT', 0)
 
@@ -5531,14 +5556,14 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
                 ['font.ttf', 'w', '32', '32', '25'],
-                libraries=get_freetype_library(self),
+                libraries=self.get_freetype_library(),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
                 ['font.ttf', 'W', '32', '32', '0'],
-                libraries=get_freetype_library(self),
+                libraries=self.get_freetype_library(),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
@@ -5615,7 +5640,7 @@ return malloc(size);
                      open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
-                    libraries=get_bullet_library(self, use_cmake),
+                    libraries=self.get_bullet_library(use_cmake),
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
@@ -5639,7 +5664,7 @@ return malloc(size);
 
       ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
       self.do_run('', ppm_data.replace(' ', ''),
-                  libraries=get_poppler_library(self),
+                  libraries=self.get_poppler_library(),
                   args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
     test()
