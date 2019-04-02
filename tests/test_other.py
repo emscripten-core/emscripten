@@ -7947,9 +7947,9 @@ int main() {
       self.run_metadce_test('minimal.c', *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 11349,  9, 15, 24) # noqa
-      run(['-O1'],  9, [], ['waka'],  8095,  2, 12, 10) # noqa
-      run(['-O2'],  9, [], ['waka'],  8077,  2, 12, 10) # noqa
+      run([],      11, [], ['waka'],  9211,  5, 13, 16) # noqa
+      run(['-O1'],  9, [], ['waka'],  7886,  2, 12, 10) # noqa
+      run(['-O2'],  9, [], ['waka'],  7871,  2, 12, 10) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       run(['-O3'],  0, [], [],          85,  0,  2,  2) # noqa
       run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
@@ -7969,28 +7969,28 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 563) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 561) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,  37, 537) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 186423,  28,   37, 516) # noqa
+                   34, ['abort'], ['waka'], 186423,  28,  38, 518) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 26641, 10,  16, 65) # noqa
-      run(['-O1'], 14, [], ['waka'], 10668,  8,  14, 29) # noqa
-      run(['-O2'], 14, [], ['waka'], 10490,  8,  14, 24) # noqa
-      run(['-O3'],  5, [], [],        2453,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  5, [], [],        2408,  7,   3, 15) # noqa
-      run(['-Oz'],  5, [], [],        2367,  7,   2, 14) # noqa
+      run([],      16, [], ['waka'], 22185, 10,  17, 55) # noqa
+      run(['-O1'], 14, [], ['waka'], 10415,  8,  14, 29) # noqa
+      run(['-O2'], 14, [], ['waka'], 10183,  8,  14, 24) # noqa
+      run(['-O3'],  5, [], [],        2353,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  5, [], [],        2310,  7,   3, 15) # noqa
+      run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1) # noqa
     else:
-      run([],      20, ['abort'], ['waka'], 42701,  20,   14, 49) # noqa
+      run([],      22, ['abort'], ['waka'], 42701,  22,   16, 54) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
       run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 26) # noqa
       run(['-O3'],  6, [],        [],        2443,   9,    2, 14) # noqa; in -O3, -Os and -Oz we metadce
@@ -8001,7 +8001,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1537, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1539, [],        [],      226403,  28,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
