@@ -32,7 +32,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
-from runner import RunnerCore, path_from_root, get_zlib_library, no_wasm_backend
+from runner import RunnerCore, path_from_root, no_wasm_backend
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
@@ -1058,7 +1058,7 @@ int main() {
     ]:
       Building.COMPILER_TEST_OPTS = test_opts
       test('zlib', path_from_root('tests', 'zlib', 'example.c'),
-           get_zlib_library(self),
+           self.get_zlib_library(),
            open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
            expected_ranges,
            args=['-I' + path_from_root('tests', 'zlib')], suffix='c')
