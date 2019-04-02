@@ -23,7 +23,6 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var DYNAMIC_BASE = 0;
 
-var ENVIRONMENT_IS_PTHREAD = true;
 var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
@@ -132,9 +131,9 @@ this.onmessage = function(e) {
 #endif
 
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
+      Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
-
-#if MODULARIZE && EXPORT_ES6 
+#if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
         Module = {{{ EXPORT_NAME }}}.default(Module);
         PThread = Module['PThread'];
