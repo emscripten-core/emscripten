@@ -107,13 +107,7 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
     }
     libFuncsToInclude.forEach(function(ident) {
-      var finalName = '_' + ident;
-      if (ident[0] === '$') {
-        finalName = ident.substr(1);
-      }
       data.functionStubs.push({
-        intertype: 'functionStub',
-        finalName: finalName,
         ident: '_' + ident
       });
     });
@@ -130,8 +124,12 @@ function JSify(data, functionsOnly) {
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
     if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
-      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}';
+      snippet = modifyFunction(snippet, function(name, args, body) {
+        return 'function ' + name + '(' + args + ') {\n' +
+               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                body +
+                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+      });
     }
     return snippet;
   }
@@ -144,11 +142,6 @@ function JSify(data, functionsOnly) {
       LibraryManager.library[item.ident.substr(1)] = function() {
         return ___cxa_find_matching_catch.apply(null, arguments);
       };
-    }
-
-    // note the signature
-    if (item.returnType && item.params) {
-      functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
     }
 
     function addFromLibrary(ident) {
@@ -185,6 +178,7 @@ function JSify(data, functionsOnly) {
 
       if (allExternPrimitives.indexOf(ident) != -1) {
         usedExternPrimitives[ident] = 1;
+        return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
           if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
@@ -200,16 +194,17 @@ function JSify(data, functionsOnly) {
         }
         if (!(MAIN_MODULE || SIDE_MODULE)) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[shortident] = new Function("err('missing function: " + shortident + "'); abort(-1);");
+          LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
+          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + ident + "']";
           var assertion = '';
-          if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
-          LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
+          if (ASSERTIONS)
+            assertion = 'if (!' + target + ') abort("external function \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
+          LibraryManager.library[ident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;
-            return processLibraryFunction(LibraryManager.library[shortident], ident, finalName);
+            return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
           }
           noExport = true;
         }
@@ -257,7 +252,6 @@ function JSify(data, functionsOnly) {
         if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
           addedLibraryItems[postsetId] = true;
           itemsDict.GlobalVariablePostSet.push({
-            intertype: 'GlobalVariablePostSet',
             JS: postset + ';'
           });
         }
@@ -288,16 +282,10 @@ function JSify(data, functionsOnly) {
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          var hasArgs = original.length > 0;
-          if (hasArgs) {
-            // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
-          } else {
-            // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');');
-          }
-          if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
-          contentText = processedSnippet;
+          contentText = modifyFunction(snippet, function(name, args, body) {
+            return 'function ' + name + '(' + args + ') {\n' +
+                   'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
+          });
           proxiedFunctionTable.push(finalName);
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.

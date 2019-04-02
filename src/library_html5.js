@@ -284,7 +284,11 @@ var LibraryJSEvents = {
 
   _findEventTarget__deps: ['_maybeCStringToJsString', '_specialEventTargets'],
   _findEventTarget: function(target) {
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
+    var domElement = __specialEventTargets[target] || (typeof document !== 'undefined' ? document.querySelector(__maybeCStringToJsString(target)) : undefined);
+#else
     var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
+#endif
 #if ASSERTIONS
     // TODO: Remove this check in the future, or move it to some kind of debugging mode, because it may be perfectly fine behavior
     // for one to query an event target to test if any DOM element with given CSS selector exists. However for a migration period
@@ -2661,8 +2665,11 @@ var LibraryJSEvents = {
     console.error('emscripten_set_canvas_element_size(target='+target+',width='+width+',height='+height);
 #endif
     var canvas = __findCanvasEventTarget(target);
-    if (canvas) return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
-    else return _emscripten_set_canvas_element_size_main_thread(target, width, height);
+    if (canvas) {
+      return _emscripten_set_canvas_element_size_calling_thread(target, width, height);
+    } else {
+      return _emscripten_set_canvas_element_size_main_thread(target, width, height);
+    }
   }, 
 #else
   emscripten_set_canvas_element_size__deps: ['$JSEvents', '_findCanvasEventTarget'],
@@ -2741,8 +2748,11 @@ var LibraryJSEvents = {
   emscripten_get_canvas_element_size__deps: ['$JSEvents', 'emscripten_get_canvas_element_size_calling_thread', 'emscripten_get_canvas_element_size_main_thread', '_findCanvasEventTarget'],
   emscripten_get_canvas_element_size: function(target, width, height) {
     var canvas = __findCanvasEventTarget(target);
-    if (canvas) return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
-    else return _emscripten_get_canvas_element_size_main_thread(target, width, height);
+    if (canvas) {
+      return _emscripten_get_canvas_element_size_calling_thread(target, width, height);
+    } else {
+      return _emscripten_get_canvas_element_size_main_thread(target, width, height);
+    }
   }, 
 #else
   emscripten_get_canvas_element_size__deps: ['$JSEvents', '_findCanvasEventTarget'],

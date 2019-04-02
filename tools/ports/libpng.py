@@ -16,6 +16,8 @@ def get(ports, settings, shared):
 
   ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
 
+  libname = ports.get_lib_name('libpng')
+
   def create():
     logging.info('building port: libpng')
 
@@ -27,10 +29,15 @@ def get(ports, settings, shared):
 
     open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
 
-    final = os.path.join(ports.get_build_dir(), 'libpng', 'libpng.bc')
+    final = os.path.join(ports.get_build_dir(), 'libpng', libname)
     ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
     return final
-  return [shared.Cache.get('libpng', create, what='port')]
+
+  return [shared.Cache.get(libname, create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libpng'))
 
 
 def process_dependencies(settings):

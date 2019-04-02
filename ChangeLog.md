@@ -15,6 +15,10 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+- Add port for bzip2 library (`libbz2.a`). (#8349)
+
+v1.38.29: 03/11/2019
+--------------------
 
 v1.38.28: 02/22/2019
 --------------------

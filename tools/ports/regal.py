@@ -16,6 +16,7 @@ def get(ports, settings, shared):
 
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG)
+  libname = ports.get_lib_name('libregal')
 
   def create():
     logging.info('building port: regal')
@@ -145,13 +146,15 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', 'libregal.bc')
-    shared.try_delete(final)
-    shared.Building.link_to_object(o_s, final)
-    assert os.path.exists(final)
+    final = os.path.join(ports.get_build_dir(), 'regal', libname)
+    ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get('regal', create, what='port')]
+  return [shared.Cache.get(libname, create, what='port')]
+
+
+def clear(ports, shared):
+  shared.Cache.erase_file(ports.get_lib_name('libregal'))
 
 
 def process_dependencies(settings):

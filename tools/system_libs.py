@@ -21,6 +21,8 @@ from tools.shared import check_call
 stdout = None
 stderr = None
 
+logger = logging.getLogger('system_libs')
+
 
 def call_process(cmd):
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
@@ -177,7 +179,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libc
   def create_libc(libname):
-    logging.debug(' building libc for cache')
+    logger.debug(' building libc for cache')
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 
@@ -314,7 +316,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libc++
   def create_libcxx(libname):
-    logging.debug('building libc++ for cache')
+    logger.debug('building libc++ for cache')
     libcxx_files = [
       'algorithm.cpp',
       'any.cpp',
@@ -359,7 +361,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
-    logging.debug('building libc++abi for cache')
+    logger.debug('building libc++abi for cache')
     libcxxabi_files = [
       'abort_message.cpp',
       'cxa_aux_runtime.cpp',
@@ -580,7 +582,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         for dep in deps:
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
-            logging.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
+            logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
@@ -597,7 +599,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # depend on exported functions
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
-      logging.debug('adding dependency on export %s' % export)
+      logger.debug('adding dependency on export %s' % export)
     symbolses[0].undefs.add(export[1:])
 
   for symbols in symbolses:
@@ -681,7 +683,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     force = ','.join(system_libs_map.keys())
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
-    logging.debug('forcing stdlibs: ' + str(force_include))
+    logger.debug('forcing stdlibs: ' + str(force_include))
 
   for lib in always_include:
     assert lib in system_libs_map
@@ -705,7 +707,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       shortname = maybe_noexcept(shortname)
     name = shortname + '.' + lib.suffix
 
-    logging.debug('including %s' % name)
+    logger.debug('including %s' % name)
 
     def do_create():
       return lib.create(name)
@@ -733,7 +735,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       has_syms = set()
       for symbols in symbolses:
         if shared.Settings.VERBOSE:
-          logging.debug('undefs: ' + str(symbols.undefs))
+          logger.debug('undefs: ' + str(symbols.undefs))
         for library_symbol in lib.symbols:
           if library_symbol in symbols.undefs:
             need_syms.add(library_symbol)
@@ -744,7 +746,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           # remove symbols that are supplied by another of the inputs
           need_syms.remove(haz)
       if shared.Settings.VERBOSE:
-        logging.debug('considering %s: we need %s and have %s' % (lib.shortname, str(need_syms), str(has_syms)))
+        logger.debug('considering %s: we need %s and have %s' % (lib.shortname, str(need_syms), str(has_syms)))
       if not len(need_syms):
         continue
 
@@ -779,18 +781,24 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 class Ports(object):
   """emscripten-ports library management (https://github.com/emscripten-ports).
   """
+
+  @staticmethod
+  def get_lib_name(name):
+    return shared.static_library_name(name)
+
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
         continue
-      for file in files:
-          if (file.endswith('.c') or file.endswith('.cpp')) and not any((excluded in file) for excluded in exclude_files):
-              srcs.append(os.path.join(root, file))
+      for f in files:
+        ext = os.path.splitext(f)[1]
+        if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+            srcs.append(os.path.join(root, f))
     include_commands = ['-I' + src_path]
     for include in includes:
-        include_commands.append('-I' + include)
+      include_commands.append('-I' + include)
 
     commands = []
     objects = []
@@ -800,11 +808,17 @@ class Ports(object):
       objects.append(obj)
 
     run_commands(commands)
+    print('create_lib', output_path)
     create_lib(output_path, objects)
+    return output_path
 
   @staticmethod
   def run_commands(commands): # make easily available for port objects
     run_commands(commands)
+
+  @staticmethod
+  def create_lib(libname, inputs): # make easily available for port objects
+    create_lib(libname, inputs)
 
   @staticmethod
   def get_dir():
@@ -817,7 +831,7 @@ class Ports(object):
     dirname = Ports.get_dir()
     shared.try_delete(dirname)
     if os.path.exists(dirname):
-      logging.warning('could not delete ports dir %s - try to delete it manually' % dirname)
+      logger.warning('could not delete ports dir %s - try to delete it manually' % dirname)
 
   @staticmethod
   def get_build_dir():
@@ -840,30 +854,34 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      logging.warning('using local ports: %s' % local_ports)
+      logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       for local in local_ports:
         if name == local[0]:
           path = local[1]
           if name not in ports.ports_by_name:
-            logging.error('%s is not a known port' % name)
-            sys.exit(1)
+            shared.exit_with_error('%s is not a known port' % name)
           port = ports.ports_by_name[name]
           if not hasattr(port, 'SUBDIR'):
-            logging.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+            logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
             sys.exit(1)
           subdir = port.SUBDIR
-          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+          logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
           shared.try_delete(fullname)
           shutil.copytree(path, os.path.join(fullname, subdir))
           Ports.clear_project_build(name)
           return
 
-    fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
+    if is_tarbz2:
+      fullpath = fullname + '.tar.bz2'
+    elif url.endswith('.tar.gz'):
+      fullpath = fullname + '.tar.gz'
+    else:
+      fullpath = fullname + '.zip'
 
     if name not in Ports.name_cache: # only mention each port once in log
-      logging.debug('including port: ' + name)
-      logging.debug('    (at ' + fullname + ')')
+      logger.debug('including port: ' + name)
+      logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
     class State(object):
@@ -872,7 +890,7 @@ class Ports(object):
 
     def retrieve():
       # retrieve from remote server
-      logging.warning('retrieving port: ' + name + ' from ' + url)
+      logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
         from urllib.request import urlopen
       except ImportError:
@@ -886,6 +904,8 @@ class Ports(object):
     def check_tag():
       if is_tarbz2:
         names = tarfile.open(fullpath, 'r:bz2').getnames()
+      elif url.endswith('.tar.gz'):
+        names = tarfile.open(fullpath, 'r:gz').getnames()
       else:
         names = zipfile.ZipFile(fullpath, 'r').namelist()
 
@@ -894,10 +914,17 @@ class Ports(object):
       return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
-      logging.warning('unpacking port: ' + name)
+      logger.warning('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+
+      # TODO: Someday when we are using Python 3, we might want to change the
+      # code below to use shlib.unpack_archive
+      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
+      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
       if is_tarbz2:
         z = tarfile.open(fullpath, 'r:bz2')
+      elif url.endswith('.tar.gz'):
+        z = tarfile.open(fullpath, 'r:gz')
       else:
         z = zipfile.ZipFile(fullpath, 'r')
       try:
@@ -906,6 +933,7 @@ class Ports(object):
         z.extractall()
       finally:
         os.chdir(cwd)
+
       State.unpacked = True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
@@ -920,7 +948,7 @@ class Ports(object):
         unpack()
 
       if not check_tag():
-        logging.warning('local copy of port is not correct, retrieving from remote server')
+        logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
         retrieve()
@@ -933,28 +961,10 @@ class Ports(object):
       shared.Cache.release_cache_lock()
 
   @staticmethod
-  def build_project(name, subdir, configure, generated_libs, post_create=None):
-    def create():
-      logging.info('building port: ' + name + '...')
-      port_build_dir = Ports.get_build_dir()
-      shared.safe_ensure_dirs(port_build_dir)
-      libs = shared.Building.build_library(name, port_build_dir, None,
-                                           generated_libs,
-                                           source_dir=os.path.join(Ports.get_dir(), name, subdir),
-                                           copy_project=True,
-                                           configure=configure,
-                                           make=['make', '-j' + str(shared.Building.get_num_cores())])
-      assert len(libs) == 1
-      if post_create:
-        post_create()
-      return libs[0]
-    return shared.Cache.get(name, create)
-
-  @staticmethod
   def clear_project_build(name):
+    port = ports.ports_by_name[name]
+    port.clear(Ports, shared)
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
-    shared.try_delete(shared.Cache.get_path(name + '.bc'))
-    shared.try_delete(shared.Cache.get_path(name + '.a'))
 
   @staticmethod
   def build_native(subdir):
@@ -997,7 +1007,7 @@ def get_ports(settings):
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
   except:
-    logging.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+    logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
     raise
 
   ret.reverse()

@@ -826,9 +826,6 @@ var asmPrintCounter = 0;
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
-  if (UNALIGNED_MEMORY) align = 1;
-  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
-
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -907,9 +904,6 @@ function makeGetValueAsm(ptr, pos, type, unsigned) {
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
-  if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
-  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
-
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1575,3 +1569,18 @@ function getPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 
+// Receives a function as text, and a function that constructs a modified
+// function, to which we pass the parsed-out name, arguments, and body of the
+// function. Returns the output of that function.
+function modifyFunction(text, func) {
+  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  assert(match, 'could not match function ' + text + '.');
+  var name = match[1];
+  var args = match[2];
+  var rest = text.substr(match[0].length);
+  var bodyStart = rest.indexOf('{');
+  assert(bodyStart > 0);
+  var bodyEnd = rest.lastIndexOf('}');
+  assert(bodyEnd > 0);
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}

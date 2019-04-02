@@ -477,16 +477,16 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    return TOTAL_MEMORY;
+    return HEAP8.length;
   },
 
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #else
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #endif
 #else
     abort('OOM');
@@ -504,14 +504,13 @@ LibraryManager.library = {
 #if WASM
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = Module['buffer'];
-    var oldSize = old.byteLength;
+    var oldSize = buffer.byteLength;
     // native wasm support
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = wasmMemory.buffer;
+        return buffer = wasmMemory.buffer;
       } else {
         return null;
       }
@@ -564,7 +563,6 @@ LibraryManager.library = {
 #endif
 #else
     var oldSize = _emscripten_get_heap_size();
-    // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
     assert(requestedSize > oldSize); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
 #endif
@@ -595,7 +593,7 @@ LibraryManager.library = {
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
 #if ASSERTIONS
         if (newSize === oldSize) {
-          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
+          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
         }
 #endif
       }
@@ -634,11 +632,7 @@ LibraryManager.library = {
     }
 
     // everything worked
-    updateGlobalBuffer(replacement);
     updateGlobalBufferViews();
-
-    TOTAL_MEMORY = newSize;
-    HEAPU32[DYNAMICTOP_PTR>>2] = requestedSize;
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
@@ -754,14 +748,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return oldDynamicTop|0;
   },
@@ -799,14 +792,13 @@ LibraryManager.library = {
     }
 
     totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) <= (totalMemory|0)) {
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-    } else {
+    if ((newDynamicTop|0) > (totalMemory|0)) {
       if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
       }
     }
+    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
 #endif
     return 0;
   },
@@ -1403,6 +1395,7 @@ LibraryManager.library = {
     abort('Assertion failed: ' + (condition ? UTF8ToString(condition) : 'unknown condition') + ', at: ' + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 
+#if WASM_BACKEND == 0
   setThrew__asm: true,
   setThrew__sig: 'vii',
   setThrew: function(threw, value) {
@@ -1413,6 +1406,7 @@ LibraryManager.library = {
       threwValue = value;
     }
   },
+#endif
 
   $EXCEPTIONS__deps: ['__cxa_free_exception'],
   $EXCEPTIONS: {
@@ -1760,6 +1754,7 @@ LibraryManager.library = {
     STACK_MAX = stackMax;
   },
 
+#if WASM_BACKEND == 0
   $setThrew__asm: true,
   $setThrew__sig: 'vii',
   $setThrew: function(threw, value) {
@@ -1770,6 +1765,7 @@ LibraryManager.library = {
       threwValue = value;
     }
   },
+#endif
 #endif
 
   __cxa_pure_virtual: function() {
@@ -2211,7 +2207,7 @@ LibraryManager.library = {
     // Insert the function into the wasm table.  Since we know the function
     // comes directly from the loaded wasm module we can insert it directly
     // into the table, avoiding any JS interaction.
-    return addWasmFunction(result);
+    return addFunctionWasm(result);
 #else
     // convert the exported function into a function pointer using our generic
     // JS mechanism.
@@ -2244,9 +2240,9 @@ LibraryManager.library = {
     // report all function pointers as coming from this program itself XXX not really correct in any way
     var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*2, '0', 'i32') }}};
-    {{{ makeSetValue('info', QUANTUM_SIZE*3, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
+    {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*3, '0', 'i32') }}};
     return 1;
   },
 #endif // MAIN_MODULE != 0
@@ -4404,9 +4400,7 @@ LibraryManager.library = {
 #endif
                                "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
-                               "} else if (typeof self === 'object' && self['performance'] && typeof self['performance']['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function() { return self['performance']['now'](); };\n" +
-                               "} else if (typeof performance === 'object' && typeof performance['now'] === 'function') {\n" +
+                               "} else if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return performance['now'](); };\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
@@ -4418,13 +4412,14 @@ LibraryManager.library = {
       return 1; // nanoseconds
     } else
 #endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-    if (typeof dateNow !== 'undefined' ||
-               ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])) {
+#if ENVIRONMENT_MAY_BE_SHELL
+    if (typeof dateNow !== 'undefined') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
-    {
+    if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
+      return 1000; // microseconds (1/1000 of a millisecond)
+    } else {
       return 1000*1000; // milliseconds
     }
   },
@@ -4441,7 +4436,7 @@ LibraryManager.library = {
       || (typeof dateNow !== 'undefined')
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-      || ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now'])
+      || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
 #endif
       );
   },

@@ -2208,8 +2208,7 @@ var LibrarySDL = {
   SDL_WM_ToggleFullScreen__proxy: 'sync',
   SDL_WM_ToggleFullScreen__sig: 'ii',
   SDL_WM_ToggleFullScreen: function(surf) {
-    if (Browser.isFullscreen) {
-      Module['canvas'].exitFullscreen();
+    if (Browser.exitFullscreen()) {
       return 1;
     } else {
       if (!SDL.canRequestFullscreen) {

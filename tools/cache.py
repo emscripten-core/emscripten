@@ -10,7 +10,7 @@ import shutil
 import logging
 from . import tempfiles, filelock
 
-logger = logging.getLogger('emscripten')
+logger = logging.getLogger('cache')
 
 
 # Permanent cache for dlmalloc and stdlibc++
@@ -55,7 +55,7 @@ class Cache(object):
 
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      logger.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug('PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
@@ -66,7 +66,7 @@ class Cache(object):
 
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
       os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
-      logger.debug('Cache: done')
+      logger.debug('done')
     self.acquired_count += 1
 
   def release_cache_lock(self):
@@ -78,7 +78,7 @@ class Cache(object):
       else:
         del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
-      logger.debug('Cache: PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   def ensure(self):
     self.acquire_cache_lock()
@@ -96,13 +96,15 @@ class Cache(object):
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
 
+  def erase_file(self, shortname):
+    name = os.path.join(self.dirname, shortname)
+    if os.path.exists(name):
+      logging.info('Cache: deleting cached file: %s', name)
+      tempfiles.try_delete(name)
+
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension=None, what=None, force=False):
-    if extension is not None:
-      shortname += extension
-    elif not os.path.splitext(shortname)[1]:
-      shortname += '.bc'
+  def get(self, shortname, creator, what=None, force=False):
     cachename = os.path.abspath(os.path.join(self.dirname, shortname))
 
     self.acquire_cache_lock()
