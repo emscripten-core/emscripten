@@ -8122,17 +8122,7 @@ int main() {
       cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.cpp'), '-g', '-o', 'main.out.js'] + args
       print(' '.join(cmd))
       run_process(cmd)
-      run_process([wasm_dis, 'main.out.wasm', '-o', 'main.out.wast'])
-      text = open('main.out.wast').read()
-      # remove internal comments and extra whitespace
-      text = re.sub(r'\(;[^;]+;\)', '', text)
-      text = re.sub(r'\$var\$*.', '', text)
-      text = re.sub(r'param \$\d+', 'param ', text)
-      text = re.sub(r' +', ' ', text)
-      # print("text: %s" % text)
-      e_aliasee_exported = re.search('\(export.*logic_errorD2Ev\)', text)
-      assert e_aliasee_exported, 'aliasee not exported'
-
+      # run the program
       ret = run_process(NODE_JS + ['main.out.js'], stdout=PIPE, stderr=PIPE).stdout
       self.assertContained('success', ret)
 
