@@ -8107,7 +8107,6 @@ int main() {
     # test aliasee is exported when alias is exported
     if self.is_wasm_backend():
       self.skipTest('not testing export aliasee and wasm backend')
-    wasm_dis = os.path.join(Building.get_binaryen_bin(), 'wasm-dis')
 
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
       # build side module
