@@ -2772,18 +2772,18 @@ function(%(EXPORT_NAME)s) {
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
       if shared.Settings.EXPORT_ES6:
-        GETSCRIPT = "import.meta.url"
+        script_url = "import.meta.url"
       else:
-        GETSCRIPT = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
+        script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = %(GETSCRIPT)s;
+  var _scriptDir = %(script_url)s;
   return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
         'src': src,
-        'GETSCRIPT': GETSCRIPT
+        'script_url': script_url
       }
   else:
     # Create the MODULARIZE_INSTANCE instance
