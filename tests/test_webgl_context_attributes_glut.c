@@ -46,8 +46,10 @@ int main(int argc, char *argv[]) {
     glewInit();
     initGlObjects();
     
+    logging("pre-result", result);
     draw();
-    
+    logging("post-result", result);
+
     REPORT_RESULT(result);
     
     return 0;
