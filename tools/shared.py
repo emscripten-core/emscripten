@@ -2444,7 +2444,10 @@ class Building(object):
       proc = run_process(args, stderr=PIPE, check=False)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
-        exit_with_error('closure compiler failed (rc: %d)', proc.returncode)
+        hint = ''
+        if not pretty:
+          hint = ' the error message may be clearer with -g1'
+        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
       return outfile
 
