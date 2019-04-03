@@ -1277,6 +1277,9 @@ def verify_settings():
     if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
       exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
 
+    if Settings.EMULATED_FUNCTION_POINTERS:
+      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend')
+
 
 Settings = SettingsManager()
 verify_settings()
