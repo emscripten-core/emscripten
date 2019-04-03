@@ -1091,10 +1091,11 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
+        path, location = self.path.split('|', 1)
         if DEBUG:
-          print('[server response:', self.path, ']')
+          print('[server response:', path, location']')
         if out_queue.empty():
-          out_queue.put(self.path)
+          out_queue.put(path)
         else:
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
