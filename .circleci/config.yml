@@ -380,7 +380,8 @@ jobs:
   test-upstream-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=wasm2
+      - TEST_TARGET=wasm2 wasm3.test_llvm_used
+      # TODO: test all of wasm3/wasms on LLVM wasm backend
   test-upstream-other:
     <<: *test-defaults
     environment:
