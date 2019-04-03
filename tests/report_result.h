@@ -22,6 +22,12 @@
 
 static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
 {
+  static int reported = 0;
+  if (reported) {
+    EM_ASM({ abort("already reported a result for this test!") });
+  }
+  reported = 1;
+
   printf("result: %d\n", result);
   EM_ASM({
     // Only report one result per test, even if the test misbehaves and tries to report more.
