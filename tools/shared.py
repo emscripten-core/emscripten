@@ -952,7 +952,7 @@ if JAVA is None:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-emscripten-wasm'
+WASM_TARGET = 'wasm32-unknown-emscripten'
 
 
 def check_vanilla():
