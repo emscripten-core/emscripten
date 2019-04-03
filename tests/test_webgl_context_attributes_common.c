@@ -266,33 +266,20 @@ static bool resultDepth = 0;
 static bool resultStencil = 0;
 static bool resultAlpha = 0;
 
-static void logging(const char* str, int x) {
-  EM_ASM({
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + AsciiToString($0) + ' : ' + $1));
-    xhr.send();
-  }, str, x);
-}
-
 static void draw() {
   if (!resultAA) resultAA = testAntiAliasing(antiAliasingActivated);
   assert(resultAA);
-  logging("AA", resultAA);
-
+   
   if (!resultDepth) resultDepth = testDepth(depthActivated);
   assert(resultDepth);
-  logging("Depth", resultDepth);
   
   if (!resultStencil) resultStencil = testStencil(stencilActivated);
   assert(resultStencil);
-  logging("Stencil", resultStencil);
-
+  
   if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
   assert(resultAlpha);
-  logging("Alpha", resultAlpha);
-
+  
   result = resultAA && resultDepth && resultStencil && resultAlpha;
-  logging("result", result);
 }
 
 extern int webglAntialiasSupported(void);
