@@ -177,8 +177,8 @@ class browser(BrowserCore):
     try_delete(html_file)
     try_delete(html_file + '.map')
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'], cwd=self.get_dir())
-    assert os.path.exists(html_file)
-    assert os.path.exists(html_file + '.map')
+    self.assertExists(html_file)
+    self.assertExists(html_file + '.map')
     webbrowser.open_new('file://' + html_file)
     print('''
 If manually bisecting:
@@ -1546,18 +1546,33 @@ keydown(100);keyup(100); // trigger the end
   def test_glfw_time(self):
     self.btest('test_glfw_time.c', '1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
 
-  @requires_graphics_hardware
-  def test_egl(self):
+  def _test_egl_base(self, *args):
     create_test_file('test_egl.c', self.with_report_result(open(path_from_root('tests', 'test_egl.c')).read()))
 
-    run_process([PYTHON, EMCC, '-O2', 'test_egl.c', '-o', 'page.html', '-lEGL', '-lGL'])
+    run_process([PYTHON, EMCC, '-O2', 'test_egl.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', '', '/report_result?1')
 
-  def test_egl_width_height(self):
+  @requires_graphics_hardware
+  def test_egl(self):
+    self._test_egl_base()
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_egl_with_proxy_to_pthread(self):
+    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1')
+
+  def _test_egl_width_height_base(self, *args):
     create_test_file('test_egl_width_height.c', self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
 
-    run_process([PYTHON, EMCC, '-O2', 'test_egl_width_height.c', '-o', 'page.html', '-lEGL', '-lGL'])
+    run_process([PYTHON, EMCC, '-O2', 'test_egl_width_height.c', '-o', 'page.html', '-lEGL', '-lGL'] + list(args))
     self.run_browser('page.html', 'Should print "(300, 150)" -- the size of the canvas in pixels', '/report_result?1')
+
+  def test_egl_width_height(self):
+    self._test_egl_width_height_base()
+
+  @requires_threads
+  def test_egl_width_height_with_proxy_to_pthread(self):
+    self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
 
   def do_test_worker(self, args=[]):
     # Test running in a web worker
@@ -1585,7 +1600,7 @@ keydown(100);keyup(100); // trigger the end
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world_worker.cpp'), '-o', 'worker.js'] + (['--preload-file', 'file.dat'] if file_data else []) + args
       print(cmd)
       subprocess.check_call(cmd)
-      assert os.path.exists('worker.js')
+      self.assertExists('worker.js')
       self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
 
   def test_worker(self):
@@ -2434,14 +2449,14 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
       browser_cmd = shlex.split(EMTEST_BROWSER)
       browser_path = browser_cmd[0]
-      args += ['--browser', browser_path]
+      args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
         browser_args = browser_cmd[1:]
         if 'firefox' in browser_path and '-profile' in browser_args:
@@ -2450,18 +2465,22 @@ void *getBindBuffer() {
           parser.add_argument('-profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
-          args += ['--browser_args', ' ' + ' '.join(browser_args)]
-    args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-    proc = run_process(args, check=False)
-    stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-    stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-    assert proc.returncode == 100
-    assert 'argc: 4' in stdout
-    assert 'argv[3]: --3' in stdout
-    assert 'hello, world!' in stdout
-    assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-    assert 'Testing char sequences: %20%21 &auml;' in stdout
-    assert 'hello, error stream!' in stderr
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+    for args in [
+        args_base,
+        args_base + ['--no_private_browsing']
+    ]:
+      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+      proc = run_process(args, check=False)
+      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
+      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
+      assert proc.returncode == 100
+      assert 'argc: 4' in stdout
+      assert 'argv[3]: --3' in stdout
+      assert 'hello, world!' in stdout
+      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
+      assert 'Testing char sequences: %20%21 &auml;' in stdout
+      assert 'hello, error stream!' in stderr
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -2762,7 +2781,7 @@ Module['onRuntimeInitialized'] = function() {
       create_test_file('second.cpp', self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
       run_process([PYTHON, EMCC, 'second.cpp'] + opts)
       run_process([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in'])
-      assert os.path.exists('second.js')
+      self.assertExists('second.js')
 
       if SPIDERMONKEY_ENGINE in JS_ENGINES:
         out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
@@ -2969,6 +2988,10 @@ Module['onRuntimeInitialized'] = function() {
     run_process([PYTHON, EMCC, 'sdl2_mouse.c', '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
 
+  @requires_threads
+  def test_sdl2_threads(self):
+      self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
+
   @requires_graphics_hardware
   def test_sdl2glshader(self):
     self.btest('sdl2glshader.c', reference='sdlglshader.png', args=['-s', 'USE_SDL=2', '-O2', '--closure', '1', '-g1', '-s', 'LEGACY_GL_EMULATION=1'])
@@ -3157,7 +3180,7 @@ window.close = function() {
   @no_wasm_backend('cocos2d needs to be ported')
   @requires_graphics_hardware
   def test_cocos2d_hello(self):
-    cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'Cocos2d')
+    cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
                args=['-s', 'USE_COCOS2D=3', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '--std=c++11', '--preload-file', preload_file, '--use-preload-plugins'],
@@ -3335,8 +3358,8 @@ window.close = function() {
     run_process([PYTHON, path_from_root('tools', 'webidl_binder.py'),
                  path_from_root('tests', 'webidl', 'test.idl'),
                  'glue'])
-    assert os.path.exists('glue.cpp')
-    assert os.path.exists('glue.js')
+    self.assertExists('glue.cpp')
+    self.assertExists('glue.js')
     for opts in [[], ['-O1'], ['-O2']]:
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
@@ -3650,7 +3673,11 @@ window.close = function() {
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    def run(debug):
+       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'LIBRARY_DEBUG=%d' % debug])
+
+    run(debug=True)
+    run(debug=False)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
@@ -3877,7 +3904,7 @@ window.close = function() {
       self.clear()
       assert not os.path.exists('tests.asm.js')
       self.btest('browser_test_hello_world.c', expected='0', args=opts + ['-s', 'WASM=0', '--separate-asm'])
-      assert os.path.exists('test.asm.js')
+      self.assertExists('test.asm.js')
       os.unlink('test.asm.js')
 
       print('see a fail')
@@ -3905,11 +3932,11 @@ window.close = function() {
 ''')
     try_delete('code.dat')
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '--shell-file', 'shell.html', '-s', 'ASSERTIONS=1'])
-    assert os.path.exists('code.dat')
+    self.assertExists('code.dat')
 
     try_delete('code.dat')
     self.btest('browser_test_hello_world.c', expected='0', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_FILE="code.dat"', '-O2', '-g', '-s', 'ASSERTIONS=1'])
-    assert os.path.exists('code.dat')
+    self.assertExists('code.dat')
 
   def test_vanilla_html_when_proxying(self):
     for opts in [0, 1, 2]:
@@ -4092,9 +4119,10 @@ window.close = function() {
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        cmd = args1 + args2 + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
-        print(str(cmd))
-        self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1']]:
+          cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+          print(str(cmd))
+          self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
 
   # Tests the feature that shell html page can preallocate the typed array and place it to Module.buffer before loading the script page.
   # In this build mode, the -s TOTAL_MEMORY=xxx option will be ignored.
@@ -4338,7 +4366,9 @@ window.close = function() {
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
   def test_single_file_html(self):
     self.btest('emscripten_main_loop_setimmediate.cpp', '1', args=['-s', 'SINGLE_FILE=1', '-s', 'WASM=1'], also_proxied=True)
-    assert os.path.exists('test.html') and not os.path.exists('test.js') and not os.path.exists('test.worker.js')
+    self.assertExists('test.html')
+    self.assertNotExists('test.js')
+    self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
@@ -4379,7 +4409,8 @@ window.close = function() {
     run_process([PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '--proxy-to-worker', '-s', 'SINGLE_FILE=1', '-s', 'WASM=1'])
     create_test_file('test.html', '<script src="test.js"></script>')
     self.run_browser('test.html', None, '/report_result?0')
-    assert os.path.exists('test.js') and not os.path.exists('test.worker.js')
+    self.assertExists('test.js')
+    self.assertNotExists('test.worker.js')
 
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')

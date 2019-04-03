@@ -29,8 +29,6 @@ var Types = {
   types: {},
 };
 
-var firstTableIndex = RESERVED_FUNCTION_POINTERS + 1;
-
 // Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
 function genArgSequence(n) {
   var args = [];
@@ -43,60 +41,8 @@ function genArgSequence(n) {
 var Functions = {
   // All functions that will be implemented in this file. Maps id to signature
   implementedFunctions: {},
-  libraryFunctions: {}, // functions added from the library. value 2 means asmLibraryFunction
-  unimplementedFunctions: {}, // library etc. functions that we need to index, maps id to signature
-
-  nextIndex: firstTableIndex, // Start at a non-0 (even, see below) value
-  neededTables: set('v', 'vi', 'ii', 'iii'), // signatures that appeared (initialized with library stuff
-                                             // we always use), and we will need a function table for
-
-  blockAddresses: {}, // maps functions to a map of block labels to label ids
-
-  aliases: {}, // in shared modules (MAIN_MODULE or SHARED_MODULE), a list of aliases for functions that have them
-
-  getSignatureLetter: function(type) {
-    switch(type) {
-      case 'float': return 'f';
-      case 'double': return 'd';
-      case 'void': return 'v';
-      default: return 'i';
-    }
-  },
-
-  getSignatureType: function(letter) {
-    switch(letter) {
-      case 'v': return 'void';
-      case 'i': return 'i32';
-      case 'f': return 'float';
-      case 'd': return 'double';
-      default: throw 'what is this sig? ' + sig;
-    }
-  },
-
-  getSignature: function(returnType, argTypes, hasVarArgs) {
-    var sig = Functions.getSignatureLetter(returnType);
-    for (var i = 0; i < argTypes.length; i++) {
-      var type = argTypes[i];
-      if (!type) break; // varargs
-      if (type in Compiletime.FLOAT_TYPES) {
-        sig += Functions.getSignatureLetter(type);
-      } else {
-        var chunks = getNumIntChunks(type);
-        if (chunks > 0) {
-          for (var j = 0; j < chunks; j++) sig += 'i';
-        } else if (type !== '...') {
-          // some special type like a SIMD vector (anything but varargs, which we handle below)
-          sig += Functions.getSignatureLetter(type);
-        }
-      }
-    }
-    if (hasVarArgs) sig += 'i';
-    return sig;
-  },
-
-  getTable: function(sig) {
-    return 'FUNCTION_TABLE_' + sig
-  }
+  // functions added from the library. value 2 means asmLibraryFunction
+  libraryFunctions: {},
 };
 
 var LibraryManager = {
@@ -140,7 +86,7 @@ var LibraryManager = {
         libraries = libraries.concat([
           'library_lz4.js',
         ]);
-        if (ENVIRONMENT_MAY_BE_WEB) {
+        if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
           libraries = libraries.concat([
             'library_idbfs.js',
             'library_proxyfs.js',
@@ -214,11 +160,24 @@ var LibraryManager = {
         processed = processMacros(preprocess(src, filename));
         eval(processed);
       } catch(e) {
-        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : '', (e.stack || "").toString().replace('Object.<anonymous>', filename)];
+        var details = [e, e.lineNumber ? 'line number: ' + e.lineNumber : ''];
+        if (VERBOSE) {
+          details.push((e.stack || "").toString().replace('Object.<anonymous>', filename));
+        }
         if (processed) {
-          error('failure to execute js library "' + filename + '": ' + details + '\npreprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============\n');
+          error('failure to execute js library "' + filename + '": ' + details);
+          if (VERBOSE) {
+            error('preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n' + processed + '\n=============');
+          } else {
+            error('use -s VERBOSE to see more details')
+          }
         } else {
-          error('failure to process js library "' + filename + '": ' + details + '\noriginal source:\n=============\n' + src + '\n=============\n');
+          error('failure to process js library "' + filename + '": ' + details);
+          if (VERBOSE) {
+            error('original source:\n=============\n' + src + '\n=============');
+          } else {
+            error('use -s VERBOSE to see more details')
+          }
         }
         throw e;
       }

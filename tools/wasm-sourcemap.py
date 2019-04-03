@@ -24,6 +24,8 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools.shared import asstr
 
+logger = logging.getLogger('wasm-sourcemap')
+
 
 def parse_args():
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
@@ -98,7 +100,7 @@ def read_var_uint(wasm, pos):
 
 
 def strip_debug_sections(wasm):
-  logging.debug('Strip debug sections')
+  logger.debug('Strip debug sections')
   pos = 8
   stripped = wasm[:pos]
 
@@ -128,14 +130,14 @@ def encode_uint_var(n):
 
 
 def append_source_mapping(wasm, url):
-  logging.debug('Append sourceMappingURL section')
+  logger.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
   section_content = encode_uint_var(len(section_name)) + section_name + encode_uint_var(len(url)) + url
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
 
 def get_code_section_offset(wasm):
-  logging.debug('Read sections index')
+  logger.debug('Read sections index')
   pos = 8
 
   while pos < len(wasm):
@@ -172,18 +174,18 @@ def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = open(options.dwarfdump_output, 'r').read()
   elif options.dwarfdump:
-    logging.debug('Reading DWARF information from %s' % wasm)
+    logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
-      logging.error('llvm-dwarfdump not found: ' + options.dwarfdump)
+      logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
     process = Popen([options.dwarfdump, "-debug-info", "-debug-line", wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
-      logging.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
+      logger.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
       sys.exit(1)
   else:
-    logging.error('Please specify either --dwarfdump or --dwarfdump-output')
+    logger.error('Please specify either --dwarfdump or --dwarfdump-output')
     sys.exit(1)
 
   entries = []
@@ -308,7 +310,7 @@ def main():
 
   prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
 
-  logging.debug('Saving to %s' % options.output)
+  logger.debug('Saving to %s' % options.output)
   map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
@@ -320,11 +322,11 @@ def main():
     wasm = append_source_mapping(wasm, options.source_map_url)
 
   if options.w:
-    logging.debug('Saving wasm to %s' % options.w)
+    logger.debug('Saving wasm to %s' % options.w)
     with open(options.w, 'wb') as outfile:
       outfile.write(wasm)
 
-  logging.debug('Done')
+  logger.debug('Done')
   return 0
 
 

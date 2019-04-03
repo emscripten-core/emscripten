@@ -201,13 +201,13 @@ var emscriptenMemoryProfiler = {
 
   // Given a pointer 'bytes', compute the linear 1D position on the graph as pixels, rounding down for start address of a block.
   bytesToPixelsRoundedDown: function bytesToPixelsRoundedDown(bytes) {
-    return (bytes * this.canvas.width * this.canvas.height / TOTAL_MEMORY) | 0;
+    return (bytes * this.canvas.width * this.canvas.height / HEAP8.length) | 0;
   },
 
   // Same as bytesToPixelsRoundedDown, but rounds up for the end address of a block. The different rounding will
   // guarantee that even 'thin' allocations should get at least one pixel dot in the graph.
   bytesToPixelsRoundedUp: function bytesToPixelsRoundedUp(bytes) {
-    return ((bytes * this.canvas.width * this.canvas.height + TOTAL_MEMORY - 1) / TOTAL_MEMORY) | 0;
+    return ((bytes * this.canvas.width * this.canvas.height + HEAP8.length - 1) / HEAP8.length) | 0;
   },
 
   // Graphs a range of allocated memory. The memory range will be drawn as a top-to-bottom, left-to-right stripes or columns of pixels.
@@ -306,8 +306,8 @@ var emscriptenMemoryProfiler = {
       this.canvas.width = document.documentElement.clientWidth - 32;
     }
 
-    var width = (nBits(TOTAL_MEMORY) + 3) / 4; // Pointer 'word width'
-    var html = 'Total HEAP size: ' + this.formatBytes(TOTAL_MEMORY) + '.';
+    var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
+    var html = 'Total HEAP size: ' + this.formatBytes(HEAP8.length) + '.';
     html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + this.formatBytes(STACK_BASE - STATIC_BASE);
     html += '. STATIC_BASE: ' + toHex(STATIC_BASE, width);
 
@@ -321,8 +321,8 @@ var emscriptenMemoryProfiler = {
     html += "<br />DYNAMIC memory area size: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE);
     html += ". DYNAMIC_BASE: " + toHex(DYNAMIC_BASE, width);
     html += ". DYNAMICTOP: " + toHex(DYNAMICTOP, width) + ".";
-    html += "<br />" + colorBar("#6699CC") + colorBar("#003366") + colorBar("#0000FF") + "DYNAMIC memory area used: " + this.formatBytes(this.totalMemoryAllocated) + " (" + (this.totalMemoryAllocated * 100 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
-    html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE - this.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + this.formatBytes(TOTAL_MEMORY - DYNAMICTOP) + " (" + ((TOTAL_MEMORY - DYNAMIC_BASE - this.totalMemoryAllocated) * 100 / (TOTAL_MEMORY - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
+    html += "<br />" + colorBar("#6699CC") + colorBar("#003366") + colorBar("#0000FF") + "DYNAMIC memory area used: " + this.formatBytes(this.totalMemoryAllocated) + " (" + (this.totalMemoryAllocated * 100 / (HEAP8.length - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
+    html += "<br />Free memory: " + colorBar("#70FF70") + "DYNAMIC: " + this.formatBytes(DYNAMICTOP - DYNAMIC_BASE - this.totalMemoryAllocated) + ", " + colorBar('#FFFFFF') + 'Unallocated HEAP: ' + this.formatBytes(HEAP8.length - DYNAMICTOP) + " (" + ((HEAP8.length - DYNAMIC_BASE - this.totalMemoryAllocated) * 100 / (HEAP8.length - DYNAMIC_BASE)).toFixed(2) + "% of all dynamic memory and unallocated heap)";
 
     var preloadedMemoryUsed = 0;
     for (i in this.sizeOfPreRunAllocatedPtr) preloadedMemoryUsed += this.sizeOfPreRunAllocatedPtr[i]|0;

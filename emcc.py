@@ -324,7 +324,11 @@ class JSOptimizer(object):
 
 
 def embed_memfile(options):
-  return shared.Settings.SINGLE_FILE or (shared.Settings.MEM_INIT_METHOD == 0 and (not shared.Settings.MAIN_MODULE and not shared.Settings.SIDE_MODULE and not use_source_map(options)))
+  return (shared.Settings.SINGLE_FILE or
+          (shared.Settings.MEM_INIT_METHOD == 0 and
+           (not shared.Settings.MAIN_MODULE and
+            not shared.Settings.SIDE_MODULE and
+            not use_source_map(options))))
 
 
 def apply_settings(changes):
@@ -360,9 +364,7 @@ def apply_settings(changes):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
-      if key in DEFERRED_RESPONSE_FILES:
-        value = '"' + value + '"'
-      else:
+      if key not in DEFERRED_RESPONSE_FILES:
         value = open(value[1:]).read()
     else:
       value = value.replace('\\', '\\\\')
@@ -374,6 +376,27 @@ def apply_settings(changes):
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
+
+
+def find_output_arg(args):
+  """Find and remove any -o arguments.  The final one takes precedence.
+  Return the final -o target along with the remaining (non-o) arguments.
+  """
+  outargs = []
+  specified_target = None
+  use_next = False
+  for arg in args:
+    if use_next:
+      specified_target = arg
+      use_next = False
+      continue
+    if arg == '-o':
+      use_next = True
+    elif arg.startswith('-o'):
+      specified_target = arg[2:]
+    else:
+      outargs.append(arg)
+  return specified_target, outargs
 
 
 #
@@ -400,8 +423,11 @@ def run(args):
   if DEBUG and LEAVE_INPUTS_RAW:
     logger.warning('leaving inputs raw')
 
-  EMCC_CXX = '--emscripten-cxx' in args
-  args = [x for x in args if x != '--emscripten-cxx']
+  if '--emscripten-cxx' in args:
+    run_via_emxx = True
+    args = [x for x in args if x != '--emscripten-cxx']
+  else:
+    run_via_emxx = False
 
   misc_temp_files = shared.configuration.get_temp_files()
 
@@ -449,7 +475,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print('emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) %s' % shared.EMSCRIPTEN_VERSION, file=sys.stderr)
-    code = run_process([shared.CLANG, '-v'], check=False).returncode
+    code = run_process([shared.CLANG_CC, '-v'], check=False).returncode
     shared.check_sanity(force=True)
     return code
 
@@ -483,6 +509,40 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
+  # Default to using C++ even when run as `emcc`.
+  # This means that emcc will act as a C++ linker when no source files are
+  # specified.  However, when a C source is specified we do default to C.
+  # This differs to clang and gcc where the default is always C unless run as
+  # clang++/g++.
+  use_cxx = True
+
+  def get_language_mode(args):
+    return_next = False
+    for item in args:
+      if return_next:
+        return item
+      if item == '-x':
+        return_next = True
+        continue
+      if item.startswith('-x'):
+        return item[2:]
+    return None
+
+  def has_c_source(args):
+    for a in args:
+      if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
+        return True
+    return False
+
+  language_mode = get_language_mode(args)
+  has_fixed_language_mode = language_mode is not None
+  if language_mode == 'c':
+    use_cxx = False
+
+  if not has_fixed_language_mode:
+    if not run_via_emxx and has_c_source(args):
+      use_cxx = False
+
   def is_minus_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
@@ -500,12 +560,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
   CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)# or 'CMakeCCompilerId' in ' '.join(args)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
-    debug_configure = 0 # XXX use this to debug configure stuff. ./configure's generally hide our normal output including stderr so we write to a file
+    # XXX use this to debug configure stuff. ./configure's generally hide our
+    # normal output including stderr so we write to a file
+    debug_configure = 0
 
-    # Whether we fake configure tests using clang - the local, native compiler - or not. if not we generate JS and use node with a shebang
-    # Neither approach is perfect, you can try both, but may need to edit configure scripts in some cases
-    # By default we configure in js, which can break on local filesystem access, etc., but is otherwise accurate so we
-    # disable this if we think we have to. A value of '2' here will force JS checks in all cases. In summary:
+    # Whether we fake configure tests using clang - the local, native compiler -
+    # or not. if not we generate JS and use node with a shebang
+    # Neither approach is perfect, you can try both, but may need to edit
+    # configure scripts in some cases
+    # By default we configure in js, which can break on local filesystem access,
+    # etc., but is otherwise accurate so we
+    # disable this if we think we have to. A value of '2' here will force JS
+    # checks in all cases. In summary:
     # 0 - use native compilation for configure checks
     # 1 - use js when we think it will work
     # 2 - always use js for configure checks
@@ -541,43 +607,49 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if debug_configure:
           open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
-    compiler = os.environ.get('CONFIGURE_CC') or (shared.CLANG if not use_js else shared.EMCC) # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    if not ('CXXCompiler' in ' '.join(args) or EMCC_CXX):
+    # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
+    compiler = os.environ.get('CONFIGURE_CC')
+    if not compiler:
+      compiler = shared.EMXX if use_js else shared.CLANG_CPP
+    if 'CXXCompiler' not in ' '.join(args) and not use_cxx:
       compiler = shared.to_cc(compiler)
 
     def filter_emscripten_options(argv):
-      idx = 0
       skip_next = False
-      for el in argv:
+      for idx, arg in enumerate(argv):
         if skip_next:
           skip_next = False
-          idx += 1
           continue
-        if not use_js and el == '-s' and is_minus_s_for_emcc(argv, idx): # skip -s X=Y if not using js for configure
+        if not use_js and arg == '-s' and is_minus_s_for_emcc(argv, idx):
+          # skip -s X=Y if not using js for configure
           skip_next = True
-        if not use_js and el == '--tracing':
-          pass
-        else:
-          yield el
-        idx += 1
+          continue
+        if use_js or arg != '--tracing':
+          yield arg
 
-    if compiler == shared.EMCC:
-      compiler = [shared.PYTHON, shared.EMCC]
+    if compiler in (shared.EMCC, shared.EMXX):
+      compiler = [shared.PYTHON, compiler]
     else:
       compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
     if not use_js:
       cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       if not shared.Settings.STRICT:
         cmd += ['-DEMSCRIPTEN']
     if use_js:
-      cmd += ['-s', 'NO_EXIT_RUNTIME=0'] # configure tests want a more shell-like style, where we emit return codes on exit()
-      cmd += ['-s', 'NODERAWFS=1'] # use node.js raw filesystem access, to behave just like a native executable
-      # Disable wasm in configuration checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
-      # to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
+      # configure tests want a more shell-like style, where we emit return codes on exit()
+      cmd += ['-s', 'NO_EXIT_RUNTIME=0']
+      # use node.js raw filesystem access, to behave just like a native executable
+      cmd += ['-s', 'NODERAWFS=1']
+      # Disable wasm in configuration checks so that (1) we do not depend on
+      # wasm support just for configuration (perhaps the user does not intend
+      # to build to wasm; using asm.js only depends on js which we need anyhow),
+      # and (2) we don't have issues with a separate .wasm file
       # on the side, async startup, etc..
-      cmd += ['-s', 'WASM=0']
+      if not shared.Settings.WASM_BACKEND:
+        cmd += ['-s', 'WASM=0']
 
     logger.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure:
@@ -585,49 +657,41 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if not use_js:
       return run_process(cmd, check=False).returncode
-    else:
-      only_object = '-c' in cmd
-      for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
-        if cmd[i] == '-o':
-          if not only_object:
-            cmd[i + 1] += '.js'
-          target = cmd[i + 1]
-          break
-      if not target:
-        target = 'a.out.js'
-      os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
-      ret = run_process(cmd, check=False).returncode
-      os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
-      if not os.path.exists(target):
-        # note that emcc -c will cause target to have the wrong value here;
-        # but then, we don't care about bitcode outputs anyhow, below, so
-        # skipping returning early is fine
-        return ret
-      if target.endswith('.js'):
-        shutil.copyfile(target, unsuffixed(target))
-        target = unsuffixed(target)
-      if not target.endswith(BITCODE_ENDINGS):
-        src = open(target).read()
-        full_node = ' '.join(shared.NODE_JS)
-        if os.path.sep not in full_node:
-          full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-        open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
-        try:
-          os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-        except:
-          pass # can fail if e.g. writing the executable to /dev/null
+
+    only_object = '-c' in cmd
+    for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified
+      if cmd[i] == '-o':
+        if not only_object:
+          cmd[i + 1] += '.js'
+        target = cmd[i + 1]
+        break
+    if not target:
+      target = 'a.out.js'
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = '1'
+    ret = run_process(cmd, check=False).returncode
+    os.environ['EMMAKEN_JUST_CONFIGURE_RECURSE'] = ''
+    if not os.path.exists(target):
+      # note that emcc -c will cause target to have the wrong value here;
+      # but then, we don't care about bitcode outputs anyhow, below, so
+      # skipping returning early is fine
       return ret
+    if target.endswith('.js'):
+      shutil.copyfile(target, unsuffixed(target))
+      target = unsuffixed(target)
+    if not target.endswith(BITCODE_ENDINGS):
+      src = open(target).read()
+      full_node = ' '.join(shared.NODE_JS)
+      if os.path.sep not in full_node:
+        full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
+      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      try:
+        os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
+      except:
+        pass # can fail if e.g. writing the executable to /dev/null
+    return ret
 
-  if os.environ.get('EMMAKEN_COMPILER'):
-    CXX = os.environ['EMMAKEN_COMPILER']
-  else:
-    CXX = shared.CLANG
-
+  CXX = os.environ.get('EMMAKEN_COMPILER', shared.CLANG_CPP)
   CC = shared.to_cc(CXX)
-
-  # If we got here from a redirection through em++.py, then force a C++ compiler here
-  if EMCC_CXX:
-    CC = CXX
 
   EMMAKEN_CFLAGS = os.environ.get('EMMAKEN_CFLAGS')
   if EMMAKEN_CFLAGS:
@@ -648,19 +712,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   # ---------------- End configs -------------
 
-  # Check if a target is specified
-  target = None
-  if any(arg.startswith('-o=') for arg in args):
-    raise Exception('Invalid syntax: do not use -o=X, use -o X')
+  # Check if a target is specified on the command line
+  specified_target, args = find_output_arg(args)
 
-  for i in reversed(range(len(args) - 1)): # Last -o directive should take precedence, if multiple are specified
-    if args[i] == '-o':
-      target = args[i + 1]
-      args = args[:i] + args[i + 2:]
-      break
+  # specified_target is the user-specified one, target is what we will generate
+  if specified_target:
+    target = specified_target
+  else:
+    target = 'a.out.js'
 
-  specified_target = target
-  target = specified_target if specified_target is not None else 'a.out.js' # specified_target is the user-specified one, target is what we will generate
   shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
   final_suffix = suffix(target)
@@ -684,8 +744,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  use_cxx = True
-
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -703,46 +761,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs[i] += newargs[i + 1]
         newargs[i + 1] = ''
 
-    def detect_fixed_language_mode(args):
-      check_next = False
-      for item in args:
-        if check_next:
-          if item in ('c++', 'c'):
-            return True
-          else:
-            check_next = False
-        if item.startswith('-x'):
-          lmode = item[2:] if len(item) > 2 else None
-          if lmode in ('c++', 'c'):
-            return True
-          else:
-            check_next = True
-            continue
-      return False
-
-    has_fixed_language_mode = detect_fixed_language_mode(newargs)
-
     options, settings_changes, newargs = parse_args(newargs)
 
-    for arg in newargs:
-      if arg == '-xc':
-        use_cxx = False
-        break
-      elif arg == '-xc++':
-        use_cxx = True
-        break
-      elif not arg.startswith('-'):
-        if arg.endswith(C_ENDINGS + OBJC_ENDINGS):
-          use_cxx = False
-
-    if not use_cxx:
-      options.default_cxx_std = '' # Compiling C code with .c files, don't enforce a default C++ std.
-
-    call = CXX if use_cxx else CC
-
-    # If user did not specify a default -std for C++ code, specify the emscripten default.
-    if options.default_cxx_std:
-      newargs = newargs + [options.default_cxx_std]
+    if use_cxx:
+      clang_compiler = CXX
+      # If user did not specify a default -std for C++ code, specify the emscripten default.
+      if options.default_cxx_std:
+        newargs += [options.default_cxx_std]
+    else:
+      # Compiling C code with .c files, don't enforce a default C++ std.
+      clang_compiler = CC
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -816,8 +844,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     has_header_inputs = False
     lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
                 shared.path_from_root('system', 'lib')]
-    for i in range(len(newargs)): # find input files XXX this a simple heuristic. we should really analyze based on a full understanding of gcc params,
-                                  # right now we just assume that what is left contains no more |-x OPT| things
+
+    # find input files this a simple heuristic. we should really analyze
+    # based on a full understanding of gcc params, right now we just assume that
+    # what is left contains no more |-x OPT| things
+    for i in range(len(newargs)):
       arg = newargs[i]
       if i > 0:
         prev = newargs[i - 1]
@@ -925,6 +956,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
+    wasm_source_map_target = wasm_binary_target + '.map'
 
     if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
       options.separate_asm = True
@@ -932,18 +964,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.separate_asm:
       shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
-    if 'EMCC_STRICT' in os.environ:
-      shared.Settings.STRICT = os.environ.get('EMCC_STRICT') != '0'
-
-    # Libraries are searched before settings_changes are applied, so apply the value for STRICT and ERROR_ON_MISSING_LIBRARIES from
-    # command line already now.
+    # Libraries are searched before settings_changes are applied, so apply the
+    # value for STRICT and ERROR_ON_MISSING_LIBRARIES from command line already
+    # now.
 
     def get_last_setting_change(setting):
       return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
 
     strict_cmdline = get_last_setting_change('STRICT')
     if strict_cmdline:
-      shared.Settings.STRICT = int(strict_cmdline[len('STRICT='):])
+      shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
     if shared.Settings.STRICT:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
@@ -1128,7 +1158,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.RELOCATABLE:
       assert shared.Settings.GLOBAL_BASE < 1
-      if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes:
+      if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes and not shared.Settings.WASM_BACKEND:
         shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
@@ -1395,8 +1425,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          passes += ['--post-emscripten']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
-            passes += ['--post-emscripten']
+            passes += ['--low-memory-unused']
           if options.debug_level < 3:
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
@@ -1417,9 +1448,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.BINARYEN_PASSES:
           shared.Settings.BINARYEN_PASSES += ','
         shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
-        # we also need emulated function pointers for that, as we need a single flat
-        # table, as is standard in wasm, and not asm.js split ones.
-        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+        if not shared.Settings.WASM_BACKEND:
+          # we also need emulated function pointers for that, as we need a single flat
+          # table, as is standard in wasm, and not asm.js split ones.
+          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
@@ -1538,8 +1570,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if specified_target:
           args += ['-o', specified_target]
         args = system_libs.process_args(args, shared.Settings)
-        logger.debug("running (for precompiled headers): " + call + ' ' + ' '.join(args))
-        return run_process([call] + args, check=False).returncode
+        logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
+        return run_process([clang_compiler] + args, check=False).returncode
 
       def get_bitcode_file(input_file):
         if final_suffix not in JS_CONTAINING_ENDINGS:
@@ -1564,9 +1596,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           options.debug_level = 4
           shared.Settings.DEBUG_LEVEL = 4
 
+      # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
+      if options.debug_level >= 3 and not shared.Settings.WASM:
+        newargs.append('-fno-discard-value-names')
+
       # Bitcode args generation code
       def get_clang_args(input_files):
-        args = [call] + newargs + input_files
+        args = [clang_compiler] + newargs + input_files
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
         # For fastcomp backend, no LLVM IR functions should ever be annotated
@@ -1828,7 +1864,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             save_intermediate('lto', 'bc')
             link_opts = []
           else:
-            # At minimum remove dead functions etc., this potentially saves a lot in the size of the generated code (and the time to compile it)
+            # At minimum remove dead functions etc., this potentially saves a
+            # lot in the size of the generated code (and the time to compile it)
             link_opts += shared.Building.get_safe_internalize() + ['-globaldce']
 
           if options.cfi:
@@ -1889,7 +1926,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
         if use_source_map(options):
-          shutil.move(wasm_temp + '.map', wasm_binary_target + '.map')
+          shutil.move(wasm_temp + '.map', wasm_source_map_target)
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
@@ -2164,7 +2201,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.WASM:
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                    wasm_text_target, misc_temp_files, optimizer)
+                    wasm_text_target, wasm_source_map_target, misc_temp_files,
+                    optimizer)
 
       if shared.Settings.MODULARIZE:
         modularize()
@@ -2216,6 +2254,10 @@ def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
   should_exit = False
+
+  def check_bad_eq(arg):
+    if '=' in arg:
+      exit_with_error('Invalid parameter (do not use "=" with "--" options)')
 
   for i in range(len(newargs)):
     # On Windows Vista (and possibly others), excessive spaces in the command line
@@ -2311,7 +2353,7 @@ def parse_args(newargs):
         options.default_cxx_std = '-std=c++11'
     elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
       # User specified a standard to use, clear Emscripten from specifying it.
-      options.default_cxx_std = ''
+      options.default_cxx_std = None
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       options.embed_files.append(newargs[i + 1])
@@ -2463,35 +2505,47 @@ def emterpretify(js_target, optimizer, options):
   global final
   optimizer.flush('pre-emterpretify')
   logger.debug('emterpretifying')
+  blacklist = shared.Settings.EMTERPRETIFY_BLACKLIST
+  whitelist = shared.Settings.EMTERPRETIFY_WHITELIST
+  synclist = shared.Settings.EMTERPRETIFY_SYNCLIST
+  if type(blacklist) == list:
+    blacklist = json.dumps(blacklist)
+  if type(whitelist) == list:
+    whitelist = json.dumps(whitelist)
+  if type(synclist) == list:
+    synclist = json.dumps(synclist)
+
+  args = [shared.PYTHON,
+          shared.path_from_root('tools', 'emterpretify.py'),
+          js_target,
+          final + '.em.js',
+          blacklist,
+          whitelist,
+          synclist,
+          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+  if shared.Settings.EMTERPRETIFY_ASYNC:
+    args += ['ASYNC=1']
+  if shared.Settings.EMTERPRETIFY_ADVISE:
+    args += ['ADVISE=1']
+  if options.profiling or options.profiling_funcs:
+    args += ['PROFILING=1']
+  if shared.Settings.ASSERTIONS:
+    args += ['ASSERTIONS=1']
+  if shared.Settings.PRECISE_F32:
+    args += ['FROUND=1']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    args += ['MEMORY_SAFE=1']
+  if shared.Settings.EMTERPRETIFY_FILE:
+    args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
+
   try:
     # move temp js to final position, alongside its mem init file
     shutil.move(final, js_target)
-    args = [shared.PYTHON,
-            shared.path_from_root('tools', 'emterpretify.py'),
-            js_target,
-            final + '.em.js',
-            json.dumps(shared.Settings.EMTERPRETIFY_BLACKLIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_WHITELIST),
-            json.dumps(shared.Settings.EMTERPRETIFY_SYNCLIST),
-            str(shared.Settings.SWAPPABLE_ASM_MODULE)]
-    if shared.Settings.EMTERPRETIFY_ASYNC:
-      args += ['ASYNC=1']
-    if shared.Settings.EMTERPRETIFY_ADVISE:
-      args += ['ADVISE=1']
-    if options.profiling or options.profiling_funcs:
-      args += ['PROFILING=1']
-    if shared.Settings.ASSERTIONS:
-      args += ['ASSERTIONS=1']
-    if shared.Settings.PRECISE_F32:
-      args += ['FROUND=1']
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      args += ['MEMORY_SAFE=1']
-    if shared.Settings.EMTERPRETIFY_FILE:
-      args += ['FILE="' + shared.Settings.EMTERPRETIFY_FILE + '"']
-    run_process(args)
-    final = final + '.em.js'
+    shared.check_call(args)
   finally:
     shared.try_delete(js_target)
+
+  final = final + '.em.js'
 
   if shared.Settings.EMTERPRETIFY_ADVISE:
     logger.warning('halting compilation due to EMTERPRETIFY_ADVISE')
@@ -2541,7 +2595,8 @@ def separate_asm_js(final, asm_target):
 
 
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
-                wasm_text_target, misc_temp_files, optimizer):
+                wasm_text_target, wasm_source_map_target, misc_temp_files,
+                optimizer):
   global final
   logger.debug('using binaryen')
   binaryen_bin = shared.Building.get_binaryen_bin()
@@ -2605,7 +2660,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       if debug_info:
         cmd += ['-g']
         if use_source_map(options):
-          cmd += ['--source-map=' + wasm_binary_target + '.map']
+          cmd += ['--source-map=' + wasm_source_map_target]
           cmd += ['--source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       logger.debug('wasm-as (text => binary): ' + ' '.join(cmd))
       shared.check_call(cmd)
@@ -2625,7 +2680,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g'] # preserve the debug info
-    logger.debug('wasm-opt on BINARYEN_PASSES: ' + ' '.join(cmd))
+    if use_source_map(options):
+      cmd += ['--input-source-map=' + wasm_source_map_target]
+      cmd += ['--output-source-map=' + wasm_source_map_target]
+      cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
+      if DEBUG:
+        shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
+    logger.debug('wasm-opt on BINARYEN_PASSES: %s', shared.Settings.BINARYEN_PASSES)
+    shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
     binaryen_scripts = os.path.join(shared.BINARYEN_ROOT, 'scripts')
@@ -2642,12 +2704,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
+
   # after generating the wasm, do some final operations
-  if shared.Settings.SIDE_MODULE:
+  if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
     wso = shared.WebAssembly.make_shared_library(final, wasm_binary_target, shared.Settings.RUNTIME_LINKED_LIBS)
-    # replace the wasm binary output with the dynamic library. TODO: use a specific suffix for such files?
+    # replace the wasm binary output with the dynamic library.
+    # TODO: use a specific suffix for such files?
     shutil.move(wso, wasm_binary_target)
-    if not shared.Settings.WASM_BACKEND and not DEBUG:
+    if not DEBUG:
       os.unlink(asm_target) # we don't need the asm.js, it can just confuse
 
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
@@ -3151,25 +3215,27 @@ def parse_value(text):
       text = text.rstrip()
       assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0], text)
       return text[1:-1]
-    else:
-      return text
+    return text
 
-  def parse_string_list_members(text, sep):
+  def parse_string_list_members(text):
+    sep = ','
     values = text.split(sep)
     result = []
     index = 0
     while True:
       current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
-      assert len(current), "string array should not contain an empty value"
+      if not len(current):
+        exit_with_error('string array should not contain an empty value')
       first = current[0]
       if not(first == "'" or first == '"'):
         result.append(current.rstrip())
       else:
         start = index
         while True: # Continue until closing quote found
-          assert index < len(values), "unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start])
+          if index >= len(values):
+            exit_with_error("unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start]))
           new = values[index].rstrip()
-          if not len(new) == 0 and new[-1] == first:
+          if new and new[-1] == first:
             if start == index:
               result.append(current.rstrip()[1:-1])
             else:
@@ -3184,23 +3250,22 @@ def parse_value(text):
         break
     return result
 
-  if text[0] == '[':
+  def parse_string_list(text):
     text = text.rstrip()
-    assert text[-1] == ']', 'unclosed opened string list. expected final character to be "]" in "%s"' % (text)
+    if text[-1] != ']':
+      exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
     inner = text[1:-1]
     if inner.strip() == "":
       return []
-    else:
-      return parse_string_list_members(inner, ",")
-  else:
-    try:
-      return int(text)
-    except ValueError:
-      return parse_string_value(text)
+    return parse_string_list_members(inner)
 
+  if text[0] == '[':
+    return parse_string_list(text)
 
-def check_bad_eq(arg):
-  assert '=' not in arg, 'Invalid parameter (do not use "=" with "--" options)'
+  try:
+    return int(text)
+  except ValueError:
+    return parse_string_value(text)
 
 
 def validate_arg_level(level_string, max_level, err_msg, clamp=False):
