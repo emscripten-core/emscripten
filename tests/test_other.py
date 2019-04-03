@@ -32,7 +32,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
-from runner import RunnerCore, path_from_root, no_wasm_backend, only_wasm_backend
+from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
@@ -9128,7 +9128,7 @@ int main () {
       self.set_setting('WASM', 0)
       self.do_run(src, 'SAFE_HEAP load: ')
 
-  @only_wasm_backend('iprintf/__small_printf are wasm-backend-only features')
+  @no_fastcomp('iprintf/__small_printf are wasm-backend-only features')
   def test_mini_printfs(self):
     def test(code):
       with open('src.c', 'w') as f:

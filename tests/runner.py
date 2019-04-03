@@ -138,7 +138,7 @@ def no_wasm_backend(note=''):
   return decorated
 
 
-def only_wasm_backend(note=''):
+def no_fastcomp(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note, negate=True)
   return decorated
