@@ -1091,9 +1091,14 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
-        path, location = self.path.split('|', 1)
+        # tests may encode the result and their own location as result|location
+        if '|' in self.path:
+          path, location = self.path.split('|', 1)
+        else:
+          path = self.path
+          location = '?'
         if DEBUG:
-          print('[server response:', path, location']')
+          print('[server response:', path, location, ']')
         if out_queue.empty():
           out_queue.put(path)
         else:
