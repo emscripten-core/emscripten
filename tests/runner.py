@@ -1274,7 +1274,9 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-    open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
+    with open(os.path.join(self.get_dir(), 'reftest.js'), 'w') as out:
+      with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
+        out.write(reporting.read() + '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
