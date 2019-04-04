@@ -4221,14 +4221,7 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_strtold(self):
-    if not self.is_wasm_backend():
-      # XXX add real support for long double
-      expected_file = 'test_strtod.out'
-    else:
-      expected_file = 'test_strtold.out'
-    src = open(path_from_root('tests', 'core', 'test_strtold.c')).read()
-    expected = open(path_from_root('tests', 'core', expected_file)).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtold')
 
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')

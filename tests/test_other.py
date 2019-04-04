@@ -32,7 +32,7 @@ from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WIND
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
-from runner import RunnerCore, path_from_root, no_wasm_backend
+from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
@@ -7926,9 +7926,9 @@ int main() {
       self.run_metadce_test('minimal.c', *args)
 
     if self.is_wasm_backend():
-      run([],      11, [], ['waka'],  9336,  5, 13, 16) # noqa
-      run(['-O1'],  9, [], ['waka'],  8095,  2, 12, 10) # noqa
-      run(['-O2'],  9, [], ['waka'],  8077,  2, 12, 10) # noqa
+      run([],      11, [], ['waka'],  9211,  5, 13, 16) # noqa
+      run(['-O1'],  9, [], ['waka'],  7886,  2, 12, 10) # noqa
+      run(['-O2'],  9, [], ['waka'],  7871,  2, 12, 10) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       run(['-O3'],  0, [], [],          85,  0,  2,  2) # noqa
       run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
@@ -7948,28 +7948,28 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  33, 562) # noqa
+      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 561) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,   36, 534) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,  37, 537) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                  34, ['abort'], ['waka'], 186423,  28,   37, 516) # noqa
+                   34, ['abort'], ['waka'], 186423,  28,  38, 518) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 26641, 10,  15, 62) # noqa
-      run(['-O1'], 14, [], ['waka'], 10668,  8,  14, 29) # noqa
-      run(['-O2'], 14, [], ['waka'], 10490,  8,  14, 24) # noqa
-      run(['-O3'],  5, [], [],        2453,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  5, [], [],        2408,  7,   3, 15) # noqa
-      run(['-Oz'],  5, [], [],        2367,  7,   2, 14) # noqa
+      run([],      16, [], ['waka'], 22185, 10,  17, 55) # noqa
+      run(['-O1'], 14, [], ['waka'], 10415,  8,  14, 29) # noqa
+      run(['-O2'], 14, [], ['waka'], 10183,  8,  14, 24) # noqa
+      run(['-O3'],  5, [], [],        2353,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  5, [], [],        2310,  7,   3, 15) # noqa
+      run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1) # noqa
     else:
-      run([],      20, ['abort'], ['waka'], 42701,  20,   14, 49) # noqa
+      run([],      22, ['abort'], ['waka'], 42701,  22,   16, 54) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
       run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 26) # noqa
       run(['-O3'],  6, [],        [],        2443,   9,    2, 14) # noqa; in -O3, -Os and -Oz we metadce
@@ -7980,7 +7980,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1537, [],        [],      226403,  28,   93, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1539, [],        [],      226403,  28,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -9127,3 +9127,30 @@ int main () {
     if not self.is_wasm_backend():
       self.set_setting('WASM', 0)
       self.do_run(src, 'SAFE_HEAP load: ')
+
+  @no_fastcomp('iprintf/__small_printf are wasm-backend-only features')
+  def test_mini_printfs(self):
+    def test(code):
+      with open('src.c', 'w') as f:
+        f.write('''
+          #include <stdio.h>
+          int main() {
+            volatile void* unknown_value;
+            %s
+          }
+        ''' % code)
+      run_process([PYTHON, EMCC, 'src.c', '-O1'])
+      return os.path.getsize('a.out.wasm')
+
+    i = test('printf("%d", *(int*)unknown_value);')
+    f = test('printf("%f", *(double*)unknown_value);')
+    lf = test('printf("%Lf", *(long double*)unknown_value);')
+    both = test('printf("%d", *(int*)unknown_value); printf("%Lf", *(long double*)unknown_value);')
+    print(i, f, lf, both)
+
+    # iprintf is much smaller than printf with float support
+    assert f - 3400 <= i <= f - 3000
+    # __small_printf is somewhat smaller than printf with long double support
+    assert lf - 900 <= f <= lf - 500
+    # both is a little bigger still
+    assert both - 100 <= lf <= both - 50
