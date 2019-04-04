@@ -1364,6 +1364,9 @@ class BrowserCore(RunnerCore):
       }
 ''' % (basename, int(manually_trigger)))
 
+  def run_emcc_for_btest(self, args):
+    run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
+
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
@@ -1395,11 +1398,10 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    args += ['--pre-js', path_from_root('tests', 'browser_reporting.js')]
-    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
+    all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
-    run_process(all_args)
+    self.run_emcc_for_btest(all_args)
     self.assertExists(outfile)
     if post_build:
       post_build()
