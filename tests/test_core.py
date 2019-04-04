@@ -5522,7 +5522,7 @@ return malloc(size);
     assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       # flip for some more coverage here
-      self.set_setting('ALIASING_FUNCTION_POINTERS', 1)
+      self.set_setting('ALIASING_FUNCTION_POINTERS', 1 - self.get_setting('ALIASING_FUNCTION_POINTERS'))
 
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(open(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'rb').read()))
