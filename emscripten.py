@@ -754,6 +754,9 @@ class Memory():
     #  * then dynamic memory begins
     self.dynamic_base = align_memory(self.stack_high)
 
+    if self.dynamic_base >= shared.Settings.TOTAL_MEMORY:
+     exit_with_error('Memory is not large enough for static data (%d) plus the stack (%d), please increase TOTAL_MEMORY (%d) to at least %d' % (self.static_bump, shared.Settings.TOTAL_STACK, shared.Settings.TOTAL_MEMORY, self.dynamic_base))
+
 
 def apply_memory(js):
   # Apply the statically-at-compile-time computed memory locations.
@@ -1552,7 +1555,11 @@ def create_basic_funcs(function_table_sigs, invoke_function_names):
     if asm_safe_heap():
       basic_funcs += ['segfault', 'alignfault', 'ftfault']
     else:
+      # Binaryen generates calls to these two so they are always needed with wasm
+      if shared.Settings.WASM:
+        basic_funcs += ['segfault', 'alignfault']
       basic_funcs += ['SAFE_HEAP_LOAD', 'SAFE_HEAP_LOAD_D', 'SAFE_HEAP_STORE', 'SAFE_HEAP_STORE_D', 'SAFE_FT_MASK']
+
   if shared.Settings.ASSERTIONS:
     for sig in function_table_sigs:
       basic_funcs += ['nullFunc_' + sig]
@@ -2214,6 +2221,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--separate-data-segments=' + memfile)
   if not shared.Settings.SIDE_MODULE:
     cmd.append('--initial-stack-pointer=%d' % Memory().stack_base)
+  shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')

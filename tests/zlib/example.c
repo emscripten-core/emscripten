@@ -525,7 +525,7 @@ int main(argc, argv)
         exit(1);
 
     } else if (strcmp(zlibVersion(), ZLIB_VERSION) != 0) {
-        fprintf(stderr, "warning: different zlib version\n");
+        fprintf(stderr, "warning: different zlib version (%s, %s)\n", zlibVersion(), ZLIB_VERSION);
     }
 
     printf("zlib version %s = %d, compile flags = %lu\n",

@@ -2449,14 +2449,14 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
       browser_cmd = shlex.split(EMTEST_BROWSER)
       browser_path = browser_cmd[0]
-      args += ['--browser', browser_path]
+      args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
         browser_args = browser_cmd[1:]
         if 'firefox' in browser_path and '-profile' in browser_args:
@@ -2465,18 +2465,22 @@ void *getBindBuffer() {
           parser.add_argument('-profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
-          args += ['--browser_args', ' ' + ' '.join(browser_args)]
-    args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
-    proc = run_process(args, check=False)
-    stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
-    stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
-    assert proc.returncode == 100
-    assert 'argc: 4' in stdout
-    assert 'argv[3]: --3' in stdout
-    assert 'hello, world!' in stdout
-    assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
-    assert 'Testing char sequences: %20%21 &auml;' in stdout
-    assert 'hello, error stream!' in stderr
+          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+    for args in [
+        args_base,
+        args_base + ['--no_private_browsing']
+    ]:
+      args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+      proc = run_process(args, check=False)
+      stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
+      stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
+      assert proc.returncode == 100
+      assert 'argc: 4' in stdout
+      assert 'argv[3]: --3' in stdout
+      assert 'hello, world!' in stdout
+      assert 'Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~' in stdout
+      assert 'Testing char sequences: %20%21 &auml;' in stdout
+      assert 'hello, error stream!' in stderr
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
@@ -2983,6 +2987,10 @@ Module['onRuntimeInitialized'] = function() {
 
     run_process([PYTHON, EMCC, 'sdl2_mouse.c', '-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify', '0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
     self.run_browser('page.html', '', '/report_result?1')
+
+  @requires_threads
+  def test_sdl2_threads(self):
+      self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_graphics_hardware
   def test_sdl2glshader(self):
@@ -3665,7 +3673,11 @@ window.close = function() {
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    def run(debug):
+       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'LIBRARY_DEBUG=%d' % debug])
+
+    run(debug=True)
+    run(debug=False)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads

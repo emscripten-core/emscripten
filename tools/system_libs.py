@@ -872,7 +872,12 @@ class Ports(object):
           Ports.clear_project_build(name)
           return
 
-    fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
+    if is_tarbz2:
+      fullpath = fullname + '.tar.bz2'
+    elif url.endswith('.tar.gz'):
+      fullpath = fullname + '.tar.gz'
+    else:
+      fullpath = fullname + '.zip'
 
     if name not in Ports.name_cache: # only mention each port once in log
       logger.debug('including port: ' + name)
@@ -899,6 +904,8 @@ class Ports(object):
     def check_tag():
       if is_tarbz2:
         names = tarfile.open(fullpath, 'r:bz2').getnames()
+      elif url.endswith('.tar.gz'):
+        names = tarfile.open(fullpath, 'r:gz').getnames()
       else:
         names = zipfile.ZipFile(fullpath, 'r').namelist()
 
@@ -909,8 +916,15 @@ class Ports(object):
     def unpack():
       logger.warning('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+
+      # TODO: Someday when we are using Python 3, we might want to change the
+      # code below to use shlib.unpack_archive
+      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
+      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
       if is_tarbz2:
         z = tarfile.open(fullpath, 'r:bz2')
+      elif url.endswith('.tar.gz'):
+        z = tarfile.open(fullpath, 'r:gz')
       else:
         z = zipfile.ZipFile(fullpath, 'r')
       try:
@@ -919,6 +933,7 @@ class Ports(object):
         z.extractall()
       finally:
         os.chdir(cwd)
+
       State.unpacked = True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
@@ -944,24 +959,6 @@ class Ports(object):
         Ports.clear_project_build(name)
     finally:
       shared.Cache.release_cache_lock()
-
-  @staticmethod
-  def build_project(name, subdir, configure, generated_libs, post_create=None):
-    def create():
-      logger.info('building port: ' + name + '...')
-      port_build_dir = Ports.get_build_dir()
-      shared.safe_ensure_dirs(port_build_dir)
-      libs = shared.Building.build_library(name, port_build_dir, None,
-                                           generated_libs,
-                                           source_dir=os.path.join(Ports.get_dir(), name, subdir),
-                                           copy_project=True,
-                                           configure=configure,
-                                           make=['make', '-j' + str(shared.Building.get_num_cores())])
-      assert len(libs) == 1
-      if post_create:
-        post_create()
-      return libs[0]
-    return shared.Cache.get(name, create)
 
   @staticmethod
   def clear_project_build(name):
