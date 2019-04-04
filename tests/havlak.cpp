@@ -770,11 +770,11 @@ int main(int argc, char **argv) {
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {
     case 0: return 0; break;
-    case 1: NUM = 3; break;
-    case 2: NUM = 10; break;
-    case 3: NUM = 20; break;
-    case 4: NUM = 30; break;
-    case 5: NUM = 50; break;
+    case 1: NUM = 10; break;
+    case 2: NUM = 30; break;
+    case 3: NUM = 60; break;
+    case 4: NUM = 100; break;
+    case 5: NUM = 150; break;
     default: printf("error: %d\\n", arg); return -1;
   }
 
