@@ -10,13 +10,10 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
+  static bool reported = false;
+  if (reported) return;
   EM_ASM({
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", "http://localhost:8888/report_result?1");
-    xhr.onload = xhr.onerror = function() {
-      window.close();
-    };
-    xhr.send();
+    reportResultToServer(1);
   });
 }
 
