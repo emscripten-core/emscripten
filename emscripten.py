@@ -2132,8 +2132,12 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
+
   pre = apply_memory(pre)
   pre = apply_static_code_hooks(pre)
+
+  if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
+    pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
 
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
@@ -2354,7 +2358,7 @@ return real_%(mangled)s.apply(null, arguments);
 
 def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
-
+  receiving += create_named_globals(metadata)
   module = []
   module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
@@ -2376,6 +2380,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     raise
 
   metadata = {
+    'aliases': {},
     'declares': [],
     'implementedFunctions': [],
     'externs': [],
@@ -2385,6 +2390,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'tableSize': 0,
     'initializers': [],
     'exports': [],
+    'namedGlobals': {},
     'emJsFuncs': {},
     'asmConsts': {},
     'invokeFuncs': [],
