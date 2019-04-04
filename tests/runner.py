@@ -1255,6 +1255,7 @@ class BrowserCore(RunnerCore):
           self.assertIdentical(expectedResult, output)
       finally:
         time.sleep(0.1) # see comment about Windows above
+      assert self.harness_out_queue.empty(), 'no excessive results should be reported to the test harness (last time we check this)'
     else:
       webbrowser.open_new(os.path.abspath(html_file))
       print('A web browser window should have opened a page containing the results of a part of this test.')
@@ -1318,11 +1319,7 @@ class BrowserCore(RunnerCore):
               }
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?' + wrong);
-            xhr.send();
-            if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+            reportResultToServer(wrong);
           };
           actualImage.src = actualUrl;
         }
@@ -1365,13 +1362,14 @@ class BrowserCore(RunnerCore):
           setTimeout(realDoReftest, 1);
         };
       }
-''' % (self.port, basename, int(manually_trigger)))
+''' % (basename, int(manually_trigger)))
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
+    assert expected or reference, 'a btest must either expect an output, or have a reference image'
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
