@@ -1114,6 +1114,9 @@ def harness_server_func(in_queue, out_queue, port):
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
           # later tests, or maybe the test sends more than one in a racy manner)
+          # note that by placing 'None' in the queue, since if we raise an exception here it
+          # is just swallowed in python's webserver code
+          out_queue.put(None) # note a horrible error
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
@@ -1242,6 +1245,10 @@ class BrowserCore(RunnerCore):
         if not received_output:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+        if output is None:
+          # the browser harness reported an error already, and sent a None to tell
+          # us to also fail the test
+          raise Exception('failing test due to browser harness error')
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
@@ -1390,7 +1397,7 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    args += ['--pre-js', path_from_root('tests', 'browser_error_reporting.js')]
+    args += ['--pre-js', path_from_root('tests', 'browser_reporting.js')]
     all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
