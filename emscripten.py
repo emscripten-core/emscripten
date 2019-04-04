@@ -2132,7 +2132,6 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
        'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
-
   pre = apply_memory(pre)
   pre = apply_static_code_hooks(pre)
 
