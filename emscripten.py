@@ -2439,8 +2439,7 @@ def create_invoke_wrappers(invoke_funcs):
 def treat_as_user_function(name):
   library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
                                  'stackSave', 'stackRestore',
-                                 'establishStackSpace', '__growWasmMemory',
-                                 '__heap_base', '__data_end')
+                                 'establishStackSpace', '__growWasmMemory')
   if name.startswith('dynCall_'):
     return False
   if name in library_functions_in_module:
