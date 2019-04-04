@@ -152,7 +152,9 @@ this.onmessage = function(e) {
         URL.revokeObjectURL(objectUrl);
       }
 #if MODULARIZE
+#if !MODULARIZE_INSTANCE
       Module = {{{ EXPORT_NAME }}}(Module);
+#endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
 #endif

@@ -3581,9 +3581,13 @@ window.close = function() {
   # Test that basic thread creation works.
   @requires_threads
   def test_pthread_create(self):
-    for opt in [['-O0'], ['-O3']]:
-      print(str(opt))
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=opt + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    def test(args):
+      print(args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
+
+    test([])
+    test(['-O3'])
+    test(['-s', 'MODULARIZE_INSTANCE=1'])
 
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
