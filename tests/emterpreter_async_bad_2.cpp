@@ -10,9 +10,9 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
-  static bool reported = false;
-  if (reported) return;
   EM_ASM({
+    if (Module.reported) return;
+    Module.reported = true;
     reportResultToServer(1);
   });
 }
@@ -33,15 +33,12 @@ int main() {
   EM_ASM({
     window.onerror = function(err) {
       var str = err.toString();
-      assert(err.toString().indexOf("This error happened during an emterpreter-async operation") > 0, "expect good error message");
+      assert(err.toString().indexOf("This error happened during an emterpreter-async operation") > 0, "expect good error message (" + str + ')');
       assert(str.indexOf('-12') > 0, '-12 error from emterpreter-async');
       // manually REPORT_RESULT; we can't call back into native code at this point, assertions would trigger
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", "http://localhost:8888/report_result?2");
-      xhr.onload = xhr.onerror = function() {
-        window.close();
-      };
-      xhr.send();
+      if (Module.reported) return;
+      Module.reported = true;
+      reportResultToServer(2);
     };
   });
 
