@@ -1276,7 +1276,7 @@ class BrowserCore(RunnerCore):
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
     with open(os.path.join(self.get_dir(), 'reftest.js'), 'w') as out:
       with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
-        out.write(reporting.read() + '''
+        out.write('''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -1321,7 +1321,15 @@ class BrowserCore(RunnerCore):
               }
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-            reportResultToServer(wrong);
+            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
+            if (typeof reportResultToServer === 'undefined') {
+              (function() {
+                %s
+                reportResultToServer(wrong);
+              })();
+            } else {
+              reportResultToServer(wrong);
+            }
           };
           actualImage.src = actualUrl;
         }
@@ -1364,7 +1372,7 @@ class BrowserCore(RunnerCore):
           setTimeout(realDoReftest, 1);
         };
       }
-''' % (basename, int(manually_trigger)))
+''' % (reporting.read(), basename, int(manually_trigger)))
 
   def run_emcc_for_btest(self, args):
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
