@@ -2213,16 +2213,12 @@ void *getBindBuffer() {
     create_test_file('post.js', '''
       var assert = function(check, text) {
         if (!check) {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'http://localhost:%s/report_result?9');
-          xhr.onload = function() {
-            window.close();
-          };
-          xhr.send();
+          console.log('assert failed: ' + text);
+          maybeReportResultToServer(9);
         }
       }
       Module._note(4); // this happens too early! and is overwritten when the mem init arrives
-    ''' % self.port)
+    ''')
 
     # with assertions, we notice when memory was written to too early
     self.btest('mem_init.cpp', expected='9', args=['-s', 'WASM=0', '--pre-js', 'pre.js', '--post-js', 'post.js', '--memory-init-file', '1'])
