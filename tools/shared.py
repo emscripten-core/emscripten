@@ -1826,6 +1826,8 @@ class Building(object):
         '--import-table',
         '--export',
         '__wasm_call_ctors',
+        '--export',
+        '__data_end',
         '--lto-O%d' % lto_level,
     ] + args
 
