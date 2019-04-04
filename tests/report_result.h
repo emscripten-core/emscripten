@@ -25,7 +25,7 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
   // Only report one result per test, even if the test misbehaves and tries to report more.
   static int reported = 0;
   if (reported) {
-    EM_ASM({ throw "too many reported results from " + window.location + ", not sending " + $0 }, result);
+    EM_ASM({ throw "too many reported results from " + ('' + window.location).substr(0, 80) + ", not sending " + $0 }, result);
     return;
   }
   reported = 1;
@@ -35,7 +35,7 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
     var xhr = new XMLHttpRequest();
     var result = $0;
     if (Module['pageThrewException']) result = 12345;
-    xhr.open('GET', 'http://localhost:' + $2 + '/report_result?' + result + '|' + window.location, !$1);
+    xhr.open('GET', 'http://localhost:' + $2 + '/report_result?' + result + '|' + ('' + window.location).substr(0, 80), !$1);
     xhr.send();
     if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
   }, result, sync, EMTEST_PORT_NUMBER);

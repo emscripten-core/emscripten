@@ -1601,7 +1601,7 @@ keydown(100);keyup(100); // trigger the end
       print(cmd)
       subprocess.check_call(cmd)
       self.assertExists('worker.js')
-      self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20|' + ('data%20for%20w' if file_data else '') + '|')
+      self.run_browser('main.html', '', '/report_result?hello%20from%20worker,%20and%20:' + ('data%20for%20w' if file_data else '') + ':')
 
   def test_worker(self):
     self.do_test_worker()
