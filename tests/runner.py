@@ -1100,7 +1100,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
-        # tests may encode the result and their own location as result|location
+        # for debugging, tests may encode the result and their own location as result|location
         if '|' in self.path:
           path, location = self.path.split('|', 1)
         else:
