@@ -1222,7 +1222,7 @@ class BrowserCore(RunnerCore):
     if not self.harness_out_queue.empty():
       while not self.harness_out_queue.empty():
         self.harness_out_queue.get()
-      raise Exception('excessive responses from %s')
+      raise Exception('excessive responses from %s' % who)
 
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     if not has_browser():
