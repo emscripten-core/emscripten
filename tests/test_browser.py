@@ -4330,24 +4330,21 @@ window.close = function() {
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
+  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
-      # Note that this test may not pass on Chrome until 75, due to https://bugs.chromium.org/p/v8/issues/detail?id=9062
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB'] + emcc_args, also_asmjs=False)
 
     run()
     run(['-s', 'MODULARIZE_INSTANCE=1'])
-    # TODO: enable when  self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=9065  is fixed
-    # run(['-s', 'PROXY_TO_PTHREAD=1'])
+    run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
+  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
   @requires_threads
   def test_pthread_growth(self):
-    self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
-
     def run(emcc_args=[]):
-      # Note that this test may not pass on Chrome until 75, due to https://bugs.chromium.org/p/v8/issues/detail?id=9062
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB', '-g'] + emcc_args, also_asmjs=False)
 
     run()
