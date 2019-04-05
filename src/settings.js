@@ -1025,10 +1025,6 @@ var BINARYEN_TRAP_MODE = "allow";
 // passes we would normally run.
 var BINARYEN_PASSES = "";
 
-// A list of flags to pass to each binaryen invocation (like wasm-opt, etc.),
-// which can contain things like features.
-var BINARYEN_FEATURES = [];
-
 // Set the maximum size of memory in the wasm module (in bytes).  Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
 // growth is enabled, the default value here (-1) is to have no limit, but you
@@ -1392,6 +1388,10 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 // is retained. Minification requires at least -O1 or -Os to be used. Pass -s MINIFY_HTML=0
 // to explicitly choose to disable HTML minification altogether.
 var MINIFY_HTML = 1;
+
+// A list of feature flags to pass to each binaryen invocation (like wasm-opt, etc.). This
+// is received from wasm-emscripten-finalize, which reads it from the features section.
+var BINARYEN_FEATURES = [];
 
 // Legacy settings that have been removed, and the values they are now fixed to.
 // These can no longer be changed:
