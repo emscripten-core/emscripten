@@ -5887,6 +5887,9 @@ function safeHeap(ast) {
   });
 }
 
+// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// pthreads + memory growth to work (we check if the memory was grown on another thread
+// in each access), see #8365.
 function growableHeap(ast) {
   traverse(ast, function(node, type) {
     var heap, ptr;
