@@ -2493,10 +2493,6 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
-    elif newargs[i] == '-mbleeding-edge':
-      shared.Settings.BINARYEN_FEATURES += ['--all-features']
-    elif newargs[i] == '-mnontrapping-fptoint':
-      shared.Settings.BINARYEN_FEATURES += ['--enable-nontrapping-float-to-int']
 
   if should_exit:
     sys.exit(0)
