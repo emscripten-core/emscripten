@@ -29,7 +29,7 @@ from tools import shared, jsrun
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 3
+TEST_REPS = 5
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -72,24 +72,25 @@ class Benchmarker(object):
   def display(self, baseline=None):
     # speed
 
-    if baseline == self:
-      baseline = None
-    mean = sum(self.times) / len(self.times)
-    squared_times = [x * x for x in self.times]
-    mean_of_squared = sum(squared_times) / len(self.times)
-    std = math.sqrt(mean_of_squared - mean * mean)
-    sorted_times = self.times[:]
-    sorted_times.sort()
-    median = sum(sorted_times[len(sorted_times) // 2 - 1:len(sorted_times) // 2 + 1]) / 2
+    if self.times:
+      if baseline == self:
+        baseline = None
+      mean = sum(self.times) / len(self.times)
+      squared_times = [x * x for x in self.times]
+      mean_of_squared = sum(squared_times) / len(self.times)
+      std = math.sqrt(mean_of_squared - mean * mean)
+      sorted_times = self.times[:]
+      sorted_times.sort()
+      median = sum(sorted_times[len(sorted_times) // 2 - 1:len(sorted_times) // 2 + 1]) / 2
 
-    print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
+      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
 
-    if baseline:
-      mean_baseline = sum(baseline.times) / len(baseline.times)
-      final = mean / mean_baseline
-      print('  Relative: %.2f X slower' % final)
-    else:
-      print()
+      if baseline:
+        mean_baseline = sum(baseline.times) / len(baseline.times)
+        final = mean / mean_baseline
+        print('  Relative: %.2f X slower' % final)
+      else:
+        print()
 
     # size
 
@@ -302,33 +303,21 @@ void webMain() {
 
 
 # Benchmarkers
-benchmarkers = [
-  NativeBenchmarker('clang', CLANG_CC, CLANG),
-  # NativeBenchmarker('gcc',   'gcc',    'g++')
-]
+
+benchmarkers = []
+
+if CLANG_CC and CLANG:
+  benchmarkers += [
+    # NativeBenchmarker('clang', CLANG_CC, CLANG),
+    # NativeBenchmarker('gcc',   'gcc',    'g++')
+  ]
 if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
-    # EmscriptenBenchmarker('sm-asmjs', SPIDERMONKEY_ENGINE, ['-s', 'WASM=0']),
-    # EmscriptenBenchmarker('sm-asm2wasm',  SPIDERMONKEY_ENGINE + ['--no-wasm-baseline'], []),
-    # EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
-    #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-    # }),
-    # EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
-    #  'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-    # }),
+    # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
   ]
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
-    EmscriptenBenchmarker('v8-asmjs', V8_ENGINE, ['-s', 'WASM=0']),
-    EmscriptenBenchmarker('v8-asm2wasm',  V8_ENGINE, env={
-     'LLVM': os.path.expanduser('~/Dev/fastcomp/build/bin'),
-    }),
-    EmscriptenBenchmarker('v8-wasmbc',  V8_ENGINE, env={
-     'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-    }),
-    EmscriptenBenchmarker('v8-wasmobj',  V8_ENGINE, ['-s', 'WASM_OBJECT_FILES=1'], env={
-     'LLVM': os.path.expanduser('~/Dev/llvm/build/bin'),
-    }),
+    EmscriptenBenchmarker('v8', V8_ENGINE),
   ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
@@ -449,7 +438,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -487,7 +476,7 @@ class benchmark(RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
+    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
 
   def zzztest_files(self):
     src = r'''
@@ -601,11 +590,11 @@ class benchmark(RunnerCore):
         int arg = argc > 1 ? argv[1][0] - '0' : 3;
         switch(arg) {
           case 0: return 0; break;
-          case 1: arg = 75; break;
-          case 2: arg = 625; break;
-          case 3: arg = 1250; break;
-          case 4: arg = 5*1250; break;
-          case 5: arg = 10*1250; break;
+          case 1: arg = 5*75; break;
+          case 2: arg = 5*625; break;
+          case 3: arg = 5*1250; break;
+          case 4: arg = 5*5*1250; break;
+          case 5: arg = 5*10*1250; break;
           default: printf("error: %d\\n", arg); return -1;
         }
 
@@ -629,7 +618,7 @@ class benchmark(RunnerCore):
         return sum;
       }
     '''
-    self.do_benchmark('ifs', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('ifs', src, 'ok')
 
   def test_conditionals(self):
     src = r'''
@@ -665,7 +654,7 @@ class benchmark(RunnerCore):
         return x;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=1'])
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -803,7 +792,7 @@ class benchmark(RunnerCore):
   def test_linpack(self):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
-      return 100.0 / float(mflops)
+      return 10000.0 / float(mflops)
     self.do_benchmark('linpack_double', open(path_from_root('tests', 'linpack2.c')).read(), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
