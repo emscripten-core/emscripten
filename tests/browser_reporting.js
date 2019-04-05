@@ -27,7 +27,7 @@ function reportErrorToServer(message) {
 if (typeof window === 'object' && window) {
   window.addEventListener('error', function(e) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', encodeURI('http://localhost:8888?exception=' + e + ' from ' + ('' + window.location).substr(0, 80)));
+    xhr.open('GET', encodeURI('http://localhost:8888?exception=' + e.message + ' / ' + e.target + ' from ' + ('' + window.location).substr(0, 80)));
     xhr.send();
   });
 }
