@@ -4019,7 +4019,7 @@ window.close = function() {
     os.makedirs('cdn')
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
-    subprocess.check_call([PYTHON, EMCC, 'src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
+    self.run_emcc_for_btest(['src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
     shutil.move('test.wasm', os.path.join('cdn', 'test.wasm'))
     self.run_browser('test.html', '', '/report_result?0')
 
@@ -4375,12 +4375,12 @@ window.close = function() {
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
 
     for wasm_enabled in [True, False]:
-      args = [PYTHON, EMCC, 'src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
+      args = ['src.cpp', '-o', 'test.js', '-s', 'SINGLE_FILE=1']
 
       if wasm_enabled:
         args += ['-s', 'WASM=1']
 
-      run_process(args)
+      self.run_emcc_for_btest(args)
 
       create_test_file('test.html', '''
         <script>
@@ -4430,7 +4430,7 @@ window.close = function() {
       }
     '''))
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
-    subprocess.check_output([PYTHON, EMCC, 'main.cpp', '--shell-file', 'shell.html', '-o', 'test.html'])
+    self.run_emcc_for_btest(['main.cpp', '--shell-file', 'shell.html', '-o', 'test.html'])
     self.run_browser('test.html', None, '/report_result?0')
 
   # Tests the functionality of the emscripten_thread_sleep() function.
