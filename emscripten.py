@@ -2394,6 +2394,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'emJsFuncs': {},
     'asmConsts': {},
     'invokeFuncs': [],
+    'features': [],
   }
 
   assert 'tableSize' in metadata_json.keys()
