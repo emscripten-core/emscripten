@@ -1025,6 +1025,10 @@ var BINARYEN_TRAP_MODE = "allow";
 // passes we would normally run.
 var BINARYEN_PASSES = "";
 
+// A list of flags to pass to each binaryen invocation (like wasm-opt, etc.),
+// which can contain things like features.
+var BINARYEN_FEATURES = [];
+
 // Set the maximum size of memory in the wasm module (in bytes).  Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
 // growth is enabled, the default value here (-1) is to have no limit, but you

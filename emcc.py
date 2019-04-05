@@ -2493,6 +2493,10 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
+    elif newargs[i] == '-mbleeding-edge':
+      shared.Settings.BINARYEN_FEATURES += ['--all-features']
+    elif newargs[i] == '-mnontrapping-fptoint':
+      shared.Settings.BINARYEN_FEATURES += ['--enable-nontrapping-float-to-int']
 
   if should_exit:
     sys.exit(0)
@@ -2686,7 +2690,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       if DEBUG:
         shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
-    logger.debug('wasm-opt on BINARYEN_PASSES: %s', shared.Settings.BINARYEN_PASSES)
+    logger.debug('wasm-opt on BINARYEN_PASSES: %s', cmd)
     shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
