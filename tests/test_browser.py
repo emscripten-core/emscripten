@@ -679,8 +679,8 @@ If manually bisecting:
     for mem in [0, 1]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        run_process([
-          PYTHON, EMCC, 'sdl_image.c', '-o', 'page.html', '-O2', '-lSDL', '-lGL', '--memory-init-file', str(mem),
+        self.run_emcc_for_btest([
+          'sdl_image.c', '-o', 'page.html', '-O2', '-lSDL', '-lGL', '--memory-init-file', str(mem),
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '--use-preload-plugins'
         ])
         self.run_browser('page.html', '', '/report_result?600')
@@ -688,8 +688,8 @@ If manually bisecting:
   def test_sdl_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
     create_test_file('sdl_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl_image.c')).read()))
-    run_process([
-      PYTHON, EMCC, 'sdl_image_jpeg.c', '-o', 'page.html', '-lSDL', '-lGL',
+    self.run_emcc_for_btest([
+      'sdl_image_jpeg.c', '-o', 'page.html', '-lSDL', '-lGL',
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins'
     ])
     self.run_browser('page.html', '', '/report_result?600')
@@ -2796,8 +2796,8 @@ Module['onRuntimeInitialized'] = function() {
     for mem in [0, 1]:
       for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                       ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
-        run_process([
-          PYTHON, EMCC, 'sdl2_image.c', '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
+        self.run_emcc_for_btest([
+          'sdl2_image.c', '-o', 'page.html', '-O2', '--memory-init-file', str(mem),
           '--preload-file', dest, '-DSCREENSHOT_DIRNAME="' + dirname + '"', '-DSCREENSHOT_BASENAME="' + basename + '"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--use-preload-plugins'
         ])
         self.run_browser('page.html', '', '/report_result?600')
@@ -2806,8 +2806,8 @@ Module['onRuntimeInitialized'] = function() {
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpeg')
     create_test_file('sdl2_image_jpeg.c', self.with_report_result(open(path_from_root('tests', 'sdl2_image.c')).read()))
-    run_process([
-      PYTHON, EMCC, 'sdl2_image_jpeg.c', '-o', 'page.html',
+    self.run_emcc_for_btest([
+      'sdl2_image_jpeg.c', '-o', 'page.html',
       '--preload-file', 'screenshot.jpeg', '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
     self.run_browser('page.html', '', '/report_result?600')
