@@ -101,11 +101,14 @@ def has_browser():
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition, explanation=''):
+def skip_if(func, condition, explanation='', negate=False):
   explanation_str = ' : %s' % explanation if explanation else ''
 
   def decorated(self):
-    if self.__getattribute__(condition)():
+    choice = self.__getattribute__(condition)()
+    if negate:
+      choice = not choice
+    if choice:
       self.skipTest(condition + explanation_str)
     func(self)
 
@@ -132,6 +135,12 @@ def is_slow_test(func):
 def no_wasm_backend(note=''):
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note)
+  return decorated
+
+
+def no_fastcomp(note=''):
+  def decorated(f):
+    return skip_if(f, 'is_wasm_backend', note, negate=True)
   return decorated
 
 
@@ -1016,7 +1025,7 @@ class RunnerCore(unittest.TestCase):
   def get_freetype_library(self):
     self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
 
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1043,7 +1052,7 @@ class RunnerCore(unittest.TestCase):
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
 
     return poppler + freetype
 
