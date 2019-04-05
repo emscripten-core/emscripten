@@ -37,7 +37,7 @@ var wasmTable;
 var wasmModule;
 
 #if MODULARIZE
-// In modularize mode the wasmMemory and others are received in an onmessage, and that
+// In pthreads mode the wasmMemory and others are received in an onmessage, and that
 // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
 // it to a local so it can be used normally.
 if (ENVIRONMENT_IS_PTHREAD) {

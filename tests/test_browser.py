@@ -4338,6 +4338,8 @@ window.close = function() {
 
     run()
     run(['-s', 'MODULARIZE_INSTANCE=1'])
+    # TODO: enable when  self.skipTest('https://bugs.chromium.org/p/v8/issues/detail?id=9065  is fixed
+    # run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
   @requires_threads
@@ -4349,7 +4351,8 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB', '-g'] + emcc_args, also_asmjs=False)
 
     run()
-    run(emcc_args=['-s', 'ASSERTIONS=1'])
+    run(['-s', 'ASSERTIONS=1'])
+    run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
