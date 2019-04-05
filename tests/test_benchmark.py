@@ -72,7 +72,7 @@ class Benchmarker(object):
   def display(self, baseline=None):
     # speed
 
-    if len(self.times) > 0:
+    if self.times:
       if baseline == self:
         baseline = None
       mean = sum(self.times) / len(self.times)
