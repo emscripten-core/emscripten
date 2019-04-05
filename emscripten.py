@@ -686,6 +686,7 @@ def update_settings_glue(metadata):
 
   if shared.Settings.WASM_BACKEND:
     shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
+    shared.Settings.BINARYEN_FEATURES = metadata['features']
 
 
 # static code hooks
