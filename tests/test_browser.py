@@ -176,7 +176,7 @@ class browser(BrowserCore):
     # sourceContent when the maps are relative paths
     try_delete(html_file)
     try_delete(html_file + '.map')
-    self.run_emcc_for_btest(['src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'], cwd=self.get_dir())
+    self.run_emcc_for_btest(['src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'])
     self.assertExists(html_file)
     self.assertExists(html_file + '.map')
     webbrowser.open_new('file://' + html_file)
@@ -2491,7 +2491,7 @@ void *getBindBuffer() {
 
     # First run tests in Node and/or SPIDERMONKEY using run_js. Use closure compiler so we can check that
     # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    self.run_emcc_for_btest(['-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'], stdout=PIPE, stderr=PIPE)
+    self.run_emcc_for_btest(['-O2', '--closure', '1', path_from_root('tests', 'uuid', 'test.c'), '-o', 'test.js', '-luuid'])
 
     test_js_closure = open('test.js').read()
 

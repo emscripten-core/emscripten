@@ -1223,6 +1223,7 @@ class BrowserCore(RunnerCore):
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
+    assert self.harness_out_queue.empty(), 'no excessive results should be reported to the test harness (first time we check this)'
     if DEBUG:
       print('[browser launch:', html_file, ']')
     if expectedResult is not None:
