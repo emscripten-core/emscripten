@@ -1116,7 +1116,7 @@ def harness_server_func(in_queue, out_queue, port):
           # later tests, or maybe the test sends more than one in a racy manner)
           # note that by placing 'None' in the queue, since if we raise an exception here it
           # is just swallowed in python's webserver code
-          out_queue.put(None) # note a horrible error
+          out_queue.put(None)
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
@@ -1218,12 +1218,18 @@ class BrowserCore(RunnerCore):
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
 
+  def assert_out_queue_empty(self, who):
+    if not self.harness_out_queue.empty():
+      while not self.harness_out_queue.empty():
+        self.harness_out_queue.get()
+      raise Exception('excessive responses from %s')
+
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
-    assert self.harness_out_queue.empty(), 'no excessive results should be reported to the test harness (first time we check this)'
+    self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
     if expectedResult is not None:
@@ -1256,7 +1262,7 @@ class BrowserCore(RunnerCore):
           self.assertIdentical(expectedResult, output)
       finally:
         time.sleep(0.1) # see comment about Windows above
-      assert self.harness_out_queue.empty(), 'no excessive results should be reported to the test harness (last time we check this)'
+      self.assert_out_queue_empty('this test')
     else:
       webbrowser.open_new(os.path.abspath(html_file))
       print('A web browser window should have opened a page containing the results of a part of this test.')
