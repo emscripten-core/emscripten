@@ -1153,6 +1153,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # directory we use.
     shared.reconfigure_cache()
 
+    if shared.Settings.ASSERTIONS and shared.Settings.MINIMAL_RUNTIME:
+      # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array() (which are not JS library functions), both
+      # use warnOnce(), which in MINIMAL_RUNTIME is a JS library function, so explicitly have to mark dependency to warnOnce()
+      # in that case. If string functions are turned to library functions in the future, then JS dependency tracking can be
+      # used and this special directive can be dropped.
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
+
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
