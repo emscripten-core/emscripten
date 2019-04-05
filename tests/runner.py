@@ -1113,9 +1113,11 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
-          # later tests, or maybe the test sends more than one in a racy manner)
-          # note that by placing 'None' in the queue, since if we raise an exception here it
-          # is just swallowed in python's webserver code
+          # later tests, or maybe the test sends more than one in a racy manner).
+          # we place 'None' in the queue here so that the outside knows something went wrong
+          # (none is not a valid value otherwise; and we need the outside to know because if we
+          # raise an error in here, it is just swallowed in python's webserver code - we want
+          # the test to actually fail, which a webserver response can't do).
           out_queue.put(None)
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
