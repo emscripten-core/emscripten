@@ -3339,7 +3339,7 @@ window.close = function() {
       create_test_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
       # no wasm, since this tests customizing total memory at runtime
-      self.run_emcc_for_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file', '-g1'] + opts)
+      self.run_emcc_for_btest(['test.c', '-s', 'WASM=0', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts)
       create_test_file('a.html', '''
         <script src="a.out.js"></script>
         <script>
