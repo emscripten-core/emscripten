@@ -86,15 +86,10 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import shared
 
-DEBUG = os.environ.get('EMCC_DEBUG')
-if DEBUG == "0":
-  DEBUG = None
-
 QUIET = (__name__ != '__main__')
 
 def show(msg):
-  global QUIET, DEBUG
-  if DEBUG or not QUIET:
+  if shared.DEBUG or not QUIET:
     sys.stderr.write('gen_struct_info: ' + msg + '\n')
 
 # Try to load pycparser.
@@ -393,7 +388,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-Oz', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-s', 'WASM=0', '-Wno-format']
+  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-s', 'WASM=0', '-Wno-format']
   if shared.Settings.WASM_OBJECT_FILES:
     cmd += ['-s', 'WASM_OBJECT_FILES=1']
 

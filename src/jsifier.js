@@ -124,8 +124,12 @@ function JSify(data, functionsOnly) {
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
     if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
-      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}';
+      snippet = modifyFunction(snippet, function(name, args, body) {
+        return 'function ' + name + '(' + args + ') {\n' +
+               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                body +
+                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+      });
     }
     return snippet;
   }
@@ -278,16 +282,10 @@ function JSify(data, functionsOnly) {
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          var hasArgs = original.length > 0;
-          if (hasArgs) {
-            // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);\n');
-          } else {
-            // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');\n');
-          }
-          if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
-          contentText = processedSnippet;
+          contentText = modifyFunction(snippet, function(name, args, body) {
+            return 'function ' + name + '(' + args + ') {\n' +
+                   'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
+          });
           proxiedFunctionTable.push(finalName);
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
