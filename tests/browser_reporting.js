@@ -7,10 +7,11 @@ function reportResultToServer(result, sync, port) {
   reportResultToServer.reported = true;
 
   var xhr = new XMLHttpRequest();
-  if (typeof Module === 'object' && Module && Module['pageThrewException']) result = 12345;
+  var hasModule = typeof Module === 'object' && Module;
+  if (hasModule && Module['pageThrewException']) result = 12345;
   xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
   xhr.send();
-  if (typeof window === 'object' && window && typeof Module === 'object' && Module && !Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+  if (typeof window === 'object' && window && hasModule && !Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
 }
 
 function maybeReportResultToServer(result, sync, port) {
