@@ -1025,7 +1025,7 @@ class RunnerCore(unittest.TestCase):
   def get_freetype_library(self):
     self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
 
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'))
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1052,7 +1052,7 @@ class RunnerCore(unittest.TestCase):
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--enable-shared=no'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
 
     return poppler + freetype
 

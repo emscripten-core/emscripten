@@ -35,7 +35,8 @@ def run_commands(commands):
       call_process(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
     pool.map_async(call_process, commands, chunksize=1).get(999999)
@@ -485,24 +486,24 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return o
 
   def create_wasm_rt_lib(libname, files):
+    # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
+    # it includes the builtin symbols that the LTO complication can generate.
+    # It seems that LTO as implemented by lld assumes that builtins do not
+    # take part in LTO.
+    # TODO(sbc): If we ever fix https://bugs.llvm.org/show_bug.cgi?id=41384 then
+    # this restriction can be removed.
     o_s = []
     commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
-      # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([
-        shared.CLANG_CC,
-        '--target={}'.format(shared.WASM_TARGET),
-        '-mthread-model', 'single', '-c',
-        shared.path_from_root('system', 'lib', src),
-        '-O2', '-fno-builtin', '-o', o] +
-        musl_internal_includes() +
-        shared.COMPILER_OPTS)
+      commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
+                       '-c', shared.path_from_root('system', 'lib', src),
+                       '-s', 'WASM_OBJECT_FILES=1',
+                       '-o', o] + musl_internal_includes())
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
-    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
+    shared.Building.emar('cr', lib, o_s)
     return lib
 
   def create_wasm_compiler_rt(libname):
@@ -804,7 +805,7 @@ class Ports(object):
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
       objects.append(obj)
 
     run_commands(commands)
