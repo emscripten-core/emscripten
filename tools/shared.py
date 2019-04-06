@@ -2688,6 +2688,7 @@ class Building(object):
       ret += ['--enable-threads']
     if Settings.SIMD:
       ret += ['--enable-simd']
+    ret += Settings.BINARYEN_FEATURES
     return ret
 
   @staticmethod
