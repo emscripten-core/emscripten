@@ -1389,6 +1389,10 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 // to explicitly choose to disable HTML minification altogether.
 var MINIFY_HTML = 1;
 
+// A list of feature flags to pass to each binaryen invocation (like wasm-opt, etc.). This
+// is received from wasm-emscripten-finalize, which reads it from the features section.
+var BINARYEN_FEATURES = [];
+
 // Legacy settings that have been removed, and the values they are now fixed to.
 // These can no longer be changed:
 // [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
