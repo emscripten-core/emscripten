@@ -4329,6 +4329,28 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
+  # Tests memory growth in pthreads mode, but still on the main thread.
+  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
+  @requires_threads
+  def test_pthread_growth_mainthread(self):
+    def run(emcc_args=[]):
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth_mainthread.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB'] + emcc_args, also_asmjs=False)
+
+    run()
+    run(['-s', 'MODULARIZE_INSTANCE=1'])
+    run(['-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Tests memory growth in a pthread.
+  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
+  @requires_threads
+  def test_pthread_growth(self):
+    def run(emcc_args=[]):
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_memory_growth.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=32MB', '-s', 'WASM_MEM_MAX=256MB', '-g'] + emcc_args, also_asmjs=False)
+
+    run()
+    run(['-s', 'ASSERTIONS=1'])
+    run(['-s', 'PROXY_TO_PTHREAD=1'])
+
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
   def test_load_js_from_blob_with_pthreads(self):

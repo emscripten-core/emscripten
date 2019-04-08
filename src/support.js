@@ -22,6 +22,9 @@ function staticAlloc(size) {
 function dynamicAlloc(size) {
 #if ASSERTIONS
   assert(DYNAMICTOP_PTR);
+#if USE_PTHREADS
+  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
+#endif
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;

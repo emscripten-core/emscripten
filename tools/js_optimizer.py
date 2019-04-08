@@ -325,8 +325,6 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     if cleanup:
       passes = [p for p in passes if p != 'cleanup'] # we will do it manually
 
-    split_memory = 'splitMemory' in passes
-
   if not minify_globals:
     with ToolchainProfiler.profile_block('js_optimizer.no_minify_globals'):
       pre = js[:start_funcs + len(start_funcs_marker)]
@@ -456,7 +454,8 @@ EMSCRIPTEN_FUNCS();
     for filename in filenames: temp_files.note(filename)
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
-    if closure or cleanup or split_memory:
+    wasm_pthreads_memory_growth = shared.Settings.WASM and shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH
+    if closure or cleanup or wasm_pthreads_memory_growth:
       # run on the shell code, everything but what we js-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
@@ -470,10 +469,15 @@ EMSCRIPTEN_FUNCS();
           f.write(cl_sep)
           f.write(post_2)
         cld = cle
-        if split_memory:
-          if DEBUG: print('running splitMemory on shell code', file=sys.stderr)
-          cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'splitMemoryShell'])
-          with open(cld, 'a') as f:
+        if wasm_pthreads_memory_growth:
+          if DEBUG: print('supporting wasm memory growth with pthreads', file=sys.stderr)
+          cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'growableHeap'])
+          with open(cld, 'r') as f:
+            src = f.read()
+          with open(cld, 'w') as f:
+            with open(shared.path_from_root('src', 'growableHeap.js')) as g:
+              f.write(g.read() + '\n')
+            f.write(src)
             f.write(suffix_marker)
         if closure:
           if DEBUG: print('running closure on shell code', file=sys.stderr)
