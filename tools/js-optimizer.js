@@ -5887,6 +5887,76 @@ function safeHeap(ast) {
   });
 }
 
+// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// pthreads + memory growth to work (we check if the memory was grown on another thread
+// in each access), see #8365.
+function growableHeap(ast) {
+  traverse(ast, function(node, type) {
+    var heap, ptr;
+    if (type === 'assign') {
+      if (node[1] === true && node[2][0] === 'sub') {
+        heap = node[2][1][1];
+        ptr = fixPtr(node[2][2], heap);
+        var value = node[3];
+        // GROWABLE_HEAP_STORE(ptr, value, bytes, isFloat)
+        switch (heap) {
+          case 'HEAP8':   case 'HEAPU8': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I8'], [ptr, value]];
+          }
+          case 'HEAP16':  case 'HEAPU16': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I16'], [ptr, value]];
+          }
+          case 'HEAP32':  case 'HEAPU32': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_I32'], [ptr, value]];
+          }
+          case 'HEAPF32': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F32'], [ptr, value]];
+          }
+          case 'HEAPF64': {
+            return ['call', ['name', 'GROWABLE_HEAP_STORE_F64'], [ptr, value]];
+          }
+          default: {}
+        }
+      }
+    } else if (type === 'sub') {
+      var target = node[1][1];
+      if (target[0] === 'H') {
+        // heap access
+        heap = target;
+        ptr = fixPtr(node[2], heap);
+        // GROWABLE_HEAP_LOAD(ptr, bytes, isFloat)
+        switch (heap) {
+          case 'HEAP8': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I8'], [ptr]];
+          }
+          case 'HEAPU8': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U8'], [ptr]];
+          }
+          case 'HEAP16': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I16'], [ptr]];
+          }
+          case 'HEAPU16': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U16'], [ptr]];
+          }
+          case 'HEAP32': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_I32'], [ptr]];
+          }
+          case 'HEAPU32': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_U32'], [ptr]];
+          }
+          case 'HEAPF32': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_F32'], [ptr]];
+          }
+          case 'HEAPF64': {
+            return ['call', ['name', 'GROWABLE_HEAP_LOAD_F64'], [ptr]];
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
 function fixPtrSlim(ptr, heap, shell) {
   switch (heap) {
     case 'HEAP8':   case 'HEAPU8': {
@@ -8010,6 +8080,7 @@ var passes = {
   relocate: relocate,
   outline: outline,
   safeHeap: safeHeap,
+  growableHeap: growableHeap,
   splitMemory: splitMemory,
   splitMemoryShell: splitMemoryShell,
   optimizeFrounds: optimizeFrounds,
