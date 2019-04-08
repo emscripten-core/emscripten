@@ -117,8 +117,4 @@ int main()
   glClearColor(0.3f,0.3f,0.3f,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 3);
-
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
 }
