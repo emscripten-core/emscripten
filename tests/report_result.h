@@ -27,6 +27,13 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
   }, result, sync, EMTEST_PORT_NUMBER);
 }
 
+static void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
+{
+  EM_ASM({
+    maybeReportResultToServer($0, $1, $2);
+  }, result, sync, EMTEST_PORT_NUMBER);
+}
+
 #if __EMSCRIPTEN_PTHREADS__
   #include <emscripten/threading.h>
   #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
@@ -34,6 +41,8 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
 #else
   #define REPORT_RESULT(result) _ReportResult((result), 0)
   #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+  #define MAYBE_REPORT_RESULT(result) _MaybeReportResult((result), 0)
+  #define MAYBE_REPORT_RESULT_SYNC(result) _MaybeReportResult((result), 1)
 #endif
 
 #else

@@ -49,7 +49,7 @@ int main()
     result = 1;
 #endif
     // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    EM_ASM({ maybeReportResultToServer($0) }, result);
+    MAYBE_REPORT_RESULT(result);
 #endif
   };
 
@@ -89,7 +89,7 @@ int main()
     result = 1;
 #endif
     // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    EM_ASM({ maybeReportResultToServer($0) }, result);
+    MAYBE_REPORT_RESULT(result);
 #endif
   };
 

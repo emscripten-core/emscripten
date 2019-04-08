@@ -10,11 +10,7 @@
 extern "C" {
 
 void EMSCRIPTEN_KEEPALIVE finish(int result) {
-  EM_ASM({
-    if (Module.reported) return;
-    Module.reported = true;
-    reportResultToServer(1);
-  });
+  MAYBE_REPORT_RESULT(1);
 }
 
 void __attribute__((noinline)) emterped() {

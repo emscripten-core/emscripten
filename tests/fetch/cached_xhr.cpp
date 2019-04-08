@@ -25,7 +25,7 @@ void fetchFromIndexedDB()
 
 #ifdef REPORT_RESULT
     // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    EM_ASM({ maybeReportResultToServer(1) });
+    MAYBE_REPORT_RESULT(1);
 #endif
 
   };

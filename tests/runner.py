@@ -1383,7 +1383,7 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def run_emcc_for_btest(self, args):
+  def compile_btest(self, args):
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
@@ -1420,7 +1420,7 @@ class BrowserCore(RunnerCore):
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
-    self.run_emcc_for_btest(all_args)
+    self.compile_btest(all_args)
     self.assertExists(outfile)
     if post_build:
       post_build()

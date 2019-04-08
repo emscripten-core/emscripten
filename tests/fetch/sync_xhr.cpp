@@ -31,7 +31,7 @@ int main()
     if (result == 0) result = 1;
 #ifdef REPORT_RESULT
     // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    EM_ASM({ maybeReportResultToServer($0) }, result);
+    MAYBE_REPORT_RESULT(result);
 #endif
   };
 
@@ -54,7 +54,7 @@ int main()
     printf("emscripten_fetch() failed to run synchronously!\n");
   }
 #ifdef REPORT_RESULT
-    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
-    EM_ASM({ maybeReportResultToServer($0) }, result);
+  // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
+  MAYBE_REPORT_RESULT(result);
 #endif
 }
