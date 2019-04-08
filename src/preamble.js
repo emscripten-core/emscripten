@@ -35,7 +35,16 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-#endif
+
+#if MODULARIZE
+// In pthreads mode the wasmMemory and others are received in an onmessage, and that
+// onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
+// it to a local so it can be used normally.
+if (ENVIRONMENT_IS_PTHREAD) {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
+#endif // USE_PTHREADS
 
 //========================================
 // Runtime essentials
