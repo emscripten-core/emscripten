@@ -878,6 +878,14 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
     if key in all_exported_functions or export_all or (export_bindings and key.startswith('_emscripten_bind')):
       funcs.add(key)
 
+  if not export_all:
+    for name, alias in metadata['aliases'].items():
+      # here we export the aliases,
+      # if not the side module (which imports the alias)
+      # will not be able to get to the actual implementation
+      if alias in all_implemented and name in all_exported_functions:
+        funcs.add(alias)
+
   funcs = list(funcs) + global_initializer_funcs(metadata['initializers'])
 
   if not shared.Settings.ONLY_MY_CODE:
