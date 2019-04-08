@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
     N is the problem size.
 */
-# define N 1000
+# define N 2000
 # define LDA ( N + 1 )
 
   double *a;
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   printf ( "  Matrix order N               = %d\n", N );
   printf ( "  Leading matrix dimension LDA = %d\n", LDA );
 
-  ops = ( double ) ( 2 * N * N * N ) / 3.0 + 2.0 * ( double ) ( N * N );
+  ops = ( double ) ( 2.0 * N * N * N ) / 3.0 + 2.0 * ( double ) ( N * N );
 /*
   Allocate space for arrays.
 */

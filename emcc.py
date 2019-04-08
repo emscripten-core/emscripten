@@ -1337,7 +1337,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Always build with STRICT mode enabled
       shared.Settings.STRICT = 1
 
-      # Always use the new HTML5 API event target lookup rules (TODO: enable this when the other PR lands)
+      # Always use the new HTML5 API event target lookup rules
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
 
       # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
@@ -2686,7 +2686,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       if DEBUG:
         shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
-    logger.debug('wasm-opt on BINARYEN_PASSES: %s', shared.Settings.BINARYEN_PASSES)
+    logger.debug('wasm-opt on BINARYEN_PASSES: %s', cmd)
     shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
