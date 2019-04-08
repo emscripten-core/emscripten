@@ -1100,16 +1100,26 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
+        # for debugging, tests may encode the result and their own url (window.location) as result|url
+        if '|' in self.path:
+          path, url = self.path.split('|', 1)
+        else:
+          path = self.path
+          url = '?'
         if DEBUG:
-          print('[server response:', self.path, ']')
+          print('[server response:', path, url, ']')
         if out_queue.empty():
-          out_queue.put(self.path)
+          out_queue.put(path)
         else:
           # a badly-behaving test may send multiple xhrs with reported results; we just care
           # about the first (if we queued the others, they might be read as responses for
-          # later tests, or maybe the test sends more than one in a racy manner)
-          if DEBUG:
-            raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
+          # later tests, or maybe the test sends more than one in a racy manner).
+          # we place 'None' in the queue here so that the outside knows something went wrong
+          # (none is not a valid value otherwise; and we need the outside to know because if we
+          # raise an error in here, it is just swallowed in python's webserver code - we want
+          # the test to actually fail, which a webserver response can't do).
+          out_queue.put(None)
+          raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
@@ -1117,7 +1127,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
-      elif 'stdout=' in self.path or 'stderr=' in self.path:
+      elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
@@ -1126,10 +1136,7 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        if DEBUG:
-          print('[server logging:', urllib.unquote_plus(self.path), ']')
-      elif 'exception=' in self.path:
-        print('[client exception:', urllib.unquote_plus(self.path), ']')
+        print('[client logging:', urllib.unquote_plus(self.path), ']')
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1213,11 +1220,18 @@ class BrowserCore(RunnerCore):
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
 
+  def assert_out_queue_empty(self, who):
+    if not self.harness_out_queue.empty():
+      while not self.harness_out_queue.empty():
+        self.harness_out_queue.get()
+      raise Exception('excessive responses from %s' % who)
+
   def run_browser(self, html_file, message, expectedResult=None, timeout=None):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
+    self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
     if expectedResult is not None:
@@ -1240,12 +1254,17 @@ class BrowserCore(RunnerCore):
         if not received_output:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+        if output is None:
+          # the browser harness reported an error already, and sent a None to tell
+          # us to also fail the test
+          raise Exception('failing test due to browser harness error')
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
           self.assertIdentical(expectedResult, output)
       finally:
         time.sleep(0.1) # see comment about Windows above
+      self.assert_out_queue_empty('this test')
     else:
       webbrowser.open_new(os.path.abspath(html_file))
       print('A web browser window should have opened a page containing the results of a part of this test.')
@@ -1264,7 +1283,9 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
     shutil.copyfile(expected, os.path.join(self.get_dir(), basename))
-    open(os.path.join(self.get_dir(), 'reftest.js'), 'w').write('''
+    with open(os.path.join(self.get_dir(), 'reftest.js'), 'w') as out:
+      with open(path_from_root('tests', 'browser_reporting.js')) as reporting:
+        out.write('''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -1309,11 +1330,15 @@ class BrowserCore(RunnerCore):
               }
             }
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?' + wrong);
-            xhr.send();
-            if (wrong < 10 /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
+            if (typeof reportResultToServer === 'undefined') {
+              (function() {
+                %s
+                reportResultToServer(wrong);
+              })();
+            } else {
+              reportResultToServer(wrong);
+            }
           };
           actualImage.src = actualUrl;
         }
@@ -1356,13 +1381,17 @@ class BrowserCore(RunnerCore):
           setTimeout(realDoReftest, 1);
         };
       }
-''' % (self.port, basename, int(manually_trigger)))
+''' % (reporting.read(), basename, int(manually_trigger)))
+
+  def compile_btest(self, args):
+    run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
             reference_slack=0, manual_reference=False, post_build=None,
             args=[], outfile='test.html', message='.', also_proxied=False,
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
+    assert expected or reference, 'a btest must either expect an output, or have a reference image'
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -1388,11 +1417,10 @@ class BrowserCore(RunnerCore):
       self.reftest(path_from_root('tests', reference), manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
-    args += ['--pre-js', path_from_root('tests', 'browser_error_reporting.js')]
-    all_args = [PYTHON, EMCC, '-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
+    all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
     # print('all args:', all_args)
     try_delete(outfile)
-    run_process(all_args)
+    self.compile_btest(all_args)
     self.assertExists(outfile)
     if post_build:
       post_build()

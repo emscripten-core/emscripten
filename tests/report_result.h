@@ -22,19 +22,15 @@
 
 static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
 {
-  printf("result: %d\n", result);
   EM_ASM({
-    // Only report one result per test, even if the test misbehaves and tries to report more.
-    if (Module['__reportedResult']) {
-      throw 'trying to report more than one result!';
-    }
-    Module['__reportedResult'] = true;
-    var xhr = new XMLHttpRequest();
-    var result = $0;
-    if (Module['pageThrewException']) result = 12345;
-    xhr.open('GET', 'http://localhost:' + $2 + '/report_result?' + result, !$1);
-    xhr.send();
-    if (!Module['pageThrewException'] /* for easy debugging, don't close window on failure */) setTimeout(function() { window.close() }, 1000);
+    reportResultToServer($0, $1, $2);
+  }, result, sync, EMTEST_PORT_NUMBER);
+}
+
+static void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
+{
+  EM_ASM({
+    maybeReportResultToServer($0, $1, $2);
   }, result, sync, EMTEST_PORT_NUMBER);
 }
 
@@ -42,9 +38,13 @@ static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
   #include <emscripten/threading.h>
   #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
   #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
+  #define MAYBE_REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _MaybeReportResult, (result), 0)
+  #define MAYBE_REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _MaybeReportResult, (result), 1)
 #else
   #define REPORT_RESULT(result) _ReportResult((result), 0)
   #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
+  #define MAYBE_REPORT_RESULT(result) _MaybeReportResult((result), 0)
+  #define MAYBE_REPORT_RESULT_SYNC(result) _MaybeReportResult((result), 1)
 #endif
 
 #else
