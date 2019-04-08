@@ -1667,7 +1667,7 @@ keydown(100);keyup(100); // trigger the end
     # vs. os.path.join(self.get_dir(), filename)
     # vs. path_from_root('tests', 'hello_world_gles.c')
     self.compile_btest([path_from_root('tests', c_source_filename), '-g', '-s', 'SMALL_XHR_CHUNKS=1', '-o', worker_filename,
-                             '--pre-js', prejs_filename])
+                        '--pre-js', prejs_filename])
     chunkSize = 1024
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
@@ -1699,9 +1699,9 @@ keydown(100);keyup(100); // trigger the end
     for full_es2 in [0, 1, 2]:
       print(full_es2)
       self.compile_btest([path_from_root('tests', 'hello_world_gles%s.c' % es2_suffix[full_es2]), '-o', 'something.html',
-                               '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1', '-lGL', '-lglut',
-                               '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
-                              (['-s', 'FULL_ES2=1'] if full_es2 else []))
+                          '-DHAVE_BUILTIN_SINCOS', '-s', 'GL_TESTING=1', '-lGL', '-lglut',
+                          '--shell-file', path_from_root('tests', 'hello_world_gles_shell.html')] +
+                         (['-s', 'FULL_ES2=1'] if full_es2 else []))
       self.run_browser('something.html', 'You should see animating gears.', '/report_gl_result?true')
 
   @requires_graphics_hardware
