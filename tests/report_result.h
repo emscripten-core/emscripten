@@ -38,6 +38,8 @@ static void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
   #include <emscripten/threading.h>
   #define REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 0)
   #define REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _ReportResult, (result), 1)
+  #define MAYBE_REPORT_RESULT(result) emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _MaybeReportResult, (result), 0)
+  #define MAYBE_REPORT_RESULT_SYNC(result) emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, _MaybeReportResult, (result), 1)
 #else
   #define REPORT_RESULT(result) _ReportResult((result), 0)
   #define REPORT_RESULT_SYNC(result) _ReportResult((result), 1)
