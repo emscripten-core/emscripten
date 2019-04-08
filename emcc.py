@@ -1040,11 +1040,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
       if 'WASM_OBJECT_FILES=1' in settings_changes:
-        logger.error('WASM_OBJECT_FILES can only be used with wasm backend')
-        return 1
+        exit_with_error('WASM_OBJECT_FILES can only be used with wasm backend')
       shared.Settings.WASM_OBJECT_FILES = 0
 
-    if not shared.Settings.STRICT:
+    if shared.Settings.STRICT:
+      shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
+    else:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
