@@ -8069,6 +8069,28 @@ int main() {
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
+  def test_export_aliasee(self):
+    # test aliasee is exported when alias is exported
+    if self.is_wasm_backend():
+      self.skipTest('not testing export aliasee and wasm backend')
+
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+      # build side module
+      args = ['-s', 'EXPORT_ALL=0', '-s', 'SIDE_MODULE=1', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      print(args)
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'side.cpp'), '-g', '-o', 'side.wasm'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+
+      # build main module
+      args = ['-s', 'EXPORT_ALL=0', '-s', 'EXPORTED_FUNCTIONS=["_main", "_wprintf","__ZTVSt12length_error","__ZNSt12length_errorD1Ev","__ZNSt11logic_errorC2EPKc"]', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.cpp'), '-g', '-o', 'main.out.js'] + args
+      print(' '.join(cmd))
+      run_process(cmd)
+      # run the program
+      ret = run_process(NODE_JS + ['main.out.js'], stdout=PIPE, stderr=PIPE).stdout
+      self.assertContained('success', ret)
+
   def test_sysconf_phys_pages(self):
     for args, expected in [
         ([], 1024),
