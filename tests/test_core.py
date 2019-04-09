@@ -21,7 +21,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
@@ -4932,8 +4932,8 @@ name: .
       if WINDOWS and fs == 'NODEFS':
         Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
-    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS:
+    # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
+    if not WINDOWS and not MACOS:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       # 0 if root user
       if os.geteuid() == 0:
