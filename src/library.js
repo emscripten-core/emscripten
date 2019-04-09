@@ -25,15 +25,9 @@
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
 #if USE_PTHREADS
-  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = {{{ makeStaticAlloc(4) }}}',
-  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = {{{ makeStaticAlloc(4) }}}',
-  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = {{{ makeStaticAlloc(4) }}}',
   _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = {{{ makeStaticAlloc(4) }}}',
   __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
 #else
-  stdin: '{{{ makeStaticAlloc(1) }}}',
-  stdout: '{{{ makeStaticAlloc(1) }}}',
-  stderr: '{{{ makeStaticAlloc(1) }}}',
   _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
