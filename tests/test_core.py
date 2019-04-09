@@ -4932,8 +4932,8 @@ name: .
       if WINDOWS and fs == 'NODEFS':
         Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
-    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS:
+    # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
+    if not WINDOWS and not MACOS:
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
       # 0 if root user
       if os.geteuid() == 0:
