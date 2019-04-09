@@ -39,13 +39,13 @@ def run():
 
   to_delete = []
 
-  # The 3 argment form of ar doesn't involve other files. For example
+  # The 3 argmuent form of ar doesn't involve other files. For example
   # 'ar x libfoo.a'.
   if len(newargs) > 3:
     cmd = newargs[1]
     if 'r' in cmd:
-      # we are adding files to the archive.
-      # normally the output file is then arg 2, except in the case were the
+      # We are adding files to the archive.
+      # Normally the output file is then arg 2, except in the case were the
       # a or b modifiers are used in which case its arg 3.
       if 'a' in cmd or 'b' in cmd:
         out_arg_index = 3
@@ -58,9 +58,7 @@ def run():
         output = shared.check_call(cmd, stdout=shared.PIPE).stdout
         contents.update(output.split('\n'))
 
-      # we add a hash to each input, to make them unique as
-      # possible, as llvm-ar cannot extract duplicate names
-      # (and only the basename is used!)
+      # Add a hash to colliding basename, to make them unique.
       for j in range(out_arg_index + 1, len(newargs)):
         orig_name = newargs[j]
         full_name = os.path.abspath(orig_name)
