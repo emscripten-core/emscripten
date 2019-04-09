@@ -770,11 +770,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
+  in_group = False
   for name, need_whole_archive in libs_to_link:
-    if need_whole_archive:
-      ret += ['--whole-archive', name, '--no-whole-archive']
-    else:
-      ret.append(name)
+    if need_whole_archive and not in_group:
+      ret.append('--whole-archive')
+      in_group = True
+    if in_group and not need_whole_archive:
+      ret.append('--no-whole-archive')
+      in_group = False
+    ret.append(name)
+  if in_group:
+    ret.append('--no-whole-archive')
 
   return ret
 
