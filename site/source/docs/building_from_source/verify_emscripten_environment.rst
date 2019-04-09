@@ -17,7 +17,7 @@ The first step in verifying the environment is to run Emscripten with the versio
 
 Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` as shown::
 
-  emcc -v
+  ./emcc -v
 
 .. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
 
@@ -44,7 +44,7 @@ The next test is to actually build some code! On the command prompt navigate to 
 ::
 
   cd emscripten/<version of emscripten you installed>
-  emcc tests/hello_world.cpp
+  ./emcc tests/hello_world.cpp
 
 This command should complete without warnings and you should find the newly-compiled JavaScript file (**a.out.js**) in the current directory.
 

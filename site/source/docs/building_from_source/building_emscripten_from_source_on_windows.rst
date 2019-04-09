@@ -78,7 +78,7 @@ Validating the environment
 
 The best way to validate the environment is to build some code. Open the terminal in your *Emscripten* directory — the directory that contains *emcc* (if you installed using *GitHub for Windows* this will be **C:/Users/username/Documents/GitHub/emscripten**) and enter: ::
 
-  emcc tests/hello_world.cpp
+  ./emcc tests/hello_world.cpp
 
 If this builds **a.out.js** in the current directory, and you don't see any build errors in the terminal, Emscripten is good to go!
 
