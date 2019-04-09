@@ -82,7 +82,7 @@ var LibraryManager = {
       ]);
 
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
-      if (!STRICT) {
+      if (!STRICT && !MINIMAL_RUNTIME) {
         libraries = libraries.concat([
           'library_lz4.js',
         ]);
@@ -106,26 +106,21 @@ var LibraryManager = {
     }
 
     // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
-    if (!STRICT) {
+    if (!STRICT && !MINIMAL_RUNTIME) {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
-        'library_vr.js'
+        'library_vr.js',
+        'library_sdl.js',
+        'library_glut.js',
+        'library_xlib.js',
+        'library_egl.js',
+        'library_glfw.js',
+        'library_uuid.js',
+        'library_glew.js',
+        'library_idbstore.js',
+        'library_async.js'
       ]);
-
-      if (!MINIMAL_RUNTIME) {
-        libraries = libraries.concat([
-          'library_sdl.js',
-          'library_glut.js',
-          'library_xlib.js',
-          'library_egl.js',
-          'library_glfw.js',
-          'library_uuid.js',
-          'library_glew.js',
-          'library_idbstore.js',
-          'library_async.js'
-        ]);
-      }
     }
 
     // If there are any explicitly specified system JS libraries to link to, add those to link.
