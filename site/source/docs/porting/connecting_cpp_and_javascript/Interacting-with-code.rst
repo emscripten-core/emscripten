@@ -70,7 +70,7 @@ to prevent C++ name mangling.
 To compile this code run the following command in the Emscripten
 home directory::
 
-    emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
 
 ``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
 

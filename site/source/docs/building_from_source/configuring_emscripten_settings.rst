@@ -22,7 +22,7 @@ The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (o
 
 	::
 	
-		emcc --help
+		./emcc --help
 
 	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
 	
