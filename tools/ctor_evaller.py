@@ -308,6 +308,8 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 def eval_ctors_wasm(js, wasm_file, num):
   ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
   cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + ','.join(ctors)]
+  # XXX FIXME tlively
+  cmd += ['--disable-bulk-memory']
   if debug_info:
     cmd += ['-g']
   logging.debug('wasm ctor cmd: ' + str(cmd))
