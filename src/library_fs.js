@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
-    'stdin', 'stdout', 'stderr'],
+    ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
     addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
