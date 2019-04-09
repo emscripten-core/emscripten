@@ -30,7 +30,7 @@ total_stack = int(sys.argv[4])
 global_base = int(sys.argv[5])
 binaryen_bin = sys.argv[6]
 debug_info = int(sys.argv[7])
-extra_args = args.argv[8:]
+extra_args = sys.argv[8:]
 
 wasm = not not binaryen_bin
 
