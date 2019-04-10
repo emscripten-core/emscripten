@@ -2665,25 +2665,6 @@ class Building(object):
     return library_files
 
   @staticmethod
-  # Given a list of Emscripten link settings, returns a list of paths to system JS libraries
-  # that should get linked automatically in to the build when those link settings are present.
-  def path_to_system_js_libraries_for_settings(link_settings):
-    system_js_libraries = []
-    if 'EMTERPRETIFY_ASYNC=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'LZ4=1' in link_settings:
-      system_js_libraries += ['library_lz4.js']
-    if 'USE_SDL=1' in link_settings:
-      system_js_libraries += ['library_sdl.js']
-    if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_webgl.js']
-    if 'USE_WEBGL2=1' in link_settings:
-      system_js_libraries += ['library_webgl2.js']
-    return [path_from_root('src', x) for x in system_js_libraries]
-
-  @staticmethod
   def get_binaryen_feature_flags():
     # start with the MVP features, add the rest as needed
     ret = ['--mvp-features']

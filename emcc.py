@@ -3156,8 +3156,6 @@ def process_libraries(libs, lib_dirs, settings_changes, input_files):
     if not found:
       libraries += shared.Building.path_to_system_js_libraries(lib)
 
-  # Certain linker flags imply some link libraries to be pulled in by default.
-  libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
   return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
 
 
