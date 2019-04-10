@@ -30,6 +30,8 @@ from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify
 
 
 def asm_simd(f):
+  assert callable(f)
+
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
@@ -55,10 +57,13 @@ def wasm_simd(f):
 
 
 def no_emterpreter(f):
+  assert callable(f)
   return skip_if(f, 'is_emterpreter')
 
 
 def no_wasm(note=''):
+  assert not callable(note)
+
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
   return decorated
@@ -66,6 +71,8 @@ def no_wasm(note=''):
 
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
+  assert callable(f)
+
   def decorated(self):
     if self.is_wasm():
       self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
@@ -2394,8 +2401,8 @@ The current type of b is: 9
       '''
     self.do_run(src, '|65830|')
 
-  @no_wasm # TODO: EM_ASM in shared wasm modules, stored inside the wasm somehow
   @needs_dlfcn
+  @no_wasm('EM_ASM in shared wasm modules, stored inside the wasm somehow')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -2733,7 +2740,7 @@ The current type of b is: 9
       '''
     self.do_run(src, 'success.\n')
 
-  @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
+  @no_wasm('needs to be able to add JS functions to the wasm table')
   @needs_dlfcn
   def test_dlfcn_self(self):
     self.prep_dlfcn_main()
@@ -3388,7 +3395,7 @@ ok
       int sidey(voidfunc f) { if (f) f(); return 1; }
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
-  @no_wasm # uses function tables in an asm.js specific way
+  @no_wasm('uses function tables in an asm.js specific way')
   @needs_dlfcn
   def test_dylink_funcpointers2(self):
     self.dylink_test(r'''
@@ -3732,7 +3739,7 @@ ok
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslib_x"]'])
 
   @needs_dlfcn
-  def test_dylink_many_postSets(self):
+  def test_dylink_many_postsets(self):
     NUM = 1234
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3763,7 +3770,7 @@ ok
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   @needs_dlfcn
-  def test_dylink_postSets_chunking(self):
+  def test_dylink_postsets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
     ''', main=r'''

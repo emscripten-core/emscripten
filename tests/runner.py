@@ -102,6 +102,7 @@ def has_browser():
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
 def skip_if(func, condition, explanation='', negate=False):
+  assert callable(func)
   explanation_str = ' : %s' % explanation if explanation else ''
 
   def decorated(self):
@@ -116,6 +117,8 @@ def skip_if(func, condition, explanation='', negate=False):
 
 
 def needs_dlfcn(func):
+  assert callable(func)
+
   def decorated(self):
     self.check_dlfcn()
     return func(self)
@@ -124,6 +127,8 @@ def needs_dlfcn(func):
 
 
 def is_slow_test(func):
+  assert callable(func)
+
   def decorated(self, *args, **kwargs):
     if EMTEST_SKIP_SLOW:
       return self.skipTest('skipping slow tests')
@@ -133,18 +138,23 @@ def is_slow_test(func):
 
 
 def no_wasm_backend(note=''):
+  assert not callable(note)
+
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note)
   return decorated
 
 
 def no_fastcomp(note=''):
+  assert not callable(note)
+
   def decorated(f):
     return skip_if(f, 'is_wasm_backend', note, negate=True)
   return decorated
 
 
 def no_windows(note=''):
+  assert not callable(note)
   if WINDOWS:
     return unittest.skip(note)
   return lambda f: f
@@ -154,6 +164,7 @@ def no_windows(note=''):
 # random causes. this tries the test a few times, looking for at least
 # one pass
 def flaky(f):
+  assert callable(f)
   max_tries = 3
 
   def decorated(self):
