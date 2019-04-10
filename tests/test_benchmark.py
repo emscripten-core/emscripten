@@ -45,6 +45,8 @@ OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
 
+LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
+
 
 class Benchmarker(object):
   def __init__(self, name):
@@ -185,7 +187,7 @@ class EmscriptenBenchmarker(Benchmarker):
       '-s', 'MINIMAL_RUNTIME=0',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
-    ] + shared_args + emcc_args + self.extra_args
+    ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
     if 'FORCE_FILESYSTEM=1' in cmd:
       cmd = [arg if arg != 'FILESYSTEM=0' else 'FILESYSTEM=1' for arg in cmd]
     if PROFILING:
@@ -317,7 +319,7 @@ if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
   ]
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
-    EmscriptenBenchmarker('v8', V8_ENGINE),
+    EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'v8', V8_ENGINE),
   ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
