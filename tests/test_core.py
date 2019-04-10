@@ -2743,7 +2743,8 @@ The current type of b is: 9
   @no_wasm('needs to be able to add JS functions to the wasm table')
   @needs_dlfcn
   def test_dlfcn_self(self):
-    self.prep_dlfcn_main()
+    self.set_setting('MAIN_MODULE')
+    self.set_setting('EXPORT_ALL')
 
     def post(filename):
       with open(filename) as f:
