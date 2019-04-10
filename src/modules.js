@@ -122,9 +122,6 @@ var LibraryManager = {
       if (EMTERPRETIFY_ASYNC || ASYNCIFY) {
         libraries.push('library_async.js');
       }
-      if (LZ4) {
-        libraries.push('library_lz4.js');
-      }
       if (USE_SDL == 1) {
         libraries.push('library_sdl.js');
       }
@@ -136,6 +133,10 @@ var LibraryManager = {
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    if (LZ4) {
+      libraries.push('library_lz4.js');
     }
 
     if (USE_WEBGL2) {
