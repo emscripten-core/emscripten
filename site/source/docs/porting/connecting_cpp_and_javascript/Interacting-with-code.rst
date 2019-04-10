@@ -666,6 +666,33 @@ Here ``my_function`` is a C function that receives a single integer parameter
 (or a pointer, they are both just 32-bit integers for us) and returns an
 integer. This could be something like ``int my_function(char *buf)``.
 
+The converse case of exporting allocated memory into JavaScript can be
+tricky when wasm-based memory is allowed to grow (by compiling with
+``-s ALLOW_MEMORY_GROWTH=1``). Increasing the size of memory changes
+to a new buffer and existing array views essentially become invalid,
+so you cannot simply do this:
+
+.. code-block:: javascript
+
+   function func() {
+     var ptr = callSomething(len);               // if memory grows ...
+     return HEAPU8.subarray(buffer, buffer+len); // ... this will fail
+   }
+
+Here, if `callSomething` calls `malloc` and returns the allocated
+pointer, and if that `malloc` grew memory, you will not be able to
+read the returned data unless you renew the view:
+
+.. code-block:: javascript
+
+   function func() {
+     var ptr = callSomething(len);
+     return new Uint8Array(HEAPU8.subarray(ptr, ptr+len)); // create a new view
+   }
+
+Note that a second instance of memory growth will possibly invalidate
+the current view, requiring another update of the view (you can, of
+course, avoid this problem by copying the data.)
 
 .. _interacting-with-code-execution-behaviour:
 
