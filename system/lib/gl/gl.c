@@ -1794,12 +1794,7 @@ for line in open('a').readlines():
 // behavior: different functionality is available under
 // different vendor suffixes. In emscripten_GetProcAddress()
 // function, all these suffixes will be ignored when performing
-// the function pointer lookup. The functions
-// emscripten_webgl_get_proc_address(),
-// emscripten_webgl1_get_proc_address() and 
-// emscripten_webgl2_get_proc_address() however are "strict"
-// lookups, that provide WebGL specific function entry points that
-// look up the exact function name with suffixes.
+// the function pointer lookup.
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);
