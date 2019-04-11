@@ -999,6 +999,9 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 var WASM_OBJECT_FILES = 1;
 
+// Whether we should use binaryen's wasm2js to convert our wasm to JS.
+var WASM2JS = 0;
+
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
