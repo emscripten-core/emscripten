@@ -267,7 +267,13 @@ var SyscallsLibrary = {
   },
   __syscall6: function(which, varargs) { // close
     var stream = SYSCALLS.getStreamFromFD();
+#if SYSCALLS_REQUIRE_FILESYSTEM
     FS.close(stream);
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   __syscall9: function(which, varargs) { // link
@@ -740,10 +746,16 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
     // NOTE: offset_high is unused - Emscripten's off_t is 32-bit
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var offset = offset_low;
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
