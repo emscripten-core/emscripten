@@ -1750,12 +1750,14 @@ def create_named_globals(metadata):
     return ''
 
   named_globals = '''
-var NAMED_GLOBALS = { %s };
+var NAMED_GLOBALS = {
+  %s
+};
 for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
 
   if shared.Settings.WASM:
     # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
@@ -1765,8 +1767,8 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
     named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
-    var func = Module['_' + named];
-    Module['g$_' + named] = function() { return func };
+    var addr = Module['_' + named];
+    Module['g$_' + named] = function() { return addr };
   })(named);
 }
 '''
