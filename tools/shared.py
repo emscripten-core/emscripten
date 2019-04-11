@@ -2378,12 +2378,10 @@ class Building(object):
 
       if not Settings.ASMFS:
         # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
-        if not Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
-
-        # If we do have filesystem enabled, tell Closure not to bark when FS references different libraries that might not exist.
-        if Settings.FILESYSTEM and not Settings.ASMFS:
+        if Settings.FILESYSTEM:
           CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-defined-fs-annotation.js')]
+        else:
+          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
