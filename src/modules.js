@@ -72,8 +72,13 @@ var LibraryManager = {
       libraries.push('library_browser.js');
     }
 
-    if (FILESYSTEM) {
-      // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
+    // Include the filesystem libraries by default when not in the minimal runtime. FILESYSTEM=0
+    // indicates we don't need normal filesystem support, but including the libraries lets parts
+    // of it be used as a dependency by other code, see
+    // https://github.com/emscripten-core/emscripten/issues/8421,
+    // and doing so does not increase code size.
+    if (!MINIMAL_RUNTIME || FILESYSTEM) {
+      // Core filesystem libraries
       libraries = libraries.concat([
         'library_fs.js',
         'library_memfs.js',
