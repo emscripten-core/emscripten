@@ -4938,8 +4938,11 @@ name: .
       Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
       # so skip testing those bits on that combination.
-      if fs == 'NODEFS' and (WINDOWS or MACOS):
-        Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      if fs == 'NODEFS':
+        if WINDOWS:
+          Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+        if MACOS:
+          continue
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     if not WINDOWS and not MACOS:
