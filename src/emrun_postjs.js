@@ -12,29 +12,16 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
     var emrun_should_close_itself = false;
     function postExit(msg) {
       var http = new XMLHttpRequest();
-      http.onreadystatechange = function() {
-        if (http.readyState == 4 /*DONE*/) {
-          try {
-            // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
-            // and then emrun does not need to kill the whole browser process.
-            if (typeof window !== 'undefined' && window.close) {
-              // Don't do this immediately, this may race with the notification about the return code reaching the
-              // server.
-              var waiter = new XMLHttpRequest();
-              waiter.onload = function() {
-//                window.close();
-              };
-              waiter.open("POST", "stdio.html", true);
-              // The "pageload" message is a no-op ping/pong that is enough for us to know that the server
-              // responded to us, which means it responded to our previous message, which means it has
-              // the exit code and all is good.
-              waiter.send("^pageload^");
-            }
-          } catch(e) {}
-        }
-      }
-      http.open("POST", "stdio.html", true);
+      // Don't do this immediately, this may race with the notification about the return code reaching the
+      // server. Send a *sync* xhr so that we know for sure that the server has gotten the return code
+      // before we continue;
+      http.open("POST", "stdio.html", false);
       http.send(msg);
+      try {
+        // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
+        // and then emrun does not need to kill the whole browser process.
+        window.close();
+      } catch(e) {}
     }
     function post(msg) {
       var http = new XMLHttpRequest();
