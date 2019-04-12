@@ -1650,13 +1650,11 @@ def run():
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True
     browser_process = subprocess.Popen(browser, env=subprocess_env())
-    assert browser_process
     if options.kill_on_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
     if options.android:
       browser_process = None
-    assert browser_process
   elif not options.no_server:
     logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
