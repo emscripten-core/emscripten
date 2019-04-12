@@ -21,6 +21,8 @@ var WebAssembly = {
     // XXX hack to get an atob implementation
 #include base64Utils.js
     var atob = decodeBase64;
+    // Additional imports
+    asmLibraryArg['__tempMemory__'] = tempDoublePtr;
     // This will be replaced by the actual wasm2js code.
     var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
     return {
