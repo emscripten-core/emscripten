@@ -1454,6 +1454,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # table, as is standard in wasm, and not asm.js split ones.
           shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
+    if shared.Settings.WASM2JS:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('wasm2js is only available in the upstream wasm backend path')
+      logger.warn('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
+
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
       shared.Settings.EMITTING_JS = 0

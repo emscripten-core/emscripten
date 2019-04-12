@@ -1259,7 +1259,6 @@ def verify_settings():
       # TODO(sbc): Make this into a hard error.  We still have a few places that
       # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
       # generate_struct_info).
-      logger.warn('emcc: JS support in the upstream LLVM+wasm2js path is not yet stable (best to use fastcomp for asm.js for now)')
       Settings.WASM = 1
       Settings.WASM2JS = 1
 
