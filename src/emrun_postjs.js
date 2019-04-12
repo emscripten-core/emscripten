@@ -14,7 +14,7 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       var http = new XMLHttpRequest();
       // Don't do this immediately, this may race with the notification about the return code reaching the
       // server. Send a *sync* xhr so that we know for sure that the server has gotten the return code
-      // before we continue;
+      // before we continue.
       http.open("POST", "stdio.html", false);
       http.send(msg);
       try {
