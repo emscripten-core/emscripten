@@ -344,8 +344,8 @@ def kill_browser_process():
   temporary Firefox profile that was created, if one exists."""
   global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
+    logv('Terminating browser process..')
     try:
-      logv('Terminating browser process..')
       browser_process.kill()
       delete_emrun_safe_firefox_profile()
     except Exception as e:
@@ -1645,16 +1645,18 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Executing %s" % ' '.join(browser))
+    logi("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True
     browser_process = subprocess.Popen(browser, env=subprocess_env())
+    assert browser_process
     if options.kill_on_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not represent a browser and no point killing it.
     if options.android:
       browser_process = None
+    assert browser_process
   elif not options.no_server:
     logi('Now listening at http://%s:%i/' % (options.hostname, options.port))
 
