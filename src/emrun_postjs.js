@@ -22,7 +22,7 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
               // server.
               var waiter = new XMLHttpRequest();
               waiter.onload = function() {
-                window.close();
+//                window.close();
               };
               waiter.open("POST", "stdio.html", true);
               // The "pageload" message is a no-op ping/pong that is enough for us to know that the server
