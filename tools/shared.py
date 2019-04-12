@@ -2587,6 +2587,7 @@ class Building(object):
   def wasm2js(js_file, wasm_file):
     logger.debug('wasm2js')
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     with open(js_file) as f:
       all_js = f.read()
