@@ -13,6 +13,10 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if WASM2JS
+#include "wasm2js.js"
+#endif
+
 #if WASM
 if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
