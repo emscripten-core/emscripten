@@ -484,7 +484,7 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
   stack = ''
-  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
+  if not shared.Settings.RELOCATABLE and not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
     if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
       stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
     if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
@@ -1585,7 +1585,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-      basic_vars += ['gb', 'fb']
+      basic_vars += ['gb', 'fb', 'STACKTOP', 'STACK_MAX']
     else:
       # wasm side modules have a specific convention for these
       basic_vars += ['__memory_base', '__table_base']
