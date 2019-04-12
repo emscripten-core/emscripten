@@ -2583,6 +2583,24 @@ class Building(object):
     extra_info = {'mapping': mapping}
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
+  @staticmethod
+  def wasm2js(js_file, wasm_file):
+    logger.debug('wasm2js')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    with open(js_file) as f:
+      all_js = f.read()
+    # TODO: handle closure minification etc.
+    MARKER = '''Module['__wasm2jsInstantiate__']'''
+    assert all_js.count(MARKER) == 1
+    all_js = all_js.replace(MARKER, '(\n' + wasm2js_js + '\n)')
+    # replace the placeholder with the actual code
+    js_file = js_file + '.wasm2js.js'
+    with open(js_file, 'w') as f:
+      f.write(all_js)
+    return js_file
+
+
   # the exports the user requested
   user_requested_exports = []
 

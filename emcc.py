@@ -2741,6 +2741,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                              debug_info=debug_info,
                                              emit_symbol_map=emit_symbol_map)
       save_intermediate_with_wasm('postclean', wasm_binary_target)
+  if shared.Settings.WASM2JS:
+    final = shared.Building.wasm2js(final, wasm_binary_target)
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     js = open(final).read()
