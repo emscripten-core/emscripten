@@ -2591,9 +2591,10 @@ class Building(object):
     with open(js_file) as f:
       all_js = f.read()
     # TODO: handle closure minification etc.
-    MARKER = '''Module['__wasm2jsInstantiate__']'''
-    assert all_js.count(MARKER) == 1
-    all_js = all_js.replace(MARKER, '(\n' + wasm2js_js + '\n)')
+    finds = re.findall(r'''Module\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
+    assert len(finds) == 1
+    marker = finds[0]
+    all_js = all_js.replace(marker  , '(\n' + wasm2js_js + '\n)')
     # replace the placeholder with the actual code
     js_file = js_file + '.wasm2js.js'
     with open(js_file, 'w') as f:
