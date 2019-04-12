@@ -249,6 +249,12 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
   'asmi',
   'asm2i',
 ]
@@ -263,6 +269,7 @@ non_core_test_modes = [
   'sanity',
   'sockets',
   'interactive',
+  'benchmark'
 ]
 
 test_index = 0
