@@ -5114,7 +5114,7 @@ PORT: 3979
       time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
-      if self.get_setting('WASM'):
+      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
         ret += open('src.cpp.o.wasm', 'rb').read()
       return ret
 
@@ -7602,12 +7602,12 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
-wasm2js0 = make_run('wasm2js0', emcc_args=['-s', 'WASM2JS=1', '-O0'])
-wasm2js1 = make_run('wasm2js1', emcc_args=['-s', 'WASM2JS=1', '-O1'])
-wasm2js2 = make_run('wasm2js2', emcc_args=['-s', 'WASM2JS=1', '-O2'])
-wasm2js3 = make_run('wasm2js3', emcc_args=['-s', 'WASM2JS=1', '-O3'])
-wasm2jss = make_run('wasm2jss', emcc_args=['-s', 'WASM2JS=1', '-Os'])
-wasm2jsz = make_run('wasm2jsz', emcc_args=['-s', 'WASM2JS=1', '-Oz'])
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM2JS': '1'})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM2JS': '1'})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM2JS': '1'})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM2JS': '1'})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM2JS': '1'})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM2JS': '1'})
 
 # Secondary test modes - run directly when there is a specific need
 
