@@ -15,8 +15,14 @@ var WebAssembly = {
     return ret;
   },
 
-  instantiate: function(binary, info) {
+  Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in
+    // the main JS
+    return {};
+  },
+
+  Instance: function(module, info) {
+    // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // XXX hack to get an atob implementation
 #include base64Utils.js
@@ -26,11 +32,15 @@ var WebAssembly = {
     // This will be replaced by the actual wasm2js code.
     var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
     return {
+      'exports': exports
+    };
+  },
+
+  instantiate: function(binary, info) {
+    return {
       then: function(ok, err) {
         ok({
-          'instance': {
-            'exports': exports
-          }
+          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary, info))
         });
       }
     };
