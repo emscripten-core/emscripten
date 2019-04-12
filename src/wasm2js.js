@@ -3,9 +3,11 @@
 
 var WebAssembly = {
   Memory: function(opts) {
-    // TODO: growth?
     return {
-      buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}})
+      buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
+      grow: function(amount) {
+        this.buffer = new ArrayBuffer(this.buffer.byteLength + amount * {{{ WASM_PAGE_SIZE }}});
+      }
     };
   },
 
