@@ -22,7 +22,19 @@ var WebAssembly = {
 #include base64Utils.js
     var atob = decodeBase64;
     // This will be replaced by the actual wasm2js code.
-    Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
+    var exports = Module['__wasm2jsInstantiate__'](asmLibraryArg, wasmMemory, wasmTable);
+    return {
+      then: function(ok, err) {
+        ok({
+          'instance': {
+            'exports': exports
+          }
+        });
+      }
+    };
   }
 };
+
+// We don't need to actually download a wasm binary, mark it as present.
+Module['wasmBinary'] = true;
 

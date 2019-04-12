@@ -2598,6 +2598,8 @@ class Building(object):
     js_file = js_file + '.wasm2js.js'
     with open(js_file, 'w') as f:
       f.write(all_js)
+    if not DEBUG:
+      try_delete(wasm_file)
     return js_file
 
 
