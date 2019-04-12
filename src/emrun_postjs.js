@@ -44,8 +44,16 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       out = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
       err = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
 
-      // Notify emrun web server that this browser has successfully launched the page.
-      post('^pageload^');
+      // Notify emrun web server that this browser has successfully launched the page. Note that we may need to
+      // wait for the server to be ready.
+      function tryToSendPageload() {
+        try {
+          post('^pageload^');
+        } catch (e) {
+          setTimeout(tryToSendPageload, 50);
+        }
+      }
+      tryToSendPageload();
     }
   }
 
