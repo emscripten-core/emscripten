@@ -135,6 +135,26 @@ GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsV
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 
+void *emscripten_webgl2_ext_get_proc_address(const char *name)
+{
+	RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, EXT);
+	RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, ARB);
+	RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, ANGLE);
+	RETURN_FN_WITH_SUFFIX(glDrawArraysInstanced, EXT);
+	RETURN_FN_WITH_SUFFIX(glDrawArraysInstanced, ARB);
+	RETURN_FN_WITH_SUFFIX(glDrawArraysInstanced, ANGLE);
+	RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, NV);
+	RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, EXT);
+	RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, ARB);
+	RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, ANGLE);
+	RETURN_FN_WITH_SUFFIX(glBindVertexArray, OES);
+	RETURN_FN_WITH_SUFFIX(glDeleteVertexArrays, OES);
+	RETURN_FN_WITH_SUFFIX(glGenVertexArrays, OES);
+	RETURN_FN_WITH_SUFFIX(glIsVertexArray, OES);
+	RETURN_FN_WITH_SUFFIX(glDrawBuffers, EXT);
+	RETURN_FN_WITH_SUFFIX(glDrawBuffers, WEBGL);
+}
+
 void *emscripten_webgl2_get_proc_address(const char *name)
 {
 	RETURN_FN(glReadBuffer);
