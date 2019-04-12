@@ -11,7 +11,15 @@ var WebAssembly = {
 
   Table: function(opts) {
     var ret = new Array(opts['initial']);
-    // TODO: add more properties here
+    ret.grow = function(by) {
+      ret.push(null);
+    };
+    ret.set = function(i, func) {
+      ret[i] = func;
+    };
+    ret.get = function(i) {
+      return ret[i];
+    };
     return ret;
   },
 
