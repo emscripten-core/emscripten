@@ -894,6 +894,41 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
+#if AUTODEBUG
+  env['get_i32'] = function(loc, index, value) {
+    console.log('get_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_i64'] = function(loc, index, low, high) {
+    console.log('get_i64 ' + [loc, index, low, high]);
+    return value;
+  };
+  env['get_f32'] = function(loc, index, value) {
+    console.log('get_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_f64'] = function(loc, index, value) {
+    console.log('get_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i32'] = function(loc, index, value) {
+    console.log('set_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i64'] = function(loc, index, low, high) {
+    console.log('set_i64 ' + [loc, index, low, high]);
+    return value;
+  };
+  env['set_f32'] = function(loc, index, value) {
+    console.log('set_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_f64'] = function(loc, index, value) {
+    console.log('set_f64 ' + [loc, index, value]);
+    return value;
+  };
+#endif
+
   // prepare imports
   var info = {
     'env': env

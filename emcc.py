@@ -1049,6 +1049,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
 
+    if AUTODEBUG:
+      shared.Settings.AUTODEBUG = 1
+
     # Use settings
 
     if options.debug_level > 1 and options.use_closure_compiler:
@@ -1433,6 +1436,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
+          if shared.Settings.AUTODEBUG:
+            passes += ['--instrument-locals']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 

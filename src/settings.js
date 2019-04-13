@@ -1396,6 +1396,10 @@ var MINIFY_HTML = 1;
 // is received from wasm-emscripten-finalize, which reads it from the features section.
 var BINARYEN_FEATURES = [];
 
+// Whether EMCC_AUTODEBUG is on, which automatically instruments code for runtime
+// logging that can help in debugging.
+var AUTODEBUG = 0;
+
 // Legacy settings that have been removed, and the values they are now fixed to.
 // These can no longer be changed:
 // [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
