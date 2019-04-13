@@ -6,7 +6,9 @@ var WebAssembly = {
     return {
       buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
       grow: function(amount) {
+        var ret = this.buffer.byteLength / {{{ WASM_PAGE_SIZE }}};
         this.buffer = new ArrayBuffer(this.buffer.byteLength + amount * {{{ WASM_PAGE_SIZE }}});
+        return ret;
       }
     };
   },
