@@ -153,6 +153,8 @@ void *emscripten_webgl2_ext_get_proc_address(const char *name)
 	RETURN_FN_WITH_SUFFIX(glIsVertexArray, OES);
 	RETURN_FN_WITH_SUFFIX(glDrawBuffers, EXT);
 	RETURN_FN_WITH_SUFFIX(glDrawBuffers, WEBGL);
+
+	return 0;
 }
 
 void *emscripten_webgl2_get_proc_address(const char *name)

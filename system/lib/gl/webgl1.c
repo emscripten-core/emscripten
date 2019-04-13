@@ -661,6 +661,8 @@ void *emscripten_webgl1_ext_get_proc_address(const char *name)
   RETURN_FN_WITH_SUFFIX(glGetQueryObjectuiv, EXT);
   RETURN_FN_WITH_SUFFIX(glGetQueryObjecti64v, EXT);
   RETURN_FN_WITH_SUFFIX(glGetQueryObjectui64v, EXT);
+
+  return 0;
 }
 
 void *emscripten_webgl1_get_proc_address(const char *name)
