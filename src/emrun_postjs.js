@@ -6,6 +6,7 @@
 if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   function emrun_register_handlers() {
 
+    // browser.test_zzz_emrun is flaky on our CI - this helps investigate it.
     function debugLog(msg) {
       try {
         var xhr = new XMLHttpRequest();
@@ -31,6 +32,7 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       try {
         // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
         // and then emrun does not need to kill the whole browser process.
+        debugLog('closing window');
         window.close();
       } catch(e) {}
     }
@@ -55,16 +57,12 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       out = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
       err = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
 
-debugLog('ready for first pageload');
       // Notify emrun web server that this browser has successfully launched the page. Note that we may need to
       // wait for the server to be ready.
       function tryToSendPageload() {
-debugLog('try a pageload');
         try {
           post('^pageload^');
-debugLog('success');
         } catch (e) {
-debugLog('try try again ' + e);
           setTimeout(tryToSendPageload, 50);
         }
       }
