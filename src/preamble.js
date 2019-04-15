@@ -895,41 +895,91 @@ function getBinaryPromise() {
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
 #if AUTODEBUG
-    env['log_execution'] = function(loc) {
-      console.log('log_execution ' + loc);
-    };
-    env['get_i32'] = function(loc, index, value) {
-      console.log('get_i32 ' + [loc, index, value]);
-      return value;
-    };
-    env['get_i64'] = function(loc, index, low, high) {
-      console.log('get_i64 ' + [loc, index, low, high]);
-      return value;
-    };
-    env['get_f32'] = function(loc, index, value) {
-      console.log('get_f32 ' + [loc, index, value]);
-      return value;
-    };
-    env['get_f64'] = function(loc, index, value) {
-      console.log('get_f64 ' + [loc, index, value]);
-      return value;
-    };
-    env['set_i32'] = function(loc, index, value) {
-      console.log('set_i32 ' + [loc, index, value]);
-      return value;
-    };
-    env['set_i64'] = function(loc, index, low, high) {
-      console.log('set_i64 ' + [loc, index, low, high]);
-      return value;
-    };
-    env['set_f32'] = function(loc, index, value) {
-      console.log('set_f32 ' + [loc, index, value]);
-      return value;
-    };
-    env['set_f64'] = function(loc, index, value) {
-      console.log('set_f64 ' + [loc, index, value]);
-      return value;
-    };
+  env['log_execution'] = function(loc) {
+    console.log('log_execution ' + loc);
+  };
+var COUNTER = 0;
+  env['setTempRet0'] = function(x) {
+    tempRet0 = x;
+  };
+  env['getTempRet0'] = function() {
+    return tempRet0;
+  };
+  env['get_i32'] = function(loc, index, value) {
+if (COUNTER++ == 15000) throw 'stop, enough already';
+    console.log('get_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_i64'] = function(loc, index, low, high) {
+    console.log('get_i64 ' + [loc, index, low, high]);
+    return value;
+  };
+  env['get_f32'] = function(loc, index, value) {
+    console.log('get_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_f64'] = function(loc, index, value) {
+    console.log('get_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i32'] = function(loc, index, value) {
+    console.log('set_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i64'] = function(loc, index, low, high) {
+    console.log('set_i64 ' + [loc, index, low, high]);
+    return value;
+  };
+  env['set_f32'] = function(loc, index, value) {
+    console.log('set_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_f64'] = function(loc, index, value) {
+    console.log('set_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['load_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('load_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['load_val_i32'] = function(loc, value) {
+    console.log('load_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['load_val_i64'] = function(loc, value, value_h) {
+    console.log('load_val_i64 ' + [loc, value, value_h]);
+    return value;
+  };
+  env['load_val_f32'] = function(loc, value) {
+    console.log('loaload_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['load_val_f64'] = function(loc, value) {
+    console.log('load_val_f64 ' + [loc, value]);
+    return value;
+  };
+  env['store_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('store_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['store_val_i32'] = function(loc, value) {
+    console.log('store_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['store_val_i64'] = function(loc, value, value_h) {
+    console.log('store_val_i64 ' + [loc, value, value_h]);
+    return value;
+  };
+  env['store_val_f32'] = function(loc, value) {
+    console.log('loastore_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['store_val_f64'] = function(loc, value) {
+    console.log('store_val_f64 ' + [loc, value]);
+    return value;
+  };
+  
+  
 #endif
   // prepare imports
   var info = {
