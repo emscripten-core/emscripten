@@ -24,15 +24,15 @@ void doTest(const std::string& uniqueDirName, const std::string& fileName)
 
     touch(uniqueDirName + "/" + fileName);
 
-    auto fd = open(uniqueDirName.c_str(), O_RDONLY | O_DIRECTORY);
-    assert(fd > 0);
+    auto dirp = opendir(uniqueDirName.c_str());
+    assert(dirp);
 
     for (;;)
     {
-        dirent d;
-        auto nread = getdents(fd, &d, sizeof(d));
+        dirent d, *dp;
+        auto nread = readdir_r(dirp, &d, &dp);
         assert(nread != -1);
-        if (nread == 0)
+        if (nread == 0 && !dp)
         {
             break;
         }

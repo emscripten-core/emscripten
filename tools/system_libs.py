@@ -232,6 +232,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'faccessat.c',
     ]
 
+    # any dirent file that digs into DIR structure
+    blacklist += [
+         'closedir.c', 'dirfd.c', 'fdopendir.c', 'opendir.c', 'readdir.c',
+         'readdir_r.c', 'rewinddir.c', 'seekdir.c', 'telldir.c', '__getdents.c',
+    ]
+
     # individual math files
     blacklist += [
         'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',

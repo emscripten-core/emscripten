@@ -1059,34 +1059,7 @@ var SyscallsLibrary = {
     return 0; // advice is welcome, but ignored
   },
   __syscall220: function(which, varargs) { // SYS_getdents64
-    var stream = SYSCALLS.getStreamFromFD(), dirp = SYSCALLS.get(), count = SYSCALLS.get();
-    if (!stream.getdents) {
-      stream.getdents = FS.readdir(stream.path);
-    }
-    var pos = 0;
-    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
-      var id;
-      var type;
-      var name = stream.getdents.pop();
-      if (name[0] === '.') {
-        id = 1;
-        type = 4; // DT_DIR
-      } else {
-        var child = FS.lookupNode(stream.node, name);
-        id = child.id;
-        type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-               FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-               FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-               8;                             // DT_REG, regular file.
-      }
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-      stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
-      pos += {{{ C_STRUCTS.dirent.__size__ }}};
-    }
-    return pos;
+    return -ERRNO_CODES.ENOSYS; // unsupported feature, use readdir()
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64

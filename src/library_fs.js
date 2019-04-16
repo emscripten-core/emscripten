@@ -1095,7 +1095,6 @@ mergeInto(LibraryManager.library, {
       if (FS.isClosed(stream)) {
         throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
       }
-      if (stream.getdents) stream.getdents = null; // free readdir state
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);

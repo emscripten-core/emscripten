@@ -52,6 +52,221 @@ LibraryManager.library = {
   },
 
   // ==========================================================================
+  // dirent.h
+  // ==========================================================================
+  _getStreamFromPtr__deps: ['$FS', '$ERRNO_CODES'],
+  _getStreamFromPtr: function (ptr) {
+    if (!ptr) {
+      throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+    }
+    var stream = FS.getStream(ptr - 1);
+    if (!stream || !FS.isDir(stream.node.mode)) {
+      throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+    }
+    if (!stream.hasOwnProperty('getdents')) {
+      throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+    }
+    return stream;
+  },
+
+  opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  opendir: function(dirname) {
+    // DIR *opendir(const char *dirname);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/opendir.html
+    // NOTE: Calculating absolute path redundantly since we need to associate it
+    //       with the opened stream.
+    var path = UTF8ToString(dirname);
+    if (!path) {
+      ___setErrNo(ERRNO_CODES.ENOENT);
+      return 0;
+    }
+    var oflag = ({{{ cDefine('O_RDONLY') }}} |
+                 {{{ cDefine('O_DIRECTORY') }}});
+    try {
+      var stream = FS.open(path, oflag);
+      if (!FS.isDir(stream.node.mode)) {
+        ___setErrNo(ERRNO_CODES.ENOTDIR);
+        return 0;
+      }
+
+      // just read all ents upfront
+      stream.getdents = FS.readdir(stream.path);
+      stream.getdentsposition = 0;
+      stream.inc_pos_before_read = 0;
+
+      return stream.fd + 1;
+    } catch (e) {
+      FS.handleFSError(e);
+      return 0;
+    }
+  },
+  closedir__deps: ['$FS', '_getStreamFromPtr'],
+  closedir: function(dirp) {
+    // int closedir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
+    try {
+      var stream = __getStreamFromPtr(dirp);
+      if (stream.readdir_current) {
+        _free(stream.readdir_current);
+        stream.readdir_current = 0;
+      }
+      FS.close(stream);
+      return 0;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+  telldir__deps: ['$FS', '_getStreamFromPtr'],
+  telldir: function(dirp) {
+    // long int telldir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/telldir.html
+    try {
+      var stream = __getStreamFromPtr(dirp);
+      return stream.getdentsposition;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+  seekdir__deps: ['$FS', '_getStreamFromPtr'],
+  seekdir: function(dirp, loc) {
+    // void seekdir(DIR *dirp, long int loc);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/seekdir.html
+    try {
+      var stream = __getStreamFromPtr(dirp);
+      if (loc < 1 || loc > stream.getdents.length)
+        loc = 0;
+      stream.getdentsposition = loc;
+      stream.inc_pos_before_read = 0;
+    } catch (e) {
+      // this shouldn't set errno
+    }
+  },
+  rewinddir__deps: ['$FS', 'seekdir'],
+  rewinddir: function(dirp) {
+    // void rewinddir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/rewinddir.html
+    try {
+      var stream = __getStreamFromPtr(dirp);
+      stream.getdents = FS.readdir(stream.path);
+      stream.getdentsposition = 0;
+      stream.inc_pos_before_read = 0;
+    } catch (e) {
+      // this shouldn't set errno
+    }
+  },
+  readdir_r__deps: ['$FS', '_getStreamFromPtr'],
+  readdir_r: function(dirp, entry, result) {
+    // int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
+    var stream;
+    try {
+      stream = __getStreamFromPtr(dirp);
+    } catch (e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+      return e.errno;
+    }
+
+    var idx = stream.getdentsposition;
+    if (!idx || stream.inc_pos_before_read) {
+      idx += 1;
+    }
+
+    if (idx > stream.getdents.length) {
+      {{{ makeSetValue('result', '0', '0', 'i8*') }}};
+      return 0;
+    }
+
+    stream.getdentsposition = idx;
+    idx -= 1;
+    stream.inc_pos_before_read = 1;
+
+    var id;
+    var type;
+    var name = stream.getdents[stream.getdents.length - 1 - idx];
+    if (name === '.' || name == '..') {
+      id = 1;
+      type = 4; // DT_DIR
+    } else {
+      var child = FS.lookupNode(stream.node, name);
+      id = child.id;
+      type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+      FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+      FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
+      8;                             // DT_REG, regular file.
+    }
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'idx + 1', 'i32') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
+    stringToUTF8(name, entry +  {{{ C_STRUCTS.dirent.d_name }}}, 256);
+    {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
+    return 0;
+  },
+#if USE_PTHREADS
+  __readdir_result: '; if (ENVIRONMENT_IS_PTHREAD) ___readdir_result = PthreadWorkerInit.___readdir_result; else PthreadWorkerInit.___readdir_result = ___readdir_result = {{{ makeStaticAlloc(4) }}}',
+#else
+  __readdir_result: '{{{ makeStaticAlloc(4) }}}',
+#endif
+  readdir__deps: ['readdir_r', '__setErrNo', '$ERRNO_CODES', '__readdir_result'],
+  readdir: function(dirp) {
+    // struct dirent *readdir(DIR *dirp);
+    // http://pubs.opengroup.org/onlinepubs/007908799/xsh/readdir_r.html
+    var stream;
+    try {
+      stream = __getStreamFromPtr(dirp);
+    } catch (e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+      return e.errno;
+    }
+    if (!stream.readdir_current) {
+      stream.readdir_current = _malloc({{{ C_STRUCTS.dirent.__size__ }}});
+      if (!stream.readdir_current) {
+        return ERRNO_CODES.ENOMEM;
+      }
+    }
+    var err = _readdir_r(dirp, stream.readdir_current, ___readdir_result);
+    if (err) {
+      ___setErrNo(err);
+      return 0;
+    }
+    return {{{ makeGetValue(0, '___readdir_result', 'i8*') }}};
+  },
+  dirfd__deps: ['$FS', '_getStreamFromPtr'],
+  dirfd: function(dirp) {
+    try {
+      return __getStreamFromPtr(dirp).fd;
+    } catch (e) {
+      FS.handleFSError(e);
+      return -1;
+    }
+  },
+  dirfd__deps: ['$FS', '_getStreamFromPtr'],
+  fdopendir: function(fd) {
+    try {
+      var stream = FS.getStream(fd);
+      if (!stream) {
+        throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+      }
+
+      if (!FS.isDir(stream.node.mode)) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
+
+      // just read all ents upfront
+      stream.getdents = FS.readdir(stream.path);
+      stream.getdentsposition = 0;
+      stream.inc_pos_before_read = 0;
+
+      return stream.fd + 1;
+    } catch (e) {
+      FS.handleFSError(e);
+      return 0;
+    }
+  },
+
+  // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
 

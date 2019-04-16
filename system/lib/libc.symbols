@@ -361,7 +361,6 @@
 -------- T clogf
 -------- T clogl
 -------- T close
--------- T closedir
 -------- t close_file
 -------- T closelog
 -------- t common
@@ -429,7 +428,6 @@
 -------- t des_cipher
 -------- T __des_setkey
 -------- T dgettext
--------- T dirfd
 -------- T dirname
 -------- T div
 -------- T __dn_comp
@@ -530,7 +528,6 @@
 -------- T fdimf
 -------- T fdiml
 -------- T __fdopen
--------- T fdopendir
 -------- T feclearexcept
 -------- T fegetenv
 -------- T fegetexceptflag
@@ -1036,7 +1033,6 @@
 -------- T __ofl_unlock
 -------- T open
 -------- T openat
--------- T opendir
 -------- t __openlog
 -------- T openlog
 -------- T open_memstream
@@ -1139,8 +1135,6 @@
 -------- T random
 -------- T rand_r
 -------- T read
--------- T readdir
--------- T readdir_r
 -------- T readlink
 -------- T readlinkat
 -------- T readv
@@ -1174,7 +1168,6 @@
 -------- T __res_send
 -------- T __res_state
 -------- T rewind
--------- T rewinddir
 -------- T rindex
 -------- T rint
 -------- T rintl
@@ -1199,7 +1192,6 @@
 -------- T scanf
 -------- t scopeof
 -------- T seed48
--------- T seekdir
 -------- T select
 -------- T send
 -------- T sendmmsg
@@ -1392,7 +1384,6 @@
 -------- T tcsendbreak
 -------- T tcsetattr
 -------- T tcsetpgrp
--------- T telldir
 -------- t temper
 -------- T tempnam
 -------- T textdomain
@@ -1594,13 +1585,16 @@
          U calloc
          U __clock_gettime
          U clock_gettime
+         U closedir
          U cos
          U cosf
+         U dirfd
          U _exit
          U exp
          U expf
          U fabs
          U fabsf
+         U fdopendir
          U floor
          U floorf
          U fork
@@ -1620,16 +1614,21 @@
          U __muldc3
          U __mulsc3
          U nanosleep
+         U opendir
          U posix_memalign
          U pow
          U pthread_cleanup_pop
          U pthread_cleanup_push
          U pthread_setcancelstate
          U pthread_sigmask
+         U readdir
+         U readdir_r
          U realloc
+         U rewinddir
          U rintf
          U round
          U roundf
+         U seekdir
          U setitimer
          U sigfillset
          U sin
@@ -1742,6 +1741,7 @@
          U __syscall97
          U tan
          U tanf
+         U telldir
          U time
          U __unlock
          U __wait
