@@ -234,9 +234,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     # any dirent file that digs into DIR structure
     blacklist += [
-         'closedir.c', 'dirfd.c', 'fdopendir.c', 'opendir.c', 'readdir.c',
-         'readdir_r.c', 'rewinddir.c', 'seekdir.c', 'telldir.c',
-         '__getdents.c',
+      'closedir.c', 'dirfd.c', 'fdopendir.c', 'opendir.c', 'readdir.c',
+      'readdir_r.c', 'rewinddir.c', 'seekdir.c', 'telldir.c', '__getdents.c',
     ]
 
     # individual math files
