@@ -2591,8 +2591,11 @@ class Building(object):
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     with open(js_file) as f:
       all_js = f.read()
-    # TODO: handle closure minification etc.
-    finds = re.findall(r'''Module\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
+    # quoted notation, something like Module['__wasm2jsInstantiate__']
+    finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
+    if not finds:
+      # post-closure notation, something like a.__wasm2jsInstantiate__
+      finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
     assert len(finds) == 1
     marker = finds[0]
     all_js = all_js.replace(marker  , '(\n' + wasm2js_js + '\n)')
