@@ -50,6 +50,8 @@ def wasm_simd(f):
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
     f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-simd']])
