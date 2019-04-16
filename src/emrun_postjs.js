@@ -5,18 +5,6 @@
 
 if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   function emrun_register_handlers() {
-
-    // browser.test_zzz_emrun is flaky on our CI - this helps investigate it.
-    function debugLog(msg) {
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + msg), false);
-        xhr.send();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
     // When C code exit()s, we may still have remaining stdout and stderr messages in flight. In that case, we can't close
     // the browser until all those XHRs have finished, so the following state variables track that all communication is done,
     // after which we can close.
@@ -32,7 +20,6 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       try {
         // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
         // and then emrun does not need to kill the whole browser process.
-        debugLog('closing window');
         window.close();
       } catch(e) {}
     }
@@ -60,10 +47,8 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       // Notify emrun web server that this browser has successfully launched the page. Note that we may need to
       // wait for the server to be ready.
       function tryToSendPageload() {
-        debugLog('tryToSendPageload');
         try {
           post('^pageload^');
-          debugLog('sent pageload successfully');
         } catch (e) {
           setTimeout(tryToSendPageload, 50);
         }
