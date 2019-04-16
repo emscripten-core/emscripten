@@ -60,8 +60,10 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       // Notify emrun web server that this browser has successfully launched the page. Note that we may need to
       // wait for the server to be ready.
       function tryToSendPageload() {
+        debugLog('tryToSendPageload');
         try {
           post('^pageload^');
+          debugLog('sent pageload successfully');
         } catch (e) {
           setTimeout(tryToSendPageload, 50);
         }
