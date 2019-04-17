@@ -871,6 +871,7 @@ def check_all_implemented(all_implemented, pre):
       elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
         logger.warning('undefined exported function: "%s"', requested)
 
+
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
   funcs = set(metadata['exports'])
   export_bindings = shared.Settings.EXPORT_BINDINGS
