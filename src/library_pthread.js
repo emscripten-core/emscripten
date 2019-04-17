@@ -239,7 +239,13 @@ var LibraryPThread = {
       pthread.stackBase = 0;
       if (pthread.worker) pthread.worker.pthread = null;
     },
-
+    returnThreadToPool: function(workerToFree) {
+      PThread.freeThreadData(workerToFree.pthread);
+      workerToFree.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+      PThread.unusedWorkerPool.push(workerToFree);
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(workerToFree.pthread), 1); // Not a running Worker anymore.
+    },
+	
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL !== 'undefined') {
@@ -319,18 +325,17 @@ var LibraryPThread = {
               err('Thread ' + d.threadId + ': ' + d.text);
             } else if (d.cmd === 'alert') {
               alert('Thread ' + d.threadId + ': ' + d.text);
+            } else if (d.cmd === 'exit') {
+              var detached = Atomics.load(HEAPU32, (d.threadId + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+              if (detached) {
+                PThread.returnThreadToPool(worker);
+              }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               Module['noExitRuntime'] = false;
               exit(d.returnCode);
-            } else if (d.cmd === 'exit' || d.cmd === 'cancelDone') {
-              var detached = Atomics.load(HEAPU32, (d.threadId + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
-              if (detached) {
-                PThread.freeThreadData(worker.pthread);
-                worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-                PThread.unusedWorkerPool.push(worker);
-                PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
-              }
+            } else if (d.cmd === 'cancelDone') {
+              PThread.returnThreadToPool(worker);
             } else if (d.cmd === 'objectTransfer') {
               PThread.receiveObjectTransfer(e.data);
             } else if (e.data.target === 'setimmediate') {
@@ -409,10 +414,7 @@ var LibraryPThread = {
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
     var worker = pthread.worker;
-    PThread.freeThreadData(pthread);
-    worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-    PThread.unusedWorkerPool.push(worker);
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+    PThread.returnThreadToPool(worker);
   },
 
   _cancel_thread: function(pthread_ptr) {
