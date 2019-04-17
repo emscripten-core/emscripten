@@ -911,6 +911,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if file_suffix.endswith(SOURCE_ENDINGS):
             input_files.append((i, arg))
             has_source_inputs = True
+          elif shared.Settings.WASM_OBJECT_FILES and file_suffix.endswith(BITCODE_ENDINGS):
+            input_files.append((i, arg))
+            has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
@@ -1727,6 +1730,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       for i, input_file in input_files:
         file_ending = get_file_suffix(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
+          compile_source_file(i, input_file)
+        elif shared.Settings.WASM_OBJECT_FILES and has_dash_c and file_ending.endswith(BITCODE_ENDINGS):
           compile_source_file(i, input_file)
         else: # bitcode
           if file_ending.endswith(BITCODE_ENDINGS):
