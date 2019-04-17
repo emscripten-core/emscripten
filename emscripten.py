@@ -852,23 +852,24 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def check_all_implemented(all_implemented, pre):
-  for requested in shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    if not is_already_implemented(requested, pre, all_implemented):
+  # we are not checking anyway, so just skip this
+  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
+    return
+  # only interested in those which are not in all_implemented
+  notinImplemented = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - set(all_implemented))
+  # special-case malloc, EXPORTED by default for internal use, but we bake in a
+  # trivial allocator and warn at runtime if used in ASSERTIONS
+  if '_malloc' in notinImplemented:
+    notinImplemented.remove('_malloc')
+
+  for requested in notinImplemented:
+    in_pre = ('function ' + asstr(requested)) in pre
+    if not in_pre:
       # could be a js library func
       if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
         exit_with_error('undefined exported function: "%s"', requested)
       elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
         logger.warning('undefined exported function: "%s"', requested)
-
-
-def is_already_implemented(requested, pre, all_implemented):
-  is_implemented = requested in all_implemented
-  # special-case malloc, EXPORTED by default for internal use, but we bake in a
-  # trivial allocator and warn at runtime if used in ASSERTIONS
-  is_exception = requested == '_malloc'
-  in_pre = ('function ' + asstr(requested)) in pre
-  return is_implemented or is_exception or in_pre
-
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
   funcs = set(metadata['exports'])
