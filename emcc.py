@@ -1139,6 +1139,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
+        # This is a hack for make_fetch_worker(), which requires
+        # emscripten_is_main_runtime_thread, which is called from emscripten_fetch()
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_fetch']
 
     forced_stdlibs = []
     if shared.Settings.DEMANGLE_SUPPORT:

@@ -2230,9 +2230,6 @@ class Building(object):
     internalize_public_api = '-internalize-public-api-'
     internalize_list = ','.join([exp[1:] for exp in exps])
 
-    if Settings.FETCH:
-      internalize_list += ",emscripten_fetch"
-
     # EXPORTED_FUNCTIONS can potentially be very large.
     # 8k is a bit of an arbitrary limit, but a reasonable one
     # for max command line size before we use a response file
