@@ -256,12 +256,17 @@ LibraryManager.library = {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
 
-      // just read all ents upfront
-      stream.getdents = FS.readdir(stream.path);
-      stream.getdentsposition = 0;
-      stream.inc_pos_before_read = 0;
+      var stream2 = __allocateDirp();
 
-      return stream.fd + 1;
+      // just read all ents upfront
+      stream2.getdents = FS.readdir(stream.path);
+      stream2.path = stream.path;
+      stream2.getdentsposition = 0;
+      stream2.inc_pos_before_read = 0;
+
+      FS.close(stream);
+
+      return __getPtrFromStream(stream2);
     } catch (e) {
       FS.handleFSError(e);
       return 0;
