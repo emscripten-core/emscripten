@@ -1879,78 +1879,61 @@ long __syscall197(int which, ...) // SYS_fstat64
 // TODO: syscall207: fchown32
 // TODO: syscall212: chown32
 
-long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
+long emscripten_asmfs_readdir(const char *pathname,
+                              struct dirent **ents,
+                              size_t *n_ents)
 {
-	va_list vl;
-	va_start(vl, which);
-	unsigned int fd = va_arg(vl, unsigned int);
-	dirent *de = va_arg(vl, dirent*);
-	unsigned int count = va_arg(vl, unsigned int);
-	va_end(vl);
-	unsigned int dirents_size = count / sizeof(dirent); // The number of dirent structures that can fit into the provided buffer.
-	dirent *de_end = de + dirents_size;
 #ifdef ASMFS_DEBUG
-	EM_ASM(err('getdents64(fd=' + $0 + ', de=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, de, count);
+	EM_ASM(err('readdir(pathname="' + UTF8ToString($0) + '")'), pathname);
 #endif
 
-	FileDescriptor *desc = (FileDescriptor*)fd;
-	if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC) RETURN_ERRNO(EBADF, "Invalid file descriptor fd");
+        inode *root = (pathname[0] == '/') ? filesystem_root() : get_cwd();
+        const char *relpath = (pathname[0] == '/') ? pathname+1 : pathname;
+        int err;
+        inode *node = find_inode(root, relpath, &err);
+        if (err) RETURN_ERRNO(err, "find_inode() error");
+        if (!node) RETURN_ERRNO(ENOENT, "find_inode() error");
+        if (!(node->mode & 0444)) RETURN_ERRNO(EACCES, "The requested access to the file is not allowed");
+        if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "Path is not a directory");
 
-	inode *node = desc->node;
-	if (!node) RETURN_ERRNO(ENOENT, "No such directory");
-	if (dirents_size == 0) RETURN_ERRNO(EINVAL, "Result buffer is too small");
-	if (node->type != INODE_DIR) RETURN_ERRNO(ENOTDIR, "File descriptor does not refer to a directory");
+        inode *dotdot = node->parent ? node->parent : node; // In "/", the directory ".." refers to itself.
 
-	inode *dotdot = node->parent ? node->parent : node; // In "/", the directory ".." refers to itself.
+        size_t cnt = 2, i;
+        inode *iter = node->child;
+        while (iter)
+        {
+                cnt += 1;
+                iter = iter->sibling;
+        }
 
-	ssize_t orig_file_pos = desc->file_pos;
-	ssize_t file_pos = 0;
-	// There are always two hardcoded directories "." and ".."
-	if (de >= de_end) return desc->file_pos - orig_file_pos;
-	if (desc->file_pos <= file_pos)
-	{
-		de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
-		de->d_off = file_pos;
-		de->d_reclen = sizeof(dirent);
-		de->d_type = DT_DIR;
-		strcpy(de->d_name, ".");
-		++de;
-		desc->file_pos += sizeof(dirent);
-	}
-	file_pos += sizeof(dirent);
+        // Convert vector to C string vector
+        struct dirent *result = (struct dirent *) calloc(cnt, sizeof(struct dirent));
+        if (!result) RETURN_ERRNO(ENOMEM, "calloc() error");
 
-	if (de >= de_end) return desc->file_pos - orig_file_pos;
-	if (desc->file_pos <= file_pos)
-	{
-		de->d_ino = (ino_t)dotdot; // TODO: Create inode numbers instead of using pointers
-		de->d_off = file_pos;
-		de->d_reclen = sizeof(dirent);
-		de->d_type = DT_DIR;
-		strcpy(de->d_name, "..");
-		++de;
-		desc->file_pos += sizeof(dirent);
-	}
-	file_pos += sizeof(dirent);
+        // There are always two hardcoded directories "." and ".."
+        result[0].d_ino = (ino_t) node;
+        result[0].d_reclen = sizeof(result[0]);
+        result[0].d_type = DT_DIR;
+        strcpy(result[0].d_name, ".");
 
-	node = node->child;
-	while(node && de < de_end)
-	{
-		if (desc->file_pos <= file_pos)
-		{
-			de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
-			de->d_off = file_pos;
-			de->d_reclen = sizeof(dirent);
-			de->d_type = (node->type == INODE_DIR) ? DT_DIR : DT_REG /*Regular file*/;
-			de->d_name[255] = 0;
-			strncpy(de->d_name, node->name, 255);
-			++de;
-			desc->file_pos += sizeof(dirent);
-		}
-		node = node->sibling;
-		file_pos += sizeof(dirent);
-	}
+        result[1].d_ino = (ino_t) dotdot;
+        result[1].d_reclen = sizeof(result[1]);
+        result[1].d_type = DT_DIR;
+        strcpy(result[1].d_name, "..");
 
-	return desc->file_pos - orig_file_pos;
+        for (i = 2, node = node->child; node; ++i, node = node->sibling)
+        {
+                result[i].d_ino = (ino_t)node;
+                result[i].d_reclen = sizeof(result[i]);
+                result[i].d_type = (node->type == INODE_DIR) ? DT_DIR : DT_REG /*Regular file*/;
+                result[i].d_name[255] = 0;
+                strncpy(result[i].d_name, node->name, 255);
+        }
+
+        *ents = result;
+        *n_ents = cnt;
+
+        return 0;
 }
 
 // TODO: syscall221: fcntl64

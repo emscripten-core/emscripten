@@ -1132,11 +1132,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.FILESYSTEM = 0
       shared.Settings.FETCH = 1
       options.js_libraries.append(shared.path_from_root('src', 'library_asmfs.js'))
+      # library_asmfs.js requires emscripten_asmfs_readdir
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_asmfs_readdir']
+      shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location']
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
       input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
       next_arg_index += 1
       options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
+      # This is a hack for make_fetch_worker(), which requires
+      # emscripten_is_main_runtime_thread, which is called from emscripten_fetch()
+      shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_fetch']
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 

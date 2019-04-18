@@ -825,10 +825,42 @@ mergeInto(LibraryManager.library, {
     readdir: function(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
+      if (!node) {
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
+      }
       if (!node.node_ops.readdir) {
         throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
       }
-      return node.node_ops.readdir(node);
+      var err = FS.mayOpen(node, {{{ cDefine('O_DIRECTORY') }}});
+      if (err) {
+        throw new FS.ErrnoError(err);
+      }
+      var names = node.node_ops.readdir(node);
+      var ents = [], i;
+
+      for (i = 0; i < names.length; ++i) {
+        var ent = {}, name = names[i];
+
+        if (name === '.' || name == '..') {
+          id = 1;
+          type = 4; // DT_DIR
+        } else {
+          var child = FS.lookupNode(node, name);
+          id = child.id;
+          type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+          FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+          FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
+          8;                             // DT_REG, regular file.
+        }
+
+        ent.id = id;
+        ent.type = type;
+        ent.name = name;
+
+        ents.push(ent);
+      }
+
+      return ents;
     },
     unlink: function(path) {
       var lookup = FS.lookupPath(path, { parent: true });

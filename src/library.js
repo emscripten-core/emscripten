@@ -54,22 +54,47 @@ LibraryManager.library = {
   // ==========================================================================
   // dirent.h
   // ==========================================================================
-  _getStreamFromPtr__deps: ['$FS', '$ERRNO_CODES'],
+
+  _dirps: [],
+
+  _getStreamFromPtr__deps: ['$FS', '$ERRNO_CODES', '_dirps'],
   _getStreamFromPtr: function (ptr) {
     if (!ptr) {
       throw new FS.ErrnoError(ERRNO_CODES.EBADF);
     }
-    var stream = FS.getStream(ptr - 1);
-    if (!stream || !FS.isDir(stream.node.mode)) {
-      throw new FS.ErrnoError(ERRNO_CODES.EBADF);
-    }
-    if (!stream.hasOwnProperty('getdents')) {
+    var stream = __dirps[ptr - 1];
+    if (!stream) {
       throw new FS.ErrnoError(ERRNO_CODES.EBADF);
     }
     return stream;
   },
 
-  opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES'],
+  _getPtrFromStream: function (stream) {
+    return stream.fd + 1;
+  },
+
+  _allocateDirp__deps: ['$FS', '$ERRNO_CODES', '_dirps'],
+  _allocateDirp: function () {
+    var MAX_DIRPS = 1024;
+    for (var fd = 0; fd < MAX_DIRPS; ++fd) {
+      if (!__dirps[fd]) {
+        var obj = {};
+        obj.fd = fd;
+        __dirps[fd] = obj;
+        return obj;
+      }
+    }
+    throw new FS.ErrnoError(ERRNO_CODES.ENOMEM);
+  },
+
+  _freeDirp: ['_getStreamFromPtr', '_dirps'],
+  _freeDirp: function (dirp) {
+    var stream = __getStreamFromPtr(dirp);
+    __dirps[stream.fd] = null;
+  },
+
+  opendir__deps: ['$FS', '__setErrNo', '$ERRNO_CODES', '_allocateDirp',
+                  '_getPtrFromStream'],
   opendir: function(dirname) {
     // DIR *opendir(const char *dirname);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/opendir.html
@@ -80,37 +105,27 @@ LibraryManager.library = {
       ___setErrNo(ERRNO_CODES.ENOENT);
       return 0;
     }
-    var oflag = ({{{ cDefine('O_RDONLY') }}} |
-                 {{{ cDefine('O_DIRECTORY') }}});
     try {
-      var stream = FS.open(path, oflag);
-      if (!FS.isDir(stream.node.mode)) {
-        ___setErrNo(ERRNO_CODES.ENOTDIR);
-        return 0;
-      }
+      var stream = __allocateDirp();
 
       // just read all ents upfront
-      stream.getdents = FS.readdir(stream.path);
+      stream.getdents = FS.readdir(path);
+      stream.path = path;
       stream.getdentsposition = 0;
       stream.inc_pos_before_read = 0;
 
-      return stream.fd + 1;
+      return __getPtrFromStream(stream);
     } catch (e) {
       FS.handleFSError(e);
       return 0;
     }
   },
-  closedir__deps: ['$FS', '_getStreamFromPtr'],
+  closedir__deps: ['$FS', '_freeDirp'],
   closedir: function(dirp) {
     // int closedir(DIR *dirp);
     // http://pubs.opengroup.org/onlinepubs/007908799/xsh/closedir.html
     try {
-      var stream = __getStreamFromPtr(dirp);
-      if (stream.readdir_current) {
-        _free(stream.readdir_current);
-        stream.readdir_current = 0;
-      }
-      FS.close(stream);
+      __freeDirp(dirp);
       return 0;
     } catch (e) {
       FS.handleFSError(e);
@@ -182,25 +197,12 @@ LibraryManager.library = {
     idx -= 1;
     stream.inc_pos_before_read = 1;
 
-    var id;
-    var type;
-    var name = stream.getdents[stream.getdents.length - 1 - idx];
-    if (name === '.' || name == '..') {
-      id = 1;
-      type = 4; // DT_DIR
-    } else {
-      var child = FS.lookupNode(stream.node, name);
-      id = child.id;
-      type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-      FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-      FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-      8;                             // DT_REG, regular file.
-    }
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'id', 'i32') }}};
+    var ent = stream.getdents[stream.getdents.length - 1 - idx];
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_ino, 'ent.id', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_off, 'idx + 1', 'i32') }}};
     {{{ makeSetValue('entry', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
-    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-    stringToUTF8(name, entry +  {{{ C_STRUCTS.dirent.d_name }}}, 256);
+    {{{ makeSetValue('entry', C_STRUCTS.dirent.d_type, 'ent.type', 'i8') }}};
+    stringToUTF8(ent.name, entry +  {{{ C_STRUCTS.dirent.d_name }}}, 256);
     {{{ makeSetValue('result', '0', 'entry', 'i8*') }}};
     return 0;
   },

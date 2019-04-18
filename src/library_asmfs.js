@@ -1,4 +1,14 @@
 var asmFS = {
+#if USE_PTHREADS
+  __readdir_cntptr: '; if (ENVIRONMENT_IS_PTHREAD) ___readdir_cntptr = PthreadWorkerInit.___readdir_cntptr; else PthreadWorkerInit.___readdir_cntptr = ___readdir_cntptr = {{{ makeStaticAlloc(4) }}}',
+  __readdir_entptr: '; if (ENVIRONMENT_IS_PTHREAD) ___readdir_entptr = PthreadWorkerInit.___readdir_entptr; else PthreadWorkerInit.___readdir_entptr = ___readdir_entptr = {{{ makeStaticAlloc(4) }}}',
+#else
+  __readdir_cntptr: '{{{ makeStaticAlloc(4) }}}',
+  __readdir_entptr: '{{{ makeStaticAlloc(4) }}}',
+#endif
+
+  $FS__deps: ['emscripten_asmfs_readdir', '__readdir_entptr', '__readdir_cntptr'],
+
   $FS: {
     populate: function(path, mode) {
       var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
@@ -22,6 +32,46 @@ var asmFS = {
         d += '/' + dirs[i];
         FS.mkdir(d, mode);
       }
+    },
+
+    ErrnoError: function (errno) {
+      this.errno = errno;
+    },
+
+    handleFSError: function(e) {
+      if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+      return ___setErrNo(e.errno);
+    },
+
+    readdir: function(path) {
+      var res, ents, offset, entptr, n_ents;
+      var pathCString = allocate(intArrayFromString(path), 'i8', ALLOC_NORMAL);
+      res = _emscripten_asmfs_readdir(pathCString,
+                                      ___readdir_entptr, ___readdir_cntptr);
+      _free(pathCString);
+      if (res) {
+        throw new FS.ErrnoError(-res);
+      }
+
+      entptr = {{{ makeGetValue('___readdir_entptr', '0', 'i32') }}};
+      n_ents = {{{ makeGetValue('___readdir_cntptr', '0', 'i32') }}};
+
+
+      ents = [];
+      for (offset = 0; offset < n_ents * {{{ C_STRUCTS.dirent.__size__ }}}; offset += {{{ C_STRUCTS.dirent.__size__ }}}) {
+        var ent = {};
+        ent.id = {{{ makeGetValue('entptr + offset', C_STRUCTS.dirent.d_ino, 'i32') }}};
+        ent.type = {{{ makeGetValue('entptr + offset', C_STRUCTS.dirent.d_type, 'i8') }}};
+        ent.name = UTF8ToString(entptr + offset + {{{ C_STRUCTS.dirent.d_name }}});
+        ents.push(ent);
+      }
+
+      console.log("path", path);
+      console.log("nents", n_ents);
+      console.log("ents", ents);
+
+      _free(entptr);
+      return ents;
     },
 
     setRemoteUrl: function(path, remoteUrl) {
