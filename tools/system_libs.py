@@ -232,7 +232,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'faccessat.c',
     ]
 
-    # any dirent file that digs into DIR structure
+    # any dirent file that digs into DIR structure, these functions are
+    # implemented in JS to make the WASM files portable across different systems
     blacklist += [
       'closedir.c', 'dirfd.c', 'fdopendir.c', 'opendir.c', 'readdir.c',
       'readdir_r.c', 'rewinddir.c', 'seekdir.c', 'telldir.c', '__getdents.c',
