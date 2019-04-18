@@ -1058,9 +1058,6 @@ var SyscallsLibrary = {
   __syscall219: function(which, varargs) { // madvise
     return 0; // advice is welcome, but ignored
   },
-  __syscall220: function(which, varargs) { // SYS_getdents64
-    return -ERRNO_CODES.ENOSYS; // unsupported feature, use readdir()
-  },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
 #if FILESYSTEM == 0
