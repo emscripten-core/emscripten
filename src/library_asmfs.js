@@ -56,7 +56,6 @@ var asmFS = {
       entptr = {{{ makeGetValue('___readdir_entptr', '0', 'i32') }}};
       n_ents = {{{ makeGetValue('___readdir_cntptr', '0', 'i32') }}};
 
-
       ents = [];
       for (offset = 0; offset < n_ents * {{{ C_STRUCTS.dirent.__size__ }}}; offset += {{{ C_STRUCTS.dirent.__size__ }}}) {
         var ent = {};
@@ -65,10 +64,6 @@ var asmFS = {
         ent.name = UTF8ToString(entptr + offset + {{{ C_STRUCTS.dirent.d_name }}});
         ents.push(ent);
       }
-
-      console.log("path", path);
-      console.log("nents", n_ents);
-      console.log("ents", ents);
 
       _free(entptr);
       return ents;
