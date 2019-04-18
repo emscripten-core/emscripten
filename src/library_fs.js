@@ -839,7 +839,7 @@ mergeInto(LibraryManager.library, {
       var ents = [], i;
 
       for (i = 0; i < names.length; ++i) {
-        var ent = {}, name = names[i];
+        var ent = {}, name = names[i], id, type;
 
         if (name === '.' || name == '..') {
           id = 1;
