@@ -845,7 +845,13 @@ mergeInto(LibraryManager.library, {
           id = 1;
           type = 4; // DT_DIR
         } else {
-          var child = FS.lookupNode(node, name);
+          var child;
+          try {
+            child = FS.lookupNode(node, name);
+          } catch (e) {
+            if (!(e instanceof FS.ErrnoError)) throw e + ' : ' + stackTrace();
+            continue;
+          }
           id = child.id;
           type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
           FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
