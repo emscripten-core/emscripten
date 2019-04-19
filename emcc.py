@@ -1707,10 +1707,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         def supported(f):
           if f in SUPPORTED_LINKER_FLAGS:
             return True
-          if f.startswith('-l'):
-            return True
-          else:
-            logger.warning('ignoreing unsupported linker flag: `%s`', f)
+          logger.warning('ignoring unsupported linker flag: `%s`', f)
+          return False
         link_flags = [f for f in link_flags if supported(f[1])]
 
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
