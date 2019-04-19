@@ -963,20 +963,20 @@ f.close()
     aout = 'a.out.js'
 
     def build(path, args):
-      run_process([PYTHON, EMCC, self.in_dir(*path)] + args)
+      run_process([PYTHON, EMCC, path] + args)
 
     # Test linking the library built here by emcc
-    build(['libdir', 'libfile.cpp'], ['-c'])
+    build('libfile.cpp', ['-c'])
     shutil.move('libfile.o', libfile)
-    build(['main.cpp'], ['-L' + 'libdir', '-lfile'])
+    build('main.cpp', ['-L' + 'libdir', '-lfile'])
 
     self.assertContained('hello from lib', run_js(aout))
 
     # Also test execution with `-l c` and space-separated library linking syntax
     os.remove(aout)
-    build(['libdir', 'libfile.cpp'], ['-c', '-l', 'c'])
+    build('libfile.cpp', ['-c', '-l', 'c'])
     shutil.move('libfile.o', libfile)
-    build(['main.cpp'], ['-L', 'libdir', '-l', 'file'])
+    build('main.cpp', ['-L', 'libdir', '-l', 'file'])
 
     self.assertContained('hello from lib', run_js(aout))
 
