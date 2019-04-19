@@ -4518,6 +4518,7 @@ int main() {
     return utimes(NULL, NULL);
 }''')
     run_process([PYTHON, EMCC, 'src.cpp'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'NO_FILESYSTEM=1'])
 
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
