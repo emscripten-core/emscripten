@@ -855,14 +855,14 @@ def check_all_implemented(all_implemented, pre):
   # we are not checking anyway, so just skip this
   if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
     return
-  # only interested in those which are not in all_implemented
-  notinImplemented = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - set(all_implemented))
+  # the initial list of missing functions are those we expected to export, but were not implemented in compiled code
+  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - set(all_implemented))
   # special-case malloc, EXPORTED by default for internal use, but we bake in a
   # trivial allocator and warn at runtime if used in ASSERTIONS
-  if '_malloc' in notinImplemented:
-    notinImplemented.remove('_malloc')
+  if '_malloc' in missing:
+    missing.remove('_malloc')
 
-  for requested in notinImplemented:
+  for requested in missing:
     in_pre = ('function ' + asstr(requested)) in pre
     if not in_pre:
       # could be a js library func
