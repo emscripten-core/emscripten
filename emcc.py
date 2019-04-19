@@ -923,7 +923,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if flag.startswith('-l'):
             libs.append((i, flag[2:]))
           elif flag.startswith('-L'):
-            lib_dirs.append((i, flag[2:]))
+            lib_dirs.append(flag[2:])
           else:
             link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
 
