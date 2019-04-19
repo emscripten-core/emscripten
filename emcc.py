@@ -1437,7 +1437,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
           if shared.Settings.AUTODEBUG:
-            passes += ['--instrument-locals', '--log-execution', '--instrument-memory', '--legalize-js-interface']
+            # adding '--flatten' here may make these even more effective
+            passes += ['--instrument-locals']
+            passes += ['--log-execution']
+            passes += ['--instrument-memory']
+            passes += ['--legalize-js-interface']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
