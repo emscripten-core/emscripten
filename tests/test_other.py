@@ -4508,6 +4508,17 @@ minor: %d
 tiny: %d
 ''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
 
+  def test_libc_files_without_syscalls(self):
+    # a program which includes FS due to libc js library support, but has no syscalls,
+    # so full FS support would normally be optimized out
+    create_test_file('src.cpp', r'''
+#include <sys/time.h>
+#include <stddef.h>
+int main() {
+    return utimes(NULL, NULL);
+}''')
+    run_process([PYTHON, EMCC, 'src.cpp'])
+
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
@@ -5261,11 +5272,11 @@ main(const int argc, const char * const * const argv)
   def test_no_filesystem(self):
     FS_MARKER = 'var FS'
     # fopen forces full filesystem support
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c')])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c'), '-s', 'ASSERTIONS=0'])
     yes_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained(FS_MARKER, open('a.out.js').read())
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'])
     no_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())

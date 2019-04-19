@@ -1389,6 +1389,12 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 // to explicitly choose to disable HTML minification altogether.
 var MINIFY_HTML = 1;
 
+// Indicates that the syscalls (which we see statically) indicate that they need full
+// filesystem support. Otherwise, when just a small subset are used, we can get away without
+// including the full filesystem - in particular, if open() is never used, then we don't
+// actually need to support operations on streams.
+var SYSCALLS_REQUIRE_FILESYSTEM = 1;
+
 // A list of feature flags to pass to each binaryen invocation (like wasm-opt, etc.). This
 // is received from wasm-emscripten-finalize, which reads it from the features section.
 var BINARYEN_FEATURES = [];
