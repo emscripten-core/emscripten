@@ -109,7 +109,7 @@ select_overload and select_const
       template<typename Signature, typename ClassType>
       typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn))
 
-   :param Signature (ClassType::*fn)
+   :param Signature (ClassType::\*fn)
 
 .. cpp:function:: auto select_const()
 
@@ -119,7 +119,7 @@ select_overload and select_const
       template<typename ClassType, typename ReturnType, typename... Args>
       auto select_const(ReturnType (ClassType::*method)(Args...) const)
 
-   :param ReturnType (ClassType::*method)(Args...) const
+   :param ReturnType (ClassType::\*method)(Args...) const
 
 
 .. cpp:function:: typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp)
@@ -202,7 +202,7 @@ Value tuples
 
    .. cpp:function:: value_array& element(ElementType InstanceType::*field)
 
-      :param ElementType InstanceType::*field: Note that ``ElementType`` and ``InstanceType`` are typenames (templated types).
+      :param ElementType InstanceType::\*field: Note that ``ElementType`` and ``InstanceType`` are typenames (templated types).
 
 
    .. cpp:function:: value_array& element(Getter getter, Setter setter)
