@@ -88,10 +88,10 @@ GLenum glClientWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {
 	else
 		return (GLenum)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IIIII, &emscripten_glClientWaitSync, p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
 }
-GLenum glWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {
+void glWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {
 	GL_FUNCTION_TRACE(glWaitSync);
 	if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
-		emscripten_glClientWaitSync(p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
+		emscripten_glWaitSync(p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
 	else
 		emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IIIII, &emscripten_glWaitSync, p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
 }
