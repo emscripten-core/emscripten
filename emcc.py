@@ -2658,7 +2658,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.check_call(cmd)
 
     if not target_binary:
-      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target, '--all-features', '--disable-bulk-memory']
       if debug_info:
         cmd += ['-g']
         if use_source_map(options):
