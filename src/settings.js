@@ -745,19 +745,15 @@ var STRICT = 0;
 var WARN_ON_UNDEFINED_SYMBOLS = 1;
 
 // If set to 1, we will give a link-time error on any undefined symbols (see
-// WARN_ON_UNDEFINED_SYMBOLS). The default value is 1. To allow undefined
-// symbols at link time set this to 0, in which case if an undefined function is
-// called a runtime error will occur.  Any undefined symbols that are listed in
-// EXPORTED_FUNCTIONS will also be reported.
+// WARN_ON_UNDEFINED_SYMBOLS). To allow undefined symbols at link time set this
+// to 0, in which case if an undefined function is called a runtime error will
+// occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
+// be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
 
-// If set to 1, any -lfoo directives pointing to nonexistent library files will
-// issue a linker error.
-
-// The default value for this is currently 0, but will be transitioned to 1 in
-// the future. To keep relying on building with -s ERROR_ON_MISSING_LIBRARIES=0
-// setting, prefer to set that option explicitly in your build system.
-var ERROR_ON_MISSING_LIBRARIES = 0;
+// My default any -lfoo directives pointing to nonexistent library files will
+// issue a linker error.  Set to 0 to downgrade this to a warning.
+var ERROR_ON_MISSING_LIBRARIES = 1;
 
 // Specifies a list of Emscripten-provided JS libraries to link against.
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
