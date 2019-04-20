@@ -2656,7 +2656,7 @@ class Building(object):
       library_files += ['library_' + library_name]
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s"', library_name)
+        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
       else:
         logger.warning('emcc: cannot find library "%s"', library_name)
 
