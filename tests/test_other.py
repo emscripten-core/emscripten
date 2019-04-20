@@ -8249,22 +8249,12 @@ int main() {
 
   def test_error_on_missing_libraries(self):
     env = os.environ.copy()
-    if 'EMCC_STRICT' in env:
-      del env['EMCC_STRICT']
-
-    # -llsomenonexistingfile is an error in strict mode
-    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env, check=False)
+    # -llsomenonexistingfile is an error by default
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile'], stdout=PIPE, stderr=PIPE, env=env, check=False)
     self.assertNotEqual(proc.returncode, 0)
 
     # -llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-
-    # -s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-
-    # -llsomenonexistingfile is not yet an error in non-strict mode
-    # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
 
   # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
