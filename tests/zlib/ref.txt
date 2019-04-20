@@ -1,4 +1,4 @@
-zlib version 1.2.5 = 4688, compile flags = 85
+zlib version 1.2.5 = 4688, compile flags = 149
 uncompress(): hello, hello!
 inflate(): hello, hello!
 large_inflate(): OK
