@@ -5,7 +5,7 @@
 
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
-#if SYSCALLS_REQUIRE_FILESYSTEM
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
                    '$FS', '$ERRNO_CODES', '$PATH',
 #endif
 #if SYSCALL_DEBUG
