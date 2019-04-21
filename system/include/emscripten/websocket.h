@@ -113,3 +113,7 @@ EMSCRIPTEN_RESULT emscripten_websocket_delete(EMSCRIPTEN_WEBSOCKET_T socket);
 // even after the pthread quits, although be warned that if the target thread that was registered to handle events for a given WebSocket quits, then those
 // events will stop from being delivered altogether.
 void emscripten_websocket_deinitialize(void);
+  
+#ifdef __cplusplus
+} // ~extern "C"
+#endif
