@@ -5126,14 +5126,6 @@ LibraryManager.library = {
   },
   // =======================================================================
 
-#if !FILESYSTEM
-  // With the filesystem manually disabled, if code is pulled in that uses FS, it will get this
-  // empty object. This prevents a compilation error. (If code actually tries to use the FS
-  // at runtime then it would fail, of course.)
-  // TODO: more carefully avoid even depending on this in that case, by replacing functions that
-  //       call it with stubs that error or warn etc.
-  $FS: {},
-#endif
 };
 
 function autoAddDeps(object, name) {
