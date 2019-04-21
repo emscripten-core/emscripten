@@ -8006,8 +8006,8 @@ int main() {
                    0, [], [],          61,  0,   0,  0) # noqa
     else:
       run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
-      run(['-O1'], 15, ['abort'], ['waka'], 12630,  15,   14, 33) # noqa
-      run(['-O2'], 15, ['abort'], ['waka'], 12616,  15,   14, 28) # noqa
+      run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
+      run(['-O2'], 15, ['abort'], ['waka'], 12425,  15,   14, 28) # noqa
       run(['-O3'],  6, [],        [],        2443,   9,    2, 15) # noqa; in -O3, -Os and -Oz we metadce
       run(['-Os'],  6, [],        [],        2412,   9,    2, 17) # noqa
       run(['-Oz'],  6, [],        [],        2389,   9,    2, 16) # noqa
