@@ -4542,6 +4542,17 @@ int main() {
 }''')
     run_process([PYTHON, EMCC, 'src.cpp'])
 
+  def test_syscall_without_filesystem(self):
+    # a program which includes a non-trivial syscall, but disables the filesystem.
+    create_test_file('src.c', r'''
+#include <sys/time.h>
+#include <stddef.h>
+int main() {
+  extern int __syscall295(int);
+  return __syscall295(0);
+}''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
+
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
