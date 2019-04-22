@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file, no_fastcomp
 
 # decorators for limiting which modes a test can run in
 
@@ -5966,9 +5966,9 @@ return malloc(size);
 
     run_all('lto')
 
-  def test_autodebug(self):
+  def test_autodebug_bitcode(self):
     if self.is_wasm_backend():
-      # autodebugging only works with bitcode objects
+      # bitcode autodebugging only works with bitcode objects
       self.set_setting('WASM_OBJECT_FILES', 0)
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
@@ -6011,6 +6011,18 @@ return malloc(size);
         }
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
+
+  @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
+  @with_env_modify({'EMCC_AUTODEBUG': '1'})
+  def test_autodebug_wasm(self):
+    # test that the program both works and also emits some of the logging
+    # (but without the specific numbers, which may change over time)
+    def check(out, err):
+      for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
+        self.assertIn(msg, out)
+      return out + err
+    self.do_run(open(path_from_root('tests', 'core', 'test_hello_world.c')).read(),
+                'hello, world!', output_nicerizer=check)
 
   ### Integration tests
 
