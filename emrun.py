@@ -344,8 +344,8 @@ def kill_browser_process():
   temporary Firefox profile that was created, if one exists."""
   global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
+    logv('Terminating browser process..')
     try:
-      logv('Terminating browser process..')
       browser_process.kill()
       delete_emrun_safe_firefox_profile()
     except Exception as e:
@@ -1645,7 +1645,7 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Executing %s" % ' '.join(browser))
+    logi("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True

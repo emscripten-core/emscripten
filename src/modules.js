@@ -83,9 +83,6 @@ var LibraryManager = {
 
       // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
       if (!STRICT && !MINIMAL_RUNTIME) {
-        libraries = libraries.concat([
-          'library_lz4.js',
-        ]);
         if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
           libraries = libraries.concat([
             'library_idbfs.js',
@@ -121,11 +118,25 @@ var LibraryManager = {
         'library_idbstore.js',
         'library_async.js'
       ]);
+    } else {
+      if (EMTERPRETIFY_ASYNC || ASYNCIFY) {
+        libraries.push('library_async.js');
+      }
+      if (USE_SDL == 1) {
+        libraries.push('library_sdl.js');
+      }
+      if (USE_SDL == 2) {
+        libraries.push('library_egl.js', 'library_webgl.js');
+      }
     }
 
     // If there are any explicitly specified system JS libraries to link to, add those to link.
     if (SYSTEM_JS_LIBRARIES) {
       libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
+    }
+
+    if (LZ4) {
+      libraries.push('library_lz4.js');
     }
 
     if (USE_WEBGL2) {
@@ -143,6 +154,8 @@ var LibraryManager = {
       libraries.length = 0;
       LibraryManager.library = {};
     }
+
+    // TODO: deduplicate libraries (not needed for correctness, but avoids unnecessary work)
 
     // Save the list for has() queries later.
     this.libraries = libraries;

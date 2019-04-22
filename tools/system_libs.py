@@ -104,6 +104,36 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
 
+  def get_wasm_libc_rt_files():
+    # Static linking is tricky with LLVM, since e.g. memset might not be used
+    # from libc, but be used as an intrinsic, and codegen will generate a libc
+    # call from that intrinsic *after* static linking would have thought it is
+    # all in there. In asm.js this is not an issue as we do JS linking anyhow,
+    # and have asm.js-optimized versions of all the LLVM intrinsics. But for
+    # wasm, we need a better solution. For now, make another archive that gets
+    # included at the same time as compiler-rt.
+    # Note that this also includes things that may be depended on by those
+    # functions - fmin uses signbit, for example, so signbit must be here (so if
+    # fmin is added by codegen, it will have all it needs).
+    math_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+      filenames=[
+        'fmin.c', 'fminf.c', 'fminl.c',
+        'fmax.c', 'fmaxf.c', 'fmaxl.c',
+        'fmod.c', 'fmodf.c', 'fmodl.c',
+        'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
+        'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
+        'scalbn.c', '__fpclassifyl.c',
+        '__signbitl.c', '__signbitf.c', '__signbit.c'
+      ])
+    string_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+      filenames=['memset.c', 'memmove.c'])
+    other_files = files_in_path(
+      path_components=['system', 'lib', 'libc'],
+      filenames=['emscripten_memcpy.c'])
+    return math_files + string_files + other_files
+
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
   def musl_internal_includes():
@@ -216,14 +246,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
-      blacklist += [
-          'fmin.c', 'fminf.c', 'fminl.c', 'fmax.c', 'fmaxf.c', 'fmaxl.c',
-          'fmod.c', 'fmodf.c', 'fmodl.c', 'log2.c', 'log2f.c', 'log10.c',
-          'log10f.c', 'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c', 'scalbn.c',
-          '__fpclassifyl.c'
-      ]
-
-      blacklist += ['memcpy.c', 'memset.c', 'memmove.c']
+      blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -525,33 +548,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_libc_rt(libname):
-    # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
-    # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
-    # *after* static linking would have thought it is all in there. In asm.js this is not an
-    # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
-    # intrinsics. But for wasm, we need a better solution. For now, make another archive
-    # that gets included at the same time as compiler-rt.
-    # Note that this also includes things that may be depended on by those functions - fmin
-    # uses signbit, for example, so signbit must be here (so if fmin is added by codegen,
-    # it will have all it needs).
-    math_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
-      filenames=[
-        'fmin.c', 'fminf.c', 'fminl.c',
-        'fmax.c', 'fmaxf.c', 'fmaxl.c',
-        'fmod.c', 'fmodf.c', 'fmodl.c',
-        'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
-        'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c',
-        '__signbitl.c', '__signbitf.c', '__signbit.c'
-      ])
-    string_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-      filenames=['memset.c', 'memmove.c'])
-    other_files = files_in_path(
-      path_components=['system', 'lib', 'libc'],
-      filenames=['emscripten_memcpy.c'])
-    return create_wasm_rt_lib(libname, math_files + string_files + other_files)
+    return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
@@ -770,11 +767,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
+  in_group = False
   for name, need_whole_archive in libs_to_link:
-    if need_whole_archive:
-      ret += ['--whole-archive', name, '--no-whole-archive']
-    else:
-      ret.append(name)
+    if need_whole_archive and not in_group:
+      ret.append('--whole-archive')
+      in_group = True
+    if in_group and not need_whole_archive:
+      ret.append('--no-whole-archive')
+      in_group = False
+    ret.append(name)
+  if in_group:
+    ret.append('--no-whole-archive')
 
   return ret
 

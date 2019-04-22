@@ -920,7 +920,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # (4, a), (4.25, b), (4.5, c), (4.75, d)
         link_flags_to_add = arg.split(',')[1:]
         for flag_index, flag in enumerate(link_flags_to_add):
-          link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+          if flag.startswith('-l'):
+            libs.append((i, flag[2:]))
+          elif flag.startswith('-L'):
+            lib_dirs.append(flag[2:])
+          else:
+            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
 
         newargs[i] = ''
       elif arg == '-s':
@@ -981,7 +986,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if error_on_missing_libraries_cmdline:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
-    settings_changes.append(process_libraries(libs, lib_dirs, settings_changes, input_files))
+    settings_changes.append(process_libraries(libs, lib_dirs, input_files))
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
     # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1130,6 +1135,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
       next_arg_index += 1
       shared.Settings.FILESYSTEM = 0
+      shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
       options.js_libraries.append(shared.path_from_root('src', 'library_asmfs.js'))
 
@@ -1699,7 +1705,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # how to deal with.  We currently can't handle flags with options (like
         # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
         # flag).
-        link_flags = [f for f in link_flags if f[1] in SUPPORTED_LINKER_FLAGS]
+        def supported(f):
+          if f in SUPPORTED_LINKER_FLAGS:
+            return True
+          logger.warning('ignoring unsupported linker flag: `%s`', f)
+          return False
+        link_flags = [f for f in link_flags if supported(f[1])]
 
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
@@ -2657,7 +2668,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     shared.check_call(cmd)
 
     if not target_binary:
-      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target]
+      cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target, '--all-features', '--disable-bulk-memory']
       if debug_info:
         cmd += ['-g']
         if use_source_map(options):
@@ -3133,7 +3144,7 @@ def worker_js_script(proxy_worker_filename):
   return web_gl_client_src + '\n' + proxy_client_src
 
 
-def process_libraries(libs, lib_dirs, settings_changes, input_files):
+def process_libraries(libs, lib_dirs, input_files):
   libraries = []
 
   # Find library files
@@ -3157,8 +3168,6 @@ def process_libraries(libs, lib_dirs, settings_changes, input_files):
     if not found:
       libraries += shared.Building.path_to_system_js_libraries(lib)
 
-  # Certain linker flags imply some link libraries to be pulled in by default.
-  libraries += shared.Building.path_to_system_js_libraries_for_settings(settings_changes)
   return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
 
 

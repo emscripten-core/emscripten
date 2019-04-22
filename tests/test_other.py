@@ -913,17 +913,44 @@ f.close()
     # check empty tables work with assertions 2 in this mode (#6554)
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EMULATED_FUNCTION_POINTERS=1', '-s', 'ASSERTIONS=2'])
 
-  def test_l_link(self):
-    # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
-
-    def build(path, args):
-      run_process([PYTHON, EMCC, self.in_dir(*path)] + args)
-
+  def test_wl_linkflags(self):
+    # Test path -L and -l via -Wl, arguments and -Wl, response files
     create_test_file('main.cpp', '''
       extern void printey();
       int main() {
         printey();
         return 0;
+      }
+    ''')
+    create_test_file('libfile.cpp', '''
+      #include <stdio.h>
+      void printey() {
+        printf("hello from lib\\n");
+      }
+    ''')
+    create_test_file('linkflags.txt', '''
+    -L.
+    -lfoo
+    ''')
+    run_process([PYTHON, EMCC, '-o', 'libfile.o', 'libfile.cpp'])
+    run_process([PYTHON, EMAR, 'rv', 'libfoo.a', 'libfile.o'])
+    run_process([PYTHON, EMCC, 'main.cpp', '-L.', '-lfoo'])
+    run_process([PYTHON, EMCC, 'main.cpp', '-Wl,-L.', '-Wl,-lfoo'])
+    run_process([PYTHON, EMCC, 'main.cpp', '-Wl,@linkflags.txt'])
+
+  def test_l_link(self):
+    # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
+    create_test_file('main.cpp', '''
+      extern void printey();
+      int main() {
+        printey();
+        return 0;
+      }
+    ''')
+    create_test_file('libfile.cpp', '''
+      #include <stdio.h>
+      void printey() {
+        printf("hello from lib\\n");
       }
     ''')
 
@@ -932,28 +959,24 @@ f.close()
     except:
       pass
 
-    create_test_file(os.path.join('libdir', 'libfile.cpp'), '''
-      #include <stdio.h>
-      void printey() {
-        printf("hello from lib\\n");
-      }
-    ''')
-
     libfile = self.in_dir('libdir', 'libfile.so')
     aout = 'a.out.js'
 
+    def build(path, args):
+      run_process([PYTHON, EMCC, path] + args)
+
     # Test linking the library built here by emcc
-    build(['libdir', 'libfile.cpp'], ['-c'])
+    build('libfile.cpp', ['-c'])
     shutil.move('libfile.o', libfile)
-    build(['main.cpp'], ['-L' + 'libdir', '-lfile'])
+    build('main.cpp', ['-L' + 'libdir', '-lfile'])
 
     self.assertContained('hello from lib', run_js(aout))
 
     # Also test execution with `-l c` and space-separated library linking syntax
     os.remove(aout)
-    build(['libdir', 'libfile.cpp'], ['-c', '-l', 'c'])
+    build('libfile.cpp', ['-c', '-l', 'c'])
     shutil.move('libfile.o', libfile)
-    build(['main.cpp'], ['-L', 'libdir', '-l', 'file'])
+    build('main.cpp', ['-L', 'libdir', '-l', 'file'])
 
     self.assertContained('hello from lib', run_js(aout))
 
@@ -4508,6 +4531,17 @@ minor: %d
 tiny: %d
 ''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
 
+  def test_libc_files_without_syscalls(self):
+    # a program which includes FS due to libc js library support, but has no syscalls,
+    # so full FS support would normally be optimized out
+    create_test_file('src.cpp', r'''
+#include <sys/time.h>
+#include <stddef.h>
+int main() {
+    return utimes(NULL, NULL);
+}''')
+    run_process([PYTHON, EMCC, 'src.cpp'])
+
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
@@ -5261,11 +5295,11 @@ main(const int argc, const char * const * const argv)
   def test_no_filesystem(self):
     FS_MARKER = 'var FS'
     # fopen forces full filesystem support
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c')])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world_fopen.c'), '-s', 'ASSERTIONS=0'])
     yes_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertContained(FS_MARKER, open('a.out.js').read())
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS=0'])
     no_size = os.path.getsize('a.out.js')
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())
@@ -7982,7 +8016,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1539, [],        [],      226403,  28,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1541, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8215,22 +8249,12 @@ int main() {
 
   def test_error_on_missing_libraries(self):
     env = os.environ.copy()
-    if 'EMCC_STRICT' in env:
-      del env['EMCC_STRICT']
-
-    # -llsomenonexistingfile is an error in strict mode
-    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1'], stdout=PIPE, stderr=PIPE, env=env, check=False)
+    # -llsomenonexistingfile is an error by default
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile'], stdout=PIPE, stderr=PIPE, env=env, check=False)
     self.assertNotEqual(proc.returncode, 0)
 
     # -llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-
-    # -s ERROR_ON_MISSING_LIBRARIES=0 should override -s STRICT=1
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=1', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stdout=PIPE, stderr=PIPE, env=env)
-
-    # -llsomenonexistingfile is not yet an error in non-strict mode
-    # TODO: TEMPORARY: When -s ERROR_ON_MISSING_LIBRARIES=1 becomes the default, change the following line to expect failure instead of 0.
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'STRICT=0'], stdout=PIPE, stderr=PIPE, env=env)
 
   # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):

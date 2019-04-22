@@ -484,7 +484,7 @@ def create_module_asmjs(function_table_sigs, metadata,
   asm_runtime_thread_local_vars = create_asm_runtime_thread_local_vars()
 
   stack = ''
-  if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
+  if not shared.Settings.RELOCATABLE and not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
     if 'STACKTOP' in shared.Settings.ASM_PRIMITIVE_VARS:
       stack += apply_memory('  var STACKTOP = {{{ STACK_BASE }}};\n')
     if 'STACK_MAX' in shared.Settings.ASM_PRIMITIVE_VARS:
@@ -617,7 +617,7 @@ def optimize_syscalls(declares, DEBUG):
   if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
     if DEBUG:
       logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
-    shared.Settings.FILESYSTEM = 0
+    shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
 
 
 def is_int(x):
@@ -852,22 +852,24 @@ def get_all_implemented(forwarded_json, metadata):
 
 
 def check_all_implemented(all_implemented, pre):
-  for requested in shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS:
-    if not is_already_implemented(requested, pre, all_implemented):
+  # we are not checking anyway, so just skip this
+  if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
+    return
+  # the initial list of missing functions are those we expected to export, but were not implemented in compiled code
+  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - set(all_implemented))
+  # special-case malloc, EXPORTED by default for internal use, but we bake in a
+  # trivial allocator and warn at runtime if used in ASSERTIONS
+  if '_malloc' in missing:
+    missing.remove('_malloc')
+
+  for requested in missing:
+    in_pre = ('function ' + asstr(requested)) in pre
+    if not in_pre:
       # could be a js library func
       if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
         exit_with_error('undefined exported function: "%s"', requested)
       elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
         logger.warning('undefined exported function: "%s"', requested)
-
-
-def is_already_implemented(requested, pre, all_implemented):
-  is_implemented = requested in all_implemented
-  # special-case malloc, EXPORTED by default for internal use, but we bake in a
-  # trivial allocator and warn at runtime if used in ASSERTIONS
-  is_exception = requested == '_malloc'
-  in_pre = ('function ' + asstr(requested)) in pre
-  return is_implemented or is_exception or in_pre
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -1585,7 +1587,7 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
 
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
-      basic_vars += ['gb', 'fb']
+      basic_vars += ['gb', 'fb', 'STACKTOP', 'STACK_MAX']
     else:
       # wasm side modules have a specific convention for these
       basic_vars += ['__memory_base', '__table_base']
@@ -1746,12 +1748,14 @@ def create_named_globals(metadata):
     return ''
 
   named_globals = '''
-var NAMED_GLOBALS = { %s };
+var NAMED_GLOBALS = {
+  %s
+};
 for (var named in NAMED_GLOBALS) {
   Module['_' + named] = gb + NAMED_GLOBALS[named];
 }
 Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
-''' % ', '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
+''' % ',\n  '.join('"' + k + '": ' + str(v) for k, v in metadata['namedGlobals'].items())
 
   if shared.Settings.WASM:
     # wasm side modules are pure wasm, and cannot create their g$..() methods, so we help them out
@@ -1761,8 +1765,8 @@ Module['NAMED_GLOBALS'] = NAMED_GLOBALS;
     named_globals += '''
 for (var named in NAMED_GLOBALS) {
   (function(named) {
-    var func = Module['_' + named];
-    Module['g$_' + named] = function() { return func };
+    var addr = Module['_' + named];
+    Module['g$_' + named] = function() { return addr };
   })(named);
 }
 '''

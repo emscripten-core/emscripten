@@ -313,7 +313,7 @@ function checkUnflushedContent() {
   // builds we do so just for this check, and here we see if there is any
   // content to flush, that is, we check if there would have been
   // something a non-ASSERTIONS build would have not seen.
-  // How we flush the streams depends on whether we are in FILESYSTEM=0
+  // How we flush the streams depends on whether we are in SYSCALLS_REQUIRE_FILESYSTEM=0
   // mode (which has its own special function for this; otherwise, all
   // the code is inside libc)
   var print = out;
@@ -323,34 +323,31 @@ function checkUnflushedContent() {
     has = true;
   }
   try { // it doesn't matter if it fails
-#if FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
 #else
     var flush = Module['_fflush'];
 #endif
     if (flush) flush(0);
-#if FILESYSTEM
+#if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    var hasFS = {{{ '$FS' in addedLibraryItems ? 'true' : 'false' }}};
-    if (hasFS) {
-      ['stdout', 'stderr'].forEach(function(name) {
-        var info = FS.analyzePath('/dev/' + name);
-        if (!info) return;
-        var stream = info.object;
-        var rdev = stream.rdev;
-        var tty = TTY.ttys[rdev];
-        if (tty && tty.output && tty.output.length) {
-          has = true;
-        }
-      });
-    }
+    ['stdout', 'stderr'].forEach(function(name) {
+      var info = FS.analyzePath('/dev/' + name);
+      if (!info) return;
+      var stream = info.object;
+      var rdev = stream.rdev;
+      var tty = TTY.ttys[rdev];
+      if (tty && tty.output && tty.output.length) {
+        has = true;
+      }
+    });
 #endif
   } catch(e) {}
   out = print;
   err = printErr;
   if (has) {
     warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
-#if FILESYSTEM == 0
+#if FILESYSTEM == 0 || SYSCALLS_REQUIRE_FILESYSTEM == 0
     warnOnce('(this may also be due to not including full filesystem support - try building with -s FORCE_FILESYSTEM=1)');
 #endif
   }

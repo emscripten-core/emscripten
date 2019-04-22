@@ -2378,12 +2378,10 @@ class Building(object):
 
       if not Settings.ASMFS:
         # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
-        if not Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
-
-        # If we do have filesystem enabled, tell Closure not to bark when FS references different libraries that might not exist.
-        if Settings.FILESYSTEM and not Settings.ASMFS:
+        if Settings.FILESYSTEM:
           CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-defined-fs-annotation.js')]
+        else:
+          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2658,30 +2656,11 @@ class Building(object):
       library_files += ['library_' + library_name]
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s"', library_name)
+        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
       else:
         logger.warning('emcc: cannot find library "%s"', library_name)
 
     return library_files
-
-  @staticmethod
-  # Given a list of Emscripten link settings, returns a list of paths to system JS libraries
-  # that should get linked automatically in to the build when those link settings are present.
-  def path_to_system_js_libraries_for_settings(link_settings):
-    system_js_libraries = []
-    if 'EMTERPRETIFY_ASYNC=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'LZ4=1' in link_settings:
-      system_js_libraries += ['library_lz4.js']
-    if 'USE_SDL=1' in link_settings:
-      system_js_libraries += ['library_sdl.js']
-    if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_webgl.js']
-    if 'USE_WEBGL2=1' in link_settings:
-      system_js_libraries += ['library_webgl2.js']
-    return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod
   def get_binaryen_feature_flags():
