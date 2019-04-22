@@ -81,8 +81,20 @@ ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glDrawElementsInstanced, GLenum, G
 RET_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_III, GLsync, glFenceSync, GLenum, GLbitfield);
 RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, GLboolean, glIsSync, GLsync);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glDeleteSync, GLsync);
-RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_IIII, GLenum, glClientWaitSync, GLsync, GLbitfield, GLuint64); // XXX TODO: 64-bit integer proxying, this is not right, proxying as 32-bit
-VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glWaitSync, GLsync, GLbitfield, GLuint64); // XXX TODO: 64-bit integer proxying, this is not right, proxying as 32-bit
+GLenum glClientWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {
+	GL_FUNCTION_TRACE(glClientWaitSync);
+	if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
+		return emscripten_glClientWaitSync(p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
+	else
+		return (GLenum)emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IIIII, &emscripten_glClientWaitSync, p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
+}
+void glWaitSync(GLsync p0, GLbitfield p1, GLuint64 p2) {
+	GL_FUNCTION_TRACE(glWaitSync);
+	if (pthread_getspecific(currentThreadOwnsItsWebGLContext))
+		emscripten_glWaitSync(p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
+	else
+		emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIIII, &emscripten_glWaitSync, p0, p1, p2 & 0xFFFFFFFF, (p2 >> 32) & 0xFFFFFFFF);
+}
 VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGetInteger64v, GLenum, GLint64 *);
 VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetSynciv, GLsync, GLenum, GLsizei, GLsizei *, GLint *);
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetInteger64i_v, GLenum, GLuint, GLint64 *);
