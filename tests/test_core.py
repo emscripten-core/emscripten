@@ -6390,6 +6390,8 @@ return malloc(size);
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('this test uses wasm binaries')
 
     orig_args = self.emcc_args
 
