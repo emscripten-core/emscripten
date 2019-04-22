@@ -894,8 +894,9 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-#if WASM2JS
-  // legalization of i64 support code may require these
+#if WASM2JS || AUTODEBUG
+  // wasm2js legalization of i64 support code may require these
+  // autodebug may also need them
   env['setTempRet0'] = setTempRet0;
   env['getTempRet0'] = getTempRet0;
 #endif
