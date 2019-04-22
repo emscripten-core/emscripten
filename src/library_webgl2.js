@@ -748,7 +748,7 @@ var LibraryWebGL2 = {
     GL.syncs[id] = null;
   },
 
-  glClientWaitSync__sig: 'iiii',
+  glClientWaitSync__sig: 'iiiii',
   glClientWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
     // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
@@ -760,7 +760,7 @@ var LibraryWebGL2 = {
     return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
   },
 
-  glWaitSync__sig: 'viii',
+  glWaitSync__sig: 'viiii',
   glWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
     timeoutLo = timeoutLo >>> 0;

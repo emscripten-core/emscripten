@@ -5,7 +5,7 @@
 
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
-#if FILESYSTEM
+#if SYSCALLS_REQUIRE_FILESYSTEM
                    '$FS', '$ERRNO_CODES', '$PATH',
 #endif
 #if SYSCALL_DEBUG
@@ -13,7 +13,7 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
-#if FILESYSTEM
+#if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
 
@@ -168,7 +168,7 @@ var SyscallsLibrary = {
         buffer.push(curr);
       }
     },
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
     // arguments handling
 
@@ -189,7 +189,7 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-#if FILESYSTEM
+#if SYSCALLS_REQUIRE_FILESYSTEM
     getStreamFromFD: function() {
       var stream = FS.getStream(SYSCALLS.get());
       if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
@@ -217,7 +217,7 @@ var SyscallsLibrary = {
 #endif
       return info;
     },
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
     get64: function() {
       var low = SYSCALLS.get(), high = SYSCALLS.get();
 #if ASSERTIONS
@@ -248,17 +248,17 @@ var SyscallsLibrary = {
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
   __syscall4: function(which, varargs) { // write
-#if FILESYSTEM
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
 #else
-    // hack to support printf in FILESYSTEM=0
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var stream = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     for (var i = 0; i < count; i++) {
       SYSCALLS.printChar(stream, HEAPU8[buf+i]);
     }
     return count;
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
@@ -267,7 +267,13 @@ var SyscallsLibrary = {
   },
   __syscall6: function(which, varargs) { // close
     var stream = SYSCALLS.getStreamFromFD();
+#if SYSCALLS_REQUIRE_FILESYSTEM
     FS.close(stream);
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   __syscall9: function(which, varargs) { // link
@@ -348,9 +354,9 @@ var SyscallsLibrary = {
     return -ERRNO_CODES.ENOSYS; // unsupported features
   },
   __syscall54: function(which, varargs) { // ioctl
-#if FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in ioctl syscall due to FILESYSTEM=0');
+    err('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -402,7 +408,7 @@ var SyscallsLibrary = {
       }
       default: abort('bad ioctl syscall ' + op);
     }
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(which, varargs) { // setpgid
@@ -740,10 +746,16 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
     // NOTE: offset_high is unused - Emscripten's off_t is 32-bit
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var offset = offset_low;
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
@@ -840,7 +852,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
-#if FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
     var fflush = Module["_fflush"];
@@ -855,11 +867,11 @@ var SyscallsLibrary = {
 #endif
 #endif
   __syscall146: function(which, varargs) { // writev
-#if FILESYSTEM
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt);
 #else
-    // hack to support printf in FILESYSTEM=0
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
     for (var i = 0; i < iovcnt; i++) {
@@ -871,7 +883,7 @@ var SyscallsLibrary = {
       ret += len;
     }
     return ret;
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
@@ -1090,9 +1102,9 @@ var SyscallsLibrary = {
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
-#if FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    err('no-op in fcntl64 syscall due to FILESYSTEM=0');
+    err('no-op in fcntl64 syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
 #endif
     return 0;
 #else
@@ -1147,7 +1159,7 @@ var SyscallsLibrary = {
         return -ERRNO_CODES.EINVAL;
       }
     }
-#endif // FILESYSTEM
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG
