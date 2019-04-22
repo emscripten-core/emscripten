@@ -15,7 +15,15 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
-- Add port for bzip2 library (`libbz2.a`). (#8349)
+ - Add port for bzip2 library (`libbz2.a`). (#8349)
+ - Add port for libjpeg library. (#8361)
+ - Enable ERROR_ON_MISSING_LIBRARIES by by default (#8461)
+
+v1.38.30: 03/21/2019
+--------------------
+ - Remove Module.buffer which was exported by default unnecessarily. This was an
+   undocumented internal detail, but in theory code may have relied on it.
+   (#8277)
 
 v1.38.29: 03/11/2019
 --------------------
