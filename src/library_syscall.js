@@ -6,7 +6,7 @@
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-                   '$FS', '$ERRNO_CODES', '$PATH',
+                   '$FS', '$PATH',
 #endif
 #if SYSCALL_DEBUG
                    '$ERRNO_MESSAGES'
@@ -30,7 +30,7 @@ var SyscallsLibrary = {
           dir = FS.cwd();
         } else {
           var dirstream = FS.getStream(dirfd);
-          if (!dirstream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+          if (!dirstream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
           dir = dirstream.path;
         }
         path = PATH.join2(dir, path);
@@ -44,7 +44,7 @@ var SyscallsLibrary = {
       } catch (e) {
         if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
           // an error occurred while trying to look up the path; we should just report ENOTDIR
-          return -ERRNO_CODES.ENOTDIR;
+          return -{{{ cDefine('ENOTDIR') }}};
         }
         throw e;
       }
@@ -90,13 +90,13 @@ var SyscallsLibrary = {
         case {{{ cDefine('S_IFIFO') }}}:
         case {{{ cDefine('S_IFSOCK') }}}:
           break;
-        default: return -ERRNO_CODES.EINVAL;
+        default: return -{{{ cDefine('EINVAL') }}};
       }
       FS.mknod(path, mode, dev);
       return 0;
     },
     doReadlink: function(path, buf, bufsize) {
-      if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
+      if (bufsize <= 0) return -{{{ cDefine('EINVAL') }}};
       var ret = FS.readlink(path);
 
       var len = Math.min(bufsize, lengthBytesUTF8(ret));
@@ -111,7 +111,7 @@ var SyscallsLibrary = {
     doAccess: function(path, amode) {
       if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
         // need a valid mode
-        return -ERRNO_CODES.EINVAL;
+        return -{{{ cDefine('EINVAL') }}};
       }
       var node;
       var lookup = FS.lookupPath(path, { follow: true });
@@ -121,7 +121,7 @@ var SyscallsLibrary = {
       if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
       if (amode & {{{ cDefine('X_OK') }}}) perms += 'x';
       if (perms /* otherwise, they've just passed F_OK */ && FS.nodePermissions(node, perms)) {
-        return -ERRNO_CODES.EACCES;
+        return -{{{ cDefine('EACCES') }}};
       }
       return 0;
     },
@@ -192,7 +192,7 @@ var SyscallsLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     getStreamFromFD: function() {
       var stream = FS.getStream(SYSCALLS.get());
-      if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+      if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
       err('    (stream: "' + stream.path + '")');
 #endif
@@ -200,7 +200,7 @@ var SyscallsLibrary = {
     },
     getSocketFromFD: function() {
       var socket = SOCKFS.getSocket(SYSCALLS.get());
-      if (!socket) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+      if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
       err('    (socket: "' + socket.path + '")');
 #endif
@@ -278,7 +278,7 @@ var SyscallsLibrary = {
   },
   __syscall9: function(which, varargs) { // link
     var oldpath = SYSCALLS.get(), newpath = SYSCALLS.get();
-    return -ERRNO_CODES.EMLINK; // no hardlinks for us
+    return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
   __syscall10: function(which, varargs) { // unlink
     var path = SYSCALLS.getStr();
@@ -304,7 +304,7 @@ var SyscallsLibrary = {
     return PROCINFO.pid;
   },
   __syscall29: function(which, varargs) { // pause
-    return -ERRNO_CODES.EINTR; // we can't pause
+    return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
   __syscall33: function(which, varargs) { // access
     var path = SYSCALLS.getStr(), amode = SYSCALLS.get();
@@ -312,7 +312,7 @@ var SyscallsLibrary = {
   },
   __syscall34: function(which, varargs) { // nice
     var inc = SYSCALLS.get();
-    return -ERRNO_CODES.EPERM; // no meaning to nice for our single-process environment
+    return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
   __syscall36: function(which, varargs) { // sync
     return 0;
@@ -340,7 +340,7 @@ var SyscallsLibrary = {
     var fdPtr = SYSCALLS.get();
 
     if (fdPtr == 0) {
-      throw new FS.ErrnoError(ERRNO_CODES.EFAULT);
+      throw new FS.ErrnoError({{{ cDefine('EFAULT') }}});
     }
 
     var res = PIPEFS.createPipe();
@@ -351,7 +351,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall51: function(which, varargs) { // acct
-    return -ERRNO_CODES.ENOSYS; // unsupported features
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
   __syscall54: function(which, varargs) { // ioctl
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
@@ -364,7 +364,7 @@ var SyscallsLibrary = {
     switch (op) {
       case {{{ cDefine('TCGETA') }}}:
       case {{{ cDefine('TCGETS') }}}: {
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
 #if SYSCALL_DEBUG
         err('warning: not filling tio struct');
 #endif
@@ -376,18 +376,18 @@ var SyscallsLibrary = {
       case {{{ cDefine('TCSETS') }}}:
       case {{{ cDefine('TCSETSW') }}}:
       case {{{ cDefine('TCSETSF') }}}: {
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         return 0; // no-op, not actually adjusting terminal settings
       }
       case {{{ cDefine('TIOCGPGRP') }}}: {
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         var argp = SYSCALLS.get();
         {{{ makeSetValue('argp', 0, 0, 'i32') }}};
         return 0;
       }
       case {{{ cDefine('TIOCSPGRP') }}}: {
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
-        return -ERRNO_CODES.EINVAL; // not supported
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
+        return -{{{ cDefine('EINVAL') }}}; // not supported
       }
       case {{{ cDefine('FIONREAD') }}}: {
         var argp = SYSCALLS.get();
@@ -396,14 +396,14 @@ var SyscallsLibrary = {
       case {{{ cDefine('TIOCGWINSZ') }}}: {
         // TODO: in theory we should write to the winsize struct that gets
         // passed in, but for now musl doesn't read anything on it
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         return 0;
       }
       case {{{ cDefine('TIOCSWINSZ') }}}: {
         // TODO: technically, this ioctl call should change the window size.
         // but, since emscripten doesn't have any concept of a terminal window
         // yet, we'll just silently throw it away as we do TIOCGWINSZ
-        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        if (!stream.tty) return -{{{ cDefine('ENOTTY') }}};
         return 0;
       }
       default: abort('bad ioctl syscall ' + op);
@@ -413,8 +413,8 @@ var SyscallsLibrary = {
   __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(which, varargs) { // setpgid
     var pid = SYSCALLS.get(), pgid = SYSCALLS.get();
-    if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
-    if (pgid && pgid !== PROCINFO.pgid) return -ERRNO_CODES.EPERM;
+    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
+    if (pgid && pgid !== PROCINFO.pgid) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall60: function(which, varargs) { // umask
@@ -488,7 +488,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall97: function(which, varargs) { // setpriority
-    return -ERRNO_CODES.EPERM;
+    return -{{{ cDefine('EPERM') }}};
   },
   __syscall102__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
   __syscall102: function(which, varargs) { // socketcall
@@ -542,7 +542,7 @@ var SyscallsLibrary = {
       case 7: { // getpeername
         var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         if (!sock.daddr) {
-          return -ERRNO_CODES.ENOTCONN; // The socket is not connected.
+          return -{{{ cDefine('ENOTCONN') }}}; // The socket is not connected.
         }
         var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
 #if ASSERTIONS
@@ -574,7 +574,7 @@ var SyscallsLibrary = {
         return msg.buffer.byteLength;
       }
       case 14: { // setsockopt
-        return -ERRNO_CODES.ENOPROTOOPT; // The option is unknown at the level indicated.
+        return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
       }
       case 15: { // getsockopt
         var sock = SYSCALLS.getSocketFromFD(), level = SYSCALLS.get(), optname = SYSCALLS.get(), optval = SYSCALLS.get(), optlen = SYSCALLS.get();
@@ -588,7 +588,7 @@ var SyscallsLibrary = {
             return 0;
           }
         }
-        return -ERRNO_CODES.ENOPROTOOPT; // The option is unknown at the level indicated.
+        return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
       }
       case 16: { // sendmsg
         var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
@@ -681,7 +681,7 @@ var SyscallsLibrary = {
     }
   },
   __syscall104: function(which, varargs) { // setitimer
-    return -ERRNO_CODES.ENOSYS; // unsupported feature
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
@@ -701,7 +701,7 @@ var SyscallsLibrary = {
       }
       mount.type.syncfs(mount, false, function(err) {
         if (err) {
-          resume(function() { return -ERRNO_CODES.EIO });
+          resume(function() { return -{{{ cDefine('EIO') }}} });
           return;
         }
         resume(function() { return 0 });
@@ -712,11 +712,11 @@ var SyscallsLibrary = {
 #endif
   },
   __syscall121: function(which, varargs) { // setdomainname
-    return -ERRNO_CODES.EPERM;
+    return -{{{ cDefine('EPERM') }}};
   },
   __syscall122: function(which, varargs) { // uname
     var buf = SYSCALLS.get();
-    if (!buf) return -ERRNO_CODES.EFAULT
+    if (!buf) return -{{{ cDefine('EFAULT') }}}
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
     var copyString = function(element, value) {
       var offset = layout[element];
@@ -735,7 +735,7 @@ var SyscallsLibrary = {
   __syscall132__deps: ['$PROCINFO'],
   __syscall132: function(which, varargs) { // getpgid
     var pid = SYSCALLS.get();
-    if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
+    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.pgid;
   },
   __syscall133: function(which, varargs) { // fchdir
@@ -804,7 +804,7 @@ var SyscallsLibrary = {
       }
 
       var stream = FS.getStream(fd);
-      if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
+      if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
@@ -888,7 +888,7 @@ var SyscallsLibrary = {
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
-    if (pid && pid !== PROCINFO.pid) return -ERRNO_CODES.ESRCH;
+    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.sid;
   },
   __syscall148: function(which, varargs) { // fdatasync
@@ -905,7 +905,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall163: function(which, varargs) { // mremap
-    return -ERRNO_CODES.ENOMEM; // never succeed
+    return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
   __syscall168: function(which, varargs) { // poll
     var fds = SYSCALLS.get(), nfds = SYSCALLS.get(), timeout = SYSCALLS.get();
@@ -944,10 +944,10 @@ var SyscallsLibrary = {
   },
   __syscall183: function(which, varargs) { // getcwd
     var buf = SYSCALLS.get(), size = SYSCALLS.get();
-    if (size === 0) return -ERRNO_CODES.EINVAL;
+    if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
     var cwdLengthInBytes = lengthBytesUTF8(cwd);
-    if (size < cwdLengthInBytes + 1) return -ERRNO_CODES.ERANGE;
+    if (size < cwdLengthInBytes + 1) return -{{{ cDefine('ERANGE') }}};
     stringToUTF8(cwd, buf, size);
     return buf;
   },
@@ -969,12 +969,12 @@ var SyscallsLibrary = {
     var allocated = false;
     if (fd === -1) {
       ptr = _memalign(PAGE_SIZE, len);
-      if (!ptr) return -ERRNO_CODES.ENOMEM;
+      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;
     } else {
       var info = FS.getStream(fd);
-      if (!info) return -ERRNO_CODES.EBADF;
+      if (!info) return -{{{ cDefine('EBADF') }}};
       var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
@@ -1036,12 +1036,12 @@ var SyscallsLibrary = {
   __syscall213: '__syscall214',     // setuid32
   __syscall214: function(which, varargs) { // setgid32
     var uid = SYSCALLS.get();
-    if (uid !== 0) return -ERRNO_CODES.EPERM;
+    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall205: function(which, varargs) { // getgroups32
     var size = SYSCALLS.get(), list = SYSCALLS.get();
-    if (size < 1) return -ERRNO_CODES.EINVAL;
+    if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
@@ -1049,7 +1049,7 @@ var SyscallsLibrary = {
   __syscall208: '__syscall210',     // setresuid32
   __syscall210: function(which, varargs) { // setresgid32
     var ruid = SYSCALLS.get(), euid = SYSCALLS.get(), suid = SYSCALLS.get();
-    if (euid !== 0) return -ERRNO_CODES.EPERM;
+    if (euid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall209__sig: 'iii',
@@ -1065,7 +1065,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall218: function(which, varargs) { // mincore
-    return -ERRNO_CODES.ENOSYS; // unsupported feature
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall219: function(which, varargs) { // madvise
     return 0; // advice is welcome, but ignored
@@ -1113,7 +1113,7 @@ var SyscallsLibrary = {
       case {{{ cDefine('F_DUPFD') }}}: {
         var arg = SYSCALLS.get();
         if (arg < 0) {
-          return -ERRNO_CODES.EINVAL;
+          return -{{{ cDefine('EINVAL') }}};
         }
         var newStream;
         newStream = FS.open(stream.path, stream.flags, 0, arg);
@@ -1147,16 +1147,16 @@ var SyscallsLibrary = {
         return 0; // Pretend that the locking is successful.
       case {{{ cDefine('F_GETOWN_EX') }}}:
       case {{{ cDefine('F_SETOWN') }}}:
-        return -ERRNO_CODES.EINVAL; // These are for sockets. We don't have them fully implemented yet.
+        return -{{{ cDefine('EINVAL') }}}; // These are for sockets. We don't have them fully implemented yet.
       case {{{ cDefine('F_GETOWN') }}}:
         // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fnctl() returns that, and we set errno ourselves.
-        ___setErrNo(ERRNO_CODES.EINVAL);
+        ___setErrNo({{{ cDefine('EINVAL') }}});
         return -1;
       default: {
 #if SYSCALL_DEBUG
         err('warning: fctl64 unrecognized command ' + cmd);
 #endif
-        return -ERRNO_CODES.EINVAL;
+        return -{{{ cDefine('EINVAL') }}};
       }
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
@@ -1265,7 +1265,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall303: function(which, varargs) { // linkat
-    return -ERRNO_CODES.EMLINK; // no hardlinks for us
+    return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
   __syscall304: function(which, varargs) { // symlinkat
 #if SYSCALL_DEBUG
@@ -1308,7 +1308,7 @@ var SyscallsLibrary = {
     return SYSCALLS.doAccess(path, amode);
   },
   __syscall308: function(which, varargs) { // pselect
-    return -ERRNO_CODES.ENOSYS; // unsupported feature
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall320: function(which, varargs) { // utimensat
 #if SYSCALL_DEBUG
@@ -1345,11 +1345,11 @@ var SyscallsLibrary = {
 #if ASSERTIONS
     assert(!flags);
 #endif
-    if (old.fd === suggestFD) return -ERRNO_CODES.EINVAL;
+    if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall331: function(which, varargs) { // pipe2
-    return -ERRNO_CODES.ENOSYS; // unsupported feature
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall333: function(which, varargs) { // preadv
 #if SYSCALL_DEBUG
