@@ -7505,6 +7505,8 @@ extern "C" {
     self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
+    self.emcc_args += ['-g1']
+    self.set_setting('VERBOSE', 1)
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
   # Tests that -s MINIMAL_RUNTIME=1 works well
