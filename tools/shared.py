@@ -2456,7 +2456,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2488,10 +2488,6 @@ class Building(object):
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
         if Settings.EMITTING_JS and not Settings.AUTODEBUG:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
-      # finally, optionally use closure compiler to finish cleaning up the JS
-      if use_closure_compiler:
-        logger.debug('running closure on shell code')
-        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2594,7 +2590,10 @@ class Building(object):
       temp = configuration.get_temp_files().get('.js').name
       with open(temp, 'a') as f:
         f.write(wasm2js_js)
-      if use_closure_compiler:
+      # if closure is 1, minify the code in a non-advanced way here (we don't validate
+      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
+      # mode, then we'll minify it all together later on
+      if use_closure_compiler == 1:
         temp = Building.closure_compiler(temp,
                                          pretty=not minify_whitespace,
                                          advanced=False)

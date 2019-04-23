@@ -2751,16 +2751,29 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell or options.use_closure_compiler:
+    if optimizer.cleanup_shell:
       save_intermediate_with_wasm('preclean', wasm_binary_target)
       final = shared.Building.minify_wasm_js(js_file=final,
                                              wasm_file=wasm_binary_target,
                                              expensive_optimizations=will_metadce(options),
                                              minify_whitespace=optimizer.minify_whitespace,
-                                             use_closure_compiler=options.use_closure_compiler,
                                              debug_info=debug_info,
                                              emit_symbol_map=emit_symbol_map)
       save_intermediate_with_wasm('postclean', wasm_binary_target)
+
+  def run_closure_compiler(final):
+    save_intermediate_with_wasm('preclosure', wasm_binary_target)
+    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
+    save_intermediate_with_wasm('postclosure', wasm_binary_target)
+    return final
+
+  # In the general case, run closure here. wasm2js is more complicated: in mode 1,
+  # we run closure here, so that it does not affect the wasm2js output, which is
+  # added later. In mode 2, we do run it afterwards, so it sees the entire program
+  # including the wasm2js output.
+  if options.use_closure_compiler and (not shared.Settings.WASM2JS or options.use_closure_compiler == 1):
+    final = run_closure_compiler(final)
+
   if shared.Settings.WASM2JS:
     final = shared.Building.wasm2js(final,
                                     wasm_binary_target,
@@ -2768,6 +2781,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=debug_info)
+
+    if options.use_closure_compiler and options.use_closure_compiler == 2:
+      final = run_closure_compiler(final)
+
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     js = open(final).read()
