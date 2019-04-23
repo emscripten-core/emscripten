@@ -18,12 +18,13 @@
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
+/*global finalizationGroup, attachFinalizer, removeFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
 /*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
 /*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance, ClassHandle_isAliasOf, ClassHandle_clone, ClassHandle_isDeleted, ClassHandle_deleteLater*/
-/*global throwInstanceAlreadyDeleted, runDestructor, shallowCopyInternalPointer*/
+/*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
 var LibraryEmbind = {
@@ -1626,7 +1627,59 @@ var LibraryEmbind = {
     }
   },
 
-  $makeClassHandle__deps: ['$throwInternalError'],
+  $runDestructor: function($$) {
+    if ($$.smartPtr) {
+        $$.smartPtrType.rawDestructor($$.smartPtr);
+    } else {
+        $$.ptrType.registeredClass.rawDestructor($$.ptr);
+    }
+  },
+
+  $releaseClassHandle__deps: ['$runDestructor'],
+  $releaseClassHandle: function($$) {
+    $$.count.value -= 1;
+    var toDelete = 0 === $$.count.value;
+    if (toDelete) {
+        runDestructor($$);
+    }
+  },
+
+  $finalizationGroup: false,
+
+  $removeFinalizer_deps: ['$finalizationGroup'],
+  $removeFinalizer: function(handle) {},
+
+  $attachFinalizer__deps: ['$finalizationGroup', '$removeFinalizer',
+                           '$releaseClassHandle'],
+  $attachFinalizer: function(handle) {
+    if ('undefined' === typeof FinalizationGroup) {
+        attachFinalizer = function (handle) { return handle; };
+        return handle;
+    }
+    // If the running environment has a FinalizationGroup (see
+    // https://github.com/tc39/proposal-weakrefs), then attach finalizers
+    // for class handles.  We check for the presence of FinalizationGroup
+    // at run-time, not build-time.
+    finalizationGroup = new FinalizationGroup(function (iter) {
+        for (let $$ of iter) {
+            if (!$$.ptr) {
+                console.log('warning: object already deleted: ' + $$.ptr);
+            } else {
+                releaseClassHandle($$);
+            }
+        }
+    });
+    attachFinalizer = function(handle) {
+        finalizationGroup.register(handle, handle.$$, handle.$$);
+        return handle;
+    };
+    removeFinalizer = function(handle) {
+        finalizationGroup.unregister(handle.$$);
+    };
+    return attachFinalizer(handle);
+  },
+
+  $makeClassHandle__deps: ['$throwInternalError', '$attachFinalizer'],
   $makeClassHandle: function(prototype, record) {
     if (!record.ptrType || !record.ptr) {
         throwInternalError('makeClassHandle requires ptr and ptrType');
@@ -1637,11 +1690,11 @@ var LibraryEmbind = {
         throwInternalError('Both smartPtrType and smartPtr must be specified');
     }
     record.count = { value: 1 };
-    return Object.create(prototype, {
+    return attachFinalizer(Object.create(prototype, {
         $$: {
             value: record,
         },
-    });
+    }));
   },
 
   $init_ClassHandle__deps: [
@@ -1695,7 +1748,7 @@ var LibraryEmbind = {
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
   },
 
-  $ClassHandle_clone__deps: ['$shallowCopyInternalPointer', '$throwInstanceAlreadyDeleted'],
+  $ClassHandle_clone__deps: ['$shallowCopyInternalPointer', '$throwInstanceAlreadyDeleted', '$attachFinalizer'],
   $ClassHandle_clone: function() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
@@ -1705,11 +1758,11 @@ var LibraryEmbind = {
         this.$$.count.value += 1;
         return this;
     } else {
-        var clone = Object.create(Object.getPrototypeOf(this), {
+        var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
             $$: {
                 value: shallowCopyInternalPointer(this.$$),
             }
-        });
+        }));
 
         clone.$$.count.value += 1;
         clone.$$.deleteScheduled = false;
@@ -1717,17 +1770,8 @@ var LibraryEmbind = {
     }
   },
 
-  $runDestructor: function(handle) {
-    var $$ = handle.$$;
-    if ($$.smartPtr) {
-        $$.smartPtrType.rawDestructor($$.smartPtr);
-    } else {
-        $$.ptrType.registeredClass.rawDestructor($$.ptr);
-    }
-  },
-
-  $ClassHandle_delete__deps: [
-    '$runDestructor', '$throwBindingError', '$throwInstanceAlreadyDeleted'],
+  $ClassHandle_delete__deps: ['$releaseClassHandle', '$throwBindingError',
+                              '$removeFinalizer', '$throwInstanceAlreadyDeleted'],
   $ClassHandle_delete: function() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
@@ -1737,11 +1781,9 @@ var LibraryEmbind = {
         throwBindingError('Object already scheduled for deletion');
     }
 
-    this.$$.count.value -= 1;
-    var toDelete = 0 === this.$$.count.value;
-    if (toDelete) {
-        runDestructor(this);
-    }
+    removeFinalizer(this);
+    releaseClassHandle(this.$$);
+
     if (!this.$$.preservePointerOnDelete) {
         this.$$.smartPtr = undefined;
         this.$$.ptr = undefined;
@@ -2294,7 +2336,7 @@ var LibraryEmbind = {
     '$PureVirtualError', '$readLatin1String',
     '$registerInheritedInstance', '$requireHandle',
     '$requireRegisteredType', '$throwBindingError',
-    '$unregisterInheritedInstance'],
+    '$unregisterInheritedInstance', '$removeFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: function(constructorName, wrapperType, properties) {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
@@ -2330,12 +2372,14 @@ var LibraryEmbind = {
         var inner = baseConstructor["implement"].apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
+        removeFinalizer(inner);
         var $$ = inner.$$;
         inner["notifyOnDestruction"]();
         $$.preservePointerOnDelete = true;
         Object.defineProperties(this, { $$: {
             value: $$
         }});
+        attachFinalizer(this);
         registerInheritedInstance(registeredClass, $$.ptr, this);
     };
 
@@ -2344,6 +2388,7 @@ var LibraryEmbind = {
             throwBindingError("Pass correct 'this' to __destruct");
         }
 
+        removeFinalizer(this);
         unregisterInheritedInstance(registeredClass, this.$$.ptr);
     };
 
