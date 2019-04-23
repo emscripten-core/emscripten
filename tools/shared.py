@@ -2367,7 +2367,7 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True):
+  def closure_compiler(filename, pretty=True, advanced=True):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
         logger.error('Cannot run closure compiler')
@@ -2404,11 +2404,12 @@ class Building(object):
       args = [JAVA,
               '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
               '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
               '--language_in', 'ECMASCRIPT5']
-      args += CLOSURE_ANNOTATIONS
-      args += ['--externs', CLOSURE_EXTERNS,
-               '--js_output_file', outfile]
+      if advanced:
+        args += CLOSURE_ANNOTATIONS
+        args += ['--externs', CLOSURE_EXTERNS]
+      args += ['--js_output_file', outfile]
 
       if Settings.target_environment_may_be('node'):
         for extern in NODE_EXTERNS:
@@ -2584,11 +2585,27 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def wasm2js(js_file, wasm_file):
+  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
     logger.debug('wasm2js')
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if opt_level >= 2:
+      temp = configuration.get_temp_files().get('.js').name
+      with open(temp, 'a') as f:
+        f.write(wasm2js_js)
+      if use_closure_compiler:
+        temp = Building.closure_compiler(temp,
+                                         pretty=not minify_whitespace,
+                                         advanced=False)
+      elif minify_whitespace:
+        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      with open(temp) as f:
+        wasm2js_js = f.read()
+      # closure may leave a trailing `;`, which would be invalid given where we
+      wasm2js_js = wasm2js_js.strip()
+      if wasm2js_js[-1] == ';':
+        wasm2js_js = wasm2js_js[:-1]
     with open(js_file) as f:
       all_js = f.read()
     # quoted notation, something like Module['__wasm2jsInstantiate__']
