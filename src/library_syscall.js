@@ -747,7 +747,8 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // Can't handle 64-bit integers
-    if (offset_high && !(offset_high == -1 && offset_low < 0)) {
+    if (!(offset_high == -1 && offset_low < 0) &&
+        !(offset_high == 0 && offset_low >= 0)) {
       return -ERRNO_CODES.EOVERFLOW;
     }
     var offset = offset_low;
