@@ -1382,7 +1382,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-      if options.use_closure_compiler == 2:
+      if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
         exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
       # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
       #  * if we also supported js mem inits we'd have 4 modes
@@ -2190,7 +2190,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         optimizer.flush()
 
-      if options.use_closure_compiler == 2:
+      if options.use_closure_compiler == 2 and not shared.Settings.WASM_BACKEND:
         optimizer.flush()
 
         logger.debug('running closure')
@@ -2771,6 +2771,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # we run closure here, so that it does not affect the wasm2js output, which is
   # added later. In mode 2, we do run it afterwards, so it sees the entire program
   # including the wasm2js output.
+  # TODO: is it worth it?
   if options.use_closure_compiler and (not shared.Settings.WASM2JS or options.use_closure_compiler == 1):
     final = run_closure_compiler(final)
 
