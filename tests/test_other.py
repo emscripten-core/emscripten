@@ -7984,7 +7984,7 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 34, [], ['waka'], 226582,  20,  34, 561) # noqa
+      run(['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
     else:
       run(['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
@@ -7995,15 +7995,15 @@ int main() {
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      23, [], ['waka'], 22185, 24,  17, 57) # noqa
-      run(['-O1'], 15, [], ['waka'], 10415, 15,  14, 33) # noqa
-      run(['-O2'], 15, [], ['waka'], 10183, 15,  14, 28) # noqa
-      run(['-O3'],  6, [], [],        2353,  9,   2, 15) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  6, [], [],        2310,  9,   2, 17) # noqa
-      run(['-Oz'],  6, [], [],        2272,  9,   2, 16) # noqa
+      run([],      17, [], ['waka'], 22185, 11,  18, 57) # noqa
+      run(['-O1'], 15, [], ['waka'], 10415,  9,  15, 31) # noqa
+      run(['-O2'], 15, [], ['waka'], 10183,  9,  15, 25) # noqa
+      run(['-O3'],  5, [], [],        2353,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  5, [], [],        2310,  7,   3, 15) # noqa
+      run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [], [],          61,  0,   0,  0) # noqa
+                   0, [], [],          61,  0,   1,  1) # noqa
     else:
       run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
