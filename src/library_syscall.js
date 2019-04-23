@@ -4,9 +4,9 @@
 // found in the LICENSE file.
 
 var SyscallsLibrary = {
-  $SYSCALLS__deps: [
+  $SYSCALLS__deps: ['$PATH',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-                   '$FS', '$PATH',
+                   '$FS',
 #endif
 #if SYSCALL_DEBUG
                    '$ERRNO_MESSAGES'
@@ -197,25 +197,6 @@ var SyscallsLibrary = {
       err('    (stream: "' + stream.path + '")');
 #endif
       return stream;
-    },
-    getSocketFromFD: function() {
-      var socket = SOCKFS.getSocket(SYSCALLS.get());
-      if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
-#if SYSCALL_DEBUG
-      err('    (socket: "' + socket.path + '")');
-#endif
-      return socket;
-    },
-    getSocketAddress: function(allowNull) {
-      var addrp = SYSCALLS.get(), addrlen = SYSCALLS.get();
-      if (allowNull && addrp === 0) return null;
-      var info = __read_sockaddr(addrp, addrlen);
-      if (info.errno) throw new FS.ErrnoError(info.errno);
-      info.addr = DNS.lookup_addr(info.addr) || info.addr;
-#if SYSCALL_DEBUG
-      err('    (socketaddress: "' + [info.addr, info.port] + '")');
-#endif
-      return info;
     },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
     get64: function() {
@@ -495,6 +476,27 @@ var SyscallsLibrary = {
     var call = SYSCALLS.get(), socketvararg = SYSCALLS.get();
     // socketcalls pass the rest of the arguments in a struct
     SYSCALLS.varargs = socketvararg;
+
+    var getSocketFromFD = function() {
+      var socket = SOCKFS.getSocket(SYSCALLS.get());
+      if (!socket) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+#if SYSCALL_DEBUG
+      err('    (socket: "' + socket.path + '")');
+#endif
+      return socket;
+    };
+    var getSocketAddress = function(allowNull) {
+      var addrp = SYSCALLS.get(), addrlen = SYSCALLS.get();
+      if (allowNull && addrp === 0) return null;
+      var info = __read_sockaddr(addrp, addrlen);
+      if (info.errno) throw new FS.ErrnoError(info.errno);
+      info.addr = DNS.lookup_addr(info.addr) || info.addr;
+#if SYSCALL_DEBUG
+      err('    (socketaddress: "' + [info.addr, info.port] + '")');
+#endif
+      return info;
+    };
+
     switch (call) {
       case 1: { // socket
         var domain = SYSCALLS.get(), type = SYSCALLS.get(), protocol = SYSCALLS.get();
@@ -505,22 +507,22 @@ var SyscallsLibrary = {
         return sock.stream.fd;
       }
       case 2: { // bind
-        var sock = SYSCALLS.getSocketFromFD(), info = SYSCALLS.getSocketAddress();
+        var sock = getSocketFromFD(), info = getSocketAddress();
         sock.sock_ops.bind(sock, info.addr, info.port);
         return 0;
       }
       case 3: { // connect
-        var sock = SYSCALLS.getSocketFromFD(), info = SYSCALLS.getSocketAddress();
+        var sock = getSocketFromFD(), info = getSocketAddress();
         sock.sock_ops.connect(sock, info.addr, info.port);
         return 0;
       }
       case 4: { // listen
-        var sock = SYSCALLS.getSocketFromFD(), backlog = SYSCALLS.get();
+        var sock = getSocketFromFD(), backlog = SYSCALLS.get();
         sock.sock_ops.listen(sock, backlog);
         return 0;
       }
       case 5: { // accept
-        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         var newsock = sock.sock_ops.accept(sock);
         if (addr) {
           var res = __write_sockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport);
@@ -531,7 +533,7 @@ var SyscallsLibrary = {
         return newsock.stream.fd;
       }
       case 6: { // getsockname
-        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
         var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport);
 #if ASSERTIONS
@@ -540,7 +542,7 @@ var SyscallsLibrary = {
         return 0;
       }
       case 7: { // getpeername
-        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        var sock = getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         if (!sock.daddr) {
           return -{{{ cDefine('ENOTCONN') }}}; // The socket is not connected.
         }
@@ -551,7 +553,7 @@ var SyscallsLibrary = {
         return 0;
       }
       case 11: { // sendto
-        var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = SYSCALLS.getSocketAddress(true);
+        var sock = getSocketFromFD(), message = SYSCALLS.get(), length = SYSCALLS.get(), flags = SYSCALLS.get(), dest = getSocketAddress(true);
         if (!dest) {
           // send, no address provided
           return FS.write(sock.stream, {{{ heapAndOffset('HEAP8', 'message') }}}, length);
@@ -561,7 +563,7 @@ var SyscallsLibrary = {
         }
       }
       case 12: { // recvfrom
-        var sock = SYSCALLS.getSocketFromFD(), buf = SYSCALLS.get(), len = SYSCALLS.get(), flags = SYSCALLS.get(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        var sock = getSocketFromFD(), buf = SYSCALLS.get(), len = SYSCALLS.get(), flags = SYSCALLS.get(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
         var msg = sock.sock_ops.recvmsg(sock, len);
         if (!msg) return 0; // socket is closed
         if (addr) {
@@ -577,7 +579,7 @@ var SyscallsLibrary = {
         return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
       }
       case 15: { // getsockopt
-        var sock = SYSCALLS.getSocketFromFD(), level = SYSCALLS.get(), optname = SYSCALLS.get(), optval = SYSCALLS.get(), optlen = SYSCALLS.get();
+        var sock = getSocketFromFD(), level = SYSCALLS.get(), optname = SYSCALLS.get(), optval = SYSCALLS.get(), optlen = SYSCALLS.get();
         // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
         // so only supports SOL_SOCKET with SO_ERROR.
         if (level === {{{ cDefine('SOL_SOCKET') }}}) {
@@ -591,7 +593,7 @@ var SyscallsLibrary = {
         return -{{{ cDefine('ENOPROTOOPT') }}}; // The option is unknown at the level indicated.
       }
       case 16: { // sendmsg
-        var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
+        var sock = getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
         var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
         var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
         // read the address and port to send to
@@ -622,7 +624,7 @@ var SyscallsLibrary = {
         return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
       }
       case 17: { // recvmsg
-        var sock = SYSCALLS.getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
+        var sock = getSocketFromFD(), message = SYSCALLS.get(), flags = SYSCALLS.get();
         var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, 'i8*') }}};
         var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
         // get the total amount of data we can read across all arrays
