@@ -4468,6 +4468,8 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
     src = open(path_from_root('tests', 'fs', 'test_mount.c')).read()
     self.do_run(src, 'success', force_c=True)
 
@@ -4984,6 +4986,8 @@ name: .
     self.do_run(src, expected)
 
   def test_unistd_io(self):
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
