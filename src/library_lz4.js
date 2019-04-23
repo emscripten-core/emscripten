@@ -5,7 +5,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS'],
+  $LZ4__deps: ['$FS', '$ERRNO_CODES'],
   $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
