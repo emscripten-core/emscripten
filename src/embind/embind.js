@@ -1661,7 +1661,8 @@ var LibraryEmbind = {
     // for class handles.  We check for the presence of FinalizationGroup
     // at run-time, not build-time.
     finalizationGroup = new FinalizationGroup(function (iter) {
-        for (let $$ of iter) {
+        for (var result = iter.next(); !result.done; result = iter.next()) {
+            var $$ = result.value;
             if (!$$.ptr) {
                 console.log('warning: object already deleted: ' + $$.ptr);
             } else {
