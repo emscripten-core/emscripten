@@ -1076,6 +1076,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     if shared.Settings.USE_PTHREADS:
+      if shared.Settings.WASM_BACKEND:
+        newargs += ['-matomics']  # XXX or '-pthread'
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
       # This is called from the thread JS code
