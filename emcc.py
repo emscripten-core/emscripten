@@ -2043,7 +2043,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # For the wasm backend, we don't have any memory info in JS. All we need to do
           # is set the memory initializer url.
           src = open(final).read()
-          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
+          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
           open(final + '.mem.js', 'w').write(src)
           final += '.mem.js'
         else:
