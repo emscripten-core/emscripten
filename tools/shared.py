@@ -2584,6 +2584,8 @@ class Building(object):
   def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
     logger.debug('wasm2js')
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    if opt_level > 0:
+      cmd += ['-O']
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     if opt_level >= 2:

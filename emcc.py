@@ -2762,9 +2762,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       save_intermediate_with_wasm('postclean', wasm_binary_target)
 
   def run_closure_compiler(final):
-    save_intermediate_with_wasm('preclosure', wasm_binary_target)
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
-    save_intermediate_with_wasm('postclosure', wasm_binary_target)
+    save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
 
   # In the general case, run closure here. wasm2js is more complicated: in mode 1,
@@ -2782,6 +2781,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=debug_info)
+    save_intermediate_with_wasm('wasm2js', wasm_binary_target)
 
     if options.use_closure_compiler and options.use_closure_compiler == 2:
       final = run_closure_compiler(final)
