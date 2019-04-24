@@ -2739,8 +2739,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # after generating the wasm, do some final operations
   if shared.Settings.EMIT_EMSCRIPTEN_METADATA:
-    wso = shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
-    shutil.move(wso, wasm_binary_target)
+    shared.WebAssembly.add_emscripten_metadata(final, wasm_binary_target)
 
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
