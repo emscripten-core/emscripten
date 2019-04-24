@@ -2043,6 +2043,7 @@ class Building(object):
     # if not Building.can_inline():
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
+    # TODO: move vectorization logic to clang/LLVM?
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
     else:

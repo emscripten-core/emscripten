@@ -7574,6 +7574,9 @@ def make_run(name, emcc_args, settings=None, env=None):
     for arg in self.emcc_args:
       if arg.startswith('-O'):
         Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+      # propagate LLVM machine arguments
+      if arg.startswith('-m'):
+        Building.COMPILER_TEST_OPTS.append(arg)
 
   TT.setUp = setUp
 
@@ -7604,6 +7607,11 @@ wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES'
 
 
 # Secondary test modes - run directly when there is a specific need
+
+# features
+
+simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
+bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # asm.js
 asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
