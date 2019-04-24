@@ -262,28 +262,32 @@ function loadDynamicLibrary(lib, flags) {
       // available for symbol resolution of subsequently loaded shared objects.
       //
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
-      //
+
+      var module_sym = sym;
+#if WASM_BACKEND
+      module_sym = '_' + sym;
+#else
       // Module of SIDE_MODULE has not only the symbols (which should be copied)
       // but also others (print*, asmGlobal*, FUNCTION_TABLE_**, NAMED_GLOBALS, and so on).
       //
-      // When the symbol (which should be copied) is method, Module._* 's type becomes function.
-      // When the symbol (which should be copied) is variable, Module._* 's type becomes number.
-      //
+      // When the symbol (which should be copied) is method, Module.* 's type becomes function.
+      // When the symbol (which should be copied) is variable, Module.* 's type becomes number.
       // Except for the symbol prefix (_), there is no difference in the symbols (which should be copied) and others.
       // So this just copies over compiled symbols (which start with _).
       if (sym[0] !== '_') {
         continue;
       }
+#endif
 
-      if (!Module.hasOwnProperty(sym)) {
-        Module[sym] = libModule[sym];
+      if (!Module.hasOwnProperty(module_sym)) {
+        Module[module_sym] = libModule[sym];
       }
 #if ASSERTIONS == 2
       else {
         var curr = Module[sym], next = libModule[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
-          err("warning: trying to dynamically load symbol '" + sym + "' (from '" + lib + "') that already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+          err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
 #endif
@@ -389,12 +393,33 @@ function loadWebAssemblyModule(binary, flags) {
     for (var i = tableBase; i < tableBase + tableSize; i++) {
       table.set(i, null);
     }
+
+    // We resolve symbols against the global Module but failing that also
+    // against the local symbols exported a side module.  This is because
+    // a) Module sometime need to import their own symbols
+    // b) Symbols from loaded modules are not always added to the global Module.
+    var moduleLocal = {};
+
+    var resolveSymbol = function(sym, type) {
+#if WASM_BACKEND
+      sym = '_' + sym;
+#endif
+      var resolved = Module[sym];
+      if (!resolved)
+        resolved = moduleLocal[sym];
+#if ASSERTIONS
+      assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
+      return resolved;
+    }
+
     // copy currently exported symbols so the new module can import them
     for (var x in Module) {
       if (!(x in env)) {
         env[x] = Module[x];
       }
     }
+
     // TODO kill ↓↓↓ (except "symbols local to this module", it will likely be
     // not needed if we require that if A wants symbols from B it has to link
     // to B explicitly: similarly to -Wl,--no-undefined)
@@ -424,11 +449,24 @@ function loadWebAssemblyModule(binary, flags) {
         if (prop.startsWith('g$')) {
           // a global. the g$ function returns the global address.
           var name = prop.substr(2); // without g$ prefix
-          return env[prop] = function() {
-#if ASSERTIONS
-            assert(Module[name], 'missing linked global ' + name + '. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
-#endif
-            return Module[name];
+          return obj[prop] = function() {
+            return resolveSymbol(name, 'global');
+          };
+        }
+        if (prop.startsWith('fp$')) {
+          // the fp$ function returns the address (table index) of the function
+          var parts = prop.split('$');
+          assert(parts.length == 3)
+          var name = parts[1];
+          var sig = parts[2];
+          var fp = 0;
+          return obj[prop] = function() {
+            if (!fp) {
+              console.log("geting function address: " + name);
+              var f = resolveSymbol(name, 'function');
+              fp = addFunctionWasm(f, sig);
+            }
+            return fp;
           };
         }
         if (prop.startsWith('invoke_')) {
@@ -436,14 +474,11 @@ function loadWebAssemblyModule(binary, flags) {
           // present in the dynamic library but not in the main JS,
           // and the dynamic library cannot provide JS for it. Use
           // the generic "X" invoke for it.
-          return env[prop] = invoke_X;
+          return obj[prop] = invoke_X;
         }
-        // if not a global, then a function - call it indirectly
-        return env[prop] = function() {
-#if ASSERTIONS
-          assert(Module[prop], 'missing linked function ' + prop + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
-#endif
-          return Module[prop].apply(null, arguments);
+        // otherwise this is regular function import - call it indirectly
+        return obj[prop] = function() {
+          return resolveSymbol(prop, 'function').apply(null, arguments);
         };
       }
     };
@@ -463,7 +498,7 @@ function loadWebAssemblyModule(binary, flags) {
     }
 #endif
 
-    function postInstantiation(instance) {
+    function postInstantiation(instance, moduleLocal) {
       var exports = {};
 #if ASSERTIONS
       // the table should be unchanged
@@ -502,6 +537,11 @@ function loadWebAssemblyModule(binary, flags) {
 #endif
         }
         exports[e] = value;
+#if WASM_BACKEND
+        moduleLocal['_' + e] = value;
+#else
+        moduleLocal[e] = value;
+#endif
       }
       // initialize the module
       var init = exports['__post_instantiate'];
@@ -518,11 +558,11 @@ function loadWebAssemblyModule(binary, flags) {
 
     if (flags.loadAsync) {
       return WebAssembly.instantiate(binary, info).then(function(result) {
-        return postInstantiation(result.instance);
+        return postInstantiation(result.instance, moduleLocal);
       });
     } else {
       var instance = new WebAssembly.Instance(new WebAssembly.Module(binary), info);
-      return postInstantiation(instance);
+      return postInstantiation(instance, moduleLocal);
     }
   }
 
