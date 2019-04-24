@@ -2978,26 +2978,10 @@ class WebAssembly(object):
     return (result, offset)
 
   @staticmethod
-  def get_js_data(js_file, shared=False):
+  def add_emscripten_metadata(js_file, wasm_file):
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
-    if shared:
-      mem_align = Settings.MAX_GLOBAL_ALIGN
-    else:
-      mem_align = None
-    return (mem_size, table_size, mem_align)
-
-  @staticmethod
-  def add_emscripten_metadata(js_file, wasm_file):
-    (mem_size, table_size, _) = WebAssembly.get_js_data(js_file)
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
-    wso = js_file + '.wso'
-    wasm = open(wasm_file, 'rb').read()
-    f = open(wso, 'wb')
-    f.write(wasm[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
       # metadata section version
@@ -3019,19 +3003,25 @@ class WebAssembly(object):
       #     the EMSCRIPTEN_METADATA_MINOR
     )
 
-    size = len(name) + len(contents)
-    f.write(WebAssembly.lebify(size))
-    f.write(name)
-    f.write(contents)
-    f.write(wasm[8:])
-    f.close()
-    return wso
+    orig = open(wasm_file, 'rb').read()
+    with open(wasm_file, 'wb') as f:
+      f.write(orig[0:8]) # copy magic number and version
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      # need to find the size of this section
+      size = len(name) + len(contents)
+      f.write(WebAssembly.lebify(size))
+      f.write(name)
+      f.write(contents)
+      f.write(orig[8:])
 
   @staticmethod
   def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     assert not Settings.WASM_BACKEND
-    mem_size, table_size, mem_align = WebAssembly.get_js_data(js_file, True)
+    mem_align = Settings.MAX_GLOBAL_ALIGN
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
 
