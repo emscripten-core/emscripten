@@ -2031,7 +2031,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
       if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
-         shared.Settings.MEM_INIT_IN_WASM:
+         not shared.Settings.MEM_INIT_IN_WASM:
         if shared.Settings.MINIMAL_RUNTIME:
           # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
           memfile = target.replace('.html', '.mem').replace('.js', '.mem')
