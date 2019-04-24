@@ -4798,7 +4798,7 @@ name: .
   @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
-    src = path_from_root('tests', 'fs', 'test_writeFile.cc')
+    src = path_from_root('tests', 'fs', 'test_writeFile.cpp')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out, js_engines=js_engines)
 
