@@ -1024,10 +1024,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     shared.verify_settings()
 
-    # Reconfigure the cache now that settings have been applied (e.g. WASM_OBJECT_FILES)
-    # TODO: remove
-    shared.reconfigure_cache()
-
     # Note the exports the user requested
     shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
@@ -1095,7 +1091,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'allocate',
         'getMemory',
       ]
+
+    if shared.Settings.RELOCATABLE:
       shared.Settings.ALLOW_TABLE_GROWTH = 1
+
+    # Reconfigure the cache now that settings have been applied. Some settings
+    # such as WASM_OBJECT_FILES and SIDE_MODULE/MAIN_MODULE effect which cache
+    # directory we use.
+    shared.reconfigure_cache()
 
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
@@ -1638,6 +1641,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
         args = get_clang_args([input_file]) + ['-c', '-o', output_file]
+        if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
+          args.append('-fPIC')
+          args.append('-fvisibility=default')
         if shared.Settings.WASM_OBJECT_FILES:
           for a in shared.Building.llvm_backend_args():
             args += ['-mllvm', a]

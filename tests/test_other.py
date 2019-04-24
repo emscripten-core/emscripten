@@ -1328,6 +1328,10 @@ int f() {
     run_process([PYTHON, EMCC] + args + libs)
     self.assertContained('result: 42', run_js('a2.out.js'))
 
+  # The fastcomp path will deliberately ignore duplicate input files in order
+  # to allow "libA.so" on the command line twice. The is not really .so support
+  # and the .so files are really bitcode.
+  @no_wasm_backend('tests legacy .so linking behviour')
   @needs_dlfcn
   def test_redundant_link(self):
     lib = "int mult() { return 1; }"
@@ -1346,7 +1350,7 @@ int f() {
 
     Building.emcc(lib_name, output_filename='libA.so')
 
-    Building.emcc(main_name, ['libA.so'] * 2, output_filename='a.out.js')
+    Building.emcc(main_name, ['libA.so', 'libA.so'], output_filename='a.out.js')
 
     self.assertContained('result: 1', run_js('a.out.js'))
 
@@ -3858,11 +3862,12 @@ int main()
       else:
         self.assertNotContained(warning, err)
 
-  @no_wasm_backend('uses SIDE_MODULE')
   def test_side_module_without_proper_target(self):
     # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
     # otherwise, we are just linking bitcode, and should show an error
     for wasm in [0, 1]:
+      if self.is_wasm_backend() and not wasm:
+        continue
       print(wasm)
       process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stderr=PIPE, check=False)
       self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file', process.stderr)
@@ -6342,13 +6347,13 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @no_wasm_backend('DCE in dynamic libraries not working yet')
   def test_minimal_dynamic(self):
-    for wasm in (1, 0):
+    def run(wasm):
       print('wasm?', wasm)
       library_file = 'library.wasm' if wasm else 'library.js'
 
-      def test(main_args=[], library_args=[], expected='hello from main\nhello from library'):
+      def test(main_args, library_args=[], expected='hello from main\nhello from library'):
         print('testing', main_args, library_args)
         self.clear()
         create_test_file('library.c', r'''
@@ -6378,7 +6383,7 @@ int main(int argc, char** argv) {
             else x();
           }
         ''' % library_file)
-        run_process([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
+        run_process([PYTHON, EMCC, 'main.c', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
         self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=STDOUT))
         size = os.path.getsize('a.out.js')
         if wasm:
@@ -6392,17 +6397,21 @@ int main(int argc, char** argv) {
         large = max(x, y)
         return float(100 * large) / small - 100
 
+      full = test(main_args=['-s', 'MAIN_MODULE=1'])
+      # printf is not used in main, but libc was linked in, so it's there
+      printf = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-DUSE_PRINTF'])
+
       # main module tests
 
-      full = test()
-      # printf is not used in main, but libc was linked in, so it's there
-      printf = test(library_args=['-DUSE_PRINTF'])
       # dce in main, and it fails since puts is not exported
       dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'))
+
       # with exporting, it works
       dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
+
       # printf is not used in main, and we dce, so we failz
       dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'))
+
       # exporting printf in main keeps it alive for the library
       dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
 
@@ -6414,11 +6423,15 @@ int main(int argc, char** argv) {
       # side module tests
 
       # mode 2, so dce in side, but library_func is not exported, so it is dce'd
-      side_dce_fail = test(library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
+      side_dce_fail = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
       # mode 2, so dce in side, and library_func is not exported
-      side_dce_work = test(library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
+      side_dce_work = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
 
       assert side_dce_fail[1] < 0.95 * side_dce_work[1] # removing that function saves a chunk
+
+    run(wasm=1)
+    if not self.is_wasm_backend():
+      run(wasm=0)
 
   @no_wasm_backend('uses SIDE_MODULE')
   def test_ld_library_path(self):
@@ -7067,7 +7080,7 @@ int main() {
     run_process([PYTHON, EMCC, 'src.c', '-O2', '-g'])
     size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
-    assert size < (123456 / 2), size
+    self.assertLess(size, 123456 / 2)
 
   @no_wasm_backend()
   def test_separate_asm_warning(self):
