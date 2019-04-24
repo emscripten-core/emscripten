@@ -2505,6 +2505,11 @@ def parse_args(newargs):
       else:
         shared.generate_config(optarg)
       should_exit = True
+    # Record SIMD setting because it controls whether the autovectorizer runs
+    elif newargs[i] == '-msimd128':
+      settings_changes.append('SIMD=1')
+    elif newargs[i] == '-mno-simd128':
+      settings_changes.append('SIMD=0')
 
   if should_exit:
     sys.exit(0)
