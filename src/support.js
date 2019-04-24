@@ -395,8 +395,8 @@ function loadWebAssemblyModule(binary, flags) {
     }
 
     // We resolve symbols against the global Module but failing that also
-    // aginat the local symbols exported a side module.  This is because
-    // a) Module sometime need to import thier own symbols
+    // against the local symbols exported a side module.  This is because
+    // a) Module sometime need to import their own symbols
     // b) Symbols from loaded modules are not always added to the global Module.
     var moduleLocal = {};
 
