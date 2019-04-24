@@ -751,7 +751,7 @@ var SyscallsLibrary = {
     // Can't handle 64-bit integers
     if (!(offset_high == -1 && offset_low < 0) &&
         !(offset_high == 0 && offset_low >= 0)) {
-      return -ERRNO_CODES.EOVERFLOW;
+      return -{{{ cDefine('EOVERFLOW') }}};
     }
     var offset = offset_low;
     FS.llseek(stream, offset, whence);
