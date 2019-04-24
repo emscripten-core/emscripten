@@ -240,7 +240,9 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
     returnThreadToPool: function(workerToFree) {
+      delete PThread.pthreads[workerToFree.pthread.thread];
       PThread.freeThreadData(workerToFree.pthread);
+      //Note: workerToFree is intentionally not terminated so the pool can dynamically grow.
       workerToFree.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
       PThread.unusedWorkerPool.push(workerToFree);
       PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(workerToFree.pthread), 1); // Not a running Worker anymore.
