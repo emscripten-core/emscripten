@@ -7983,7 +7983,7 @@ int main() {
       run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
       run(['-Oz'],  0, [], [],          54,  0,  1,  1) # noqa
     else:
-      run([],      20, ['abort'], ['waka'], 22712, 20, 14, 27) # noqa
+      run([],      21, ['abort'], ['waka'], 22712, 22, 15, 30) # noqa
       run(['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11) # noqa
       run(['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7997,20 +7997,20 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 561) # noqa
+      run(['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,  37, 537) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                   34, ['abort'], ['waka'], 186423,  28,  38, 518) # noqa
+                   34, ['abort'], ['waka'], 186423,  29,  39, 519) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 22185, 10,  17, 55) # noqa
-      run(['-O1'], 14, [], ['waka'], 10415,  8,  14, 29) # noqa
-      run(['-O2'], 14, [], ['waka'], 10183,  8,  14, 24) # noqa
+      run([],      17, [], ['waka'], 22185, 11,  18, 57) # noqa
+      run(['-O1'], 15, [], ['waka'], 10415,  9,  15, 31) # noqa
+      run(['-O2'], 15, [], ['waka'], 10183,  9,  15, 25) # noqa
       run(['-O3'],  5, [], [],        2353,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
       run(['-Os'],  5, [], [],        2310,  7,   3, 15) # noqa
       run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
@@ -8018,12 +8018,12 @@ int main() {
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1) # noqa
     else:
-      run([],      22, ['abort'], ['waka'], 42701,  22,   16, 54) # noqa
-      run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
-      run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 26) # noqa
-      run(['-O3'],  6, [],        [],        2443,   9,    2, 14) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  6, [],        [],        2412,   9,    2, 16) # noqa
-      run(['-Oz'],  6, [],        [],        2389,   9,    2, 15) # noqa
+      run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
+      run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
+      run(['-O2'], 15, ['abort'], ['waka'], 12425,  15,   14, 28) # noqa
+      run(['-O3'],  6, [],        [],        2443,   9,    2, 15) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  6, [],        [],        2412,   9,    2, 17) # noqa
+      run(['-Oz'],  6, [],        [],        2389,   9,    2, 16) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
@@ -8288,7 +8288,7 @@ int main() {
     if self.is_wasm_backend():
       self.assertContained('wasm-ld: error: initial memory too small', err)
     else:
-      self.assertContained('Memory is not large enough for static data (133984) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+      self.assertContained('Memory is not large enough for static data (134016) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
