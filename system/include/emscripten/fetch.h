@@ -53,6 +53,9 @@ extern "C" {
 // to test or wair for its completion.
 #define EMSCRIPTEN_FETCH_WAITABLE 128
 
+// If specified, the response headers will be loaded into the fetch struct.
+#define EMSCRIPTEN_FETCH_RESPONSE_HEADERS 256
+
 struct emscripten_fetch_t;
 
 // Specifies the parameters for a newly initiated fetch operation.
@@ -67,6 +70,7 @@ typedef struct emscripten_fetch_attr_t
 	void (*onsuccess)(struct emscripten_fetch_t *fetch);
 	void (*onerror)(struct emscripten_fetch_t *fetch);
 	void (*onprogress)(struct emscripten_fetch_t *fetch);
+	void (*onheadersreceived)(struct emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
@@ -123,6 +127,16 @@ typedef struct emscripten_fetch_t
 
 	// The remote URL that is being downloaded.
 	const char *url;
+
+	// Points to an array of strings, in the same format as the request headers. This array takes the form
+	// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
+	// is terminated with a null pointer.
+	// In onsuccess(), onprogress(), and onheadersreceived() handlers:
+	//   - If the EMSCRIPTEN_FETCH_RESPONSE_HEADERS attribute was specified for the transfer, this points to
+	//     all of the headers of the downloaded data. Otherwise this will be null.
+	// The data provided here has identical lifetime with the emscripten_fetch_t object itself, and is freed by
+	// calling emscripten_fetch_close() on the emscripten_fetch_t pointer.
+	const char * const *responseHeaders;
 
 	// In onsuccess() handler:
 	//   - If the EMSCRIPTEN_FETCH_LOAD_TO_MEMORY attribute was specified for the transfer, this points to the

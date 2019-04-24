@@ -96,6 +96,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.onerror = fetch_attr->onerror;
 	fetch->__attributes.onsuccess = fetch_attr->onsuccess;
 	fetch->__attributes.onprogress = fetch_attr->onprogress;
+	fetch->__attributes.onheadersreceived = fetch_attr->onheadersreceived;
 #define STRDUP_OR_ABORT(s, str_to_dup)		\
 	if (str_to_dup)							\
 	{										\
@@ -236,6 +237,12 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 static void fetch_free(emscripten_fetch_t *fetch)
 {
 	fetch->id = 0;
+	if(fetch->responseHeaders)
+	{
+		for(size_t i = 0; fetch->responseHeaders[i]; ++i)
+			free((void*)fetch->responseHeaders[i]);
+		free((void*)fetch->responseHeaders);
+	}
 	free((void*)fetch->data);
 	free((void*)fetch->url);
 	free((void*)fetch->__attributes.destinationPath);
