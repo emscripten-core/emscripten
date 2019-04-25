@@ -2759,7 +2759,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
 
-  if options.opt_level >= 2:
+  if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     save_intermediate_with_wasm('preclean', wasm_binary_target)
