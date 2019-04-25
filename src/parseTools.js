@@ -31,6 +31,12 @@ function preprocess(text, filenameHint) {
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
+  function isShown() {
+    // The preprocessor parses all #if/else/endifs, in order to correctly
+    // handle nested conditionals. If any of the conditions on the stack are
+    // disabled, the current line is not shown.
+    return showStack.indexOf(false) === -1;
+  }
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     try {
@@ -51,7 +57,7 @@ function preprocess(text, filenameHint) {
           var truthy = !!eval(after);
           showStack.push(truthy);
         } else if (line.indexOf('#include') === 0) {
-          if (showStack.indexOf(false) === -1) {
+          if (isShown()) {
             var filename = line.substr(line.indexOf(' ')+1);
             if (filename.indexOf('"') === 0) {
               filename = filename.substr(1, filename.length - 2);
@@ -69,12 +75,12 @@ function preprocess(text, filenameHint) {
           if (line[0] === '#') {
             throw "Unclear preprocessor command on line " + i + ': ' + line;
           }
-          if (showStack.indexOf(false) === -1) {
+          if (isShown()) {
             ret += line + '\n';
           }
         }
       } else { // !inStyle
-        if (showStack.indexOf(false) === -1) {
+        if (isShown()) {
           ret += line + '\n';
         }
       }
