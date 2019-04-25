@@ -196,11 +196,11 @@ mergeInto(LibraryManager.library, {
     ___async = 1;
   },
 
-  emscripten_wget__deps: ['emscripten_async_resume', '$PATH', '$Browser'],
+  emscripten_wget__deps: ['emscripten_async_resume', '$PATH_FS', '$Browser'],
   emscripten_wget: function(url, file) {
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    _file = PATH_FS.resolve(FS.cwd(), _file);
     Module['setAsync']();
     Module['noExitRuntime'] = true;
     var destinationDirectory = PATH.dirname(_file);
@@ -406,12 +406,12 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH', '$FS', '$Browser'],
+  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH_FS', '$FS', '$Browser'],
   emscripten_wget: function(url, file) {
     EmterpreterAsync.handle(function(resume) {
       var _url = UTF8ToString(url);
       var _file = UTF8ToString(file);
-      _file = PATH.resolve(FS.cwd(), _file);
+      _file = PATH_FS.resolve(FS.cwd(), _file);
       var destinationDirectory = PATH.dirname(_file);
       FS.createPreloadedFile(
         destinationDirectory,
