@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['__setErrNo', '$PATH', '$TTY', '$MEMFS',
+  $FS__deps: ['__setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -65,7 +65,7 @@ mergeInto(LibraryManager.library, {
     // paths
     //
     lookupPath: function(path, opts) {
-      path = PATH.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(FS.cwd(), path);
       opts = opts || {};
 
       if (!path) return { path: '', node: null };
@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
           var count = 0;
           while (FS.isLink(current.mode)) {
             var link = FS.readlink(current_path);
-            current_path = PATH.resolve(PATH.dirname(current_path), link);
+            current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
             var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
             current = lookup.node;
@@ -679,7 +679,7 @@ mergeInto(LibraryManager.library, {
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
-      if (!PATH.resolve(oldpath)) {
+      if (!PATH_FS.resolve(oldpath)) {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       var lookup = FS.lookupPath(newpath, { parent: true });
@@ -720,12 +720,12 @@ mergeInto(LibraryManager.library, {
       // source must exist
       var old_node = FS.lookupNode(old_dir, old_name);
       // old path should not be an ancestor of the new path
-      var relative = PATH.relative(old_path, new_dirname);
+      var relative = PATH_FS.relative(old_path, new_dirname);
       if (relative.charAt(0) !== '.') {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       // new path should not be an ancestor of the old path
-      relative = PATH.relative(new_path, old_dirname);
+      relative = PATH_FS.relative(new_path, old_dirname);
       if (relative.charAt(0) !== '.') {
         throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
       }
@@ -872,7 +872,7 @@ mergeInto(LibraryManager.library, {
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      return PATH.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
+      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1506,7 +1506,7 @@ mergeInto(LibraryManager.library, {
       return path;
     },
     absolutePath: function(relative, base) {
-      return PATH.resolve(base, relative);
+      return PATH_FS.resolve(base, relative);
     },
     standardizePath: function(path) {
       return PATH.normalize(path);
@@ -1858,7 +1858,7 @@ mergeInto(LibraryManager.library, {
       Browser.init(); // XXX perhaps this method should move onto Browser?
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {

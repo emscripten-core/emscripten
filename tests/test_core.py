@@ -5006,6 +5006,8 @@ name: .
     self.do_run(src, expected)
 
   def test_unistd_io(self):
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
     self.clear()
     orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
@@ -7518,6 +7520,8 @@ extern "C" {
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
+    if self.get_setting('SAFE_HEAP'):
+      return self.skipTest('TODO: SAFE_HEAP in minimal runtime')
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)

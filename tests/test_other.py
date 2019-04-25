@@ -4547,6 +4547,17 @@ int main() {
 }''')
     run_process([PYTHON, EMCC, 'src.cpp'])
 
+  def test_syscall_without_filesystem(self):
+    # a program which includes a non-trivial syscall, but disables the filesystem.
+    create_test_file('src.c', r'''
+#include <sys/time.h>
+#include <stddef.h>
+extern int __syscall295(int);
+int main() {
+  return __syscall295(0);
+}''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
+
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
@@ -8029,7 +8040,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1541, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1542, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
