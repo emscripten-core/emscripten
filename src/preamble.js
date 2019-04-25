@@ -981,9 +981,8 @@ function createWasm(env) {
     console.log('store_val_f64 ' + [loc, value]);
     return value;
   };
-  
-  
 #endif
+
   // prepare imports
   var info = {
     'env': env

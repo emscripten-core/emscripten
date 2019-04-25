@@ -574,7 +574,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # 0 - use native compilation for configure checks
     # 1 - use js when we think it will work
     # 2 - always use js for configure checks
-    use_js = int(os.environ.get('EMCONFIGURE_JS') or 2)
+    use_js = int(os.environ.get('EMCONFIGURE_JS', '2'))
 
     if debug_configure:
       tempout = '/tmp/emscripten_temp/out'
@@ -1448,7 +1448,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
-          if shared.Settings.AUTODEBUG:
+          if shared.Settings.AUTODEBUG and shared.Settings.WASM_OBJECT_FILES:
             # adding '--flatten' here may make these even more effective
             passes += ['--instrument-locals']
             passes += ['--log-execution']
