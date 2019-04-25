@@ -7330,6 +7330,7 @@ extern "C" {
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
+  # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
@@ -7339,6 +7340,16 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  # Test basic wasm2js functionality in all core compilation modes.
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js(self):
+    self.set_setting('WASM2JS', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # a mem init file is emitted just like with JS
+    expect_memory_init_file = self.uses_memory_init_file()
+    see_memory_init_file = os.path.exists('src.cpp.o.js.mem')
+    assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735

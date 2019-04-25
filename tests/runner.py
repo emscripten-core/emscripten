@@ -308,13 +308,14 @@ class RunnerCore(unittest.TestCase):
       self.skipTest('no dlfcn with memory growth (without wasm)')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
+    if self.get_setting('SIDE_MODULE') or \
+      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
       return opt_supports
 
   def set_temp_dir(self, temp_dir):
