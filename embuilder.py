@@ -112,7 +112,7 @@ are running multiple build commands in parallel, confusion can occur).
 
 Usage:
 
-  embuilder.py OPERATION TASK1 [TASK2..] [--lto]
+  embuilder.py OPERATION TASK1 [TASK2..] [--pic] [--lto]
 
 Available operations and tasks:
 
@@ -123,6 +123,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 Flags:
 
   --lto  Build bitcode files, for LTO with the LLVM wasm backend
+  --pic  Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -136,8 +137,10 @@ and set up the location to the native optimizer in ~/.emscripten
 
 
 def build(src, result_libs, args=[]):
-  if shared.Settings.WASM_BACKEND:
-    args = args + ['-s', 'WASM_OBJECT_FILES=%d' % shared.Settings.WASM_OBJECT_FILES]
+  if not shared.Settings.WASM_OBJECT_FILES:
+    args += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    args += ['-s', 'RELOCATABLE']
   # build in order to generate the libraries
   # do it all in a temp dir where everything will be cleaned up
   temp_dir = temp_files.get_dir()
@@ -180,8 +183,10 @@ def main():
       arg = arg[2:]
       if arg == 'lto':
         shared.Settings.WASM_OBJECT_FILES = 0
-        # Reconfigure the cache dir to reflect the change
-        shared.reconfigure_cache()
+      elif arg == 'pic':
+        shared.Settings.RELOCATABLE = 1
+      # Reconfigure the cache dir to reflect the change
+      shared.reconfigure_cache()
 
   args = [a for a in args if not is_flag(a)]
 
