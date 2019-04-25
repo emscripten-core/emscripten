@@ -5991,9 +5991,9 @@ return malloc(size);
     run_all('lto')
 
   def test_autodebug_bitcode(self):
-    if self.is_wasm_backend():
-      # bitcode autodebugging only works with bitcode objects
-      self.set_setting('WASM_OBJECT_FILES', 0)
+    if self.is_wasm_backend() and self.get_setting('WASM_OBJECT_FILES') == 1:
+      return self.skipTest('must use bitcode object files for bitcode autodebug')
+
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Autodebug the code
