@@ -5990,10 +5990,10 @@ return malloc(size);
 
     run_all('lto')
 
-  def test_autodebug(self):
-    if self.is_wasm_backend():
-      # autodebugging only works with bitcode objects
-      self.set_setting('WASM_OBJECT_FILES', 0)
+  def test_autodebug_bitcode(self):
+    if self.is_wasm_backend() and self.get_setting('WASM_OBJECT_FILES') == 1:
+      return self.skipTest('must use bitcode object files for bitcode autodebug')
+
     Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
 
     # Autodebug the code
@@ -6035,6 +6035,18 @@ return malloc(size);
         }
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
+
+  @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
+  @with_env_modify({'EMCC_AUTODEBUG': '1'})
+  def test_autodebug_wasm(self):
+    # test that the program both works and also emits some of the logging
+    # (but without the specific numbers, which may change over time)
+    def check(out, err):
+      for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
+        self.assertIn(msg, out)
+      return out + err
+    self.do_run(open(path_from_root('tests', 'core', 'test_hello_world.c')).read(),
+                'hello, world!', output_nicerizer=check)
 
   ### Integration tests
 
