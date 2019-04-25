@@ -908,10 +908,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS):
-            input_files.append((i, arg))
-            has_source_inputs = True
-          elif shared.Settings.WASM_OBJECT_FILES and file_suffix.endswith(BITCODE_ENDINGS):
+          if file_suffix.endswith(SOURCE_ENDINGS) or file_suffix.endswith(BITCODE_ENDINGS):
             input_files.append((i, arg))
             has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
@@ -1729,9 +1726,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
         file_ending = get_file_suffix(input_file)
-        if file_ending.endswith(SOURCE_ENDINGS):
-          compile_source_file(i, input_file)
-        elif shared.Settings.WASM_OBJECT_FILES and has_dash_c and file_ending.endswith(BITCODE_ENDINGS):
+        if file_ending.endswith(SOURCE_ENDINGS) or (has_dash_c and file_ending.endswith(BITCODE_ENDINGS)):
           compile_source_file(i, input_file)
         else: # bitcode
           if file_ending.endswith(BITCODE_ENDINGS):
