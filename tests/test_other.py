@@ -8090,7 +8090,7 @@ int main() {
         assert not i_i64_i64, 'i64 not converted to i32 in imports'
         assert not i_f32_f32, 'f32 not converted to f64 in imports'
         assert e_i64_i32,     'i64 not converted to i32 in exports'
-        assert e_f32_f64,     'f32 not converted to f64 in exports'
+        assert not e_f32_f64, 'f32 not converted to f64 in exports'
         assert not e_i64_i64, 'i64 not converted to i64 in exports'
       else:
         assert not i_i64_i32, 'i64 converted to i32 in imports'
