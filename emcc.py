@@ -574,7 +574,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # 0 - use native compilation for configure checks
     # 1 - use js when we think it will work
     # 2 - always use js for configure checks
-    use_js = int(os.environ.get('EMCONFIGURE_JS') or 2)
+    use_js = int(os.environ.get('EMCONFIGURE_JS', '2'))
 
     if debug_configure:
       tempout = '/tmp/emscripten_temp/out'
