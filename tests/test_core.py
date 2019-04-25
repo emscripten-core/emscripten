@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, no_fastcomp, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
 
@@ -2292,7 +2292,6 @@ The current type of b is: 9
       self.build(lib_src, dirname, filename)
       shutil.move(filename + '.o.js', os.path.join(dirname, 'liblib.so'))
 
-  @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
     self.set_setting('ASSERTIONS', 1)
@@ -2313,7 +2312,6 @@ The current type of b is: 9
     self.set_setting('ASSERTIONS', 0)
     self.do_run(src, 'error: Could not load dynamic lib: libfoo.so\nError: FS error')
 
-  @needs_dlfcn
   def test_dlfcn_basic(self):
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -2353,7 +2351,6 @@ The current type of b is: 9
       '''
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\n')
 
-  @needs_dlfcn
   def test_dlfcn_i64(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -2401,7 +2398,6 @@ The current type of b is: 9
       '''
     self.do_run(src, '|65830|')
 
-  @needs_dlfcn
   @no_wasm('EM_ASM in shared wasm modules, stored inside the wasm somehow')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
@@ -2437,7 +2433,6 @@ The current type of b is: 9
       '''
     self.do_run(src, 'Constructing main object.\nConstructing lib object.\nAll done.\n')
 
-  @needs_dlfcn
   def test_dlfcn_qsort(self):
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_cmp'])
@@ -2519,7 +2514,6 @@ The current type of b is: 9
       if 'asm' in out:
         self.validate_asmjs(out)
 
-  @needs_dlfcn
   def test_dlfcn_data_and_fptr(self):
     # Failing under v8 since: https://chromium-review.googlesource.com/712595
     if self.is_wasm():
@@ -2621,7 +2615,6 @@ parent_func called from child
 Var: 42
 ''')
 
-  @needs_dlfcn
   def test_dlfcn_varargs(self):
     # this test is not actually valid - it fails natively. the child should fail
     # to be loaded, not load and successfully see the parent print_ints func
@@ -2671,7 +2664,6 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
     self.do_run(src, '100\n200\n13\n42\n')
 
-  @needs_dlfcn
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
     self.set_setting('TOTAL_MEMORY', 16 * 1024 * 1024)
@@ -2751,7 +2743,6 @@ Var: 42
     self.do_run(src, 'success.\n')
 
   @no_wasm('needs to be able to add JS functions to the wasm table')
-  @needs_dlfcn
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
@@ -2770,7 +2761,6 @@ Var: 42
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
-  @needs_dlfcn
   def test_dlfcn_unique_sig(self):
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -2812,7 +2802,6 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, 'success', force_c=True)
 
-  @needs_dlfcn
   def test_dlfcn_info(self):
 
     self.prep_dlfcn_lib()
@@ -2870,7 +2859,6 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, 'success', force_c=True)
 
-  @needs_dlfcn
   def test_dlfcn_stacks(self):
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -2928,7 +2916,6 @@ Var: 42
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_strcmp'])
     self.do_run(src, 'success', force_c=True)
 
-  @needs_dlfcn
   def test_dlfcn_funcs(self):
     self.prep_dlfcn_lib()
     lib_src = r'''
@@ -3025,7 +3012,6 @@ int 1 9000
 ok
 ''', force_c=True)
 
-  @needs_dlfcn
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
@@ -3050,7 +3036,6 @@ ok
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.do_run(src, '''*294,153*''', force_c=True)
 
-  @needs_dlfcn
   def test_dlfcn_longjmp(self):
     self.prep_dlfcn_lib()
     lib_src = r'''
@@ -3113,7 +3098,6 @@ pre 9
 out!
 ''', force_c=True)
 
-  @needs_dlfcn
   def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -3180,7 +3164,6 @@ int 123
 ok
 ''')
 
-  @needs_dlfcn
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
     dirname = self.get_dir()
@@ -3305,18 +3288,15 @@ ok
       }
     ''', 'other says 11.', 'extern "C" int sidey();')
 
-  @needs_dlfcn
   def test_dylink_basics(self):
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
   def test_dylink_memory_growth(self):
     if not self.is_wasm():
       self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH', 1)
     self.do_basic_dylink_test()
 
-  @needs_dlfcn
   @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8268')
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
@@ -3342,7 +3322,6 @@ ok
       }
     ''', 'success', header='extern "C" void* get_address();')
 
-  @needs_dlfcn
   def test_dylink_floats(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3355,7 +3334,6 @@ ok
       float sidey() { return 11.5; }
     ''', 'other says 12.50')
 
-  @needs_dlfcn
   def test_dylink_printfs(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3372,7 +3350,6 @@ ok
       }
     ''', 'hello from main\nhello from side\n')
 
-  @needs_dlfcn
   def test_dylink_funcpointer(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3388,7 +3365,6 @@ ok
       voidfunc sidey(voidfunc f) { return f; }
     ''', 'hello from funcptr\n', header='typedef void (*voidfunc)();')
 
-  @needs_dlfcn
   def test_dylink_funcpointers(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3408,7 +3384,6 @@ ok
     ''', 'hello 1\n', header='typedef void (*voidfunc)();')
 
   @no_wasm('uses function tables in an asm.js specific way')
-  @needs_dlfcn
   def test_dylink_funcpointers2(self):
     self.dylink_test(r'''
       #include "header.h"
@@ -3470,7 +3445,6 @@ ok
       void second();
     ''', need_reverse=False, auto_load=False)
 
-  @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3493,7 +3467,6 @@ ok
       extern charfunc get();
     ''')
 
-  @needs_dlfcn
   def test_dylink_funcpointers_float(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -3514,7 +3487,6 @@ ok
       int sidey(floatfunc f) { if (f) f(56.78); return 1; }
     ''', 'hello 1: 12.340000\ngot: 1\n', header='typedef float (*floatfunc)(float);')
 
-  @needs_dlfcn
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3529,7 +3501,6 @@ ok
       void nothing() {}
     ''', 'a new Class\n')
 
-  @needs_dlfcn
   def test_dylink_global_inits(self):
     def test():
       self.dylink_test(header=r'''
@@ -3557,7 +3528,6 @@ ok
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
-  @needs_dlfcn
   @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64(self):
     self.dylink_test(r'''
@@ -3589,7 +3559,6 @@ ok
       }
     ''', 'other says 175a1ddee82b8c31.')
 
-  @needs_dlfcn
   @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
@@ -3610,7 +3579,6 @@ ok
       }
     ''', 'other says -1311768467750121224.')
 
-  @needs_dlfcn
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3628,7 +3596,6 @@ ok
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
 
-  @needs_dlfcn
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3641,7 +3608,6 @@ ok
       int x = 123;
     ''', expected=['extern is 123.\n'])
 
-  @needs_dlfcn
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3658,7 +3624,6 @@ ok
       Initter initter;
     ''', expected=['extern is 456.\n'])
 
-  @needs_dlfcn
   def test_dylink_stdlib(self):
     self.dylink_test(header=r'''
       #include <math.h>
@@ -3690,7 +3655,6 @@ ok
       }
     ''', expected=['hello through side\n\npow_two: 59.'])
 
-  @needs_dlfcn
   def test_dylink_jslib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -3727,7 +3691,6 @@ ok
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'])
 
-  @needs_dlfcn
   def test_dylink_global_var_jslib(self):
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
@@ -3752,7 +3715,6 @@ ok
       }
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslib_x"]'])
 
-  @needs_dlfcn
   def test_dylink_many_postsets(self):
     NUM = 1234
     self.dylink_test(header=r'''
@@ -3783,7 +3745,6 @@ ok
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
-  @needs_dlfcn
   def test_dylink_postsets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
@@ -3817,7 +3778,6 @@ ok
       int global_var = 12345;
     ''', expected=['12345\n'])
 
-  @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
 
     def test(syslibs, expect_pass=True, need_reverse=True):
@@ -3857,7 +3817,6 @@ ok
     self.set_setting('ASSERTIONS', 1)
     test('', expect_pass=False, need_reverse=False)
 
-  @needs_dlfcn
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
   def test_dylink_iostream(self):
     self.dylink_test(header=r'''
@@ -3875,7 +3834,6 @@ ok
       std::string side() { return "and hello from side"; }
     ''', expected=['hello from main and hello from side\n'])
 
-  @needs_dlfcn
   @no_wasm_backend('current fails in __dynamic_cast')
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
@@ -3925,7 +3883,6 @@ ok
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  @needs_dlfcn
   def test_dylink_raii_exceptions(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
 
@@ -3957,7 +3914,6 @@ ok
       }
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
-  @needs_dlfcn
   @no_wasm_backend('wasm backend resolved symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
@@ -4031,14 +3987,12 @@ ok
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
-  @needs_dlfcn
   @no_wasm_backend('not implemented yet')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return _main(); }', expected_output)
     self._test_dylink_dso_needed(do_run)
 
-  @needs_dlfcn
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
     create_test_file('third.cpp', 'extern "C" int sidef() { return 36; }')
@@ -4061,7 +4015,6 @@ ok
                      side=['libfourth.a', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'])
 
-  @needs_dlfcn
   def test_dylink_spaghetti(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4094,7 +4047,6 @@ ok
     ''', expected=['side init sees 82, 72, -534.\nmain init sees -524, -534, 72.\nmain main sees -524, -534, 72.',
                    'main init sees -524, -534, 72.\nside init sees 82, 72, -534.\nmain main sees -524, -534, 72.'])
 
-  @needs_dlfcn
   def test_dylink_zlib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
@@ -4106,7 +4058,6 @@ ok
                      expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
                      force_c=True)
 
-  # @needs_dlfcn
   # def test_dylink_bullet(self):
   #   Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
   #   side = self.get_bullet_library(self, True)
@@ -4116,7 +4067,6 @@ ok
   #                              open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
 
-  @needs_dlfcn
   @no_wasm_backend('current fails in __dynamic_cast')
   def test_dylink_rtti(self):
     # Verify that objects created in one module and be dynamic_cast<> correctly

@@ -116,16 +116,6 @@ def skip_if(func, condition, explanation='', negate=False):
   return decorated
 
 
-def needs_dlfcn(func):
-  assert callable(func)
-
-  def decorated(self):
-    self.check_dlfcn()
-    return func(self)
-
-  return decorated
-
-
 def is_slow_test(func):
   assert callable(func)
 

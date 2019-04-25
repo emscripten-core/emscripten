@@ -33,7 +33,7 @@ from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp
-from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file
+from runner import env_modify, no_windows, chdir, with_env_modify, create_test_file
 from tools import jsrun, shared
 import tools.line_endings
 import tools.js_optimizer
@@ -1332,7 +1332,6 @@ int f() {
   # to allow "libA.so" on the command line twice. The is not really .so support
   # and the .so files are really bitcode.
   @no_wasm_backend('tests legacy .so linking behviour')
-  @needs_dlfcn
   def test_redundant_link(self):
     lib = "int mult() { return 1; }"
     lib_name = 'libA.c'
