@@ -1328,6 +1328,10 @@ int f() {
     run_process([PYTHON, EMCC] + args + libs)
     self.assertContained('result: 42', run_js('a2.out.js'))
 
+  # The fastcomp path will deliberately ignore duplicate input files in order
+  # to allow "libA.so" on the command line twice. The is not really .so support
+  # and the .so files are really bitcode.
+  @no_wasm_backend('tests legacy .so linking behviour')
   @needs_dlfcn
   def test_redundant_link(self):
     lib = "int mult() { return 1; }"
@@ -1346,7 +1350,7 @@ int f() {
 
     Building.emcc(lib_name, output_filename='libA.so')
 
-    Building.emcc(main_name, ['libA.so'] * 2, output_filename='a.out.js')
+    Building.emcc(main_name, ['libA.so', 'libA.so'], output_filename='a.out.js')
 
     self.assertContained('result: 1', run_js('a.out.js'))
 
@@ -3858,11 +3862,12 @@ int main()
       else:
         self.assertNotContained(warning, err)
 
-  @no_wasm_backend('uses SIDE_MODULE')
   def test_side_module_without_proper_target(self):
     # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
     # otherwise, we are just linking bitcode, and should show an error
     for wasm in [0, 1]:
+      if self.is_wasm_backend() and not wasm:
+        continue
       print(wasm)
       process = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'SIDE_MODULE=1', '-o', 'a.so', '-s', 'WASM=%d' % wasm], stderr=PIPE, check=False)
       self.assertContained('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file', process.stderr)
@@ -4541,6 +4546,17 @@ int main() {
     return utimes(NULL, NULL);
 }''')
     run_process([PYTHON, EMCC, 'src.cpp'])
+
+  def test_syscall_without_filesystem(self):
+    # a program which includes a non-trivial syscall, but disables the filesystem.
+    create_test_file('src.c', r'''
+#include <sys/time.h>
+#include <stddef.h>
+extern int __syscall295(int);
+int main() {
+  return __syscall295(0);
+}''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
 
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
@@ -6342,13 +6358,13 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
-  @no_wasm_backend('uses SIDE_MODULE')
+  @no_wasm_backend('DCE in dynamic libraries not working yet')
   def test_minimal_dynamic(self):
-    for wasm in (1, 0):
+    def run(wasm):
       print('wasm?', wasm)
       library_file = 'library.wasm' if wasm else 'library.js'
 
-      def test(main_args=[], library_args=[], expected='hello from main\nhello from library'):
+      def test(main_args, library_args=[], expected='hello from main\nhello from library'):
         print('testing', main_args, library_args)
         self.clear()
         create_test_file('library.c', r'''
@@ -6378,7 +6394,7 @@ int main(int argc, char** argv) {
             else x();
           }
         ''' % library_file)
-        run_process([PYTHON, EMCC, 'main.c', '-s', 'MAIN_MODULE=1', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
+        run_process([PYTHON, EMCC, 'main.c', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
         self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=STDOUT))
         size = os.path.getsize('a.out.js')
         if wasm:
@@ -6392,17 +6408,21 @@ int main(int argc, char** argv) {
         large = max(x, y)
         return float(100 * large) / small - 100
 
+      full = test(main_args=['-s', 'MAIN_MODULE=1'])
+      # printf is not used in main, but libc was linked in, so it's there
+      printf = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-DUSE_PRINTF'])
+
       # main module tests
 
-      full = test()
-      # printf is not used in main, but libc was linked in, so it's there
-      printf = test(library_args=['-DUSE_PRINTF'])
       # dce in main, and it fails since puts is not exported
       dce = test(main_args=['-s', 'MAIN_MODULE=2'], expected=('cannot', 'undefined'))
+
       # with exporting, it works
       dce = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts"]'])
+
       # printf is not used in main, and we dce, so we failz
       dce_fail = test(main_args=['-s', 'MAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'))
+
       # exporting printf in main keeps it alive for the library
       dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
 
@@ -6414,11 +6434,15 @@ int main(int argc, char** argv) {
       # side module tests
 
       # mode 2, so dce in side, but library_func is not exported, so it is dce'd
-      side_dce_fail = test(library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
+      side_dce_fail = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2'], expected='cannot find side function')
       # mode 2, so dce in side, and library_func is not exported
-      side_dce_work = test(library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
+      side_dce_work = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
 
       assert side_dce_fail[1] < 0.95 * side_dce_work[1] # removing that function saves a chunk
+
+    run(wasm=1)
+    if not self.is_wasm_backend():
+      run(wasm=0)
 
   @no_wasm_backend('uses SIDE_MODULE')
   def test_ld_library_path(self):
@@ -7067,7 +7091,7 @@ int main() {
     run_process([PYTHON, EMCC, 'src.c', '-O2', '-g'])
     size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
-    assert size < (123456 / 2), size
+    self.assertLess(size, 123456 / 2)
 
   @no_wasm_backend()
   def test_separate_asm_warning(self):
@@ -7970,7 +7994,7 @@ int main() {
       run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
       run(['-Oz'],  0, [], [],          54,  0,  1,  1) # noqa
     else:
-      run([],      20, ['abort'], ['waka'], 22712, 20, 14, 27) # noqa
+      run([],      21, ['abort'], ['waka'], 22712, 22, 15, 30) # noqa
       run(['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11) # noqa
       run(['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -7984,20 +8008,20 @@ int main() {
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
-      run(['-O2'], 32, [], ['waka'], 226582,  20,  34, 561) # noqa
+      run(['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 186423,  28,  37, 537) # noqa
+      run(['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                   34, ['abort'], ['waka'], 186423,  28,  38, 518) # noqa
+                   34, ['abort'], ['waka'], 186423,  29,  39, 519) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
       self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
 
     if self.is_wasm_backend():
-      run([],      16, [], ['waka'], 22185, 10,  17, 55) # noqa
-      run(['-O1'], 14, [], ['waka'], 10415,  8,  14, 29) # noqa
-      run(['-O2'], 14, [], ['waka'], 10183,  8,  14, 24) # noqa
+      run([],      17, [], ['waka'], 22185, 11,  18, 57) # noqa
+      run(['-O1'], 15, [], ['waka'], 10415,  9,  15, 31) # noqa
+      run(['-O2'], 15, [], ['waka'], 10183,  9,  15, 25) # noqa
       run(['-O3'],  5, [], [],        2353,  7,   3, 14) # noqa; in -O3, -Os and -Oz we metadce
       run(['-Os'],  5, [], [],        2310,  7,   3, 15) # noqa
       run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
@@ -8005,18 +8029,18 @@ int main() {
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1) # noqa
     else:
-      run([],      22, ['abort'], ['waka'], 42701,  22,   16, 54) # noqa
-      run(['-O1'], 15, ['abort'], ['waka'], 12630,  14,   13, 30) # noqa
-      run(['-O2'], 15, ['abort'], ['waka'], 12616,  14,   13, 26) # noqa
-      run(['-O3'],  6, [],        [],        2443,   9,    2, 14) # noqa; in -O3, -Os and -Oz we metadce
-      run(['-Os'],  6, [],        [],        2412,   9,    2, 16) # noqa
-      run(['-Oz'],  6, [],        [],        2389,   9,    2, 15) # noqa
+      run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
+      run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
+      run(['-O2'], 15, ['abort'], ['waka'], 12425,  15,   14, 28) # noqa
+      run(['-O3'],  6, [],        [],        2443,   9,    2, 15) # noqa; in -O3, -Os and -Oz we metadce
+      run(['-Os'],  6, [],        [],        2412,   9,    2, 17) # noqa
+      run(['-Oz'],  6, [],        [],        2389,   9,    2, 16) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1541, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1542, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8275,7 +8299,7 @@ int main() {
     if self.is_wasm_backend():
       self.assertContained('wasm-ld: error: initial memory too small', err)
     else:
-      self.assertContained('Memory is not large enough for static data (133984) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+      self.assertContained('Memory is not large enough for static data (134016) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
