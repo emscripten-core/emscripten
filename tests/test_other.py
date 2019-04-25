@@ -8977,6 +8977,8 @@ int main () {
 
     run_process([PYTHON, path_from_root('tests', 'gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
     for wasm in [['-s', 'WASM=1'], ['-s', 'WASM=0']]:
+      if self.is_wasm_backend() and 'WASM=0' in wasm:
+        continue
       # Currently we rely on Closure for full minification of every appearance of JS function names.
       # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
       for closure in [['--closure', '1']]:
