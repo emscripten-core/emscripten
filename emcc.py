@@ -2762,15 +2762,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if options.opt_level >= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell:
-      save_intermediate_with_wasm('preclean', wasm_binary_target)
-      final = shared.Building.minify_wasm_js(js_file=final,
-                                             wasm_file=wasm_binary_target,
-                                             expensive_optimizations=will_metadce(options),
-                                             minify_whitespace=optimizer.minify_whitespace,
-                                             debug_info=debug_info,
-                                             emit_symbol_map=emit_symbol_map)
-      save_intermediate_with_wasm('postclean', wasm_binary_target)
+    save_intermediate_with_wasm('preclean', wasm_binary_target)
+    final = shared.Building.minify_wasm_js(js_file=final,
+                                           wasm_file=wasm_binary_target,
+                                           expensive_optimizations=will_metadce(options),
+                                           minify_whitespace=optimizer.minify_whitespace,
+                                           debug_info=debug_info,
+                                           emit_symbol_map=emit_symbol_map)
+    save_intermediate_with_wasm('postclean', wasm_binary_target)
 
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
