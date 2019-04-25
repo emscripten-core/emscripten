@@ -2645,7 +2645,7 @@ class Building(object):
       finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
     assert len(finds) == 1
     marker = finds[0]
-    all_js = all_js.replace(marker  , '(\n' + wasm2js_js + '\n)')
+    all_js = all_js.replace(marker, '(\n' + wasm2js_js + '\n)')
     # replace the placeholder with the actual code
     js_file = js_file + '.wasm2js.js'
     with open(js_file, 'w') as f:
@@ -2653,7 +2653,6 @@ class Building(object):
     if not DEBUG:
       try_delete(wasm_file)
     return js_file
-
 
   # the exports the user requested
   user_requested_exports = []
