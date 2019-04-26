@@ -3771,6 +3771,11 @@ window.close = function() {
   def test_pthread_cancel(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_cancel.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test that pthread_cancel() cancels pthread_cond_wait() operation
+  @requires_threads
+  def test_pthread_cancel_cond_wait(self):
+    self.btest_exit(path_from_root('tests', 'pthread', 'test_pthread_cancel_cond_wait.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   @requires_threads
