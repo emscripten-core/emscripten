@@ -109,8 +109,10 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 
 	__pthread_mutex_unlock(m);
 
+#ifndef __EMSCRIPTEN__
 	__pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
 	if (cs == PTHREAD_CANCEL_DISABLE) __pthread_setcancelstate(cs, 0);
+#endif
 
 	do e = __timedwait_cp(fut, seq, clock, ts, !shared);
 	while (*fut==seq && (!e || e==EINTR));
@@ -174,7 +176,9 @@ relock:
 	if (e == ECANCELED) e = 0;
 
 done:
+#ifndef __EMSCRIPTEN__
 	__pthread_setcancelstate(cs, 0);
+#endif
 
 	if (e == ECANCELED) {
 		__pthread_testcancel();

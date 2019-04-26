@@ -42,7 +42,10 @@ int __timedwait_cp(volatile int *addr, int val,
 #ifdef __EMSCRIPTEN__
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 	int is_main_thread = emscripten_is_main_browser_thread();
-	if (is_main_thread || pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+	int can_cancel_wait = pthread_self()->canceldisable == PTHREAD_CANCEL_ENABLE ||
+		(pthread_self()->canceldisable == PTHREAD_CANCEL_MASKED &&
+		 pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS);
+	if (is_main_thread || can_cancel_wait) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (_pthread_isduecanceled(pthread_self())) {
@@ -80,9 +83,13 @@ int __timedwait(volatile int *addr, int val,
 	clockid_t clk, const struct timespec *at, int priv)
 {
 	int cs, r;
-	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+
 #ifdef __EMSCRIPTEN__
+	__pthread_setcancelstate(PTHREAD_CANCEL_MASKED, &cs);
+	if (cs == PTHREAD_CANCEL_DISABLE) __pthread_setcancelstate(cs, 0);
 	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITMUTEX);
+#else
+	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 #endif
 	r = __timedwait_cp(addr, val, clk, at, priv);
 #ifdef __EMSCRIPTEN__
