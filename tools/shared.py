@@ -2617,22 +2617,43 @@ class Building(object):
       cmd += ['-O']
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if DEBUG:
+      with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
+        f.write(wasm2js_js)
+    # JS optimizations
     if opt_level >= 2:
+      passes = ['last']
+      # it may be useful to run simplifyExpressions here (1.5% or so), and perhaps
+      # simplifyIfs, registerize, asmLastOpts, last.
+      if minify_whitespace:
+        passes += ['minifyWhitespace']
+      if passes:
+        # hackish fixups to work around wasm2js style and the js optimizer FIXME
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
+        wasm2js_js = wasm2js_js.replace('\n }', '\n}')
+        wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
+        temp = configuration.get_temp_files().get('.js').name
+        with open(temp, 'a') as f:
+          f.write(wasm2js_js)
+        temp = Building.js_optimizer(temp, passes)
+        with open(temp) as f:
+          wasm2js_js = f.read()
+    # Closure
+    if use_closure_compiler == 1:
       temp = configuration.get_temp_files().get('.js').name
       with open(temp, 'a') as f:
         f.write(wasm2js_js)
       # if closure is 1, minify the code in a non-advanced way here (we don't validate
       # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
       # mode, then we'll minify it all together later on
-      if use_closure_compiler == 1:
-        temp = Building.closure_compiler(temp,
-                                         pretty=not minify_whitespace,
-                                         advanced=False)
-      elif minify_whitespace:
-        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      temp = Building.closure_compiler(temp,
+                                       pretty=not minify_whitespace,
+                                       advanced=False)
       with open(temp) as f:
         wasm2js_js = f.read()
-      # closure may leave a trailing `;`, which would be invalid given where we
+      # closure may leave a trailing `;`, which would be invalid given where we are emitted
       wasm2js_js = wasm2js_js.strip()
       if wasm2js_js[-1] == ';':
         wasm2js_js = wasm2js_js[:-1]
