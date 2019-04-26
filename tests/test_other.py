@@ -8040,7 +8040,7 @@ int main() {
                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1542, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                1543, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8090,7 +8090,7 @@ int main() {
         assert not i_i64_i64, 'i64 not converted to i32 in imports'
         assert not i_f32_f32, 'f32 not converted to f64 in imports'
         assert e_i64_i32,     'i64 not converted to i32 in exports'
-        assert e_f32_f64,     'f32 not converted to f64 in exports'
+        assert not e_f32_f64, 'f32 not converted to f64 in exports'
         assert not e_i64_i64, 'i64 not converted to i64 in exports'
       else:
         assert not i_i64_i32, 'i64 converted to i32 in imports'
