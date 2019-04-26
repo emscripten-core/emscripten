@@ -1774,6 +1774,7 @@ Module['%(full)s'] = function() {
   if (!func)
     func = %(mangled)s;
   var fp = addFunctionWasm(func, '%(sig)s');
+  console.log('assigning fp for %(full)s (%(sig)s) -> ' + fp);
   Module['%(full)s'] = function() { return fp };
   return fp;
 }

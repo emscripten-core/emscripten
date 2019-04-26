@@ -4018,12 +4018,13 @@ int main() {
       for safe in [0, 1]:
         for emulate_casts in [0, 1]:
           for emulate_fps in [0, 1]:
-            for relocate in [0, 1]:
+            for relocatable in [0, 1]:
               for wasm in [0, 1]:
                 if self.is_wasm_backend() and (not wasm or emulate_fps):
                   continue
-                if emulate_casts and self.is_wasm_backend() and relocate:
-                  self.skipTest('https://github.com/emscripten-core/emscripten/issues/8507')
+                if emulate_casts and self.is_wasm_backend() and relocatable:
+                  # TODO('https://github.com/emscripten-core/emscripten/issues/8507')
+                  continue;
                 cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts)]
                 if not wasm:
                   cmd += ['-s', 'WASM=0']
@@ -4033,7 +4034,7 @@ int main() {
                   cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS']
                 if emulate_fps:
                   cmd += ['-s', 'EMULATED_FUNCTION_POINTERS']
-                if relocate:
+                if relocatable:
                   cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
                 print(cmd)
                 run_process(cmd)
@@ -4043,7 +4044,7 @@ int main() {
                   self.assertContained('Hello, world.', output)
                 else:
                   # otherwise, the error depends on the mode we are in
-                  if self.is_wasm_backend() or (wasm and (relocate or emulate_fps)):
+                  if self.is_wasm_backend() or (wasm and (relocatable or emulate_fps)):
                     # wasm trap raised by the vm
                     self.assertContained('function signature mismatch', output)
                   elif opts == 0 and safe and not wasm:
