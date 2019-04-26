@@ -4024,7 +4024,7 @@ int main() {
                   continue
                 if emulate_casts and self.is_wasm_backend() and relocatable:
                   # TODO('https://github.com/emscripten-core/emscripten/issues/8507')
-                  continue;
+                  continue
                 cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts)]
                 if not wasm:
                   cmd += ['-s', 'WASM=0']
