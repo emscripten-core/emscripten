@@ -4018,19 +4018,24 @@ int main() {
       for safe in [0, 1]:
         for emulate_casts in [0, 1]:
           for emulate_fps in [0, 1]:
-            for relocate in [0, 1]:
+            for relocatable in [0, 1]:
               for wasm in [0, 1]:
                 if self.is_wasm_backend() and (not wasm or emulate_fps):
                   continue
-                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+                if emulate_casts and self.is_wasm_backend() and relocatable:
+                  # TODO('https://github.com/emscripten-core/emscripten/issues/8507')
+                  continue
+                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts)]
                 if not wasm:
                   cmd += ['-s', 'WASM=0']
+                if safe:
+                  cmd += ['-s', 'SAFE_HEAP']
                 if emulate_casts:
-                  cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+                  cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS']
                 if emulate_fps:
-                  cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
-                if relocate:
-                  cmd += ['-s', 'RELOCATABLE=1'] # disables asm-optimized safe heap
+                  cmd += ['-s', 'EMULATED_FUNCTION_POINTERS']
+                if relocatable:
+                  cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
                 print(cmd)
                 run_process(cmd)
                 output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
@@ -4039,7 +4044,7 @@ int main() {
                   self.assertContained('Hello, world.', output)
                 else:
                   # otherwise, the error depends on the mode we are in
-                  if self.is_wasm_backend() or (wasm and (relocate or emulate_fps)):
+                  if self.is_wasm_backend() or (wasm and (relocatable or emulate_fps)):
                     # wasm trap raised by the vm
                     self.assertContained('function signature mismatch', output)
                   elif opts == 0 and safe and not wasm:
