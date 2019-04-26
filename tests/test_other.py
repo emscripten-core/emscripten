@@ -4022,15 +4022,19 @@ int main() {
               for wasm in [0, 1]:
                 if self.is_wasm_backend() and (not wasm or emulate_fps):
                   continue
-                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts), '-s', 'SAFE_HEAP=' + str(safe)]
+                if emulate_casts and self.is_wasm_backend() and relocate:
+                  self.skipTest('https://github.com/emscripten-core/emscripten/issues/8507')
+                cmd = [PYTHON, EMCC, 'src.cpp', '-O' + str(opts)]
                 if not wasm:
                   cmd += ['-s', 'WASM=0']
+                if safe:
+                  cmd += ['-s', 'SAFE_HEAP']
                 if emulate_casts:
-                  cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS=1']
+                  cmd += ['-s', 'EMULATE_FUNCTION_POINTER_CASTS']
                 if emulate_fps:
-                  cmd += ['-s', 'EMULATED_FUNCTION_POINTERS=1']
+                  cmd += ['-s', 'EMULATED_FUNCTION_POINTERS']
                 if relocate:
-                  cmd += ['-s', 'RELOCATABLE=1'] # disables asm-optimized safe heap
+                  cmd += ['-s', 'RELOCATABLE'] # disables asm-optimized safe heap
                 print(cmd)
                 run_process(cmd)
                 output = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
