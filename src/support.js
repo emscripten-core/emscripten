@@ -504,9 +504,6 @@ function loadWebAssemblyModule(binary, flags) {
       // the table should be unchanged
       assert(table === originalTable);
       assert(table === wasmTable);
-      if (instance.exports['table']) {
-        assert(table === instance.exports['table']);
-      }
       // the old part of the table should be unchanged
       for (var i = 0; i < tableBase; i++) {
         assert(table.get(i) === oldTable[i], 'old table entries must remain the same');
