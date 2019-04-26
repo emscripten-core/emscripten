@@ -883,6 +883,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
                 shared.path_from_root('system', 'lib')]
 
+    # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+    has_dash_c = '-c' in newargs
+
     # find input files this a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
@@ -908,7 +911,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS) or file_suffix.endswith(BITCODE_ENDINGS):
+          if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix.endswith(BITCODE_ENDINGS)):
             input_files.append((i, arg))
             has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
@@ -977,8 +980,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a is not '']
 
-    # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
-    has_dash_c = '-c' in newargs
     if has_dash_c:
       assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
       target = target_basename + '.o'
