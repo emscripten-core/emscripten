@@ -883,7 +883,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
                 shared.path_from_root('system', 'lib')]
 
-    # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
+    # -c mean compile to object files(s), don't link
     has_dash_c = '-c' in newargs
 
     # find input files this a simple heuristic. we should really analyze
