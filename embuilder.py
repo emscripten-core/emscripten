@@ -11,6 +11,7 @@ native optimizer, as well as fetch and build ports like zlib and sdl2
 from __future__ import print_function
 import logging
 import os
+import subprocess
 import sys
 
 from tools import shared
@@ -147,11 +148,10 @@ def build(src, result_libs, args=[]):
   cpp = os.path.join(temp_dir, 'src.cpp')
   open(cpp, 'w').write(src)
   temp_js = os.path.join(temp_dir, 'out.js')
-  shared.Building.emcc(cpp, args, output_filename=temp_js)
-
-  # verify
-  if not os.path.exists(temp_js):
-    shared.exit_with_error('failed to build file')
+  try:
+    shared.Building.emcc(cpp, args, output_filename=temp_js)
+  except subprocess.CalledProcessError as e:
+    shared.exit_with_error("embuilder: emcc command failed with %d: '%s'", e.returncode, ' '.join(e.cmd))
 
   for lib in result_libs:
     if not os.path.exists(shared.Cache.get_path(lib)):
