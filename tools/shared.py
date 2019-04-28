@@ -527,7 +527,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 2)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 3)
 
 
 def generate_sanity():
@@ -1274,12 +1274,6 @@ def verify_settings():
     if Settings.EMULATED_FUNCTION_POINTERS:
       exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
-    if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
-      exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
-
-    if Settings.EMULATED_FUNCTION_POINTERS:
-      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend')
-
 
 Settings = SettingsManager()
 verify_settings()
@@ -1811,29 +1805,23 @@ class Building(object):
     # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
+    # include all archive contents.
+    if Settings.LINKABLE:
+      args.insert(0, '--whole-archive')
+      args.append('--no-whole-archive')
+
     cmd = [
         WASM_LD,
-        '-z',
-        'stack-size=%s' % Settings.TOTAL_STACK,
-        '--global-base=%s' % Settings.GLOBAL_BASE,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
         '-o',
         target,
-        '--no-entry',
         '--allow-undefined',
         '--import-memory',
         '--import-table',
-        '--export',
-        '__wasm_call_ctors',
-        '--export',
-        '__data_end',
         '--lto-O%d' % lto_level,
     ] + args
 
-    if Settings.WASM_MEM_MAX != -1:
-      cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
-    elif not Settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
@@ -1847,10 +1835,49 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
-    if Settings.EXPORT_ALL:
-      cmd += ['--export-all']
+    export_all = False
+    if Settings.MAIN_MODULE:
+      export_all = True
+    elif Settings.EXPORT_ALL:
+      export_all = True
+
+    if Settings.RELOCATABLE:
+      if Settings.MAIN_MODULE == 2:
+        cmd.append('--no-export-dynamic')
+      else:
+        cmd.append('--no-gc-sections')
+        cmd.append('--export-dynamic')
+
+    if export_all:
+      cmd.append('--export-all')
+    else:
+      cmd += [
+        '--export',
+        '__wasm_call_ctors',
+        '--export',
+        '__data_end'
+      ]
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    if Settings.RELOCATABLE:
+      if Settings.SIDE_MODULE:
+        cmd.append('-shared')
+      else:
+        cmd.append('-pie')
+
+    if not Settings.SIDE_MODULE:
+      cmd += [
+        '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
+        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--no-entry'
+      ]
+      if Settings.WASM_MEM_MAX != -1:
+        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      elif not Settings.ALLOW_MEMORY_GROWTH:
+        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+      if not Settings.RELOCATABLE:
+        cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
     cmd += opts
 
@@ -1991,7 +2018,8 @@ class Building(object):
     try_delete(target)
 
     # Finish link
-    actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
+    # tolerate people trying to link a.so a.so etc.
+    actual_files = unique_ordered(actual_files)
 
     # check for too-long command line
     link_args = actual_files
@@ -2043,6 +2071,7 @@ class Building(object):
     # if not Building.can_inline():
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
+    # TODO: move vectorization logic to clang/LLVM?
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
     else:
@@ -2485,7 +2514,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS:
+        if Settings.EMITTING_JS and not Settings.AUTODEBUG:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
@@ -2846,7 +2875,7 @@ function jsCall_%s(index%s) {
       # This only makes sense in function pointer emulation mode, where we
       # can do a direct table call.
       assert Settings.WASM
-      assert Settings.EMULATED_FUNCTION_POINTERS
+      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);
@@ -2949,26 +2978,10 @@ class WebAssembly(object):
     return (result, offset)
 
   @staticmethod
-  def get_js_data(js_file, shared=False):
+  def add_emscripten_metadata(js_file, wasm_file):
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
-    if shared:
-      mem_align = Settings.MAX_GLOBAL_ALIGN
-    else:
-      mem_align = None
-    return (mem_size, table_size, mem_align)
-
-  @staticmethod
-  def add_emscripten_metadata(js_file, wasm_file):
-    (mem_size, table_size, _) = WebAssembly.get_js_data(js_file)
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
-    wso = js_file + '.wso'
-    wasm = open(wasm_file, 'rb').read()
-    f = open(wso, 'wb')
-    f.write(wasm[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
       # metadata section version
@@ -2990,19 +3003,25 @@ class WebAssembly(object):
       #     the EMSCRIPTEN_METADATA_MINOR
     )
 
-    size = len(name) + len(contents)
-    f.write(WebAssembly.lebify(size))
-    f.write(name)
-    f.write(contents)
-    f.write(wasm[8:])
-    f.close()
-    return wso
+    orig = open(wasm_file, 'rb').read()
+    with open(wasm_file, 'wb') as f:
+      f.write(orig[0:8]) # copy magic number and version
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      # need to find the size of this section
+      size = len(name) + len(contents)
+      f.write(WebAssembly.lebify(size))
+      f.write(name)
+      f.write(contents)
+      f.write(orig[8:])
 
   @staticmethod
   def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
     assert not Settings.WASM_BACKEND
-    mem_size, table_size, mem_align = WebAssembly.get_js_data(js_file, True)
+    mem_align = Settings.MAX_GLOBAL_ALIGN
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
 

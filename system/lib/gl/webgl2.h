@@ -75,8 +75,8 @@ GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstanced (GLenum mode, GLs
 GL_APICALL GLsync GL_APIENTRY emscripten_glFenceSync (GLenum condition, GLbitfield flags);
 GL_APICALL GLboolean GL_APIENTRY emscripten_glIsSync (GLsync sync);
 GL_APICALL void GL_APIENTRY emscripten_glDeleteSync (GLsync sync);
-GL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
-GL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
+GL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
+GL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
 GL_APICALL void GL_APIENTRY emscripten_glGetInteger64v (GLenum pname, GLint64 *data);
 GL_APICALL void GL_APIENTRY emscripten_glGetSynciv (GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length, GLint *values);
 GL_APICALL void GL_APIENTRY emscripten_glGetInteger64i_v (GLenum target, GLuint index, GLint64 *data);
