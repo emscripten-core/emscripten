@@ -388,7 +388,9 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # Compile the program.
   show('Compiling generated code...')
   # -Oz optimizes enough to avoid warnings on code size/num locals
-  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-s', 'WASM=0', '-Wno-format']
+  cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-Wno-format']
+  if not shared.Settings.WASM_BACKEND:
+    cmd += ['-s', 'WASM=0']
   if shared.Settings.WASM_OBJECT_FILES:
     cmd += ['-s', 'WASM_OBJECT_FILES=1']
 
