@@ -1934,7 +1934,7 @@ int f() {
 
     # setting ERROR_ON_UNDEFINED_SYMBOLS=0 suppresses error
     cmd += ['-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0']
-    proc = run_process(cmd)
+    run_process(cmd)
 
   def test_undefined_symbols(self):
     create_test_file('main.cpp', r'''
@@ -7201,7 +7201,7 @@ int main() {
 ''')
     stderr = self.expect_fail([PYTHON, EMCC, 'src.cpp', '-Oz'])
     if not self.is_wasm_backend():
-      self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', proc.stderr)
+      self.assertContained('EM_ASM should not receive i64s as inputs, they are not valid in JS', stderr)
 
   def test_eval_ctors_non_terminating(self):
     for wasm in (1, 0):
@@ -7834,7 +7834,7 @@ int main() {
     # But not in asm.js
     if not self.is_wasm_backend():
       ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'WASM=0'])
-      self.assertContained('TOTAL_MEMORY must be at least 16MB' , ret)
+      self.assertContained('TOTAL_MEMORY must be at least 16MB', ret)
 
     # Must be a multiple of 64KB
     ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'])
@@ -8376,7 +8376,7 @@ int main() {
         self.expect_fail(cmd)
         continue
 
-      proc = run_process(cmd)
+      run_process(cmd)
       print(os.listdir('.'))
       assert expect_emterpretify_file == os.path.exists('a.out.dat')
       assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
