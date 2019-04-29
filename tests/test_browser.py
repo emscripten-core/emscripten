@@ -2408,6 +2408,16 @@ void *getBindBuffer() {
           REPORT_RESULT(3);
           return 3;
         }
+        void *invalid_handle = dlopen("/invalid.so", 0);
+        if (invalid_handle) {
+          REPORT_RESULT(4);
+          return 4;
+        }
+        void *invalid_handle2 = dlopen("/invalid.so", 0);
+        if (invalid_handle2) {
+          REPORT_RESULT(5);
+          return 5;
+        }
         REPORT_RESULT(0);
         return 0;
       }

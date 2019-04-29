@@ -302,14 +302,31 @@ function loadDynamicLibrary(lib, flags) {
     dso.module = libModule;
   }
 
-  if (flags.loadAsync) {
-    return getLibModule().then(function(libModule) {
-      moduleLoaded(libModule);
-      return handle;
-    })
+  function cleanupOnError() {
+    var lib_record = LDSO.loadedLibs[handle];
+    delete LDSO.loadedLibNames[lib_record.name];
+    delete LDSO.loadedLibs[handle];
   }
 
-  moduleLoaded(getLibModule());
+  if (flags.loadAsync) {
+    return getLibModule()
+      .catch(function (e) {
+        cleanupOnError();
+        throw e;
+      })
+      .then(function (libModule) {
+        moduleLoaded(libModule);
+        return handle;
+      })
+  }
+
+  try {
+    moduleLoaded(getLibModule());
+  }
+  catch (e) {
+    cleanupOnError();
+    throw e;
+  }
   return handle;
 }
 
