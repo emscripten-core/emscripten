@@ -4142,7 +4142,7 @@ ok
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
 
   @needs_dlfcn
-  @no_wasm_backend('current fails in __dynamic_cast')
+  @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8376')
   def test_dylink_rtti(self):
     # Verify that objects created in one module and be dynamic_cast<> correctly
     # in the another module.
@@ -4187,12 +4187,10 @@ ok
     }
     '''
 
-    # TODO(sbc): This tests should instead return zero.  Update expectations
-    # once we fix https://github.com/emscripten-core/emscripten/issues/8376
     self.dylink_test(main=main,
                      side=side,
                      header=header,
-                     expected='failure')
+                     expected='success')
 
   def test_random(self):
     src = r'''#include <stdlib.h>
@@ -4759,7 +4757,6 @@ name: .
     Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf16.cpp')).read(), 'OK.')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_wprintf')
 
@@ -5137,7 +5134,6 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out')).read()
     self.do_run(src, expected)
 
-  @no_wasm_backend('No dynamic linking support in wasm backend path')
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
