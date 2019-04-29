@@ -2270,6 +2270,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     cmd.append('--separate-data-segments=' + memfile)
+  # TODO drop the trailing zeros there...
   if shared.Settings.SIDE_MODULE:
     cmd.append('--side-module')
   else:

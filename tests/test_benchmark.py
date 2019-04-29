@@ -45,7 +45,7 @@ OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
 
-LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
+LLVM_FEATURE_FLAGS = [] # ['-mnontrapping-fptoint']
 
 
 class Benchmarker(object):
@@ -193,7 +193,7 @@ class EmscriptenBenchmarker(Benchmarker):
     if PROFILING:
       cmd += ['--profiling-funcs']
     self.cmd = cmd
-    run_process(cmd, env=self.env)
+    run_process(cmd, env=self.env, stderr=PIPE)
     if self.binaryen_opts:
       run_binaryen_opts(final[:-3] + '.wasm', self.binaryen_opts)
     self.filename = final
@@ -203,7 +203,7 @@ class EmscriptenBenchmarker(Benchmarker):
 
   def get_output_files(self):
     ret = [self.filename]
-    if 'WASM=0' in self.cmd:
+    if 'WASM=0' in self.cmd or 'WASM2JS=1' in self.cmd:
       if 'MINIMAL_RUNTIME=1' in self.cmd:
         ret.append(self.filename[:-3] + '.asm.js')
         ret.append(self.filename[:-3] + '.mem')
@@ -319,7 +319,8 @@ if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
   ]
 if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
-    EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'v8', V8_ENGINE),
+    EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'asm2', V8_ENGINE, ['-s', 'WASM=0', '-s', 'ASM_JS=2']),
+    #EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'w2js', V8_ENGINE, ['-s', 'WASM2JS=1']),
   ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
