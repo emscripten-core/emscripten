@@ -3777,7 +3777,7 @@ int main()
           print(opts, asserts, wasm, cmd)
           # Should not need to pipe stdout here but binaryen writes to stdout
           # when it really should write to stderr.
-          stderr = self.expect_fail(cmd, stdout=PIPE)
+          stderr = run_process(cmd, stdout=PIPE, stderr=PIPE, check=False).stderr
           assert ('unexpected' in stderr) == asserts, stderr
           assert ("to 'doit'" in stderr) == asserts, stderr
 
