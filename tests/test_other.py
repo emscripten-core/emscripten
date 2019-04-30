@@ -5329,6 +5329,10 @@ main(const int argc, const char * const * const argv)
     self.assertGreater(yes_size - no_size, 100000)
     self.assertLess(no_size, 360000)
 
+  def test_no_filesystem_libcxx(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'FILESYSTEM=0'])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+
   def test_no_nuthin(self):
     # check FILESYSTEM is automatically set, and effective
 
