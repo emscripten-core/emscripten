@@ -1683,9 +1683,14 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glgears(self):
-    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
-               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'], outfile='something.html',
-               message='You should see animating gears.')
+    def test(args):
+      self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
+                 args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
+    # test normally
+    test([])
+    # test that a program that doesn't use pthreads still works with with pthreads enabled
+    # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
+    test(['-s', 'USE_PTHREADS=1'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
