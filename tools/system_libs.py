@@ -207,7 +207,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def gl_version_flags(libname):
     if shared.Settings.USE_WEBGL2:
       assert '-webgl2' in libname
-      return ['-DUSE_WEBGL2=1']
+      return ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
     else:
       assert '-webgl2' not in libname
       return []
@@ -416,7 +416,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for dirpath, dirnames, filenames in os.walk(src_dir):
       filenames = filter(lambda f: f.endswith('.c'), filenames)
       files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz', '-s', 'USE_WEBGL2=1']
+    flags = ['-Oz']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
     flags += gl_version_flags(libname)
