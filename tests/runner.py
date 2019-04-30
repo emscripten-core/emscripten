@@ -269,7 +269,7 @@ non_core_test_modes = [
   'sanity',
   'sockets',
   'interactive',
-  'benchmark'
+  'benchmark',
 ]
 
 test_index = 0

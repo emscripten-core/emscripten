@@ -2793,7 +2793,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     debug_info=debug_info)
     save_intermediate_with_wasm('wasm2js', wasm_binary_target)
 
-    if options.use_closure_compiler and options.use_closure_compiler == 2:
+    if options.use_closure_compiler == 2:
       final = run_closure_compiler(final)
 
   # replace placeholder strings with correct subresource locations

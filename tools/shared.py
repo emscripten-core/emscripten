@@ -2632,7 +2632,8 @@ class Building(object):
         temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
       with open(temp) as f:
         wasm2js_js = f.read()
-      # closure may leave a trailing `;`, which would be invalid given where we
+      # closure may leave a trailing `;`, which would be invalid given where we place
+      # this code (inside parens)
       wasm2js_js = wasm2js_js.strip()
       if wasm2js_js[-1] == ';':
         wasm2js_js = wasm2js_js[:-1]
