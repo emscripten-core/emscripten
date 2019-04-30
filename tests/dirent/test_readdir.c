@@ -86,7 +86,6 @@ void test() {
     //printf("ent, errno: %p, %d\n", ent, errno);
     assert(ent);
     //printf("%d file: %s (%d : %d)\n", i, ent->d_name, ent->d_reclen, sizeof(*ent));
-    assert(ent->d_reclen == sizeof(*ent));
     if (!seen[0] && !strcmp(ent->d_name, ".")) {
       assert(ent->d_type & DT_DIR);
       seen[0] = 1;
@@ -130,7 +129,7 @@ void test() {
   ent = readdir(dir);
   assert(ent);
   //printf("check: %s / %s\n", ent->d_name, first);
-  assert(!strcmp(ent->d_name, first));
+  assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
 
   //
   // do a normal read with readdir_r
