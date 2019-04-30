@@ -134,6 +134,15 @@ class other(RunnerCore):
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
 
+  def expect_fail(self, cmd, **args):
+    """Run a subprocess and assert that it returns non-zero.
+
+    Return the stderr of the subprocess.
+    """
+    proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    self.assertNotEqual(proc.returncode, 0)
+    return proc.stderr
+
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
@@ -202,9 +211,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # properly report source code errors, and stop there
       self.clear()
-      assert not os.path.exists('a.out.js')
       stderr = self.expect_fail([PYTHON, compiler, path_from_root('tests', 'hello_world_error' + suffix)])
-      assert not os.path.exists('a.out.js'), 'compilation failed, so no output file is expected'
       self.assertNotContained('IOError', stderr) # no python stack
       self.assertNotContained('Traceback', stderr) # no python stack
       self.assertContained('error: invalid preprocessing directive', stderr)
@@ -7806,15 +7813,6 @@ int main() {
             self.assertEqual(len(parts), 6)
           else:
             self.assertEqual(parts[6], str(expect_max))
-
-  def expect_fail(self, cmd, **args):
-    """Run a subprocess and assert that it returns non-zero.
-
-    Return the stderr of the subprocess.
-    """
-    proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
-    return proc.stderr
 
   def test_invalid_mem(self):
     # A large amount is fine, multiple of 16MB or not
