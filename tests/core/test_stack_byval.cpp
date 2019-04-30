@@ -7,11 +7,13 @@
 
 // We should also not blow up the stack with byval arguments
 #include <stdio.h>
+
 struct vec {
   int x, y, z;
   vec(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
   static vec add(vec a, vec b) { return vec(a.x + b.x, a.y + b.y, a.z + b.z); }
 };
+
 int main() {
   int total = 0;
   for (int i = 0; i < 1000; i++) {

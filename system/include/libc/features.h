@@ -2,6 +2,7 @@
 #define _FEATURES_H
 
 #if defined(_ALL_SOURCE) && !defined(_GNU_SOURCE)
+#error foo
 #define _GNU_SOURCE 1
 #endif
 

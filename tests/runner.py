@@ -960,6 +960,8 @@ class RunnerCore(unittest.TestCase):
     return js_engines
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
+    if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
+      kwargs['force_c'] = True
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
