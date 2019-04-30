@@ -6,7 +6,7 @@
 #include "webgl1.h"
 #include "webgl2.h"
 
-#ifdef __EMSCRIPTEN_PTHREADS__
+#if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glReadBuffer, GLenum);
 ASYNC_GL_FUNCTION_6(EM_FUNC_SIG_VIIIIII, void, glDrawRangeElements, GLenum, GLuint, GLuint, GLsizei, GLenum, const void *); // TODO: Not async if rendering from client side memory
