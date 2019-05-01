@@ -2291,7 +2291,18 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
-
+  if not shared.Settings.MEM_INIT_IN_WASM:
+    # we have a separate .mem file. binaryen did not strip any trailing zeros,
+    # because it's an ABI question as to whether it is valid to do so or not.
+    # we can do so here, since we make sure to zero out that memory (even in
+    # the dynamic linking case, our loader zeros it out)
+    with open(memfile, 'rb') as f:
+      mem_data = f.read()
+    end = len(mem_data)
+    while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
+      end -= 1
+    with open(memfile, 'wb') as f:
+      f.write(mem_data[:end])
   return load_metadata_wasm(stdout, DEBUG)
 
 
