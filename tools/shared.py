@@ -2986,12 +2986,12 @@ class WebAssembly(object):
     global_base = Settings.GLOBAL_BASE
 
     js = open(js_file).read()
-    m = re.search(r"tempDoublePtr\s+=\s+(\d+)", js)
-    tempdouble_ptr = int(m.group(1))
-    m = re.search(r"DYNAMIC_BASE\s+=\s+(\d+)", js)
-    dynamic_base = int(m.group(1))
-    m = re.search(r"DYNAMICTOP_PTR\s+=\s+(\d+)", js)
-    dynamictop_ptr = int(m.group(1))
+    m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
+    tempdouble_ptr = int(m.group(2))
+    m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
+    dynamic_base = int(m.group(2))
+    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
+    dynamictop_ptr = int(m.group(2))
 
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
