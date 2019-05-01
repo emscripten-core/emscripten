@@ -14,7 +14,7 @@ if (typeof Atomics === 'undefined') {
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
   Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
   Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) return 'not-equal'; else return 'timed-out'; }
-  Atomics['wake'] = function(t, i, c) { return 0; }
+  Atomics['notify'] = function(t, i, c) { return 0; }
   Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }
   Atomics['isLockFree'] = function(s) { return true; }
   Atomics['load'] = function(t, i) { return t[i]; }
@@ -38,12 +38,18 @@ var Atomics_store = Atomics.store;
 var Atomics_sub = Atomics.sub;
 var Atomics_xor = Atomics.xor;
 
+function load1(ptr) { return HEAP8[ptr>>2]; }
+function store1(ptr, value) { HEAP8[ptr>>2] = value; }
+function load2(ptr) { return HEAP16[ptr>>2]; }
+function store2(ptr, value) { HEAP16[ptr>>2] = value; }
+function load4(ptr) { return HEAP32[ptr>>2]; }
+function store4(ptr, value) { HEAP32[ptr>>2] = value; }
+
 var ENVIRONMENT_IS_FETCH_WORKER = true;
 var ENVIRONMENT_IS_WORKER = true;
 var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
 var DYNAMICTOP_PTR = 0;
-var TOTAL_MEMORY = 0;
 var nan = NaN;
 var inf = Infinity;
 
@@ -76,12 +82,12 @@ function processWorkQueue() {
   for(var i = 0; i < numQueuedItems; ++i) {
     var fetch = Atomics_load(HEAPU32, (queuedOperations >> 2)+i);
     function successcb(fetch) {
-      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1);
     }
     function errorcb(fetch) {
-      Atomics.compareExchange(HEAPU32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1, 2);
-      Atomics.wake(HEAP32, fetch + Fetch.fetch_t_offset___proxyState >> 2, 1);
+      Atomics.compareExchange(HEAPU32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1, 2);
+      Atomics.wake(HEAP32, fetch + {{{ C_STRUCTS.emscripten_fetch_t.__proxyState }}} >> 2, 1);
     }
     function progresscb(fetch) {
     }
@@ -108,7 +114,6 @@ this.onmessage = function(e) {
     STACKTOP = e.data.STACKTOP;
     STACK_MAX = e.data.STACK_MAX;
     DYNAMICTOP_PTR = e.data.DYNAMICTOP_PTR;
-    TOTAL_MEMORY = e.data.TOTAL_MEMORY;
     HEAP8 = new Int8Array(buffer);
     HEAPU8 = new Uint8Array(buffer);
     HEAP16 = new Int16Array(buffer);

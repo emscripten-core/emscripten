@@ -61,7 +61,7 @@ void loop()
       Module.canvas = canvas2;
     );
     assert(emscripten_webgl_get_current_context() == 0);
-    context = emscripten_webgl_create_context(0, &attrs);
+    context = emscripten_webgl_create_context("#canvas", &attrs);
 
     assert(context > 0); // Must have received a valid context.
     res = emscripten_webgl_make_context_current(context);

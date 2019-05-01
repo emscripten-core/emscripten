@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_h__
-#define __emscripten_h__
+#pragma once
 
 /**
  * This file contains a few useful things for compiling C/C++ code
@@ -27,8 +26,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdio.h>
 
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
@@ -232,6 +229,10 @@ int emscripten_get_compiler_setting(const char *name);
 
 void emscripten_debugger(void);
 
+// Forward declare FILE from musl libc headers to avoid needing to #include <stdio.h> from emscripten.h
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
+
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 
@@ -266,10 +267,6 @@ emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void
 int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
 
-
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __emscripten_h__
-

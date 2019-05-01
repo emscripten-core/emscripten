@@ -370,13 +370,7 @@ var LibraryBrowser = {
         if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
              document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
              document['webkitCurrentFullScreenElement']) === canvasContainer) {
-          canvas.exitFullscreen = document['exitFullscreen'] ||
-                                  document['cancelFullScreen'] ||
-                                  document['mozCancelFullScreen'] ||
-                                  document['msExitFullscreen'] ||
-                                  document['webkitCancelFullScreen'] ||
-                                  function() {};
-          canvas.exitFullscreen = canvas.exitFullscreen.bind(document);
+          canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
           if (Browser.resizeCanvas) {
@@ -432,6 +426,24 @@ var LibraryBrowser = {
           return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
         }
         return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+    },
+
+    exitFullscreen: function() {
+      // This is workaround for chrome. Trying to exit from fullscreen
+      // not in fullscreen state will cause "TypeError: Document not active"
+      // in chrome. See https://github.com/emscripten-core/emscripten/pull/8236
+      if (!Browser.isFullscreen) {
+        return false;
+      }
+
+      var CFS = document['exitFullscreen'] ||
+                document['cancelFullScreen'] ||
+                document['mozCancelFullScreen'] ||
+                document['msExitFullscreen'] ||
+                document['webkitCancelFullScreen'] ||
+          (function() {});
+      CFS.apply(document, []);
+      return true;
     },
 
     nextRAF: 0,
@@ -565,17 +577,37 @@ var LibraryBrowser = {
     // opposite of native code: In native APIs the positive scroll direction is to scroll up (away from the user).
     // NOTE: The mouse wheel delta is a decimal number, and can be a fractional value within -1 and 1. If you need to represent
     //       this as an integer, don't simply cast to int, or you may receive scroll events for wheel delta == 0.
+    // NOTE: We convert all units returned by events into steps, i.e. individual wheel notches.
+    //       These conversions are only approximations. Changing browsers, operating systems, or even settings can change the values.
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
         case 'DOMMouseScroll':
-          delta = event.detail;
+          // 3 lines make up a step
+          delta = event.detail / 3;
           break;
         case 'mousewheel':
-          delta = event.wheelDelta;
+          // 120 units make up a step
+          delta = event.wheelDelta / 120;
           break;
         case 'wheel':
-          delta = event['deltaY'];
+          delta = event.deltaY
+          switch(event.deltaMode) {
+            case 0:
+              // DOM_DELTA_PIXEL: 100 pixels make up a step
+              delta /= 100;
+              break;
+            case 1:
+              // DOM_DELTA_LINE: 3 lines make up a step
+              delta /= 3;
+              break;
+            case 2:
+              // DOM_DELTA_PAGE: A page makes up 80 steps
+              delta *= 80;
+              break;
+            default:
+              throw 'unrecognized mouse wheel delta mode: ' + event.deltaMode;
+          }
           break;
         default:
           throw 'unrecognized mouse wheel event: ' + event.type;
@@ -784,7 +816,7 @@ var LibraryBrowser = {
     }
   },
 
-  emscripten_async_wget__deps: ['$PATH'],
+  emscripten_async_wget__deps: ['$PATH_FS'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -792,7 +824,7 @@ var LibraryBrowser = {
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    _file = PATH_FS.resolve(_file);
     function doCallback(callback) {
       if (callback) {
         var stack = stackSave();
@@ -837,6 +869,7 @@ var LibraryBrowser = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
+  emscripten_async_wget2__deps: ['$PATH_FS'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
@@ -844,7 +877,7 @@ var LibraryBrowser = {
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    _file = PATH_FS.resolve(_file);
     var _request = UTF8ToString(request);
     var _param = UTF8ToString(param);
     var index = _file.lastIndexOf('/');
@@ -859,7 +892,7 @@ var LibraryBrowser = {
 
     // LOAD
     http.onload = function http_onload(e) {
-      if (http.status == 200) {
+      if (http.status >= 200 && http.status < 300) {
         // if a file exists there, we overwrite it
         try {
           FS.unlink(_file);
@@ -927,7 +960,7 @@ var LibraryBrowser = {
 
     // LOAD
     http.onload = function http_onload(e) {
-      if (http.status == 200 || _url.substr(0,4).toLowerCase() != "http") {
+      if (http.status >= 200 && http.status < 300 || _url.substr(0,4).toLowerCase() != "http") {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
@@ -1481,13 +1514,13 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH'],
+  emscripten_get_preloaded_image_data__deps: ['$PATH_FS'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if ((path | 0) === path) path = UTF8ToString(path);
 
-    path = PATH.resolve(path);
+    path = PATH_FS.resolve(path);
 
     var canvas = Module["preloadedImages"][path];
     if (canvas) {

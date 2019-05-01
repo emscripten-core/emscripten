@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $FS__deps: ['__setErrNo', '$PATH', '$TTY', '$MEMFS',
+  $FS__deps: ['__setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
 #if LibraryManager.has('library_idbfs.js')
     '$IDBFS',
 #endif
@@ -20,13 +20,16 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
-    'stdin', 'stdout', 'stderr'],
-  $FS__postset: 'FS.staticInit();' +
-                '__ATINIT__.unshift(function() { if (!Module["noFSInit"] && !FS.init.initialized) FS.init() });' +
-                '__ATMAIN__.push(function() { FS.ignorePermissions = false });' +
-                '__ATEXIT__.push(function() { FS.quit() });' +
-                // Get module methods from settings
-                '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}',
+    ],
+  $FS__postset: function() {
+    // TODO: do we need noFSInit?
+    addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
+    addAtMain('FS.ignorePermissions = false;');
+    addAtExit('FS.quit();');
+    return 'FS.staticInit();' +
+           // Get module methods from settings
+           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+  },
   $FS: {
     root: null,
     mounts: [],
@@ -62,7 +65,7 @@ mergeInto(LibraryManager.library, {
     // paths
     //
     lookupPath: function(path, opts) {
-      path = PATH.resolve(FS.cwd(), path);
+      path = PATH_FS.resolve(FS.cwd(), path);
       opts = opts || {};
 
       if (!path) return { path: '', node: null };
@@ -113,7 +116,7 @@ mergeInto(LibraryManager.library, {
           var count = 0;
           while (FS.isLink(current.mode)) {
             var link = FS.readlink(current_path);
-            current_path = PATH.resolve(PATH.dirname(current_path), link);
+            current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
             var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count });
             current = lookup.node;
@@ -508,7 +511,9 @@ mergeInto(LibraryManager.library, {
       var completed = 0;
 
       function doCallback(err) {
+#if ASSERTIONS
         assert(FS.syncFSRequests > 0);
+#endif
         FS.syncFSRequests--;
         return callback(err);
       }
@@ -613,7 +618,9 @@ mergeInto(LibraryManager.library, {
 
       // remove this mount from the child mounts
       var idx = node.mount.mounts.indexOf(mount);
+#if ASSERTIONS
       assert(idx !== -1);
+#endif
       node.mount.mounts.splice(idx, 1);
     },
     lookup: function(parent, name) {
@@ -672,7 +679,7 @@ mergeInto(LibraryManager.library, {
       return FS.mknod(path, mode, dev);
     },
     symlink: function(oldpath, newpath) {
-      if (!PATH.resolve(oldpath)) {
+      if (!PATH_FS.resolve(oldpath)) {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       var lookup = FS.lookupPath(newpath, { parent: true });
@@ -713,12 +720,12 @@ mergeInto(LibraryManager.library, {
       // source must exist
       var old_node = FS.lookupNode(old_dir, old_name);
       // old path should not be an ancestor of the new path
-      var relative = PATH.relative(old_path, new_dirname);
+      var relative = PATH_FS.relative(old_path, new_dirname);
       if (relative.charAt(0) !== '.') {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       // new path should not be an ancestor of the old path
-      relative = PATH.relative(new_path, old_dirname);
+      relative = PATH_FS.relative(new_path, old_dirname);
       if (relative.charAt(0) !== '.') {
         throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
       }
@@ -865,7 +872,7 @@ mergeInto(LibraryManager.library, {
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      return PATH.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
+      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
     stat: function(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1305,21 +1312,27 @@ mergeInto(LibraryManager.library, {
         // for modern web browsers
         var randomBuffer = new Uint8Array(1);
         random_device = function() { crypto.getRandomValues(randomBuffer); return randomBuffer[0]; };
-      } else if (ENVIRONMENT_IS_NODE) {
+      } else
 #if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
         // for nodejs with or without crypto support included
         try {
-            var crypto_module = require('crypto');
-            // nodejs has crypto support
-            random_device = function() { return crypto_module['randomBytes'](1)[0]; };
+          var crypto_module = require('crypto');
+          // nodejs has crypto support
+          random_device = function() { return crypto_module['randomBytes'](1)[0]; };
         } catch (e) {
-            // nodejs doesn't have crypto support so fallback to Math.random
-            random_device = function() { return (Math.random()*256)|0; };
+          // nodejs doesn't have crypto support
         }
+      } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-      } else {
-        // default for ES5 platforms
-        random_device = function() { abort("random_device"); /*Math.random() is not safe for random number generation, so this fallback random_device implementation aborts... see emscripten-core/emscripten/pull/7096 */ };
+      {}
+      if (!random_device) {
+        // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+        random_device = function() { abort("no cryptographic support found for random_device. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: function(array) { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };"); };
+#else
+        random_device = function() { abort("random_device"); };
+#endif
       }
       FS.createDevice('/dev', 'random', random_device);
       FS.createDevice('/dev', 'urandom', random_device);
@@ -1381,13 +1394,13 @@ mergeInto(LibraryManager.library, {
 
       // open default streams for the stdin, stdout and stderr devices
       var stdin = FS.open('/dev/stdin', 'r');
-      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
-
       var stdout = FS.open('/dev/stdout', 'w');
-      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
-
       var stderr = FS.open('/dev/stderr', 'w');
+#if ASSERTIONS
+      assert(stdin.fd === 0, 'invalid handle for stdin (' + stdin.fd + ')');
+      assert(stdout.fd === 1, 'invalid handle for stdout (' + stdout.fd + ')');
       assert(stderr.fd === 2, 'invalid handle for stderr (' + stderr.fd + ')');
+#endif
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
@@ -1412,7 +1425,7 @@ mergeInto(LibraryManager.library, {
 #endif
         // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
         if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS
+#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif
       };
@@ -1449,7 +1462,9 @@ mergeInto(LibraryManager.library, {
       };
     },
     init: function(input, output, error) {
+#if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+#endif
       FS.init.initialized = true;
 
       FS.ensureErrnoError();
@@ -1491,7 +1506,7 @@ mergeInto(LibraryManager.library, {
       return path;
     },
     absolutePath: function(relative, base) {
-      return PATH.resolve(base, relative);
+      return PATH_FS.resolve(base, relative);
     },
     standardizePath: function(path) {
       return PATH.normalize(path);
@@ -1810,7 +1825,9 @@ mergeInto(LibraryManager.library, {
         if (position >= contents.length)
           return 0;
         var size = Math.min(contents.length - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (contents.slice) { // normal array
           for (var i = 0; i < size; i++) {
             buffer[offset + i] = contents[position + i];
@@ -1841,7 +1858,7 @@ mergeInto(LibraryManager.library, {
       Browser.init(); // XXX perhaps this method should move onto Browser?
       // TODO we should allow people to just pass in a complete filename instead
       // of parent and name being that we just join them anyways
-      var fullname = name ? PATH.resolve(PATH.join2(parent, name)) : parent;
+      var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
       var dep = getUniqueRunDependency('cp ' + fullname); // might have several active requests for the same fullname
       function processData(byteArray) {
         function finish(byteArray) {

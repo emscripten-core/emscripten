@@ -768,7 +768,7 @@ and then play the tone.
 
 The example can be compiled on the Linux/macOS terminal with::
 
-   ./emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
+   emcc -O2 -Wall -Werror --bind -o oscillator.html oscillator.cpp
 
 
 Built-in type conversions
@@ -890,7 +890,8 @@ The following JavaScript can be used to interact with the above C++.
     // to make vectors available
     var mapKeys = retMap.keys();
     for (var i = 0; i < mapKeys.size(); i++) {
-        console.log("Map key/value: ", retVector.get(i), retMap.get(retVector.get(i)));
+        var key = mapKeys.get(i);
+        console.log("Map key/value: ", key, retMap.get(key));
     }
 
     // reset the value at the given index position

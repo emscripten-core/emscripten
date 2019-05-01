@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_threading_h__
-#define __emscripten_threading_h__
+#pragma once
 
 #include <inttypes.h>
 #include <pthread.h>
@@ -366,6 +365,4 @@ struct thread_profiler_block
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

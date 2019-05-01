@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser'],
+  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -316,12 +316,7 @@ var LibraryGLUT = {
     },
 
     exitFullscreen: function() {
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (function() {});
-      CFS.apply(document, []);
+      Browser.exitFullscreen();
     },
 
     cancelFullScreen: function() {

@@ -12,7 +12,7 @@ function Pointer_stringify(ptr, length) {
 function AsciiToString(ptr) {
   var str = '';
   while (1) {
-    var ch = {{{ makeGetValue('ptr++', 0, 'i8') }}};
+    var ch = {{{ makeGetValue('ptr++', 0, 'i8', null, true) }}};
     if (!ch) return str;
     str += String.fromCharCode(ch);
   }
@@ -102,8 +102,8 @@ function UTF8ArrayToString(u8Array, idx, maxBytesToRead) {
     }
 #if TEXTDECODER
   }
-  return str;
 #endif // TEXTDECODER
+  return str;
 #endif // TEXTDECODER == 2
 }
 

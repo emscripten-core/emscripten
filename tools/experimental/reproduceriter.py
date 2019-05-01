@@ -90,7 +90,7 @@ Examples
 
    for a shell build, or
 
-    emscripten/tools/reproduceriter.py bb bench js/game-setup.js 
+    emscripten/tools/reproduceriter.py bb bench js/game-setup.js
 
    for a browser build. Since only a browser build can do recording, you would normally
    make a browser build, record a trace, then make a shell build and copy the trace
@@ -109,7 +109,10 @@ Notes
 '''
 
 from __future__ import print_function
-import os, sys, shutil, re
+import os
+import re
+import sys
+import shutil
 
 assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
@@ -162,4 +165,3 @@ open(os.path.join(out_dir, first_js), 'w').write(
 )
 
 print('done!')
-

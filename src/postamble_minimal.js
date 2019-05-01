@@ -34,6 +34,8 @@ function initRuntime(asm) {
 #endif
 
   /*** RUN_GLOBAL_INITIALIZERS(); ***/
+
+  {{{ getQuoted('ATINITS') }}}
 }
 
 #if WASM

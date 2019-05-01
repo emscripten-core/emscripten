@@ -3,12 +3,15 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-import time, os, sys, logging
-from subprocess import Popen, PIPE, STDOUT
+import logging
+import os
+import sys
+import time
+from subprocess import Popen, PIPE
 
 TRACK_PROCESS_SPAWNS = int(os.getenv('EM_BUILD_VERBOSE', '0')) >= 3
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
+
 
 def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, note_args=[], throw_on_failure=True):
   start = time.time()
@@ -38,14 +41,15 @@ def make_command(filename, engine=None, args=[]):
   #
   # Check only the last part of the engine path to ensure we don't accidentally
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
-  jsengine = os.path.split(engine[0])[-1]
+  jsengine = os.path.basename(engine[0])
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
-  is_d8 = 'd8' in jsengine
+  is_d8 = 'd8' in jsengine or 'v8' in jsengine
+  is_jsc = 'jsc' in jsengine
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
   # Separates engine flags from script flags
-  flag_separator = ['--'] if is_d8 or 'jsc' in jsengine else []
+  flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + [filename] + shell_option_flags + flag_separator + args
 
 
@@ -59,7 +63,9 @@ def check_engine(engine):
     return WORKING_ENGINES[engine_path]
   try:
     logging.debug('Checking JS engine %s' % engine)
-    if 'hello, world!' in run_js(shared.path_from_root('src', 'hello_world.js'), engine):
+    output = run_js(shared.path_from_root('src', 'hello_world.js'), engine,
+                    skip_check=True)
+    if 'hello, world!' in output:
       WORKING_ENGINES[engine_path] = True
   except Exception as e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))
@@ -121,14 +127,14 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
         stderr=stderr,
         cwd=cwd,
         universal_newlines=True)
-  except Exception as e:
+  except Exception:
     # the failure may be because the engine is not present. show the proper
     # error in that case
     if not skip_check:
       require_engine(engine)
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise
-  timeout = 15*60 if check_timeout else None
+  timeout = 15 * 60 if check_timeout else None
   if TRACK_PROCESS_SPAWNS:
     logging.info('Blocking on process ' + str(proc.pid) + ': ' + str(command) + (' for ' + str(timeout) + ' seconds' if timeout else ' until it finishes.'))
   try:
@@ -138,7 +144,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
       'Execution',
       full_output=full_output,
       throw_on_failure=False)
-  except Exception as e:
+  except Exception:
     # the failure may be because the engine does not work. show the proper
     # error in that case
     if not skip_check:

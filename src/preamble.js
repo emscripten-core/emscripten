@@ -35,7 +35,16 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-#endif
+
+#if MODULARIZE
+// In pthreads mode the wasmMemory and others are received in an onmessage, and that
+// onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
+// it to a local so it can be used normally.
+if (ENVIRONMENT_IS_PTHREAD) {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
+#endif // USE_PTHREADS
 
 //========================================
 // Runtime essentials
@@ -321,10 +330,6 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBuffer(buf) {
-  Module['buffer'] = buffer = buf;
-}
-
 function updateGlobalBufferViews() {
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
@@ -367,8 +372,8 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
 
-var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+if (INITIAL_TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // Initialize the runtime's memory
 #if ASSERTIONS
@@ -403,18 +408,18 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #if USE_PTHREADS
 #if !WASM
 if (typeof SharedArrayBuffer !== 'undefined') {
-  if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
+  if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
 } else {
-  if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(TOTAL_MEMORY);
+  if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
 }
 updateGlobalBufferViews();
 
 #else
 if (!ENVIRONMENT_IS_PTHREAD) {
 #if ALLOW_MEMORY_GROWTH
-  wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
+  wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
 #else
-  wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
+  wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
 #endif
   buffer = wasmMemory.buffer;
   assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
@@ -428,37 +433,36 @@ updateGlobalBufferViews();
 if (Module['buffer']) {
   buffer = Module['buffer'];
 #if ASSERTIONS
-  assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+  assert(buffer.byteLength === INITIAL_TOTAL_MEMORY, 'provided buffer should be ' + INITIAL_TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
 #endif
 } else {
   // Use a WebAssembly memory where available
 #if WASM
   if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
 #if ASSERTIONS
-    assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+    assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 #endif // ASSERTIONS
 #if ALLOW_MEMORY_GROWTH
 #if WASM_MEM_MAX != -1
 #if ASSERTIONS
     assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
-    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
-    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // WASM_MEM_MAX
 #else
-    wasmMemory = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
+    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE });
 #endif // ALLOW_MEMORY_GROWTH
     buffer = wasmMemory.buffer;
   } else
 #endif // WASM
   {
-    buffer = new ArrayBuffer(TOTAL_MEMORY);
+    buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
   }
 #if ASSERTIONS
-  assert(buffer.byteLength === TOTAL_MEMORY);
+  assert(buffer.byteLength === INITIAL_TOTAL_MEMORY);
 #endif // ASSERTIONS
-  Module['buffer'] = buffer;
 }
 updateGlobalBufferViews();
 
@@ -541,6 +545,7 @@ function ensureInitRuntime() {
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
 #endif
+  {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
 }
 
@@ -551,6 +556,7 @@ function preMain() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+  {{{ getQuoted('ATMAINS') }}}
   callRuntimeCallbacks(__ATMAIN__);
 }
 
@@ -561,7 +567,10 @@ function exitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
+#if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
+  {{{ getQuoted('ATEXITS') }}}
+#endif
   runtimeExited = true;
 }
 
@@ -595,7 +604,9 @@ function addOnPreMain(cb) {
 }
 
 function addOnExit(cb) {
+#if EXIT_RUNTIME
   __ATEXIT__.unshift(cb);
+#endif
 }
 
 function addOnPostRun(cb) {
@@ -705,23 +716,6 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
-#if PGO
-var PGOMonitor = {
-  called: {},
-  dump: function() {
-    var dead = [];
-    for (var i = 0; i < this.allGenerated.length; i++) {
-      var func = this.allGenerated[i];
-      if (!this.called[func]) dead.push(func);
-    }
-    out('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
-  }
-};
-Module['PGOMonitor'] = PGOMonitor;
-__ATEXIT__.push(function() { PGOMonitor.dump() });
-addOnPreRun(function() { addRunDependency('pgo') });
-#endif
-
 #if RELOCATABLE
 {{{
 (function() {
@@ -815,8 +809,9 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
-#if ASSERTIONS && FILESYSTEM == 0 && !ASMFS
-var /* show errors on likely calls to FS when it was not included */ FS = {
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
+// show errors on likely calls to FS when it was not included
+var FS = {
   error: function() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
   },
@@ -896,6 +891,90 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
+#if AUTODEBUG
+  env['setTempRet0'] = setTempRet0;
+  env['getTempRet0'] = getTempRet0;
+  env['log_execution'] = function(loc) {
+    console.log('log_execution ' + loc);
+  };
+  env['get_i32'] = function(loc, index, value) {
+    console.log('get_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_i64'] = function(loc, index, low, high) {
+    console.log('get_i64 ' + [loc, index, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['get_f32'] = function(loc, index, value) {
+    console.log('get_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_f64'] = function(loc, index, value) {
+    console.log('get_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i32'] = function(loc, index, value) {
+    console.log('set_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i64'] = function(loc, index, low, high) {
+    console.log('set_i64 ' + [loc, index, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['set_f32'] = function(loc, index, value) {
+    console.log('set_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_f64'] = function(loc, index, value) {
+    console.log('set_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['load_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('load_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['load_val_i32'] = function(loc, value) {
+    console.log('load_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['load_val_i64'] = function(loc, low, high) {
+    console.log('load_val_i64 ' + [loc, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['load_val_f32'] = function(loc, value) {
+    console.log('loaload_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['load_val_f64'] = function(loc, value) {
+    console.log('load_val_f64 ' + [loc, value]);
+    return value;
+  };
+  env['store_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('store_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['store_val_i32'] = function(loc, value) {
+    console.log('store_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['store_val_i64'] = function(loc, low, high) {
+    console.log('store_val_i64 ' + [loc, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['store_val_f32'] = function(loc, value) {
+    console.log('loastore_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['store_val_f64'] = function(loc, value) {
+    console.log('store_val_f64 ' + [loc, value]);
+    return value;
+  };
+#endif
+
   // prepare imports
   var info = {
     'env': env
@@ -1029,12 +1108,28 @@ Module['asm'] = function(global, env, providedBuffer) {
   env['table'] = wasmTable = new WebAssembly.Table({
     'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
     'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
 #endif // WASM_BACKEND
     'element': 'anyfunc'
   });
+  // With the wasm backend __memory_base and __table_base and only needed for
+  // relocatable output.
+#if RELOCATABLE || !WASM_BACKEND
   env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
-  env['__table_base'] = 0; // table starts at 0 by default (even in dynamic linking, for the main module)
+#if WASM_BACKEND
+  // We reserve slot 0 in the table for the NULL function pointer.
+  // This means the __table_base for the main module (even in dynamic linking)
+  // is always 1.
+  env['__table_base'] = 1;
+#else
+  // table starts at 0 by default (even in dynamic linking, for the main module)
+  env['__table_base'] = 0;
+#endif
+#endif
 
   var exports = createWasm(env);
 #if ASSERTIONS

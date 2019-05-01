@@ -259,7 +259,9 @@ var LibraryPThread = {
     //                    ready to host pthreads. Optional. This is used to mitigate bug https://bugzilla.mozilla.org/show_bug.cgi?id=1049079
     allocateUnusedWorkers: function(numWorkers, onFinishedLoading) {
       if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
+#if PTHREADS_DEBUG
       out('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
+#endif
 
       var numWorkersLoaded = 0;
       var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
@@ -365,7 +367,6 @@ var LibraryPThread = {
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
 #endif
           tempDoublePtr: tempDoublePtr,
-          TOTAL_MEMORY: TOTAL_MEMORY,
           DYNAMIC_BASE: DYNAMIC_BASE,
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit
@@ -1077,9 +1078,9 @@ var LibraryPThread = {
     }
 
     // Wake any workers waiting on this address.
-    var ret = Atomics.wake(HEAP32, addr >> 2, count);
+    var ret = Atomics.notify(HEAP32, addr >> 2, count);
     if (ret >= 0) return ret + mainThreadWoken;
-    throw 'Atomics.wake returned an unexpected value ' + ret;
+    throw 'Atomics.notify returned an unexpected value ' + ret;
   },
 
   __atomic_is_lock_free: function(size, ptr) {

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
   attr.majorVersion = 1;
 #endif
   attr.minorVersion = 0;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
   GLuint vs = CompileShader(GL_VERTEX_SHADER,

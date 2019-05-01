@@ -13,7 +13,7 @@
 #include "emscripten.h"
 
 int get_TOTAL_MEMORY() {
-  return EM_ASM_INT({ return TOTAL_MEMORY });
+  return EM_ASM_INT({ return HEAP8.length });
 }
 
 typedef void* voidStar;

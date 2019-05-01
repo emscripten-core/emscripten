@@ -4,8 +4,10 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: '__ATINIT__.push(function() { SOCKFS.root = FS.mount(SOCKFS, {}, null); });',
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__postset: function() {
+    addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
+  },
+  $SOCKFS__deps: ['$FS', '$ERRNO_CODES'], // TODO: avoid ERRNO_CODES
   $SOCKFS: {
     mount: function(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring
@@ -210,15 +212,17 @@ mergeInto(LibraryManager.library, {
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
-            if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_NODE
+            if (ENVIRONMENT_IS_NODE) {
               WebSocketConstructor = require('ws');
-#endif ENVIRONMENT_MAY_BE_NODE
-            } else if (ENVIRONMENT_IS_WEB) {
+            } else
+#endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_WEB
+            if (ENVIRONMENT_IS_WEB) {
               WebSocketConstructor = window['WebSocket'];
+            } else
 #endif // ENVIRONMENT_MAY_BE_WEB
-            } else {
+            {
               WebSocketConstructor = WebSocket;
             }
             ws = new WebSocketConstructor(url, opts);

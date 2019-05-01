@@ -11,7 +11,7 @@
 
 int main() {
   const int MB = 1024 * 1024;
-  // TOTAL_MEMORY starts at 64MB, and max is 100. allocate enough
+  // Memory size starts at 64MB, and max is 100. allocate enough
   // to prove we can grow. 70 is enough to prove we can grow,
   // higher can prove we stop at the right point.
   for (int i = 0; 1; i++) {

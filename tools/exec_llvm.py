@@ -7,7 +7,7 @@
 """Small utility to execute some llvm bitcode.
 
 The use case is a Makefile that builds some executable
-and runs it as part of the build process. With emmaken,
+and runs it as part of the build process. With emmake,
 the Makefile will generate llvm bitcode, so we can't
 just execute it directly. This script will get that
 code into a runnable form, and run it.

@@ -22,7 +22,7 @@ The command below shows how to package files for preloading:
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file asset_dir
+    emcc file.cpp -o file.html --preload-file asset_dir
 
 The command generates **file.html**, **file.js** and **file.data**. The **.data** file contains all the files in **asset_dir/**, and is loaded by **file.js**.
 
@@ -33,7 +33,7 @@ The command for embedding is shown below. In this case *emcc* generates **file.h
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --embed-file asset_dir
+    emcc file.cpp -o file.html --embed-file asset_dir
 
 
 By default, the files to be packaged should be nested in or below the compile-time command prompt directory. At runtime the same nested file structure is mapped to the virtual file system, with the root corresponding to the command prompt directory.
@@ -42,7 +42,7 @@ For example, consider a file structure **dir1/dir2/dir3/asset_dir/** where the p
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file dir3/asset_dir
+    emcc file.cpp -o file.html --preload-file dir3/asset_dir
 
 The folder is available at this same location **dir3/asset_dir** in the virtual file system at runtime. Similarly, if we packaged a file in *dir2*, it would be available in the root of the virtual file system at runtime.
 
@@ -88,13 +88,13 @@ For example, we can map the preloaded folder **../../asset_dir** to the root of 
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file ../../asset_dir@/
+    emcc file.cpp -o file.html --preload-file ../../asset_dir@/
 
 We can also map a new path and filename. For example, to make the embedded file **../res/gen123.png** available as **/main.png** we might do:
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --embed-file ../res/gen123.png@main.png
+    emcc file.cpp -o file.html --embed-file ../res/gen123.png@main.png
 
 
 .. _packaging-files-file-usage:

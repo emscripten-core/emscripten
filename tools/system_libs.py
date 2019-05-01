@@ -21,6 +21,8 @@ from tools.shared import check_call
 stdout = None
 stderr = None
 
+logger = logging.getLogger('system_libs')
+
 
 def call_process(cmd):
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
@@ -33,7 +35,8 @@ def run_commands(commands):
       call_process(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool, https://bugs.python.org/issue8296
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
     pool.map_async(call_process, commands, chunksize=1).get(999999)
@@ -44,17 +47,21 @@ def files_in_path(path_components, filenames):
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def get_cflags():
+def get_cflags(force_object_files=False):
   flags = []
-  if not shared.Settings.WASM_OBJECT_FILES:
-     flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if force_object_files:
+    flags += ['-s', 'WASM_OBJECT_FILES=1']
+  elif not shared.Settings.WASM_OBJECT_FILES:
+    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    flags += ['-s', 'RELOCATABLE']
   return flags
 
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   if libname.endswith('.bc'):
-    shared.Building.link(inputs, libname)
+    shared.Building.link_to_object(inputs, libname)
   elif libname.endswith('.a'):
     shared.Building.emar('cr', libname, inputs)
   else:
@@ -97,8 +104,39 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
+  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
+
+  def get_wasm_libc_rt_files():
+    # Static linking is tricky with LLVM, since e.g. memset might not be used
+    # from libc, but be used as an intrinsic, and codegen will generate a libc
+    # call from that intrinsic *after* static linking would have thought it is
+    # all in there. In asm.js this is not an issue as we do JS linking anyhow,
+    # and have asm.js-optimized versions of all the LLVM intrinsics. But for
+    # wasm, we need a better solution. For now, make another archive that gets
+    # included at the same time as compiler-rt.
+    # Note that this also includes things that may be depended on by those
+    # functions - fmin uses signbit, for example, so signbit must be here (so if
+    # fmin is added by codegen, it will have all it needs).
+    math_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+      filenames=[
+        'fmin.c', 'fminf.c', 'fminl.c',
+        'fmax.c', 'fmaxf.c', 'fmaxl.c',
+        'fmod.c', 'fmodf.c', 'fmodl.c',
+        'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
+        'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
+        'scalbn.c', '__fpclassifyl.c',
+        '__signbitl.c', '__signbitf.c', '__signbit.c'
+      ])
+    string_files = files_in_path(
+      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+      filenames=['memset.c', 'memmove.c'])
+    other_files = files_in_path(
+      path_components=['system', 'lib', 'libc'],
+      filenames=['emscripten_memcpy.c'])
+    return math_files + string_files + other_files
 
   # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
 
@@ -142,7 +180,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -166,9 +204,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       assert '-emu' not in libname
       return []
 
+  def gl_version_flags(libname):
+    if shared.Settings.USE_WEBGL2:
+      assert '-webgl2' in libname
+      return ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+    else:
+      assert '-webgl2' not in libname
+      return []
+
   # libc
   def create_libc(libname):
-    logging.debug(' building libc for cache')
+    logger.debug(' building libc for cache')
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 
@@ -204,14 +250,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
-      blacklist += [
-          'fmin.c', 'fminf.c', 'fminl.c', 'fmax.c', 'fmaxf.c', 'fmaxl.c',
-          'fmod.c', 'fmodf.c', 'fmodl.c', 'log2.c', 'log2f.c', 'log10.c',
-          'log10f.c', 'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c', 'scalbn.c',
-          '__fpclassifyl.c'
-      ]
-
-      blacklist += ['memcpy.c', 'memset.c', 'memmove.c']
+      blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -278,6 +317,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
 
+  def create_pthreads_stub(libname):
+    pthreads_files = [os.path.join('pthread', 'library_pthread_stub.c')]
+    return build_libc(libname, pthreads_files, ['-O2'])
+
   def create_pthreads_asmjs(libname):
     pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
     return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
@@ -301,7 +344,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libc++
   def create_libcxx(libname):
-    logging.debug('building libc++ for cache')
+    logger.debug('building libc++ for cache')
     libcxx_files = [
       'algorithm.cpp',
       'any.cpp',
@@ -346,7 +389,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # libcxxabi - just for dynamic_cast for now
   def create_libcxxabi(libname):
-    logging.debug('building libc++abi for cache')
+    logger.debug('building libc++abi for cache')
     libcxxabi_files = [
       'abort_message.cpp',
       'cxa_aux_runtime.cpp',
@@ -376,6 +419,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     flags = ['-Oz']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
+    flags += gl_version_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -427,20 +471,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         shared.exit_with_error('only dlmalloc is possible when using %s' % what)
 
     extra = ''
+    if shared.Settings.DEBUG_LEVEL >= 3:
+      extra += '_debug'
+    if not shared.Settings.SUPPORT_ERRNO:
+      # emmalloc does not use errno anyhow
+      if base != 'emmalloc':
+        extra += '_noerrno'
     if shared.Settings.USE_PTHREADS:
       extra += '_threadsafe'
       require_dlmalloc('pthreads')
     if shared.Settings.EMSCRIPTEN_TRACING:
       extra += '_tracing'
       require_dlmalloc('tracing')
-    if shared.Settings.DEBUG_LEVEL >= 3:
-      extra += '_debug'
     if base == 'dlmalloc':
       source = 'dlmalloc.c'
-
-      # Only dlmalloc interacts with errno, emmalloc does not
-      if not shared.Settings.SUPPORT_ERRNO:
-        extra += '_noerrno'
     elif base == 'emmalloc':
       source = 'emmalloc.cpp'
     return (source, 'lib' + base + extra)
@@ -469,26 +513,25 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return o
 
   def create_wasm_rt_lib(libname, files):
+    # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
+    # it includes the builtin symbols that the LTO complication can generate.
+    # It seems that LTO as implemented by lld assumes that builtins do not
+    # take part in LTO.
+    # TODO(sbc): If we ever fix https://bugs.llvm.org/show_bug.cgi?id=41384 then
+    # this restriction can be removed.
     o_s = []
     commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      # Use clang directly instead of emcc. Since emcc's intermediate format (produced by -S) is LLVM IR, there's no way to
-      # get emcc to output wasm .s files, which is what we archive in compiler_rt.
-      commands.append([
-        shared.CLANG_CC,
-        '--target={}'.format(shared.WASM_TARGET),
-        '-mthread-model', 'single', '-c',
-        shared.path_from_root('system', 'lib', src),
-        '-O2', '-fno-builtin', '-o', o] +
-        musl_internal_includes() +
-        # TODO(sbc): Remove this once we fix https://bugs.llvm.org/show_bug.cgi?id=38711
-        ['-fno-slp-vectorize'] +
-        shared.COMPILER_OPTS)
+      commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
+                       '-c', shared.path_from_root('system', 'lib', src),
+                       '-o', o] +
+                      musl_internal_includes() +
+                      get_cflags(force_object_files=True))
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
-    run_commands([[shared.LLVM_AR, 'cr', '-format=gnu', lib] + o_s])
+    shared.Building.emar('cr', lib, o_s)
     return lib
 
   def create_wasm_compiler_rt(libname):
@@ -510,33 +553,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_libc_rt(libname):
-    # Static linking is tricky with LLVM, since e.g. memset might not be used from libc,
-    # but be used as an intrinsic, and codegen will generate a libc call from that intrinsic
-    # *after* static linking would have thought it is all in there. In asm.js this is not an
-    # issue as we do JS linking anyhow, and have asm.js-optimized versions of all the LLVM
-    # intrinsics. But for wasm, we need a better solution. For now, make another archive
-    # that gets included at the same time as compiler-rt.
-    # Note that this also includes things that may be depended on by those functions - fmin
-    # uses signbit, for example, so signbit must be here (so if fmin is added by codegen,
-    # it will have all it needs).
-    math_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
-      filenames=[
-        'fmin.c', 'fminf.c', 'fminl.c',
-        'fmax.c', 'fmaxf.c', 'fmaxl.c',
-        'fmod.c', 'fmodf.c', 'fmodl.c',
-        'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
-        'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c',
-        '__signbitl.c', '__signbitf.c', '__signbit.c'
-      ])
-    string_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-      filenames=['memset.c', 'memmove.c'])
-    other_files = files_in_path(
-      path_components=['system', 'lib', 'libc'],
-      filenames=['emscripten_memcpy.c'])
-    return create_wasm_rt_lib(libname, math_files + string_files + other_files)
+    return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
@@ -568,7 +585,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         for dep in deps:
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
-            logging.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
+            logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
           shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
     if more:
       add_back_deps(need) # recurse to get deps of deps
@@ -585,7 +602,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # depend on exported functions
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
-      logging.debug('adding dependency on export %s' % export)
+      logger.debug('adding dependency on export %s' % export)
     symbolses[0].undefs.add(export[1:])
 
   for symbols in symbolses:
@@ -615,6 +632,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       always_include.add('libpthreads_asmjs')
     else:
       always_include.add('libpthreads_wasm')
+  else:
+    always_include.add('libpthreads_stub')
   always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
@@ -628,21 +647,23 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
                  Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
 
+  gl_name = 'libgl'
+  if shared.Settings.USE_PTHREADS:
+    gl_name += '-mt'
+  if shared.Settings.LEGACY_GL_EMULATION:
+    gl_name += '-emu'
+  if shared.Settings.USE_WEBGL2:
+    gl_name += '-webgl2'
+  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
+
   if shared.Settings.USE_PTHREADS:
     system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
     if not shared.Settings.WASM_BACKEND:
       system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
     else:
       system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu-mt',    ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl-mt',        ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
   else:
-    if shared.Settings.LEGACY_GL_EMULATION:
-      system_libs += [Library('libgl-emu',       ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
-    else:
-      system_libs += [Library('libgl',           ext, create_gl,             gl_symbols,             [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
 
   system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
 
@@ -665,7 +686,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     force = ','.join(system_libs_map.keys())
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
-    logging.debug('forcing stdlibs: ' + str(force_include))
+    logger.debug('forcing stdlibs: ' + str(force_include))
 
   for lib in always_include:
     assert lib in system_libs_map
@@ -689,12 +710,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       shortname = maybe_noexcept(shortname)
     name = shortname + '.' + lib.suffix
 
-    logging.debug('including %s' % name)
+    logger.debug('including %s' % name)
 
     def do_create():
       return lib.create(name)
 
-    libfile = shared.Cache.get(name, do_create, extension=lib.suffix)
+    libfile = shared.Cache.get(name, do_create)
     need_whole_archive = lib.shortname in force_include and lib.suffix != 'bc'
     libs_to_link.append((libfile, need_whole_archive))
 
@@ -717,7 +738,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       has_syms = set()
       for symbols in symbolses:
         if shared.Settings.VERBOSE:
-          logging.debug('undefs: ' + str(symbols.undefs))
+          logger.debug('undefs: ' + str(symbols.undefs))
         for library_symbol in lib.symbols:
           if library_symbol in symbols.undefs:
             need_syms.add(library_symbol)
@@ -728,7 +749,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           # remove symbols that are supplied by another of the inputs
           need_syms.remove(haz)
       if shared.Settings.VERBOSE:
-        logging.debug('considering %s: we need %s and have %s' % (lib.shortname, str(need_syms), str(has_syms)))
+        logger.debug('considering %s: we need %s and have %s' % (lib.shortname, str(need_syms), str(has_syms)))
       if not len(need_syms):
         continue
 
@@ -736,8 +757,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(lib)
 
   if shared.Settings.WASM_BACKEND:
-    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a'), extension='a'), False))
-    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a'), extension='a'), False))
+    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
@@ -751,11 +772,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
   ret = []
+  in_group = False
   for name, need_whole_archive in libs_to_link:
-    if need_whole_archive:
-      ret += ['--whole-archive', name, '--no-whole-archive']
-    else:
-      ret.append(name)
+    if need_whole_archive and not in_group:
+      ret.append('--whole-archive')
+      in_group = True
+    if in_group and not need_whole_archive:
+      ret.append('--no-whole-archive')
+      in_group = False
+    ret.append(name)
+  if in_group:
+    ret.append('--no-whole-archive')
 
   return ret
 
@@ -763,32 +790,44 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 class Ports(object):
   """emscripten-ports library management (https://github.com/emscripten-ports).
   """
+
+  @staticmethod
+  def get_lib_name(name):
+    return shared.static_library_name(name)
+
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       if any((excluded in root) for excluded in exclude_dirs):
         continue
-      for file in files:
-          if (file.endswith('.c') or file.endswith('.cpp')) and not any((excluded in file) for excluded in exclude_files):
-              srcs.append(os.path.join(root, file))
+      for f in files:
+        ext = os.path.splitext(f)[1]
+        if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+            srcs.append(os.path.join(root, f))
     include_commands = ['-I' + src_path]
     for include in includes:
-        include_commands.append('-I' + include)
+      include_commands.append('-I' + include)
 
     commands = []
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
       objects.append(obj)
 
     run_commands(commands)
+    print('create_lib', output_path)
     create_lib(output_path, objects)
+    return output_path
 
   @staticmethod
   def run_commands(commands): # make easily available for port objects
     run_commands(commands)
+
+  @staticmethod
+  def create_lib(libname, inputs): # make easily available for port objects
+    create_lib(libname, inputs)
 
   @staticmethod
   def get_dir():
@@ -801,7 +840,7 @@ class Ports(object):
     dirname = Ports.get_dir()
     shared.try_delete(dirname)
     if os.path.exists(dirname):
-      logging.warning('could not delete ports dir %s - try to delete it manually' % dirname)
+      logger.warning('could not delete ports dir %s - try to delete it manually' % dirname)
 
   @staticmethod
   def get_build_dir():
@@ -824,32 +863,34 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
-      logging.warning('using local ports: %s' % local_ports)
+      logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       for local in local_ports:
         if name == local[0]:
           path = local[1]
           if name not in ports.ports_by_name:
-            logging.error('%s is not a known port' % name)
-            sys.exit(1)
+            shared.exit_with_error('%s is not a known port' % name)
           port = ports.ports_by_name[name]
           if not hasattr(port, 'SUBDIR'):
-            logging.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+            logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
             sys.exit(1)
           subdir = port.SUBDIR
-          logging.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+          logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
           shared.try_delete(fullname)
           shutil.copytree(path, os.path.join(fullname, subdir))
           Ports.clear_project_build(name)
           return
-      logging.error('could not find port %s' % name)
-      sys.exit(1)
 
-    fullpath = fullname + ('.tar.bz2' if is_tarbz2 else '.zip')
+    if is_tarbz2:
+      fullpath = fullname + '.tar.bz2'
+    elif url.endswith('.tar.gz'):
+      fullpath = fullname + '.tar.gz'
+    else:
+      fullpath = fullname + '.zip'
 
     if name not in Ports.name_cache: # only mention each port once in log
-      logging.debug('including port: ' + name)
-      logging.debug('    (at ' + fullname + ')')
+      logger.debug('including port: ' + name)
+      logger.debug('    (at ' + fullname + ')')
       Ports.name_cache.add(name)
 
     class State(object):
@@ -858,7 +899,7 @@ class Ports(object):
 
     def retrieve():
       # retrieve from remote server
-      logging.warning('retrieving port: ' + name + ' from ' + url)
+      logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
         from urllib.request import urlopen
       except ImportError:
@@ -872,6 +913,8 @@ class Ports(object):
     def check_tag():
       if is_tarbz2:
         names = tarfile.open(fullpath, 'r:bz2').getnames()
+      elif url.endswith('.tar.gz'):
+        names = tarfile.open(fullpath, 'r:gz').getnames()
       else:
         names = zipfile.ZipFile(fullpath, 'r').namelist()
 
@@ -880,10 +923,17 @@ class Ports(object):
       return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
-      logging.warning('unpacking port: ' + name)
+      logger.warning('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
+
+      # TODO: Someday when we are using Python 3, we might want to change the
+      # code below to use shlib.unpack_archive
+      # e.g.: shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
+      # (https://docs.python.org/3/library/shutil.html#shutil.unpack_archive)
       if is_tarbz2:
         z = tarfile.open(fullpath, 'r:bz2')
+      elif url.endswith('.tar.gz'):
+        z = tarfile.open(fullpath, 'r:gz')
       else:
         z = zipfile.ZipFile(fullpath, 'r')
       try:
@@ -892,6 +942,7 @@ class Ports(object):
         z.extractall()
       finally:
         os.chdir(cwd)
+
       State.unpacked = True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
@@ -906,7 +957,7 @@ class Ports(object):
         unpack()
 
       if not check_tag():
-        logging.warning('local copy of port is not correct, retrieving from remote server')
+        logger.warning('local copy of port is not correct, retrieving from remote server')
         shared.try_delete(fullname)
         shared.try_delete(fullpath)
         retrieve()
@@ -919,28 +970,10 @@ class Ports(object):
       shared.Cache.release_cache_lock()
 
   @staticmethod
-  def build_project(name, subdir, configure, generated_libs, post_create=None):
-    def create():
-      logging.info('building port: ' + name + '...')
-      port_build_dir = Ports.get_build_dir()
-      shared.safe_ensure_dirs(port_build_dir)
-      libs = shared.Building.build_library(name, port_build_dir, None,
-                                           generated_libs,
-                                           source_dir=os.path.join(Ports.get_dir(), name, subdir),
-                                           copy_project=True,
-                                           configure=configure,
-                                           make=['make', '-j' + str(shared.Building.get_num_cores())])
-      assert len(libs) == 1
-      if post_create:
-        post_create()
-      return libs[0]
-    return shared.Cache.get(name, create)
-
-  @staticmethod
   def clear_project_build(name):
+    port = ports.ports_by_name[name]
+    port.clear(Ports, shared)
     shared.try_delete(os.path.join(Ports.get_build_dir(), name))
-    shared.try_delete(shared.Cache.get_path(name + '.bc'))
-    shared.try_delete(shared.Cache.get_path(name + '.a'))
 
   @staticmethod
   def build_native(subdir):
@@ -977,16 +1010,14 @@ class Ports(object):
 def get_ports(settings):
   ret = []
 
-  ok = False
   try:
     process_dependencies(settings)
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-    ok = True
-  finally:
-    if not ok:
-      logging.error('a problem occurred when using an emscripten-ports library. try to run    emcc --clear-ports    and then run this command again')
+  except:
+    logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
+    raise
 
   ret.reverse()
   return ret

@@ -22,6 +22,10 @@ import subprocess
 import sys
 import tempfile
 
+if sys.version_info < (2, 7, 12):
+  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
@@ -288,6 +292,7 @@ PYTHON = None
 JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
+FROZEN_CACHE = False
 
 
 def parse_config_file():
@@ -316,6 +321,7 @@ def parse_config_file():
     'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
+    'FROZEN_CACHE',
   )
 
   # Only popogate certain settings from the config file.
@@ -435,7 +441,6 @@ def check_llvm():
       print('===========================================================================', file=sys.stderr)
       print(targets, file=sys.stderr)
       print('===========================================================================', file=sys.stderr)
-      logger.critical('you can fall back to the older (pre-fastcomp) compiler core, although that is not recommended, see http://kripken.github.io/emscripten-site/docs/building_from_source/LLVM-Backend.html')
       return False
   else:
     if not has_wasm_target(targets):
@@ -522,7 +527,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 2)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 3)
 
 
 def generate_sanity():
@@ -587,11 +592,14 @@ def check_sanity(force=False):
           return # all is well
 
     if reason:
-      logger.warning('(Emscripten: %s, clearing cache)' % reason)
-      Cache.erase()
-      # the check actually failed, so definitely write out the sanity file, to
-      # avoid others later seeing failures too
-      force = False
+      if FROZEN_CACHE:
+        logger.warning('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
+      else:
+        logger.warning('(Emscripten: %s, clearing cache)' % reason)
+        Cache.erase()
+        # the check actually failed, so definitely write out the sanity file, to
+        # avoid others later seeing failures too
+        force = False
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
     check_node_version()
@@ -944,7 +952,7 @@ if JAVA is None:
 
 # Target choice.
 ASM_JS_TARGET = 'asmjs-unknown-emscripten'
-WASM_TARGET = 'wasm32-unknown-unknown-wasm'
+WASM_TARGET = 'wasm32-unknown-emscripten'
 
 
 def check_vanilla():
@@ -973,10 +981,10 @@ def check_vanilla():
       open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
       return saved_file
 
-    is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt')
+    is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
     if CONFIG_FILE and os.path.getmtime(CONFIG_FILE) > os.path.getmtime(is_vanilla_file):
       logger.debug('config file changed since we checked vanilla; re-checking')
-      is_vanilla_file = temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+      is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
     try:
       contents = open(is_vanilla_file).read()
       middle = contents.index(':')
@@ -984,7 +992,7 @@ def check_vanilla():
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm')
-        temp_cache.get('is_vanilla', get_vanilla_file, extension='.txt', force=True)
+        temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
         is_vanilla = check_vanilla()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
@@ -1017,8 +1025,7 @@ COMPILER_OPTS += [# '-fno-threadsafe-statics', # disabled due to issue 1289
 
 if get_llvm_target() == WASM_TARGET:
   # wasm target does not automatically define emscripten stuff, so do it here.
-  COMPILER_OPTS += ['-D__EMSCRIPTEN__',
-                    '-Dunix',
+  COMPILER_OPTS += ['-Dunix',
                     '-D__unix',
                     '-D__unix__']
 
@@ -1031,12 +1038,15 @@ if get_llvm_target() == WASM_TARGET:
 #   -Wno-implicit-function-declaration
 COMPILER_OPTS += ['-Werror=implicit-function-declaration']
 
-USE_EMSDK = not os.environ.get('EMMAKEN_NO_SDK')
 
-if USE_EMSDK:
-  # Disable system C and C++ include directories, and add our own (using -idirafter so they are last, like system dirs, which
-  # allows projects to override them)
-  C_INCLUDE_PATHS = [
+def emsdk_opts():
+  if os.environ.get('EMMAKEN_NO_SDK'):
+    return []
+
+  # Disable system C and C++ include directories, and add our own (using
+  # -idirafter so they are last, like system dirs, which allows projects to
+  # override them)
+  c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'SSE'),
@@ -1045,12 +1055,12 @@ if USE_EMSDK:
     path_from_root('system', 'local', 'include')
   ]
 
-  CXX_INCLUDE_PATHS = [
+  cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  C_OPTS = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
@@ -1059,33 +1069,21 @@ if USE_EMSDK:
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  EMSDK_OPTS = C_OPTS + include_directive(CXX_INCLUDE_PATHS) + include_directive(C_INCLUDE_PATHS)
+  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
 
-  EMSDK_CXX_OPTS = []
-  COMPILER_OPTS += EMSDK_OPTS
-else:
-  EMSDK_OPTS = []
-  EMSDK_CXX_OPTS = []
+
+EMSDK_OPTS = emsdk_opts()
+COMPILER_OPTS += EMSDK_OPTS
 
 # Engine tweaks
-
-try:
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-except NameError:
-  pass
+if SPIDERMONKEY_ENGINE:
+  new_spidermonkey = SPIDERMONKEY_ENGINE
+  if '-w' not in str(new_spidermonkey):
+    new_spidermonkey += ['-w']
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
 
 
 # Utilities
-def make_js_command(filename, engine=None, *args):
-  if engine is None:
-    engine = JS_ENGINES[0]
-  return jsrun.make_command(filename, engine, *args)
-
-
 def run_js(filename, engine=None, *args, **kw):
   if engine is None:
     engine = JS_ENGINES[0]
@@ -1094,52 +1092,9 @@ def run_js(filename, engine=None, *args, **kw):
 
 def to_cc(cxx):
   # By default, LLVM_GCC and CLANG are really the C++ versions. This gets an explicit C version
-  return cxx.replace('clang++', 'clang').replace('g++', 'gcc')
-
-
-def line_splitter(data):
-  """Silly little tool to split JSON arrays over many lines."""
-
-  out = ''
-  counter = 0
-
-  for i in range(len(data)):
-    out += data[i]
-    if data[i] == ' ' and counter > 60:
-      out += '\n'
-      counter = 0
-    else:
-      counter += 1
-
-  return out
-
-
-def read_pgo_data(filename):
-  '''
-    Reads the output of PGO and generates proper information for CORRECT_* == 2 's *_LINES options
-  '''
-  signs_lines = []
-  overflows_lines = []
-
-  for line in open(filename, 'r'):
-    try:
-      if line.rstrip() == '':
-        continue
-      if '%0 failures' in line:
-        continue
-      left, right = line.split(' : ')
-      signature = left.split('|')[1]
-      if 'Sign' in left:
-        signs_lines.append(signature)
-      elif 'Overflow' in left:
-        overflows_lines.append(signature)
-    except:
-      pass
-
-  return {
-    'signs_lines': signs_lines,
-    'overflows_lines': overflows_lines
-  }
+  dirname, basename = os.path.split(cxx)
+  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
+  return os.path.join(dirname, basename)
 
 
 def unique_ordered(values):
@@ -1186,6 +1141,16 @@ class SettingsManager(object):
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
 
+      if 'EMCC_STRICT' in os.environ:
+        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+
+      self.legacy_settings = {}
+      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
+        self.legacy_settings[name] = (fixed_values, err)
+        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not self.attrs['STRICT']:
+          self.attrs[name] = fixed_values[0]
+
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
 
@@ -1217,13 +1182,25 @@ class SettingsManager(object):
       if shrink_level >= 2:
         self.attrs['EVAL_CTORS'] = 1
 
+    def keys(self):
+      return self.attrs.keys()
+
     def __getattr__(self, attr):
       if attr in self.attrs:
         return self.attrs[attr]
       else:
-        raise AttributeError
+        raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
+      if attr in self.legacy_settings:
+        if self.attrs['STRICT']:
+          exit_with_error('legacy setting used in strict mode: %s', attr)
+        fixed_values, error_message = self.legacy_settings[attr]
+        if value not in fixed_values:
+          exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
+        else:
+          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
@@ -1268,6 +1245,12 @@ class SettingsManager(object):
 
 
 def verify_settings():
+  if Settings.ASM_JS not in [1, 2]:
+    exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
+
+  if Settings.SAFE_HEAP not in [0, 1]:
+    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
 
@@ -1286,10 +1269,10 @@ def verify_settings():
       exit_with_error('emcc: EMTERPRETIFY is not supported by the LLVM wasm backend')
 
     if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
-      exit_with_error('WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
+      exit_with_error('emcc: WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
 
-    if Settings.SIDE_MODULE or Settings.MAIN_MODULE:
-      exit_with_error('emcc: MAIN_MODULE and SIDE_MODULE are not yet supported by the LLVM wasm backend')
+    if Settings.EMULATED_FUNCTION_POINTERS:
+      exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
 
 Settings = SettingsManager()
@@ -1301,7 +1284,7 @@ verify_settings()
 # are duplicate entries in the archive
 def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('loading from archive %s, which has duplicate entries (files with identical base names). this is dangerous as only the last will be taken into account, and you may see surprising undefined symbols later. you should rename source files to avoid this problem (or avoid .a archives, and just link bitcode together to form libraries for later linking)' % archive_filename)
+    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
@@ -1379,10 +1362,23 @@ def g_multiprocessing_initializer(*args):
       os.environ[key] = value
 
 
+def print_compiler_stage(cmd):
+  """Emulate the '-v' of clang/gcc by printing the name of the sub-command
+  before executing it."""
+  if '-v' in COMPILER_OPTS:
+    print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+
+
+def static_library_name(name):
+  if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+    return name + '.a'
+  else:
+    return name + '.bc'
+
+
 #  Building
 class Building(object):
   COMPILER = CLANG
-  LLVM_OPTS = False
   COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
@@ -1699,111 +1695,6 @@ class Building(object):
       raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
-  def build_library(name,
-                    build_dir,
-                    output_dir,
-                    generated_libs,
-                    configure=['sh', './configure'],
-                    configure_args=[],
-                    make=['make'],
-                    make_args='help',
-                    cache=None,
-                    cache_name=None,
-                    copy_project=False,
-                    env_init={},
-                    source_dir=None,
-                    native=False):
-    """Build a library into a .bc file. We build the .bc file once and cache it
-    for all our tests. (We cache in memory since the test directory is destroyed
-    and recreated for each test. Note that we cache separately for different
-    compilers).  This cache is just during the test runner. There is a different
-    concept of caching as well, see |Cache|.
-    """
-
-    if type(generated_libs) is not list:
-      generated_libs = [generated_libs]
-    if source_dir is None:
-      source_dir = path_from_root('tests', name.replace('_native', ''))
-    if make_args == 'help':
-      make_args = ['-j', str(multiprocessing.cpu_count())]
-
-    temp_dir = build_dir
-    if copy_project:
-      project_dir = os.path.join(temp_dir, name)
-      if os.path.exists(project_dir):
-        shutil.rmtree(project_dir)
-      shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
-    else:
-      project_dir = build_dir
-    try:
-      old_dir = os.getcwd()
-    except:
-      old_dir = None
-    os.chdir(project_dir)
-    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    # for lib in generated_libs:
-    #   try:
-    #     os.unlink(lib) # make sure compilation completed successfully
-    #   except:
-    #     pass
-    env = Building.get_building_env(native, True)
-    for k, v in env_init.items():
-      env[k] = v
-    if configure:
-      # Useful in debugging sometimes to comment this out (and the lines below
-      # up to and including the |link| call)
-      if EM_BUILD_VERBOSE < 2:
-        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
-      else:
-        stdout = None
-      if EM_BUILD_VERBOSE < 1:
-        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
-      else:
-        stderr = None
-      try:
-        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError as e:
-        pass # Ignore exit code != 0
-
-    def open_make_out(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
-
-    def open_make_err(i, mode='r'):
-      return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-
-    if EM_BUILD_VERBOSE >= 3:
-      make_args += ['VERBOSE=1']
-
-    # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-    for i in range(2):
-      with open_make_out(i, 'w') as make_out:
-        with open_make_err(i, 'w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          try:
-            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
-          except subprocess.CalledProcessError as e:
-            pass # Ignore exit code != 0
-      try:
-        if cache is not None:
-          cache[cache_name] = []
-          for f in generated_libs:
-            basename = os.path.basename(f)
-            cache[cache_name].append((basename, open(f, 'rb').read()))
-        break
-      except Exception as e:
-        if i > 0:
-          if EM_BUILD_VERBOSE == 0:
-            # Due to the ugly hack above our best guess is to output the first run
-            with open_make_err(0) as ferr:
-              for line in ferr:
-                sys.stderr.write(line)
-          raise Exception('could not build library ' + name + ' due to exception ' + str(e))
-    if old_dir:
-      os.chdir(old_dir)
-    return generated_libs
-
-  @staticmethod
   def make_paths_absolute(f):
     if f.startswith('-'):  # skip flags
       return f
@@ -1888,34 +1779,49 @@ class Building(object):
     return args
 
   @staticmethod
+  def link_to_object(linker_inputs, target):
+    # link using lld for the wasm backend with wasm object files,
+    # other otherwise for linking of bitcode we must use our python
+    # code (necessary for asm.js, for wasm bitcode see
+    # https://bugs.llvm.org/show_bug.cgi?id=40654)
+    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+      Building.link_lld(linker_inputs, target, ['--relocatable'])
+    else:
+      Building.link(linker_inputs, target)
+
+  @staticmethod
+  def link_llvm(linker_inputs, target):
+    # runs llvm-link to link things.
+    cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
+    print_compiler_stage(cmd)
+    output = run_process(cmd, stdout=PIPE).stdout
+    assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+    return target
+
+  @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
+    # runs lld to link things.
     # lld doesn't currently support --start-group/--end-group since the
     # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
+    # include all archive contents.
+    if Settings.LINKABLE:
+      args.insert(0, '--whole-archive')
+      args.append('--no-whole-archive')
+
     cmd = [
         WASM_LD,
-        '-z',
-        'stack-size=%s' % Settings.TOTAL_STACK,
-        '--global-base=%s' % Settings.GLOBAL_BASE,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
         '-o',
         target,
-        '--no-entry',
         '--allow-undefined',
         '--import-memory',
         '--import-table',
-        '--export',
-        '__wasm_call_ctors',
-        '--export',
-        '__data_end',
         '--lto-O%d' % lto_level,
     ] + args
 
-    if Settings.WASM_MEM_MAX != -1:
-      cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
-    elif not Settings.ALLOW_MEMORY_GROWTH:
-      cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
@@ -1929,17 +1835,59 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
-    if Settings.EXPORT_ALL:
-      cmd += ['--export-all']
+    export_all = False
+    if Settings.MAIN_MODULE:
+      export_all = True
+    elif Settings.EXPORT_ALL:
+      export_all = True
 
-    logger.debug('emcc: lld-linking: %s to %s', args, target)
+    if Settings.RELOCATABLE:
+      if Settings.MAIN_MODULE == 2:
+        cmd.append('--no-export-dynamic')
+      else:
+        cmd.append('--no-gc-sections')
+        cmd.append('--export-dynamic')
+
+    if export_all:
+      cmd.append('--export-all')
+    else:
+      cmd += [
+        '--export',
+        '__wasm_call_ctors',
+        '--export',
+        '__data_end'
+      ]
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    if Settings.RELOCATABLE:
+      if Settings.SIDE_MODULE:
+        cmd.append('-shared')
+      else:
+        cmd.append('-pie')
+
+    if not Settings.SIDE_MODULE:
+      cmd += [
+        '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
+        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--no-entry'
+      ]
+      if Settings.WASM_MEM_MAX != -1:
+        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      elif not Settings.ALLOW_MEMORY_GROWTH:
+        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+      if not Settings.RELOCATABLE:
+        cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
+
+    cmd += opts
+
+    print_compiler_stage(cmd)
     check_call(cmd)
     return target
 
   @staticmethod
   def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+    # "Full-featured" linking: looks into archives (duplicates lld functionality)
     if not temp_files:
       temp_files = configuration.get_temp_files()
     actual_files = []
@@ -1973,7 +1921,7 @@ class Building(object):
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        logger.warning('object %s is not LLVM bitcode, cannot link' % (f))
+        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2047,7 +1995,7 @@ class Building(object):
           if has_ar:
             consider_object(absolute_path_f, force_add=True)
           else:
-            # If there are no archives then we can simply link all valid bitcode
+            # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
       else:
@@ -2070,7 +2018,8 @@ class Building(object):
     try_delete(target)
 
     # Finish link
-    actual_files = unique_ordered(actual_files) # tolerate people trying to link a.so a.so etc.
+    # tolerate people trying to link a.so a.so etc.
+    actual_files = unique_ordered(actual_files)
 
     # check for too-long command line
     link_args = actual_files
@@ -2100,9 +2049,8 @@ class Building(object):
           f.write("\"" + arg + "\"\n")
 
     if not just_calculate:
-      logger.debug('emcc: llvm-linking: %s to %s', actual_files, target)
-      output = run_process([LLVM_LINK] + link_args + ['-o', target], stdout=PIPE).stdout
-      assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
+      logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
+      Building.link_llvm(link_args, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
@@ -2123,14 +2071,17 @@ class Building(object):
     # if not Building.can_inline():
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
+    # TODO: move vectorization logic to clang/LLVM?
     if not Settings.SIMD:
       opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
     else:
       opts += ['-force-vector-width=4']
 
     target = out or (filename + '.opt.bc')
+    cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
+    print_compiler_stage(cmd)
     try:
-      run_process([LLVM_OPT] + inputs + opts + ['-o', target], stdout=PIPE)
+      run_process(cmd, stdout=PIPE)
       assert os.path.exists(target), 'llvm optimizer emitted no output.'
     except subprocess.CalledProcessError as e:
       for i in inputs:
@@ -2142,13 +2093,6 @@ class Building(object):
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
-
-  @staticmethod
-  def llvm_opts(filename): # deprecated version, only for test runner. TODO: remove
-    if Building.LLVM_OPTS:
-      shutil.move(filename + '.o', filename + '.o.pre')
-      output = run_process([LLVM_OPT, filename + '.o.pre'] + Building.LLVM_OPT_OPTS + ['-o', filename + '.o'], stdout=PIPE).stdout
-      assert os.path.exists(filename + '.o'), 'Failed to run llvm optimizations: ' + output
 
   @staticmethod
   def llvm_dis(input_filename, output_filename=None):
@@ -2186,7 +2130,7 @@ class Building(object):
         continue # e.g.  filename.o:  , saying which file it's from
       parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
-      if len(parts) == 3 and parts[0] in ["00000000", "--------"]:
+      if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
         parts.pop(0)
       if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
         status, symbol = parts
@@ -2242,7 +2186,15 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    run_process([PYTHON, EMAR, action, output_filename] + filenames, stdout=stdout, stderr=stderr, env=env)
+    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
+
+    response_filename = response_file.create_response_file(filenames, TEMP_DIR)
+    cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
+    try:
+      run_process(cmd, stdout=stdout, stderr=stderr, env=env)
+    finally:
+      try_delete(response_filename)
+
     if 'c' in action:
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
@@ -2375,7 +2327,10 @@ class Building(object):
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-    check_call([PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))])
+    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+    if binaryen_bin:
+      cmd += Building.get_binaryen_feature_flags()
+    check_call(cmd)
 
   @staticmethod
   def eliminate_duplicate_funcs(filename):
@@ -2452,12 +2407,10 @@ class Building(object):
 
       if not Settings.ASMFS:
         # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
-        if not Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
-
-        # If we do have filesystem enabled, tell Closure not to bark when FS references different libraries that might not exist.
-        if Settings.FILESYSTEM and not Settings.ASMFS:
+        if Settings.FILESYSTEM:
           CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-defined-fs-annotation.js')]
+        else:
+          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2521,7 +2474,10 @@ class Building(object):
       proc = run_process(args, stderr=PIPE, check=False)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
-        exit_with_error('closure compiler failed (rc: %d)', proc.returncode)
+        hint = ''
+        if not pretty:
+          hint = ' the error message may be clearer with -g1'
+        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
       return outfile
 
@@ -2558,7 +2514,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS:
+        if Settings.EMITTING_JS and not Settings.AUTODEBUG:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
       # finally, optionally use closure compiler to finish cleaning up the JS
       if use_closure_compiler:
@@ -2679,9 +2635,6 @@ class Building(object):
       b = open(filename, 'rb').read(4)
       if b[:2] == b'BC':
         return True
-      # look for ar signature
-      elif Building.is_ar(filename):
-        return True
       # on macOS, there is a 20-byte prefix which starts with little endian
       # encoding of 0x0B17C0DE
       elif b == b'\xDE\xC0\x17\x0B':
@@ -2695,8 +2648,8 @@ class Building(object):
 
   @staticmethod
   def is_wasm(filename):
-    magic = asstr(open(filename, 'rb').read(4))
-    return magic == '\0asm'
+    magic = open(filename, 'rb').read(4)
+    return magic == b'\0asm'
 
   @staticmethod
   # Given the name of a special Emscripten-implemented system library, returns an array of absolute paths to JS library
@@ -2707,8 +2660,8 @@ class Building(object):
       'c': '',
       'dl': '',
       'EGL': 'library_egl.js',
-      'GL': 'library_gl.js',
-      'GLESv2': 'library_gl.js',
+      'GL': 'library_webgl.js',
+      'GLESv2': 'library_webgl.js',
       'GLEW': 'library_glew.js',
       'glfw': 'library_glfw.js',
       'glfw3': 'library_glfw.js',
@@ -2726,34 +2679,17 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += [js_system_libraries[library_name]]
+        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
       if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s"', library_name)
+        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
       else:
         logger.warning('emcc: cannot find library "%s"', library_name)
 
     return library_files
-
-  @staticmethod
-  # Given a list of Emscripten link settings, returns a list of paths to system JS libraries
-  # that should get linked automatically in to the build when those link settings are present.
-  def path_to_system_js_libraries_for_settings(link_settings):
-    system_js_libraries = []
-    if 'EMTERPRETIFY_ASYNC=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'ASYNCIFY=1' in link_settings:
-      system_js_libraries += ['library_async.js']
-    if 'LZ4=1' in link_settings:
-      system_js_libraries += ['library_lz4.js']
-    if 'USE_SDL=1' in link_settings:
-      system_js_libraries += ['library_sdl.js']
-    if 'USE_SDL=2' in link_settings:
-      system_js_libraries += ['library_egl.js', 'library_gl.js']
-    return [path_from_root('src', x) for x in system_js_libraries]
 
   @staticmethod
   def get_binaryen_feature_flags():
@@ -2763,22 +2699,18 @@ class Building(object):
       ret += ['--enable-threads']
     if Settings.SIMD:
       ret += ['--enable-simd']
+    ret += Settings.BINARYEN_FEATURES
     return ret
 
   @staticmethod
-  def get_binaryen():
-    # fetch the port, so we have binaryen set up. indicate we need binaryen
-    # using the settings
-    from . import system_libs
-    old = Settings.WASM
-    Settings.WASM = 1
-    system_libs.get_port('binaryen', Settings)
-    Settings.WASM = old
-
-  @staticmethod
   def get_binaryen_bin():
-    Building.get_binaryen()
-    return os.path.join(Settings.BINARYEN_ROOT, 'bin')
+    assert Settings.WASM, 'non wasm builds should not ask for binaryen'
+    if not BINARYEN_ROOT:
+      # ensure we have the port available if needed.
+      from . import system_libs
+      system_libs.get_port('binaryen', Settings)
+      assert os.path.exists(BINARYEN_ROOT)
+    return os.path.join(BINARYEN_ROOT, 'bin')
 
 
 # compatibility with existing emcc, etc. scripts
@@ -2914,29 +2846,13 @@ class JS(object):
     return ret
 
   @staticmethod
-  def make_jscall(sig, sig_order=None):
+  def make_jscall(sig):
     fnargs = ','.join('a' + str(i) for i in range(1, len(sig)))
-    args = 'index' + (',' if fnargs else '') + fnargs
-    # While asm.js/fastcomp's addFunction support preallocates
-    # Settings.RESERVED_FUNCTION_POINTERS slots in functionPointers array, on
-    # the Wasm backend we reserve that number of slots for each possible
-    # function signature, so it is (Settings.RESERVED_FUNCTION_POINTERS * # of
-    # indirectly called function signatures) slots in total. So the index to
-    # functionPointers array should be adjusted according to the order of the
-    # function signature. The reason we do this is Wasm has a single unified
-    # function table while asm.js maintains separate function table per
-    # signature.
-    # e.g. When there are three possible function signature, ['v', 'ii', 'ff'],
-    # the 'sig_order' parameter will be 0 for 'v', 1 for 'ii', and so on.
-    if Settings.WASM_BACKEND:
-      assert sig_order is not None
-      index = 'index + %d' % (Settings.RESERVED_FUNCTION_POINTERS * sig_order)
-    else:
-      index = 'index'
+    args = (',' if fnargs else '') + fnargs
     ret = '''\
-function jsCall_%s(%s) {
-    %sfunctionPointers[%s](%s);
-}''' % (sig, args, 'return ' if sig[0] != 'v' else '', index, fnargs)
+function jsCall_%s(index%s) {
+    %sfunctionPointers[index](%s);
+}''' % (sig, args, 'return ' if sig[0] != 'v' else '', fnargs)
     return ret
 
   @staticmethod
@@ -2959,7 +2875,7 @@ function jsCall_%s(%s) {
       # This only makes sense in function pointer emulation mode, where we
       # can do a direct table call.
       assert Settings.WASM
-      assert Settings.EMULATED_FUNCTION_POINTERS
+      assert Settings.WASM_BACKEND or Settings.EMULATED_FUNCTION_POINTERS
       args = ''
       body = '''
         var args = Array.prototype.slice.call(arguments);
@@ -3062,26 +2978,10 @@ class WebAssembly(object):
     return (result, offset)
 
   @staticmethod
-  def get_js_data(js_file, shared=False):
+  def add_emscripten_metadata(js_file, wasm_file):
     mem_size = Settings.STATIC_BUMP
     table_size = Settings.WASM_TABLE_SIZE
-    if shared:
-      mem_align = Settings.MAX_GLOBAL_ALIGN
-    else:
-      mem_align = None
-    return (mem_size, table_size, mem_align)
-
-  @staticmethod
-  def add_emscripten_metadata(js_file, wasm_file):
-    (mem_size, table_size, _) = WebAssembly.get_js_data(js_file)
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
-    wso = js_file + '.wso'
-    wasm = open(wasm_file, 'rb').read()
-    f = open(wso, 'wb')
-    f.write(wasm[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
       # metadata section version
@@ -3103,29 +3003,31 @@ class WebAssembly(object):
       #     the EMSCRIPTEN_METADATA_MINOR
     )
 
-    size = len(name) + len(contents)
-    f.write(WebAssembly.lebify(size))
-    f.write(name)
-    f.write(contents)
-    f.write(wasm[8:])
-    f.close()
-    return wso
+    orig = open(wasm_file, 'rb').read()
+    with open(wasm_file, 'wb') as f:
+      f.write(orig[0:8]) # copy magic number and version
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      # need to find the size of this section
+      size = len(name) + len(contents)
+      f.write(WebAssembly.lebify(size))
+      f.write(name)
+      f.write(contents)
+      f.write(orig[8:])
 
   @staticmethod
   def make_shared_library(js_file, wasm_file, needed_dynlibs):
     # a wasm shared library has a special "dylink" section, see tools-conventions repo
-    (mem_size, table_size, mem_align) = WebAssembly.get_js_data(js_file, True)
+    assert not Settings.WASM_BACKEND
+    mem_align = Settings.MAX_GLOBAL_ALIGN
+    mem_size = Settings.STATIC_BUMP
+    table_size = Settings.WASM_TABLE_SIZE
     mem_align = int(math.log(mem_align, 2))
     logger.debug('creating wasm dynamic library with mem size %d, table size %d, align %d' % (mem_size, table_size, mem_align))
-    wso = js_file + '.wso'
-    # write the binary
+
+    # Write new wasm binary with 'dylink' section
     wasm = open(wasm_file, 'rb').read()
-    f = open(wso, 'wb')
-    f.write(wasm[0:8]) # copy magic number and version
-    # write the special section
-    f.write(b'\0') # user section is code 0
-    # need to find the size of this section
-    name = b"\06dylink" # section name, including prefixed size
+    section_name = b"\06dylink" # section name, including prefixed size
     contents = (WebAssembly.lebify(mem_size) + WebAssembly.lebify(mem_align) +
                 WebAssembly.lebify(table_size) + WebAssembly.lebify(0))
 
@@ -3156,12 +3058,18 @@ class WebAssembly(object):
       contents += WebAssembly.lebify(len(dyn_needed))
       contents += dyn_needed
 
-    size = len(name) + len(contents)
-    f.write(WebAssembly.lebify(size))
-    f.write(name)
-    f.write(contents)
-    f.write(wasm[8:]) # copy rest of binary
-    f.close()
+    section_size = len(section_name) + len(contents)
+    wso = js_file + '.wso'
+    with open(wso, 'wb') as f:
+      # copy magic number and version
+      f.write(wasm[0:8])
+      # write the special section
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.lebify(section_size))
+      f.write(section_name)
+      f.write(contents)
+      # copy rest of binary
+      f.write(wasm[8:])
     return wso
 
 
@@ -3220,11 +3128,6 @@ def safe_copy(src, dst):
   shutil.copyfile(src, dst)
 
 
-def clang_preprocess(filename):
-  # TODO: REMOVE HACK AND PASS PREPROCESSOR FLAGS TO CLANG.
-  return run_process([CLANG_CC, '-DFETCH_DEBUG=1', '-E', '-P', '-C', '-x', 'c', filename], check=True, stdout=subprocess.PIPE).stdout
-
-
 def read_and_preprocess(filename, expand_macros=False):
   temp_dir = get_emscripten_temp_dir()
   # Create a settings file with the current settings to pass to the JS preprocessor
@@ -3258,7 +3161,7 @@ def read_and_preprocess(filename, expand_macros=False):
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
   funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
-  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock']
+  asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
 }
@@ -3281,5 +3184,5 @@ def make_fetch_worker(source_file, output_file):
     func_code = src[loc:end_loc]
     function_prologue = function_prologue + '\n' + func_code
 
-  fetch_worker_src = function_prologue + '\n' + clang_preprocess(path_from_root('src', 'fetch-worker.js'))
+  fetch_worker_src = function_prologue + '\n' + read_and_preprocess(path_from_root('src', 'fetch-worker.js'), expand_macros=True)
   open(output_file, 'w').write(fetch_worker_src)

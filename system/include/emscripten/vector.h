@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_vector_h__
-#define __emscripten_vector_h__
+#pragma once
 
 #if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || defined(__cplusplus)
 #define EM_INLINE inline
@@ -476,6 +475,4 @@ int emscripten_bool8x16_allTrue(bool8x16 __a) __attribute__((__nothrow__, __cons
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
