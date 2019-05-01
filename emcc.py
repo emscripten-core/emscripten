@@ -1199,7 +1199,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
       if shared.Settings.WASM_BACKEND:
-        newargs += ['-mthread-model', 'posix']
+        newargs += ['-pthread']
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
