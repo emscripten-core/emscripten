@@ -2152,16 +2152,35 @@ LibraryManager.library = {
     }
 
     var lib = LDSO.loadedLibs[handle];
-#if !WASM_BACKEND
-    symbol = '_' + symbol;
+    var is_main_module = lib.module == Module;
+
+    var mangled = '_' + symbol;
+    var mod_symbol = mangled;
+#if WASM_BACKEND
+    if (!is_main_module) {
+      mod_symbol = symbol;
+    }
+    var asm_symbol = symbol;
+#else
+    var asm_symbol = mangled;
 #endif
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+
+    if (!lib.module.hasOwnProperty(mod_symbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + mod_symbol +
                              '" in dynamic lib: ' + lib.name);
       return 0;
     }
 
-    var result = lib.module[symbol];
+    var result = lib.module[mod_symbol];
+#if WASM
+    // Attempt to get the real "unwrapped" symbol so we have more chance of
+    // getting wasm function which can be added to a table.
+    if (is_main_module) {
+      if (lib.module["asm"][asm_symbol]) {
+        result = lib.module["asm"][asm_symbol];
+      }
+    }
+#endif
     if (typeof result !== 'function')
       return result;
 
