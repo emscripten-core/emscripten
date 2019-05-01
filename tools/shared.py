@@ -3007,21 +3007,14 @@ class WebAssembly(object):
       WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
 
       WebAssembly.lebify(mem_size) +
-
       WebAssembly.lebify(table_size) +
-
       WebAssembly.lebify(global_base) +
-
       WebAssembly.lebify(dynamic_base) +
-
       WebAssembly.lebify(dynamictop_ptr) +
-
-      WebAssembly.lebify(tempdouble_ptr) +
+      WebAssembly.lebify(tempdouble_ptr)
 
       # NB: more data can be appended here as long as you increase
       #     the EMSCRIPTEN_METADATA_MINOR
-
-      b''
     )
 
     orig = open(wasm_file, 'rb').read()
