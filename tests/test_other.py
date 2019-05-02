@@ -8043,7 +8043,7 @@ int main() {
       run(['-O3', '-s', 'MAIN_MODULE=1'],
                  1543, [],        [],      226403,  30,   95, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
-                   15, [],        [],       10571,  19,    9, 21)
+                   15, [],        [],       10571,  19,    9, 21) # noqa
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
