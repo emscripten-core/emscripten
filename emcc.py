@@ -1545,6 +1545,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
         newargs.append('-msimd128')
+      if shared.Settings.USE_PTHREADS:
+        newargs.append('-pthread')
     else:
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
@@ -2525,6 +2527,9 @@ def parse_args(newargs):
       settings_changes.append('SIMD=1')
     elif newargs[i] == '-mno-simd128':
       settings_changes.append('SIMD=0')
+    # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
+    elif newargs[i] == '-pthread':
+      settings_changes.append('USE_PTHREADS=1')
 
   if should_exit:
     sys.exit(0)
