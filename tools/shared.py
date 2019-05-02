@@ -2623,9 +2623,6 @@ class Building(object):
     for line in out.split('\n'):
       if SEP in line:
         old, new = line.strip().split(SEP)
-        if old in mapping:
-          raise Exception("Repeated old mapping! %r => %r, (previous: %r)" %
-                          (old, new, mapping[old]))
         mapping[old] = new
     # apply them
     passes = ['applyImportAndExportNameChanges']
