@@ -5,13 +5,10 @@
  * found in the LICENSE file.
  */
 
-#include <stdexcept>
 #include <emscripten.h>
 
+extern int foo(void);
 
-EMSCRIPTEN_KEEPALIVE void destructorWithAlias(){
-    {
-        std::length_error err("random");
-        wprintf(L"success\n");
-    }
+EMSCRIPTEN_KEEPALIVE int callAlias() {
+  return foo();
 }
