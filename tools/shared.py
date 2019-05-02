@@ -48,6 +48,7 @@ def exit_with_error(msg, *args):
   logger.error(msg, *args)
   sys.exit(1)
 
+
 def fix_import_name(g):
   if g.startswith('Math_'):
     return g.split('_')[1]
@@ -67,6 +68,7 @@ def fix_import_name(g):
   if not Settings.WASM_BACKEND and g in ["abort", "getTempRet0", "setTempRet0"]:
     return '__runtime_' + g
   return g
+
 
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console

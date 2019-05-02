@@ -1195,6 +1195,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
 def make_func(name, code, params, coercions):
   return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
 
+
 # asm.js function tables have one table in each linked asm.js module, so we
 # can't just dynCall into them - ftCall exists for that purpose. In wasm,
 # even linked modules share the table, so it's all fine.
