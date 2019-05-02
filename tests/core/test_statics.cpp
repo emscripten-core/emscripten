@@ -26,6 +26,7 @@ struct XYZ {
     return iT;
   }
 };
+
 struct S {
   static const XYZ &getIdentity() {
     static const XYZ iT(XYZ::getIdentity());
