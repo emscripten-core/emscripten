@@ -372,7 +372,6 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-
   sending = '{\n  ' + ',\n  '.join('"%s": %s' % (fix_import_name(minified) if minified == unminified else minified, unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
