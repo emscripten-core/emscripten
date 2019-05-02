@@ -1342,7 +1342,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
 
 
 def create_asm_global_vars(bg_vars):
-  asm_global_vars = ''.join(['  var ' + unminified + '=env' + access_quote(fix_import_name(minified)) + '|0;\n' for (minified, unminified) in bg_vars])
+  asm_global_vars = ''.join(['  var ' + unminified + '=env' + access_quote(fix_import_name(minified) if minified == unminified else minified) + '|0;\n' for (minified, unminified) in bg_vars])
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # wasm side modules internally define their stack, these are set at module startup time
     asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
