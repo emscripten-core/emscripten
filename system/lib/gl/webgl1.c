@@ -627,6 +627,44 @@ RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectui64vEXT, GLenum,
 
 #endif // ~__EMSCRIPTEN_PTHREADS__
 
+void *emscripten_webgl1_ext_get_proc_address(const char *name)
+{
+  RETURN_FN_WITH_SUFFIX(glGenQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glDeleteQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glIsQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glBeginQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glEndQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glQueryCounter, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectuiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjecti64v, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectui64v, EXT);
+
+  // WebGL 1 , Extensions
+  RETURN_FN_WITH_SUFFIX(glBindVertexArray, OES);
+  RETURN_FN_WITH_SUFFIX(glDeleteVertexArrays, OES);
+  RETURN_FN_WITH_SUFFIX(glGenVertexArrays, OES);
+  RETURN_FN_WITH_SUFFIX(glIsVertexArray, OES);
+  RETURN_FN_WITH_SUFFIX(glDrawBuffers, WEBGL);
+  RETURN_FN_WITH_SUFFIX(glDrawArraysInstanced, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glGenQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glDeleteQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glIsQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glBeginQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glEndQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glQueryCounter, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectuiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjecti64v, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectui64v, EXT);
+
+  return 0;
+}
+
 void *emscripten_webgl1_get_proc_address(const char *name)
 {
   RETURN_FN(glActiveTexture);
