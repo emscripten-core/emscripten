@@ -1576,7 +1576,7 @@ int main() {
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
-# needs to flush stdio streams
+    # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
 
     if self.run_name == 'asm2':
