@@ -2622,20 +2622,24 @@ class Building(object):
         f.write(wasm2js_js)
     # JS optimizations
     if opt_level >= 2:
-      passes = ['last']
+      passes = []
       # it may be useful to run simplifyExpressions here (1.5% or so), and perhaps
       # simplifyIfs, registerize, asmLastOpts, last.
+      if not debug_info:
+        passes += ['minifyNames']
       if minify_whitespace:
         passes += ['minifyWhitespace']
+      passes += ['last']
       if passes:
         # hackish fixups to work around wasm2js style and the js optimizer FIXME
+        wasm2js_js = '// EMSCRIPTEN_START_ASM\n' + wasm2js_js + '// EMSCRIPTEN_END_ASM\n'
         wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
         wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
         wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
         wasm2js_js = wasm2js_js.replace('\n }', '\n}')
         wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
         temp = configuration.get_temp_files().get('.js').name
-        with open(temp, 'a') as f:
+        with open(temp, 'w') as f:
           f.write(wasm2js_js)
         temp = Building.js_optimizer(temp, passes)
         with open(temp) as f:
