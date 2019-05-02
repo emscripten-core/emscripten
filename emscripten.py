@@ -26,7 +26,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, fix_import_name
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -372,7 +372,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
+
+  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (fix_import_name(minified) if minified == unminified else minified, unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -1194,11 +1195,6 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
 def make_func(name, code, params, coercions):
   return 'function %s(%s) {\n %s %s\n}' % (name, params, coercions, code)
 
-
-def math_fix(g):
-  return g if not g.startswith('Math_') else g.split('_')[1]
-
-
 # asm.js function tables have one table in each linked asm.js module, so we
 # can't just dynCall into them - ftCall exists for that purpose. In wasm,
 # even linked modules share the table, so it's all fine.
@@ -1337,7 +1333,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
     if asm_backend_uses(metadata, math):
       asm_global_funcs += '  var ' + math.replace('.', '_') + '=global' + access_quote(math) + ';\n'
 
-  asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(math_fix(minified)) + ';\n' for (minified, unminified) in bg_funcs])
+  asm_global_funcs += ''.join(['  var ' + unminified + '=env' + access_quote(fix_import_name(minified) if minified == unminified else minified) + ';\n' for (minified, unminified) in bg_funcs])
   asm_global_funcs += global_simd_funcs(access_quote, metadata)
   if shared.Settings.USE_PTHREADS:
     asm_global_funcs += ''.join(['  var Atomics_' + ty + '=global' + access_quote('Atomics') + access_quote(ty) + ';\n' for ty in ['load', 'store', 'exchange', 'compareExchange', 'add', 'sub', 'and', 'or', 'xor']])
@@ -1345,7 +1341,7 @@ def create_asm_global_funcs(bg_funcs, metadata):
 
 
 def create_asm_global_vars(bg_vars):
-  asm_global_vars = ''.join(['  var ' + unminified + '=env' + access_quote(minified) + '|0;\n' for (minified, unminified) in bg_vars])
+  asm_global_vars = ''.join(['  var ' + unminified + '=env' + access_quote(fix_import_name(minified)) + '|0;\n' for (minified, unminified) in bg_vars])
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # wasm side modules internally define their stack, these are set at module startup time
     asm_global_vars += '\n  var STACKTOP = 0, STACK_MAX = 0;\n'
@@ -1669,7 +1665,7 @@ def create_the_global(metadata):
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
-  return '{ ' + ', '.join(['"' + math_fix(s) + '": ' + s for s in fundamentals]) + ' }'
+  return '{ ' + ', '.join(['"' + fix_import_name(s) + '": ' + s for s in fundamentals]) + ' }'
 
 
 RUNTIME_ASSERTIONS = '''
@@ -2382,19 +2378,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
   send_items = (basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars)
 
-  def fix_import_name(g):
-    if g.startswith('Math_'):
-      return g.split('_')[1]
+  send_items_map = OrderedDict()
+  for name in send_items:
     # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
-    # strip them again here.
-    if g.startswith('_'):
-      return g[1:]
-    return g
-
-  send_items_map = OrderedDict()
-  for name in send_items:
+    # strip them again here using fix_import_name
     internal_name = fix_import_name(name)
     if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)

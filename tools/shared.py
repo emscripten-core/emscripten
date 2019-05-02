@@ -48,6 +48,25 @@ def exit_with_error(msg, *args):
   logger.error(msg, *args)
   sys.exit(1)
 
+def fix_import_name(g):
+  if g.startswith('Math_'):
+    return g.split('_')[1]
+
+  # Side modules import from the main module, which still export
+  # using a prefixed '_', so don't change that
+  if not Settings.WASM_BACKEND and (Settings.MAIN_MODULE or Settings.SIDE_MODULE):
+    return g
+
+  if g.startswith('_'):
+    return g[1:]
+  # NB: these are imported directly into ASMJS modules
+  #     (see Settings.RUNTIME_FUNCS_TO_IMPORT)
+  #     and used by fastcomp, but their import name conflicts
+  #     with the library.js version (which is the canonical version),
+  #     so import them under a different name
+  if not Settings.WASM_BACKEND and g in ["abort", "getTempRet0", "setTempRet0"]:
+    return '__runtime_' + g
+  return g
 
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console
@@ -2553,12 +2572,10 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-    if Settings.WASM_BACKEND:
-      # wasm backend's imports are prefixed differently inside the wasm
+    if True:
       for item in graph:
         if 'import' in item:
-          if item['import'][1][0] == '_':
-            item['import'][1] = item['import'][1][1:]
+          item['import'][1] = fix_import_name(item['import'][1])
     # map import names from wasm to JS, using the actual name the wasm uses for the import
     import_name_map = {}
     for item in graph:
@@ -2604,6 +2621,9 @@ class Building(object):
     for line in out.split('\n'):
       if SEP in line:
         old, new = line.strip().split(SEP)
+        if old in mapping:
+          raise Exception("Repeated old mapping! %r => %r, (previous: %r)" %
+                          (old, new, mapping[old]))
         mapping[old] = new
     # apply them
     passes = ['applyImportAndExportNameChanges']

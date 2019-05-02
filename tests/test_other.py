@@ -7986,9 +7986,9 @@ int main() {
       run(['-Os'],  0, [], [],          85,  0,  2,  2) # noqa
       run(['-Oz'],  0, [], [],          54,  0,  1,  1) # noqa
     else:
-      run([],      21, ['abort'], ['waka'], 22712, 22, 15, 30) # noqa
-      run(['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11) # noqa
-      run(['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11) # noqa
+      run([],      22, ['__runtime_abort'], ['waka'], 22712, 22, 15, 30) # noqa
+      run(['-O1'], 11, ['__runtime_abort'], ['waka'], 10450,  7, 11, 11) # noqa
+      run(['-O2'], 11, ['__runtime_abort'], ['waka'], 10440,  7, 11, 11) # noqa
       # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
       run(['-O3'],  0, [],        [],          55,  0,  1, 1) # noqa
       run(['-Os'],  0, [],        [],          55,  0,  1, 1) # noqa
@@ -8002,9 +8002,9 @@ int main() {
     if self.is_wasm_backend():
       run(['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
     else:
-      run(['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539) # noqa
+      run(['-O2'], 35, ['__runtime_abort'], ['waka'], 186423,  29,  38, 539) # noqa
       run(['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                   34, ['abort'], ['waka'], 186423,  29,  39, 519) # noqa
+                   35, ['__runtime_abort'], ['waka'], 186423,  29,  39, 519) # noqa
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
@@ -8021,9 +8021,9 @@ int main() {
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                    0, [], [],          61,  0,   1,  1) # noqa
     else:
-      run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
-      run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
-      run(['-O2'], 15, ['abort'], ['waka'], 12425,  15,   14, 28) # noqa
+      run([],      24, ['__runtime_abort'], ['waka'], 42701,  24,   17, 57) # noqa
+      run(['-O1'], 16, ['__runtime_abort'], ['waka'], 13199,  15,   14, 33) # noqa
+      run(['-O2'], 16, ['__runtime_abort'], ['waka'], 12425,  15,   14, 28) # noqa
       run(['-O3'],  6, [],        [],        2443,   9,    2, 15) # noqa; in -O3, -Os and -Oz we metadce
       run(['-Os'],  6, [],        [],        2412,   9,    2, 17) # noqa
       run(['-Oz'],  6, [],        [],        2389,   9,    2, 16) # noqa
@@ -8135,7 +8135,7 @@ int main() {
       run_process(cmd)
 
       # build main module
-      args = ['-s', 'EXPORT_ALL=0', '-s', 'EXPORTED_FUNCTIONS=["_main", "_wprintf","__ZTVSt12length_error","__ZNSt12length_errorD1Ev","__ZNSt11logic_errorC2EPKc"]', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0']
+      args = ['-s', 'EXPORT_ALL=0', '-s', 'EXPORTED_FUNCTIONS=["_main", "_wprintf","__ZTVSt12length_error","__ZNSt12length_errorD1Ev","__ZNSt11logic_errorC2EPKc"]', '-s', 'MAIN_MODULE=2', '-O3', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'ASSERTIONS=1']
       cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.cpp'), '-g', '-o', 'main.out.js'] + args
       print(' '.join(cmd))
       run_process(cmd)
