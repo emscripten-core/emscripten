@@ -653,7 +653,6 @@ var PROFILING_FUNCS = 0;
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-        'setTempRet0', // Used by asm2wasm
 	'memcpy',
 	'memset',
 	'malloc',
