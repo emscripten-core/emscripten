@@ -43,7 +43,7 @@ void cleanup() {
 
 void test() {
   int err;
-  long loc;
+  long loc, loc2;
   DIR *dir;
   struct dirent *ent;
   struct dirent ent_r;
@@ -120,6 +120,7 @@ void test() {
   loc = telldir(dir);
   assert(loc >= 0);
   //printf("loc=%d\n", loc);
+  loc2 = ent->d_off;
   ent = readdir(dir);
   char name_at_loc[1024];
   strcpy(name_at_loc, ent->d_name);
@@ -128,6 +129,12 @@ void test() {
   ent = readdir(dir);
   assert(!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..") || !strcmp(ent->d_name, "file.txt"));
   seekdir(dir, loc);
+  ent = readdir(dir);
+  assert(ent);
+  //printf("check: %s / %s\n", ent->d_name, name_at_loc);
+  assert(!strcmp(ent->d_name, name_at_loc));
+
+  seekdir(dir, loc2);
   ent = readdir(dir);
   assert(ent);
   //printf("check: %s / %s\n", ent->d_name, name_at_loc);
