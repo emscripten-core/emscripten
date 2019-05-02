@@ -7636,6 +7636,8 @@ def make_run(name, emcc_args, settings=None, env=None):
       # propagate LLVM machine arguments
       if arg.startswith('-m'):
         Building.COMPILER_TEST_OPTS.append(arg)
+      if arg == '-pthread':
+        Building.COMPILER_TEST_OPTS.append(arg)
 
   TT.setUp = setUp
 
