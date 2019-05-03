@@ -7598,6 +7598,9 @@ def make_run(name, emcc_args, settings=None, env=None):
       if arg.startswith('-m'):
         Building.COMPILER_TEST_OPTS.append(arg)
 
+    for key, value in settings.items():
+      Building.COMPILER_TEST_OPTS += ['-s', '%s=%s' % (key, json.dumps(value))]
+
   TT.setUp = setUp
 
   return TT
