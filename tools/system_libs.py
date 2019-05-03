@@ -212,6 +212,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       assert '-webgl2' not in libname
       return []
 
+  def gl_offscreen_flags(libname):
+    if shared.Settings.OFFSCREEN_FRAMEBUFFER:
+      assert '-ofb' in libname
+      return ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
+    else:
+      assert '-ofb' not in libname
+      return []
+
   # libc
   def create_libc(libname):
     logger.debug(' building libc for cache')
@@ -420,6 +428,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
     flags += gl_version_flags(libname)
+    flags += gl_offscreen_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -654,6 +663,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     gl_name += '-emu'
   if shared.Settings.USE_WEBGL2:
     gl_name += '-webgl2'
+  if shared.Settings.OFFSCREEN_FRAMEBUFFER:
+    gl_name += '-ofb'
   system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
