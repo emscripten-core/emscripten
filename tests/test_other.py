@@ -8019,7 +8019,15 @@ int main() {
       run(['-Oz'],  5, [], [],        2272,  7,   2, 14) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [], [],          61,  0,   1,  1) # noqa
+                    0, [], [],          61,  0,   1,  1) # noqa
+      # we don't metadce with linkable code! other modules may want stuff
+      # don't compare the # of functions in a main module, which changes a lot
+      # TODO(sbc): Investivate why the number of exports is order of magnitude
+      # larger for wasm backend.
+      run(['-O3', '-s', 'MAIN_MODULE=1'],
+                 1576, [],        [],      517336, 167,1484, None) # noqa
+      run(['-O3', '-s', 'MAIN_MODULE=2'],
+                 13,   [],        [],      10770,   16,  13, None) # noqa
     else:
       run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
@@ -8029,10 +8037,13 @@ int main() {
       run(['-Oz'],  6, [],        [],        2389,   9,    2, 16) # noqa
       # finally, check what happens when we export nothing. wasm should be almost empty
       run(['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                   0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
+                    0, [],        [],           8,   0,    0,  0) # noqa; totally empty!
       # we don't metadce with linkable code! other modules may want stuff
+      # don't compare the # of functions in a main module, which changes a lot
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                1543, [],        [],      226403,  30,   95, None) # noqa; don't compare the # of functions in a main module, which changes a lot
+                 1543, [],        [],      226403,  30,   95, None) # noqa
+      run(['-O3', '-s', 'MAIN_MODULE=2'],
+                   15, [],        [],       10571,  19,    9, 21) # noqa
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
