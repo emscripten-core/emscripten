@@ -1256,9 +1256,9 @@ def verify_settings():
 
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
-      # TODO(sbc): Make this into a hard error.  We still have a few places that
-      # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
-      # generate_struct_info).
+      # When the user requests non-wasm output, we enable wasm2js. that is,
+      # we still compile to wasm normally, but we compile the final output
+      # to js.
       Settings.WASM = 1
       Settings.WASM2JS = 1
 
