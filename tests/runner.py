@@ -742,7 +742,7 @@ class RunnerCore(unittest.TestCase):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
                   configure_args=[], make=['make'], make_args='help',
-                  cache=True, env_init={}, cache_name_extra='', native=False):
+                  env_init={}, cache_name_extra='', native=False):
     if make_args == 'help':
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
@@ -755,23 +755,21 @@ class RunnerCore(unittest.TestCase):
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
-    if self.library_cache is not None:
-      if cache and self.library_cache.get(cache_name):
-        print('<load %s from cache> ' % cache_name, file=sys.stderr)
-        generated_libs = []
-        for basename, contents in self.library_cache[cache_name]:
-          bc_file = os.path.join(build_dir, cache_name + '_' + basename)
-          with open(bc_file, 'wb') as f:
-            f.write(contents)
-          generated_libs.append(bc_file)
-        return generated_libs
+    if self.library_cache.get(cache_name):
+      print('<load %s from cache> ' % cache_name, file=sys.stderr)
+      generated_libs = []
+      for basename, contents in self.library_cache[cache_name]:
+        bc_file = os.path.join(build_dir, cache_name + '_' + basename)
+        with open(bc_file, 'wb') as f:
+          f.write(contents)
+        generated_libs.append(bc_file)
+      return generated_libs
 
     print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, copy_project=True, env_init=env_init,
-                         native=native)
+                         cache_name, env_init=env_init, native=native)
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -1466,12 +1464,10 @@ def build_library(name,
                   configure=['sh', './configure'],
                   configure_args=[],
                   make=['make'],
-                  make_args='help',
+                  make_args=[],
                   cache=None,
                   cache_name=None,
-                  copy_project=False,
                   env_init={},
-                  source_dir=None,
                   native=False):
   """Build a library into a .bc file. We build the .bc file once and cache it
   for all our tests. (We cache in memory since the test directory is destroyed
@@ -1482,88 +1478,64 @@ def build_library(name,
 
   if type(generated_libs) is not list:
     generated_libs = [generated_libs]
-  if source_dir is None:
-    source_dir = path_from_root('tests', name.replace('_native', ''))
-  if make_args == 'help':
-    make_args = ['-j', str(multiprocessing.cpu_count())]
+  source_dir = path_from_root('tests', name.replace('_native', ''))
 
   temp_dir = build_dir
-  if copy_project:
-    project_dir = os.path.join(temp_dir, name)
-    if os.path.exists(project_dir):
-      shutil.rmtree(project_dir)
-    shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
-  else:
-    project_dir = build_dir
-  try:
-    old_dir = os.getcwd()
-  except:
-    old_dir = None
-  os.chdir(project_dir)
-  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  # for lib in generated_libs:
-  #   try:
-  #     os.unlink(lib) # make sure compilation completed successfully
-  #   except:
-  #     pass
-  env = Building.get_building_env(native, True)
-  for k, v in env_init.items():
-    env[k] = v
-  if configure:
-    # Useful in debugging sometimes to comment this out (and the lines below
-    # up to and including the |link| call)
-    if EM_BUILD_VERBOSE < 2:
-      stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
-    else:
-      stdout = None
-    if EM_BUILD_VERBOSE < 1:
-      stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
-    else:
-      stderr = None
+  project_dir = os.path.join(temp_dir, name)
+  if os.path.exists(project_dir):
+    shutil.rmtree(project_dir)
+  shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+
+  with chdir(project_dir):
+    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+    env = Building.get_building_env(native, True)
+    for k, v in env_init.items():
+      env[k] = v
+    if configure:
+      # Useful in debugging sometimes to comment this out (and the lines below
+      # up to and including the |link| call)
+      if EM_BUILD_VERBOSE < 2:
+        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
+      else:
+        stdout = None
+      if EM_BUILD_VERBOSE < 1:
+        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
+      else:
+        stderr = None
+      try:
+        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      except subprocess.CalledProcessError as e:
+        pass # Ignore exit code != 0
+
+    def open_make_out(mode='r'):
+      return open(os.path.join(project_dir, 'make.out'), mode)
+
+    def open_make_err(mode='r'):
+      return open(os.path.join(project_dir, 'make.err'), mode)
+
+    if EM_BUILD_VERBOSE >= 3:
+      make_args += ['VERBOSE=1']
+
     try:
-      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-    except subprocess.CalledProcessError as e:
-      pass # Ignore exit code != 0
+      with open_make_out('w') as make_out:
+        with open_make_err('w') as make_err:
+          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
 
-  def open_make_out(i, mode='r'):
-    return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
-
-  def open_make_err(i, mode='r'):
-    return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-
-  if EM_BUILD_VERBOSE >= 3:
-    make_args += ['VERBOSE=1']
-
-  # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-  for i in range(2):
-    with open_make_out(i, 'w') as make_out:
-      with open_make_err(i, 'w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        if i == 0:
-          try:
-            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
-          except subprocess.CalledProcessError as e:
-            pass # Ignore exit code != 0
-        else:
-            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
-    try:
       if cache is not None:
         cache[cache_name] = []
         for f in generated_libs:
           basename = os.path.basename(f)
           cache[cache_name].append((basename, open(f, 'rb').read()))
-      break
     except Exception as e:
-      if i > 0:
-        if EM_BUILD_VERBOSE == 0:
-          # Due to the ugly hack above our best guess is to output the first run
-          with open_make_err(0) as ferr:
-            for line in ferr:
-              sys.stderr.write(line)
-        raise Exception('could not build library ' + name + ' due to exception ' + str(e))
-  if old_dir:
-    os.chdir(old_dir)
+      if EM_BUILD_VERBOSE == 0:
+         with open_make_err() as ferr:
+           for line in ferr:
+             sys.stderr.write(line)
+
+      raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+
   return generated_libs
 
 
