@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
                         out('i: ' + [ $0, ($1).toFixed(2) ]);
                         return $0 * 2;
                       },
-                      i, double(i) / 12);
+                      i, (double)i / 12);
   }
   EM_ASM_INT({ globalVar = $0 }, sum); // no outputs, just input
   sum = 0;

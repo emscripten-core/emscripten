@@ -199,11 +199,13 @@ extern pthread_key_t currentThreadOwnsItsWebGLContext;
 
 // When building with multithreading, return pointers to C functions that can perform proxying.
 #define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return functionName;
+#define RETURN_FN_WITH_SUFFIX(functionName, suffix) if (!strcmp(name, #functionName)) return functionName##suffix;
 
 #else
 
 // When building with singlethreading, return pointers to JS library layer so that C code (Regal library)
 // can override them.
 #define RETURN_FN(functionName) if (!strcmp(name, #functionName)) return emscripten_##functionName;
+#define RETURN_FN_WITH_SUFFIX(functionName, suffix) if (!strcmp(name, #functionName)) return emscripten_##functionName##suffix;
 
 #endif

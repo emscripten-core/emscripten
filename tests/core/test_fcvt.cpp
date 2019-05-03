@@ -5,7 +5,8 @@
  * found in the LICENSE file.
  */
 
-/* This example borrowed from MSDN documentation */#include <stdlib.h>
+/* This example borrowed from MSDN documentation */
+#include <stdlib.h>
 #include <stdio.h>
 
 int main() {
