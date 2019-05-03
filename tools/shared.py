@@ -1836,9 +1836,7 @@ class Building(object):
     #   cmd.append('--strip-debug')
 
     export_all = False
-    if Settings.MAIN_MODULE:
-      export_all = True
-    elif Settings.EXPORT_ALL:
+    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
       export_all = True
 
     if Settings.RELOCATABLE:
