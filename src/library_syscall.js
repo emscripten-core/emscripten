@@ -1091,9 +1091,7 @@ var SyscallsLibrary = {
     while (idx < stream.getdents.length && pos + struct_size <= count) {
       var id;
       var type;
-      // NB: we iterate backwards for compatibility with older
-      //     versions of this code.
-      var name = stream.getdents[stream.getdents.length - 1 - idx];
+      var name = stream.getdents[idx];
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
