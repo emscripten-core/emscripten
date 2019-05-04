@@ -8,7 +8,7 @@
 #include "webgl1_ext.h"
 #include "webgl2.h"
 
-#ifdef __EMSCRIPTEN_PTHREADS__
+#if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
@@ -625,7 +625,7 @@ RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectuivEXT, GLenum, G
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjecti64vEXT, GLenum, GLenum, GLint64 *);
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectui64vEXT, GLenum, GLenum, GLuint64 *);
 
-#endif // ~__EMSCRIPTEN_PTHREADS__
+#endif // ~(__EMSCRIPTEN_PTHREADS__ && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 void *emscripten_webgl1_ext_get_proc_address(const char *name)
 {

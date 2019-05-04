@@ -318,7 +318,7 @@ class TestCoreBase(RunnerCore):
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-      self.do_run('', 'hash value: ' + output, [text], no_build=True)
+      self.do_run('src.cpp.o.js', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
     self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
@@ -594,6 +594,17 @@ class TestCoreBase(RunnerCore):
     # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
     self.do_run_in_out_file_test('tests', 'core', 'test_getgep')
 
+  # No compiling from C/C++ - just process an existing .o/.ll/.bc file.
+  def do_run_object(self, obj_file, expected_output=None, **kwargs):
+    js_file = os.path.basename(obj_file) + '.js'
+    Building.emcc(obj_file, self.get_emcc_args(), js_file)
+    self.do_run(js_file, expected_output, no_build=True, **kwargs)
+
+  def do_ll_run(self, filename, expected_output=None, **kwargs):
+    output_base = os.path.basename(filename)
+    objfile = self.prep_ll_file(output_base, filename)
+    self.do_run_object(objfile, expected_output, **kwargs)
+
   def test_multiply_defined_symbols(self):
     create_test_file('a1.c', 'int f() { return 1; }')
     create_test_file('a2.c', 'void x() {}')
@@ -619,7 +630,7 @@ class TestCoreBase(RunnerCore):
 
     Building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.do_ll_run('all.o', 'result: 1')
+    self.do_run_object('all.o', 'result: 1')
 
   def test_if(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_if')
@@ -1067,9 +1078,9 @@ int main(int argc, char **argv)
     print('0')
     self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
     print('1')
-    self.do_run(src, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
+    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
     print('2')
-    self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
+    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -5271,9 +5282,11 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
+    src = open(path_from_root('tests', 'fannkuch.cpp')).read()
+    self.build(src, self.get_dir(), 'fannkuch.cpp')
     for i, j in results:
-      src = open(path_from_root('tests', 'fannkuch.cpp')).read()
-      self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=i > 1)
+      print(i, j)
+      self.do_run('fannkuch.cpp.o.js', 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=True)
 
   def test_raytrace(self):
     # TODO: Should we remove this test?
@@ -5289,6 +5302,7 @@ int main(void) {
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
 
     old = self.emcc_args
+    orig_src = open(path_from_root('tests', 'fasta.cpp')).read()
 
     def test(extra_args):
       self.emcc_args = old + extra_args
@@ -5296,10 +5310,11 @@ int main(void) {
         self.set_setting('PRECISE_F32', precision)
         for t in ['float', 'double']:
           print(precision, t)
-          src = open(path_from_root('tests', 'fasta.cpp')).read().replace('double', t)
-          for i, j in results:
-            self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i > 1)
-          shutil.copyfile('src.cpp.o.js', '%d_%s.js' % (precision, t))
+          src = orig_src.replace('double', t)
+          self.build(src, self.get_dir(), 'fasta.cpp')
+          for arg, output in results:
+            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+          shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
 
     test([])
 
@@ -5319,12 +5334,12 @@ int main(void) {
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'])
-    self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
+    self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
     # Linked version
     src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'])
-    self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
+    self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
@@ -5333,8 +5348,8 @@ int main(void) {
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB', '-o', 'src.cpp.o.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
-      self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
-      self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
+      self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
+      self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
       # The same for new and all its variants
       src = open(path_from_root('tests', 'new.cpp')).read()
@@ -5591,7 +5606,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
-    self.do_run('',
+    self.do_run(None,
                 open(path_from_root('tests', 'freetype', 'ref_4.txt')).read(),
                 ['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
@@ -5823,12 +5838,12 @@ return malloc(size);
       print('lto:', lto)
       if lto == 1:
         self.emcc_args += ['--llvm-lto', '1']
-      self.do_ll_run(bitcode, pyoutput, args=['-S', '-c', pyscript])
+      self.do_run_object(bitcode, pyoutput, args=['-S', '-c', pyscript])
 
   def test_lifetime(self):
     self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-      assert 'a18' not in open('src.cpp.o.js').read(), 'lifetime stuff and their vars must be culled'
+      assert 'a18' not in open('lifetime.ll.o.js').read(), 'lifetime stuff and their vars must be culled'
 
   # Test cases in separate files. Note that these files may contain invalid .ll!
   # They are only valid enough for us to read for test purposes, not for llvm-as
@@ -5982,12 +5997,12 @@ return malloc(size);
 
     # Autodebug the code
     def do_autodebug(filename):
-      Building.llvm_dis(filename)
-      output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
+      Building.llvm_dis(filename + '.o', filename + '.ll')
+      output = run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
       assert 'Success.' in output, output
       # rebuild .bc
       # TODO: use code in do_autodebug_post for this
-      self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
+      self.prep_ll_file(filename, filename + '.auto.ll', force_recompile=True)
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
@@ -6000,7 +6015,7 @@ return malloc(size);
     do_autodebug(filename)
 
     # Compare to each other, and to expected output
-    self.do_ll_run(filename + '.o.ll.ll', 'AD:-1,1')
+    self.do_ll_run(filename + '.auto.ll', 'AD:-1,1')
 
     # Test using build_ll_hook
     src = '''
@@ -6185,31 +6200,28 @@ return malloc(size);
       }
     '''
 
-    def test(expected, args=[], no_build=False):
-      self.do_run(src, expected, args=args, no_build=no_build)
-      return open('src.cpp.o.js').read()
-
     # Sanity check that it works and the dead function is emitted
-    js = test('*1*', ['x'])
+    self.do_run(src, '*1*', args=['x'])
+    js = open('src.cpp.o.js').read()
     if self.run_name in ['default', 'asm1', 'asm2g']:
       assert 'function _unused($' in js
-    test('*2*', no_build=True)
+    self.do_run(None, '*2*', no_build=True)
 
     # Kill off the dead function, and check a code path using it aborts
     self.set_setting('DEAD_FUNCTIONS', ['_unused'])
-    test('*2*')
-    test('abort(', args=['x'], no_build=True)
+    self.do_run(src, '*2*')
+    self.do_run(None, 'abort(', args=['x'], no_build=True)
 
     # Kill off a library function, check code aborts
     self.set_setting('DEAD_FUNCTIONS', ['_printf'])
-    test('abort(')
-    test('abort(', args=['x'], no_build=True)
+    self.do_run(src, 'abort(')
+    self.do_run(None, 'abort(', args=['x'], no_build=True)
 
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
-    self.do_run('', 'hello, world', basename='response_file', no_build=True)
+    self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
@@ -6220,7 +6232,7 @@ return malloc(size);
     response_data = objfile + ' --export=foo'
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.emcc_args)
-    self.do_run('', 'hello, world', basename='response_file', no_build=True)
+    self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_exported_response(self):
     src = r'''
