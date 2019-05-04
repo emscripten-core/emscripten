@@ -425,8 +425,8 @@ class RunnerCore(unittest.TestCase):
     js = open(filename).read()
     create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
-  def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    # force_recompile = force_recompile or os.path.getsize(filename + '.o.ll') > 50000
+  def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
+    # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
     # If the file is big, recompile just to get ll_opts
     # Recompiling just for dfe in ll_opts is too costly
 
@@ -446,42 +446,43 @@ class RunnerCore(unittest.TestCase):
       with open(ll_filename, 'w') as f:
         f.write(contents)
 
+    output_obj = output_file + '.o'
+    output_ll = output_file + '.ll'
+
     if force_recompile or build_ll_hook:
-      if ll_file.endswith(('.bc', '.o')):
-        if ll_file != filename + '.o':
-          shutil.copy(ll_file, filename + '.o')
-        Building.llvm_dis(filename)
+      if input_file.endswith(('.bc', '.o')):
+        if input_file != output_obj:
+          shutil.copy(input_file, output_obj)
+        Building.llvm_dis(output_obj, output_ll)
       else:
-        shutil.copy(ll_file, filename + '.o.ll')
-        fix_target(filename + '.o.ll')
+        shutil.copy(input_file, output_ll)
+        fix_target(output_ll)
 
       if build_ll_hook:
-        need_post = build_ll_hook(filename)
-      Building.llvm_as(filename)
-      shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
-      Building.llvm_dis(filename)
+        need_post = build_ll_hook(output_file)
+      Building.llvm_as(output_ll, output_obj)
+      shutil.move(output_ll, output_ll + '.pre') # for comparisons later
+      Building.llvm_dis(output_obj, output_ll)
       if build_ll_hook and need_post:
-        build_ll_hook(filename)
-        Building.llvm_as(filename)
-        shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
-        Building.llvm_dis(filename)
+        build_ll_hook(output_file)
+        Building.llvm_as(output_ll, output_obj)
+        shutil.move(output_ll, output_ll + '.post') # for comparisons later
+        Building.llvm_dis(output_obj, output_ll)
 
-      Building.llvm_as(filename)
+      Building.llvm_as(output_ll, output_obj)
     else:
-      if ll_file.endswith('.ll'):
-        safe_copy(ll_file, filename + '.o.ll')
-        fix_target(filename + '.o.ll')
-        Building.llvm_as(filename)
+      if input_file.endswith('.ll'):
+        safe_copy(input_file, output_ll)
+        fix_target(output_ll)
+        Building.llvm_as(output_ll, output_obj)
       else:
-        safe_copy(ll_file, filename + '.o')
+        safe_copy(input_file, output_obj)
+
+    return output_obj
 
   def get_emcc_args(self):
     # TODO(sbc): We should probably unify Building.COMPILER_TEST_OPTS and self.emcc_args
     return self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS
-
-  # Generate JS from ll
-  def ll_to_js(self, filename):
-    Building.emcc(filename + '.o', self.get_emcc_args(), filename + '.o.js')
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -501,7 +502,7 @@ class RunnerCore(unittest.TestCase):
       # copy whole directory, and use a specific main .cpp file
       # (rmtree() fails on Windows if the current working directory is inside the tree.)
       if os.getcwd().startswith(os.path.abspath(dirname)):
-          os.chdir(os.path.join(dirname, '..'))
+        os.chdir(os.path.join(dirname, '..'))
       shutil.rmtree(dirname)
       shutil.copytree(src, dirname)
       shutil.move(os.path.join(dirname, main_file), filename)
@@ -539,10 +540,10 @@ class RunnerCore(unittest.TestCase):
           self.fail("Linkage error")
 
       # Finalize
-      self.prep_ll_run(filename, object_file, build_ll_hook=build_ll_hook)
+      self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename)
+      Building.emcc(object_file, self.get_emcc_args(), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -974,15 +975,23 @@ class RunnerCore(unittest.TestCase):
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
 
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, basename)
-    if not no_build:
-      self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
+    if no_build:
+      if src:
+        js_file = src
+      else:
+        js_file = basename + '.o.js'
+    else:
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, basename)
+      self.build(src, dirname, filename, main_file=main_file,
+                 additional_files=additional_files, libraries=libraries,
+                 includes=includes,
                  build_ll_hook=build_ll_hook, post_build=post_build)
+      js_file = filename + '.o.js'
+    self.assertExists(js_file)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    js_file = filename + '.o.js'
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
@@ -1005,31 +1014,11 @@ class RunnerCore(unittest.TestCase):
           print('(test did not pass in JS engine: %s)' % engine)
           raise
 
-    # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
-
     if self.save_JS:
       global test_index
       self.hardcode_arguments(js_file, args)
       shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
-
-  # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
-                output_nicerizer=None, force_recompile=False,
-                build_ll_hook=None, assert_returncode=None):
-    filename = os.path.join(self.get_dir(), 'src.cpp')
-
-    self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
-
-    self.ll_to_js(filename)
-
-    self.do_run(None,
-                expected_output,
-                args,
-                no_build=True,
-                js_engines=js_engines,
-                output_nicerizer=output_nicerizer,
-                assert_returncode=assert_returncode)
 
   def get_freetype_library(self):
     self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
