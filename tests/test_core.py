@@ -7338,11 +7338,13 @@ extern "C" {
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js(self):
-    self.set_setting('WASM2JS', 1)
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+    self.set_setting('WASM', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # a mem init file is emitted just like with JS
     expect_memory_init_file = self.uses_memory_init_file()
-    see_memory_init_file = os.path.exists('src.cpp.o.js.mem')
+    see_memory_init_file = os.path.exists('src.c.o.js.mem')
     assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
 
   def test_cxx_self_assign(self):
@@ -7642,12 +7644,12 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
-wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM2JS': '1'})
-wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM2JS': '1'})
-wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM2JS': '1'})
-wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM2JS': '1'})
-wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM2JS': '1'})
-wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM2JS': '1'})
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 
