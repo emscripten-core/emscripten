@@ -1,7 +1,5 @@
 MSTRINGIFY(
 
-#pragma OPENCL EXTENSION cl_amd_printf : enable\n
-
 float mydot3(float4 a, float4 b)
 {
    return a.x*b.x + a.y*b.y + a.z*b.z;
