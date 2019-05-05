@@ -6364,7 +6364,7 @@ return malloc(size);
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
-    if 'ASSERTIONS' not in str(self.emcc_args):
+    if 'ASSERTIONS' not in self.test_mode_settings:
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
       self.set_setting('ASSERTIONS', 0)
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
@@ -7583,17 +7583,26 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
+
+    # keep a copy of the settings for this test mode, so we can know
+    # them even in tests that modify settings
+    self.test_mode_settings = settings
+
+    # avoid various compiler warnings in our test output
     Building.COMPILER_TEST_OPTS += [
-        '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
-        '-Wno-format-extra-args', '-Wno-format-security',
-        '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
-        '-Wno-c++11-compat-deprecated-writable-strings',
-        '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
+      '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+      '-Wno-format-extra-args', '-Wno-format-security',
+      '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
+      '-Wno-c++11-compat-deprecated-writable-strings',
+      '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
     ]
 
+    # forward important flags to COMPILER_TEST_OPTS, which is sent via
+    # CFLAGS etc. to libraries that are built.
     for arg in self.emcc_args:
+      # propagate optimization level
       if arg.startswith('-O'):
-        Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+        Building.COMPILER_TEST_OPTS.append(arg)
       # propagate LLVM machine arguments
       if arg.startswith('-m'):
         Building.COMPILER_TEST_OPTS.append(arg)
