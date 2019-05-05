@@ -1710,6 +1710,8 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   def test_memorygrowth(self):
+    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+      self.skipTest('test needs to modify memory growth')
     self.maybe_closure()
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
@@ -1745,6 +1747,9 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
+    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+      self.skipTest('test needs to modify memory growth')
+
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
     emcc_args = self.emcc_args[:]
@@ -1775,18 +1780,27 @@ int main(int argc, char **argv) {
     test()
 
   def test_memorygrowth_3(self):
+    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+      self.skipTest('test needs to modify memory growth')
+
     # checks handling of malloc failure properly
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   def test_memorygrowth_wasm_mem_max(self):
+    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+      self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
+
     # check that memory growth does not exceed the wasm mem max limit
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
+    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+      self.skipTest('test needs to modify memory growth')
+
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
@@ -2296,6 +2310,8 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
+    if 'ASSERTIONS' in self.test_mode_settings:
+      self.skipTest('test needs to customize ASSERTIONS')
     self.set_setting('ASSERTIONS', 1)
     src = r'''
       #include <dlfcn.h>
@@ -3875,13 +3891,11 @@ ok
 
     test('libc++')
     test('1')
-    if 'ASSERTIONS=1' not in self.emcc_args:
+    if 'ASSERTIONS' not in self.test_mode_settings:
       self.set_setting('ASSERTIONS', 0)
       test('', expect_pass=False, need_reverse=False)
-    else:
-      print('(skip ASSERTIONS == 0 part)')
-    self.set_setting('ASSERTIONS', 1)
-    test('', expect_pass=False, need_reverse=False)
+      self.set_setting('ASSERTIONS', 1)
+      test('', expect_pass=False, need_reverse=False)
 
   @needs_dlfcn
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
@@ -3987,7 +4001,7 @@ ok
   @no_wasm_backend('wasm backend resolved symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
-    if self.get_setting('ASSERTIONS'):
+    if 'ASSERTIONS' not in self.test_mode_settings:
       self.set_setting('ASSERTIONS', 2)
 
     # test hyper-dynamic linking, and test duplicate warnings
@@ -4052,7 +4066,7 @@ ok
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
-    if self.get_setting('ASSERTIONS'):
+    if 'ASSERTIONS' not in self.test_mode_settings:
       print('check warnings')
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
@@ -5641,6 +5655,8 @@ return malloc(size);
     assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
+    if self.run_name == 'asm2f':
+      return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
     use_cmake_configure = WINDOWS
     if use_cmake_configure:
