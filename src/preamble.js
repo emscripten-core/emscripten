@@ -1052,8 +1052,9 @@ function createWasm(env) {
     getBinaryPromise().then(function(binary) {
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
-      err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
+    }).catch(function (error) {
+      err('failed to asynchronously prepare wasm: ' + error);
     });
   }
   // Prefer streaming instantiation if available.
