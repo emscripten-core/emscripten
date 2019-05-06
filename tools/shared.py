@@ -2574,10 +2574,9 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-    if True:
-      for item in graph:
-        if 'import' in item:
-          item['import'][1] = fix_import_name(item['import'][1])
+    for item in graph:
+      if 'import' in item:
+        item['import'][1] = fix_import_name(item['import'][1])
     # map import names from wasm to JS, using the actual name the wasm uses for the import
     import_name_map = {}
     for item in graph:

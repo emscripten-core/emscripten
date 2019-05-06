@@ -1665,7 +1665,7 @@ def create_the_global(metadata):
   if metadata['simd'] or shared.Settings.SIMD:
     # Always import SIMD when building with -s SIMD=1, since in that mode memcpy is SIMD optimized.
     fundamentals += ['SIMD']
-  return '{ ' + ', '.join(['"' + fix_import_name(s) + '": ' + s for s in fundamentals]) + ' }'
+  return '{ ' + ', '.join(['"' + s + '": ' + s for s in fundamentals]) + ' }'
 
 
 RUNTIME_ASSERTIONS = '''
