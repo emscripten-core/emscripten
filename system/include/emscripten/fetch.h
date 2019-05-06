@@ -185,6 +185,22 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 
+// Gets the size (in bytes) of the response headers as plain text.
+// Will only return a sensible result if the ready state is larger than or equal to 2.
+size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
+
+// Gets the response headers as plain text.
+size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
+
+// Converts the plain text headers into an array of strings. This array takes the form
+// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
+// is terminated with a null pointer.
+char **emscripten_fetch_unpack_response_headers(char *headersString);
+
+// This frees the memory used by the array of headers. Call this when finished with the data returned
+// by emscripten_fetch_unpack_response_headers.
+void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders);
+
 #define emscripten_asmfs_open_t int
 
 // The following flags specify how opening files for reading works (from strictest behavior to most flexible)

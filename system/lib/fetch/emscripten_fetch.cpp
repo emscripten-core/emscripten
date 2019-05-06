@@ -76,7 +76,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	if (isMainBrowserThread && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB))
 	{
 #ifdef FETCH_DEBUG
-		EM_ASM(err('emscripten_fetch("' + UTF8ToString($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'), 
+		EM_ASM(err('emscripten_fetch("' + UTF8ToString($0) + '") failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.'),
 			url);
 #endif
 		return 0;
@@ -96,7 +96,7 @@ emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t *fetch_attr, const 
 	fetch->__attributes.onerror = fetch_attr->onerror;
 	fetch->__attributes.onsuccess = fetch_attr->onsuccess;
 	fetch->__attributes.onprogress = fetch_attr->onprogress;
-	fetch->__attributes.onheadersreceived = fetch_attr->onheadersreceived;
+	fetch->__attributes.onreadystatechange = fetch_attr->onreadystatechange;
 #define STRDUP_OR_ABORT(s, str_to_dup)		\
 	if (str_to_dup)							\
 	{										\
@@ -185,7 +185,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 			if (ret == -ETIMEDOUT) return EMSCRIPTEN_RESULT_TIMED_OUT;
 			proxyState = emscripten_atomic_load_u32(&fetch->__proxyState);
 		}
-		else 
+		else
 		{
 			EM_ASM({ console.error('fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.') });
 			return EMSCRIPTEN_RESULT_FAILED;
@@ -234,15 +234,45 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch)
 	return EMSCRIPTEN_RESULT_SUCCESS;
 }
 
+size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch)
+{
+	if (!fetch || fetch->readyState < 2) return 0;
+
+	return (size_t)EM_ASM_INT({
+		return lengthBytesUTF8(Fetch.xhrs[$0].getAllResponseHeaders()) + 1;
+	}, (int32_t)fetch->id);
+}
+
+size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes)
+{
+	if (!fetch || fetch->readyState < 2) return 0;
+
+	return (size_t)EM_ASM_INT({
+		var responseHeaders = Fetch.xhrs[$0].getAllResponseHeaders();
+		var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
+		stringToUTF8(responseHeaders, $1, $2);
+		return Math.min(lengthBytes, $2);
+	}, (int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
+}
+
+/*char **emscripten_fetch_unpack_response_headers(char *headersString)
+{
+
+}*/
+
+void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders)
+{
+	if(unpackedHeaders)
+	{
+		for(size_t i = 0; unpackedHeaders[i]; ++i)
+			free((void*)unpackedHeaders[i]);
+		free((void*)unpackedHeaders);
+	}
+}
+
 static void fetch_free(emscripten_fetch_t *fetch)
 {
 	fetch->id = 0;
-	if(fetch->responseHeaders)
-	{
-		for(size_t i = 0; fetch->responseHeaders[i]; ++i)
-			free((void*)fetch->responseHeaders[i]);
-		free((void*)fetch->responseHeaders);
-	}
 	free((void*)fetch->data);
 	free((void*)fetch->url);
 	free((void*)fetch->__attributes.destinationPath);
