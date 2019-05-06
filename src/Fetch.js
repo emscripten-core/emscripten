@@ -278,7 +278,7 @@ function __emscripten_fetch_cache_data(db, fetch, data, onsuccess, onerror) {
 }
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onheadersreceived) {
+function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var url = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
   if (!url) {
 #if FETCH_DEBUG
@@ -313,7 +313,6 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onheaders
   var fetchAttrReplace = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_REPLACE') }}});
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_SYNCHRONOUS') }}});
   var fetchAttrWaitable = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_WAITABLE') }}});
-  var fetchAttrResponseHeaders = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_RESPONSE_HEADERS') }}});
 
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
@@ -443,36 +442,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onheaders
   }
   xhr.onreadystatechange = function(e) {
       HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-      if (xhr.readyState == 2 && fetchAttrResponseHeaders && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseHeaders }}} >> 2] == 0) {
+      if (xhr.readyState >= 2) {
         HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
-        var headers = xhr.getAllResponseHeaders();
-        var headerList = headers.trim().split(/[\r\n]+/);
-        var numHeaders = headerList.length;
-        if (numHeaders > 0) {
-          var allocBytes = (numHeaders * 2 + 1) * 4;
-          arrayPtr = _malloc(allocBytes);
-          HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseHeaders }}} >> 2] = arrayPtr;
-          HEAPU32[arrayPtr + (numHeaders * 8) >> 2] = 0;
-        }
-        for (var i = 0; i < numHeaders; ++i) {
-          var parts = headerList[i].split(": ");
-          var headerKey = parts.shift();
-          var keyLength = lengthBytesUTF8(headerKey)+1;
-          var keyPtr = _malloc(keyLength);
-          stringToUTF8(headerKey, keyPtr, keyLength);
-
-          var headerValue = parts.join(": ");
-          var valueLength = lengthBytesUTF8(headerValue)+1;
-          var valuePtr = _malloc(valueLength);
-          stringToUTF8(headerValue, valuePtr, valueLength);
-
-          var memoryOffset = i * 8;
-          HEAPU32[arrayPtr + memoryOffset >> 2] = keyPtr;
-          HEAPU32[arrayPtr + (memoryOffset + 4) >> 2] = valuePtr;
-        }
       }
-      xhr.onreadystatechange = null;
-      if (onheadersreceived) onheadersreceived(fetch, xhr, e);
+      if (onreadystatechange) onreadystatechange(fetch, xhr, e);
   }
 #if FETCH_DEBUG
   console.log('fetch: xhr.send(data=' + data + ')');
@@ -487,7 +460,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onheaders
   }
 }
 
-function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersreceivedcb) {
+function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   if (typeof Module !== 'undefined') Module['noExitRuntime'] = true; // If we are the main Emscripten runtime, we should not be closing down.
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
@@ -495,7 +468,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersre
   var onsuccess = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onsuccess }}} >> 2];
   var onerror = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onerror }}} >> 2];
   var onprogress = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onprogress }}} >> 2];
-  var onheadersreceived = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onheadersreceived }}} >> 2];
+  var onreadystatechange = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange }}} >> 2];
   var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
   var fetchAttrLoadToMemory = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_LOAD_TO_MEMORY') }}});
   var fetchAttrStreamData = !!(fetchAttributes & {{{ cDefine('EMSCRIPTEN_FETCH_STREAM_DATA') }}});
@@ -527,19 +500,19 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersre
     else if (errorcb) errorcb(fetch);
   };
 
-  var reportHeadersReceived = function(fetch, xhr, e) {
+  var reportReadyStateChange = function(fetch, xhr, e) {
 #if FETCH_DEBUG
     console.log('fetch: headers received successfully. e: ' + e);
 #endif
-    if (onheadersreceived) {{{ makeDynCall('vi') }}}(onheadersreceived, fetch);
-    else if (headersreceivedcb) headersreceivedcb(fetch);
+    if (onreadystatechange) {{{ makeDynCall('vi') }}}(onreadystatechange, fetch);
+    else if (readystatechangecb) readystatechangecb(fetch);
   }
 
   var performUncachedXhr = function(fetch, xhr, e) {
 #if FETCH_DEBUG
     console.error('fetch: starting (uncached) XHR: ' + e);
 #endif
-    __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress, reportHeadersReceived);
+    __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
 
 #if FETCH_SUPPORT_INDEXEDDB
@@ -568,7 +541,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersre
 #if FETCH_DEBUG
     console.error('fetch: starting (cached) XHR: ' + e);
 #endif
-    __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportHeadersReceived);
+    __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
 
   // Should we try IndexedDB first?
@@ -590,7 +563,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersre
   } else if (!fetchAttrReplace) {
     __emscripten_fetch_load_cached_data(Fetch.dbInstance, fetch, reportSuccess, fetchAttrNoDownload ? reportError : (fetchAttrPersistFile ? performCachedXhr : performUncachedXhr));
   } else if (!fetchAttrNoDownload) {
-    __emscripten_fetch_xhr(fetch, fetchAttrPersistFile ? cacheResultAndReportSuccess : reportSuccess, reportError, reportProgress, reportHeadersReceived);
+    __emscripten_fetch_xhr(fetch, fetchAttrPersistFile ? cacheResultAndReportSuccess : reportSuccess, reportError, reportProgress, reportReadyStateChange);
   } else {
 #if FETCH_DEBUG
     console.error('fetch: Invalid combination of flags passed.');
@@ -599,7 +572,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, headersre
   }
   return fetch;
 #else // !FETCH_SUPPORT_INDEXEDDB
-  __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress, reportHeadersReceived);
+  __emscripten_fetch_xhr(fetch, reportSuccess, reportError, reportProgress, reportReadyStateChange);
   return fetch;
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 }
