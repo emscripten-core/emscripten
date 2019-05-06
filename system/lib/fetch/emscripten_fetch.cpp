@@ -42,6 +42,9 @@ extern "C" {
 		}
 		return queue;
 	}
+
+	int32_t _emscripten_fetch_get_response_headers_length(int32_t);
+	int32_t _emscripten_fetch_get_response_headers(int32_t, int32_t, int32_t);
 }
 
 void emscripten_proxy_fetch(emscripten_fetch_t *fetch)
@@ -238,50 +241,45 @@ size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch)
 {
 	if (!fetch || fetch->readyState < 2) return 0;
 
-	return (size_t)EM_ASM_INT({
-		return lengthBytesUTF8(Fetch.xhrs[$0].getAllResponseHeaders()) + 1;
-	}, (int32_t)fetch->id);
+	return (size_t)_emscripten_fetch_get_response_headers_length((int32_t)fetch->id);
 }
 
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes)
 {
 	if (!fetch || fetch->readyState < 2) return 0;
 
-	return (size_t)EM_ASM_INT({
-		var responseHeaders = Fetch.xhrs[$0].getAllResponseHeaders();
-		var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
-		stringToUTF8(responseHeaders, $1, $2);
-		return Math.min(lengthBytes, $2);
-	}, (int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
+	return (size_t)_emscripten_fetch_get_response_headers((int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
 }
 
-char **emscripten_fetch_unpack_response_headers(char *headersString)
+char **emscripten_fetch_unpack_response_headers(const char *headersString)
 {
 	// Get size of output array and allocate.
 	size_t numHeaders = 0;
-	for(char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
+	for(const char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
 	{
 		numHeaders++;
 	}
-	numHeaders = (numHeaders * 2) + 1;
-	char **unpackedHeaders = (char**)malloc(numHeaders);
-	unpackedHeaders[numHeaders] = NULL;
+	char **unpackedHeaders = (char**)malloc(sizeof(char*) * ((numHeaders * 2) + 1));
+	unpackedHeaders[numHeaders * 2] = NULL;
 
 	// Allocate each header.
-	char *rowStart = headersString, *rowEnd = strchr(rowStart, '\n');
+	const char *rowStart = headersString;
+	const char *rowEnd = strchr(rowStart, '\n');
 	for(size_t headerNum = 0; rowEnd; headerNum += 2)
 	{
-		char *header = unpackedHeaders[headerNum], *value = unpackedHeaders[headerNum+1];
-		char *split = strchr(rowStart, ':');
+		const char *split = strchr(rowStart, ':');
 		size_t headerSize = (size_t)split - (size_t)rowStart;
-		header = (char*)malloc(headerSize + 1);
+		char* header = (char*)malloc(headerSize + 1);
 		strncpy(header, rowStart, headerSize);
 		header[headerSize] = '\0';
 
 		size_t valueSize = (size_t)rowEnd - (size_t)split;
-		value = (char*)malloc(valueSize + 1);
+		char* value = (char*)malloc(valueSize + 1);
 		strncpy(value, split + 1, valueSize);
 		value[valueSize] = '\0';
+
+		unpackedHeaders[headerNum] = header;
+		unpackedHeaders[headerNum+1] = value;
 
 		rowStart = rowEnd + 1;
 		rowEnd = strchr(rowStart, '\n');

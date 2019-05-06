@@ -195,7 +195,7 @@ size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *ds
 // Converts the plain text headers into an array of strings. This array takes the form
 // {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
 // is terminated with a null pointer.
-char **emscripten_fetch_unpack_response_headers(char *headersString);
+char **emscripten_fetch_unpack_response_headers(const char *headersString);
 
 // This frees the memory used by the array of headers. Call this when finished with the data returned
 // by emscripten_fetch_unpack_response_headers.

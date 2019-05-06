@@ -574,3 +574,14 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
   return fetch;
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 }
+
+function _emscripten_fetch_get_response_headers_length(id) {
+    return lengthBytesUTF8(Fetch.xhrs[id-1].getAllResponseHeaders()) + 1;
+}
+
+function _emscripten_fetch_get_response_headers(id, dst, dstSizeBytes) {
+    var responseHeaders = Fetch.xhrs[id-1].getAllResponseHeaders();
+    var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
+    stringToUTF8(responseHeaders, dst, dstSizeBytes);
+    return Math.min(lengthBytes, dstSizeBytes);
+}

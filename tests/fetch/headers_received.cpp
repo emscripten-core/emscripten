@@ -8,19 +8,33 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
-void headersReceived(emscripten_fetch_t *fetch)
+void readyStateChange(emscripten_fetch_t *fetch)
 {
-  assert(fetch->responseHeaders);
+  if(fetch->readyState != 2) return;
+
+  size_t headersLengthBytes = emscripten_fetch_get_response_headers_length(fetch) + 1;
+  char *headerString = new char[headersLengthBytes];
+
+  assert(headerString);
+  emscripten_fetch_get_response_headers(fetch, headerString, headersLengthBytes);
+  printf("Got headers: %s\n", headerString);
+
+  char **responseHeaders = emscripten_fetch_unpack_response_headers(headerString);
+  assert(responseHeaders);
+
+  delete[] headerString;
 
   int numHeaders = 0;
-  for(; fetch->responseHeaders[numHeaders * 2]; ++numHeaders)
+  for(; responseHeaders[numHeaders * 2]; ++numHeaders)
   {
     // Check both the header and its value are present.
-    assert(fetch->responseHeaders[(numHeaders * 2) + 1]);
-    printf("Got response header: %s:%s\n", fetch->responseHeaders[numHeaders * 2], fetch->responseHeaders[(numHeaders * 2) + 1]);
+    assert(responseHeaders[(numHeaders * 2) + 1]);
+    printf("Got response header: %s:%s\n", responseHeaders[numHeaders * 2], responseHeaders[(numHeaders * 2) + 1]);
   }
 
   printf("Finished receiving %d headers from URL %s.\n", numHeaders, fetch->url);
+
+  emscripten_fetch_free_unpacked_response_headers(responseHeaders);
 
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
@@ -39,9 +53,9 @@ int main()
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
-  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_RESPONSE_HEADERS;
+  attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_REPLACE;
   attr.onsuccess = success;
-  attr.onheadersreceived = headersReceived;
+  attr.onreadystatechange = readyStateChange;
   attr.timeoutMSecs = 2*60;
   emscripten_fetch(&attr, "myfile.dat");
 }
