@@ -1192,6 +1192,10 @@ class SettingsManager(object):
         raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
+      if attr == 'STRICT' and value:
+        for a in self.legacy_settings:
+          self.attrs.pop(a, None)
+
       if attr in self.legacy_settings:
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
@@ -1209,6 +1213,7 @@ class SettingsManager(object):
         logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
         logger.error(' - (see src/settings.js for valid values)')
         sys.exit(1)
+
       self.attrs[attr] = value
 
     @classmethod
