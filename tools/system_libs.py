@@ -61,7 +61,7 @@ def get_cflags(force_object_files=False):
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   if libname.endswith('.bc'):
-    shared.Building.link_to_object(inputs, libname)
+    shared.Building.link(inputs, libname)
   elif libname.endswith('.a'):
     shared.Building.emar('cr', libname, inputs)
   else:
