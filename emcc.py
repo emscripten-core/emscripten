@@ -723,7 +723,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # confusing. worse, this will happen on the first file we try to write
     # to, which may be one of the helper files (.wasm, .mem, etc.), which
     # is even more confusing.
-    if not os.path.exists(os.path.dirname(target)):
+    # (note that we must check that dirname is not the empty string - if the
+    # target is just a basename, then dirname is '', which os.path.exists would
+    # report as not existing)
+    dirname = os.path.dirname(target)
+    if dirname and not os.path.exists(dirname):
       exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
   else:
     target = 'a.out.js'
