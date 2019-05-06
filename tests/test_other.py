@@ -9221,7 +9221,6 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd))
 
-
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
