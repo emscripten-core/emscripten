@@ -255,10 +255,40 @@ size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *ds
 	}, (int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
 }
 
-/*char **emscripten_fetch_unpack_response_headers(char *headersString)
+char **emscripten_fetch_unpack_response_headers(char *headersString)
 {
+	// Get size of output array and allocate.
+	size_t numHeaders = 0;
+	for(char *pos = strchr(headersString, '\n'); pos; pos = strchr(pos + 1, '\n'))
+	{
+		numHeaders++;
+	}
+	numHeaders = (numHeaders * 2) + 1;
+	char **unpackedHeaders = (char**)malloc(numHeaders);
+	unpackedHeaders[numHeaders] = NULL;
 
-}*/
+	// Allocate each header.
+	char *rowStart = headersString, rowEnd = strchr(rowStart, '\n');
+	for(size_t headerNum = 0; rowEnd; headerNum += 2)
+	{
+		char *header = unpackedHeaders[headerNum], value = unpackedHeaders[headerNum+1];
+		char *split = strchr(rowStart, ':');
+		size_t headerSize = (size_t)split - (size_t)rowStart;
+		header = malloc(headerSize + 1);
+		strncpy(header, rowStart, headerSize);
+		header[headerSize] = '\0';
+
+		size_t valueSize = (size_t)rowEnd - (size_t)split;
+		value = malloc(valueSize + 1);
+		strncpy(value, split + 1, valueSize);
+		value[valueSize] = '\0';
+
+		rowStart = rowEnd + 1;
+		rowEnd = strchr(rowStart, '\n');
+	}
+
+	return unpackedHeaders;
+}
 
 void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders)
 {
