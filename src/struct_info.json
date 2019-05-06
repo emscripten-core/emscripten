@@ -1561,7 +1561,7 @@
                 "onsuccess",
                 "onerror",
                 "onprogress",
-                "onheadersreceived",
+                "onreadystatechange",
                 "attributes",
                 "timeoutMSecs",
                 "withCredentials",
@@ -1577,7 +1577,6 @@
                 "id",
                 "userData",
                 "url",
-                "responseHeaders",
                 "data",
                 "numBytes",
                 "dataOffset",
@@ -1596,8 +1595,7 @@
             "EMSCRIPTEN_FETCH_REPLACE",
             "EMSCRIPTEN_FETCH_NO_DOWNLOAD",
             "EMSCRIPTEN_FETCH_SYNCHRONOUS",
-            "EMSCRIPTEN_FETCH_WAITABLE",
-            "EMSCRIPTEN_FETCH_RESPONSE_HEADERS"
+            "EMSCRIPTEN_FETCH_WAITABLE"
         ]
     }
  ]

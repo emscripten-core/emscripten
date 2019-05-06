@@ -137,7 +137,6 @@ function __emscripten_fetch_delete_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       console.log('fetch: Deleted file ' + pathStr + ' from IndexedDB');
 #endif
-      HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseHeaders }}} >> 2] = 0;
       HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = 0;
       Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, 0);
       Fetch.setu64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
@@ -189,7 +188,6 @@ function __emscripten_fetch_load_cached_data(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
         console.log('fetch: Loaded file ' + pathStr + ' from IndexedDB, length: ' + len);
 #endif
-        HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.responseHeaders }}} >> 2] = 0;
         // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
         // freed when emscripten_fetch_close() is called.
         var ptr = _malloc(len);

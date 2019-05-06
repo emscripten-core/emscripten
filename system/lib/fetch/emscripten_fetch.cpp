@@ -268,18 +268,18 @@ char **emscripten_fetch_unpack_response_headers(char *headersString)
 	unpackedHeaders[numHeaders] = NULL;
 
 	// Allocate each header.
-	char *rowStart = headersString, rowEnd = strchr(rowStart, '\n');
+	char *rowStart = headersString, *rowEnd = strchr(rowStart, '\n');
 	for(size_t headerNum = 0; rowEnd; headerNum += 2)
 	{
-		char *header = unpackedHeaders[headerNum], value = unpackedHeaders[headerNum+1];
+		char *header = unpackedHeaders[headerNum], *value = unpackedHeaders[headerNum+1];
 		char *split = strchr(rowStart, ':');
 		size_t headerSize = (size_t)split - (size_t)rowStart;
-		header = malloc(headerSize + 1);
+		header = (char*)malloc(headerSize + 1);
 		strncpy(header, rowStart, headerSize);
 		header[headerSize] = '\0';
 
 		size_t valueSize = (size_t)rowEnd - (size_t)split;
-		value = malloc(valueSize + 1);
+		value = (char*)malloc(valueSize + 1);
 		strncpy(value, split + 1, valueSize);
 		value[valueSize] = '\0';
 

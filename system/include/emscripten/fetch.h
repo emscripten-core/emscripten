@@ -189,7 +189,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 // Will only return a sensible result if the ready state is larger than or equal to 2.
 size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
 
-// Gets the response headers as plain text.
+// Gets the response headers as plain text. dstSizeBytes should be headers_length + 1 (for the null terminator).
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
 
 // Converts the plain text headers into an array of strings. This array takes the form
