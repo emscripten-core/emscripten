@@ -337,7 +337,7 @@ var LibraryPThread = {
               Module['noExitRuntime'] = false;
               exit(d.returnCode);
             } else if (d.cmd === 'cancelDone') {
-              PThread.returnThreadToPool(worker);
+              PThread.returnWorkerToPool(worker);
             } else if (d.cmd === 'objectTransfer') {
               PThread.receiveObjectTransfer(e.data);
             } else if (e.data.target === 'setimmediate') {
@@ -416,7 +416,7 @@ var LibraryPThread = {
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
     var worker = pthread.worker;
-    PThread.returnThreadToPool(worker);
+    PThread.returnWorkerToPool(worker);
   },
 
   _cancel_thread: function(pthread_ptr) {
