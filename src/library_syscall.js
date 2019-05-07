@@ -1081,11 +1081,17 @@ var SyscallsLibrary = {
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
     }
+
+    var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
     var pos = 0;
-    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
+    var off = FS.llseek(stream, 0, {{{ cDefine('SEEK_CUR') }}});
+
+    var idx = Math.floor(off / struct_size);
+
+    while (idx < stream.getdents.length && pos + struct_size <= count) {
       var id;
       var type;
-      var name = stream.getdents.pop();
+      var name = stream.getdents[idx];
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
@@ -1098,12 +1104,14 @@ var SyscallsLibrary = {
                8;                             // DT_REG, regular file.
       }
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i64') }}};
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i64') }}};
+      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, '(idx + 1) * struct_size', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
       stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
-      pos += {{{ C_STRUCTS.dirent.__size__ }}};
+      pos += struct_size;
+      idx += 1;
     }
+    FS.llseek(stream, idx * struct_size, {{{ cDefine('SEEK_SET') }}});
     return pos;
   },
   __syscall221__deps: ['__setErrNo'],
