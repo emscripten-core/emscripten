@@ -185,7 +185,7 @@ var LibraryPThread = {
           delete Module['canvas'];
 #endif
 
-          postMessage({ cmd: 'exit', threadId: tb });
+          postMessage({ cmd: 'exit' });
         }
       }
     },
@@ -239,13 +239,13 @@ var LibraryPThread = {
       pthread.stackBase = 0;
       if (pthread.worker) pthread.worker.pthread = null;
     },
-    returnThreadToPool: function(workerToFree) {
-      delete PThread.pthreads[workerToFree.pthread.thread];
-      PThread.freeThreadData(workerToFree.pthread);
-      //Note: workerToFree is intentionally not terminated so the pool can dynamically grow.
-      workerToFree.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
-      PThread.unusedWorkerPool.push(workerToFree);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(workerToFree.pthread), 1); // Not a running Worker anymore.
+    returnWorkerToPool: function(worker) {
+      delete PThread.pthreads[worker.pthread.thread];
+      PThread.freeThreadData(worker.pthread);
+      //Note: worker is intentionally not terminated so the pool can dynamically grow.
+      worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+      PThread.unusedWorkerPool.push(worker);
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
     },
 	
     receiveObjectTransfer: function(data) {
@@ -328,9 +328,9 @@ var LibraryPThread = {
             } else if (d.cmd === 'alert') {
               alert('Thread ' + d.threadId + ': ' + d.text);
             } else if (d.cmd === 'exit') {
-              var detached = Atomics.load(HEAPU32, (d.threadId + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+              var detached = Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
               if (detached) {
-                PThread.returnThreadToPool(worker);
+                PThread.returnWorkerToPool(worker);
               }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
