@@ -38,7 +38,7 @@ mergeInto(LibraryManager.library, {
     },
     createNode: function (parent, name, mode, dev) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = NODEFS.node_ops;
@@ -56,7 +56,7 @@ mergeInto(LibraryManager.library, {
         }
       } catch (e) {
         if (!e.code) throw e;
-        throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+        throw new FS.ErrnoError(-e.errno); // syscall errnos are negated, node's are not
       }
       return stat.mode;
     },
@@ -88,7 +88,7 @@ mergeInto(LibraryManager.library, {
       if (!flags) {
         return newFlags;
       } else {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
     },
     node_ops: {
@@ -99,7 +99,7 @@ mergeInto(LibraryManager.library, {
           stat = fs.lstatSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
         // See http://support.microsoft.com/kb/140365
@@ -142,7 +142,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       lookup: function (parent, name) {
@@ -162,7 +162,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
         return node;
       },
@@ -173,7 +173,7 @@ mergeInto(LibraryManager.library, {
           fs.renameSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       unlink: function(parent, name) {
@@ -182,7 +182,7 @@ mergeInto(LibraryManager.library, {
           fs.unlinkSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       rmdir: function(parent, name) {
@@ -191,7 +191,7 @@ mergeInto(LibraryManager.library, {
           fs.rmdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       readdir: function(node) {
@@ -200,7 +200,7 @@ mergeInto(LibraryManager.library, {
           return fs.readdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       symlink: function(parent, newName, oldPath) {
@@ -209,7 +209,7 @@ mergeInto(LibraryManager.library, {
           fs.symlinkSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       readlink: function(node) {
@@ -220,7 +220,7 @@ mergeInto(LibraryManager.library, {
           return path;
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
     },
@@ -233,7 +233,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       close: function (stream) {
@@ -243,7 +243,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       read: function (stream, buffer, offset, length, position) {
@@ -252,14 +252,14 @@ mergeInto(LibraryManager.library, {
         try {
           return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       write: function (stream, buffer, offset, length, position) {
         try {
           return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(-e.errno);
         }
       },
       llseek: function (stream, offset, whence) {
@@ -272,13 +272,13 @@ mergeInto(LibraryManager.library, {
               var stat = fs.fstatSync(stream.nfd);
               position += stat.size;
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+              throw new FS.ErrnoError(-e.errno);
             }
           }
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
 
         return position;

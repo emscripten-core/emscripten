@@ -344,8 +344,8 @@ def kill_browser_process():
   temporary Firefox profile that was created, if one exists."""
   global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
+    logv('Terminating browser process..')
     try:
-      logv('Terminating browser process..')
       browser_process.kill()
       delete_emrun_safe_firefox_profile()
     except Exception as e:
@@ -456,14 +456,10 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         if browser_quit_code is not None:
           delete_emrun_safe_firefox_profile()
           if not emrun_options.serve_after_close:
-            if not have_received_messages:
-              emrun_options.serve_after_close = True
-              logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-              if not emrun_options.browser:
-                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
-            else:
-              self.shutdown()
-              logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
+            emrun_options.serve_after_close = True
+            logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+            if not emrun_options.browser:
+              logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
 
       # Serve HTTP
       self.handle_request()
@@ -1645,7 +1641,7 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Executing %s" % ' '.join(browser))
+    logi("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True

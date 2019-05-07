@@ -12,17 +12,16 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
     var emrun_should_close_itself = false;
     function postExit(msg) {
       var http = new XMLHttpRequest();
-      http.onreadystatechange = function() {
-        if (http.readyState == 4 /*DONE*/) {
-          try {
-            // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
-            // and emrun does not need to kill the whole browser process.
-            if (typeof window !== 'undefined' && window.close) window.close();
-          } catch(e) {}
-        }
-      }
-      http.open("POST", "stdio.html", true);
+      // Don't do this immediately, this may race with the notification about the return code reaching the
+      // server. Send a *sync* xhr so that we know for sure that the server has gotten the return code
+      // before we continue.
+      http.open("POST", "stdio.html", false);
       http.send(msg);
+      try {
+        // Try closing the current browser window, since it exit()ed itself. This can shut down the browser process
+        // and then emrun does not need to kill the whole browser process.
+        window.close();
+      } catch(e) {}
     }
     function post(msg) {
       var http = new XMLHttpRequest();
@@ -45,8 +44,16 @@ if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined'
       out = function emrun_print(text) { post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevPrint(text); }
       err = function emrun_printErr(text) { post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text)); prevErr(text); }
 
-      // Notify emrun web server that this browser has successfully launched the page.
-      post('^pageload^');
+      // Notify emrun web server that this browser has successfully launched the page. Note that we may need to
+      // wait for the server to be ready.
+      function tryToSendPageload() {
+        try {
+          post('^pageload^');
+        } catch (e) {
+          setTimeout(tryToSendPageload, 50);
+        }
+      }
+      tryToSendPageload();
     }
   }
 

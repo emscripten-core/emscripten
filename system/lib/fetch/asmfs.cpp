@@ -1910,7 +1910,7 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	if (desc->file_pos <= file_pos)
 	{
 		de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
-		de->d_off = file_pos;
+		de->d_off = file_pos + sizeof(dirent);
 		de->d_reclen = sizeof(dirent);
 		de->d_type = DT_DIR;
 		strcpy(de->d_name, ".");
@@ -1923,7 +1923,7 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 	if (desc->file_pos <= file_pos)
 	{
 		de->d_ino = (ino_t)dotdot; // TODO: Create inode numbers instead of using pointers
-		de->d_off = file_pos;
+		de->d_off = file_pos + sizeof(dirent);
 		de->d_reclen = sizeof(dirent);
 		de->d_type = DT_DIR;
 		strcpy(de->d_name, "..");
@@ -1938,7 +1938,7 @@ long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
 		if (desc->file_pos <= file_pos)
 		{
 			de->d_ino = (ino_t)node; // TODO: Create inode numbers instead of using pointers
-			de->d_off = file_pos;
+			de->d_off = file_pos + sizeof(dirent);
 			de->d_reclen = sizeof(dirent);
 			de->d_type = (node->type == INODE_DIR) ? DT_DIR : DT_REG /*Regular file*/;
 			de->d_name[255] = 0;

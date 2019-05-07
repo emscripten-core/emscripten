@@ -219,12 +219,12 @@ typedef unsigned _Reg nlink_t;
 #endif
 
 #if defined(__NEED_off_t) && !defined(__DEFINED_off_t)
-typedef int off_t;
+typedef _Int64 off_t;
 #define __DEFINED_off_t
 #endif
 
 #if defined(__NEED_ino_t) && !defined(__DEFINED_ino_t)
-typedef unsigned int ino_t;
+typedef unsigned _Int64 ino_t;
 #define __DEFINED_ino_t
 #endif
 

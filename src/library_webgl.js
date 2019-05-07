@@ -1128,11 +1128,15 @@ var LibraryGL = {
           return;
         }
         var exts = GLctx.getSupportedExtensions();
+        if (exts === null) {
+          ret = 0;
+        } else {
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+          ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
 #else
-        ret = exts.length;
+          ret = exts.length;
 #endif
+        }
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION

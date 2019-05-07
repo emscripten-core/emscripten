@@ -53,42 +53,6 @@ function JSify(data, functionsOnly) {
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
-
-    // We will start to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that will be created:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-    //
-    // First, we print out everything until the generated code. Then the
-    // functions will print themselves out as they are parsed. Finally, we
-    // will call finalCombiner in the main pass, to print out everything
-    // else. This lets us not hold any strings in memory, we simply print
-    // things out as they are ready.
-
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0], shellFile)));
-    var pre;
-    if (SIDE_MODULE) {
-      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
-    } else if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
-    } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
-    }
-    print(pre);
-  }
-
-  if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
 
@@ -192,15 +156,33 @@ function JSify(data, functionsOnly) {
             }
           }
         }
-        if (!(MAIN_MODULE || SIDE_MODULE)) {
+        if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + ident + "']";
+          var isGlobalAccessor = ident.startsWith('g$');
+          var realIdent = ident;
+          if (isGlobalAccessor) {
+            realIdent = realIdent.substr(2);
+          }
+
+          var target = (SIDE_MODULE ? 'parent' : '') + "Module['_" + realIdent + "']";
           var assertion = '';
-          if (ASSERTIONS)
-            assertion = 'if (!' + target + ') abort("external function \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
-          LibraryManager.library[ident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
+          if (ASSERTIONS) {
+            var what = 'function';
+            if (isGlobalAccessor) {
+              what = 'global';
+            }
+            assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+
+          }
+          var functionBody;
+          if (isGlobalAccessor) {
+            functionBody = assertion + "return " + target + ";"
+          } else {
+            functionBody = assertion + "return " + target + ".apply(null, arguments);";
+          }
+          LibraryManager.library[ident] = new Function(functionBody);
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;
@@ -444,6 +426,21 @@ function JSify(data, functionsOnly) {
 
       return;
     }
+
+    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
+
+    var shellParts = read(shellFile).split('{{BODY}}');
+    print(processMacros(preprocess(shellParts[0], shellFile)));
+    var pre;
+    if (SIDE_MODULE) {
+      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
+    } else if (MINIMAL_RUNTIME) {
+      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
+    } else {
+      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
+            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
+    }
+    print(pre);
 
     // Print out global variables and postsets TODO: batching
     var legalizedI64sDefault = legalizedI64s;

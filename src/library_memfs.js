@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
     createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (!MEMFS.ops_table) {
         MEMFS.ops_table = {
@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw FS.genericErrors[ERRNO_CODES.ENOENT];
+        throw FS.genericErrors[{{{ cDefine('ENOENT') }}}];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -207,7 +207,7 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+              throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
             }
           }
         }
@@ -223,7 +223,7 @@ mergeInto(LibraryManager.library, {
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+          throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
         }
         delete parent.contents[name];
       },
@@ -244,7 +244,7 @@ mergeInto(LibraryManager.library, {
       },
       readlink: function(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return node.link;
       },
@@ -332,7 +332,7 @@ mergeInto(LibraryManager.library, {
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },
@@ -342,7 +342,7 @@ mergeInto(LibraryManager.library, {
       },
       mmap: function(stream, buffer, offset, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
         var ptr;
         var allocated;
@@ -366,7 +366,7 @@ mergeInto(LibraryManager.library, {
           allocated = true;
           ptr = _malloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOMEM);
+            throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
           buffer.set(contents, ptr);
         }
@@ -374,7 +374,7 @@ mergeInto(LibraryManager.library, {
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
         if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
           // MAP_PRIVATE calls need not to be synced back to underlying fs

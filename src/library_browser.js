@@ -816,7 +816,7 @@ var LibraryBrowser = {
     }
   },
 
-  emscripten_async_wget__deps: ['$PATH'],
+  emscripten_async_wget__deps: ['$PATH_FS'],
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
@@ -824,7 +824,7 @@ var LibraryBrowser = {
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    _file = PATH_FS.resolve(_file);
     function doCallback(callback) {
       if (callback) {
         var stack = stackSave();
@@ -869,6 +869,7 @@ var LibraryBrowser = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
+  emscripten_async_wget2__deps: ['$PATH_FS'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
@@ -876,7 +877,7 @@ var LibraryBrowser = {
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    _file = PATH_FS.resolve(_file);
     var _request = UTF8ToString(request);
     var _param = UTF8ToString(param);
     var index = _file.lastIndexOf('/');
@@ -1513,13 +1514,13 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH'],
+  emscripten_get_preloaded_image_data__deps: ['$PATH_FS'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
   emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if ((path | 0) === path) path = UTF8ToString(path);
 
-    path = PATH.resolve(path);
+    path = PATH_FS.resolve(path);
 
     var canvas = Module["preloadedImages"][path];
     if (canvas) {

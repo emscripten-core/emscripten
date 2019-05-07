@@ -35,7 +35,16 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-#endif
+
+#if MODULARIZE
+// In pthreads mode the wasmMemory and others are received in an onmessage, and that
+// onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
+// it to a local so it can be used normally.
+if (ENVIRONMENT_IS_PTHREAD) {
+  wasmMemory = Module['wasmMemory'];
+}
+#endif // MODULARIZE
+#endif // USE_PTHREADS
 
 //========================================
 // Runtime essentials
@@ -800,8 +809,9 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
-#if ASSERTIONS && FILESYSTEM == 0 && !ASMFS
-var /* show errors on likely calls to FS when it was not included */ FS = {
+#if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
+// show errors on likely calls to FS when it was not included
+var FS = {
   error: function() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
   },
@@ -881,6 +891,90 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
+#if AUTODEBUG
+  env['setTempRet0'] = setTempRet0;
+  env['getTempRet0'] = getTempRet0;
+  env['log_execution'] = function(loc) {
+    console.log('log_execution ' + loc);
+  };
+  env['get_i32'] = function(loc, index, value) {
+    console.log('get_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_i64'] = function(loc, index, low, high) {
+    console.log('get_i64 ' + [loc, index, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['get_f32'] = function(loc, index, value) {
+    console.log('get_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['get_f64'] = function(loc, index, value) {
+    console.log('get_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i32'] = function(loc, index, value) {
+    console.log('set_i32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_i64'] = function(loc, index, low, high) {
+    console.log('set_i64 ' + [loc, index, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['set_f32'] = function(loc, index, value) {
+    console.log('set_f32 ' + [loc, index, value]);
+    return value;
+  };
+  env['set_f64'] = function(loc, index, value) {
+    console.log('set_f64 ' + [loc, index, value]);
+    return value;
+  };
+  env['load_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('load_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['load_val_i32'] = function(loc, value) {
+    console.log('load_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['load_val_i64'] = function(loc, low, high) {
+    console.log('load_val_i64 ' + [loc, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['load_val_f32'] = function(loc, value) {
+    console.log('loaload_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['load_val_f64'] = function(loc, value) {
+    console.log('load_val_f64 ' + [loc, value]);
+    return value;
+  };
+  env['store_ptr'] = function(loc, bytes, offset, ptr) {
+    console.log('store_ptr ' + [loc, bytes, offset, ptr]);
+    return ptr;
+  };
+  env['store_val_i32'] = function(loc, value) {
+    console.log('store_val_i32 ' + [loc, value]);
+    return value;
+  };
+  env['store_val_i64'] = function(loc, low, high) {
+    console.log('store_val_i64 ' + [loc, low, high]);
+    env['setTempRet0'](high);
+    return low;
+  };
+  env['store_val_f32'] = function(loc, value) {
+    console.log('loastore_val_i32d_ptr ' + [loc, value]);
+    return value;
+  };
+  env['store_val_f64'] = function(loc, value) {
+    console.log('store_val_f64 ' + [loc, value]);
+    return value;
+  };
+#endif
+
   // prepare imports
   var info = {
     'env': env
@@ -1022,8 +1116,20 @@ Module['asm'] = function(global, env, providedBuffer) {
 #endif // WASM_BACKEND
     'element': 'anyfunc'
   });
+  // With the wasm backend __memory_base and __table_base and only needed for
+  // relocatable output.
+#if RELOCATABLE || !WASM_BACKEND
   env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
-  env['__table_base'] = 0; // table starts at 0 by default (even in dynamic linking, for the main module)
+#if WASM_BACKEND
+  // We reserve slot 0 in the table for the NULL function pointer.
+  // This means the __table_base for the main module (even in dynamic linking)
+  // is always 1.
+  env['__table_base'] = 1;
+#else
+  // table starts at 0 by default (even in dynamic linking, for the main module)
+  env['__table_base'] = 0;
+#endif
+#endif
 
   var exports = createWasm(env);
 #if ASSERTIONS

@@ -30,6 +30,7 @@ total_stack = int(sys.argv[4])
 global_base = int(sys.argv[5])
 binaryen_bin = sys.argv[6]
 debug_info = int(sys.argv[7])
+extra_args = sys.argv[8:]
 
 wasm = not not binaryen_bin
 
@@ -308,6 +309,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
 def eval_ctors_wasm(js, wasm_file, num):
   ctors_start, ctors_end, all_ctors, ctors = find_ctors_data(js, num)
   cmd = [os.path.join(binaryen_bin, 'wasm-ctor-eval'), wasm_file, '-o', wasm_file, '--ctors=' + ','.join(ctors)]
+  cmd += extra_args
   if debug_info:
     cmd += ['-g']
   logging.debug('wasm ctor cmd: ' + str(cmd))

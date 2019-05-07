@@ -753,6 +753,7 @@ var LibraryGLFW = {
 
       event.preventDefault();
 
+#if '$FS' in addedLibraryItems
       var filenames = allocate(new Array(event.dataTransfer.files.length*4), 'i8*', ALLOC_NORMAL);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
@@ -793,6 +794,8 @@ var LibraryGLFW = {
       for (var i = 0; i < count; ++i) {
         save(event.dataTransfer.files[i]);
       }
+
+#endif // '$FS' in addedLibraryItems
 
       return false;
     },
