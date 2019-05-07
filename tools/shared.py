@@ -2623,8 +2623,8 @@ class Building(object):
     # JS optimizations
     if opt_level >= 2:
       passes = []
-      # it may be useful to run simplifyExpressions here (1.5% or so), and perhaps
-      # simplifyIfs, registerize, asmLastOpts, last.
+      # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
+      # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
       if not debug_info:
         passes += ['minifyNames']
       if minify_whitespace:
