@@ -10,10 +10,10 @@ i8x16 TESTFN i8x16_load(i8x16 *ptr) {
   return (i8x16) wasm_v128_load(ptr);
 }
 void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
-  i8x16_store(ptr, vec);
+  wasm_v128_store(ptr, vec);
 }
 v128 TESTFN i32x4_const(void) {
-  return wasm_v128_const(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+  return wasm_v128_const(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
 }
 i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
   return __builtin_shufflevector(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
@@ -437,7 +437,7 @@ f32x4 TESTFN f32x4_max(f32x4 x, f32x4 y) {
 }
 #ifdef __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_abs(f64x2 vec) {
-  return __builtin_wasm_abs_f64x2(vec);
+  return wasm_f64x2_abs(vec);
 }
 #endif // __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_neg(f64x2 vec) {
@@ -445,7 +445,7 @@ f64x2 TESTFN f64x2_neg(f64x2 vec) {
 }
 #ifdef __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_sqrt(f64x2 vec) {
-  return __builtin_wasm_sqrt_f64x2(vec);
+  return wasm_f64x2_sqrt(vec);
 }
 #endif // __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_add(f64x2 x, f64x2 y) {
@@ -462,10 +462,10 @@ f64x2 TESTFN f64x2_div(f64x2 x, f64x2 y) {
 }
 #ifdef __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_min(f64x2 x, f64x2 y) {
-  return __builtin_wasm_min_f64x2(x, y);
+  return wasm_f64x2_min(x, y);
 }
 f64x2 TESTFN f64x2_max(f64x2 x, f64x2 y) {
-  return __builtin_wasm_max_f64x2(x, y);
+  return wasm_f64x2_max(x, y);
 }
 #endif // __wasm_unimplemented_simd128__
 i32x4 TESTFN i32x4_trunc_s_f32x4_sat(f32x4 vec) {
@@ -584,7 +584,7 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
     expect_vec(i8x16_load(&vec),
               (__extension__(i8x16){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
   }
-  expect_vec(i32x4_const(), ((v128)((i32x4){1, 2, 3, 4})));
+  expect_vec(i32x4_const(), ((v128){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}));
   expect_vec(
     i8x16_shuffle_interleave_bytes(
       (i8x16){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
