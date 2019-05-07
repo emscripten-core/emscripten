@@ -17,41 +17,60 @@ extern "C" {
 void EMSCRIPTEN_KEEPALIVE spawn_a_thread() {
 	std::thread( [] {
 		double d=0;
-		for (int i=0; i<10000000; i++)			//simulate work
+		for (int i=0; i<10; i++)			//simulate work
 			d += (i%2 ? sqrt((int)(rand())) : (-1)*sqrt((int)(rand())));
-#ifndef REPORT_RESULT
-		std::cout << d << std::endl;
-#endif
 	} ).detach();
 }
 
 
 //Check that the number of workers is less than the number of spawned threads.
-void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned) {
-	int num_threads = EM_ASM_INT({
+void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads_spawned_extra) {
+	num_threads_spawned += num_threads_spawned_extra;
+	int num_workers = EM_ASM_INT({
 		return PThread.runningWorkers.length + PThread.unusedWorkerPool.length;
 	});
 
 #ifdef REPORT_RESULT
-	if (num_threads < num_threads_spawned)
+	if (num_threads_spawned_extra == 0)		//check extra thread spawned
+		REPORT_RESULT(-1);
+	if (num_workers < num_threads_spawned)		//check worker returned to pool and was assigned another thread
 		REPORT_RESULT(0);
 	else
-		REPORT_RESULT(num_threads);
+		REPORT_RESULT(num_workers);
 #else
-	assert(num_threads < num_threads_spawned);
-	std::cout << num_threads << std::endl;
+	std::cout << 
+		"Worker pool size: " << num_workers << 
+		", Number of threads spawned: " << num_threads_spawned 
+	<< "." << std::endl;
+	assert(num_threads_spawned_extra != 0);
+	assert(num_workers < num_threads_spawned);
 #endif
 }
 }
 
-//Spawn a detached thread every 0.5s. After 10s Check that the number of workers are less than the number of spawned threads
+//Spawn a detached thread every 0.1s. After 0.3s Check that the number of workers are less than the number of spawned threads
 int main(int argc, char** argv) {
 	EM_ASM(
-		const i_max = 20;
-		for (let i=0; i<i_max; i++) {
-			setTimeout(() => { _spawn_a_thread(); }, i*500);
+		let thread_check = 0;
+		const max_thread_check = 5;		//fail the test if the number of threads doesn't go down after checking this many times
+		const threads_to_spawn = 3;
+		let threads_to_spawn_extra = 0;
+		
+		//Spawn some detached threads
+		for (let i=0; i<threads_to_spawn; i++) {
+			setTimeout(() => { _spawn_a_thread(); }, i*100);
 		}
 		
-		setTimeout(() => { _count_threads(i_max); }, i_max*500);
+		//Check if a worker is free every threads_to_spawn*100 ms, or until max_thread_check is exceeded
+		const SpawnMoreThreads = setInterval(() => {
+			if (PThread.unusedWorkerPool.length > 0) {	//Spawn a thread if a worker is available
+				_spawn_a_thread();
+				threads_to_spawn_extra++;
+			}
+			if (thread_check++ > max_thread_check || threads_to_spawn_extra > 0) {
+				clearInterval(SpawnMoreThreads);
+				_count_threads(threads_to_spawn, threads_to_spawn_extra);
+			}
+		}, threads_to_spawn*100);
 	);
 }
