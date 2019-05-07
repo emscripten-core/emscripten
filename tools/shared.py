@@ -518,7 +518,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure
 # NB: major version 0 implies no compatibility
-(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 0)
+(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 1)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
 # semver and changes whenever C types change size/signedness or
@@ -1836,9 +1836,7 @@ class Building(object):
     #   cmd.append('--strip-debug')
 
     export_all = False
-    if Settings.MAIN_MODULE:
-      export_all = True
-    elif Settings.EXPORT_ALL:
+    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
       export_all = True
 
     if Settings.RELOCATABLE:
@@ -2095,28 +2093,18 @@ class Building(object):
     return target
 
   @staticmethod
-  def llvm_dis(input_filename, output_filename=None):
+  def llvm_dis(input_filename, output_filename):
     # LLVM binary ==> LLVM assembly
-    if output_filename is None:
-      # use test runner conventions
-      output_filename = input_filename + '.o.ll'
-      input_filename = input_filename + '.o'
     try_delete(output_filename)
     output = run_process([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).stdout
     assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
-    return output_filename
 
   @staticmethod
-  def llvm_as(input_filename, output_filename=None):
+  def llvm_as(input_filename, output_filename):
     # LLVM assembly ==> LLVM binary
-    if output_filename is None:
-      # use test runner conventions
-      output_filename = input_filename + '.o'
-      input_filename = input_filename + '.o.ll'
     try_delete(output_filename)
     output = run_process([LLVM_AS, input_filename, '-o', output_filename], stdout=PIPE).stdout
     assert os.path.exists(output_filename), 'Could not create bc file: ' + output
-    return output_filename
 
   @staticmethod
   def parse_symbols(output, include_internal=False):
@@ -3046,8 +3034,20 @@ class WebAssembly(object):
 
   @staticmethod
   def add_emscripten_metadata(js_file, wasm_file):
-    mem_size = Settings.STATIC_BUMP
+    WASM_PAGE_SIZE = 65536
+
+    mem_size = Settings.TOTAL_MEMORY // WASM_PAGE_SIZE
     table_size = Settings.WASM_TABLE_SIZE
+    global_base = Settings.GLOBAL_BASE
+
+    js = open(js_file).read()
+    m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
+    tempdouble_ptr = int(m.group(2))
+    m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
+    dynamic_base = int(m.group(2))
+    m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)
+    dynamictop_ptr = int(m.group(2))
+
     logger.debug('creating wasm emscripten metadata section with mem size %d, table size %d' % (mem_size, table_size,))
     name = b'\x13emscripten_metadata' # section name, including prefixed size
     contents = (
@@ -3061,11 +3061,13 @@ class WebAssembly(object):
       WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
       WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
 
-      # static bump
       WebAssembly.lebify(mem_size) +
+      WebAssembly.lebify(table_size) +
+      WebAssembly.lebify(global_base) +
+      WebAssembly.lebify(dynamic_base) +
+      WebAssembly.lebify(dynamictop_ptr) +
+      WebAssembly.lebify(tempdouble_ptr)
 
-      # table size
-      WebAssembly.lebify(table_size)
       # NB: more data can be appended here as long as you increase
       #     the EMSCRIPTEN_METADATA_MINOR
     )

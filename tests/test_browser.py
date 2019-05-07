@@ -1559,7 +1559,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
-    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1')
+    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1')
 
   def _test_egl_width_height_base(self, *args):
     create_test_file('test_egl_width_height.c', self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
@@ -1683,9 +1683,14 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glgears(self):
-    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
-               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'], outfile='something.html',
-               message='You should see animating gears.')
+    def test(args):
+      self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
+                 args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
+    # test normally
+    test([])
+    # test that a program that doesn't use pthreads still works with with pthreads enabled
+    # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
+    test(['-s', 'USE_PTHREADS=1'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
@@ -4062,7 +4067,7 @@ window.close = function() {
   @no_chrome('see #7374')
   @requires_threads
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
+    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
@@ -4109,7 +4114,7 @@ window.close = function() {
   @no_chrome('see #7374')
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
-      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']
       print(str(cmd))
       self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
 
@@ -4119,7 +4124,7 @@ window.close = function() {
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1']]:
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
           cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
@@ -4271,7 +4276,7 @@ window.close = function() {
 
   @requires_threads
   def test_asmfs_test_fcntl_open(self):
-    self.btest('fcntl-open/src.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fcntl/test_fcntl_open.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
   def test_asmfs_relative_paths(self):
