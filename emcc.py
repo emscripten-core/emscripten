@@ -556,7 +556,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
     # XXX use this to debug configure stuff. ./configure's generally hide our
     # normal output including stderr so we write to a file
-    debug_configure = 1
+    debug_configure = 0
 
     # Whether we fake configure tests using clang - the local, native compiler -
     # or not. if not we generate JS and use node with a shebang
