@@ -481,8 +481,7 @@ class RunnerCore(unittest.TestCase):
     return output_obj
 
   def get_emcc_args(self):
-    # TODO(sbc): We should probably unify Building.COMPILER_TEST_OPTS and self.emcc_args
-    return self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS
+    return self.serialize_settings() + self.emcc_args
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -750,8 +749,10 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    hash_input = (str(Building.COMPILER_TEST_OPTS) + ' $ ' + str(env_init)).encode('utf-8')
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
+    emcc_args = self.get_emcc_args()
+
+    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -1030,7 +1031,7 @@ class RunnerCore(unittest.TestCase):
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
       '-I' + path_from_root('tests', 'poppler', 'include')
     ]
@@ -1039,7 +1040,7 @@ class RunnerCore(unittest.TestCase):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
