@@ -1553,6 +1553,13 @@ function getQuoted(str) {
 
 function makeRetainedCompilerSettings() {
   var blacklist = set('STRUCT_INFO');
+  if (STRICT) {
+    for (var i in LEGACY_SETTINGS) {
+      var name = LEGACY_SETTINGS[i][0];
+      blacklist[name] = 0;
+    }
+  }
+
   var ret = {};
   for (var x in this) {
     try {

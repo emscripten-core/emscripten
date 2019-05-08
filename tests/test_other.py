@@ -9176,16 +9176,54 @@ int main () {
     run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
     run_process([PYTHON, EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
 
-  def test_legacy_settings_strict_mode(self):
+  def test_strict_mode_hello_world(self):
+    # Verify that strict mode can be used for simple hello world program both
+    # via the environment EMCC_STRICT=1 and from the command line `-s STRICT`
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'STRICT=1']
+    run_process(cmd)
+    with env_modify({'EMCC_STRICT': '1'}):
+      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+
+  def test_strict_mode_legacy_settings(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
     run_process(cmd)
+
+    stderr = self.expect_fail(cmd + ['-s', 'STRICT=1'])
+    self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', stderr)
 
     with env_modify({'EMCC_STRICT': '1'}):
       stderr = self.expect_fail(cmd)
       self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', stderr)
 
-    stderr = self.expect_fail(cmd + ['-s', 'STRICT=1'])
-    self.assertContained('legacy setting used in strict mode: SPLIT_MEMORY', stderr)
+  def test_strict_mode_legacy_settings_runtime(self):
+    # Verify that legacy settings are not accessible at runtime under strict
+    # mode.
+    self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
+    src = r'''\
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    int main() {
+      printf("BINARYEN_METHOD: %s\n", (char*)emscripten_get_compiler_setting("BINARYEN_METHOD"));
+      return 0;
+    }
+    '''
+    self.do_run(src, 'BINARYEN_METHOD: native-wasm')
+    with env_modify({'EMCC_STRICT': '1'}):
+      self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
+    self.set_setting('STRICT', 1)
+    self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
+
+  def test_strict_mode_legacy_settings_library(self):
+    create_test_file('lib.js', r'''
+#if SPLIT_MEMORY
+#endif
+''')
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out.js', '--js-library', 'lib.js']
+    run_process(cmd)
+    self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd + ['-s', 'STRICT=1']))
+    with env_modify({'EMCC_STRICT': '1'}):
+      self.assertContained('ReferenceError: SPLIT_MEMORY is not defined', self.expect_fail(cmd))
 
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')

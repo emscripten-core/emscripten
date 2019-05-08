@@ -2242,9 +2242,9 @@ var LibrarySDL = {
         }
       }
       var callStbImage = function(func, params) {
-        var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        var x = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
+        var y = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
+        var comp = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
         addCleanup(function() {
           Module['_free'](x);
           Module['_free'](y);
