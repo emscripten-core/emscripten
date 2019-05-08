@@ -1709,7 +1709,7 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   def test_memorygrowth(self):
-    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+    if self.changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     self.maybe_closure()
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -1746,7 +1746,7 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
-    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+    if self.changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
@@ -1779,7 +1779,7 @@ int main(int argc, char **argv) {
     test()
 
   def test_memorygrowth_3(self):
-    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+    if self.changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
     # checks handling of malloc failure properly
@@ -1787,7 +1787,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   def test_memorygrowth_wasm_mem_max(self):
-    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+    if self.changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
@@ -1797,7 +1797,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
-    if 'ALLOW_MEMORY_GROWTH' in self.test_mode_settings:
+    if self.changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
@@ -2309,7 +2309,7 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
-    if 'ASSERTIONS' in self.test_mode_settings:
+    if self.has_changed_setting('ASSERTIONS'):
       self.skipTest('test needs to customize ASSERTIONS')
     self.set_setting('ASSERTIONS', 1)
     src = r'''
@@ -3890,7 +3890,7 @@ ok
 
     test('libc++')
     test('1')
-    if 'ASSERTIONS' not in self.test_mode_settings:
+    if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 0)
       test('', expect_pass=False, need_reverse=False)
       self.set_setting('ASSERTIONS', 1)
@@ -4000,7 +4000,7 @@ ok
   @no_wasm_backend('wasm backend resolved symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
-    if 'ASSERTIONS' not in self.test_mode_settings:
+    if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 2)
 
     # test hyper-dynamic linking, and test duplicate warnings
@@ -4065,7 +4065,7 @@ ok
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
-    if 'ASSERTIONS' not in self.test_mode_settings:
+    if not self.has_changed_setting('ASSERTIONS'):
       print('check warnings')
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
@@ -6386,7 +6386,7 @@ return malloc(size);
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
-    if 'ASSERTIONS' not in self.test_mode_settings:
+    if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
       self.set_setting('ASSERTIONS', 0)
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
@@ -7617,10 +7617,6 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
-
-    # keep a copy of the settings for this test mode, so we can know
-    # them even in tests that modify settings
-    self.test_mode_settings = settings
 
     # avoid various compiler warnings in our test output
     self.emcc_args += [

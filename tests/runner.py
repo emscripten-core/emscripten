@@ -407,6 +407,9 @@ class RunnerCore(unittest.TestCase):
       self.clear_setting(key)
     self.settings_mods[key] = value
 
+  def changed_setting(self, key):
+    return key in self.settings_mods
+
   def clear_setting(self, key):
     self.settings_mods.pop(key, None)
 
