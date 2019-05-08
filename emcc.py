@@ -717,17 +717,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # specified_target is the user-specified one, target is what we will generate
   if specified_target:
     target = specified_target
-    # show a clear error if the user sets a specified target to something
-    # no-existing like NONEXISTENT_DIR/something. Python will give an error
-    # "no such file" when we try to write to that file, which can be
-    # confusing. worse, this will happen on the first file we try to write
-    # to, which may be one of the helper files (.wasm, .mem, etc.), which
-    # is even more confusing.
-    # (note that we must check that dirname is not the empty string - if the
-    # target is just a basename, then dirname is '', which os.path.exists would
-    # report as not existing)
+    # check for the existence of the output directory now, to avoid having
+    # to do so repeatedly when each of the various output files (.mem, .wasm,
+    # etc) are written. This gives a more useful error message than the
+    # IOError and python backtrace that users would otherwise see.
     dirname = os.path.dirname(target)
-    if dirname and not os.path.exists(dirname):
+    if dirname and not os.path.isdir(dirname):
       exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
   else:
     target = 'a.out.js'
