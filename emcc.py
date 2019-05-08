@@ -1289,14 +1289,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    if shared.Settings.OUTLINING_LIMIT:
-      if shared.Settings.WASM_BACKEND:
-        exit_with_error('OUTLINING_LIMIT is not compatible with the LLVM wasm backend')
-      if not options.js_opts:
-        logger.debug('enabling js opts as optional functionality implemented as a js opt was requested')
-        options.js_opts = True
-      options.force_js_opts = True
-
     # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
     if options.opt_level >= 1 and options.debug_level < 2 and not shared.Settings.WASM:
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
@@ -1380,8 +1372,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
-      if shared.Settings.OUTLINING_LIMIT:
-        logger.warning('for wasm there is usually no need to set OUTLINING_LIMIT, as VMs can handle large functions well anyhow')
       # default precise-f32 to on, since it works well in wasm
       shared.Settings.PRECISE_F32 = 1
       if options.js_opts and not options.force_js_opts:
@@ -2151,11 +2141,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.opt_level >= 1 and options.js_opts:
         if options.opt_level >= 2:
-          # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
+          # simplify ifs if it is ok to make the code somewhat unreadable,
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
           debugging = options.debug_level == 0 or options.profiling
-          if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.WASM:
+          if shared.Settings.SIMPLIFY_IFS and debugging and not shared.Settings.WASM:
             optimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32:
@@ -2164,10 +2154,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_opts:
         if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
           optimizer.queue += ['safeHeap']
-
-        if shared.Settings.OUTLINING_LIMIT > 0:
-          optimizer.queue += ['outline']
-          optimizer.extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
         if options.opt_level >= 2 and options.debug_level < 3:
           if options.opt_level >= 3 or options.shrink_level > 0:
