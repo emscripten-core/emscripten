@@ -655,10 +655,6 @@ align 32: 0
 base align: 0, 0, 0, 0'''])
 
     test()
-    if '-O' in str(self.emcc_args) and not self.is_wasm_backend():
-      print('outlining')
-      self.set_setting('OUTLINING_LIMIT', 60)
-      test()
 
   @no_emterpreter
   def test_stack_restore(self):
@@ -5590,17 +5586,11 @@ return malloc(size);
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'font.ttf')
 
     # Main
-    for outlining in [0, 5000]:
-      if outlining and self.is_wasm_backend():
-        continue
-      self.set_setting('OUTLINING_LIMIT', outlining)
-      print('outlining:', outlining, file=sys.stderr)
-      self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
-                  open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
-                  ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=self.get_freetype_library(),
-                  includes=[path_from_root('tests', 'freetype', 'include')])
-      self.set_setting('OUTLINING_LIMIT', 0)
+    self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
+                open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
+                ['font.ttf', 'test!', '150', '120', '25'],
+                libraries=self.get_freetype_library(),
+                includes=[path_from_root('tests', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
