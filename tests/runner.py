@@ -249,6 +249,12 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
   'asmi',
   'asm2i',
 ]
@@ -263,6 +269,7 @@ non_core_test_modes = [
   'sanity',
   'sockets',
   'interactive',
+  'benchmark',
 ]
 
 test_index = 0
@@ -299,15 +306,18 @@ class RunnerCore(unittest.TestCase):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('no dynamic library support in wasm2js yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
+    if self.get_setting('SIDE_MODULE') or \
+      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
       return opt_supports
 
   def set_temp_dir(self, temp_dir):

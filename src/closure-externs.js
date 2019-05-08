@@ -763,6 +763,7 @@ SIMD.Bool64x2.fromFloat64x2 = function() {};
 
 /**
  * @const
+ * @suppress {duplicate}
  */
 var WebAssembly = {};
 /**

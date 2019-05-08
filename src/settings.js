@@ -1399,6 +1399,11 @@ var BINARYEN_FEATURES = [];
 // logging that can help in debugging.
 var AUTODEBUG = 0;
 
+// Whether we should use binaryen's wasm2js to convert our wasm to JS. Set when
+// wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
+// wasm normally, then compile that to JS).
+var WASM2JS = 0;
+
 // Legacy settings that have been removed, and the values they are now fixed to.
 // These can no longer be changed:
 // [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
