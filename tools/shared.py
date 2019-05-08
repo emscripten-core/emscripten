@@ -1261,11 +1261,11 @@ def verify_settings():
 
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
-      # TODO(sbc): Make this into a hard error.  We still have a few places that
-      # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
-      # generate_struct_info).
-      logger.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+      # When the user requests non-wasm output, we enable wasm2js. that is,
+      # we still compile to wasm normally, but we compile the final output
+      # to js.
       Settings.WASM = 1
+      Settings.WASM2JS = 1
 
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
@@ -2389,7 +2389,7 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True):
+  def closure_compiler(filename, pretty=True, advanced=True):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
         logger.error('Cannot run closure compiler')
@@ -2426,11 +2426,12 @@ class Building(object):
       args = [JAVA,
               '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
               '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
               '--language_in', 'ECMASCRIPT5']
-      args += CLOSURE_ANNOTATIONS
-      args += ['--externs', CLOSURE_EXTERNS,
-               '--js_output_file', outfile]
+      if advanced:
+        args += CLOSURE_ANNOTATIONS
+        args += ['--externs', CLOSURE_EXTERNS]
+      args += ['--js_output_file', outfile]
 
       if Settings.target_environment_may_be('node'):
         for extern in NODE_EXTERNS:
@@ -2477,7 +2478,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2509,10 +2510,6 @@ class Building(object):
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
         if Settings.EMITTING_JS and not Settings.AUTODEBUG:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
-      # finally, optionally use closure compiler to finish cleaning up the JS
-      if use_closure_compiler:
-        logger.debug('running closure on shell code')
-        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2604,6 +2601,52 @@ class Building(object):
       passes.append('minifyWhitespace')
     extra_info = {'mapping': mapping}
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
+
+  @staticmethod
+  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
+    logger.debug('wasm2js')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    if opt_level > 0:
+      cmd += ['-O']
+    cmd += Building.get_binaryen_feature_flags()
+    wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if opt_level >= 2:
+      temp = configuration.get_temp_files().get('.js').name
+      with open(temp, 'a') as f:
+        f.write(wasm2js_js)
+      # if closure is 1, minify the code in a non-advanced way here (we don't validate
+      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
+      # mode, then we'll minify it all together later on
+      if use_closure_compiler == 1:
+        temp = Building.closure_compiler(temp,
+                                         pretty=not minify_whitespace,
+                                         advanced=False)
+      elif minify_whitespace:
+        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      with open(temp) as f:
+        wasm2js_js = f.read()
+      # closure may leave a trailing `;`, which would be invalid given where we place
+      # this code (inside parens)
+      wasm2js_js = wasm2js_js.strip()
+      if wasm2js_js[-1] == ';':
+        wasm2js_js = wasm2js_js[:-1]
+    with open(js_file) as f:
+      all_js = f.read()
+    # quoted notation, something like Module['__wasm2jsInstantiate__']
+    finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
+    if not finds:
+      # post-closure notation, something like a.__wasm2jsInstantiate__
+      finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
+    assert len(finds) == 1
+    marker = finds[0]
+    all_js = all_js.replace(marker, '(\n' + wasm2js_js + '\n)')
+    # replace the placeholder with the actual code
+    js_file = js_file + '.wasm2js.js'
+    with open(js_file, 'w') as f:
+      f.write(all_js)
+    if not DEBUG:
+      try_delete(wasm_file)
+    return js_file
 
   # the exports the user requested
   user_requested_exports = []

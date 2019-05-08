@@ -1120,13 +1120,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.LEGACY_VM_SUPPORT:
       # legacy vms don't have wasm
-      assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
+      assert not shared.Settings.WASM or shared.Settings.WASM2JS, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-    if shared.Settings.WASM:
+    if shared.Settings.WASM and not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
@@ -1387,14 +1387,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_opts and not options.force_js_opts:
         options.js_opts = None
         logger.debug('asm.js opts not forced by user or an option that depends them, and we do not intend to run the asm.js, so disabling and leaving opts to the binaryen optimizer')
-      if options.use_closure_compiler == 2:
+      if options.use_closure_compiler == 2 and not shared.Settings.WASM2JS:
         exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
-      # for simplicity, we always have a mem init file, which may also be imported into the wasm module.
-      #  * if we also supported js mem inits we'd have 4 modes
-      #  * and js mem inits are useful for avoiding a side file, but the wasm module avoids that anyhow
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-      options.memory_init_file = True
+      if not shared.Settings.WASM2JS:
+        # wasm normally includes the mem init in the wasm binary. exceptions are pthreads, where we need
+        # to split it out until we have full bulk memory support, and wasm2js, which behaves more like js.
+        options.memory_init_file = True
+        # we will include the mem init data in the wasm, when we don't need the
+        # mem init file to be loadable by itself
+        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
+      else:
+        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
+        # wouldn't tell a js build to use a separate mem init file
+        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
 
       if not shared.Settings.MINIMAL_RUNTIME: # BINARYEN_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
@@ -1417,10 +1424,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SWAPPABLE_ASM_MODULE == 1:
           shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
           logger.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -s SWAPPABLE_ASM_MODULE=1 is used')
-
-      # we will include the mem init data in the wasm, when we don't need the
-      # mem init file to be loadable by itself
-      shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -1473,6 +1476,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # we also need emulated function pointers for that, as we need a single flat
           # table, as is standard in wasm, and not asm.js split ones.
           shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+
+    if shared.Settings.WASM2JS:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('wasm2js is only available in the upstream wasm backend path')
+      logger.warn('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
@@ -2030,10 +2038,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     with ToolchainProfiler.profile_block('memory initializer'):
       memfile = None
-      # for the wasm backend, use a memfile exactly when using pthreads (until
-      # we can remove this temporary hack)
       if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
-         (shared.Settings.WASM_BACKEND and shared.Settings.USE_PTHREADS):
+         (shared.Settings.WASM_BACKEND and not shared.Settings.MEM_INIT_IN_WASM):
         if shared.Settings.MINIMAL_RUNTIME:
           # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
           memfile = target.replace('.html', '.mem').replace('.js', '.mem')
@@ -2045,7 +2051,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # For the wasm backend, we don't have any memory info in JS. All we need to do
           # is set the memory initializer url.
           src = open(final).read()
-          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % memfile)
+          src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
           open(final + '.mem.js', 'w').write(src)
           final += '.mem.js'
         else:
@@ -2193,7 +2199,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         optimizer.flush()
 
-      if options.use_closure_compiler == 2:
+      if options.use_closure_compiler == 2 and not shared.Settings.WASM_BACKEND:
         optimizer.flush()
 
         logger.debug('running closure')
@@ -2755,19 +2761,43 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
 
-  if options.opt_level >= 2:
+  if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
-    if optimizer.cleanup_shell or options.use_closure_compiler:
-      save_intermediate_with_wasm('preclean', wasm_binary_target)
-      final = shared.Building.minify_wasm_js(js_file=final,
-                                             wasm_file=wasm_binary_target,
-                                             expensive_optimizations=will_metadce(options),
-                                             minify_whitespace=optimizer.minify_whitespace,
-                                             use_closure_compiler=options.use_closure_compiler,
-                                             debug_info=debug_info,
-                                             emit_symbol_map=emit_symbol_map)
-      save_intermediate_with_wasm('postclean', wasm_binary_target)
+    save_intermediate_with_wasm('preclean', wasm_binary_target)
+    final = shared.Building.minify_wasm_js(js_file=final,
+                                           wasm_file=wasm_binary_target,
+                                           expensive_optimizations=will_metadce(options),
+                                           minify_whitespace=optimizer.minify_whitespace,
+                                           debug_info=debug_info,
+                                           emit_symbol_map=emit_symbol_map)
+    save_intermediate_with_wasm('postclean', wasm_binary_target)
+
+  def run_closure_compiler(final):
+    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
+    save_intermediate_with_wasm('closure', wasm_binary_target)
+    return final
+
+  # In the general case, run closure here. wasm2js is more complicated: in mode 1,
+  # we run closure here, so that it does not affect the wasm2js output, which is
+  # added later. In mode 2, we do run it afterwards, so it sees the entire program
+  # including the wasm2js output.
+  # TODO: is it worth it?
+  if options.use_closure_compiler and (not shared.Settings.WASM2JS or options.use_closure_compiler == 1):
+    final = run_closure_compiler(final)
+
+  if shared.Settings.WASM2JS:
+    final = shared.Building.wasm2js(final,
+                                    wasm_binary_target,
+                                    opt_level=options.opt_level,
+                                    minify_whitespace=optimizer.minify_whitespace,
+                                    use_closure_compiler=options.use_closure_compiler,
+                                    debug_info=debug_info)
+    save_intermediate_with_wasm('wasm2js', wasm_binary_target)
+
+    if options.use_closure_compiler == 2:
+      final = run_closure_compiler(final)
+
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     js = open(final).read()
