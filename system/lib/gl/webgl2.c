@@ -147,7 +147,10 @@ GL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array) { return glIsV
 GL_APICALL void GL_APIENTRY glDrawBuffersEXT(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 GL_APICALL void GL_APIENTRY glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs) { glDrawBuffers(n, bufs); }
 
-void *emscripten_webgl2_ext_get_proc_address(const char *name)
+// Returns a function pointer to the given WebGL 2 extension function, when queried without
+// a GL extension suffix such as "EXT", "OES", or "ANGLE". This function is used by
+// emscripten_GetProcAddress() to implement legacy GL emulation semantics for portability.
+void *_webgl2_match_ext_proc_address_without_suffix(const char *name)
 {
 	RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, EXT);
 	RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, ARB);
