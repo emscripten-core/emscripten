@@ -712,6 +712,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # specified_target is the user-specified one, target is what we will generate
   if specified_target:
     target = specified_target
+    # check for the existence of the output directory now, to avoid having
+    # to do so repeatedly when each of the various output files (.mem, .wasm,
+    # etc) are written. This gives a more useful error message than the
+    # IOError and python backtrace that users would otherwise see.
+    dirname = os.path.dirname(target)
+    if dirname and not os.path.isdir(dirname):
+      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
   else:
     target = 'a.out.js'
 

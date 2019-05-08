@@ -7847,6 +7847,10 @@ int main() {
     ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'])
     self.assertContained('WASM_MEM_MAX must be a multiple of 64KB', ret)
 
+  def test_invalid_output_dir(self):
+    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('NONEXISTING_DIRECTORY', 'out.js')])
+    self.assertContained('specified output file (NONEXISTING_DIRECTORY%sout.js) is in a directory that does not exist' % os.path.sep, ret)
+
   @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
