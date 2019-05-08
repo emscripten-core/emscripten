@@ -311,9 +311,8 @@ class TestCoreBase(RunnerCore):
   def test_cube2hash(self):
     # A good test of i64 math
     self.do_run('', 'Usage: hashstring <seed>',
-                libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
-                includes=[path_from_root('tests', 'cube2hash')],
-                cflags=self.get_emcc_args())
+                libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None, cflags=self.get_emcc_args()),
+                includes=[path_from_root('tests', 'cube2hash')])
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
@@ -7587,9 +7586,6 @@ def make_run(name, emcc_args, settings=None, env=None):
     finally:
       for k, v in self.env.items():
         del os.environ[k]
-
-      # clear global changes to Building
-      self.emcc_args = []
 
   TT.tearDown = tearDown
 

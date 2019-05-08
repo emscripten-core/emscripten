@@ -480,8 +480,19 @@ class RunnerCore(unittest.TestCase):
 
     return output_obj
 
-  def get_emcc_args(self):
-    return self.serialize_settings() + self.emcc_args
+  # returns the full list of arguments to pass to emcc
+  # param @main_file whether this is the main file of the test. some arguments
+  #                  (like --pre-js) do not need to be passed when building
+  #                  libraries, for example
+  def get_emcc_args(self, main_file=False):
+    args = self.serialize_settings() + self.emcc_args
+    if not main_file:
+      for i, arg in enumerate(args):
+        if arg in ('--pre-js', '--post-js'):
+          args[i] = None
+          args[i + 1] = None
+      args = [arg for arg in args if arg is not None]
+    return args
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -521,7 +532,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + self.get_emcc_args() + \
+        args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -542,7 +553,7 @@ class RunnerCore(unittest.TestCase):
       self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      Building.emcc(object_file, self.get_emcc_args(), object_file + '.js')
+      Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -550,7 +561,7 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + self.get_emcc_args() + \
+      args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -1022,8 +1033,6 @@ class RunnerCore(unittest.TestCase):
       test_index += 1
 
   def get_freetype_library(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'], cflags=self.get_emcc_args())
 
   def get_poppler_library(self):
