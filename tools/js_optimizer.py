@@ -529,7 +529,7 @@ EMSCRIPTEN_FUNCS();
       if 'last' in passes and len(funcs):
         count = funcs[0][1].count('\n')
         if count > 3000:
-          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz, and/or trying OUTLINING_LIMIT to break them up (see settings.js; note that the parameter there affects AST nodes, while we measure lines here, so the two may not match up)' % (count, funcs[0][0]), file=sys.stderr)
+          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz)' % (count, funcs[0][0]), file=sys.stderr)
 
       for func in funcs:
         f.write(func[1])
