@@ -5495,7 +5495,7 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self, js_engines):
-    self.emcc_args.append('-Wpedantic')
+    self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
     self.emcc_args.append('-munimplemented-simd128')

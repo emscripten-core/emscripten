@@ -15,29 +15,33 @@ void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
 v128 TESTFN i32x4_const(void) {
   return wasm_v128_const(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
 }
-i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
-  return __builtin_shufflevector(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
+v128 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
+  return wasm_v8x16_shuffle(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
 }
-i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
-  return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
+v128 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
+  return wasm_v8x16_shuffle(vec, vec, 12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
 }
 i8x16 TESTFN i8x16_splat(int32_t x) {
   return wasm_i8x16_splat(x);
 }
 int32_t TESTFN i8x16_extract_lane_s_first(i8x16 vec) {
-      return wasm_i8x16_extract_lane(vec, 0);
+  return wasm_i8x16_extract_lane(vec, 0);
 }
 int32_t TESTFN i8x16_extract_lane_s_last(i8x16 vec) {
-        return wasm_i8x16_extract_lane(vec, 15);
+  return wasm_i8x16_extract_lane(vec, 15);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 uint32_t TESTFN i8x16_extract_lane_u_first(i8x16 vec) {
   return wasm_u8x16_extract_lane(vec, 0);
 }
 uint32_t TESTFN i8x16_extract_lane_u_last(i8x16 vec) {
   return wasm_u8x16_extract_lane(vec, 15);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 i8x16 TESTFN i8x16_replace_lane_first(i8x16 vec, int32_t val) {
   return wasm_i8x16_replace_lane(vec, 0, val);
 }
@@ -53,14 +57,18 @@ int32_t TESTFN i16x8_extract_lane_s_first(i16x8 vec) {
 int32_t TESTFN i16x8_extract_lane_s_last(i16x8 vec) {
   return wasm_i16x8_extract_lane(vec, 7);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 int32_t TESTFN i16x8_extract_lane_u_first(i16x8 vec) {
     return wasm_u16x8_extract_lane(vec, 0);
 }
 int32_t TESTFN i16x8_extract_lane_u_last(i16x8 vec) {
   return wasm_u16x8_extract_lane(vec, 7);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 i16x8 TESTFN i16x8_replace_lane_first(i16x8 vec, int32_t val) {
   return wasm_i16x8_replace_lane(vec, 0, val);
 }
@@ -82,10 +90,12 @@ i32x4 TESTFN i32x4_replace_lane_first(i32x4 vec, int32_t val) {
 i32x4 TESTFN i32x4_replace_lane_last(i32x4 vec, int32_t val) {
   return wasm_i32x4_replace_lane(vec, 3, val);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
 i64x2 TESTFN i64x2_splat(int64_t x) {
   return wasm_i64x2_splat(x);
 }
-#ifdef __wasm_unimplemented_simd128__
 int64_t TESTFN i64x2_extract_lane_first(i64x2 vec) {
   return wasm_i64x2_extract_lane(vec, 0);
 }
@@ -98,7 +108,9 @@ i64x2 TESTFN i64x2_replace_lane_first(i64x2 vec, int64_t val) {
 i64x2 TESTFN i64x2_replace_lane_last(i64x2 vec, int64_t val) {
   return wasm_i64x2_replace_lane(vec, 1, val);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 f32x4 TESTFN f32x4_splat(float x) {
   return wasm_f32x4_splat(x);
 }
@@ -114,7 +126,9 @@ f32x4 TESTFN f32x4_replace_lane_first(f32x4 vec, float val) {
 f32x4 TESTFN f32x4_replace_lane_last(f32x4 vec, float val) {
   return wasm_f32x4_replace_lane(vec, 3, val);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 f64x2 TESTFN f64x2_splat(int64_t x) {
   return wasm_f64x2_splat((double ) x);
 }
@@ -130,7 +144,9 @@ f64x2 TESTFN f64x2_replace_lane_first(f64x2 vec, double val) {
 f64x2 TESTFN f64x2_replace_lane_last(f64x2 vec, double val) {
   return wasm_f64x2_replace_lane(vec, 1, val);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 u8x16 TESTFN i8x16_eq(i8x16 x, i8x16 y) {
   return wasm_i8x16_eq(x, y);
 }
@@ -239,7 +255,9 @@ u32x4 TESTFN f32x4_le(f32x4 x, f32x4 y) {
 u32x4 TESTFN f32x4_ge(f32x4 x, f32x4 y) {
   return wasm_f32x4_ge(x, y);
 }
+
 #ifdef __wasm_undefined_simd128__
+
 u64x2 TESTFN f64x2_eq(f64x2 x, f64x2 y) {
   return wasm_f64x2_eq(x,y);
 }
@@ -258,7 +276,9 @@ u64x2 TESTFN f64x2_le(f64x2 x, f64x2 y) {
 u64x2 TESTFN f64x2_ge(f64x2 x, f64x2 y) {
   return wasm_f64x2_ge(x, y);
 }
+
 #endif // __wasm_undefined_simd128__
+
 v128 TESTFN v128_not(v128 vec) {
   return wasm_v128_not(vec);
 }
@@ -379,17 +399,25 @@ i32x4 TESTFN i32x4_sub(i32x4 x, i32x4 y) {
 i32x4 TESTFN i32x4_mul(i32x4 x, i32x4 y) {
   return wasm_i32x4_mul(x, y);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
+
 i64x2 TESTFN i64x2_neg(i64x2 vec) {
   return wasm_i64x2_neg(vec);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 bool TESTFN i64x2_any_true(i64x2 vec) {
   return wasm_i64x2_any_true(vec);
 }
 bool TESTFN i64x2_all_true(i64x2 vec) {
   return wasm_i64x2_all_true(vec);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 i64x2 TESTFN i64x2_shl(i64x2 vec, int32_t shift) {
   return wasm_i64x2_shl(vec, shift);
 }
@@ -406,17 +434,24 @@ i64x2 TESTFN i64x2_add(i64x2 x, i64x2 y) {
 i64x2 TESTFN i64x2_sub(i64x2 x, i64x2 y) {
   return wasm_i64x2_sub(x, y);
 }
+
+#endif // __wasm_unimplemented_simd128__
+
 f32x4 TESTFN f32x4_abs(f32x4 vec) {
   return wasm_f32x4_abs(vec);
 }
 f32x4 TESTFN f32x4_neg(f32x4 vec) {
   return wasm_f32x4_neg(vec);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 f32x4 TESTFN f32x4_sqrt(f32x4 vec) {
   return wasm_f32x4_sqrt(vec);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 f32x4 TESTFN f32x4_add(f32x4 x, f32x4 y) {
   return wasm_f32x4_add(x,y);
 }
@@ -435,19 +470,18 @@ f32x4 TESTFN f32x4_min(f32x4 x, f32x4 y) {
 f32x4 TESTFN f32x4_max(f32x4 x, f32x4 y) {
   return wasm_f32x4_max(x, y);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 f64x2 TESTFN f64x2_abs(f64x2 vec) {
   return wasm_f64x2_abs(vec);
 }
-#endif // __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_neg(f64x2 vec) {
   return -vec;
 }
-#ifdef __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_sqrt(f64x2 vec) {
   return wasm_f64x2_sqrt(vec);
 }
-#endif // __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_add(f64x2 x, f64x2 y) {
   return x + y;
 }
@@ -460,40 +494,50 @@ f64x2 TESTFN f64x2_mul(f64x2 x, f64x2 y) {
 f64x2 TESTFN f64x2_div(f64x2 x, f64x2 y) {
   return x / y;
 }
-#ifdef __wasm_unimplemented_simd128__
 f64x2 TESTFN f64x2_min(f64x2 x, f64x2 y) {
   return wasm_f64x2_min(x, y);
 }
 f64x2 TESTFN f64x2_max(f64x2 x, f64x2 y) {
   return wasm_f64x2_max(x, y);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 i32x4 TESTFN i32x4_trunc_s_f32x4_sat(f32x4 vec) {
-  return __builtin_wasm_trunc_saturate_s_i32x4_f32x4(vec);
+  return wasm_trunc_saturate_i32x4_f32x4(vec);
 }
-i32x4 TESTFN i32x4_trunc_u_f32x4_sat(f32x4 vec) {
-  return __builtin_wasm_trunc_saturate_u_i32x4_f32x4(vec);
+u32x4 TESTFN i32x4_trunc_u_f32x4_sat(f32x4 vec) {
+  return wasm_trunc_saturate_u32x4_f32x4(vec);
 }
+
 #ifdef __wasm_unimplemented_simd128__
+
 i64x2 TESTFN i64x2_trunc_s_f64x2_sat(f64x2 vec) {
-  return __builtin_wasm_trunc_saturate_s_i64x2_f64x2(vec);
+  return wasm_trunc_saturate_i64x2_f64x2(vec);
 }
-i64x2 TESTFN i64x2_trunc_u_f64x2_sat(f64x2 vec) {
-  return __builtin_wasm_trunc_saturate_u_i64x2_f64x2(vec);
+u64x2 TESTFN i64x2_trunc_u_f64x2_sat(f64x2 vec) {
+  return wasm_trunc_saturate_u64x2_f64x2(vec);
 }
+
 #endif // __wasm_unimplemented_simd128__
+
 f32x4 TESTFN f32x4_convert_s_i32x4(i32x4 vec) {
-  return __builtin_convertvector(vec, f32x4);
+  return wasm_convert_f32x4_i32x4(vec);
 }
-f32x4 TESTFN f32x4_convert_u_i32x4(i32x4 vec) {
-  return __builtin_convertvector((u32x4)vec, f32x4);
+f32x4 TESTFN f32x4_convert_u_i32x4(u32x4 vec) {
+  return wasm_convert_f32x4_u32x4(vec);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
 f64x2 TESTFN f64x2_convert_s_i64x2(i64x2 vec) {
-  return __builtin_convertvector(vec, f64x2);
+  return wasm_convert_f64x2_i64x2(vec);
 }
-f64x2 TESTFN f64x2_convert_u_i64x2(i64x2 vec) {
-  return __builtin_convertvector((u64x2)vec, f64x2);
+f64x2 TESTFN f64x2_convert_u_i64x2(u64x2 vec) {
+  return wasm_convert_f64x2_u64x2(vec);
 }
+
+#endif // __wasm_unimplemented_simd128__
 
 static int failures = 0;
 
@@ -537,6 +581,16 @@ static int failures = 0;
       }                                                         \
     })
 
+#ifdef __wasm_unimplemented_simd128__
+#define UNIMPLEMENTED_TYPES                                     \
+  ,                                                             \
+  i64x2: 2,                                                     \
+  u64x2: 2,                                                     \
+  f64x2: 2
+#else
+#define UNIMPLEMENTED_TYPES
+#endif // __wasm_unimplemented_simd128__
+
 #define expect_vec(_a, _b) __extension__({                      \
       __typeof__(_a) a = (_a), b = (_b);                        \
       bool err = false;                                         \
@@ -547,10 +601,9 @@ static int failures = 0;
                               u16x8: 8,                         \
                               i32x4: 4,                         \
                               u32x4: 4,                         \
-                              i64x2: 2,                         \
-                              u64x2: 2,                         \
-                              f32x4: 4,                         \
-                              f64x2: 2);                        \
+                              f32x4: 4                          \
+                              UNIMPLEMENTED_TYPES               \
+                     );                                         \
       for (size_t i = 0; i < lanes; i++) {                      \
         if (!eq(a[i], b[i])) {                                  \
           err = true;                                           \
@@ -590,19 +643,23 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
       (i8x16){1, 0, 3, 0, 5, 0, 7, 0, 9, 0, 11, 0, 13, 0, 15, 0},
       (i8x16){0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12, 0, 14, 0, 16}
     ),
-    ((i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+    ((v128)(i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
   );
-  expect_vec(i32x4_shuffle_reverse((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
+  expect_vec(i32x4_shuffle_reverse((i32x4){1, 2, 3, 4}), ((v128)(i32x4){4, 3, 2, 1}));
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), ((i8x16){5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}));
   expect_vec(i8x16_splat(257), ((i8x16){1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}));
   expect_eq(i8x16_extract_lane_s_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), -1);
   expect_eq(i8x16_extract_lane_s_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), -1);
+
 #ifdef __wasm_unimplemented_simd128__
+
   expect_eq(i8x16_extract_lane_u_first((i8x16){-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), 255);
   expect_eq(i8x16_extract_lane_u_last((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1}), 255);
+
 #endif // __wasm_unimplemented_simd128__
+
   expect_vec(
     i8x16_replace_lane_first((i8x16){0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 7),
     ((i8x16){7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
@@ -617,10 +674,14 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(i16x8_splat(65537), ((i16x8){1, 1, 1, 1, 1, 1, 1, 1}));
   expect_eq(i16x8_extract_lane_s_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), -1);
   expect_eq(i16x8_extract_lane_s_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), -1);
+
 #ifdef __wasm_unimplemented_simd128__
+
   expect_eq(i16x8_extract_lane_u_first((i16x8){-1, 0, 0, 0, 0, 0, 0, 0}), 65535);
   expect_eq(i16x8_extract_lane_u_last((i16x8){0, 0, 0, 0, 0, 0, 0, -1}), 65535);
+
 #endif // __wasm_unimplemented_simd128__
+
   expect_vec(i16x8_replace_lane_first((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){7, 0, 0, 0, 0, 0, 0, 0}));
   expect_vec(i16x8_replace_lane_last((i16x8){0, 0, 0, 0, 0, 0, 0, 0}, 7), ((i16x8){0, 0, 0, 0, 0, 0, 0, 7}));
 
@@ -631,13 +692,16 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(i32x4_replace_lane_first((i32x4){0, 0, 0, 0}, 53), ((i32x4){53, 0, 0, 0}));
   expect_vec(i32x4_replace_lane_last((i32x4){0, 0, 0, 0}, 53), ((i32x4){0, 0, 0, 53}));
 
+
+#ifdef __wasm_unimplemented_simd128__
+
   // i64x2 lane accesses
   expect_vec(i64x2_splat(-5), ((i64x2){-5, -5}));
-#ifdef __wasm_unimplemented_simd128__
   expect_eq(i64x2_extract_lane_first((i64x2){-5, 0}), -5);
   expect_eq(i64x2_extract_lane_last((i64x2){0, -5}), -5);
   expect_vec(i64x2_replace_lane_first((i64x2){0, 0}, 53), ((i64x2){53, 0}));
   expect_vec(i64x2_replace_lane_last((i64x2){0, 0}, 53), ((i64x2){0, 53}));
+
 #endif // __wasm_unimplemented_simd128__
 
   // f32x4 lane accesses
@@ -648,12 +712,14 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f32x4_replace_lane_last((f32x4){0, 0, 0, 0}, 53), ((f32x4){0, 0, 0, 53}));
 
 #ifdef __wasm_unimplemented_simd128__
+
   // f64x2 lane accesses
   expect_vec(f64x2_splat(-5), ((f64x2){-5, -5}));
   expect_eq(f64x2_extract_lane_first((f64x2){-5, 0}), -5);
   expect_eq(f64x2_extract_lane_last((f64x2){0, -5}), -5);
   expect_vec(f64x2_replace_lane_first((f64x2){0, 0}, 53), ((f64x2){53, 0}));
   expect_vec(f64x2_replace_lane_last((f64x2){0, 0}, 53), ((f64x2){0, 53}));
+
 #endif // __wasm_unimplemented_simd128__
 
   // i8x16 comparisons
@@ -902,6 +968,7 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   );
 
 #ifdef __wasm_undefined_simd128__
+
   // f64x2 comparisons
   expect_vec(f64x2_eq((f64x2){0, 1}, (f64x2){0, 0}), ((u64x2){-1, 0}));
   expect_vec(f64x2_ne((f64x2){0, 1}, (f64x2){0, 0}), ((u64x2){0, -1}));
@@ -915,6 +982,7 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f64x2_gt((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((u64x2){0, 0}));
   expect_vec(f64x2_le((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((u64x2){0, -1}));
   expect_vec(f64x2_ge((f64x2){NAN, 0}, (f64x2){INFINITY, INFINITY}), ((u64x2){0, 0}));
+
 #endif // __wasm_undefined_simd128__
 
   // bitwise operations
@@ -1135,16 +1203,17 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(i32x4_mul((i32x4){0, 0x80000001, 42, 5}, (i32x4){0, 0x80000001, 42, 5}), ((i32x4){0, 1, 1764, 25}));
 
 
+#ifdef __wasm_unimplemented_simd128__
+
   // i64x2 arithmetic
   expect_vec(i64x2_neg((i64x2){0x8000000000000000, 42}), ((i64x2){0x8000000000000000, -42}));
-#ifdef __wasm_unimplemented_simd128__
   expect_eq(i64x2_any_true((i64x2){0, 0}), 0);
   expect_eq(i64x2_any_true((i64x2){1, 0}), 1);
   expect_eq(i64x2_any_true((i64x2){1, 1}), 1);
   expect_eq(i64x2_all_true((i64x2){0, 0}), 0);
   expect_eq(i64x2_all_true((i64x2){1, 0}), 0);
   expect_eq(i64x2_all_true((i64x2){1, 1}), 1);
-#endif // __wasm_unimplemented_simd128__
+
   expect_vec(i64x2_shl((i64x2){1, 0x8000000000000000}, 1), ((i64x2){2, 0}));
   expect_vec(i64x2_shl((i64x2){1, 0x8000000000000000}, 64), ((i64x2){1, 0x8000000000000000}));
   expect_vec(i64x2_shr_s((i64x2){1, 0x8000000000000000}, 1), ((i64x2){0, 0xc000000000000000}));
@@ -1154,12 +1223,18 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(i64x2_add((i64x2){0x8000000000000001, 42}, (i64x2){0x8000000000000001, 0}), ((i64x2){2, 42}));
   expect_vec(i64x2_sub((i64x2){2, 42}, (i64x2){0x8000000000000001, 0}), ((i64x2){0x8000000000000001, 42}));
 
+#endif // __wasm_unimplemented_simd128__
+
   // f32x4 arithmetic
   expect_vec(f32x4_abs((f32x4){-0., NAN, -INFINITY, 5}), ((f32x4){0, NAN, INFINITY, 5}));
   expect_vec(f32x4_neg((f32x4){-0., NAN, -INFINITY, 5}), ((f32x4){0, -NAN, INFINITY, -5}));
+
 #ifdef __wasm_unimplemented_simd128__
+
   expect_vec(f32x4_sqrt((f32x4){-0., NAN, INFINITY, 4}), ((f32x4){-0., NAN, INFINITY, 2}));
+
 #endif // __wasm_unimplemented_simd128__
+
   expect_vec(f32x4_add((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, INFINITY, 1}), ((f32x4){NAN, -NAN, INFINITY, 43}));
   expect_vec(f32x4_sub((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, -INFINITY, 1}), ((f32x4){NAN, -NAN, INFINITY, 41}));
   expect_vec(f32x4_mul((f32x4){NAN, -NAN, INFINITY, 42}, (f32x4){42, INFINITY, INFINITY, 2}), ((f32x4){NAN, -NAN, INFINITY, 84}));
@@ -1167,17 +1242,18 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   // expect_vec(f32x4_min((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){-0., -0., NAN, NAN}));
   // expect_vec(f32x4_max((f32x4){-0., 0, NAN, 5}, (f32x4){0, -0., 5, NAN}), ((f32x4){0, 0, NAN, NAN}));
 
-  // f64x2 arithmetic
 #ifdef __wasm_unimplemented_simd128__
+
+  // f64x2 arithmetic
   expect_vec(f64x2_abs((f64x2){-0., NAN}), ((f64x2){0, NAN}));
   expect_vec(f64x2_abs((f64x2){-INFINITY, 5}), ((f64x2){INFINITY, 5}));
-#endif // __wasm_unimplemented_simd128__
+
   expect_vec(f64x2_neg((f64x2){-0., NAN}), ((f64x2){0, -NAN}));
   expect_vec(f64x2_neg((f64x2){-INFINITY, 5}), ((f64x2){INFINITY, -5}));
-#ifdef __wasm_unimplemented_simd128__
+
   expect_vec(f64x2_sqrt((f64x2){-0., NAN}), ((f64x2){-0., NAN}));
   expect_vec(f64x2_sqrt((f64x2){INFINITY, 4}), ((f64x2){INFINITY, 2}));
-#endif // __wasm_unimplemented_simd128__
+
   expect_vec(f64x2_add((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
   expect_vec(f64x2_add((f64x2){INFINITY, 42}, (f64x2){INFINITY, 1}), ((f64x2){INFINITY, 43}));
   expect_vec(f64x2_sub((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
@@ -1186,28 +1262,38 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
   expect_vec(f64x2_mul((f64x2){INFINITY, 42}, (f64x2){INFINITY, 2}), ((f64x2){INFINITY, 84}));
   expect_vec(f64x2_div((f64x2){NAN, -NAN}, (f64x2){42, INFINITY}), ((f64x2){NAN, -NAN}));
   expect_vec(f64x2_div((f64x2){INFINITY, 42}, (f64x2){2, 2}), ((f64x2){INFINITY, 21}));
-#ifdef __wasm_unimplemented_simd128__
+
   expect_vec(f64x2_min((f64x2){-0., 0}, (f64x2){0, -0}), ((f64x2){-0., -0}));
   expect_vec(f64x2_min((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
   expect_vec(f64x2_max((f64x2){-0., 0}, (f64x2){0, -0}), ((f64x2){0, 0}));
   expect_vec(f64x2_max((f64x2){NAN, 5}, (f64x2){5, NAN}), ((f64x2){NAN, NAN}));
+
 #endif // __wasm_unimplemented_simd128__
 
   // conversions
   expect_vec(i32x4_trunc_s_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((i32x4){42, 0, 2147483647, -2147483648ll}));
-  expect_vec(i32x4_trunc_u_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((i32x4){42, 0, 4294967295ull, 0}));
+  expect_vec(i32x4_trunc_u_f32x4_sat((f32x4){42, NAN, INFINITY, -INFINITY}), ((u32x4){42, 0, 4294967295ull, 0}));
+
 #ifdef __wasm_unimplemented_simd128__
+
   expect_vec(i64x2_trunc_s_f64x2_sat((f64x2){42, NAN}), ((i64x2){42, 0}));
   expect_vec(i64x2_trunc_s_f64x2_sat((f64x2){INFINITY, -INFINITY}), ((i64x2){9223372036854775807ll, -9223372036854775807ll - 1}));
-  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){42, NAN}), ((i64x2){42, 0}));
-  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){INFINITY, -INFINITY}), ((i64x2){18446744073709551615ull, 0}));
+  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){42, NAN}), ((u64x2){42, 0}));
+  expect_vec(i64x2_trunc_u_f64x2_sat((f64x2){INFINITY, -INFINITY}), ((u64x2){18446744073709551615ull, 0}));
+
 #endif // __wasm_unimplemented_simd128__
+
   expect_vec(f32x4_convert_s_i32x4((i32x4){0, -1, 2147483647, -2147483647 - 1}), ((f32x4){0, -1, 2147483648., -2147483648.}));
-  expect_vec(f32x4_convert_u_i32x4((i32x4){0, -1, 2147483647, -2147483647 - 1}), ((f32x4){0, 4294967296., 2147483648., 2147483648.}));
+  expect_vec(f32x4_convert_u_i32x4((u32x4){0, -1, 2147483647, -2147483647 - 1}), ((f32x4){0, 4294967296., 2147483648., 2147483648.}));
+
+#ifdef __wasm_unimplemented_simd128__
+
   expect_vec(f64x2_convert_s_i64x2((i64x2){0, -1}), ((f64x2){0, -1}));
   expect_vec(f64x2_convert_s_i64x2((i64x2){9223372036854775807, -9223372036854775807 - 1}), ((f64x2){9223372036854775807., -9223372036854775808.}));
-  expect_vec(f64x2_convert_u_i64x2((i64x2){0, -1}), ((f64x2){0, 18446744073709551616.}));
-  expect_vec(f64x2_convert_u_i64x2((i64x2){9223372036854775807 , -9223372036854775808.}), ((f64x2){9223372036854775807., 9223372036854775808.}));
+  expect_vec(f64x2_convert_u_i64x2((u64x2){0, -1}), ((f64x2){0, 18446744073709551616.}));
+  expect_vec(f64x2_convert_u_i64x2((u64x2)(i64x2){9223372036854775807 , -9223372036854775808.}), ((f64x2){9223372036854775807., 9223372036854775808.}));
+
+#endif // __wasm_unimplemented_simd128__
 
   if (failures == 0) {
     printf("Success!\n");

@@ -12,10 +12,15 @@ typedef int16_t i16x8 __attribute__((__vector_size__(16)));
 typedef uint16_t u16x8 __attribute__((__vector_size__(16)));
 typedef int32_t i32x4 __attribute__((__vector_size__(16)));
 typedef uint32_t u32x4 __attribute__((__vector_size__(16)));
+typedef float f32x4 __attribute__((__vector_size__(16)));
+
+#ifdef __wasm_unimplemented_simd128__
+
 typedef int64_t i64x2 __attribute__((__vector_size__(16)));
 typedef uint64_t u64x2 __attribute__((__vector_size__(16)));
-typedef float f32x4 __attribute__((__vector_size__(16)));
 typedef double f64x2 __attribute__((__vector_size__(16)));
+
+#endif // __wasm_unimplemented_simd128__
 
 // Internal types
 typedef char __v128 __attribute__((__vector_size__(16)));
@@ -28,14 +33,13 @@ typedef long long __i64x2 __attribute__((__vector_size__(16)));
 #define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__))
 
 // v128 wasm_v128_load(v128* mem)
-static __inline__ i8x16 __DEFAULT_FN_ATTRS wasm_v128_load(i8x16* mem) {
-  return __extension__(i8x16)(*mem);
+static __inline__ v128 __DEFAULT_FN_ATTRS wasm_v128_load(v128* mem) {
+  return (*mem);
 }
 
 // wasm_v128_store(v128 *mem, v128 a)
 static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(v128* mem, v128 a) {
-  *(i8x16*)mem = a;
-  return;
+  *mem = a;
 }
 
 // v128 wasm_v128_constant(...)
@@ -74,10 +78,12 @@ static __inline__ i16x8 __DEFAULT_FN_ATTRS wasm_i16x8_splat(int16_t a) {
   (__builtin_wasm_extract_lane_s_i16x8((__i16x8)(a), b))
 
 #ifdef __wasm_unimplemented_simd128__
+
 // int16_t wasm_u16x8_extract_lane(u16x8 a, imm)
 #define wasm_u16x8_extract_lane(a, b) \
   (__builtin_wasm_extract_lane_u_i16x8(a, b))
-#endif
+
+#endif // __wasm_unimplemented_simd128__
 
 // i16x8 wasm_i16x8_replace_lane(i16x8 a, imm i, int16_t b)
 #define wasm_i16x8_replace_lane(a, i, b) \
@@ -95,10 +101,14 @@ static __inline__ i32x4 __DEFAULT_FN_ATTRS wasm_i32x4_splat(int32_t a) {
 #define wasm_i32x4_replace_lane(a, i, b) \
     ((i32x4)__builtin_wasm_replace_lane_i32x4((__i32x4)(a), i, b))
 
+#ifdef __wasm_unimplemented_simd128__
+
 // i64x2 wasm_i64x2_splat(int64_t a)
 static __inline__ i64x2 __DEFAULT_FN_ATTRS wasm_i64x2_splat(int64_t a) {
   return (i64x2){a, a};
 }
+
+#endif // __wasm_unimplemented_simd128__
 
 // int64_t wasm_i64x2_extract_lane(i8x16, imm)
 #define wasm_i64x2_extract_lane(a, b) (__builtin_wasm_extract_lane_i64x2(a, b))
@@ -548,6 +558,8 @@ static __inline__ i32x4 __DEFAULT_FN_ATTRS wasm_i32x4_mul(i32x4 a, i32x4 b) {
   return a * b;
 }
 
+#ifdef __wasm_unimplemented_simd128__
+
 // i64x2 wasm_i64x2_neg(i64x2 a)
 static __inline__ i64x2 __DEFAULT_FN_ATTRS wasm_i64x2_neg(i64x2 a) {
   return -a;
@@ -587,6 +599,8 @@ static __inline__ i64x2 __DEFAULT_FN_ATTRS wasm_i64x2_add(i64x2 a, i64x2 b) {
 static __inline__ i64x2 __DEFAULT_FN_ATTRS wasm_i64x2_sub(i64x2 a, i64x2 b) {
   return a - b;
 }
+
+#endif // __wasm_unimplemented_simd128__
 
 // f32x4  wasm_f32x4_abs(f32x4 a)
 static __inline__ f32x4 __DEFAULT_FN_ATTRS wasm_f32x4_abs(f32x4 a) {
@@ -682,18 +696,52 @@ static __inline__ f64x2 __DEFAULT_FN_ATTRS wasm_f64x2_max(f64x2 a, f64x2 b) {
 
 #endif // __wasm_unimplemented_simd128__
 
-// // f32x4 wasm_convert_f32x4_i32x4(i32x4 a)
-// #define wasm_convert_f32x4_i32x4(v) (__builtin_convertvector(v, f32x4))
+static __inline__ i32x4 __DEFAULT_FN_ATTRS wasm_trunc_saturate_i32x4_f32x4(f32x4 a) {
+  return (i32x4)__builtin_wasm_trunc_saturate_s_i32x4_f32x4(a);
+}
 
-// // f32x4 wasm_convert_f32x4_u32x4(u32x4 a)
-// #define wasm_convert_f32x4_u32x4(v) (__builtin_convertvector(v, f32x4))
+static __inline__ u32x4 __DEFAULT_FN_ATTRS wasm_trunc_saturate_u32x4_f32x4(f32x4 a) {
+  return (u32x4)__builtin_wasm_trunc_saturate_u_i32x4_f32x4(a);
+}
 
-// // f64x2 wasm_convert_f64x2_i64x2(i64x2 a)
-// #define wasm_convert_f64x2_i64x2(v) (__builtin_convertvector(v, f64x2))
+#ifdef __wasm_unimplemented_simd128__
 
-// // f64x2 wasm_convert_f64x2_u64x2(u64x2 a)
-// #define wasm_convert_f64x2_u64x2(v) (__builtin_convertvector(v, f64x2))
+static __inline__ i64x2 __DEFAULT_FN_ATTRS wasm_trunc_saturate_i64x2_f64x2(f64x2 a) {
+  return __builtin_wasm_trunc_saturate_s_i64x2_f64x2(a);
+}
 
-// not sure how this should work with variable input
-// #define wasm_i8x16_shuffle(a, b) \
-//  (__builtin_shufflevector(a, b, 0, 1, 2, 3, 4, 5, 6, 7))
+static __inline__ u64x2 __DEFAULT_FN_ATTRS wasm_trunc_saturate_u64x2_f64x2(f64x2 a) {
+  return (u64x2)__builtin_wasm_trunc_saturate_s_i64x2_f64x2(a);
+}
+
+#endif // __wasm_unimplemented_simd128__
+
+// f32x4 wasm_convert_f32x4_i32x4(i32x4 a)
+static __inline__ f32x4 __DEFAULT_FN_ATTRS wasm_convert_f32x4_i32x4(i32x4 v) {
+  return __builtin_convertvector(v, f32x4);
+}
+
+// f32x4 wasm_convert_f32x4_u32x4(u32x4 a)
+static __inline__ f32x4 __DEFAULT_FN_ATTRS wasm_convert_f32x4_u32x4(u32x4 v) {
+  return __builtin_convertvector(v, f32x4);
+}
+
+#ifdef __wasm_unimplemented_simd128__
+
+// f64x2 wasm_convert_f64x2_i64x2(i64x2 a)
+static __inline__ f64x2 __DEFAULT_FN_ATTRS wasm_convert_f64x2_i64x2(i64x2 v) {
+  return __builtin_convertvector(v, f64x2);
+}
+
+// f64x2 wasm_convert_f64x2_u64x2(u64x2 a)
+static __inline__ f64x2 __DEFAULT_FN_ATTRS wasm_convert_f64x2_u64x2(u64x2 v) {
+  return __builtin_convertvector(v, f64x2);
+}
+
+#endif // __wasm_unimplemented_simd128__
+
+#define wasm_v8x16_shuffle(a, b, c0, c1, c2, c3, c4, c5, c6, c7,        \
+                           c8, c9, c10, c11, c12, c13, c14, c15)        \
+  ((v128)(__builtin_shufflevector((v128)(a), (v128)(b),                 \
+                                  c0, c1, c2, c3, c4, c5, c6, c7,       \
+                                  c8, c9, c10, c11, c12, c13, c14, c15)))
