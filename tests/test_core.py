@@ -156,7 +156,8 @@ class TestCoreBase(RunnerCore):
     return self.get_library('bullet', generated_libs,
                             configure=configure_commands,
                             configure_args=configure_args,
-                            cache_name_extra=configure_commands[0])
+                            cache_name_extra=configure_commands[0],
+                            cflags=self.get_emcc_args())
 
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
@@ -311,7 +312,8 @@ class TestCoreBase(RunnerCore):
     # A good test of i64 math
     self.do_run('', 'Usage: hashstring <seed>',
                 libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
-                includes=[path_from_root('tests', 'cube2hash')])
+                includes=[path_from_root('tests', 'cube2hash')],
+                cflags=self.get_emcc_args())
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
@@ -5566,7 +5568,7 @@ return malloc(size);
       self.do_run('',
                   'hello lua world!\n17\n1\n2\n3\n4\n7',
                   args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, cflags=self.get_emcc_args()),
                   includes=[path_from_root('tests', 'lua')],
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -5658,7 +5660,7 @@ return malloc(size);
 
     self.do_run(open(path_from_root('tests', 'zlib', 'example.c')).read(),
                 open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
-                libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
+                libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure, cflags=self.get_emcc_args()),
                 includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
@@ -5758,7 +5760,8 @@ return malloc(size);
                             os.path.join('bin', 'libopenjpeg.a')],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                           make_args=[]) # no -j 2, since parallel builds can fail
+                           make_args=[], # no -j 2, since parallel builds can fail
+                           cflags=self.get_emcc_args())
 
     # We use doubles in JS, so we get slightly different values than native code. So we
     # check our output by comparing the average pixel difference

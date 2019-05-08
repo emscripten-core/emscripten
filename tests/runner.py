@@ -742,7 +742,7 @@ class RunnerCore(unittest.TestCase):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
                   configure_args=[], make=['make'], make_args='help',
-                  env_init={}, cache_name_extra='', native=False):
+                  env_init={}, cache_name_extra='', native=False, cflags=[]):
     if make_args == 'help':
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
@@ -771,7 +771,7 @@ class RunnerCore(unittest.TestCase):
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native)
+                         cache_name, env_init=env_init, native=native, cflags=cflags)
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -1024,7 +1024,7 @@ class RunnerCore(unittest.TestCase):
   def get_freetype_library(self):
     self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
 
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'], cflags=self.get_emcc_args())
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1051,7 +1051,8 @@ class RunnerCore(unittest.TestCase):
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'],
+        cflags=self.get_emcc_args())
 
     return poppler + freetype
 
@@ -1061,8 +1062,10 @@ class RunnerCore(unittest.TestCase):
                               configure=[path_from_root('emconfigure.bat')],
                               configure_args=['cmake', '.'],
                               make=['mingw32-make'],
-                              make_args=[])
-    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+                              make_args=[],
+                              cflags=self.get_emcc_args())
+    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'],
+                            cflags=self.get_emcc_args())
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
@@ -1458,7 +1461,8 @@ def build_library(name,
                   cache=None,
                   cache_name=None,
                   env_init={},
-                  native=False):
+                  native=False,
+                  cflags=[]):
   """Build a library into a .bc file. We build the .bc file once and cache it
   for all our tests. (We cache in memory since the test directory is destroyed
   and recreated for each test. Note that we cache separately for different
@@ -1478,7 +1482,7 @@ def build_library(name,
 
   with chdir(project_dir):
     generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    env = Building.get_building_env(native, True)
+    env = Building.get_building_env(native, True, cflags=cflags)
     for k, v in env_init.items():
       env[k] = v
     if configure:
