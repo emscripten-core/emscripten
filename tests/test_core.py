@@ -7618,8 +7618,6 @@ def make_run(name, emcc_args, settings=None, env=None):
       '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
     ]
 
-    # TODO: verif wasmlto* gives bvitcode in lib files
-
   TT.setUp = setUp
 
   return TT
