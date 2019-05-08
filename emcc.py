@@ -1381,17 +1381,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-      if not shared.Settings.WASM2JS:
+      if shared.Settings.WASM2JS:
+        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
+        # wouldn't tell a js build to use a separate mem init file
+        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
+      else:
         # wasm normally includes the mem init in the wasm binary. exceptions are pthreads, where we need
         # to split it out until we have full bulk memory support, and wasm2js, which behaves more like js.
         options.memory_init_file = True
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
         shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
-      else:
-        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
-        # wouldn't tell a js build to use a separate mem init file
-        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
 
       if not shared.Settings.MINIMAL_RUNTIME: # BINARYEN_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
@@ -1470,7 +1470,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
-      logger.warn('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
+      logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
