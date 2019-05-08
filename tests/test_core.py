@@ -50,6 +50,8 @@ def wasm_simd(f):
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
     f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-simd']])
@@ -5144,7 +5146,7 @@ PORT: 3979
       time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
-      if self.get_setting('WASM'):
+      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
         ret += open('src.cpp.o.wasm', 'rb').read()
       return ret
 
@@ -6426,6 +6428,8 @@ return malloc(size);
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('this test uses wasm binaries')
 
     orig_args = self.emcc_args
 
@@ -7340,6 +7344,7 @@ extern "C" {
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
+  # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
@@ -7349,6 +7354,18 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  # Test basic wasm2js functionality in all core compilation modes.
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+    self.set_setting('WASM', 0)
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # a mem init file is emitted just like with JS
+    expect_memory_init_file = self.uses_memory_init_file()
+    see_memory_init_file = os.path.exists('src.c.o.js.mem')
+    assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
@@ -7643,6 +7660,12 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 

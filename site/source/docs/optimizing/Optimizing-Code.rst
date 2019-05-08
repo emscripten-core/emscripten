@@ -108,24 +108,11 @@ You can also do this manually, as follows:
     };
     document.body.appendChild(script);
 
-.. _optimizing-code-outlining:
-
 Running by itself
 -----------------
 
 If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory fragmentation issues.
 
-
-Outlining
----------
-
-JavaScript engines will often compile very large functions slowly (relative to their size), and fail to optimize them effectively (or at all). One approach to this problem is to use "outlining": breaking them into smaller functions that can be compiled and optimized more effectively.
-
-Outlining increases overall code size, and can itself make some code less optimised. Despite this, outlining can sometimes improve both startup and runtime speed. For more information read `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
-
-The ``OUTLINING_LIMIT`` setting defines the function size at which Emscripten will try to break large functions into smaller ones. Search for this setting in `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_ for information on how to determine what functions may need to be outlined and how to choose an appropriate function size.
-
-.. note:: This setting is useful for asm.js, but generally not helpful for WebAssembly.
 
 .. _optimizing-code-aggressive-variable-elimination:
 
