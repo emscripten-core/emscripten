@@ -305,11 +305,11 @@ var LibraryPThread = {
             } else if (d.cmd === 'spawnThread') {
               __spawn_thread(e.data);
             } else if (d.cmd === 'cleanupThread') {
-              __cleanup_thread(d.thread);
+              __cleanup_thread(worker.pthread.thread);
             } else if (d.cmd === 'killThread') {
-              __kill_thread(d.thread);
+              __kill_thread(worker.pthread.thread);
             } else if (d.cmd === 'cancelThread') {
-              __cancel_thread(d.thread);
+              __cancel_thread(worker.pthread.thread);
             } else if (d.cmd === 'loaded') {
               worker.loaded = true;
               // If this Worker is already pending to start running a thread, launch the thread now
@@ -760,7 +760,7 @@ var LibraryPThread = {
         Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
 
         if (!ENVIRONMENT_IS_PTHREAD) __cleanup_thread(thread);
-        else postMessage({ cmd: 'cleanupThread', thread: thread});
+        else postMessage({ cmd: 'cleanupThread' });
         return 0;
       }
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
