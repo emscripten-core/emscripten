@@ -42,7 +42,7 @@ def get_cflags(force_object_files=False):
 
 def run_build_command(cmd):
   # this must only be called on a standard build command
-  assert cmd[0] == shared.PYTHON and cmd[1] == shared.EMCC
+  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
   # add standard cflags, but also allow the cmd to override them
   cmd = cmd[:2] + get_cflags() + cmd[2:]
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
