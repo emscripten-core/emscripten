@@ -5,41 +5,47 @@ WebAssembly SIMD128 Intrinsics
 #include <stdint.h>
 
 // User-facing types
-typedef int8_t v128 __attribute__((__vector_size__(16)));
-typedef int8_t i8x16 __attribute__((__vector_size__(16)));
-typedef uint8_t u8x16 __attribute__((__vector_size__(16)));
-typedef int16_t i16x8 __attribute__((__vector_size__(16)));
-typedef uint16_t u16x8 __attribute__((__vector_size__(16)));
-typedef int32_t i32x4 __attribute__((__vector_size__(16)));
-typedef uint32_t u32x4 __attribute__((__vector_size__(16)));
-typedef float f32x4 __attribute__((__vector_size__(16)));
+typedef int8_t v128 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef int8_t i8x16 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef uint8_t u8x16 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef int16_t i16x8 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef uint16_t u16x8 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef int32_t i32x4 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef uint32_t u32x4 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef float f32x4 __attribute__((__vector_size__(16), __aligned__(16)));
 
 #ifdef __wasm_unimplemented_simd128__
 
-typedef int64_t i64x2 __attribute__((__vector_size__(16)));
-typedef uint64_t u64x2 __attribute__((__vector_size__(16)));
-typedef double f64x2 __attribute__((__vector_size__(16)));
+typedef int64_t i64x2 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef uint64_t u64x2 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef double f64x2 __attribute__((__vector_size__(16), __aligned__(16)));
 
 #endif // __wasm_unimplemented_simd128__
 
 // Internal types
-typedef char __v128 __attribute__((__vector_size__(16)));
-typedef char  __i8x16 __attribute__((__vector_size__(16)));
-typedef short __i16x8 __attribute__((__vector_size__(16)));
-typedef int __i32x4 __attribute__((__vector_size__(16)));
-typedef long long __i64x2 __attribute__((__vector_size__(16)));
+typedef int8_t __v128_u __attribute__((__vector_size__(16), __aligned__(1)));
+typedef char __v128 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef char  __i8x16 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef short __i16x8 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef int __i32x4 __attribute__((__vector_size__(16), __aligned__(16)));
+typedef long long __i64x2 __attribute__((__vector_size__(16), __aligned__(16)));
 
+#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__, __target__("simd128"), __min_vector_width__(128)))
 
-#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__))
-
-// v128 wasm_v128_load(v128* mem)
-static __inline__ v128 __DEFAULT_FN_ATTRS wasm_v128_load(v128* mem) {
-  return (*mem);
+// v128 wasm_v128_load(void* mem)
+static __inline__ v128 __DEFAULT_FN_ATTRS wasm_v128_load(void* __mem) {
+  struct __wasm_v128_load_struct {
+    __v128_u __v;
+  } __attribute__((__packed__, __may_alias__));
+  return ((struct __wasm_v128_load_struct*)__mem)->__v;
 }
 
-// wasm_v128_store(v128 *mem, v128 a)
-static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(v128* mem, v128 a) {
-  *mem = a;
+// wasm_v128_store(void* mem, v128 a)
+static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(void* __mem, v128 __a) {
+  struct __wasm_v128_store_struct {
+    __v128_u __v;
+  } __attribute__((__packed__, __may_alias__));
+  ((struct __wasm_v128_store_struct*)__mem)->__v = __a;
 }
 
 // v128 wasm_v128_constant(...)
