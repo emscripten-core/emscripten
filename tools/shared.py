@@ -2001,6 +2001,8 @@ class Building(object):
             # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
+        else:
+          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)

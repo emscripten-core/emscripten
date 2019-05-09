@@ -181,6 +181,7 @@ def main():
       arg = arg[2:]
       if arg == 'lto':
         shared.Settings.WASM_OBJECT_FILES = 0
+        os.environ['EMMAKEN_CFLAGS'] = '-s WASM_OBJECT_FILES=0'
       elif arg == 'pic':
         shared.Settings.RELOCATABLE = 1
       # Reconfigure the cache dir to reflect the change
