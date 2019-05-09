@@ -414,9 +414,6 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
-    var pthread = PThread.pthreads[pthread_ptr];
-    var worker = pthread.worker;
-    PThread.returnWorkerToPool(worker);
   },
 
   _cancel_thread: function(pthread_ptr) {
