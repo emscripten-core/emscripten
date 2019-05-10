@@ -3600,8 +3600,8 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
-  def test_pthread_detach(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
+  def test_std_thread_detach(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
   # Test pthread_cancel() operation
   @requires_threads
