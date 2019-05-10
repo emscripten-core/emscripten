@@ -4555,6 +4555,9 @@ window.close = function() {
   def test_emscripten_request_animation_frame_loop(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
 
+  def test_request_animation_frame(self):
+    self.btest('request_animation_frame.cpp', '0', also_proxied=True)
+
   @requires_threads
   def test_emscripten_set_timeout(self):
     self.btest(path_from_root('tests', 'emscripten_set_timeout.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])

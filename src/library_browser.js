@@ -462,7 +462,7 @@ var LibraryBrowser = {
       setTimeout(func, delay);
     },
 
-    requestAnimationFrame: function requestAnimationFrame(func) {
+    requestAnimationFrame: function(func) {
       if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(func);
         return;
