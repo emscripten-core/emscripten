@@ -7919,7 +7919,7 @@ int main() {
       run(['-O3', '-s', 'MAIN_MODULE=1'],
                  1581, [],        [],      517336, 172,1484, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
-                   15, [],        [],      10770,   18,  13, None) # noqa
+                   15, [],        [],      10770,   17,  13, None) # noqa
     else:
       run([],      23, ['abort'], ['waka'], 42701,  24,   17, 57) # noqa
       run(['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33) # noqa
