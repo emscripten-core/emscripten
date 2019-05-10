@@ -695,22 +695,25 @@ class RunnerCore(unittest.TestCase):
     path2 = path2.replace('\\', '/')
     return self.assertIdentical(path1, path2)
 
-  # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2):
+  # Tests that the given two multiline text content are identical, modulo line
+  # ending differences (\r\n on Windows, \n on Unix).
+  def assertTextDataIdentical(self, text1, text2, msg=None):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2)
+    return self.assertIdentical(text1, text2, msg)
 
-  def assertIdentical(self, values, y):
+  def assertIdentical(self, values, y, msg=None):
     if type(values) not in [list, tuple]:
       values = [values]
     for x in values:
       if x == y:
         return # success
-    self.fail("Expected to have '%s' == '%s', diff:\n\n%s" % (
-      limit_size(values[0]), limit_size(y),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
-    ))
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
+    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if msg:
+      fail_message += '\n' + msg
+    self.fail(fail_message)
 
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')

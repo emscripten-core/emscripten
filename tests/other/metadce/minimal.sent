@@ -1,0 +1,11 @@
+DYNAMICTOP_PTR
+__lock
+__setErrNo
+__unlock
+abortOnCannotGrowMemory
+emscripten_get_heap_size
+emscripten_memcpy_big
+emscripten_resize_heap
+memcpy
+memset
+sbrk
