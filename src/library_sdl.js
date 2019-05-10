@@ -2739,7 +2739,7 @@ var LibrarySDL = {
     return 1;
   },
 
-  Mix_LoadWAV_RW__deps: ['PATH_FS'],
+  Mix_LoadWAV_RW__deps: ['$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
