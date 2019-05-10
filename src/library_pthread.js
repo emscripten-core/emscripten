@@ -240,7 +240,8 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
     returnWorkerToPool: function(worker) {
-      delete PThread.pthreads[worker.pthread.thread];
+      //thread is not removed from PThread.pthreads in some cases. Will need to investigate/fix.
+      //delete PThread.pthreads[worker.pthread.thread];
       PThread.freeThreadData(worker.pthread);
       //Note: worker is intentionally not terminated so the pool can dynamically grow.
       worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
@@ -414,6 +415,9 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cleanup_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cleanup_thread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
+    var pthread = PThread.pthreads[pthread_ptr];
+    var worker = pthread.worker;
+    PThread.returnWorkerToPool(worker);
   },
 
   _cancel_thread: function(pthread_ptr) {
