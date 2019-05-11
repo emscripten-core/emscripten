@@ -82,6 +82,10 @@ if (Module['ENVIRONMENT']) {
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+if (ENVIRONMENT_IS_NODE) {
+  _scriptDir = __filename;
+}
+console.log('_scriptDir: ' + _scriptDir);
 #endif
 
 // `/` should be present at the end if `scriptDirectory` is not empty
@@ -164,6 +168,22 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
+
+#if USE_PTHREADS
+  var nodeWorkerThreads = require('worker_threads');
+  Worker = nodeWorkerThreads.Worker;
+
+  // Polyfill the performance object, which emscripten pthreads support
+  // depends on for good timing.
+  if (typeof performance === 'undefined') {
+    performance = {
+      now: function() {
+        return Date.now();
+      }
+    };
+  }
+#endif
+
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -343,9 +363,6 @@ assert(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memo
 assert(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-#if USE_PTHREADS
-assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
-#endif // USE_PTHREADS
 #endif // ASSERTIONS
 
 {{BODY}}

@@ -44,13 +44,16 @@ function assert(condition, text) {
 
 // When error objects propagate from Web Worker to main thread, they lose helpful call stack and thread ID information, so print out errors early here,
 // before that happens.
-this.addEventListener('error', function(e) {
-  if (e.message.indexOf('SimulateInfiniteLoop') != -1) return e.preventDefault();
+// Note that addEventListener may not exist on some environments, like node.
+if (typeof addEventListener === 'function') {
+  addEventListener('error', function(e) {
+    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return e.preventDefault();
 
-  var errorSource = ' in ' + e.filename + ':' + e.lineno + ':' + e.colno;
-  console.error('Pthread ' + selfThreadId + ' uncaught exception' + (e.filename || e.lineno || e.colno ? errorSource : "") + ': ' + e.message + '. Error object:');
-  console.error(e.error);
-});
+    var errorSource = ' in ' + e.filename + ':' + e.lineno + ':' + e.colno;
+    console.error('Pthread ' + selfThreadId + ' uncaught exception' + (e.filename || e.lineno || e.colno ? errorSource : "") + ': ' + e.message + '. Error object:');
+    console.error(e.error);
+  });
+}
 
 function threadPrint() {
   var text = Array.prototype.slice.call(arguments).join(' ');
@@ -85,6 +88,7 @@ var wasmModule;
 var wasmMemory;
 
 this.onmessage = function(e) {
+  console.log('gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
       // Initialize the thread-local field(s):
@@ -230,3 +234,45 @@ this.onmessage = function(e) {
     throw e;
   }
 }
+
+// Node.js support
+if (typeof require === 'function') {
+  // Create as web-worker-like an environment as we can.
+  self = {
+    location: {
+      href: __filename // XXX wat
+    }
+  };
+
+  var onmessage = this.onmessage;
+
+  var nodeWorkerThreads = require('worker_threads');
+
+  Worker = nodeWorkerThreads.Worker;
+
+  var parentPort = nodeWorkerThreads.parentPort;
+
+  parentPort.on('message', function(data) {
+    onmessage({ data: data });
+  });
+
+  var nodeFS = require('fs');
+
+  var nodeRead = function(filename) {
+    // TODO: convert to absolute path?
+    return nodeFS.readFileSync(filename).toString();
+  };
+
+  function globalEval(x) {
+    eval.call(null, x);
+  }
+
+  importScripts = function(f) {
+    globalEval(nodeRead(f));
+  };
+
+  postMessage = function(msg) {
+    parentPort.postMessage(msg);
+  };
+}
+

@@ -275,6 +275,7 @@ var LibraryPThread = {
 
         (function(worker) {
           worker.onmessage = function(e) {
+console.log('parent got message ' + e);
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
@@ -344,6 +345,14 @@ var LibraryPThread = {
           worker.onerror = function(e) {
             err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
           };
+
+          if (ENVIRONMENT_IS_NODE) {
+console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof worker.onerror]);
+            worker.on('message', function(data) {
+              worker.onmessage({ data: data });
+            });
+            // note: adding onerror seems to only hurt on node.js
+          }
         }(worker));
 
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
