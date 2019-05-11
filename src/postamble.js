@@ -164,6 +164,7 @@ dependenciesFulfilled = function runCaller() {
 
 #if HAS_MAIN
 Module['callMain'] = function callMain(args) {
+console.log('callMain! ' + ENVIRONMENT_IS_NODE);
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -195,7 +196,9 @@ Module['callMain'] = function callMain(args) {
     // that will call the user's real main() for the application.
     var ret = Module['_proxy_main'](argc, argv, 0);
 #else
+console.log('calle maienne! ' + ENVIRONMENT_IS_NODE);
     var ret = Module['_main'](argc, argv, 0);
+console.log('called off');
 #endif
 
 #if BENCHMARK
@@ -244,6 +247,7 @@ Module['callMain'] = function callMain(args) {
 
 /** @type {function(Array=)} */
 function run(args) {
+console.log('run! ' + ENVIRONMENT_IS_NODE);
   args = args || Module['arguments'];
 
   if (runDependencies > 0) {
@@ -263,6 +267,7 @@ function run(args) {
   if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
+console.log('doRun! ' + ENVIRONMENT_IS_NODE);
     if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
     Module['calledRun'] = true;
 

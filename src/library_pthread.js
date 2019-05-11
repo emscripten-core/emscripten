@@ -275,7 +275,7 @@ var LibraryPThread = {
 
         (function(worker) {
           worker.onmessage = function(e) {
-console.log('parent got message ' + e);
+console.log('parent got message ' + [e, JSON.stringify(e)]);
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
@@ -311,7 +311,9 @@ console.log('parent got message ' + e);
                 delete worker.runPthread;
               }
               ++numWorkersLoaded;
+console.log('loaded a warker');
               if (numWorkersLoaded === numWorkers && onFinishedLoading) {
+console.log('ALL WARKERS LADED! ' + onFinishedLoading);
                 onFinishedLoading();
               }
             } else if (d.cmd === 'print') {
@@ -347,9 +349,22 @@ console.log('parent got message ' + e);
           };
 
           if (ENVIRONMENT_IS_NODE) {
+            worker.ref(); // XXX FIXME wat
 console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof worker.onerror]);
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
+            });
+            worker.on('close', function(data) {
+              console.log('worker closed ..!?');
+            });
+            worker.on('error', function(data) {
+              console.log('worker errored :(');
+            });
+            worker.on('exit', function(data) {
+              console.log('werker exited');
+            });
+            worker.on('online', function(data) {
+              console.log('workerah is online!!!1!');
             });
             // note: adding onerror seems to only hurt on node.js
           }
@@ -434,6 +449,8 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main application thread!';
 
     var worker = PThread.getNewWorker();
+console.log('spaewn ' + worker);
+
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
     PThread.runningWorkers.push(worker);
@@ -495,6 +512,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
       msg.time = performance.now();
+console.log('..tell child to run');
       worker.postMessage(msg, threadParams.transferList);
     };
     if (worker.loaded) {
@@ -521,6 +539,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
 
   pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
   pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+console.log('create a thradd');
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -623,6 +642,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
 
     // If on the main thread, and accessing Canvas/OffscreenCanvas failed, abort with the detected error.
     if (error) return error;
+console.log('..moar1');
 
     var stackSize = 0;
     var stackBase = 0;
@@ -733,6 +753,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
 
   pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls'],
   pthread_join: function(thread, status) {
+console.log('joinn ' + [thread, status]);
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
@@ -756,6 +777,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
       err('Attempted to join thread ' + thread + ', which was already detached!');
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
+console.log('3joinn loop');
     for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
@@ -765,6 +787,7 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
 
         if (!ENVIRONMENT_IS_PTHREAD) __cleanup_thread(thread);
         else postMessage({ cmd: 'cleanupThread', thread: thread});
+console.log('4joinn stahp');
         return 0;
       }
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:

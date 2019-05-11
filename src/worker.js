@@ -88,7 +88,7 @@ var wasmModule;
 var wasmMemory;
 
 this.onmessage = function(e) {
-  console.log('gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
+  console.log('child gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
       // Initialize the thread-local field(s):
@@ -237,6 +237,15 @@ this.onmessage = function(e) {
 
 // Node.js support
 if (typeof require === 'function') {
+
+  console.log('child wants to live forever ' + typeof setInterval);
+  setInterval(function() {
+    console.log('time in worker...');
+    throw 55;
+  }, 2000);
+
+
+
   // Create as web-worker-like an environment as we can.
   self = {
     location: {
@@ -252,9 +261,24 @@ if (typeof require === 'function') {
 
   var parentPort = nodeWorkerThreads.parentPort;
 
+  parentPort.ref(); // stay alive XXX?
+//process.exit(); XXX at the right time
+
   parentPort.on('message', function(data) {
     onmessage({ data: data });
   });
+            parentPort.on('close', function(data) {
+              console.log('parentPort closed ..!?');
+            });
+            parentPort.on('error', function(data) {
+              console.log('parentPort errored :(');
+            });
+            parentPort.on('exit', function(data) {
+              console.log('werker exited');
+            });
+            parentPort.on('online', function(data) {
+              console.log('parentPortah is online!!!1!');
+            });
 
   var nodeFS = require('fs');
 
@@ -275,4 +299,5 @@ if (typeof require === 'function') {
     parentPort.postMessage(msg);
   };
 }
+console.log('workers first event loop is going away now');
 
