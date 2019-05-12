@@ -298,6 +298,14 @@ if (typeof require === 'function') {
   postMessage = function(msg) {
     parentPort.postMessage(msg);
   };
+
+  if (typeof performance === 'undefined') {
+    performance = {
+      now: function() {
+        return Date.now();
+      }
+    };
+  }
 }
 console.log('workers first event loop is going away now');
 

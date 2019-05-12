@@ -74,6 +74,10 @@ void CreateThread(int i)
   pthread_attr_destroy(&attr);
 }
 
+void mainn() {
+  printf("main iter\n");
+}
+
 int main()
 {
 printf("mainne1\n");
@@ -94,33 +98,8 @@ printf("mainne3\n");
   }
 printf("mainne4\n");
 
-  // Join all threads and create more.
-  while (numThreadsToCreate > 0)
-  {
-printf("mainne5\n");
-    for(int i = 0; i < NUM_THREADS; ++i)
-    {
-printf("mainne6\n");
-      if (thread[i])
-      {
-printf("mainne7\n");
-        int status;
-// synchronous blocking here maybe is what prevents node from sending the thread creation postMessages :(
-        int rc = pthread_join(thread[i], (void**)&status);
-printf("mainne8\n");
-        assert(rc == 0);
-        EM_ASM(err('Main: Joined thread idx ' + $0 + ' (param ' + $1 + ') with status ' + $2), i, global_shared_data[i], (int)status);
-        assert(status == N);
-        thread[i] = 0;
-        if (numThreadsToCreate > 0)
-        {
-          --numThreadsToCreate;
-          CreateThread(i);
-        }
-      }
-    }
-  }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  // synchronous here would not let the worker start -
+  // the postMessage is only sent at the end of the event
+  // loop it seems :(
+  emscripten_set_main_loop(mainn, 1, 1);
 }

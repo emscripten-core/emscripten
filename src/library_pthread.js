@@ -357,9 +357,6 @@ console.log('library_pthread worker on ' + [typeof worker.onmessage, typeof work
             worker.on('close', function(data) {
               console.log('worker closed ..!?');
             });
-            worker.on('error', function(data) {
-              console.log('worker errored :(');
-            });
             worker.on('exit', function(data) {
               console.log('werker exited');
             });
