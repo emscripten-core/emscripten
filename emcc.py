@@ -2779,10 +2779,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=debug_info)
-    save_intermediate_with_wasm('wasm2js', wasm_binary_target)
+    save_intermediate('wasm2js')
 
     if options.use_closure_compiler == 2:
       final = run_closure_compiler(final)
+
+    shared.try_delete(wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
