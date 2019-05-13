@@ -7762,7 +7762,7 @@ int main() {
       seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
-  # test debug info and debuggability of JS output
+# test debug info and debuggability of JS output
   @uses_canonical_tmp
   def test_binaryen_debug(self):
     with env_modify({'EMCC_DEBUG': '1'}):
@@ -7820,11 +7820,47 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
-  def run_metadce_test(self, filename, args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs):
+  def assertFileContents(self, filename, contents):
+    if os.environ.get('EMTEST_REBASELINE'):
+      with open(filename, 'w') as f:
+        f.write(contents)
+      return
+
+    expected_content = open(filename).read()
+    self.assertTextDataIdentical(expected_content, contents,
+                                 "Run with EMTEST_REBASELINE=1 to automatically update expectations")
+
+  def run_metadce_test(self, filename, args, expected_sent, expected_exists,
+                       expected_not_exists, expected_size, expected_imports,
+                       expected_exports, expected_funcs):
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running metadce test:', args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    print('Running metadce test: %s:' % filename, args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    filename = path_from_root('tests', 'other', 'metadce', filename)
+
+    def clean_arg(arg):
+      return arg.replace('-', '')
+
+    def args_to_filename(args):
+      result = ''
+      for a in args:
+        if a == '-s':
+          continue
+        a = a.replace('-', '')
+        a = a.replace('=1', '')
+        a = a.replace('=[]', '_NONE')
+        a = a.replace('=', '_')
+        if a:
+          result += '_' + a
+
+      return result
+
+    expected_basename = os.path.splitext(filename)[0]
+    if not self.is_wasm_backend():
+      expected_basename += '_fastcomp'
+    expected_basename += args_to_filename(args)
+
     run_process([PYTHON, EMCC, filename, '-g2'] + args)
     # find the imports we send from JS
     js = open('a.out.js').read()
@@ -7836,12 +7872,16 @@ int main() {
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
     sent.sort()
-    print('   sent: ' + str(sent))
+
+    sent_file = expected_basename + '.sent'
+    sent_data = '\n'.join(sent) + '\n'
+    self.assertFileContents(sent_file, sent_data)
+    self.assertEqual(len(sent), expected_sent)
+
     for exists in expected_exists:
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
-    self.assertEqual(len(sent), expected_sent)
     wasm_size = os.path.getsize('a.out.wasm')
     if expected_size is not None:
       ratio = abs(wasm_size - expected_size) / float(expected_size)
@@ -7857,15 +7897,6 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   def test_binaryen_metadce_minimal(self):
-    create_test_file('minimal.c', '''
-      #include <emscripten.h>
-
-      EMSCRIPTEN_KEEPALIVE
-      int add(int x, int y) {
-        return x + y;
-      }
-      ''')
-
     def run(*args):
       self.run_metadce_test('minimal.c', *args)
 
@@ -7888,7 +7919,7 @@ int main() {
 
   def test_binaryen_metadce_cxx(self):
     def run(*args):
-      self.run_metadce_test(path_from_root('tests', 'hello_libcxx.cpp'), *args)
+      self.run_metadce_test('hello_libcxx.cpp', *args)
 
     # test on libc++: see effects of emulated function pointers
     if self.is_wasm_backend():
@@ -7900,7 +7931,7 @@ int main() {
 
   def test_binaryen_metadce_hello(self):
     def run(*args):
-      self.run_metadce_test(path_from_root('tests', 'hello_world.cpp'), *args)
+      self.run_metadce_test('hello_world.cpp', *args)
 
     if self.is_wasm_backend():
       run([],      17, [], ['waka'], 22185, 11,  18, 57) # noqa
