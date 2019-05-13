@@ -769,7 +769,7 @@ class RunnerCore(unittest.TestCase):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
                   configure_args=[], make=['make'], make_args='help',
-                  env_init={}, cache_name_extra='', native=False, cflags=[]):
+                  env_init={}, cache_name_extra='', native=False):
     if make_args == 'help':
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
@@ -798,7 +798,7 @@ class RunnerCore(unittest.TestCase):
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native, cflags=cflags)
+                         cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -1049,7 +1049,7 @@ class RunnerCore(unittest.TestCase):
       test_index += 1
 
   def get_freetype_library(self):
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'], cflags=self.get_emcc_args())
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1076,8 +1076,7 @@ class RunnerCore(unittest.TestCase):
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
-        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'],
-        cflags=self.get_emcc_args())
+        configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
 
     return poppler + freetype
 
@@ -1087,10 +1086,8 @@ class RunnerCore(unittest.TestCase):
                               configure=[path_from_root('emconfigure.bat')],
                               configure_args=['cmake', '.'],
                               make=['mingw32-make'],
-                              make_args=[],
-                              cflags=self.get_emcc_args())
-    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'],
-                            cflags=self.get_emcc_args())
+                              make_args=[])
+    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,
