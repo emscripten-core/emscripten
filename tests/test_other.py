@@ -7933,7 +7933,7 @@ int main() {
       # we don't metadce with linkable code! other modules may want stuff
       # don't compare the # of functions in a main module, which changes a lot
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1543, [],        [],      226403,  30,   95, None) # noqa
+                 1542, [],        [],      226403,  30,   95, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],       10571,  19,    9, 21) # noqa
 
