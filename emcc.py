@@ -712,6 +712,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # specified_target is the user-specified one, target is what we will generate
   if specified_target:
     target = specified_target
+    # check for the existence of the output directory now, to avoid having
+    # to do so repeatedly when each of the various output files (.mem, .wasm,
+    # etc) are written. This gives a more useful error message than the
+    # IOError and python backtrace that users would otherwise see.
+    dirname = os.path.dirname(target)
+    if dirname and not os.path.isdir(dirname):
+      exit_with_error("specified output file (%s) is in a directory that does not exist" % target)
   else:
     target = 'a.out.js'
 
@@ -1113,13 +1120,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.LEGACY_VM_SUPPORT:
       # legacy vms don't have wasm
-      assert not shared.Settings.WASM, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
+      assert not shared.Settings.WASM or shared.Settings.WASM2JS, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
-    if shared.Settings.WASM:
+    if shared.Settings.WASM and not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
@@ -1282,14 +1289,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PROXY_TO_PTHREAD:
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
-    if shared.Settings.OUTLINING_LIMIT:
-      if shared.Settings.WASM_BACKEND:
-        exit_with_error('OUTLINING_LIMIT is not compatible with the LLVM wasm backend')
-      if not options.js_opts:
-        logger.debug('enabling js opts as optional functionality implemented as a js opt was requested')
-        options.js_opts = True
-      options.force_js_opts = True
-
     # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
     if options.opt_level >= 1 and options.debug_level < 2 and not shared.Settings.WASM:
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
@@ -1373,8 +1372,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
-      if shared.Settings.OUTLINING_LIMIT:
-        logger.warning('for wasm there is usually no need to set OUTLINING_LIMIT, as VMs can handle large functions well anyhow')
       # default precise-f32 to on, since it works well in wasm
       shared.Settings.PRECISE_F32 = 1
       if options.js_opts and not options.force_js_opts:
@@ -1384,17 +1381,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
-      if not shared.Settings.WASM2JS:
+      if shared.Settings.WASM2JS:
+        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
+        # wouldn't tell a js build to use a separate mem init file
+        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
+      else:
         # wasm normally includes the mem init in the wasm binary. exceptions are pthreads, where we need
         # to split it out until we have full bulk memory support, and wasm2js, which behaves more like js.
         options.memory_init_file = True
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
         shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
-      else:
-        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
-        # wouldn't tell a js build to use a separate mem init file
-        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
 
       if not shared.Settings.MINIMAL_RUNTIME: # BINARYEN_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
         if shared.Settings.BINARYEN_ASYNC_COMPILATION == 1:
@@ -1473,7 +1470,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
-      logger.warn('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
+      logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
@@ -2144,11 +2141,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if options.opt_level >= 1 and options.js_opts:
         if options.opt_level >= 2:
-          # simplify ifs if it is ok to make the code somewhat unreadable, and unless outlining (simplified ifs
+          # simplify ifs if it is ok to make the code somewhat unreadable,
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
           debugging = options.debug_level == 0 or options.profiling
-          if shared.Settings.SIMPLIFY_IFS and debugging and shared.Settings.OUTLINING_LIMIT == 0 and not shared.Settings.WASM:
+          if shared.Settings.SIMPLIFY_IFS and debugging and not shared.Settings.WASM:
             optimizer.queue += ['simplifyIfs']
 
           if shared.Settings.PRECISE_F32:
@@ -2157,10 +2154,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.js_opts:
         if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
           optimizer.queue += ['safeHeap']
-
-        if shared.Settings.OUTLINING_LIMIT > 0:
-          optimizer.queue += ['outline']
-          optimizer.extra_info['sizeToOutline'] = shared.Settings.OUTLINING_LIMIT
 
         if options.opt_level >= 2 and options.debug_level < 3:
           if options.opt_level >= 3 or options.shrink_level > 0:
@@ -2788,7 +2781,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     debug_info=debug_info)
     save_intermediate_with_wasm('wasm2js', wasm_binary_target)
 
-    if options.use_closure_compiler and options.use_closure_compiler == 2:
+    if options.use_closure_compiler == 2:
       final = run_closure_compiler(final)
 
   # replace placeholder strings with correct subresource locations

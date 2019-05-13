@@ -657,10 +657,6 @@ align 32: 0
 base align: 0, 0, 0, 0'''])
 
     test()
-    if '-O' in str(self.emcc_args) and not self.is_wasm_backend():
-      print('outlining')
-      self.set_setting('OUTLINING_LIMIT', 60)
-      test()
 
   @no_emterpreter
   def test_stack_restore(self):
@@ -5578,17 +5574,11 @@ return malloc(size);
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'font.ttf')
 
     # Main
-    for outlining in [0, 5000]:
-      if outlining and self.is_wasm_backend():
-        continue
-      self.set_setting('OUTLINING_LIMIT', outlining)
-      print('outlining:', outlining, file=sys.stderr)
-      self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
-                  open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
-                  ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=self.get_freetype_library(),
-                  includes=[path_from_root('tests', 'freetype', 'include')])
-      self.set_setting('OUTLINING_LIMIT', 0)
+    self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
+                open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
+                ['font.ttf', 'test!', '150', '120', '25'],
+                libraries=self.get_freetype_library(),
+                includes=[path_from_root('tests', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
@@ -7350,11 +7340,13 @@ extern "C" {
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js(self):
-    self.set_setting('WASM2JS', 1)
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+    self.set_setting('WASM', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # a mem init file is emitted just like with JS
     expect_memory_init_file = self.uses_memory_init_file()
-    see_memory_init_file = os.path.exists('src.cpp.o.js.mem')
+    see_memory_init_file = os.path.exists('src.c.o.js.mem')
     assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
 
   def test_cxx_self_assign(self):
@@ -7654,12 +7646,12 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
-wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM2JS': '1'})
-wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM2JS': '1'})
-wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM2JS': '1'})
-wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM2JS': '1'})
-wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM2JS': '1'})
-wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM2JS': '1'})
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 

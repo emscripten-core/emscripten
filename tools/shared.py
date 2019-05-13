@@ -1192,6 +1192,10 @@ class SettingsManager(object):
         raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
+      if attr == 'STRICT' and value:
+        for a in self.legacy_settings:
+          self.attrs.pop(a, None)
+
       if attr in self.legacy_settings:
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
@@ -1209,6 +1213,7 @@ class SettingsManager(object):
         logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
         logger.error(' - (see src/settings.js for valid values)')
         sys.exit(1)
+
       self.attrs[attr] = value
 
     @classmethod
@@ -1256,9 +1261,9 @@ def verify_settings():
 
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
-      # TODO(sbc): Make this into a hard error.  We still have a few places that
-      # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
-      # generate_struct_info).
+      # When the user requests non-wasm output, we enable wasm2js. that is,
+      # we still compile to wasm normally, but we compile the final output
+      # to js.
       Settings.WASM = 1
       Settings.WASM2JS = 1
 
@@ -1996,6 +2001,8 @@ class Building(object):
             # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
+        else:
+          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
