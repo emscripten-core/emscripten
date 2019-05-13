@@ -7917,7 +7917,7 @@ int main() {
       # TODO(sbc): Investivate why the number of exports is order of magnitude
       # larger for wasm backend.
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1581, [],        [],      517336, 172,1484, None) # noqa
+                 1580, [],        [],      517336, 172,1484, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],      10770,   17,  13, None) # noqa
     else:
