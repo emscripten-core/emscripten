@@ -145,7 +145,6 @@ var LibraryPThread = {
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadInfoStruct = 0; above to 'release' the object in this worker thread.
-        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
 
         // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
         // canceled exception to be thrown.
@@ -240,15 +239,13 @@ var LibraryPThread = {
       if (pthread.worker) pthread.worker.pthread = null;
     },
     returnWorkerToPool: function(worker) {
-      //thread is not removed from PThread.pthreads in some cases. Will need to investigate/fix.
-      //delete PThread.pthreads[worker.pthread.thread];
-      PThread.freeThreadData(worker.pthread);
+      delete PThread.pthreads[worker.pthread.thread];
       //Note: worker is intentionally not terminated so the pool can dynamically grow.
-      worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
       PThread.unusedWorkerPool.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore.
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore
+      PThread.freeThreadData(worker.pthread);
+      worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
     },
-	
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL !== 'undefined') {
@@ -306,11 +303,11 @@ var LibraryPThread = {
             } else if (d.cmd === 'spawnThread') {
               __spawn_thread(e.data);
             } else if (d.cmd === 'cleanupThread') {
-              __cleanup_thread(worker.pthread.thread);
+              __cleanup_thread(d.thread);
             } else if (d.cmd === 'killThread') {
-              __kill_thread(worker.pthread.thread);
+              __kill_thread(d.thread);
             } else if (d.cmd === 'cancelThread') {
-              __cancel_thread(worker.pthread.thread);
+              __cancel_thread(d.thread);
             } else if (d.cmd === 'loaded') {
               worker.loaded = true;
               // If this Worker is already pending to start running a thread, launch the thread now
@@ -329,9 +326,11 @@ var LibraryPThread = {
             } else if (d.cmd === 'alert') {
               alert('Thread ' + d.threadId + ': ' + d.text);
             } else if (d.cmd === 'exit') {
-              var detached = Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2);
+              var detached = Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
               if (detached) {
                 PThread.returnWorkerToPool(worker);
+              } else {
+                Atomics.store(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.threadStatus }}}) >> 2, 1);
               }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
@@ -761,7 +760,7 @@ var LibraryPThread = {
         Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
 
         if (!ENVIRONMENT_IS_PTHREAD) __cleanup_thread(thread);
-        else postMessage({ cmd: 'cleanupThread' });
+        else postMessage({ cmd: 'cleanupThread', thread: thread });
         return 0;
       }
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
