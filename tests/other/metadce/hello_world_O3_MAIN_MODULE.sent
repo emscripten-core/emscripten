@@ -46,7 +46,6 @@ Mix_SetPostMix
 Mix_Volume
 Mix_VolumeChunk
 Mix_VolumeMusic
-PATH_FS
 SDL_AddTimer
 SDL_AllocRW
 SDL_AudioDriverName
