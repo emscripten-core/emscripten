@@ -27,8 +27,8 @@ def get(ports, settings, shared):
     try:
       os.chdir(build_dir)
       os.chmod(configure, os.stat(configure).st_mode | stat.S_IEXEC)
-      ports.run_commands([[shared.PYTHON, shared.EMCONFIGURE, configure, '--prefix=' + dist_dir] + formatflags + commonflags + ['CFLAGS=-s USE_VORBIS=1']])
-      ports.run_commands([[shared.PYTHON, shared.EMMAKE, 'make', 'install']])
+      shared.run_process([shared.PYTHON, shared.EMCONFIGURE, configure, '--prefix=' + dist_dir] + formatflags + commonflags + ['CFLAGS=-s USE_VORBIS=1'])
+      shared.run_process([shared.PYTHON, shared.EMMAKE, 'make', 'install'])
       shutil.copyfile(out, final)
     finally:
       os.chdir(cwd)

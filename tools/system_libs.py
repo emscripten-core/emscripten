@@ -24,24 +24,6 @@ stderr = None
 logger = logging.getLogger('system_libs')
 
 
-def call_process(cmd):
-  shared.run_process(cmd, stdout=stdout, stderr=stderr)
-
-
-def run_commands(commands):
-  cores = min(len(commands), shared.Building.get_num_cores())
-  if cores <= 1:
-    for command in commands:
-      call_process(command)
-  else:
-    pool = shared.Building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    # https://bugs.python.org/issue8296
-    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
-    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(call_process, commands, chunksize=1).get(999999)
-
-
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
@@ -56,6 +38,28 @@ def get_cflags(force_object_files=False):
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
+
+
+def run_build_command(cmd):
+  # this must only be called on a standard build command
+  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+  # add standard cflags, but also allow the cmd to override them
+  cmd = cmd[:2] + get_cflags() + cmd[2:]
+  shared.run_process(cmd, stdout=stdout, stderr=stderr)
+
+
+def run_commands(commands):
+  cores = min(len(commands), shared.Building.get_num_cores())
+  if cores <= 1:
+    for command in commands:
+      run_build_command(command)
+  else:
+    pool = shared.Building.get_multiprocessing_pool()
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    # https://bugs.python.org/issue8296
+    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
+    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
+    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
 
 
 def create_lib(libname, inputs):
@@ -160,7 +164,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               '-Wno-empty-body']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -180,7 +184,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -453,7 +457,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
       o_s.append(o)
     run_commands(commands)
     shared.Building.emar('cr', in_temp(libname), o_s)
@@ -824,7 +828,7 @@ class Ports(object):
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
     run_commands(commands)
