@@ -33,11 +33,11 @@ typedef long long __i64x2 __attribute__((__vector_size__(16), __aligned__(16)));
 #define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__, __target__("simd128"), __min_vector_width__(128)))
 
 // v128 wasm_v128_load(void* mem)
-static __inline__ v128 __DEFAULT_FN_ATTRS wasm_v128_load(void* __mem) {
+static __inline__ v128 __DEFAULT_FN_ATTRS wasm_v128_load(const void* __mem) {
   struct __wasm_v128_load_struct {
     __v128_u __v;
   } __attribute__((__packed__, __may_alias__));
-  return ((struct __wasm_v128_load_struct*)__mem)->__v;
+  return ((const struct __wasm_v128_load_struct*)__mem)->__v;
 }
 
 // wasm_v128_store(void* mem, v128 a)
