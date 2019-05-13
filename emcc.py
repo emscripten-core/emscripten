@@ -2764,12 +2764,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
 
-  # In the general case, run closure here. wasm2js is more complicated: in mode 1,
-  # we run closure here, so that it does not affect the wasm2js output, which is
-  # added later. In mode 2, we do run it afterwards, so it sees the entire program
-  # including the wasm2js output.
-  # TODO: is it worth it?
-  if options.use_closure_compiler and (not shared.Settings.WASM2JS or options.use_closure_compiler == 1):
+  if options.use_closure_compiler:
     final = run_closure_compiler(final)
 
   if shared.Settings.WASM2JS:
@@ -2780,9 +2775,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=debug_info)
     save_intermediate('wasm2js')
-
-    if options.use_closure_compiler == 2:
-      final = run_closure_compiler(final)
 
     shared.try_delete(wasm_binary_target)
 

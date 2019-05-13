@@ -2639,14 +2639,15 @@ class Building(object):
         temp = Building.js_optimizer(temp, passes)
         with open(temp) as f:
           wasm2js_js = f.read()
-    # Closure
-    if use_closure_compiler == 1:
+    # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
+    # minify the wasm2js output as well, which is ok since it isn't
+    # validating asm.js.
+    # TODO: in the non-closure case, we could run a lightweight general-
+    #       purpose JS minifier here.
+    if use_closure_compiler == 2:
       temp = configuration.get_temp_files().get('.js').name
       with open(temp, 'a') as f:
         f.write(wasm2js_js)
-      # if closure is 1, minify the code in a non-advanced way here (we don't validate
-      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
-      # mode, then we'll minify it all together later on
       temp = Building.closure_compiler(temp,
                                        pretty=not minify_whitespace,
                                        advanced=False)
