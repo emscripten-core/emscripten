@@ -48,7 +48,6 @@ _Mix_SetPostMix
 _Mix_Volume
 _Mix_VolumeChunk
 _Mix_VolumeMusic
-_PATH_FS
 _SDL_AddTimer
 _SDL_AllocRW
 _SDL_AudioDriverName
