@@ -813,7 +813,9 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char **argv)
     // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases over to the pthread.
     emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
 #else
-    // Otherwise by default, transfer whatever is set to Module.canvas.
+    // Otherwise by default, transfer whatever is set to Module.canvas, because in PROXY_TO_PTHREAD
+    // mode this is the only chance - this is the only pthread_create call that happens on the
+    // main thread, so it's the only chance to transfer the canvas from there.
     if (EM_ASM_INT(return !!(Module['canvas']))) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
 #endif
     _main_arguments.argc = argc;

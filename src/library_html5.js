@@ -2205,7 +2205,9 @@ var LibraryJSEvents = {
 
   _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
-#if !USE_PTHREADS
+// In offscreen framebuffer mode, we implement these functions in C so that they enable
+// the proxying of GL commands. Otherwise, they are implemented here in JS.
+#if !(USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
   emscripten_webgl_create_context__sig: 'iii',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
 
