@@ -23,7 +23,11 @@ import sys
 import tempfile
 
 if sys.version_info < (2, 7, 12):
-  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  print('emscripten requires python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
+if sys.version_info[0] == 3 and sys.version_info < (3, 5):
+  print('emscripten requires either python 3.5 or above or 2.7.12 or above)', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
