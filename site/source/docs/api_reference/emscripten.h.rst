@@ -429,7 +429,7 @@ Functions
 
   When building natively this becomes a simple direct call, after ``SDL_Delay`` (you must include **SDL.h** for that).
 
-  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used.
+  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used. (Note that 0 means that ``setTimeout`` is still used, which basically means "run asynchronously as soon as possible".)
 
   :param em_arg_callback_func func: The C function to call asynchronously. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined argument to pass to the C function.
