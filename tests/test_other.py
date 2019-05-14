@@ -9135,6 +9135,35 @@ int main () {
     self.set_setting('STRICT', 1)
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
+  def test_strict_mode_renamed_setting(self):
+    # Verify that renamed settings are available by either name (when not in 
+    # strict mode.
+    self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
+    src = r'''\
+    #include <stdio.h>
+    #include <emscripten.h>
+
+    int main() {
+      printf("%d %d\n",
+        emscripten_get_compiler_setting("BINARYEN_ASYNC_COMPILATION"),
+        emscripten_get_compiler_setting("WASM_ASYNC_COMPILATION"));
+      return 0;
+    }
+    '''
+
+    # Setting the new name should set both
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.do_run(src, '0 0')
+    self.set_setting('WASM_ASYNC_COMPILATION', 1)
+    self.do_run(src, '1 1')
+    self.clear_setting('WASM_ASYNC_COMPILATION')
+
+    # Setting the old name should set both
+    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.do_run(src, '0 0')
+    self.set_setting('BINARYEN_ASYNC_COMPILATION', 1)
+    self.do_run(src, '1 1')
+
   def test_strict_mode_legacy_settings_library(self):
     create_test_file('lib.js', r'''
 #if SPLIT_MEMORY
