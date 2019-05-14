@@ -1126,8 +1126,6 @@ def expand_byte_size_suffixes(value):
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
-  # Bi-directional map of renamed settings so that setting one will set the
-  # other.
 
   class __impl(object):
     attrs = {}
@@ -1139,7 +1137,7 @@ class SettingsManager(object):
     def reset(self):
       self.attrs = {}
 
-      # Load the JS defaults into python
+      # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
@@ -1147,6 +1145,8 @@ class SettingsManager(object):
       if 'EMCC_STRICT' in os.environ:
         self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
+      # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
+      # details
       self.legacy_settings = {}
       self.alt_names = {}
       for legacy in self.attrs['LEGACY_SETTINGS']:
