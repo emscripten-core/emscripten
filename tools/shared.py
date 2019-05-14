@@ -1128,9 +1128,6 @@ def expand_byte_size_suffixes(value):
 class SettingsManager(object):
   # Bi-directional map of renamed settings so that setting one will set the
   # other.
-  renamed_settings = {'BINARYEN_ASYNC_COMPILATION': 'WASM_ASYNC_COMPILATION'}
-  for key, value in renamed_settings.items():
-    renamed_settings[value] = key
 
   class __impl(object):
     attrs = {}
@@ -1151,11 +1148,21 @@ class SettingsManager(object):
         self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
       self.legacy_settings = {}
-      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
-        self.legacy_settings[name] = (fixed_values, err)
+      self.alt_names = {}
+      for legacy in self.attrs['LEGACY_SETTINGS']:
+        if len(legacy) == 2:
+          name, new_name = legacy
+          self.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
+          self.alt_names[name] = new_name
+          self.alt_names[new_name] = name
+          default_value = self.attrs[new_name]
+        else:
+          name, fixed_values, err = legacy
+          self.legacy_settings[name] = (fixed_values, err)
+          default_value = fixed_values[0]
         assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
         if not self.attrs['STRICT']:
-          self.attrs[name] = fixed_values[0]
+          self.attrs[name] = default_value
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1206,13 +1213,13 @@ class SettingsManager(object):
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
         fixed_values, error_message = self.legacy_settings[attr]
-        if value not in fixed_values:
+        if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
         else:
           logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
 
-      if attr in SettingsManager.renamed_settings:
-        alt_name = SettingsManager.renamed_settings[attr]
+      if attr in self.alt_names:
+        alt_name = self.alt_names[attr]
         self.attrs[alt_name] = value
 
       if attr not in self.attrs:

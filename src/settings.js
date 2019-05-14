@@ -1387,15 +1387,18 @@ var AUTODEBUG = 0;
 // wasm normally, then compile that to JS).
 var WASM2JS = 0;
 
-// Legacy settings that have been removed, and the values they are now fixed to.
-// These can no longer be changed:
+// Legacy settings that have been removed or renamed.
+// For renamed settings the format is:
+// [OLD_NAME, NEW_NAME]
+// For removed settings (which now effectively have a fixed value and can no
+// longer be changed) the format is:
 // [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
 // an array of values that will still be silently accepted by the compiler.
 // First element in the list is the canonical/fixed value going forward.
 // This allows existing build systems to keep specifying one of the supported
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
-  ['BINARYEN_ASYNC_COMPILATION', [0, 1], 'Renamed to WASM_ASYNC_COMPILATION'],
+  ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
   ['PGO', [0], 'pgo no longer supported'],
