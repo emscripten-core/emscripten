@@ -1126,6 +1126,8 @@ def expand_byte_size_suffixes(value):
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
+  renamed_settings = {'BINARYEN_ASYNC_COMPILATION': 'WASM_ASYNC_COMPILATION'}
+
   class __impl(object):
     attrs = {}
 
@@ -1186,6 +1188,8 @@ class SettingsManager(object):
       return self.attrs.keys()
 
     def __getattr__(self, attr):
+      if not self.attrs['STRICT'] and attr in SettingsManager.renamed_settings:
+        attr = SettingsManager.renamed_settings[attr]
       if attr in self.attrs:
         return self.attrs[attr]
       else:
@@ -1204,6 +1208,8 @@ class SettingsManager(object):
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
         else:
           logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+        if attr in SettingsManager.renamed_settings:
+          attr = SettingsManager.renamed_settings[attr]
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)

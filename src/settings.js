@@ -1012,8 +1012,10 @@ var WASM_MEM_MAX = -1;
 
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
-// smallest modules to run in V8
-var BINARYEN_ASYNC_COMPILATION = 1;
+// smallest modules to run in chrome.
+//
+// (This option was formerly called BINARYEN_ASYNC_COMPILATION)
+var WASM_ASYNC_COMPILATION = 1;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in. Emscripten does not emit this by default, as it
@@ -1393,6 +1395,7 @@ var WASM2JS = 0;
 // This allows existing build systems to keep specifying one of the supported
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
+  ['BINARYEN_ASYNC_COMPILATION', [0, 1], 'Renamed to WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
   ['PGO', [0], 'pgo no longer supported'],
