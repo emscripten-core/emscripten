@@ -7368,6 +7368,9 @@ extern "C" {
     expect_memory_init_file = self.uses_memory_init_file()
     see_memory_init_file = os.path.exists('src.c.o.js.mem')
     assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
+    if see_memory_init_file:
+      with open('src.c.o.js.mem', 'rb') as f:
+        self.assertTrue(f.read()[-1] != b'\0')
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
