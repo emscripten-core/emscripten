@@ -701,7 +701,7 @@ var PROXY_TO_WORKER_FILENAME = '';
 //
 // This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
 // is enabled. This has to happen because this is the only chance - this browser
-// main thread does the the only pthread_create call that happens on the
+// main thread does the the only pthread_create call that happens on
 // that thread, so it's the only chance to transfer the canvas from there.
 var PROXY_TO_PTHREAD = 0;
 
