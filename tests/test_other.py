@@ -9136,7 +9136,7 @@ int main () {
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
   def test_strict_mode_renamed_setting(self):
-    # Verify that renamed settings are available by either name (when not in 
+    # Verify that renamed settings are available by either name (when not in
     # strict mode.
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
     src = r'''\
