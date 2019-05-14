@@ -4050,7 +4050,7 @@ window.close = function() {
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
-  @no_chrome('see https://bugs.chromium.org/p/chromium/issues/detail?id=961765')
+  @no_chrome('see https://crbug.com/961765')
   @requires_threads
   def test_webgl_offscreen_canvas_in_pthread(self):
     for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
