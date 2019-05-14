@@ -2418,19 +2418,15 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     }
 #endif
-    if (!GL.currentContext.GLctx.commit) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    }
     if (!GL.currentContext.attributes.explicitSwapControl) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
-    GL.currentContext.GLctx.commit();
+    // We would do GL.currentContext.GLctx.commit(); here, but the current implementation
+    // in browsers has removed it - swap is implicit, so this function is a no-op for now
+    // (until/unless the spec changes).
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
