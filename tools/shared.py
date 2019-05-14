@@ -23,7 +23,11 @@ import sys
 import tempfile
 
 if sys.version_info < (2, 7, 12):
-  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  print('emscripten requires python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
+if sys.version_info[0] == 3 and sys.version_info < (3, 5):
+  print('emscripten requires at least python 3.5 (or python 2.7.12)', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -1384,7 +1388,6 @@ def static_library_name(name):
 #  Building
 class Building(object):
   COMPILER = CLANG
-  COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
@@ -1511,7 +1514,7 @@ class Building(object):
       return arg
 
   @staticmethod
-  def get_building_env(native=False, doublequote_commands=False):
+  def get_building_env(native=False, doublequote_commands=False, cflags=[]):
     def nop(arg):
       return arg
     quote = Building.doublequote_spaces if doublequote_commands else nop
@@ -1522,7 +1525,7 @@ class Building(object):
       env['LD'] = quote(CLANG)
       env['CFLAGS'] = '-O2 -fno-math-errno'
       # get a non-native one, and see if we have some of its effects - remove them if so
-      non_native = Building.get_building_env()
+      non_native = Building.get_building_env(cflags=cflags)
       # the ones that a non-native would modify
       EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
       for dangerous in EMSCRIPTEN_MODIFIES:
@@ -1546,7 +1549,7 @@ class Building(object):
     env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
     env['HOST_CC'] = quote(CLANG_CC)
     env['HOST_CXX'] = quote(CLANG_CPP)
     env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
@@ -1636,11 +1639,11 @@ class Building(object):
     return (args, env)
 
   @staticmethod
-  def configure(args, stdout=None, stderr=None, env=None):
+  def configure(args, stdout=None, stderr=None, env=None, cflags=[]):
     if not args:
       return
     if env is None:
-      env = Building.get_building_env()
+      env = Building.get_building_env(cflags=cflags)
     if 'cmake' in args[0]:
       # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
       #       does expect to be able to do config-time builds with emcc.
@@ -1667,9 +1670,9 @@ class Building(object):
       raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
-  def make(args, stdout=None, stderr=None, env=None):
+  def make(args, stdout=None, stderr=None, env=None, cflags=[]):
     if env is None:
-      env = Building.get_building_env()
+      env = Building.get_building_env(cflags=cflags)
     if not args:
       exit_with_error('Executable to run not specified.')
     # args += ['VERBOSE=1']
