@@ -2595,6 +2595,8 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):
+    # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
+    # (the testcase doesn't even use threads, but is compiled with thread support).
     self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
 
   def test_webgl2_objects(self):
