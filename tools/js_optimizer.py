@@ -310,7 +310,7 @@ def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, ju
     if start_funcs < 0 or end_funcs < start_funcs or not suffix:
       shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s, suffix_start: %s' % (start_funcs, end_funcs, suffix_start))
 
-    minify_globals = 'minifyNames' in passes and 'asm' in passes
+    minify_globals = 'minifyNames' in passes
     if minify_globals:
       passes = [p if p != 'minifyNames' else 'minifyLocals' for p in passes]
       start_asm = js.find(start_asm_marker)

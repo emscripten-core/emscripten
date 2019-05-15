@@ -2245,7 +2245,7 @@ var LibraryJSEvents = {
     var targetStr = UTF8ToString(target);
 #endif
 
-#if USE_PTHREADS
+#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
