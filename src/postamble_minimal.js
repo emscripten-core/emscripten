@@ -78,11 +78,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   var asm = output.instance.exports;
 #if DECLARE_ASM_MODULE_EXPORTS == 0
 
-#if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = Module[i] = asm[i];
-#else
-  for(var i in asm) this[i] = Module[i] = asm[i];
-#endif
+  /*** ASM_MODULE_GLOBAL_EXPORTS ***/
 
 #else
   /*** ASM_MODULE_EXPORTS ***/

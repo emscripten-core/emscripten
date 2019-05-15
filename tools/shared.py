@@ -53,13 +53,13 @@ def fix_import_name(g):
   if g.startswith('Math_'):
     return g.split('_')[1]
 
-  # Side modules import from the main module, which still export
-  # using a prefixed '_', so don't change that
-  if not Settings.WASM_BACKEND and (Settings.MAIN_MODULE or Settings.SIDE_MODULE):
-    return g
-
-  if g.startswith('_'):
+  # NB: asm2wasm expects these in this form
+  if g.startswith('_') and g not in ['__memory_base', '__table_base', "_llvm_cttz_i32"]:
     return g[1:]
+
+  if g.startswith('g$_'):
+    return 'g$' + g[3:]
+
   # NB: these are imported directly into ASMJS modules
   #     (see Settings.RUNTIME_FUNCS_TO_IMPORT)
   #     and used by fastcomp, but their import name conflicts
@@ -68,6 +68,57 @@ def fix_import_name(g):
   if not Settings.WASM_BACKEND and g in ["abort", "getTempRet0", "setTempRet0"]:
     return '__runtime_' + g
   return g
+
+def treat_as_user_function(name):
+  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
+                                 'stackSave', 'stackRestore',
+                                 'establishStackSpace', '__growWasmMemory',
+                                 '__heap_base', '__data_end',
+                                 # asm2wasm require these export names to properly function
+                                 '__post_instantiate', '_emscripten_replace_memory', '___udivmoddi4',
+                                 )
+  if name.startswith('dynCall_'):
+    return False
+  if name in library_functions_in_module:
+    return False
+  return True
+
+
+# NB: JS version below, keep in sync
+def asmjs_mangle(name):
+  """Mangle a name the way asm.js/JSBackend globals are mangled.
+
+  Prepends '_' and replaces non-alphanumerics with '_'.
+  Used by wasm backend for JS library consistency with asm.js.
+  """
+  if treat_as_user_function(name):
+    return '_' + name
+  else:
+    return name
+
+
+# NB: Python version above, keep in sync
+ASMJS_MANGLE = '''\
+function asmjs_mangle(name) {
+    if (name.substr(0, "__dynCall".length) == "__dynCall" ||
+       ['setTempRet0', 'getTempRet0', 'stackAlloc',
+        'stackSave', 'stackRestore',
+        'establishStackSpace', '__growWasmMemory',
+        '__post_instantiate', '_emscripten_replace_memory', '___udivmoddi4',
+        '__heap_base', '__data_end'].indexOf(name) != -1) {
+        return name;
+    } else {
+        return "_" + name;
+    }
+}
+'''
+
+# logically the inverse of asmjs_mangle()
+def fix_export_name(g):
+  if treat_as_user_function(g) and g.startswith("_"):
+    return g[1:]
+  else:
+    return g
 
 
 # On Windows python suffers from a particularly nasty bug if python is spawning
@@ -2549,7 +2600,7 @@ class Building(object):
     logger.debug('running meta-DCE')
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
-    extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x + '","' + x + '"]', Settings.MODULE_EXPORTS)) + ']}'
+    extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x + '","' + fix_import_name(x) + '"]', Settings.MODULE_EXPORTS)) + ']}'
     txt = Building.acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
     graph = json.loads(txt)
     # add exports based on the backend output, that are not present in the JS
@@ -2559,6 +2610,7 @@ class Building(object):
         if 'export' in item:
           exports.add(item['export'])
       for export in Settings.MODULE_EXPORTS:
+        export = fix_export_name(export)
         if export not in exports:
           graph.append({
             'export': export,
@@ -2569,9 +2621,7 @@ class Building(object):
     for item in graph:
       if 'export' in item:
         export = item['export']
-        # wasm backend's exports are prefixed differently inside the wasm
-        if Settings.WASM_BACKEND:
-          export = '_' + export
+        export = asmjs_mangle(export)
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     for item in graph:

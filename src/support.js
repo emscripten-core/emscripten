@@ -264,7 +264,7 @@ function loadDynamicLibrary(lib, flags) {
       // We should copy the symbols (which include methods and variables) from SIDE_MODULE to MAIN_MODULE.
 
       var module_sym = sym;
-#if WASM_BACKEND
+#if WASM
       module_sym = '_' + sym;
 #else
       // Module of SIDE_MODULE has not only the symbols (which should be copied)
@@ -284,10 +284,10 @@ function loadDynamicLibrary(lib, flags) {
       }
 #if ASSERTIONS == 2
       else {
-        var curr = Module[sym], next = libModule[sym];
+        var curr = Module[module_sym], next = libModule[sym];
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr === 'function' && typeof next === 'function')) {
-          err("warning: symbol '" + sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
+          err("warning: symbol '" + module_sym + "' from '" + lib + "' already exists (duplicate symbol? or weak linking, which isn't supported yet?)"); // + [curr, ' vs ', next]);
         }
       }
 #endif
@@ -401,9 +401,7 @@ function loadWebAssemblyModule(binary, flags) {
     var moduleLocal = {};
 
     var resolveSymbol = function(sym, type) {
-#if WASM_BACKEND
       sym = '_' + sym;
-#endif
       var resolved = Module[sym];
       if (!resolved)
         resolved = moduleLocal[sym];
@@ -533,11 +531,7 @@ function loadWebAssemblyModule(binary, flags) {
 #endif
         }
         exports[e] = value;
-#if WASM_BACKEND
         moduleLocal['_' + e] = value;
-#else
-        moduleLocal[e] = value;
-#endif
       }
       // initialize the module
       var init = exports['__post_instantiate'];

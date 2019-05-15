@@ -844,7 +844,8 @@ if __name__ == '__main__':
   emterpreted_funcs = set([func for func in asm.funcs if func not in BLACKLIST and not shared.JS.is_dyn_call(func)])
 
   tabled_funcs = asm.get_table_funcs()
-  exported_funcs = [func.split(':')[0] for func in asm.exports]
+  # Use the value (index 1) of each asm.exports instead of the key
+  exported_funcs = [func.split(':')[1].strip() for func in asm.exports]
 
   # find emterpreted functions reachable by non-emterpreted ones, we will force
   # a trampoline for them later

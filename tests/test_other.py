@@ -390,7 +390,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # (['-O2', '-g4'], lambda generated: 'var b=0' not in generated and 'var b = 0' not in generated and 'function _main' in generated, 'same as -g3 for now'),
         (['-s', 'INLINING_LIMIT=0'], lambda generated: 'function _dump' in generated, 'no inlining without opts'),
         ([], lambda generated: 'Module["_dump"]' not in generated, 'dump is not exported by default'),
-        (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'asm["_dump"];' in generated, 'dump is now exported'),
+        (['-s', 'EXPORTED_FUNCTIONS=["_main", "_dump"]'], lambda generated: 'Module["_dump"] =' in generated, 'dump is now exported'),
         (['--llvm-opts', '1'], lambda generated: '_puts(' in generated, 'llvm opts requested'),
         ([], lambda generated: '// Sometimes an existing Module' in generated, 'without opts, comments in shell code'),
         (['-O2'], lambda generated: '// Sometimes an existing Module' not in generated, 'with opts, no comments in shell code'),
@@ -1638,11 +1638,7 @@ int f() {
     export_name = 'this_is_an_entry_point'
     full_export_name = '_' + export_name
 
-    # The wasm backend exports symbols without the leading '_'
-    if self.is_wasm_backend():
-      expect_export = export_name
-    else:
-      expect_export = full_export_name
+    expect_export = export_name
 
     create_test_file('export.c', r'''
       #include <stdio.h>
@@ -9215,3 +9211,17 @@ int main () {
     assert lf - 900 <= f <= lf - 500
     # both is a little bigger still
     assert both - 100 <= lf <= both - 50
+
+  @no_wasm_backend()
+  def test_llvm_cttz_i32_not_imported(self):
+    filename = path_from_root('tests', 'hello_world.cpp')
+    run_process([PYTHON, EMCC, filename, '-g2', "-s", "MAIN_MODULE=1"])
+    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+    self.assertNotContained('(import "env" "llvm_cttz_i32"', wast)
+
+  @no_wasm_backend()
+  def test_emscripten_replace_memory_not_exported(self):
+    filename = path_from_root('tests', 'hello_world.cpp')
+    run_process([PYTHON, EMCC, filename, '-s', 'ALLOW_MEMORY_GROWTH=1'])
+    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+    self.assertNotContained('(export "_emscripten_replace_memory"', wast)

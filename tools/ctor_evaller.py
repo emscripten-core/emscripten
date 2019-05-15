@@ -22,6 +22,8 @@ sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tools import shared, js_optimizer, jsrun
 from tools.tempfiles import try_delete
 
+fix_export_name = shared.fix_export_name
+asmjs_mangle = shared.asmjs_mangle
 
 js_file = sys.argv[1]
 binary_file = sys.argv[2] # mem init for js, wasm binary for wasm
@@ -61,9 +63,8 @@ def find_ctors_data(js, num):
   ctors_text = js[ctors_start:ctors_end]
   all_ctors = [ctor for ctor in ctors_text.split(' ') if ctor.endswith('()') and not ctor == 'function()' and '.' not in ctor]
   all_ctors = [ctor.replace('()', '') for ctor in all_ctors]
-  if shared.Settings.WASM_BACKEND:
-    assert all(ctor.startswith('_') for ctor in all_ctors)
-    all_ctors = [ctor[1:] for ctor in all_ctors]
+  assert all(ctor.startswith('_') for ctor in all_ctors)
+  all_ctors = [fix_export_name(ctor) for ctor in all_ctors]
   assert len(all_ctors)
   ctors = all_ctors[:num]
   return ctors_start, ctors_end, all_ctors, ctors
@@ -300,6 +301,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     if len(atexits):
       elements.append('{ func: function() { %s } }' % '; '.join(['_atexit(' + str(x[0]) + ',' + str(x[1]) + ')' for x in atexits]))
     for ctor in all_ctors[num:]:
+      ctor = asmjs_mangle(ctor)
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
@@ -330,6 +332,7 @@ def eval_ctors_wasm(js, wasm_file, num):
   else:
     elements = []
     for ctor in all_ctors[num_successful:]:
+      ctor = asmjs_mangle(ctor)
       elements.append('{ func: function() { %s() } }' % ctor)
     new_ctors = '__ATINIT__.push(' + ', '.join(elements) + ');'
   js = js[:ctors_start] + new_ctors + js[ctors_end:]
@@ -388,17 +391,21 @@ def main():
     exports_end = asm.find('};', exports_start)
     exports_text = asm[asm.find('{', exports_start) + 1:exports_end]
     exports = [x.split(':')[1].strip() for x in exports_text.replace(' ', '').split(',')]
+    exports_name = [x.split(':')[0].strip() for x in exports_text.replace(' ', '').split(',')]
+    exports_replace = dict((e, ei) for (e, ei) in zip(exports_name, exports))
     for r in removed:
-      assert r in exports, 'global ctors were exported'
-    exports = [e for e in exports if e not in removed]
+      assert r in exports_replace, 'global ctors were exported'
+    exports = [ei for (e, ei) in exports_replace.items() if e not in removed]
     # fix up the exports
     js = open(js_file).read()
     absolute_exports_start = js.find(exports_text)
-    js = js[:absolute_exports_start] + ', '.join([e + ': ' + e for e in exports]) + js[absolute_exports_start + len(exports_text):]
+    js = js[:absolute_exports_start] + ', '.join([e + ': ' + ei for (e, ei) in exports_replace.items() if e not in removed]) + js[absolute_exports_start + len(exports_text):]
     open(js_file, 'w').write(js)
     # find unreachable methods and remove them
     reachable = shared.Building.calculate_reachable_functions(js_file, exports, can_reach=False)['reachable']
     for r in removed:
+      r = exports_replace.get(r)
+      assert r is not None, "global ctors were exported"
       assert r not in reachable, 'removed ctors must NOT be reachable'
     shared.Building.js_optimizer(js_file, ['removeFuncs'], extra_info={'keep': reachable}, output_filename=js_file)
   else:

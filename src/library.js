@@ -2152,7 +2152,7 @@ LibraryManager.library = {
     }
 
     var lib = LDSO.loadedLibs[handle];
-#if !WASM_BACKEND
+#if !WASM
     symbol = '_' + symbol;
 #endif
     if (!lib.module.hasOwnProperty(symbol)) {

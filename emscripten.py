@@ -26,7 +26,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, fix_import_name
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, fix_import_name, asmjs_mangle, ASMJS_MANGLE, treat_as_user_function, fix_export_name
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -382,12 +382,14 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   if shared.Settings.MINIMAL_RUNTIME:
     # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-    post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(metadata['initializers'])]))
+    post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + fix_export_name(x) + "']();" for x in global_initializer_funcs(metadata['initializers'])]))
 
     if shared.Settings.WASM:
       # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
       # e.g. var a,b,c,d,e,f;
       post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(shared.Settings.MODULE_EXPORTS) + ';')
+
+      post = post.replace('/*** ASM_MODULE_GLOBAL_EXPORTS ***/', create_global_exports())
 
       # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
       post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
@@ -398,11 +400,12 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   if shared.Settings.EMULATED_FUNCTION_POINTERS:
     final_function_tables = (
       final_function_tables
-      .replace("asm['", '')
-      .replace("']", '')
       .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
       .replace('var dynCall_', '//')
     )
+    def fix_asm_names(m):
+      return asmjs_mangle(m.group(1))
+    final_function_tables = re.sub(r"asm\['(\w+)'\]", fix_asm_names, final_function_tables)
 
   if DEBUG:
     logger.debug('asm text sizes' + str([
@@ -1103,7 +1106,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
           # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
           return item
         in_table.add(item)
-        return "asm['" + item + "']"
+        return "asm['" + fix_export_name(item) + "']"
 
       body = [receive(b) for b in body]
     for j in range(shared.Settings.RESERVED_FUNCTION_POINTERS):
@@ -1122,7 +1125,7 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
           proper_sig, proper_target = function_pointer_targets[j]
           if shared.Settings.EMULATED_FUNCTION_POINTERS:
             if proper_target in all_implemented:
-              proper_target = "asm['" + proper_target + "']"
+              proper_target = "asm['" + fix_export_name(proper_target) + "']"
 
           def make_emulated_param(i):
             if i >= len(sig):
@@ -1154,7 +1157,10 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
         Counter.pre.append(specific_bad_func)
         return specific_bad if not newline else (specific_bad + '\n')
 
-      clean_item = item.replace("asm['", '').replace("']", '')
+      if item.startswith("asm['"):
+        clean_item = asmjs_mangle(item.replace("asm['", '').replace("']", ''))
+      else:
+        clean_item = item
       # when emulating function pointers, we don't need wrappers
       # but if relocating, then we also have the copies in-module, and do
       # in wasm we never need wrappers though
@@ -1619,14 +1625,14 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
     all_exported += in_table
   exports = []
   for export in sorted(set(all_exported)):
-    exports.append(quote(export) + ": " + export)
+    exports.append(quote(fix_export_name(export)) + ": " + export)
   if shared.Settings.WASM and shared.Settings.SIDE_MODULE:
     # named globals in side wasm modules are exported globals from asm/wasm
     for k, v in metadata['namedGlobals'].items():
-      exports.append(quote('_' + str(k)) + ': ' + str(v))
+      exports.append(quote(str(k)) + ': ' + str(v))
     # aliases become additional exports
     for k, v in metadata['aliases'].items():
-      exports.append(quote(str(k)) + ': ' + str(v))
+      exports.append(quote(fix_export_name(str(k))) + ': ' + str(v))
   # shared wasm emulated function pointer mode requires us to know the function pointer for
   # each function. export fp$func => function pointer for func
   if shared.Settings.WASM and shared.Settings.RELOCATABLE and shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
@@ -1673,6 +1679,22 @@ RUNTIME_ASSERTIONS = '''
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 '''
 
+def create_global_exports():
+  if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
+    global_object = '(typeof process !== "undefined" ? global : this)'
+  elif shared.Settings.target_environment_may_be('node'):
+    global_object = 'global'
+  else:
+    global_object = 'this'
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    module_assign = ''
+  else:
+    module_assign = 'Module[asmjs_mangle(__exportedFunc)] = '
+
+  receiving = ASMJS_MANGLE
+  receiving += 'for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];\n'
+  return receiving
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
@@ -1683,7 +1705,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
     receiving = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
-    receiving = '\n'.join('var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
+    receiving = '\n'.join('var real_' + s + ' = asm["' + fix_export_name(s) + '"]; asm["' + fix_export_name(s) + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
 };
 ''' for s in receiving)
 
@@ -1699,31 +1721,19 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
         # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
         # var asm = output.instance.exports;
         # _main = asm["_main"];
-        receiving += '\n'.join([s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
+        receiving += '\n'.join([s + ' = asm["' + fix_export_name(s) + '"];' for s in imported_exports]) + '\n'
       else:
         if shared.Settings.MINIMAL_RUNTIME:
           # In asm.js exports can be directly processed at top level, i.e.
           # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
           # var _main = asm["_main"];
-          receiving += '\n'.join(['var ' + s + ' = asm["' + s + '"];' for s in imported_exports]) + '\n'
+          receiving += '\n'.join(['var ' + s + ' = asm["' + fix_export_name(s) + '"];' for s in imported_exports]) + '\n'
         else:
-          receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
+          receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + fix_export_name(s) + '"];' for s in module_exports]) + '\n'
     else:
-      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
-        global_object = '(typeof process !== "undefined" ? global : this)'
-      elif shared.Settings.target_environment_may_be('node'):
-        global_object = 'global'
-      else:
-        global_object = 'this'
-
-      if shared.Settings.MINIMAL_RUNTIME:
-        module_assign = ''
-      else:
-        module_assign = 'Module[__exportedFunc] = '
-
-      receiving += 'for(var __exportedFunc in asm) ' + global_object + '[__exportedFunc] = ' + module_assign + 'asm[__exportedFunc];\n'
+      receiving += create_global_exports()
   else:
-    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in module_exports]) + '\n'
+    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + fix_export_name(s) + '"].apply(null, arguments) };' for s in module_exports]) + '\n'
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -2497,30 +2507,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def treat_as_user_function(name):
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
-                                 'stackSave', 'stackRestore',
-                                 'establishStackSpace', '__growWasmMemory',
-                                 '__heap_base', '__data_end')
-  if name.startswith('dynCall_'):
-    return False
-  if name in library_functions_in_module:
-    return False
-  return True
-
-
-def asmjs_mangle(name):
-  """Mangle a name the way asm.js/JSBackend globals are mangled.
-
-  Prepends '_' and replaces non-alphanumerics with '_'.
-  Used by wasm backend for JS library consistency with asm.js.
-  """
-  if treat_as_user_function(name):
-    return '_' + name
-  else:
-    return name
 
 
 def normalize_line_endings(text):
