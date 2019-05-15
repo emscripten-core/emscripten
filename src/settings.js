@@ -219,25 +219,6 @@ var SKIP_STACK_IN_SMALL = 1;
 // you do not want inlining
 var INLINING_LIMIT = 0;
 
-// A function size above which we try to automatically break up functions into
-// smaller ones, to avoid the downsides of very large functions (JS engines
-// often compile them very slowly, compile them with lower optimizations, or do
-// not optimize them at all). If 0, we do not perform outlining at all.  To see
-// which funcs are large, you can inspect the source in a debug build (-g2 or -g
-// for example), and can run tools/find_bigfuncs.py on that to get a sorted list
-// by size.  Another possibility is to look in the web console in firefox, which
-// will note slowly-compiling functions.  You will probably want to experiment
-// with various values to see the impact on compilation time, code size and
-// runtime throughput. It is hard to say what values to start testing with, but
-// something around 20,000 to 100,000 might make sense.  (The unit size is
-// number of AST nodes.) Outlining decreases maximum function size, but does so
-// at the cost of increasing overall code size as well as performance (outlining
-// itself makes code less optimized, and requires emscripten to disable some
-// passes that are incompatible with it).
-// Note: For wasm there is usually no need to set OUTLINING_LIMIT, as VMs can
-//       handle large functions well anyhow.
-var OUTLINING_LIMIT = 0;
-
 // Run aggressiveVariableElimination in js-optimizer.js
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0;
 
@@ -717,6 +698,11 @@ var PROXY_TO_WORKER_FILENAME = '';
 // calls pthread_create() to run the application main() in a pthread.  This is
 // something that applications can do manually as well if they wish, this option
 // is provided as convenience.
+//
+// This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
+// is enabled. This has to happen because this is the only chance - this browser
+// main thread does the the only pthread_create call that happens on
+// that thread, so it's the only chance to transfer the canvas from there.
 var PROXY_TO_PTHREAD = 0;
 
 // If set to 1, this file can be linked with others, either as a shared library
@@ -1398,6 +1384,11 @@ var BINARYEN_FEATURES = [];
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for runtime
 // logging that can help in debugging.
 var AUTODEBUG = 0;
+
+// Whether we should use binaryen's wasm2js to convert our wasm to JS. Set when
+// wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
+// wasm normally, then compile that to JS).
+var WASM2JS = 0;
 
 // Legacy settings that have been removed, and the values they are now fixed to.
 // These can no longer be changed:

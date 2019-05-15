@@ -249,6 +249,12 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
   'asmi',
   'asm2i',
 ]
@@ -263,6 +269,7 @@ non_core_test_modes = [
   'sanity',
   'sockets',
   'interactive',
+  'benchmark',
 ]
 
 test_index = 0
@@ -299,15 +306,18 @@ class RunnerCore(unittest.TestCase):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
+    if self.get_setting('WASM_BACKEND') and not self.get_setting('WASM'):
+      self.skipTest('no dynamic library support in wasm2js yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
+    if self.get_setting('SIDE_MODULE') or \
+      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
       return opt_supports
 
   def set_temp_dir(self, temp_dir):
@@ -397,6 +407,9 @@ class RunnerCore(unittest.TestCase):
       self.clear_setting(key)
     self.settings_mods[key] = value
 
+  def has_changed_setting(self, key):
+    return key in self.settings_mods
+
   def clear_setting(self, key):
     self.settings_mods.pop(key, None)
 
@@ -480,9 +493,19 @@ class RunnerCore(unittest.TestCase):
 
     return output_obj
 
-  def get_emcc_args(self):
-    # TODO(sbc): We should probably unify Building.COMPILER_TEST_OPTS and self.emcc_args
-    return self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS
+  # returns the full list of arguments to pass to emcc
+  # param @main_file whether this is the main file of the test. some arguments
+  #                  (like --pre-js) do not need to be passed when building
+  #                  libraries, for example
+  def get_emcc_args(self, main_file=False):
+    args = self.serialize_settings() + self.emcc_args
+    if not main_file:
+      for i, arg in enumerate(args):
+        if arg in ('--pre-js', '--post-js'):
+          args[i] = None
+          args[i + 1] = None
+      args = [arg for arg in args if arg is not None]
+    return args
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -522,7 +545,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + self.get_emcc_args() + \
+        args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -543,7 +566,7 @@ class RunnerCore(unittest.TestCase):
       self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      Building.emcc(object_file, self.get_emcc_args(), object_file + '.js')
+      Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -551,7 +574,7 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + self.get_emcc_args() + \
+      args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -685,22 +708,25 @@ class RunnerCore(unittest.TestCase):
     path2 = path2.replace('\\', '/')
     return self.assertIdentical(path1, path2)
 
-  # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2):
+  # Tests that the given two multiline text content are identical, modulo line
+  # ending differences (\r\n on Windows, \n on Unix).
+  def assertTextDataIdentical(self, text1, text2, msg=None):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2)
+    return self.assertIdentical(text1, text2, msg)
 
-  def assertIdentical(self, values, y):
+  def assertIdentical(self, values, y, msg=None):
     if type(values) not in [list, tuple]:
       values = [values]
     for x in values:
       if x == y:
         return # success
-    self.fail("Expected to have '%s' == '%s', diff:\n\n%s" % (
-      limit_size(values[0]), limit_size(y),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
-    ))
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
+    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if msg:
+      fail_message += '\n' + msg
+    self.fail(fail_message)
 
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
@@ -750,8 +776,10 @@ class RunnerCore(unittest.TestCase):
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    hash_input = (str(Building.COMPILER_TEST_OPTS) + ' $ ' + str(env_init)).encode('utf-8')
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
+    emcc_args = self.get_emcc_args()
+
+    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
@@ -770,7 +798,7 @@ class RunnerCore(unittest.TestCase):
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native)
+                         cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -1021,8 +1049,6 @@ class RunnerCore(unittest.TestCase):
       test_index += 1
 
   def get_freetype_library(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
@@ -1030,7 +1056,7 @@ class RunnerCore(unittest.TestCase):
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
       '-I' + path_from_root('tests', 'poppler', 'include')
     ]
@@ -1039,7 +1065,7 @@ class RunnerCore(unittest.TestCase):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
@@ -1457,7 +1483,8 @@ def build_library(name,
                   cache=None,
                   cache_name=None,
                   env_init={},
-                  native=False):
+                  native=False,
+                  cflags=[]):
   """Build a library into a .bc file. We build the .bc file once and cache it
   for all our tests. (We cache in memory since the test directory is destroyed
   and recreated for each test. Note that we cache separately for different
@@ -1477,7 +1504,7 @@ def build_library(name,
 
   with chdir(project_dir):
     generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    env = Building.get_building_env(native, True)
+    env = Building.get_building_env(native, True, cflags=cflags)
     for k, v in env_init.items():
       env[k] = v
     if configure:

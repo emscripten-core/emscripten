@@ -2205,7 +2205,9 @@ var LibraryJSEvents = {
 
   _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
-#if !USE_PTHREADS
+// In offscreen framebuffer mode, we implement these functions in C so that they enable
+// the proxying of GL commands. Otherwise, they are implemented here in JS.
+#if !(USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
   emscripten_webgl_create_context__sig: 'iii',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
 
@@ -2243,7 +2245,7 @@ var LibraryJSEvents = {
     var targetStr = UTF8ToString(target);
 #endif
 
-#if USE_PTHREADS
+#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
@@ -2416,19 +2418,15 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     }
 #endif
-    if (!GL.currentContext.GLctx.commit) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    }
     if (!GL.currentContext.attributes.explicitSwapControl) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
-    GL.currentContext.GLctx.commit();
+    // We would do GL.currentContext.GLctx.commit(); here, but the current implementation
+    // in browsers has removed it - swap is implicit, so this function is a no-op for now
+    // (until/unless the spec changes).
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

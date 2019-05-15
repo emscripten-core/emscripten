@@ -649,6 +649,10 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 // we create a wasm module that takes the JS function as an import with a given
 // signature, and re-exports that as a wasm function.
 function convertJsFunctionToWasm(func, sig) {
+#if WASM2JS
+  return func;
+#endif
+
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
   var typeSection = [

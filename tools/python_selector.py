@@ -17,7 +17,7 @@ def run(filename):
     from tools.toolchain_profiler import ToolchainProfiler
     ToolchainProfiler.record_process_start()
 
-  # In the future we might froce a particular python version here.
+  # In the future we might force a particular python version here.
   # Python on Windows does not provide `python2` but instead `py` that receives version parameter
   # python = ['py', '-2'] if sys.platform.startswith('win') else ['python2']
   python = sys.executable

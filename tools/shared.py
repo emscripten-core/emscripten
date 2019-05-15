@@ -23,7 +23,11 @@ import sys
 import tempfile
 
 if sys.version_info < (2, 7, 12):
-  print('emscripten required python 2.7.12 or above', file=sys.stderr)
+  print('emscripten requires python 2.7.12 or above', file=sys.stderr)
+  sys.exit(1)
+
+if sys.version_info[0] == 3 and sys.version_info < (3, 5):
+  print('emscripten requires at least python 3.5 (or python 2.7.12)', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -1192,6 +1196,10 @@ class SettingsManager(object):
         raise AttributeError("Settings object has no attribute '%s'" % attr)
 
     def __setattr__(self, attr, value):
+      if attr == 'STRICT' and value:
+        for a in self.legacy_settings:
+          self.attrs.pop(a, None)
+
       if attr in self.legacy_settings:
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
@@ -1209,6 +1217,7 @@ class SettingsManager(object):
         logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
         logger.error(' - (see src/settings.js for valid values)')
         sys.exit(1)
+
       self.attrs[attr] = value
 
     @classmethod
@@ -1256,11 +1265,11 @@ def verify_settings():
 
   if Settings.WASM_BACKEND:
     if not Settings.WASM:
-      # TODO(sbc): Make this into a hard error.  We still have a few places that
-      # pass WASM=0 before we can do this (at least Platform/Emscripten.cmake and
-      # generate_struct_info).
-      logger.warn('emcc: WASM_BACKEND is not compatible with asmjs (WASM=0), forcing WASM=1')
+      # When the user requests non-wasm output, we enable wasm2js. that is,
+      # we still compile to wasm normally, but we compile the final output
+      # to js.
       Settings.WASM = 1
+      Settings.WASM2JS = 1
 
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
@@ -1379,7 +1388,6 @@ def static_library_name(name):
 #  Building
 class Building(object):
   COMPILER = CLANG
-  COMPILER_TEST_OPTS = [] # For use of the test runner
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
@@ -1506,7 +1514,7 @@ class Building(object):
       return arg
 
   @staticmethod
-  def get_building_env(native=False, doublequote_commands=False):
+  def get_building_env(native=False, doublequote_commands=False, cflags=[]):
     def nop(arg):
       return arg
     quote = Building.doublequote_spaces if doublequote_commands else nop
@@ -1517,7 +1525,7 @@ class Building(object):
       env['LD'] = quote(CLANG)
       env['CFLAGS'] = '-O2 -fno-math-errno'
       # get a non-native one, and see if we have some of its effects - remove them if so
-      non_native = Building.get_building_env()
+      non_native = Building.get_building_env(cflags=cflags)
       # the ones that a non-native would modify
       EMSCRIPTEN_MODIFIES = ['LDSHARED', 'AR', 'CROSS_COMPILE', 'NM', 'RANLIB']
       for dangerous in EMSCRIPTEN_MODIFIES:
@@ -1541,7 +1549,7 @@ class Building(object):
     env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(Building.COMPILER_TEST_OPTS)
+    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
     env['HOST_CC'] = quote(CLANG_CC)
     env['HOST_CXX'] = quote(CLANG_CPP)
     env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
@@ -1631,11 +1639,11 @@ class Building(object):
     return (args, env)
 
   @staticmethod
-  def configure(args, stdout=None, stderr=None, env=None):
+  def configure(args, stdout=None, stderr=None, env=None, cflags=[]):
     if not args:
       return
     if env is None:
-      env = Building.get_building_env()
+      env = Building.get_building_env(cflags=cflags)
     if 'cmake' in args[0]:
       # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
       #       does expect to be able to do config-time builds with emcc.
@@ -1662,9 +1670,9 @@ class Building(object):
       raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
-  def make(args, stdout=None, stderr=None, env=None):
+  def make(args, stdout=None, stderr=None, env=None, cflags=[]):
     if env is None:
-      env = Building.get_building_env()
+      env = Building.get_building_env(cflags=cflags)
     if not args:
       exit_with_error('Executable to run not specified.')
     # args += ['VERBOSE=1']
@@ -1996,6 +2004,8 @@ class Building(object):
             # If there are no archives then we can simply link all valid object
             # files and skip the symbol table stuff.
             actual_files.append(f)
+        else:
+          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
       else:
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
@@ -2384,7 +2394,7 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True):
+  def closure_compiler(filename, pretty=True, advanced=True):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
         logger.error('Cannot run closure compiler')
@@ -2421,11 +2431,12 @@ class Building(object):
       args = [JAVA,
               '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
               '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS',
+              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
               '--language_in', 'ECMASCRIPT5']
-      args += CLOSURE_ANNOTATIONS
-      args += ['--externs', CLOSURE_EXTERNS,
-               '--js_output_file', outfile]
+      if advanced:
+        args += CLOSURE_ANNOTATIONS
+        args += ['--externs', CLOSURE_EXTERNS]
+      args += ['--js_output_file', outfile]
 
       if Settings.target_environment_may_be('node'):
         for extern in NODE_EXTERNS:
@@ -2472,7 +2483,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, use_closure_compiler, debug_info, emit_symbol_map):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emit_symbol_map):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2504,10 +2515,6 @@ class Building(object):
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
         if Settings.EMITTING_JS and not Settings.AUTODEBUG:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
-      # finally, optionally use closure compiler to finish cleaning up the JS
-      if use_closure_compiler:
-        logger.debug('running closure on shell code')
-        js_file = Building.closure_compiler(js_file, pretty=not minify_whitespace)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2599,6 +2606,52 @@ class Building(object):
       passes.append('minifyWhitespace')
     extra_info = {'mapping': mapping}
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
+
+  @staticmethod
+  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
+    logger.debug('wasm2js')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    if opt_level > 0:
+      cmd += ['-O']
+    cmd += Building.get_binaryen_feature_flags()
+    wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if opt_level >= 2:
+      temp = configuration.get_temp_files().get('.js').name
+      with open(temp, 'a') as f:
+        f.write(wasm2js_js)
+      # if closure is 1, minify the code in a non-advanced way here (we don't validate
+      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
+      # mode, then we'll minify it all together later on
+      if use_closure_compiler == 1:
+        temp = Building.closure_compiler(temp,
+                                         pretty=not minify_whitespace,
+                                         advanced=False)
+      elif minify_whitespace:
+        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      with open(temp) as f:
+        wasm2js_js = f.read()
+      # closure may leave a trailing `;`, which would be invalid given where we place
+      # this code (inside parens)
+      wasm2js_js = wasm2js_js.strip()
+      if wasm2js_js[-1] == ';':
+        wasm2js_js = wasm2js_js[:-1]
+    with open(js_file) as f:
+      all_js = f.read()
+    # quoted notation, something like Module['__wasm2jsInstantiate__']
+    finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
+    if not finds:
+      # post-closure notation, something like a.__wasm2jsInstantiate__
+      finds = re.findall(r'''[\w\d_$]+\.__wasm2jsInstantiate__''', all_js)
+    assert len(finds) == 1
+    marker = finds[0]
+    all_js = all_js.replace(marker, '(\n' + wasm2js_js + '\n)')
+    # replace the placeholder with the actual code
+    js_file = js_file + '.wasm2js.js'
+    with open(js_file, 'w') as f:
+      f.write(all_js)
+    if not DEBUG:
+      try_delete(wasm_file)
+    return js_file
 
   # the exports the user requested
   user_requested_exports = []
