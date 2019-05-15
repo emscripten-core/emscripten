@@ -77,7 +77,7 @@ def sync(f):
 
   def decorated(self):
     if self.is_wasm():
-      self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
+      self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
 
@@ -7548,7 +7548,7 @@ extern "C" {
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
@@ -7560,7 +7560,7 @@ extern "C" {
       return self.skipTest('TODO: SAFE_HEAP in minimal runtime')
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
