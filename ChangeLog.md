@@ -15,6 +15,8 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+ - Add `emscripten_wasm_return_address` which implements the functionality of
+   gcc/clang's `__builtin_return_address` when running wasm.
 
 v1.38.31: 04/24/2019
 --------------------
