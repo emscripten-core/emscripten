@@ -861,7 +861,7 @@ function getBinary() {
     if (Module['readBinary']) {
       return Module['readBinary'](wasmBinaryFile);
     } else {
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";
 #else
       throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
@@ -1031,7 +1031,7 @@ function createWasm(env) {
     }
   }
 
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
