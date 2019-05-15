@@ -2344,7 +2344,7 @@ var LibraryJSEvents = {
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
   },
-#if USE_PTHREADS
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
   emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
