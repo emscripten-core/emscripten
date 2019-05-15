@@ -1047,15 +1047,15 @@ function createWasm(env) {
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
-    })
+    });
   }
 
   // Prefer streaming instantiation if available.
   function instantiateAsync() {
     if (!Module['wasmBinary'] &&
-    typeof WebAssembly.instantiateStreaming === 'function' &&
-    !isDataURI(wasmBinaryFile) &&
-    typeof fetch === 'function') {
+        typeof WebAssembly.instantiateStreaming === 'function' &&
+        !isDataURI(wasmBinaryFile) &&
+        typeof fetch === 'function') {
       return WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
         .then(receiveInstantiatedSource, function(reason) {
           // We expect the most common failure cause to be a bad MIME type for the binary,
@@ -1074,7 +1074,7 @@ function createWasm(env) {
     var module;
     try {
       module = new WebAssembly.Module(getBinary());
-      instance = new WebAssembly.Instance(module, info)
+      instance = new WebAssembly.Instance(module, info);
     } catch (e) {
       err('failed to compile wasm module: ' + e);
       if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
@@ -1101,10 +1101,10 @@ function createWasm(env) {
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
-  instantiateAsync()
+  instantiateAsync();
   return {}; // no exports yet; we'll fill them in later
 #else
-  instantiateSync()
+  instantiateSync();
   return Module['asm']; // exports were assigned here
 #endif
 }
