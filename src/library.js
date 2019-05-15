@@ -4647,6 +4647,21 @@ LibraryManager.library = {
     else return lengthBytesUTF8(str);
   },
 
+  emscripten_wasm_return_address__deps: ['emscripten_get_callstack_js'],
+  emscripten_wasm_return_address: function(level) {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+
+    // skip this function and the caller to get caller's return address
+    var frame = callstack[level + 2];
+    var match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame);
+
+    if (match == null) {
+      return 0;
+    } else {
+      return +match[1] << 16 | +match[2];
+    }
+  },
+
   //============================
   // i64 math
   //============================

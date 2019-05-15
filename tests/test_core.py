@@ -71,6 +71,16 @@ def no_wasm(note=''):
   return decorated
 
 
+def wasm_only(f):
+  assert callable(f)
+
+  def decorated(self):
+    if not self.is_wasm() or not self.is_wasm_backend():
+      self.skipTest('test is for wasm only')
+    f(self)
+  return decorated
+
+
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   assert callable(f)
@@ -94,6 +104,16 @@ def also_with_noderawfs(func):
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
+
+
+def no_optimize(f):
+  assert callable(f)
+
+  def decorated(self):
+    if is_optimizing(self.emcc_args):
+      self.skipTest('test can only be run without optimizations')
+    f(self)
+  return decorated
 
 
 class TestCoreBase(RunnerCore):
@@ -7591,6 +7611,23 @@ extern "C" {
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
+
+  @wasm_only
+  @no_optimize
+  def test_return_address(self):
+    self.do_run(open(path_from_root('tests', 'wasm', 'return_address.cpp')).read(), 'passed')
+
+  @wasm_only
+  def test_ubsan_minimal_too_many_errors(self):
+    self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_too_many_errors.c')).read(), assert_identical=True,
+                expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+
+  @wasm_only
+  def test_ubsan_minimal_errors_same_place(self):
+    self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(), assert_identical=True,
+                expected_output='ubsan: add-overflow\n' * 5)
 
 
 # Generate tests for everything
