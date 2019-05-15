@@ -403,6 +403,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
       .replace('var SIDE_FUNCTION_TABLE_', 'var FUNCTION_TABLE_')
       .replace('var dynCall_', '//')
     )
+
     def fix_asm_names(m):
       return asmjs_mangle(m.group(1))
     final_function_tables = re.sub(r"asm\['(\w+)'\]", fix_asm_names, final_function_tables)
@@ -1679,6 +1680,7 @@ RUNTIME_ASSERTIONS = '''
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
 '''
 
+
 def create_global_exports():
   if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
     global_object = '(typeof process !== "undefined" ? global : this)'
@@ -1695,6 +1697,7 @@ def create_global_exports():
   receiving = ASMJS_MANGLE
   receiving += 'for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];\n'
   return receiving
+
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''

@@ -69,6 +69,7 @@ def fix_import_name(g):
     return '__runtime_' + g
   return g
 
+
 def treat_as_user_function(name):
   library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
                                  'stackSave', 'stackRestore',
@@ -112,6 +113,7 @@ function asmjs_mangle(name) {
     }
 }
 '''
+
 
 # logically the inverse of asmjs_mangle()
 def fix_export_name(g):
