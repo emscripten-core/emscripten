@@ -2250,6 +2250,16 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   outfile.close()
 
 
+def remove_trailing_zeros(memfile):
+  with open(memfile, 'rb') as f:
+    mem_data = f.read()
+  end = len(mem_data)
+  while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
+    end -= 1
+  with open(memfile, 'wb') as f:
+    f.write(mem_data[:end])
+
+
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   wasm_emscripten_finalize = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-emscripten-finalize')
   wasm_dis = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-dis')
@@ -2312,6 +2322,13 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
+
+  if not shared.Settings.MEM_INIT_IN_WASM:
+    # we have a separate .mem file. binaryen did not strip any trailing zeros,
+    # because it's an ABI question as to whether it is valid to do so or not.
+    # we can do so here, since we make sure to zero out that memory (even in
+    # the dynamic linking case, our loader zeros it out)
+    remove_trailing_zeros(memfile)
 
   return load_metadata_wasm(stdout, DEBUG)
 
