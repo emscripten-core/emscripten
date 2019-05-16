@@ -2318,6 +2318,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
+
   if not shared.Settings.MEM_INIT_IN_WASM:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,
     # because it's an ABI question as to whether it is valid to do so or not.
