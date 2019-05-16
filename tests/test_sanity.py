@@ -83,6 +83,13 @@ def make_fake_llc(filename, targets):
   os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
+def make_fake_lld(filename):
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('exit 0\n')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 EMBUILDER = path_from_root('embuilder.py')
@@ -258,28 +265,35 @@ class sanity(RunnerCore):
     # Clang should report the version number we expect, and emcc should not warn
     assert shared.check_llvm_version()
     output = self.check_working(EMCC)
-    assert LLVM_WARNING not in output, output
+    self.assertNotContained(LLVM_WARNING, output)
 
     # Fake a different llvm version
     restore_and_set_up()
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
 
+    real_version_x, real_version_y = (int(x) for x in expected_llvm_version().split('.'))
+    if shared.get_llvm_target() == shared.WASM_TARGET:
+      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+      make_fake_lld(path_from_root('tests', 'fake', 'wasm-ld'))
+    else:
+      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+
     with env_modify({'EM_IGNORE_SANITY': '1'}):
-      for x in range(-2, 3):
-        for y in range(-2, 3):
-          expected_x, expected_y = (int(x) for x in expected_llvm_version().split('.'))
-          expected_x += x
-          expected_y += y
+      for inc_x in range(-2, 3):
+        for inc_y in range(-2, 3):
+          expected_x = real_version_x + inc_x
+          expected_y = real_version_y + inc_y
           if expected_x < 0 or expected_y < 0:
             continue # must be a valid llvm version
-          print(expected_llvm_version(), x, y, expected_x, expected_y)
+          print("mod LLVM version: %d %d -> %d %d" % (real_version_x, real_version_x, expected_x, expected_y))
           make_fake_clang(path_from_root('tests', 'fake', 'clang'), '%s.%s' % (expected_x, expected_y))
-          if x != 0 or y != 0:
+          did_modify = inc_x != 0 or inc_y != 0
+          if did_modify:
             output = self.check_working(EMCC, LLVM_WARNING)
           else:
             output = self.check_working(EMCC)
-            assert LLVM_WARNING not in output, output
+            self.assertNotContained(LLVM_WARNING, output)
 
   def test_emscripten_root(self):
     # The correct path
@@ -762,11 +776,7 @@ fi
         f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
 
       make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), report)
-
-      with open(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), 'w') as f:
-        f.write('#!/bin/sh\n')
-        f.write('exit 0\n')
-      os.chmod(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+      make_fake_lld(path_from_root('tests', 'fake', 'bin', 'wasm-ld'))
 
     with env_modify({'EMCC_DEBUG': '1'}):
       make_fake('wasm32-unknown-unknown-elf')
