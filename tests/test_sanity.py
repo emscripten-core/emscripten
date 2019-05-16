@@ -160,7 +160,7 @@ class sanity(RunnerCore):
   # this should be the very first thing that runs. if this fails, everything else is irrelevant!
   def test_aaa_normal(self):
     for command in commands:
-#Your existing EM_CONFIG should work !
+      # Your existing EM_CONFIG should work!
       restore_and_set_up()
       self.check_working(command)
 
@@ -191,7 +191,7 @@ class sanity(RunnerCore):
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
       if platform.system() is not 'Windows':
-# os.chmod can't make files executable on Windows
+        # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         possible_nodes = [os.path.join(temp_bin, 'node')]
         if os.path.exists('/usr/bin/nodejs'):
