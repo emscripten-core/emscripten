@@ -27,7 +27,7 @@ int main()
 	int inWorker2 = isThisInWorkerOnMainThread(); // This should always return 0
 	int returnedInt = receivesAndReturnsAnInteger(4);
 	printf("text: \"%s\". inWorker1: %d, inWorker2: %d, returnedInt: %d\n", dst, inWorker1, inWorker2, returnedInt);
-	assert(!strstr(dst, "Resize canvas"));
+	assert(strstr(dst, "Resize canvas"));
 	assert(inWorker1 == PROXY_TO_PTHREAD);
 	assert(inWorker2 == 0);
 	assert(returnedInt == 42 + 4);
