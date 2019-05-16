@@ -879,9 +879,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             has_header_inputs = True
           elif file_suffix.endswith(ASSEMBLY_ENDINGS) or shared.Building.is_bitcode(arg) or shared.Building.is_ar(arg):
             input_files.append((i, arg))
-          elif 'WASM_OBJECT_FILES=0' not in settings_changes and shared.Building.is_wasm(arg):
-            # this is before libraries, since wasm static libraries (wasm.so that contains wasm) are just
-            # object files to be linked
+          elif shared.Building.is_wasm(arg):
+            if not shared.Settings.WASM_BACKEND:
+              exit_with_error('fastcomp is not compatible with wasm object files:' + arg)
             input_files.append((i, arg))
           elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
