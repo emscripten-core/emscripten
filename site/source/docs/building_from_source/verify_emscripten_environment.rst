@@ -31,7 +31,7 @@ For example, the following output reports an installation where Java is missing:
   INFO     root: (Emscripten: Running sanity checks)
   WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``./emcc -v`` should give no warnings, and if you just enter ``./emcc`` (without any input files), it should only give the following warning: ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc -v`` should give no warnings, and if you just enter ``emcc`` (without any input files), it should only give the following warning: ::
 
   WARNING  root: no input files
 

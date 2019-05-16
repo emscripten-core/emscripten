@@ -53,42 +53,6 @@ function JSify(data, functionsOnly) {
   var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
 
   if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
-
-    // We will start to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that will be created:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-    //
-    // First, we print out everything until the generated code. Then the
-    // functions will print themselves out as they are parsed. Finally, we
-    // will call finalCombiner in the main pass, to print out everything
-    // else. This lets us not hold any strings in memory, we simply print
-    // things out as they are ready.
-
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0], shellFile)));
-    var pre;
-    if (SIDE_MODULE) {
-      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
-    } else if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
-    } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
-    }
-    print(pre);
-  }
-
-  if (mainPass) {
     // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
     // generateStructInfo in library.js)
 
@@ -124,8 +88,12 @@ function JSify(data, functionsOnly) {
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
     if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
-      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}';
+      snippet = modifyFunction(snippet, function(name, args, body) {
+        return 'function ' + name + '(' + args + ') {\n' +
+               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                body +
+                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+      });
     }
     return snippet;
   }
@@ -188,15 +156,33 @@ function JSify(data, functionsOnly) {
             }
           }
         }
-        if (!(MAIN_MODULE || SIDE_MODULE)) {
+        if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + ident + "']";
+          var isGlobalAccessor = ident.startsWith('g$');
+          var realIdent = ident;
+          if (isGlobalAccessor) {
+            realIdent = realIdent.substr(2);
+          }
+
+          var target = (SIDE_MODULE ? 'parent' : '') + "Module['_" + realIdent + "']";
           var assertion = '';
-          if (ASSERTIONS)
-            assertion = 'if (!' + target + ') abort("external function \'' + ident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
-          LibraryManager.library[ident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
+          if (ASSERTIONS) {
+            var what = 'function';
+            if (isGlobalAccessor) {
+              what = 'global';
+            }
+            assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
+
+          }
+          var functionBody;
+          if (isGlobalAccessor) {
+            functionBody = assertion + "return " + target + ";"
+          } else {
+            functionBody = assertion + "return " + target + ".apply(null, arguments);";
+          }
+          LibraryManager.library[ident] = new Function(functionBody);
           if (SIDE_MODULE) {
             // no dependencies, just emit the thunk
             Functions.libraryFunctions[finalName] = 1;
@@ -278,16 +264,10 @@ function JSify(data, functionsOnly) {
           }
           var sync = proxyingMode === 'sync';
           assert(typeof original === 'function');
-          var hasArgs = original.length > 0;
-          if (hasArgs) {
-            // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);\n');
-          } else {
-            // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');\n');
-          }
-          if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
-          contentText = processedSnippet;
+          contentText = modifyFunction(snippet, function(name, args, body) {
+            return 'function ' + name + '(' + args + ') {\n' +
+                   'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
+          });
           proxiedFunctionTable.push(finalName);
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
@@ -446,6 +426,21 @@ function JSify(data, functionsOnly) {
 
       return;
     }
+
+    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
+
+    var shellParts = read(shellFile).split('{{BODY}}');
+    print(processMacros(preprocess(shellParts[0], shellFile)));
+    var pre;
+    if (SIDE_MODULE) {
+      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
+    } else if (MINIMAL_RUNTIME) {
+      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
+    } else {
+      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
+            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
+    }
+    print(pre);
 
     // Print out global variables and postsets TODO: batching
     var legalizedI64sDefault = legalizedI64s;

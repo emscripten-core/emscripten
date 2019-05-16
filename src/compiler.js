@@ -186,7 +186,7 @@ load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
-Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
+Runtime.QUANTUM_SIZE = 4;
 
 // State computations
 

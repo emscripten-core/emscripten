@@ -11,6 +11,7 @@ native optimizer, as well as fetch and build ports like zlib and sdl2
 from __future__ import print_function
 import logging
 import os
+import subprocess
 import sys
 
 from tools import shared
@@ -44,14 +45,6 @@ SYSTEM_TASKS = [
     'compiler-rt',
     'emmalloc',
     'emmalloc_debug',
-    'gl',
-    'gl-emu',
-    'gl-emu-webgl2',
-    'gl-mt',
-    'gl-mt-emu',
-    'gl-mt-emu-webgl2',
-    'gl-mt-webgl2',
-    'gl-webgl2',
     'html5',
     'libc',
     'libc++',
@@ -69,17 +62,26 @@ for debug in ['', '_debug']:
       for tracing in ['', '_tracing']:
         SYSTEM_TASKS += ['dlmalloc' + debug + noerrno + threadsafe + tracing]
 
+for mt in ['', '-mt']:
+  for emu in ['', '-emu']:
+    for webgl2 in ['', '-webgl2']:
+      for ofb in ['', '-ofb']:
+        SYSTEM_TASKS += ['gl' + mt + emu + webgl2 + ofb]
+
 USER_TASKS = [
     'binaryen',
     'bullet',
+    'bzip2',
     'cocos2d',
     'freetype',
     'harfbuzz',
     'icu',
+    'libjpeg',
     'libpng',
     'ogg',
     'regal',
     'sdl2',
+    'sdl2-mt',
     'sdl2-gfx',
     'sdl2-image',
     'sdl2-image-png',
@@ -109,7 +111,7 @@ are running multiple build commands in parallel, confusion can occur).
 
 Usage:
 
-  embuilder.py OPERATION TASK1 [TASK2..] [--lto]
+  embuilder.py OPERATION TASK1 [TASK2..] [--pic] [--lto]
 
 Available operations and tasks:
 
@@ -120,6 +122,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 Flags:
 
   --lto  Build bitcode files, for LTO with the LLVM wasm backend
+  --pic  Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -133,19 +136,20 @@ and set up the location to the native optimizer in ~/.emscripten
 
 
 def build(src, result_libs, args=[]):
-  if shared.Settings.WASM_BACKEND:
-    args = args + ['-s', 'WASM_OBJECT_FILES=%d' % shared.Settings.WASM_OBJECT_FILES]
+  if not shared.Settings.WASM_OBJECT_FILES:
+    args += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    args += ['-s', 'RELOCATABLE']
   # build in order to generate the libraries
   # do it all in a temp dir where everything will be cleaned up
   temp_dir = temp_files.get_dir()
   cpp = os.path.join(temp_dir, 'src.cpp')
   open(cpp, 'w').write(src)
   temp_js = os.path.join(temp_dir, 'out.js')
-  shared.Building.emcc(cpp, args, output_filename=temp_js)
-
-  # verify
-  if not os.path.exists(temp_js):
-    shared.exit_with_error('failed to build file')
+  try:
+    shared.Building.emcc(cpp, args, output_filename=temp_js)
+  except subprocess.CalledProcessError as e:
+    shared.exit_with_error("embuilder: emcc command failed with %d: '%s'", e.returncode, ' '.join(e.cmd))
 
   for lib in result_libs:
     if not os.path.exists(shared.Cache.get_path(lib)):
@@ -177,8 +181,10 @@ def main():
       arg = arg[2:]
       if arg == 'lto':
         shared.Settings.WASM_OBJECT_FILES = 0
-        # Reconfigure the cache dir to reflect the change
-        shared.reconfigure_cache()
+      elif arg == 'pic':
+        shared.Settings.RELOCATABLE = 1
+      # Reconfigure the cache dir to reflect the change
+      shared.reconfigure_cache()
 
   args = [a for a in args if not is_flag(a)]
 
@@ -274,6 +280,8 @@ def main():
         opts += ['-s', 'LEGACY_GL_EMULATION=1']
       if '-webgl2' in what:
         opts += ['-s', 'USE_WEBGL2=1']
+      if '-ofb' in what:
+        opts += ['-s', 'OFFSCREEN_FRAMEBUFFER=1']
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
@@ -316,16 +324,22 @@ def main():
       build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
+    elif what == 'bzip2':
+      build_port('bzip2', 'libbz2.a', ['-s', 'USE_BZIP2=1'])
     elif what == 'bullet':
       build_port('bullet', libname('libbullet'), ['-s', 'USE_BULLET=1'])
     elif what == 'vorbis':
       build_port('vorbis', libname('libvorbis'), ['-s', 'USE_VORBIS=1'])
     elif what == 'ogg':
       build_port('ogg', libname('libogg'), ['-s', 'USE_OGG=1'])
+    elif what == 'libjpeg':
+      build_port('libjpeg', libname('libjpeg'), ['-s', 'USE_LIBJPEG=1'])
     elif what == 'libpng':
       build_port('libpng', libname('libpng'), ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build_port('sdl2', libname('libSDL2'), ['-s', 'USE_SDL=2'])
+    elif what == 'sdl2-mt':
+      build_port('sdl2', libname('libSDL2-mt'), ['-s', 'USE_SDL=2', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-gfx':
       build_port('sdl2-gfx', libname('libSDL2_gfx'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':

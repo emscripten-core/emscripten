@@ -51,12 +51,14 @@ function preprocess(text, filenameHint) {
           var truthy = !!eval(after);
           showStack.push(truthy);
         } else if (line.indexOf('#include') === 0) {
-          var filename = line.substr(line.indexOf(' ')+1);
-          if (filename.indexOf('"') === 0) {
-            filename = filename.substr(1, filename.length - 2);
+          if (showStack.indexOf(false) === -1) {
+            var filename = line.substr(line.indexOf(' ')+1);
+            if (filename.indexOf('"') === 0) {
+              filename = filename.substr(1, filename.length - 2);
+            }
+            var included = read(filename);
+            ret += '\n' + preprocess(included, filename) + '\n';
           }
-          var included = read(filename);
-          ret += '\n' + preprocess(included, filename) + '\n';
         } else if (line.indexOf('#else') === 0) {
           assert(showStack.length > 0);
           showStack.push(!showStack.pop());
@@ -1551,6 +1553,13 @@ function getQuoted(str) {
 
 function makeRetainedCompilerSettings() {
   var blacklist = set('STRUCT_INFO');
+  if (STRICT) {
+    for (var i in LEGACY_SETTINGS) {
+      var name = LEGACY_SETTINGS[i][0];
+      blacklist[name] = 0;
+    }
+  }
+
   var ret = {};
   for (var x in this) {
     try {
@@ -1569,3 +1578,18 @@ function getPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 
+// Receives a function as text, and a function that constructs a modified
+// function, to which we pass the parsed-out name, arguments, and body of the
+// function. Returns the output of that function.
+function modifyFunction(text, func) {
+  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  assert(match, 'could not match function ' + text + '.');
+  var name = match[1];
+  var args = match[2];
+  var rest = text.substr(match[0].length);
+  var bodyStart = rest.indexOf('{');
+  assert(bodyStart > 0);
+  var bodyEnd = rest.lastIndexOf('}');
+  assert(bodyEnd > 0);
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}

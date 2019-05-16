@@ -236,7 +236,7 @@ def delete_emrun_safe_firefox_profile():
 # This function creates a temporary profile directory that customized Firefox with various flags that enable
 # automated runs.
 def create_emrun_safe_firefox_profile():
-  global temp_firefox_profile_dir
+  global temp_firefox_profile_dir, emrun_options
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
     f.write('''
@@ -285,8 +285,6 @@ user_pref('browser.newtabpage.introShown', true);
 user_pref('browser.download.panel.shown', true);
 user_pref('browser.customizemode.tip0.shown', true);
 user_pref("browser.toolbarbuttons.introduced.pocket-button", true);
-// Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
-user_pref("browser.privatebrowsing.autostart", true);
 // Don't ask the user if he wants to close the browser when there are multiple tabs.
 user_pref("browser.tabs.warnOnClose", false);
 // Allow the launched script window to close itself, so that we don't need to kill the browser process in order to move on.
@@ -325,6 +323,11 @@ user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
 ''')
+    if not emrun_options.no_private_browsing:
+      f.write('''
+// Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
+user_pref("browser.privatebrowsing.autostart", true);
+      ''')
   logv('create_emrun_safe_firefox_profile: Created new Firefox profile "' + temp_firefox_profile_dir + '"')
   return temp_firefox_profile_dir
 
@@ -341,8 +344,8 @@ def kill_browser_process():
   temporary Firefox profile that was created, if one exists."""
   global browser_process, processname_killed_atexit, emrun_options, ADB
   if browser_process:
+    logv('Terminating browser process..')
     try:
-      logv('Terminating browser process..')
       browser_process.kill()
       delete_emrun_safe_firefox_profile()
     except Exception as e:
@@ -453,14 +456,10 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         if browser_quit_code is not None:
           delete_emrun_safe_firefox_profile()
           if not emrun_options.serve_after_close:
-            if not have_received_messages:
-              emrun_options.serve_after_close = True
-              logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-              if not emrun_options.browser:
-                logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
-            else:
-              self.shutdown()
-              logv('Browser process has quit. Shutting down web server.. Pass --serve_after_close to keep serving the page even after the browser closes.')
+            emrun_options.serve_after_close = True
+            logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
+            if not emrun_options.browser:
+              logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
 
       # Serve HTTP
       self.handle_request()
@@ -1418,6 +1417,9 @@ def run():
   parser.add_argument('--log_html', dest='log_html', action='store_true',
                       help='If set, information lines are printed out an HTML-friendly format.')
 
+  parser.add_argument('--no_private_browsing', dest='no_private_browsing', action='store_true', default=False,
+                      help='If specified, do not open browser in private/incognito mode.')
+
   parser.add_argument('serve', nargs='*')
 
   opts_with_param = ['--browser', '--browser_args', '--timeout_returncode',
@@ -1564,14 +1566,17 @@ def run():
         processname_killed_atexit = 'Safari'
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
-        browser_args += ['--incognito', '--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
+        if not options.no_private_browsing:
+          browser_args += ['--incognito']
     #    if options.no_server:
     #      browser_args += ['--disable-web-security']
       elif 'firefox' in browser_exe.lower():
         processname_killed_atexit = 'firefox'
       elif 'iexplore' in browser_exe.lower():
         processname_killed_atexit = 'iexplore'
-        browser_args += ['-private']
+        if not options.no_private_browsing:
+          browser_args += ['-private']
       elif 'opera' in browser_exe.lower():
         processname_killed_atexit = 'opera'
 
@@ -1636,7 +1641,7 @@ def run():
     httpd = HTTPWebServer((options.hostname, options.port), HTTPHandler)
 
   if not options.no_browser:
-    logi("Executing %s" % ' '.join(browser))
+    logi("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True

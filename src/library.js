@@ -25,15 +25,9 @@
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
 #if USE_PTHREADS
-  stdin: '; if (ENVIRONMENT_IS_PTHREAD) _stdin = PthreadWorkerInit._stdin; else PthreadWorkerInit._stdin = _stdin = {{{ makeStaticAlloc(4) }}}',
-  stdout: '; if (ENVIRONMENT_IS_PTHREAD) _stdout = PthreadWorkerInit._stdout; else PthreadWorkerInit._stdout = _stdout = {{{ makeStaticAlloc(4) }}}',
-  stderr: '; if (ENVIRONMENT_IS_PTHREAD) _stderr = PthreadWorkerInit._stderr; else PthreadWorkerInit._stderr = _stderr = {{{ makeStaticAlloc(4) }}}',
   _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = {{{ makeStaticAlloc(4) }}}',
   __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
 #else
-  stdin: '{{{ makeStaticAlloc(1) }}}',
-  stdout: '{{{ makeStaticAlloc(1) }}}',
-  stderr: '{{{ makeStaticAlloc(1) }}}',
   _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
@@ -477,16 +471,16 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    return TOTAL_MEMORY;
+    return HEAP8.length;
   },
 
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #else
-    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+    abort('Cannot enlarge memory arrays to size ' + requestedSize + ' bytes (OOM). Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + HEAP8.length + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
 #endif
 #else
     abort('OOM');
@@ -496,7 +490,7 @@ LibraryManager.library = {
 
 #if TEST_MEMORY_GROWTH_FAILS
   $emscripten_realloc_buffer: function(size) {
-    return null;
+    return false;
   },
 #else
 
@@ -504,22 +498,27 @@ LibraryManager.library = {
 #if WASM
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var old = Module['buffer'];
-    var oldSize = old.byteLength;
+    var oldSize = buffer.byteLength;
     // native wasm support
+    // note that this is *not* threadsafe. multiple threads can call .grow(), and each
+    // presents a delta, so in theory we may over-allocate here (e.g. if two threads
+    // ask to grow from 256MB to 512MB, we get 2 requests to add +256MB, and may end
+    // up growing to 768MB (even though we may have been able to make do with 512MB).
+    // TODO: consider decreasing the step sizes in emscripten_resize_heap
     try {
       var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
       if (result !== (-1 | 0)) {
         // success in native wasm memory growth, get the buffer from the memory
-        return Module['buffer'] = wasmMemory.buffer;
+        buffer = wasmMemory.buffer;
+        return true;
       } else {
-        return null;
+        return false;
       }
     } catch(e) {
 #if ASSERTIONS
       console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
-      return null;
+      return false;
     }
 #else // asm.js:
     try {
@@ -529,17 +528,9 @@ LibraryManager.library = {
     } catch(e) {
       return false;
     }
-    Module['_emscripten_replace_memory'](newBuffer);
-    HEAP8 = new Int8Array(newBuffer);
-    HEAP16 = new Int16Array(newBuffer);
-    HEAP32 = new Int32Array(newBuffer);
-    HEAPU8 = new Uint8Array(newBuffer);
-    HEAPU16 = new Uint16Array(newBuffer);
-    HEAPU32 = new Uint32Array(newBuffer);
-    HEAPF32 = new Float32Array(newBuffer);
-    HEAPF64 = new Float64Array(newBuffer);
     buffer = newBuffer;
-    return newBuffer;
+    Module['_emscripten_replace_memory'](newBuffer);
+    return true;
 #endif
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
@@ -548,14 +539,11 @@ LibraryManager.library = {
 #if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
-#if ALLOW_MEMORY_GROWTH && !USE_PTHREADS
+#if ALLOW_MEMORY_GROWTH
   , '$emscripten_realloc_buffer'
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
-#if USE_PTHREADS
-    abort('Cannot enlarge memory arrays, since compiling with pthreads support enabled (-s USE_PTHREADS=1).');
-#else
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -564,9 +552,14 @@ LibraryManager.library = {
 #endif
 #else
     var oldSize = _emscripten_get_heap_size();
-    // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
-#if ASSERTIONS
-    assert(requestedSize > oldSize); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
+    // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
+#if USE_PTHREADS
+    if (requestedSize <= oldSize) {
+      return false;
+    }
+#endif // USE_PTHREADS
+#if ASSERTIONS && !USE_PTHREADS
+    assert(requestedSize > oldSize);
 #endif
 
 #if EMSCRIPTEN_TRACING
@@ -587,6 +580,7 @@ LibraryManager.library = {
     var MIN_TOTAL_MEMORY = 16777216;
     var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
 
+    // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
       if (newSize <= 536870912) {
         newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
@@ -595,7 +589,7 @@ LibraryManager.library = {
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
 #if ASSERTIONS
         if (newSize === oldSize) {
-          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
+          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
         }
 #endif
       }
@@ -622,22 +616,19 @@ LibraryManager.library = {
     var start = Date.now();
 #endif
 
-    var replacement = emscripten_realloc_buffer(newSize);
-    if (!replacement || replacement.byteLength != newSize) {
+    if (!emscripten_realloc_buffer(newSize)) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
-      if (replacement) {
-        err('Expected to get back a buffer of size ' + newSize + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
-      }
 #endif
       return false;
     }
 
-    // everything worked
-    updateGlobalBuffer(replacement);
+#if USE_PTHREADS
+    // Updating the views here is not strictly necessary, since we instrument each load and store
+    // to do so, but doing it here is clean and may be more efficient (avoid surprising the JIT
+    // later by taking a never-taken branch).
+#endif
     updateGlobalBufferViews();
-
-    TOTAL_MEMORY = newSize;
 
 #if ASSERTIONS && !WASM
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
@@ -651,7 +642,6 @@ LibraryManager.library = {
 
     return true;
 #endif // ALLOW_MEMORY_GROWTH
-#endif // USE_PTHREADS
   },
 
 #if MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH
@@ -715,55 +705,64 @@ LibraryManager.library = {
     var oldDynamicTopOnChange = 0;
     var newDynamicTop = 0;
     var totalMemory = 0;
-#if USE_PTHREADS
     totalMemory = _emscripten_get_heap_size()|0;
-
+#if USE_PTHREADS
     // Perform a compare-and-swap loop to update the new dynamic top value. This is because
-    // this function can becalled simultaneously in multiple threads.
+    // this function can be called simultaneously in multiple threads.
     do {
+#endif
+
+#if !USE_PTHREADS
+      oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
+#else
       oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
+#endif
       newDynamicTop = oldDynamicTop + increment | 0;
-      // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
-      // enlarge memory, so this needs to fail.
+
       if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-        | (newDynamicTop|0) < 0 // Also underflow, sbrk() should be able to be used to subtract.
-        | (newDynamicTop|0) > (totalMemory|0)) {
+        | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
 #if ABORTING_MALLOC
         abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#else
+#endif
         ___setErrNo({{{ cDefine('ENOMEM') }}});
         return -1;
-#endif
       }
+
+      if ((newDynamicTop|0) > (totalMemory|0)) {
+        if (_emscripten_resize_heap(newDynamicTop|0)|0) {
+          // We resized the heap. Start another loop iteration if we need to.
+#if USE_PTHREADS
+          totalMemory = _emscripten_get_heap_size()|0;
+          continue;
+#endif
+        } else {
+          // We failed to resize the heap.
+#if USE_PTHREADS
+          // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
+          // start another loop iteration.
+          if ((_emscripten_get_heap_size()|0) > totalMemory) {
+            totalMemory = _emscripten_get_heap_size()|0;
+            continue;
+          }
+#endif
+          ___setErrNo({{{ cDefine('ENOMEM') }}});
+          return -1;
+        }
+      }
+
+#if !USE_PTHREADS
+      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
+#else
       // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
       // in which case we will need to start over by iterating the loop body again.
       oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
     } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
-#else // singlethreaded build: (-s USE_PTHREADS=0)
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    newDynamicTop = oldDynamicTop + increment | 0;
-
-    if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-      | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
 #endif
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
-      return -1;
-    }
 
-    totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-    }
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-#endif
     return oldDynamicTop|0;
   },
 
+  brk__deps: ['sbrk'],
   brk__asm: true,
   brk__sig: ['ii'],
   brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
@@ -773,38 +772,11 @@ LibraryManager.library = {
   ],
   brk: function(newDynamicTop) {
     newDynamicTop = newDynamicTop|0;
-    var totalMemory = 0;
-#if USE_PTHREADS
-    totalMemory = _emscripten_get_heap_size()|0;
-    // Asking to increase dynamic top to a too high value? In pthreads builds we cannot
-    // enlarge memory, so this needs to fail.
-    if ((newDynamicTop|0) < 0 | (newDynamicTop|0) > (totalMemory|0)) {
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#else
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
-      return -1;
-#endif
-    }
-    Atomics_store(HEAP32, DYNAMICTOP_PTR>>2, newDynamicTop|0)|0;
-#else // singlethreaded build: (-s USE_PTHREADS=0)
-    if ((newDynamicTop|0) < 0) {
-#if ABORTING_MALLOC
-      abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#endif
-      ___setErrNo({{{ cDefine('ENOMEM') }}});
+    var diff = 0;
+    diff = newDynamicTop - (_sbrk(0) | 0) | 0;
+    if ((_sbrk(diff | 0) | 0) == -1) {
       return -1;
     }
-
-    totalMemory = _emscripten_get_heap_size()|0;
-    if ((newDynamicTop|0) > (totalMemory|0)) {
-      if ((_emscripten_resize_heap(newDynamicTop|0)|0) == 0) {
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-    }
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-#endif
     return 0;
   },
 #endif // ~ (MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH)
@@ -2178,15 +2150,39 @@ LibraryManager.library = {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     }
+
     var lib = LDSO.loadedLibs[handle];
-    symbol = '_' + symbol;
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+    var isMainModule = lib.module == Module;
+
+    var mangled = '_' + symbol;
+    var modSymbol = mangled;
+#if WASM_BACKEND
+    if (!isMainModule) {
+      modSymbol = symbol;
+    }
+#endif
+
+    if (!lib.module.hasOwnProperty(modSymbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
                              '" in dynamic lib: ' + lib.name);
       return 0;
     }
 
-    var result = lib.module[symbol];
+    var result = lib.module[modSymbol];
+#if WASM
+    // Attempt to get the real "unwrapped" symbol so we have more chance of
+    // getting wasm function which can be added to a table.
+    if (isMainModule) {
+#if WASM_BACKEND
+      var asmSymbol = symbol;
+#else
+      var asmSymbol = mangled;
+#endif
+      if (lib.module["asm"][asmSymbol]) {
+        result = lib.module["asm"][asmSymbol];
+      }
+    }
+#endif
     if (typeof result !== 'function')
       return result;
 

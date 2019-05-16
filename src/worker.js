@@ -21,7 +21,6 @@ var STACK_MAX = 0;
 // These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
 var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
 var DYNAMICTOP_PTR = 0;
-var TOTAL_MEMORY = 0;
 var DYNAMIC_BASE = 0;
 
 var ENVIRONMENT_IS_PTHREAD = true;
@@ -92,7 +91,6 @@ this.onmessage = function(e) {
       {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
 
       // Initialize the global "process"-wide fields:
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('TOTAL_MEMORY') }}} = e.data.TOTAL_MEMORY;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
 
@@ -140,7 +138,9 @@ this.onmessage = function(e) {
       }
 
 #if MODULARIZE
+#if !MODULARIZE_INSTANCE
       Module = {{{ EXPORT_NAME }}}(Module);
+#endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
 #endif
@@ -203,6 +203,12 @@ this.onmessage = function(e) {
         } else {
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}}) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
+#if ASSERTIONS
+          if (typeof({{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}) !== "function") {
+            err("Thread Initialisation failed.");
+            throw e;
+          }
+#endif
           {{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}(threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
           if (!(e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}})) throw e;
         }

@@ -17,7 +17,7 @@ Why do I get multiple errors building basic code and the tests?
 
 All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on the **master** branch, so if these are failing it is likely that there is some problem with your environment.
 
-First call ``./emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
+First call ``emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
 
 You might also want to go through the :ref:`Tutorial` again, as this is updated as Emscripten changes.
 
@@ -278,7 +278,7 @@ Emscripten does dead code elimination of functions that are not called from the 
 
 To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-  ./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
+  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
 
 .. note::
 
@@ -344,13 +344,13 @@ The ``Module`` object will contain exported methods. For something to appear the
 
  ::
 
-  ./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
+  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-  ./emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
+  emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -386,20 +386,20 @@ That may occur when running something like
 ::
 
   # this fails on most Linuxes
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
   # this fails on macOS
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 You may need to quote things like this:
 
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  ./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
   # or you may need something like this in a Makefile
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
 The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 

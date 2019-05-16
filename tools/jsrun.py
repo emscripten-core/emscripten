@@ -43,7 +43,7 @@ def make_command(filename, engine=None, args=[]):
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
   jsengine = os.path.basename(engine[0])
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
-  is_d8 = 'd8' in jsengine
+  is_d8 = 'd8' in jsengine or 'v8' in jsengine
   is_jsc = 'jsc' in jsengine
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
@@ -63,7 +63,9 @@ def check_engine(engine):
     return WORKING_ENGINES[engine_path]
   try:
     logging.debug('Checking JS engine %s' % engine)
-    if 'hello, world!' in run_js(shared.path_from_root('src', 'hello_world.js'), engine):
+    output = run_js(shared.path_from_root('src', 'hello_world.js'), engine,
+                    skip_check=True)
+    if 'hello, world!' in output:
       WORKING_ENGINES[engine_path] = True
   except Exception as e:
     logging.info('Checking JS engine %s failed. Check your config file. Details: %s' % (str(engine), str(e)))

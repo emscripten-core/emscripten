@@ -21,15 +21,17 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, get_bullet_library, get_freetype_library, get_poppler_library, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
 
 # decorators for limiting which modes a test can run in
 
 
 def asm_simd(f):
+  assert callable(f)
+
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
@@ -48,6 +50,8 @@ def wasm_simd(f):
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
     f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-simd']])
@@ -55,10 +59,13 @@ def wasm_simd(f):
 
 
 def no_emterpreter(f):
+  assert callable(f)
   return skip_if(f, 'is_emterpreter')
 
 
 def no_wasm(note=''):
+  assert not callable(note)
+
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
   return decorated
@@ -66,9 +73,11 @@ def no_wasm(note=''):
 
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
+  assert callable(f)
+
   def decorated(self):
     if self.is_wasm():
-      self.emcc_args += ['-s', 'BINARYEN_ASYNC_COMPILATION=0'] # test is set up synchronously
+      self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
 
@@ -122,14 +131,39 @@ class TestCoreBase(RunnerCore):
                           .format(test_path, ext_list))
       return ret
 
-    src = find_files('.c', '.cpp', '.cc')
+    src = find_files('.c', '.cpp')
     output = find_files('.out', '.txt')
     self.do_run_from_file(src, output, **kwargs)
+
+  def get_bullet_library(self, use_cmake):
+    if use_cmake:
+      configure_commands = ['cmake', '.']
+      configure_args = ['-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF']
+      # Depending on whether 'configure' or 'cmake' is used to build, Bullet
+      # places output files in different directory structures.
+      generated_libs = [os.path.join('src', 'BulletDynamics', 'libBulletDynamics.a'),
+                        os.path.join('src', 'BulletCollision', 'libBulletCollision.a'),
+                        os.path.join('src', 'LinearMath', 'libLinearMath.a')]
+    else:
+      configure_commands = ['sh', './configure']
+      # Force a nondefault --host= so that the configure script will interpret
+      # that we are doing cross-compilation
+      # and skip attempting to run the generated executable with './a.out',
+      # which would fail since we are building a .js file.
+      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+      generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                        os.path.join('src', '.libs', 'libBulletCollision.a'),
+                        os.path.join('src', '.libs', 'libLinearMath.a')]
+
+    return self.get_library('bullet', generated_libs,
+                            configure=configure_commands,
+                            configure_args=configure_args,
+                            cache_name_extra=configure_commands[0])
 
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
-    src = open('src.cpp.o.js').read()
+    src = open('src.c.o.js').read()
     assert 'EMSCRIPTEN_GENERATED_FUNCTIONS' not in src, 'must not emit this unneeded internal thing'
 
   def test_intvars(self):
@@ -246,20 +280,21 @@ class TestCoreBase(RunnerCore):
     self.emcc_args += ['-g1']
     self.do_run_in_out_file_test('tests', 'core', 'test_lower_intrinsics')
     # intrinsics should be lowered out
-    js = open('src.cpp.o.js').read()
+    js = open('src.c.o.js').read()
     assert ('llvm_' not in js) == is_optimizing(self.emcc_args) or not self.is_wasm(), 'intrinsics must be lowered when optimizing'
 
   def test_bswap64(self):
-    test_path = path_from_root('tests', 'core', 'test_bswap64')
-    src, output = (test_path + s for s in ('.c', '.out'))
+    self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
+  @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
+  def test_bswap64_emulate_fps(self):
     # extra coverages
     for emulate_casts in [0, 1]:
       for emulate_fps in [0, 1, 2]:
         print(emulate_casts, emulate_fps)
         self.set_setting('EMULATE_FUNCTION_POINTER_CASTS', emulate_casts)
         self.set_setting('EMULATED_FUNCTION_POINTERS', emulate_fps)
-        self.do_run_from_file(src, output)
+        self.do_run_in_out_file_test('tests', 'core', 'test_bswap64')
 
   def test_sha1(self):
     self.do_run(open(path_from_root('tests', 'sha1.c')).read(), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
@@ -283,7 +318,7 @@ class TestCoreBase(RunnerCore):
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-      self.do_run('', 'hash value: ' + output, [text], no_build=True)
+      self.do_run('src.cpp.o.js', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
     self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
@@ -497,7 +532,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'closebitcasts')
 
   def test_fast_math(self):
-    Building.COMPILER_TEST_OPTS += ['-ffast-math']
+    self.emcc_args += ['-ffast-math']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_fast_math',
                                  args=['5', '6', '8'])
@@ -523,27 +558,19 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_erf')
 
   def test_math_hyperbolic(self):
-    src = open(path_from_root('tests', 'hyperbolic', 'src.c')).read()
-    expected = open(path_from_root('tests', 'hyperbolic', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_math_hyperbolic')
 
   def test_math_lgamma(self):
-    test_path = path_from_root('tests', 'math', 'lgamma')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'math', 'lgamma')
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'math', 'lgamma')
 
   # Test that fmodf with -s PRECISE_F32=1 properly validates as asm.js (% operator cannot take in f32, only f64)
   def test_math_fmodf(self):
-    test_path = path_from_root('tests', 'math', 'fmodf')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'math', 'fmodf')
 
   def test_frexp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_frexp')
@@ -566,6 +593,17 @@ class TestCoreBase(RunnerCore):
   def test_getgep(self):
     # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
     self.do_run_in_out_file_test('tests', 'core', 'test_getgep')
+
+  # No compiling from C/C++ - just process an existing .o/.ll/.bc file.
+  def do_run_object(self, obj_file, expected_output=None, **kwargs):
+    js_file = os.path.basename(obj_file) + '.js'
+    Building.emcc(obj_file, self.get_emcc_args(), js_file)
+    self.do_run(js_file, expected_output, no_build=True, **kwargs)
+
+  def do_ll_run(self, filename, expected_output=None, **kwargs):
+    output_base = os.path.basename(filename)
+    objfile = self.prep_ll_file(output_base, filename)
+    self.do_run_object(objfile, expected_output, **kwargs)
 
   def test_multiply_defined_symbols(self):
     create_test_file('a1.c', 'int f() { return 1; }')
@@ -592,7 +630,7 @@ class TestCoreBase(RunnerCore):
 
     Building.link_to_object(['main.c.o', 'liba.a', 'libb.a'], 'all.o')
 
-    self.do_ll_run('all.o', 'result: 1')
+    self.do_run_object('all.o', 'result: 1')
 
   def test_if(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_if')
@@ -619,22 +657,16 @@ align 32: 0
 base align: 0, 0, 0, 0'''])
 
     test()
-    if '-O' in str(self.emcc_args) and not self.is_wasm_backend():
-      print('outlining')
-      self.set_setting('OUTLINING_LIMIT', 60)
-      test()
 
   @no_emterpreter
   def test_stack_restore(self):
     if self.is_wasm():
       self.skipTest('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
-    test_path = path_from_root('tests', 'core', 'test_stack_restore')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_restore')
 
-    generated = open('src.cpp.o.js').read()
+    generated = open('src.c.o.js').read()
 
     def ensure_stack_restore_count(function_name, expected_count):
       code = generated[generated.find(function_name):]
@@ -647,10 +679,7 @@ base align: 0, 0, 0, 0'''])
     ensure_stack_restore_count('function _stack_usage', 1)
 
   def test_strings(self):
-    test_path = path_from_root('tests', 'core', 'test_strings')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, ['wowie', 'too', '74'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_strings', args=['wowie', 'too', '74'])
 
   def test_strcmp_uni(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strcmp_uni')
@@ -668,10 +697,7 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_funcs')
 
   def test_structs(self):
-    test_path = path_from_root('tests', 'core', 'test_structs')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_structs')
 
   gen_struct_src = '''
         #include <stdio.h>
@@ -1048,9 +1074,9 @@ int main(int argc, char **argv)
     print('0')
     self.do_run(src, 'Caught C string: a c string\nDone.', ['0'])
     print('1')
-    self.do_run(src, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
+    self.do_run(None, 'Caught exception: std::exception\nDone.', ['1'], no_build=True)
     print('2')
-    self.do_run(src, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
+    self.do_run(None, 'Caught exception: Hello\nDone.', ['2'], no_build=True)
 
   def test_exceptions_white_list(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -1302,7 +1328,7 @@ int main() {
       self.do_run_in_out_file_test('tests', 'core', 'test_polymorph')
 
   def test_complex(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_complex', force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_complex')
 
   def test_float_builtins(self):
     # tests wasm_libc_rt
@@ -1342,10 +1368,10 @@ int main() {
       self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh')
 
   def test_dynamic_cast(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
 
   def test_dynamic_cast_b(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
+    self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_b')
 
   def test_dynamic_cast_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast_2')
@@ -1374,7 +1400,7 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_alloca')
 
   def test_rename(self):
-    self.do_run_in_out_file_test('tests', 'stdio', 'test_rename', force_c=True)
+    self.do_run_in_out_file_test('tests', 'stdio', 'test_rename')
 
   def test_remove(self):
    # needs to flush stdio streams
@@ -1485,7 +1511,7 @@ int main() {
     if EMTEST_SKIP_SLOW and self.is_emterpreter() and not is_optimizing(self.emcc_args):
       return self.skipTest('skipping slow tests')
     self.emcc_args += ['-std=c99']
-    self.do_run_in_out_file_test('tests', 'life', args=['2'], force_c=True)
+    self.do_run_in_out_file_test('tests', 'life', args=['2'])
 
   def test_array2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_array2')
@@ -1602,7 +1628,7 @@ int main() {
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.c', '.out'))
 
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_inlinejs3')
 
     print('no debugger, check validation')
     src = open(src).read().replace('emscripten_debugger();', '')
@@ -1670,7 +1696,7 @@ int main(int argc, char **argv) {
   # Then this must still be compiled separately from other code using EM_ASM
   # macros with arities 1-3. Otherwise this may incorrectly report a success.
   def test_em_asm_parameter_pack(self):
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
   def test_em_js(self):
@@ -1682,6 +1708,8 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   def test_memorygrowth(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
     self.maybe_closure()
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
@@ -1699,7 +1727,7 @@ int main(int argc, char **argv) {
 
     if '-O2' in self.emcc_args and not self.is_wasm():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_MEMORY']
+      possible_starts = ['// EMSCRIPTEN_START_FUNCS', 'var TOTAL_STACK']
       code_start = None
       for s in possible_starts:
         if fail.find(s) >= 0:
@@ -1717,6 +1745,9 @@ int main(int argc, char **argv) {
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
   def test_memorygrowth_2(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
 
     emcc_args = self.emcc_args[:]
@@ -1739,7 +1770,7 @@ int main(int argc, char **argv) {
 
       if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        code_start = 'var TOTAL_MEMORY'
+        code_start = 'var TOTAL_STACK'
         fail = fail[fail.find(code_start):]
         win = win[win.find(code_start):]
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
@@ -1747,18 +1778,27 @@ int main(int argc, char **argv) {
     test()
 
   def test_memorygrowth_3(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+
     # checks handling of malloc failure properly
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   def test_memorygrowth_wasm_mem_max(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
+
     # check that memory growth does not exceed the wasm mem max limit
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
@@ -1826,7 +1866,7 @@ Success!''')
 
   @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr(self):
-      Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g']
+      self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
@@ -2060,23 +2100,15 @@ The current type of b is: 9
     self.do_run(src, 'success', force_c=True)
 
   def test_time(self):
-    src = open(path_from_root('tests', 'time', 'src.cpp')).read()
-    expected = open(path_from_root('tests', 'time', 'output.txt')).read()
-    self.do_run(src, expected)
-    if 'TZ' in os.environ:
-      print('TZ set in environment, skipping extra time zone checks')
-    else:
-      try:
-        for tz in ['EST+05EDT', 'UTC+0']:
-          print('extra tz test:', tz)
-          # Run the test with different time zone settings if
-          # possible. It seems that the TZ environment variable does not
-          # work all the time (at least it's not well respected by
-          # Node.js on Windows), but it does no harm either.
-          os.environ['TZ'] = tz
-          self.do_run(src, expected)
-      finally:
-        del os.environ['TZ']
+    self.do_run_in_out_file_test('tests', 'core', 'test_time')
+    for tz in ['EST+05EDT', 'UTC+0']:
+      print('extra tz test:', tz)
+      with env_modify({'TZ': tz}):
+        # Run the test with different time zone settings if
+        # possible. It seems that the TZ environment variable does not
+        # work all the time (at least it's not well respected by
+        # Node.js on Windows), but it does no harm either.
+        self.do_run_in_out_file_test('tests', 'core', 'test_time')
 
   def test_timeb(self):
     # Confirms they are called in reverse order
@@ -2123,14 +2155,12 @@ The current type of b is: 9
 
   def test_memcpy_memcmp(self):
     self.banned_js_engines = [V8_ENGINE] # Currently broken under V8_ENGINE but not node
-    test_path = path_from_root('tests', 'core', 'test_memcpy_memcmp')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
     def check(result, err):
       result = result.replace('\n \n', '\n') # remove extra node output
       return hashlib.sha1(result.encode('utf-8')).hexdigest()
 
-    self.do_run_from_file(src, output, output_nicerizer=check)
+    self.do_run_in_out_file_test('tests', 'core', 'test_memcpy_memcmp', output_nicerizer=check)
 
   def test_memcpy2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memcpy2')
@@ -2148,16 +2178,10 @@ The current type of b is: 9
     self.do_run_in_out_file_test('tests', 'core', 'test_memset')
 
   def test_getopt(self):
-    test_path = path_from_root('tests', 'core', 'test_getopt')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, args=['-t', '12', '-n', 'foobar'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_getopt', args=['-t', '12', '-n', 'foobar'])
 
   def test_getopt_long(self):
-    test_path = path_from_root('tests', 'core', 'test_getopt_long')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, args=['--file', 'foobar', '-b'])
+    self.do_run_in_out_file_test('tests', 'core', 'test_getopt_long', args=['--file', 'foobar', '-b'])
 
   def test_memmove(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_memmove')
@@ -2284,6 +2308,8 @@ The current type of b is: 9
   @needs_dlfcn
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE', 1)
+    if self.has_changed_setting('ASSERTIONS'):
+      self.skipTest('test needs to customize ASSERTIONS')
     self.set_setting('ASSERTIONS', 1)
     src = r'''
       #include <dlfcn.h>
@@ -2359,7 +2385,7 @@ The current type of b is: 9
     self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
+    self.clear_setting('EXPORTED_FUNCTIONS')
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -2376,18 +2402,22 @@ The current type of b is: 9
           puts(dlerror());
           abort();
         }
-        printf("load %p\n", lib_handle);
+        printf("dll handle: %p\n", lib_handle);
         intfunc x = (intfunc)dlsym(lib_handle, "foo");
-        printf("foo func %p\n", x);
+        printf("foo func handle: %p\n", x);
         if (p == 0) return 1;
+        if (!x) {
+          printf("dlsym failed: %s\n", dlerror());
+          return 1;
+        }
         printf("|%d|\n", x(81234567));
         return 0;
       }
       '''
     self.do_run(src, '|65830|')
 
-  @no_wasm # TODO: EM_ASM in shared wasm modules, stored inside the wasm somehow
   @needs_dlfcn
+  @no_wasm('EM_ASM in shared wasm modules, stored inside the wasm somehow')
   def test_dlfcn_em_asm(self):
     self.prep_dlfcn_lib()
     lib_src = '''
@@ -2511,15 +2541,19 @@ The current type of b is: 9
       self.banned_js_engines = [V8_ENGINE]
 
     self.prep_dlfcn_lib()
-    lib_src = '''
+    lib_src = r'''
       #include <stdio.h>
 
-      int global = 42;
+      int theglobal = 42;
 
       extern void parent_func(); // a function that is defined in the parent
 
+      int* lib_get_global_addr() {
+        return &theglobal;
+      }
+
       void lib_fptr() {
-        printf("Second calling lib_fptr from main.\\n");
+        printf("Second calling lib_fptr from main.\n");
         parent_func();
         // call it also through a pointer, to check indexizing
         void (*p_f)();
@@ -2528,7 +2562,7 @@ The current type of b is: 9
       }
 
       extern "C" void (*func(int x, void(*fptr)()))() {
-        printf("In func: %d\\n", x);
+        printf("In func: %d\n", x);
         fptr();
         return lib_fptr;
       }
@@ -2539,7 +2573,7 @@ The current type of b is: 9
     self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
-    src = '''
+    src = r'''
       #include <stdio.h>
       #include <dlfcn.h>
       #include <emscripten.h>
@@ -2549,11 +2583,11 @@ The current type of b is: 9
       FUNCTYPE func;
 
       void EMSCRIPTEN_KEEPALIVE parent_func() {
-        printf("parent_func called from child\\n");
+        printf("parent_func called from child\n");
       }
 
       void main_fptr() {
-        printf("First calling main_fptr from lib.\\n");
+        printf("First calling main_fptr from lib.\n");
       }
 
       int main() {
@@ -2563,7 +2597,7 @@ The current type of b is: 9
         // Test basic lib loading.
         lib_handle = dlopen("liblib.so", RTLD_NOW);
         if (lib_handle == NULL) {
-          printf("Could not load lib.\\n");
+          printf("Could not load lib.\n");
           return 1;
         }
 
@@ -2572,7 +2606,7 @@ The current type of b is: 9
         // Load twice to test cache.
         func_fptr = (FUNCTYPE*) dlsym(lib_handle, "func");
         if (func_fptr == NULL) {
-          printf("Could not find func.\\n");
+          printf("Could not find func.\n");
           return 1;
         }
 
@@ -2581,20 +2615,26 @@ The current type of b is: 9
         fptr();
 
         // Test global data.
-        int* global = (int*) dlsym(lib_handle, "global");
-        if (global == NULL) {
-          printf("Could not find global.\\n");
+        int* globaladdr = (int*) dlsym(lib_handle, "theglobal");
+        if (globaladdr == NULL) {
+          printf("Could not find global.\n");
           return 1;
         }
 
-        printf("Var: %d\\n", *global);
+        printf("Var: %d\n", *globaladdr);
 
         return 0;
       }
       '''
     self.set_setting('EXPORTED_FUNCTIONS', ['_main'])
-    self.do_run(src, 'In func: 13*First calling main_fptr from lib.*Second calling lib_fptr from main.*parent_func called from child*parent_func called from child*Var: 42*',
-                output_nicerizer=lambda x, err: x.replace('\n', '*'))
+    self.do_run(src, '''\
+In func: 13
+First calling main_fptr from lib.
+Second calling lib_fptr from main.
+parent_func called from child
+parent_func called from child
+Var: 42
+''')
 
   @needs_dlfcn
   def test_dlfcn_varargs(self):
@@ -2689,7 +2729,7 @@ The current type of b is: 9
         });
         free(mem);
         for (int i = 0; i < 10; i++) {
-          char* curr = "?.so";
+          char curr[] = "?.so";
           curr[0] = '0' + i;
           printf("loading %s\n", curr);
           void* lib_handle = dlopen(curr, RTLD_NOW);
@@ -2725,27 +2765,29 @@ The current type of b is: 9
       '''
     self.do_run(src, 'success.\n')
 
-  @no_wasm # TODO: this needs to add JS functions to a wasm Table, need to figure that out
   @needs_dlfcn
   def test_dlfcn_self(self):
-    self.prep_dlfcn_main()
+    self.set_setting('MAIN_MODULE')
+    self.set_setting('EXPORT_ALL')
 
     def post(filename):
-      with open(filename) as f:
-        for line in f:
-          if 'var NAMED_GLOBALS' in line:
-            table = line
-            break
-        else:
-          self.fail('Could not find symbol table!')
-      table = table[table.find('{'):table.find('}') + 1]
+      js = open(filename).read()
+      start = js.find('var NAMED_GLOBALS')
+      first = js.find('{', start)
+      last = js.find('}', start)
+      exports = js[first + 1:last]
+      exports = exports.split(',')
       # ensure there aren't too many globals; we don't want unnamed_addr
-      assert table.count(',') <= 30, table.count(',')
+      exports = [e.split(':')[0].strip('"') for e in exports]
+      exports.sort()
+      self.assertGreater(len(exports), 20)
+      # wasm backend includes alias in NAMED_GLOBALS
+      if self.is_wasm_backend():
+        self.assertLess(len(exports), 43)
+      else:
+        self.assertLess(len(exports), 30)
 
-    test_path = path_from_root('tests', 'core', 'test_dlfcn_self')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output, post_build=post)
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
@@ -2941,8 +2983,7 @@ The current type of b is: 9
       '''
     self.set_setting('EXPORTED_FUNCTIONS', ['_callvoid', '_callint', '_getvoid', '_getint'])
     dirname = self.get_dir()
-    filename = os.path.join(dirname, 'liblib.c')
-    self.build_dlfcn_lib(lib_src, dirname, filename)
+    self.build_dlfcn_lib(lib_src, dirname, os.path.join(dirname, 'liblib.c'))
 
     self.prep_dlfcn_main()
     src = r'''
@@ -2959,8 +3000,8 @@ The current type of b is: 9
       typedef voidfunc (*voidgetter)(int);
       typedef intfunc (*intgetter)(int);
 
-      void void_main() { printf("main.\n"); }
-      void int_main(int x) { printf("main %d\n", x); }
+      void void_main() { printf("void_main.\n"); }
+      void int_main(int x) { printf("int_main %d\n", x); }
 
       int main() {
         printf("go\n");
@@ -2994,8 +3035,8 @@ The current type of b is: 9
       '''
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.do_run(src, '''go
-main.
-main 201
+void_main.
+int_main 201
 void 0
 void 1
 int 0 54
@@ -3215,7 +3256,7 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
-  def dylink_test(self, main, side, expected, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True):
+  def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)
 
@@ -3227,12 +3268,11 @@ ok
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    print(self.is_wasm())
     side_suffix = 'wasm' if self.is_wasm() else 'js'
     if isinstance(side, list):
       # side is just a library
       try_delete('liblib.cpp.o.' + side_suffix)
-      run_process([PYTHON, EMCC] + side + self.emcc_args + self.serialize_settings() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
+      run_process([PYTHON, EMCC] + side + self.get_emcc_args() + ['-o', os.path.join(self.get_dir(), 'liblib.cpp.o.' + side_suffix)])
     else:
       base = 'liblib.cpp' if not force_c else 'liblib.c'
       try_delete(base + '.o.' + side_suffix)
@@ -3256,9 +3296,9 @@ ok
       # main is just a library
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.cpp.o.js'])
-      self.do_run(None, expected, no_build=True)
+      self.do_run(None, expected, no_build=True, **kwargs)
     else:
-      self.do_run(main, expected, force_c=force_c)
+      self.do_run(main, expected, force_c=force_c, **kwargs)
 
     self.emcc_args = old_args
 
@@ -3267,33 +3307,67 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
 
+  def do_basic_dylink_test(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        printf("other says %d.\n", sidey());
+        return 0;
+      }
+    ''', '''
+      #include "header.h"
+
+      int sidey() {
+        return 11;
+      }
+    ''', 'other says 11.', 'extern "C" int sidey();')
+
   @needs_dlfcn
   def test_dylink_basics(self):
-    def test():
-      self.dylink_test('''
-        #include <stdio.h>
-        extern int sidey();
-        int main() {
-          printf("other says %d.\\n", sidey());
-          return 0;
-        }
-      ''', '''
-        int sidey() { return 11; }
-      ''', 'other says 11.')
-    test()
+    self.do_basic_dylink_test()
 
-    if self.is_wasm():
-      print('test memory growth with dynamic linking, which works in wasm')
-      self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-      test()
+  @needs_dlfcn
+  def test_dylink_memory_growth(self):
+    if not self.is_wasm():
+      self.skipTest('wasm only')
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8268')
+  def test_dylink_function_pointer_equality(self):
+    self.dylink_test(r'''
+      #include <stdio.h>
+      #include "header.h"
+
+      int main() {
+        void* puts_side = get_address();
+        printf("main module address %p.\n", &puts);
+        printf("side module address address %p.\n", puts_side);
+        if (&puts == puts_side)
+          printf("success\n");
+        else
+          printf("failure\n");
+        return 0;
+      }
+    ''', '''
+      #include <stdio.h>
+      #include "header.h"
+
+      void* get_address() {
+        return (void*)&puts;
+      }
+    ''', 'success', header='extern "C" void* get_address();')
 
   @needs_dlfcn
   def test_dylink_floats(self):
-    self.dylink_test('''
+    self.dylink_test(r'''
       #include <stdio.h>
       extern float sidey();
       int main() {
-        printf("other says %.2f.\\n", sidey()+1);
+        printf("other says %.2f.\n", sidey()+1);
         return 0;
       }
     ''', '''
@@ -3304,7 +3378,7 @@ ok
   def test_dylink_printfs(self):
     self.dylink_test(r'''
       #include <stdio.h>
-      extern void sidey();
+      extern "C" void sidey();
       int main() {
         printf("hello from main\n");
         sidey();
@@ -3312,48 +3386,67 @@ ok
       }
     ''', r'''
       #include <stdio.h>
-      void sidey() { printf("hello from side\n"); }
+      extern "C" void sidey() {
+        printf("hello from side\n");
+      }
     ''', 'hello from main\nhello from side\n')
 
+  # Verify that a function pointer can be passed back and forth and invoked
+  # on both sides.
   @needs_dlfcn
   def test_dylink_funcpointer(self):
-    self.dylink_test(r'''
+    self.dylink_test(
+      main=r'''
       #include <stdio.h>
+      #include <assert.h>
       #include "header.h"
-      voidfunc sidey(voidfunc f);
-      void a() { printf("hello from funcptr\n"); }
+      intfunc sidey(intfunc f);
+      void a(int arg) { printf("hello from funcptr: %d\n", arg); }
       int main() {
-        sidey(a)();
+        intfunc b = sidey(a);
+        assert(a == b);
+        b(0);
         return 0;
       }
-    ''', '''
+      ''',
+      side='''
       #include "header.h"
-      voidfunc sidey(voidfunc f) { return f; }
-    ''', 'hello from funcptr\n', header='typedef void (*voidfunc)();')
+      intfunc sidey(intfunc f) { f(1); return f; }
+      ''',
+      expected='hello from funcptr: 1\nhello from funcptr: 0\n',
+      header='typedef void (*intfunc)(int );')
 
   @needs_dlfcn
-  def test_dylink_funcpointers(self):
-    self.dylink_test(r'''
+  # test dynamic linking of a module with multiple function pointers, stored
+  # statically
+  def test_dylink_static_funcpointers(self):
+    self.dylink_test(
+      main=r'''
       #include <stdio.h>
       #include "header.h"
-      int sidey(voidfunc f);
       void areturn0() { printf("hello 0\n"); }
       void areturn1() { printf("hello 1\n"); }
       void areturn2() { printf("hello 2\n"); }
+      voidfunc func_ptrs[3] = { areturn0, areturn1, areturn2 };
       int main(int argc, char **argv) {
-        voidfunc table[3] = { areturn0, areturn1, areturn2 };
-        table[sidey(NULL)]();
+        sidey(func_ptrs[0]);
+        sidey(func_ptrs[1]);
+        sidey(func_ptrs[2]);
         return 0;
       }
-    ''', '''
+      ''',
+      side='''
       #include "header.h"
-      int sidey(voidfunc f) { if (f) f(); return 1; }
-    ''', 'hello 1\n', header='typedef void (*voidfunc)();')
+      void sidey(voidfunc f) { f(); }
+      ''',
+      expected='hello 0\nhello 1\nhello 2\n',
+      header='typedef void (*voidfunc)(); void sidey(voidfunc f);')
 
-  @no_wasm # uses function tables in an asm.js specific way
+  @no_wasm('uses function tables in an asm.js specific way')
   @needs_dlfcn
-  def test_dylink_funcpointers2(self):
-    self.dylink_test(r'''
+  def test_dylink_asmjs_funcpointers(self):
+    self.dylink_test(
+      main=r'''
       #include "header.h"
       #include <emscripten.h>
       void left1() { printf("left1\n"); }
@@ -3384,7 +3477,8 @@ ok
         second();
         return 0;
       }
-    ''', r'''
+      ''',
+      side=r'''
       #include "header.h"
       void right1() { printf("right1\n"); }
       void right2() { printf("right2\n"); }
@@ -3402,7 +3496,9 @@ ok
         f = (volatilevoidfunc)right2;
         f();
       }
-    ''', 'main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n', header='''
+      ''',
+      expected='main\nleft1\nleft2\nright1\nright2\nsecond\nleft1\nleft2\nright1\nright2\n',
+      header='''
       #include <stdio.h>
       typedef void (*voidfunc)();
       typedef volatile voidfunc volatilevoidfunc;
@@ -3411,51 +3507,56 @@ ok
       voidfunc getright1();
       voidfunc getright2();
       void second();
-    ''', need_reverse=False, auto_load=False)
+      ''', need_reverse=False, auto_load=False)
 
   @needs_dlfcn
   def test_dylink_funcpointers_wrapper(self):
-    self.dylink_test(r'''
+    self.dylink_test(
+      main=r'''\
       #include <stdio.h>
       #include "header.h"
       int main(int argc, char **argv) {
-        volatile charfunc f = emscripten_run_script;
-        f("out('one')");
-        f = get();
-        f("out('two')");
+        charfunc f1 = emscripten_run_script;
+        f1("out('one')");
+        charfunc f2 = get();
+        f2("out('two')");
         return 0;
       }
-    ''', '''
+      ''',
+      side='''\
       #include "header.h"
       charfunc get() {
         return emscripten_run_script;
       }
-    ''', 'one\ntwo\n', header='''
+      ''',
+      expected='one\ntwo\n',
+      header='''\
       #include <emscripten.h>
       typedef void (*charfunc)(const char*);
       extern charfunc get();
-    ''')
+      ''')
 
   @needs_dlfcn
-  def test_dylink_funcpointers_float(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-    self.dylink_test(r'''
+  def test_dylink_static_funcpointer_float(self):
+    self.dylink_test(
+      main=r'''\
       #include <stdio.h>
       #include "header.h"
       int sidey(floatfunc f);
-      float areturn0(float f) { printf("hello 0: %f\n", f); return 0; }
-      float areturn1(float f) { printf("hello 1: %f\n", f); return 1; }
-      float areturn2(float f) { printf("hello 2: %f\n", f); return 2; }
+      float func1(float f) { printf("hello 1: %f\n", f); return 0; }
+      floatfunc f1 = &func1;
       int main(int argc, char **argv) {
-        volatile floatfunc table[3] = { areturn0, areturn1, areturn2 };
-        printf("got: %d\n", (int)table[sidey(NULL)](12.34));
+        printf("got: %d\n", sidey(f1));
+        f1(12.34);
         return 0;
       }
-    ''', '''
+      ''',
+      side='''\
       #include "header.h"
-      int sidey(floatfunc f) { if (f) f(56.78); return 1; }
-    ''', 'hello 1: 12.340000\ngot: 1\n', header='typedef float (*floatfunc)(float);')
+      int sidey(floatfunc f) { f(56.78); return 1; }
+      ''',
+      expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
+      header='typedef float (*floatfunc)(float);')
 
   @needs_dlfcn
   def test_dylink_global_init(self):
@@ -3501,13 +3602,14 @@ ok
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
+  @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64(self):
-    self.dylink_test('''
+    self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
       extern int64_t sidey();
       int main() {
-        printf("other says %llx.\\n", sidey());
+        printf("other says %llx.\n", sidey());
         return 0;
       }
     ''', '''
@@ -3532,6 +3634,7 @@ ok
     ''', 'other says 175a1ddee82b8c31.')
 
   @needs_dlfcn
+  @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3694,7 +3797,7 @@ ok
     ''', expected=['main: jslib_x is 148.\nside: jslib_x is 148.\n'], main_emcc_args=['--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=["_main", "_jslib_x"]'])
 
   @needs_dlfcn
-  def test_dylink_many_postSets(self):
+  def test_dylink_many_postsets(self):
     NUM = 1234
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -3725,7 +3828,7 @@ ok
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'])
 
   @needs_dlfcn
-  def test_dylink_postSets_chunking(self):
+  def test_dylink_postsets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
     ''', main=r'''
@@ -3790,13 +3893,11 @@ ok
 
     test('libc++')
     test('1')
-    if 'ASSERTIONS=1' not in self.emcc_args:
+    if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 0)
       test('', expect_pass=False, need_reverse=False)
-    else:
-      print('(skip ASSERTIONS == 0 part)')
-    self.set_setting('ASSERTIONS', 1)
-    test('', expect_pass=False, need_reverse=False)
+      self.set_setting('ASSERTIONS', 1)
+      test('', expect_pass=False, need_reverse=False)
 
   @needs_dlfcn
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
@@ -3817,6 +3918,7 @@ ok
     ''', expected=['hello from main and hello from side\n'])
 
   @needs_dlfcn
+  @no_wasm_backend('current fails in __dynamic_cast')
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -3898,13 +4000,11 @@ ok
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dlfcn
+  @no_wasm_backend('wasm backend resolved symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
-    dylib_suffix = '.js' if not self.is_wasm() else '.wasm'
-
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
-
-    if self.get_setting('ASSERTIONS'):
-      self.emcc_args += ['-s', 'ASSERTIONS=2']
+    if not self.has_changed_setting('ASSERTIONS'):
+      self.set_setting('ASSERTIONS', 2)
 
     # test hyper-dynamic linking, and test duplicate warnings
     create_test_file('third.cpp', r'''
@@ -3925,7 +4025,11 @@ ok
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    run_process([PYTHON, EMCC, 'third.cpp', '-s', 'SIDE_MODULE', '-s', 'EXPORT_ALL'] + self.get_emcc_args() + ['-o', 'third' + dylib_suffix])
+    if self.is_wasm():
+      libname = 'third.wasm'
+    else:
+      libname = 'third.js'
+    run_process([PYTHON, EMCC, 'third.cpp', '-o', libname, '-s', 'SIDE_MODULE', '-s', 'EXPORT_ALL'] + self.get_emcc_args())
 
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -3938,14 +4042,14 @@ ok
       extern void only_in_third_0();
       int main() {
         EM_ASM({
-          loadDynamicLibrary('third%s'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+          loadDynamicLibrary('%s'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
         printf("sidef: %%d, sideg: %%d.\n", sidef(), sideg);
         printf("bsidef: %%d.\n", bsidef());
         only_in_second_0();
         only_in_third_0();
       }
-    ''' % dylib_suffix,
+    ''' % libname,
                      side=r'''
       #include <stdio.h>
       int sidef() { return 10; } // third will try to override these, but fail!
@@ -3964,12 +4068,13 @@ ok
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      need_reverse=not self.is_wasm()) # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
 
-    if self.get_setting('ASSERTIONS'):
+    if not self.has_changed_setting('ASSERTIONS'):
       print('check warnings')
       full = run_js('src.cpp.o.js', engine=JS_ENGINES[0], full_output=True, stderr=STDOUT)
-      self.assertContained("warning: trying to dynamically load symbol '_sideg' (from 'third%s') that already exists" % dylib_suffix, full)
+      self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
+  @no_wasm_backend('not implemented yet')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return _main(); }', expected_output)
@@ -3978,28 +4083,24 @@ ok
   @needs_dlfcn
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
-    create_test_file('third.cpp', r'''
-      int sidef() { return 36; }
-    ''')
-    run_process([PYTHON, EMCC, 'third.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'third.o', '-c'])
+    create_test_file('third.cpp', 'extern "C" int sidef() { return 36; }')
+    create_test_file('fourth.cpp', 'extern "C" int sideg() { return 17; }')
 
-    create_test_file('fourth.cpp', r'''
-      int sideg() { return 17; }
-    ''')
-    run_process([PYTHON, EMCC, 'fourth.cpp'] + Building.COMPILER_TEST_OPTS + self.emcc_args + ['-o', 'fourth.o', '-c'])
-
+    run_process([PYTHON, EMCC, '-c', 'third.cpp', '-o', 'third.o'] + self.get_emcc_args())
+    run_process([PYTHON, EMCC, '-c', 'fourth.cpp', '-o', 'fourth.o'] + self.get_emcc_args())
     run_process([PYTHON, EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
       #include <stdio.h>
       #include <emscripten.h>
-      extern int sidef();
-      extern int sideg();
+      extern "C" int sidef();
+      extern "C" int sideg();
       int main() {
         printf("sidef: %d, sideg: %d.\n", sidef(), sideg());
       }
     ''',
-                     side=['libfourth.a', 'third.o'], # contents of libtwo.a must be included, even if they aren't referred to!
+                     # contents of libfourth.a must be included, even if they aren't referred to!
+                     side=['libfourth.a', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'])
 
   @needs_dlfcn
@@ -4039,25 +4140,74 @@ ok
   def test_dylink_zlib(self):
     # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'zlib')]
 
-    run_process([PYTHON, path_from_root('embuilder.py'), 'build', 'zlib'])
-
-    zlib = shared.Cache.get_path(os.path.join('ports-builds', 'zlib', 'libz.a'))
+    self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
+    zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
-                     side=[zlib],
+                     side=zlib_archive,
                      expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
                      force_c=True)
 
   # @needs_dlfcn
   # def test_dylink_bullet(self):
-  #   Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'bullet', 'src')]
-  #   side = get_bullet_library(self, True)
+  #   self.emcc_args += ['-I' + path_from_root('tests', 'bullet', 'src')]
+  #   side = self.get_bullet_library(self, True)
   #   self.dylink_test(main=open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
   #                    side=side,
   #                    expected=[open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
   #                              open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
   #                              open(path_from_root('tests', 'bullet', 'output3.txt')).read()])
+
+  @needs_dlfcn
+  @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8376')
+  def test_dylink_rtti(self):
+    # Verify that objects created in one module and be dynamic_cast<> correctly
+    # in the another module.
+    # Each module will define its own copy of certain COMDAT symbols such as
+    # each classs's typeinfo, but at runtime they should both use the same one.
+    header = '''
+    #include <cstddef>
+
+    class Foo {
+    public:
+      virtual ~Foo() {}
+    };
+
+    class Bar : public Foo {
+    public:
+      virtual ~Bar() {}
+    };
+
+    bool is_bar(Foo* foo);
+    '''
+
+    main = '''
+    #include <stdio.h>
+    #include "header.h"
+
+    int main() {
+      Bar bar;
+      if (!is_bar(&bar)) {
+        puts("failure");
+        return 1;
+      }
+      puts("success");
+      return 0;
+    }
+    '''
+
+    side = '''
+    #include "header.h"
+
+    bool is_bar(Foo* foo) {
+      return dynamic_cast<Bar*>(foo) != nullptr;
+    }
+    '''
+
+    self.dylink_test(main=main,
+                     side=side,
+                     header=header,
+                     expected='success')
 
   def test_random(self):
     src = r'''#include <stdlib.h>
@@ -4141,33 +4291,21 @@ Have even and odd!
     self.do_run(src, expected)
 
   def test_strtold(self):
-    if not self.is_wasm_backend():
-      # XXX add real support for long double
-      expected_file = 'test_strtod.out'
-    else:
-      expected_file = 'test_strtold.out'
-    src = open(path_from_root('tests', 'core', 'test_strtold.c')).read()
-    expected = open(path_from_root('tests', 'core', expected_file)).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_strtold')
 
   def test_strtok(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strtok')
 
   def test_parseInt(self):
-    src = open(path_from_root('tests', 'parseInt', 'src.c')).read()
-    expected = open(path_from_root('tests', 'parseInt', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_parseInt')
 
   def test_transtrcase(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_transtrcase')
 
   def test_printf(self):
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # SpiderMonkey and V8 do different things to float64 typed arrays, un-NaNing, etc.
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    src = open(path_from_root('tests', 'printf', 'test.c')).read()
-    expected = open(path_from_root('tests', 'printf', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'printf', 'test')
 
   def test_printf_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_printf_2')
@@ -4204,7 +4342,7 @@ Have even and odd!
       assert i > 0 and self.emcc_args[i - 1] == '-s'
       self.emcc_args[i] = 'ASSERTIONS=0'
       print('flip assertions off')
-    self.do_run_in_out_file_test('tests', 'core', 'fnmatch')
+    self.do_run_in_out_file_test('tests', 'core', 'test_fnmatch')
 
   def test_sscanf(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf')
@@ -4304,9 +4442,7 @@ Pass: 0.000012 0.000012''')
     self.do_run_in_out_file_test('tests', 'core', 'test_sscanf_float')
 
   def test_langinfo(self):
-    src = open(path_from_root('tests', 'langinfo', 'test.c')).read()
-    expected = open(path_from_root('tests', 'langinfo', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_langinfo')
 
   def test_files(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # closure can generate variables called 'gc', which pick up js shell stuff
@@ -4399,7 +4535,7 @@ Module = {
 
   def test_getdents64_special_cases(self):
     self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
     src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
     out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
     self.do_run_from_file(src, out, assert_identical=True)
@@ -4408,23 +4544,21 @@ Module = {
     self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_fwrite_0(self):
-    test_path = path_from_root('tests', 'core', 'test_fwrite_0')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_fwrite_0')
 
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
     self.set_setting('SYSCALL_DEBUG', 1)
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       print(fs)
       src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c')).read()
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
@@ -4534,23 +4668,10 @@ main( int argv, char ** argc ) {
     self.do_run(src, '3\n')
 
   def test_readdir(self):
-    src = open(path_from_root('tests', 'dirent', 'test_readdir.c')).read()
-    self.do_run(src, '''SIGILL: Illegal instruction
-success
-n: 8
-name: tmp
-name: proc
-name: nocanread
-name: home
-name: foobar
-name: dev
-name: ..
-name: .
-''', force_c=True)
+    self.do_run_in_out_file_test('tests', 'dirent', 'test_readdir')
 
   def test_readdir_empty(self):
-    src = open(path_from_root('tests', 'dirent', 'test_readdir_empty.c')).read()
-    self.do_run(src, 'success', force_c=True)
+    self.do_run_in_out_file_test('tests', 'dirent', 'test_readdir_empty')
 
   def test_stat(self):
     src = open(path_from_root('tests', 'stat', 'test_stat.c')).read()
@@ -4574,20 +4695,14 @@ name: .
 
   def test_fcntl(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
-    src = open(path_from_root('tests', 'fcntl', 'src.c')).read()
-    expected = open(path_from_root('tests', 'fcntl', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl')
 
   def test_fcntl_open(self):
-    src = open(path_from_root('tests', 'fcntl-open', 'src.c')).read()
-    expected = open(path_from_root('tests', 'fcntl-open', 'output.txt')).read()
-    self.do_run(src, expected, force_c=True)
+    self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl_open')
 
   def test_fcntl_misc(self):
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
-    src = open(path_from_root('tests', 'fcntl-misc', 'src.c')).read()
-    expected = open(path_from_root('tests', 'fcntl-misc', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'fcntl', 'test_fcntl_misc')
 
   def test_poll(self):
     self.add_pre_run('''
@@ -4597,9 +4712,7 @@ name: .
       FS.createDataFile('/', 'file', 'abcdef', true, true, false);
       FS.mkdev('/device', dummy_device);
     ''')
-    test_path = path_from_root('tests', 'core', 'test_poll')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_poll')
 
   def test_statvfs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_statvfs')
@@ -4625,32 +4738,25 @@ name: .
   def test_utf8(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
                      ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
   def test_utf8_textdecoder(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
-    Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
+    self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
 
   def test_utf16_textdecoder(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
-    Building.COMPILER_TEST_OPTS += ['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt']
+    self.emcc_args += ['--embed-file', path_from_root('tests/utf16_corpus.txt') + '@/utf16_corpus.txt']
     self.do_run(open(path_from_root('tests', 'benchmark_utf16.cpp')).read(), 'OK.')
 
-  @no_wasm_backend('printf is incorrectly handling float values')
   def test_wprintf(self):
-    test_path = path_from_root('tests', 'core', 'test_wprintf')
-    src, output = (test_path + s for s in ('.cpp', '.out'))
-    self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_wprintf')
 
   def test_write_stdout_fileno(self):
-    test_path = path_from_root('tests', 'core', 'test_write_stdout_fileno')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    orig_args = self.emcc_args
-    for mode in [[], ['-s', 'FILESYSTEM=0']]:
-      self.emcc_args = orig_args + mode
-      self.do_run_from_file(src, output)
+    self.do_run_in_out_file_test('tests', 'core', 'test_write_stdout_fileno')
+    self.do_run_in_out_file_test('tests', 'core', 'test_write_stdout_fileno', args=['-s', 'FILESYSTEM=0'])
 
   def test_direct_string_constant_usage(self):
     # needs to flush stdio streams
@@ -4663,14 +4769,12 @@ name: .
   def test_istream(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    test_path = path_from_root('tests', 'core', 'test_istream')
-    src, output = (test_path + s for s in ('.c', '.out'))
 
     for linkable in [0]: # , 1]:
       print(linkable)
       # regression check for issue #273
       self.set_setting('LINKABLE', linkable)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_istream')
 
   def test_fs_base(self):
     # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
@@ -4710,7 +4814,7 @@ name: .
   @also_with_noderawfs
   def test_fs_writeFile(self, js_engines=None):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=1'] # see issue 2334
-    src = path_from_root('tests', 'fs', 'test_writeFile.cc')
+    src = path_from_root('tests', 'fs', 'test_writeFile.cpp')
     out = path_from_root('tests', 'fs', 'test_writeFile.out')
     self.do_run_from_file(src, out, js_engines=js_engines)
 
@@ -4731,11 +4835,11 @@ name: .
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_mmap(self):
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run_from_file(src, out)
 
   @also_with_noderawfs
@@ -4771,15 +4875,15 @@ name: .
 
   def test_unistd_access(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'access.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'access.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts
+      self.emcc_args = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
@@ -4821,11 +4925,11 @@ name: .
 
   def test_unistd_truncate(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     for fs in ['MEMFS', 'NODEFS']:
       src = open(path_from_root('tests', 'unistd', 'truncate.c')).read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out')).read()
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
@@ -4835,9 +4939,7 @@ name: .
     self.skipTest('fails on some node versions and OSes, e.g. 10.13.0 on linux')
 
     self.emcc_args += ['-s', 'NODERAWFS=1']
-    test_path = path_from_root('tests', 'unistd', 'truncate')
-    src, output = (test_path + s for s in ('.c', '.out'))
-    self.do_run_from_file(src, output, js_engines=[NODE_JS])
+    self.do_run_in_out_file_test('tests', 'unistd', 'truncate', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
     src = open(path_from_root('tests', 'unistd', 'swab.c')).read()
@@ -4868,26 +4970,30 @@ name: .
 
   def test_unistd_unlink(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'unlink.c')).read()
     for fs in ['MEMFS', 'NODEFS']:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
-      # symlinks on node.js on Windows require administrative privileges, so skip testing those bits on that combination.
-      if WINDOWS and fs == 'NODEFS':
-        Building.COMPILER_TEST_OPTS += ['-DNO_SYMLINK=1']
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
+      # so skip testing those bits on that combination.
+      if fs == 'NODEFS':
+        if WINDOWS:
+          self.emcc_args += ['-DNO_SYMLINK=1']
+        if MACOS:
+          continue
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
-    # Several differences/bugs on Windows including https://github.com/nodejs/node/issues/18014
-    if not WINDOWS:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-DNODERAWFS']
+    # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
+    if not WINDOWS and not MACOS:
+      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
       # 0 if root user
       if os.geteuid() == 0:
-        Building.COMPILER_TEST_OPTS += ['-DSKIP_ACCESS_TESTS']
+        self.emcc_args += ['-DSKIP_ACCESS_TESTS']
       self.emcc_args += ['-s', 'NODERAWFS=1']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_unistd_links(self):
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'links.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'links.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
@@ -4897,7 +5003,7 @@ name: .
         # test expects /, but Windows gives \ as path slashes.
         # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
         continue
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
@@ -4916,20 +5022,22 @@ name: .
     self.do_run(src, expected)
 
   def test_unistd_io(self):
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
+    self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
     self.clear()
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_unistd_misc(self):
-    orig_compiler_opts = Building.COMPILER_TEST_OPTS[:]
+    orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'misc.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'misc.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
-      Building.COMPILER_TEST_OPTS = orig_compiler_opts + ['-D' + fs]
+      self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_posixtime(self):
@@ -4967,9 +5075,7 @@ name: .
     ])
 
   def test_systypes(self):
-    src = open(path_from_root('tests', 'systypes', 'src.c')).read()
-    expected = open(path_from_root('tests', 'systypes', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_systypes')
 
   def test_getloadavg(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_getloadavg')
@@ -4985,9 +5091,7 @@ PORT: 3979
 ''')
 
   def test_ctype(self):
-    src = open(path_from_root('tests', 'ctype', 'src.c')).read()
-    expected = open(path_from_root('tests', 'ctype', 'output.txt')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctype')
 
   def test_strcasecmp(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_strcasecmp')
@@ -4996,23 +5100,21 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
   def test_atomic_cxx(self):
-    test_path = path_from_root('tests', 'core', 'test_atomic_cxx')
-    src, output = (test_path + s for s in ('.cpp', '.txt'))
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
     is_lock_free = self.is_wasm_backend()
-    Building.COMPILER_TEST_OPTS += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
-    self.do_run_from_file(src, output)
+    self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
+    self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
-      self.do_run_from_file(src, output)
+      self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
     # TODO
     # elif self.is_wasm_backend():
     #   print('pthreads')
     #   self.set_setting('USE_PTHREADS', 1)
-    #   self.do_run_from_file(src, output)
+    #   self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -5022,7 +5124,6 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out')).read()
     self.do_run(src, expected)
 
-  @no_wasm_backend('No dynamic linking support in wasm backend path')
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -5048,7 +5149,7 @@ PORT: 3979
       time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
-      if self.get_setting('WASM'):
+      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
         ret += open('src.cpp.o.wasm', 'rb').read()
       return ret
 
@@ -5066,7 +5167,7 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
 
   def test_random_device(self):
-    Building.COMPILER_TEST_OPTS += ['-std=c++11']
+    self.emcc_args += ['-std=c++11']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_random_device')
 
@@ -5195,9 +5296,11 @@ int main(void) {
 
   def test_fannkuch(self):
     results = [(1, 0), (2, 1), (3, 2), (4, 4), (5, 7), (6, 10), (7, 16), (8, 22)]
+    src = open(path_from_root('tests', 'fannkuch.cpp')).read()
+    self.build(src, self.get_dir(), 'fannkuch.cpp')
     for i, j in results:
-      src = open(path_from_root('tests', 'fannkuch.cpp')).read()
-      self.do_run(src, 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=i > 1)
+      print(i, j)
+      self.do_run('fannkuch.cpp.o.js', 'Pfannkuchen(%d) = %d.' % (i, j), [str(i)], no_build=True)
 
   def test_raytrace(self):
     # TODO: Should we remove this test?
@@ -5208,17 +5311,30 @@ int main(void) {
     self.do_run(src, output, ['3', '16'])
 
   def test_fasta(self):
-      results = [(1, '''GG*ctt**tgagc*'''),
-                 (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
-                 (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
+    results = [(1, '''GG*ctt**tgagc*'''),
+               (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
+               (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
+
+    old = self.emcc_args
+    orig_src = open(path_from_root('tests', 'fasta.cpp')).read()
+
+    def test(extra_args):
+      self.emcc_args = old + extra_args
       for precision in [0, 1, 2]:
         self.set_setting('PRECISE_F32', precision)
         for t in ['float', 'double']:
           print(precision, t)
-          src = open(path_from_root('tests', 'fasta.cpp')).read().replace('double', t)
-          for i, j in results:
-            self.do_run(src, j, [str(i)], lambda x, err: x.replace('\n', '*'), no_build=i > 1)
-          shutil.copyfile('src.cpp.o.js', '%d_%s.js' % (precision, t))
+          src = orig_src.replace('double', t)
+          self.build(src, self.get_dir(), 'fasta.cpp')
+          for arg, output in results:
+            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+          shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
+
+    test([])
+
+    # TODO: enable when we have bleeding edge node on the bots
+    # if self.is_wasm_backend():
+    #   test(['-mnontrapping-fptoint'])
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
@@ -5232,12 +5348,12 @@ int main(void) {
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'])
-    self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
+    self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
     # Linked version
     src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'])
-    self.do_run(src, '*400,0*', ['400', '400'], no_build=True)
+    self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
     # TODO: do this in other passes too, passing their opts into emcc
     if self.emcc_args == []:
@@ -5246,8 +5362,8 @@ int main(void) {
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB', '-o', 'src.cpp.o.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
-      self.do_run('x', '*1,0*', ['200', '1'], no_build=True)
-      self.do_run('x', '*400,0*', ['400', '400'], no_build=True)
+      self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
+      self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
 
       # The same for new and all its variants
       src = open(path_from_root('tests', 'new.cpp')).read()
@@ -5310,12 +5426,7 @@ return malloc(size);
     self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-
-    test_path = path_from_root('tests', 'core', 'test_mmap')
-    src, output = (test_path + s for s in ('.c', '.out'))
-
-    self.do_run_from_file(src, output)
-    self.do_run_from_file(src, output, force_c=True)
+    self.do_run_in_out_file_test('tests', 'core', 'test_mmap')
 
   def test_mmap_file(self):
     for extra_args in [[], ['--no-heap-copy']]:
@@ -5338,7 +5449,7 @@ return malloc(size);
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
-    Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g'] # remove -g, so we have one test without it by default
+    self.emcc_args = [x for x in self.emcc_args if x != '-g'] # remove -g, so we have one test without it by default
 
     def test():
       self.do_run(path_from_root('tests', 'cubescript'), '*\nTemp is 33\n9\n5\nhello, everyone\n*', main_file='command.cpp')
@@ -5441,7 +5552,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_simd_shift_right')
 
   def test_gcc_unmangler(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('third_party')]
+    self.emcc_args += ['-I' + path_from_root('third_party')]
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
@@ -5481,35 +5592,29 @@ return malloc(size);
     shutil.copyfile(path_from_root('tests', 'freetype', 'LiberationSansBold.ttf'), 'font.ttf')
 
     # Main
-    for outlining in [0, 5000]:
-      if outlining and self.is_wasm_backend():
-        continue
-      self.set_setting('OUTLINING_LIMIT', outlining)
-      print('outlining:', outlining, file=sys.stderr)
-      self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
-                  open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
-                  ['font.ttf', 'test!', '150', '120', '25'],
-                  libraries=get_freetype_library(self),
-                  includes=[path_from_root('tests', 'freetype', 'include')])
-      self.set_setting('OUTLINING_LIMIT', 0)
+    self.do_run(open(path_from_root('tests', 'freetype', 'main.c')).read(),
+                open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
+                ['font.ttf', 'test!', '150', '120', '25'],
+                libraries=self.get_freetype_library(),
+                includes=[path_from_root('tests', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_2.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
                 ['font.ttf', 'w', '32', '32', '25'],
-                libraries=get_freetype_library(self),
+                libraries=self.get_freetype_library(),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
                 ['font.ttf', 'W', '32', '32', '0'],
-                libraries=get_freetype_library(self),
+                libraries=self.get_freetype_library(),
                 includes=[path_from_root('tests', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
-    self.do_run('',
+    self.do_run(None,
                 open(path_from_root('tests', 'freetype', 'ref_4.txt')).read(),
                 ['font.ttf', 'ea', '40', '32', '0'],
                 no_build=True)
@@ -5546,11 +5651,13 @@ return malloc(size);
     assert 'asm2g' in core_test_modes
     if self.run_name == 'asm2g':
       self.emcc_args += ['-g4'] # more source maps coverage
+    if self.run_name == 'asm2f':
+      return self.skipTest('asm2f affects cflags in a way that changes zlib compile flag reporting, so the stdout is different')
 
     use_cmake_configure = WINDOWS
     if use_cmake_configure:
       make_args = []
-      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.', '-DBUILD_SHARED_LIBS=OFF']
+      configure = [PYTHON, path_from_root('emcmake'), 'cmake', '.']
     else:
       make_args = ['libz.a']
       configure = ['sh', './configure']
@@ -5582,7 +5689,7 @@ return malloc(size);
                      open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
-                    libraries=get_bullet_library(self, use_cmake),
+                    libraries=self.get_bullet_library(use_cmake),
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
@@ -5606,7 +5713,7 @@ return malloc(size);
 
       ppm_data = str(list(bytearray(open(path_from_root('tests', 'poppler', 'ref.ppm'), 'rb').read())))
       self.do_run('', ppm_data.replace(' ', ''),
-                  libraries=get_poppler_library(self),
+                  libraries=self.get_poppler_library(),
                   args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
     test()
@@ -5637,7 +5744,7 @@ return malloc(size);
       return out
 
     # remove -g, so we have one test without it by default
-    Building.COMPILER_TEST_OPTS = [x for x in Building.COMPILER_TEST_OPTS if x != '-g']
+    self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
     original_j2k = path_from_root('tests', 'openjpeg', 'syntensity_lobby_s.j2k')
     image_bytes = list(bytearray(open(original_j2k, 'rb').read()))
@@ -5654,7 +5761,7 @@ return malloc(size);
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
-                            os.path.join('bin', 'libopenjpeg.so.1.4.0')],
+                            os.path.join('bin', 'libopenjpeg.a')],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
@@ -5741,12 +5848,12 @@ return malloc(size);
       print('lto:', lto)
       if lto == 1:
         self.emcc_args += ['--llvm-lto', '1']
-      self.do_ll_run(bitcode, pyoutput, args=['-S', '-c', pyscript])
+      self.do_run_object(bitcode, pyoutput, args=['-S', '-c', pyscript])
 
   def test_lifetime(self):
     self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-      assert 'a18' not in open('src.cpp.o.js').read(), 'lifetime stuff and their vars must be culled'
+      assert 'a18' not in open('lifetime.ll.o.js').read(), 'lifetime stuff and their vars must be culled'
 
   # Test cases in separate files. Note that these files may contain invalid .ll!
   # They are only valid enough for us to read for test purposes, not for llvm-as
@@ -5854,7 +5961,7 @@ return malloc(size);
 
   @is_slow_test
   def test_fuzz(self):
-    Building.COMPILER_TEST_OPTS += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
+    self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
     # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
     self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
@@ -5892,20 +5999,20 @@ return malloc(size);
 
     run_all('lto')
 
-  def test_autodebug(self):
-    if self.is_wasm_backend():
-      # autodebugging only works with bitcode objects
-      self.set_setting('WASM_OBJECT_FILES', 0)
-    Building.COMPILER_TEST_OPTS += ['--llvm-opts', '0']
+  def test_autodebug_bitcode(self):
+    if self.is_wasm_backend() and self.get_setting('WASM_OBJECT_FILES') == 1:
+      return self.skipTest('must use bitcode object files for bitcode autodebug')
+
+    self.emcc_args += ['--llvm-opts', '0']
 
     # Autodebug the code
     def do_autodebug(filename):
-      Building.llvm_dis(filename)
-      output = run_process([PYTHON, AUTODEBUGGER, filename + '.o.ll', filename + '.o.ll.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
+      Building.llvm_dis(filename + '.o', filename + '.ll')
+      output = run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
       assert 'Success.' in output, output
       # rebuild .bc
       # TODO: use code in do_autodebug_post for this
-      self.prep_ll_run(filename, filename + '.o.ll.ll', force_recompile=True)
+      self.prep_ll_file(filename, filename + '.auto.ll', force_recompile=True)
 
     # Run a test that should work, generating some code
     test_path = path_from_root('tests', 'core', 'test_structs')
@@ -5914,11 +6021,11 @@ return malloc(size);
     # Add an ll hook, to force ll generation
     self.do_run_from_file(src, output, build_ll_hook=lambda x: False)
 
-    filename = 'src.cpp'
+    filename = 'src.c'
     do_autodebug(filename)
 
     # Compare to each other, and to expected output
-    self.do_ll_run(filename + '.o.ll.ll', 'AD:-1,1')
+    self.do_ll_run(filename + '.auto.ll', 'AD:-1,1')
 
     # Test using build_ll_hook
     src = '''
@@ -5937,6 +6044,18 @@ return malloc(size);
         }
       '''
     self.do_run(src, 'AD:-1,1', build_ll_hook=do_autodebug)
+
+  @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
+  @with_env_modify({'EMCC_AUTODEBUG': '1'})
+  def test_autodebug_wasm(self):
+    # test that the program both works and also emits some of the logging
+    # (but without the specific numbers, which may change over time)
+    def check(out, err):
+      for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
+        self.assertIn(msg, out)
+      return out + err
+    self.do_run(open(path_from_root('tests', 'core', 'test_hello_world.c')).read(),
+                'hello, world!', output_nicerizer=check)
 
   ### Integration tests
 
@@ -6091,32 +6210,28 @@ return malloc(size);
       }
     '''
 
-    def test(expected, args=[], no_build=False):
-      self.do_run(src, expected, args=args, no_build=no_build)
-      return open('src.cpp.o.js').read()
-
     # Sanity check that it works and the dead function is emitted
-    js = test('*1*', ['x'])
+    self.do_run(src, '*1*', args=['x'])
+    js = open('src.cpp.o.js').read()
     if self.run_name in ['default', 'asm1', 'asm2g']:
       assert 'function _unused($' in js
-    return
-    test('*2*', no_build=True)
+    self.do_run(None, '*2*', no_build=True)
 
     # Kill off the dead function, and check a code path using it aborts
     self.set_setting('DEAD_FUNCTIONS', ['_unused'])
-    test('*2*')
-    test('abort(', args=['x'], no_build=True)
+    self.do_run(src, '*2*')
+    self.do_run(None, 'abort(', args=['x'], no_build=True)
 
     # Kill off a library function, check code aborts
     self.set_setting('DEAD_FUNCTIONS', ['_printf'])
-    test('abort(')
-    test('abort(', args=['x'], no_build=True)
+    self.do_run(src, 'abort(')
+    self.do_run(None, 'abort(', args=['x'], no_build=True)
 
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
-    self.do_run('', 'hello, world', basename='response_file', no_build=True)
+    self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
@@ -6127,7 +6242,7 @@ return malloc(size);
     response_data = objfile + ' --export=foo'
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.emcc_args)
-    self.do_run('', 'hello, world', basename='response_file', no_build=True)
+    self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_exported_response(self):
     src = r'''
@@ -6273,7 +6388,7 @@ return malloc(size);
     if self.is_emterpreter():
       self.emcc_args += ['--profiling-funcs']
     self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks')
-    if 'ASSERTIONS' not in str(self.emcc_args):
+    if not self.has_changed_setting('ASSERTIONS'):
       print('without assertions, the stack is not printed, but a message suggesting assertions is')
       self.set_setting('ASSERTIONS', 0)
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
@@ -6308,13 +6423,15 @@ return malloc(size);
             self.assertContained(' ' + short_aborter + ' ' + '\n' + ' ' + full_aborter + ' ', output)
 
   def test_tracing(self):
-    Building.COMPILER_TEST_OPTS += ['--tracing']
+    self.emcc_args += ['--tracing']
 
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
+    if self.get_setting('WASM2JS'):
+      self.skipTest('this test uses wasm binaries')
 
     orig_args = self.emcc_args
 
@@ -6437,7 +6554,7 @@ someweirdtext
     do_test(test3)
 
   def test_embind(self):
-    Building.COMPILER_TEST_OPTS += ['--bind']
+    self.emcc_args += ['--bind']
 
     src = r'''
       #include <stdio.h>
@@ -6458,7 +6575,7 @@ someweirdtext
     self.do_run(src, 'abs(-10): 10\nabs(-11): 11')
 
   def test_embind_2(self):
-    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
     create_test_file('post.js', '''
       function printLerp() {
           out('lerp ' + Module.lerp(100, 200, 66) + '.');
@@ -6483,7 +6600,7 @@ someweirdtext
     self.do_run(src, 'lerp 166')
 
   def test_embind_3(self):
-    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
     create_test_file('post.js', '''
       function ready() {
         try {
@@ -6512,7 +6629,7 @@ someweirdtext
 
   @no_wasm_backend('long doubles are f128s in wasm backend')
   def test_embind_4(self):
-    Building.COMPILER_TEST_OPTS += ['--bind', '--post-js', 'post.js']
+    self.emcc_args += ['--bind', '--post-js', 'post.js']
     create_test_file('post.js', '''
       function printFirstElement() {
         out(Module.getBufferView()[0]);
@@ -6544,7 +6661,7 @@ someweirdtext
     self.do_run(src, '107')
 
   def test_embind_5(self):
-    Building.COMPILER_TEST_OPTS += ['--bind']
+    self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
   def test_embind_float_constants(self):
@@ -6640,8 +6757,8 @@ err = err = function(){};
   def test_source_map(self):
     if not jsrun.check_engine(NODE_JS):
       self.skipTest('sourcemapper requires Node to run')
-    if '-g' not in Building.COMPILER_TEST_OPTS:
-      Building.COMPILER_TEST_OPTS.append('-g')
+    if '-g' not in self.emcc_args:
+      self.emcc_args.append('-g')
 
     src = '''
       #include <stdio.h>
@@ -6663,9 +6780,9 @@ err = err = function(){};
     wasm_filename = 'a.out.wasm'
     no_maps_filename = 'no-maps.out.js'
 
-    assert '-g4' not in Building.COMPILER_TEST_OPTS
+    assert '-g4' not in self.emcc_args
     Building.emcc('src.cpp',
-                  self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS,
+                  self.serialize_settings() + self.emcc_args + self.emcc_args,
                   out_filename)
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
@@ -6673,10 +6790,10 @@ err = err = function(){};
     with open(no_maps_filename) as f:
       no_maps_file = f.read()
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
-    Building.COMPILER_TEST_OPTS.append('-g4')
+    self.emcc_args.append('-g4')
 
     Building.emcc(os.path.abspath('src.cpp'),
-                  self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS,
+                  self.serialize_settings() + self.emcc_args + self.emcc_args,
                   out_filename,
                   stderr=PIPE)
     map_referent = out_filename if not self.get_setting('WASM') else wasm_filename
@@ -6808,13 +6925,13 @@ err = err = function(){};
       # without this, stack traces are not useful (we jump emterpret=>emterpret)
       self.emcc_args += ['--profiling-funcs']
       # even so, we get extra emterpret() calls on the stack
-      Building.COMPILER_TEST_OPTS += ['-DEMTERPRETER']
+      self.emcc_args += ['-DEMTERPRETER']
     if self.get_setting('ASM_JS'):
       # XXX Does not work in SpiderMonkey since callstacks cannot be captured when running in asm.js, see https://bugzilla.mozilla.org/show_bug.cgi?id=947996
       self.banned_js_engines += [SPIDERMONKEY_ENGINE]
-    if '-g' not in Building.COMPILER_TEST_OPTS:
-      Building.COMPILER_TEST_OPTS.append('-g')
-    Building.COMPILER_TEST_OPTS += ['-DRUN_FROM_JS_SHELL']
+    if '-g' not in self.emcc_args:
+      self.emcc_args.append('-g')
+    self.emcc_args += ['-DRUN_FROM_JS_SHELL']
     self.do_run(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read(), '''test print 123
 
 12.345679 9.123457 1.353180
@@ -7229,6 +7346,7 @@ extern "C" {
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
+  # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
                    'unsupported with Wasm backend')
@@ -7238,6 +7356,21 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  # Test basic wasm2js functionality in all core compilation modes.
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+    self.set_setting('WASM', 0)
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # a mem init file is emitted just like with JS
+    expect_memory_init_file = self.uses_memory_init_file()
+    see_memory_init_file = os.path.exists('src.c.o.js.mem')
+    assert expect_memory_init_file == see_memory_init_file, 'memory init file expectation wrong: %s' % expect_memory_init_file
+    if see_memory_init_file:
+      with open('src.c.o.js.mem', 'rb') as f:
+        self.assertTrue(f.read()[-1] != b'\0')
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
@@ -7274,8 +7407,7 @@ extern "C" {
     create_test_file('lib.js', '''
       mergeInto(LibraryManager.library, {
         check_memprof_requirements: function() {
-          if (typeof TOTAL_MEMORY === 'number' &&
-              typeof STATIC_BASE === 'number' &&
+          if (typeof STATIC_BASE === 'number' &&
               typeof STACK_BASE === 'number' &&
               typeof STACK_MAX === 'number' &&
               typeof STACKTOP === 'number' &&
@@ -7363,7 +7495,7 @@ extern "C" {
 
     def test():
       self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
-      js = open('src.cpp.o.js').read()
+      js = open('src.c.o.js').read()
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in JS_ENGINES:
@@ -7416,7 +7548,7 @@ extern "C" {
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
@@ -7424,9 +7556,11 @@ extern "C" {
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
+    if self.get_setting('SAFE_HEAP'):
+      return self.skipTest('TODO: SAFE_HEAP in minimal runtime')
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
-    self.set_setting('BINARYEN_ASYNC_COMPILATION', 0)
+    self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
@@ -7475,9 +7609,6 @@ def make_run(name, emcc_args, settings=None, env=None):
       for k, v in self.env.items():
         del os.environ[k]
 
-      # clear global changes to Building
-      Building.COMPILER_TEST_OPTS = []
-
   TT.tearDown = tearDown
 
   def setUp(self):
@@ -7491,17 +7622,15 @@ def make_run(name, emcc_args, settings=None, env=None):
     self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
-    Building.COMPILER_TEST_OPTS += [
-        '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
-        '-Wno-format-extra-args', '-Wno-format-security',
-        '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
-        '-Wno-c++11-compat-deprecated-writable-strings',
-        '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
-    ]
 
-    for arg in self.emcc_args:
-      if arg.startswith('-O'):
-        Building.COMPILER_TEST_OPTS.append(arg) # so bitcode is optimized too, this is for cpp to ll
+    # avoid various compiler warnings in our test output
+    self.emcc_args += [
+      '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+      '-Wno-format-extra-args', '-Wno-format-security',
+      '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
+      '-Wno-c++11-compat-deprecated-writable-strings',
+      '-Wno-invalid-pp-token', '-Wno-shift-negative-value'
+    ]
 
   TT.setUp = setUp
 
@@ -7517,8 +7646,10 @@ asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTI
 
 # Main wasm test modes
 wasm0 = make_run('wasm0', emcc_args=['-O0'])
+wasm0g = make_run('wasm0g', emcc_args=['-O0', '-g'])
 wasm1 = make_run('wasm1', emcc_args=['-O1'])
 wasm2 = make_run('wasm2', emcc_args=['-O2'])
+wasm2g = make_run('wasm2g', emcc_args=['-O2', '-g'])
 wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
@@ -7530,8 +7661,19 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
+wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
+
+# features
+
+simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
+bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # asm.js
 asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
