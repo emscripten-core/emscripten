@@ -6,7 +6,7 @@ mergeInto(LibraryManager.library, {
   getDomElementInnerHTML__sig: 'viii',
   getDomElementInnerHTML: function(domElementId, dst, size) {
     var id = UTF8ToString(domElementId);
-    var text = document.getElementById(id).innerHTML;
+    var text = document.getElementById(id).parentElement.innerHTML;
     stringToUTF8(text, dst, size);
   },
 
