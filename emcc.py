@@ -1357,15 +1357,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.WASM:
         options.memory_init_file = True
 
-    if shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
-      # NB: asm2wasm auto-generates code that imports setTempRet0/getTempRet0
-      #     so make sure to include those.
-      #     this applies even if MINIMAL_RUNTIME is set
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend([
-        'setTempRet0',
-        'getTempRet0',
-      ])
-
     if shared.Settings.MODULARIZE and not shared.Settings.MODULARIZE_INSTANCE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')

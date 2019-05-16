@@ -60,13 +60,6 @@ def fix_import_name(g):
   if g.startswith('g$_'):
     return 'g$' + g[3:]
 
-  # NB: these are imported directly into ASMJS modules
-  #     (see Settings.RUNTIME_FUNCS_TO_IMPORT)
-  #     and used by fastcomp, but their import name conflicts
-  #     with the library.js version (which is the canonical version),
-  #     so import them under a different name
-  if not Settings.WASM_BACKEND and g in ["abort", "getTempRet0", "setTempRet0"]:
-    return '__runtime_' + g
   return g
 
 

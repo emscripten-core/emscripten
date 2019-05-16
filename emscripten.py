@@ -95,9 +95,20 @@ def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
     with ToolchainProfiler.profile_block('compiler_glue'):
       glue, forwarded_data = compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG)
 
+    # fastcomp generates internal calls to abort,setTempRet0,getTempRet0
+    # but user code may also generate a call to _abort(), etc.
+    # this will cause conflicting imports, since both _abort and abort are to be
+    # imported as abort, so normalize calls
+    forwarded_json = json.loads(forwarded_data)
+    for symbol in ["abort", "setTempRet0", "getTempRet0"]:
+      if symbol in metadata['declares']:
+        funcs = re.sub(r"([^a-zA-Z0-9_$]|^)_(" + symbol + ")([^a-zA-Z0-9_$]|$)", r"\1\2\3", funcs)
+        metadata['declares'].remove(symbol)
+      forwarded_json['Functions']['libraryFunctions'].pop('_' + symbol, None)
+
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG))
+          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_json, outfile, DEBUG))
     with ToolchainProfiler.profile_block('write_output_file'):
       finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG)
     success = True
@@ -260,12 +271,10 @@ def get_asm_extern_primitives(pre):
     return []
 
 
-def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
+def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_json, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
     t = time.time()
-
-  forwarded_json = json.loads(forwarded_data)
 
   # merge in information from llvm backend
 
@@ -372,6 +381,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
+  assert len(set(fix_import_name(minified) if minified == unminified else minified for (minified, unminified) in sending_vars)) == len(sending_vars), "Multiple imports mapped to the same name!"
   sending = '{\n  ' + ',\n  '.join('"%s": %s' % (fix_import_name(minified) if minified == unminified else minified, unminified) for (minified, unminified) in sending_vars) + '\n}'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
