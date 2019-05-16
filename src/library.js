@@ -2584,7 +2584,27 @@ LibraryManager.library = {
       '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
       '%T': '%H:%M:%S',                 // Replaced by the time
       '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S'                  // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate time representation
+      // Modified Conversion Specifiers
+      '%Ec': '%c',                      // Replaced by the locale's alternative appropriate date and time representation.
+      '%EC': '%C',                      // Replaced by the name of the base year (period) in the locale's alternative representation.
+      '%Ex': '%m/%d/%y',                // Replaced by the locale's alternative date representation.
+      '%EX': '%H:%M:%S',                // Replaced by the locale's alternative time representation.
+      '%Ey': '%y',                      // Replaced by the offset from %EC (year only) in the locale's alternative representation.
+      '%EY': '%Y',                      // Replaced by the full alternative year representation.
+      '%Od': '%d',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading zeros if there is any alternative symbol for zero; otherwise, with leading <space> characters.
+      '%Oe': '%e',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading <space> characters.
+      '%OH': '%H',                      // Replaced by the hour (24-hour clock) using the locale's alternative numeric symbols.
+      '%OI': '%I',                      // Replaced by the hour (12-hour clock) using the locale's alternative numeric symbols.
+      '%Om': '%m',                      // Replaced by the month using the locale's alternative numeric symbols.
+      '%OM': '%M',                      // Replaced by the minutes using the locale's alternative numeric symbols.
+      '%OS': '%S',                      // Replaced by the seconds using the locale's alternative numeric symbols.
+      '%Ou': '%u',                      // Replaced by the weekday as a number in the locale's alternative representation (Monday=1).
+      '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
+      '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
+      '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
+      '%OW': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
+      '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
     };
     for (var rule in EXPANSION_RULES_1) {
       pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
@@ -2734,7 +2754,7 @@ LibraryManager.library = {
         return '\t';
       },
       '%u': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        var day = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday, 0, 0, 0, 0);
         return day.getDay() || 7;
       },
       '%U': function(date) {
@@ -2792,7 +2812,7 @@ LibraryManager.library = {
         return leadingNulls(Math.ceil(daysDifference/7), 2);
       },
       '%w': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
+        var day = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday, 0, 0, 0, 0);
         return day.getDay();
       },
       '%W': function(date) {
