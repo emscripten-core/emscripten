@@ -4,7 +4,7 @@
  * Last changed date: 2019-01-15.
  *
  * Changes:
- *   * switched to using emscripten_wasm_return_address instead of
+ *   * switched to using emscripten_return_address instead of
        __builtin_return_address. clang currently rejects the latter on wasm.
  */
 #include "sanitizer_atomic.h"
@@ -83,7 +83,7 @@ void NORETURN CheckFailed(const char *file, int, const char *cond, u64, u64) {
 } // namespace __sanitizer
 #endif
 
-extern "C" void *emscripten_wasm_return_address(int level);
+extern "C" void *emscripten_return_address(int level);
 
 #define INTERFACE extern "C" __attribute__((visibility("default")))
 
@@ -91,7 +91,7 @@ extern "C" void *emscripten_wasm_return_address(int level);
 // @1234ABCD").
 #define HANDLER_RECOVER(name, msg)                               \
   INTERFACE void __ubsan_handle_##name##_minimal() {             \
-    if (!report_this_error(emscripten_wasm_return_address(0))) return; \
+    if (!report_this_error(emscripten_return_address(0))) return; \
     message("ubsan: " msg "\n");                                 \
   }
 

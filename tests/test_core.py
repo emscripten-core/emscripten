@@ -71,16 +71,6 @@ def no_wasm(note=''):
   return decorated
 
 
-def wasm_only(f):
-  assert callable(f)
-
-  def decorated(self):
-    if not self.is_wasm() or not self.is_wasm_backend():
-      self.skipTest('test is for wasm only')
-    f(self)
-  return decorated
-
-
 # Async wasm compilation can't work in some tests, they are set up synchronously
 def sync(f):
   assert callable(f)
@@ -7612,21 +7602,31 @@ extern "C" {
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
-  @wasm_only
+  @no_fastcomp()
   @no_optimize
   def test_return_address(self):
     self.do_run(open(path_from_root('tests', 'wasm', 'return_address.cpp')).read(), 'passed')
 
-  @wasm_only
+  @no_fastcomp()
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_too_many_errors.c')).read(), assert_identical=True,
+    if self.get_setting('WASM') == 0:
+      if is_optimizing(self.emcc_args):
+        self.skipTest('test can only be run without optimizations on asm.js')
+      # Need to use `-g` to get proper line numbers in asm.js
+      self.emcc_args += ['-g']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_too_many_errors.c')).read(),
                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
 
-  @wasm_only
+  @no_fastcomp()
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(), assert_identical=True,
+    if self.get_setting('WASM') == 0:
+      if is_optimizing(self.emcc_args):
+        self.skipTest('test can only be run without optimizations on asm.js')
+      # Need to use `-g` to get proper line numbers in asm.js
+      self.emcc_args += ['-g']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(),
                 expected_output='ubsan: add-overflow\n' * 5)
 
 
