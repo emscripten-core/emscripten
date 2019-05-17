@@ -861,7 +861,7 @@ function getBinary() {
     if (Module['readBinary']) {
       return Module['readBinary'](wasmBinaryFile);
     } else {
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";
 #else
       throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
@@ -1051,6 +1051,7 @@ function createWasm(env) {
   }
 
   // Prefer streaming instantiation if available.
+#if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
     if (!Module['wasmBinary'] &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
@@ -1068,7 +1069,7 @@ function createWasm(env) {
       return instantiateArrayBuffer(receiveInstantiatedSource);
     }
   }
-
+#else
   function instantiateSync() {
     var instance;
     var module;
@@ -1084,7 +1085,7 @@ function createWasm(env) {
     }
     receiveInstance(instance, module);
   }
-
+#endif
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
   // to any other async startup actions they are performing.
@@ -1097,7 +1098,7 @@ function createWasm(env) {
     }
   }
 
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif
