@@ -57,11 +57,14 @@ def fix_import_name(g):
   if g.startswith('Math_'):
     return g.split('_')[1]
 
-  # NB: asm2wasm expects these in this form
-  if g.startswith('_') and g not in ['__memory_base', '__table_base', "_llvm_cttz_i32"]:
+  if g.startswith('_') and (
+      Settings.WASM_BACKEND or
+      # NB: asm2wasm expects these in this form
+      g not in ['__memory_base', '__table_base', "_llvm_cttz_i32"]
+  ):
     return g[1:]
 
-  if g.startswith('g$_'):
+  if not Settings.WASM_BACKEND and g.startswith('g$_'):
     return 'g$' + g[3:]
 
   return g
@@ -72,9 +75,12 @@ def treat_as_user_function(name):
                                  'stackSave', 'stackRestore',
                                  'establishStackSpace', '__growWasmMemory',
                                  '__heap_base', '__data_end',
-                                 # asm2wasm require these export names to properly function
-                                 '__post_instantiate', '_emscripten_replace_memory', '___udivmoddi4',
                                  )
+  if not Settings.WASM_BACKEND:
+    # asm2wasm require these export names to properly function
+    library_functions_in_module += (
+      '__post_instantiate', '_emscripten_replace_memory', '___udivmoddi4',
+    )
   if name.startswith('dynCall_'):
     return False
   if name in library_functions_in_module:
