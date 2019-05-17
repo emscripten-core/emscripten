@@ -96,6 +96,20 @@ def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
 
 
+def no_optimize(note=''):
+  assert not callable(note)
+
+  def decorator(func):
+    assert callable(func)
+
+    def decorated(self):
+      if is_optimizing(self.emcc_args):
+        self.skipTest(note)
+      func(self)
+    return decorated
+  return decorator
+
+
 class TestCoreBase(RunnerCore):
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
@@ -7591,6 +7605,33 @@ extern "C" {
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
+
+  @no_fastcomp('return address not supported on fastcomp')
+  @no_optimize('return address test cannot work with optimizations')
+  def test_return_address(self):
+    self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_minimal_too_many_errors(self):
+    self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
+    if self.get_setting('WASM') == 0:
+      if is_optimizing(self.emcc_args):
+        self.skipTest('test can only be run without optimizations on asm.js')
+      # Need to use `-g` to get proper line numbers in asm.js
+      self.emcc_args += ['-g']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_too_many_errors.c')).read(),
+                expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_minimal_errors_same_place(self):
+    self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
+    if self.get_setting('WASM') == 0:
+      if is_optimizing(self.emcc_args):
+        self.skipTest('test can only be run without optimizations on asm.js')
+      # Need to use `-g` to get proper line numbers in asm.js
+      self.emcc_args += ['-g']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(),
+                expected_output='ubsan: add-overflow\n' * 5)
 
 
 # Generate tests for everything

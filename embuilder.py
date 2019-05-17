@@ -54,6 +54,7 @@ SYSTEM_TASKS = [
     'libc-mt',
     'pthreads',
     'pthreads_stub',
+    'ubsan-minimal-rt-wasm',
 ]
 
 for debug in ['', '_debug']:
@@ -312,6 +313,10 @@ def main():
         }
 
       ''', [libname('libpthreads_stub')])
+    elif what == 'ubsan-minimal-rt-wasm':
+      if not shared.Settings.WASM_BACKEND:
+        continue
+      build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
