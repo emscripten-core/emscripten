@@ -514,6 +514,7 @@ fi
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
     with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
