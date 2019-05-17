@@ -314,10 +314,9 @@ def main():
 
       ''', [libname('libpthreads_stub')])
     elif what == 'ubsan-minimal-rt-wasm':
-      if shared.Settings.WASM_BACKEND:
-        build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
-      else:
-        logger.warning('ubsan-minimal-rt-wasm not built when using JSBackend')
+      if not shared.Settings.WASM_BACKEND:
+        continue
+      build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
