@@ -249,6 +249,12 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
+  'wasm2js0',
+  'wasm2js1',
+  'wasm2js2',
+  'wasm2js3',
+  'wasm2jss',
+  'wasm2jsz',
   'asmi',
   'asm2i',
 ]
@@ -263,6 +269,7 @@ non_core_test_modes = [
   'sanity',
   'sockets',
   'interactive',
+  'benchmark',
 ]
 
 test_index = 0
@@ -299,15 +306,18 @@ class RunnerCore(unittest.TestCase):
   def check_dlfcn(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dlfcn with memory growth (without wasm)')
+    if self.get_setting('WASM_BACKEND') and not self.get_setting('WASM'):
+      self.skipTest('no dynamic library support in wasm2js yet')
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or self.get_setting('WASM'):
+    if self.get_setting('SIDE_MODULE') or \
+      (self.get_setting('WASM') and not self.get_setting('WASM2JS')):
       return False
     elif '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
     else:
       # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Oz'))
+      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
       return opt_supports
 
   def set_temp_dir(self, temp_dir):
@@ -397,6 +407,9 @@ class RunnerCore(unittest.TestCase):
       self.clear_setting(key)
     self.settings_mods[key] = value
 
+  def has_changed_setting(self, key):
+    return key in self.settings_mods
+
   def clear_setting(self, key):
     self.settings_mods.pop(key, None)
 
@@ -425,8 +438,8 @@ class RunnerCore(unittest.TestCase):
     js = open(filename).read()
     create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
-  def prep_ll_run(self, filename, ll_file, force_recompile=False, build_ll_hook=None):
-    # force_recompile = force_recompile or os.path.getsize(filename + '.o.ll') > 50000
+  def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
+    # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
     # If the file is big, recompile just to get ll_opts
     # Recompiling just for dfe in ll_opts is too costly
 
@@ -446,42 +459,53 @@ class RunnerCore(unittest.TestCase):
       with open(ll_filename, 'w') as f:
         f.write(contents)
 
+    output_obj = output_file + '.o'
+    output_ll = output_file + '.ll'
+
     if force_recompile or build_ll_hook:
-      if ll_file.endswith(('.bc', '.o')):
-        if ll_file != filename + '.o':
-          shutil.copy(ll_file, filename + '.o')
-        Building.llvm_dis(filename)
+      if input_file.endswith(('.bc', '.o')):
+        if input_file != output_obj:
+          shutil.copy(input_file, output_obj)
+        Building.llvm_dis(output_obj, output_ll)
       else:
-        shutil.copy(ll_file, filename + '.o.ll')
-        fix_target(filename + '.o.ll')
+        shutil.copy(input_file, output_ll)
+        fix_target(output_ll)
 
       if build_ll_hook:
-        need_post = build_ll_hook(filename)
-      Building.llvm_as(filename)
-      shutil.move(filename + '.o.ll', filename + '.o.ll.pre') # for comparisons later
-      Building.llvm_dis(filename)
+        need_post = build_ll_hook(output_file)
+      Building.llvm_as(output_ll, output_obj)
+      shutil.move(output_ll, output_ll + '.pre') # for comparisons later
+      Building.llvm_dis(output_obj, output_ll)
       if build_ll_hook and need_post:
-        build_ll_hook(filename)
-        Building.llvm_as(filename)
-        shutil.move(filename + '.o.ll', filename + '.o.ll.post') # for comparisons later
-        Building.llvm_dis(filename)
+        build_ll_hook(output_file)
+        Building.llvm_as(output_ll, output_obj)
+        shutil.move(output_ll, output_ll + '.post') # for comparisons later
+        Building.llvm_dis(output_obj, output_ll)
 
-      Building.llvm_as(filename)
+      Building.llvm_as(output_ll, output_obj)
     else:
-      if ll_file.endswith('.ll'):
-        safe_copy(ll_file, filename + '.o.ll')
-        fix_target(filename + '.o.ll')
-        Building.llvm_as(filename)
+      if input_file.endswith('.ll'):
+        safe_copy(input_file, output_ll)
+        fix_target(output_ll)
+        Building.llvm_as(output_ll, output_obj)
       else:
-        safe_copy(ll_file, filename + '.o')
+        safe_copy(input_file, output_obj)
 
-  def get_emcc_args(self):
-    # TODO(sbc): We should probably unify Building.COMPILER_TEST_OPTS and self.emcc_args
-    return self.serialize_settings() + self.emcc_args + Building.COMPILER_TEST_OPTS
+    return output_obj
 
-  # Generate JS from ll
-  def ll_to_js(self, filename):
-    Building.emcc(filename + '.o', self.get_emcc_args(), filename + '.o.js')
+  # returns the full list of arguments to pass to emcc
+  # param @main_file whether this is the main file of the test. some arguments
+  #                  (like --pre-js) do not need to be passed when building
+  #                  libraries, for example
+  def get_emcc_args(self, main_file=False):
+    args = self.serialize_settings() + self.emcc_args
+    if not main_file:
+      for i, arg in enumerate(args):
+        if arg in ('--pre-js', '--post-js'):
+          args[i] = None
+          args[i + 1] = None
+      args = [arg for arg in args if arg is not None]
+    return args
 
   # Build JavaScript code from source code
   def build(self, src, dirname, filename, main_file=None,
@@ -501,7 +525,7 @@ class RunnerCore(unittest.TestCase):
       # copy whole directory, and use a specific main .cpp file
       # (rmtree() fails on Windows if the current working directory is inside the tree.)
       if os.getcwd().startswith(os.path.abspath(dirname)):
-          os.chdir(os.path.join(dirname, '..'))
+        os.chdir(os.path.join(dirname, '..'))
       shutil.rmtree(dirname)
       shutil.copytree(src, dirname)
       shutil.move(os.path.join(dirname, main_file), filename)
@@ -521,7 +545,7 @@ class RunnerCore(unittest.TestCase):
           os.remove(f + '.o')
         except:
           pass
-        args = [PYTHON, EMCC] + self.get_emcc_args() + \
+        args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -539,10 +563,10 @@ class RunnerCore(unittest.TestCase):
           self.fail("Linkage error")
 
       # Finalize
-      self.prep_ll_run(filename, object_file, build_ll_hook=build_ll_hook)
+      self.prep_ll_file(filename, object_file, build_ll_hook=build_ll_hook)
 
       # BC => JS
-      self.ll_to_js(filename)
+      Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
       all_files = [filename] + additional_files + libraries
@@ -550,7 +574,7 @@ class RunnerCore(unittest.TestCase):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + self.get_emcc_args() + \
+      args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
           ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
@@ -684,22 +708,25 @@ class RunnerCore(unittest.TestCase):
     path2 = path2.replace('\\', '/')
     return self.assertIdentical(path1, path2)
 
-  # Tests that the given two multiline text content are identical, modulo line ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2):
+  # Tests that the given two multiline text content are identical, modulo line
+  # ending differences (\r\n on Windows, \n on Unix).
+  def assertTextDataIdentical(self, text1, text2, msg=None):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2)
+    return self.assertIdentical(text1, text2, msg)
 
-  def assertIdentical(self, values, y):
+  def assertIdentical(self, values, y, msg=None):
     if type(values) not in [list, tuple]:
       values = [values]
     for x in values:
       if x == y:
         return # success
-    self.fail("Expected to have '%s' == '%s', diff:\n\n%s" % (
-      limit_size(values[0]), limit_size(y),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')]))
-    ))
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
+    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if msg:
+      fail_message += '\n' + msg
+    self.fail(fail_message)
 
   def assertTextDataContained(self, text1, text2):
     text1 = text1.replace('\r\n', '\n')
@@ -742,36 +769,36 @@ class RunnerCore(unittest.TestCase):
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
                   configure_args=[], make=['make'], make_args='help',
-                  cache=True, env_init={}, cache_name_extra='', native=False):
+                  env_init={}, cache_name_extra='', native=False):
     if make_args == 'help':
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
     build_dir = self.get_build_dir()
     output_dir = self.get_dir()
 
-    hash_input = (str(Building.COMPILER_TEST_OPTS) + ' $ ' + str(env_init)).encode('utf-8')
-    cache_name = name + ','.join([opt for opt in Building.COMPILER_TEST_OPTS if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
+    emcc_args = self.get_emcc_args()
+
+    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
-    if self.library_cache is not None:
-      if cache and self.library_cache.get(cache_name):
-        print('<load %s from cache> ' % cache_name, file=sys.stderr)
-        generated_libs = []
-        for basename, contents in self.library_cache[cache_name]:
-          bc_file = os.path.join(build_dir, cache_name + '_' + basename)
-          with open(bc_file, 'wb') as f:
-            f.write(contents)
-          generated_libs.append(bc_file)
-        return generated_libs
+    if self.library_cache.get(cache_name):
+      print('<load %s from cache> ' % cache_name, file=sys.stderr)
+      generated_libs = []
+      for basename, contents in self.library_cache[cache_name]:
+        bc_file = os.path.join(build_dir, cache_name + '_' + basename)
+        with open(bc_file, 'wb') as f:
+          f.write(contents)
+        generated_libs.append(bc_file)
+      return generated_libs
 
     print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, copy_project=True, env_init=env_init,
-                         native=native)
+                         cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -960,6 +987,8 @@ class RunnerCore(unittest.TestCase):
     return js_engines
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
+    if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
+      kwargs['force_c'] = True
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -974,15 +1003,23 @@ class RunnerCore(unittest.TestCase):
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
 
-    dirname = self.get_dir()
-    filename = os.path.join(dirname, basename)
-    if not no_build:
-      self.build(src, dirname, filename, main_file=main_file, additional_files=additional_files, libraries=libraries, includes=includes,
+    if no_build:
+      if src:
+        js_file = src
+      else:
+        js_file = basename + '.o.js'
+    else:
+      dirname = self.get_dir()
+      filename = os.path.join(dirname, basename)
+      self.build(src, dirname, filename, main_file=main_file,
+                 additional_files=additional_files, libraries=libraries,
+                 includes=includes,
                  build_ll_hook=build_ll_hook, post_build=post_build)
+      js_file = filename + '.o.js'
+    self.assertExists(js_file)
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    js_file = filename + '.o.js'
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     if len(js_engines) > 1 and not self.use_all_engines:
@@ -1005,35 +1042,13 @@ class RunnerCore(unittest.TestCase):
           print('(test did not pass in JS engine: %s)' % engine)
           raise
 
-    # shutil.rmtree(dirname) # TODO: leave no trace in memory. But for now nice for debugging
-
     if self.save_JS:
       global test_index
       self.hardcode_arguments(js_file, args)
       shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
 
-  # No building - just process an existing .ll file (or .bc, which we turn into .ll)
-  def do_ll_run(self, ll_file, expected_output=None, args=[], js_engines=None,
-                output_nicerizer=None, force_recompile=False,
-                build_ll_hook=None, assert_returncode=None):
-    filename = os.path.join(self.get_dir(), 'src.cpp')
-
-    self.prep_ll_run(filename, ll_file, force_recompile, build_ll_hook)
-
-    self.ll_to_js(filename)
-
-    self.do_run(None,
-                expected_output,
-                args,
-                no_build=True,
-                js_engines=js_engines,
-                output_nicerizer=output_nicerizer,
-                assert_returncode=assert_returncode)
-
   def get_freetype_library(self):
-    self.set_setting('DEAD_FUNCTIONS', self.get_setting('DEAD_FUNCTIONS') + ['_inflateEnd', '_inflate', '_inflateReset', '_inflateInit2_'])
-
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
@@ -1041,7 +1056,7 @@ class RunnerCore(unittest.TestCase):
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-I' + path_from_root('tests', 'freetype', 'include'),
       '-I' + path_from_root('tests', 'poppler', 'include')
     ]
@@ -1050,7 +1065,7 @@ class RunnerCore(unittest.TestCase):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
-    Building.COMPILER_TEST_OPTS += [
+    self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
       '-Wno-unused-private-field',
@@ -1464,13 +1479,12 @@ def build_library(name,
                   configure=['sh', './configure'],
                   configure_args=[],
                   make=['make'],
-                  make_args='help',
+                  make_args=[],
                   cache=None,
                   cache_name=None,
-                  copy_project=False,
                   env_init={},
-                  source_dir=None,
-                  native=False):
+                  native=False,
+                  cflags=[]):
   """Build a library into a .bc file. We build the .bc file once and cache it
   for all our tests. (We cache in memory since the test directory is destroyed
   and recreated for each test. Note that we cache separately for different
@@ -1480,88 +1494,64 @@ def build_library(name,
 
   if type(generated_libs) is not list:
     generated_libs = [generated_libs]
-  if source_dir is None:
-    source_dir = path_from_root('tests', name.replace('_native', ''))
-  if make_args == 'help':
-    make_args = ['-j', str(multiprocessing.cpu_count())]
+  source_dir = path_from_root('tests', name.replace('_native', ''))
 
   temp_dir = build_dir
-  if copy_project:
-    project_dir = os.path.join(temp_dir, name)
-    if os.path.exists(project_dir):
-      shutil.rmtree(project_dir)
-    shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
-  else:
-    project_dir = build_dir
-  try:
-    old_dir = os.getcwd()
-  except:
-    old_dir = None
-  os.chdir(project_dir)
-  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-  # for lib in generated_libs:
-  #   try:
-  #     os.unlink(lib) # make sure compilation completed successfully
-  #   except:
-  #     pass
-  env = Building.get_building_env(native, True)
-  for k, v in env_init.items():
-    env[k] = v
-  if configure:
-    # Useful in debugging sometimes to comment this out (and the lines below
-    # up to and including the |link| call)
-    if EM_BUILD_VERBOSE < 2:
-      stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
-    else:
-      stdout = None
-    if EM_BUILD_VERBOSE < 1:
-      stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
-    else:
-      stderr = None
+  project_dir = os.path.join(temp_dir, name)
+  if os.path.exists(project_dir):
+    shutil.rmtree(project_dir)
+  shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
+
+  with chdir(project_dir):
+    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+    env = Building.get_building_env(native, True, cflags=cflags)
+    for k, v in env_init.items():
+      env[k] = v
+    if configure:
+      # Useful in debugging sometimes to comment this out (and the lines below
+      # up to and including the |link| call)
+      if EM_BUILD_VERBOSE < 2:
+        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
+      else:
+        stdout = None
+      if EM_BUILD_VERBOSE < 1:
+        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
+      else:
+        stderr = None
+      try:
+        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      except subprocess.CalledProcessError as e:
+        pass # Ignore exit code != 0
+
+    def open_make_out(mode='r'):
+      return open(os.path.join(project_dir, 'make.out'), mode)
+
+    def open_make_err(mode='r'):
+      return open(os.path.join(project_dir, 'make.err'), mode)
+
+    if EM_BUILD_VERBOSE >= 3:
+      make_args += ['VERBOSE=1']
+
     try:
-      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-    except subprocess.CalledProcessError as e:
-      pass # Ignore exit code != 0
+      with open_make_out('w') as make_out:
+        with open_make_err('w') as make_err:
+          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
 
-  def open_make_out(i, mode='r'):
-    return open(os.path.join(project_dir, 'make_out' + str(i)), mode)
-
-  def open_make_err(i, mode='r'):
-    return open(os.path.join(project_dir, 'make_err' + str(i)), mode)
-
-  if EM_BUILD_VERBOSE >= 3:
-    make_args += ['VERBOSE=1']
-
-  # FIXME: Sad workaround for some build systems that need to be run twice to succeed (e.g. poppler)
-  for i in range(2):
-    with open_make_out(i, 'w') as make_out:
-      with open_make_err(i, 'w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        if i == 0:
-          try:
-            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
-          except subprocess.CalledProcessError as e:
-            pass # Ignore exit code != 0
-        else:
-            Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
-    try:
       if cache is not None:
         cache[cache_name] = []
         for f in generated_libs:
           basename = os.path.basename(f)
           cache[cache_name].append((basename, open(f, 'rb').read()))
-      break
     except Exception as e:
-      if i > 0:
-        if EM_BUILD_VERBOSE == 0:
-          # Due to the ugly hack above our best guess is to output the first run
-          with open_make_err(0) as ferr:
-            for line in ferr:
-              sys.stderr.write(line)
-        raise Exception('could not build library ' + name + ' due to exception ' + str(e))
-  if old_dir:
-    os.chdir(old_dir)
+      if EM_BUILD_VERBOSE == 0:
+         with open_make_err() as ferr:
+           for line in ferr:
+             sys.stderr.write(line)
+
+      raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+
   return generated_libs
 
 

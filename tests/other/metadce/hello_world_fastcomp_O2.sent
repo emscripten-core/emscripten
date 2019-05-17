@@ -1,0 +1,15 @@
+DYNAMICTOP_PTR
+__setErrNo
+__syscall140
+__syscall146
+__syscall54
+__syscall6
+emscripten_get_heap_size
+emscripten_memcpy_big
+emscripten_resize_heap
+abort
+abortOnCannotGrowMemory
+flush_NO_FILESYSTEM
+getTempRet0
+setTempRet0
+tempDoublePtr

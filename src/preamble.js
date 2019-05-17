@@ -13,6 +13,10 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if WASM2JS
+#include "wasm2js.js"
+#endif
+
 #if WASM
 if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
@@ -857,7 +861,7 @@ function getBinary() {
     if (Module['readBinary']) {
       return Module['readBinary'](wasmBinaryFile);
     } else {
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";
 #else
       throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
@@ -891,9 +895,13 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-#if AUTODEBUG
+#if WASM2JS || AUTODEBUG
+  // wasm2js legalization of i64 support code may require these
+  // autodebug may also need them
   env['setTempRet0'] = setTempRet0;
   env['getTempRet0'] = getTempRet0;
+#endif
+#if AUTODEBUG
   env['log_execution'] = function(loc) {
     console.log('log_execution ' + loc);
   };
@@ -1023,7 +1031,7 @@ function createWasm(env) {
     }
   }
 
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
 #if RUNTIME_LOGGING
   err('asynchronously preparing wasm');
 #endif

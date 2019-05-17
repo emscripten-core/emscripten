@@ -21,6 +21,10 @@ def get(ports, settings, shared):
   def create():
     # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
     ports.clear_project_build('sdl2_image')
+    ports.clear_project_build('sdl2_mixer')
+    ports.clear_project_build('sdl2_net')
+    ports.clear_project_build('sdl2_ttf')
+    ports.clear_project_build('sdl2_gfx')
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
     dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
