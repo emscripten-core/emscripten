@@ -145,6 +145,7 @@ var LibraryPThread = {
         Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, exitCode);
         // When we publish this, the main thread is free to deallocate the thread object and we are done.
         // Therefore set threadInfoStruct = 0; above to 'release' the object in this worker thread.
+        Atomics.store(HEAPU32, (tb + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 1);
 
         // Disable all cancellation so that executing the cleanup handlers won't trigger another JS
         // canceled exception to be thrown.
@@ -300,11 +301,9 @@ var LibraryPThread = {
             } else if (d.cmd === 'alert') {
               alert('Thread ' + d.threadId + ': ' + d.text);
             } else if (d.cmd === 'exit') {
-              var detached = Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
+              var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
               if (detached) {
                 PThread.returnWorkerToPool(worker);
-              } else {
-                Atomics.store(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.threadStatus }}}) >> 2, 1);
               }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
