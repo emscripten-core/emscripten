@@ -1667,8 +1667,8 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
 
   # Should only need to do this in the main thread.
-  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and receiving:
-    receiving = "if (!ENVIRONMENT_IS_PTHREAD) {\n" + receiving + "}\n"
+  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and shared.Settings.ASSERTIONS and receiving:
+    receiving = "assert(!ENVIRONMENT_IS_PTHREAD, 'Error: USE_PTHREADS and EXPORT_ES6 requires ASSERTIONS=0');\n" + receiving
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
