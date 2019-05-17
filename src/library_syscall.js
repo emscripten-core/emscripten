@@ -710,9 +710,6 @@ var SyscallsLibrary = {
       });
     });
 #else
-    if (stream.stream_ops.fsync) {
-        return -stream.stream_ops.fsync(stream);
-    }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif
   },
