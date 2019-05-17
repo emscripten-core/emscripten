@@ -446,7 +446,6 @@ var SyscallsLibrary = {
   },
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
-    if (addr < 0 || len == 0) return -ERRNO_CODES.EINVAL;
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
@@ -974,12 +973,7 @@ var SyscallsLibrary = {
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
-
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
-      return -ERRNO_CODES.EINVAL;
-    }
-
-    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
+    if (fd === -1) {
       ptr = _memalign(PAGE_SIZE, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);

@@ -1204,7 +1204,11 @@ mergeInto(LibraryManager.library, {
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write access
+      if ((prot & {{{ cDefine('PROT_WRITE') }}}) !== 0
+          && (flags & {{{ cDefine('MAP_PRIVATE')}}}) === 0
+          && (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDWR')}}}) {
+        throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
+      }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
       }
