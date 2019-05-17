@@ -22,6 +22,7 @@ extern "C" {
 
 // If passed, the intermediate streamed bytes will be passed in to the onprogress() handler. If not specified, the
 // onprogress() handler will still be called, but without data bytes.
+// Note: Firefox only as it depends on 'moz-chunked-arraybuffer'.
 #define EMSCRIPTEN_FETCH_STREAM_DATA 2
 
 // If passed, the final download will be stored in IndexedDB. If not specified, the file will only reside in browser memory.

@@ -403,6 +403,8 @@ def expected_llvm_version():
 def get_clang_version():
   global actual_clang_version
   if actual_clang_version is None:
+    if not os.path.exists(CLANG):
+      exit_with_error('clang executable not found at `%s`' % CLANG)
     proc = check_call([CLANG, '--version'], stdout=PIPE)
     m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
     actual_clang_version = m and m.group(1)
@@ -419,6 +421,8 @@ def check_llvm_version():
 
 
 def get_llc_targets():
+  if not os.path.exists(LLVM_COMPILER):
+    exit_with_error('llc exectuable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
   except Exception as e:
@@ -1130,6 +1134,7 @@ def expand_byte_size_suffixes(value):
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere
 class SettingsManager(object):
+
   class __impl(object):
     attrs = {}
 
@@ -1140,7 +1145,7 @@ class SettingsManager(object):
     def reset(self):
       self.attrs = {}
 
-      # Load the JS defaults into python
+      # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': self.attrs})
@@ -1148,12 +1153,24 @@ class SettingsManager(object):
       if 'EMCC_STRICT' in os.environ:
         self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
+      # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
+      # details
       self.legacy_settings = {}
-      for name, fixed_values, err in self.attrs['LEGACY_SETTINGS']:
-        self.legacy_settings[name] = (fixed_values, err)
+      self.alt_names = {}
+      for legacy in self.attrs['LEGACY_SETTINGS']:
+        if len(legacy) == 2:
+          name, new_name = legacy
+          self.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
+          self.alt_names[name] = new_name
+          self.alt_names[new_name] = name
+          default_value = self.attrs[new_name]
+        else:
+          name, fixed_values, err = legacy
+          self.legacy_settings[name] = (fixed_values, err)
+          default_value = fixed_values[0]
         assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
         if not self.attrs['STRICT']:
-          self.attrs[name] = fixed_values[0]
+          self.attrs[name] = default_value
 
       if get_llvm_target() == WASM_TARGET:
         self.attrs['WASM_BACKEND'] = 1
@@ -1204,10 +1221,14 @@ class SettingsManager(object):
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
         fixed_values, error_message = self.legacy_settings[attr]
-        if value not in fixed_values:
+        if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
         else:
           logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+
+      if attr in self.alt_names:
+        alt_name = self.alt_names[attr]
+        self.attrs[alt_name] = value
 
       if attr not in self.attrs:
         logger.error('Assigning a non-existent settings attribute "%s"' % attr)
