@@ -7873,7 +7873,7 @@ int main() {
     with open(sent_file_name) as f:
       sent_file_data = set(l.strip() for l in f if l.strip())
     sent_data = set(sent)
-    self.assertEqual(sent_file_data, sent_data)#, "List of sent imports does not match expected: %r" % (sent_file_name,))
+    self.assertEqual(sent_file_data, sent_data)
     self.assertEqual(len(sent), expected_sent)
 
     for exists in expected_exists:
