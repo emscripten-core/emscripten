@@ -2,11 +2,11 @@ mergeInto(LibraryManager.library, {
   // Test accessing a DOM element on the main thread.
   // This function returns the inner text of the div by ID "status"
   // Because it accesses the DOM, it must be called on the main thread.
-  getDomElementInnerHTML__proxy: 'sync',
-  getDomElementInnerHTML__sig: 'viii',
-  getDomElementInnerHTML: function(domElementId, dst, size) {
+  getDomElementParentInnerHTML__proxy: 'sync',
+  getDomElementParentInnerHTML__sig: 'viii',
+  getDomElementParentInnerHTML: function(domElementId, dst, size) {
     var id = UTF8ToString(domElementId);
-    var text = document.getElementById(id).innerHTML;
+    var text = document.getElementById(id).parentElement.innerHTML;
     stringToUTF8(text, dst, size);
   },
 
