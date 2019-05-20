@@ -896,6 +896,7 @@ emscripten_request_fullscreen_strategy
 emscripten_request_pointerlock
 emscripten_resize_heap
 emscripten_resume_main_loop
+emscripten_return_address
 emscripten_run_preload_plugins
 emscripten_run_preload_plugins_data
 emscripten_run_script
