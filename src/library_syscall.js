@@ -747,21 +747,15 @@ var SyscallsLibrary = {
   },
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    // Can't handle 64-bit integers
-    if (!(offset_high == -1 && offset_low < 0) &&
-        !(offset_high == 0 && offset_low >= 0)) {
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-    var offset = offset_low;
+    if (offset_low < 0)
+      offset_low += 4294967296;
+
+    var offset = offset_high * 4294967296 + offset_low;
+
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
+
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
