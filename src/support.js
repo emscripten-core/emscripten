@@ -29,9 +29,11 @@ function dynamicAlloc(size) {
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
   if (end > _emscripten_get_heap_size()) {
-    // dynamicAlloc does not support memory growth - call malloc/sbrk
-    // normally for that
-    return 0;
+#if ASSERTIONS
+    abort('failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly');
+#else
+    abort();
+#endif
   }
   HEAP32[DYNAMICTOP_PTR>>2] = end;
   return ret;
