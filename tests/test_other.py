@@ -7820,6 +7820,7 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
+  @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
   def test_binaryen_passes(self):
     def build(args=[]):
       return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args, stdout=PIPE).stdout
