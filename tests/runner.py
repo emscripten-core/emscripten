@@ -281,6 +281,27 @@ test_index = 0
 
 
 def parameterized(parameters):
+  """
+  Mark a test as parameterized.
+
+  Usage:
+    @parameterized([
+      ('subtest1', (1, 2, 3)),
+      ('subtest2', (4, 5, 6), {'keyword': 'x'}),
+    ])
+    def test_something(self, a, b, c, keyword=None):
+      # actual test body
+
+  This is equivalent to defining two tests:
+
+    def test_something_subtest1(self):
+      self.test_something(1, 2, 3)
+
+    def test_something_subtest2(self):
+      self.test_something(4, 5, 6, keyword='x')
+
+  However, test_something itself is not run as a test.
+  """
   def decorator(func):
     func._parameterize = parameters
     return func
@@ -290,26 +311,72 @@ def parameterized(parameters):
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args, kwargs={}):
+    """
+    This is a helper function to create new test functions for each parameterized form.
+
+    :param name: the original name of the function
+    :param func: the original function that we are parameterizing
+    :param suffix: the suffix to append to the name of the function for this parameterization
+    :param args: the positional arguments to pass to the original function for this parameterization
+    :param kwargs: the keyword arguments to pass to the original function for this parameterization
+    :returns: a tuple of (new_function_name, new_function_object)
+    """
+
+    # Create the new test function. It calls the original function with the specified args and kwargs.
+    # We use @functools.wraps to copy over all the function attributes.
     @wraps(func)
     def resulting_test(self):
       return func(self, *args, **kwargs)
+
+    # Add suffix to the function name so that it displays correctly.
+    # We are using `name` instead of `func.__name__` to show the correct name when using decorators that
+    # do not do @functools.wraps.
     resulting_test.__name__ = '%s_%s' % (name, suffix)
+
+    # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
+    # We add the suffix to it as well.
     if hasattr(func, '__qualname__'):
       resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
+
     return resulting_test.__name__, resulting_test
 
   def __new__(mcs, name, bases, attrs):
+    # A metaclass takes the class name, a list of base classes, and the new class's attributes as a dict.
+    # Then, it returns an instance of the newly created class.
+    # Here, we inspect attrs, the attributes of the class, and create new_attrs, the attributes the
+    # new class will actually be created with.
     new_attrs = {}
+
     for attr_name, value in attrs.items():
+      # Check if a member of the new class has _parameterize, the tag inserted by @parameterized.
       if hasattr(value, '_parameterize'):
+        # If it does, we extract the parameterization information, build new test functions with the
+        # make_test helper, and insert them into new_attrs under their new names.
         for parameter in value._parameterize:
           new_name, func = mcs.make_test(attr_name, value, *parameter)
           new_attrs[new_name] = func
       else:
+        # If not, we just copy it over to new_attrs verbatim.
         new_attrs[attr_name] = value
+
+    # We invoke type, the default metaclass, to actually create the new class, with new_attrs.
     return type.__new__(mcs, name, bases, new_attrs)
 
 
+# This is a hack to make the metaclass work on both python 2 and python 3.
+#
+# On python 3, the code should be:
+#   class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
+#     ...
+#
+# On python 2, the code should be:
+#   class RunnerCore(unittest.TestCase):
+#     __metaclass__ = RunnerMeta
+#     ...
+#
+# To be compatible with both python 2 and python 2, we use the approach taken by six.with_metaclass.
+# Essentially, we create a class by directly invoking the metaclass, which is done in the same way on both
+# python 2 and 3, and inherit from it, since a class inherits the metaclass by default.
 class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   emcc_args = []
 
