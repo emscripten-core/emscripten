@@ -19,6 +19,7 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 from __future__ import print_function
 from subprocess import PIPE, STDOUT
+from functools import wraps
 import argparse
 import atexit
 import contextlib
@@ -105,13 +106,14 @@ def skip_if(func, condition, explanation='', negate=False):
   assert callable(func)
   explanation_str = ' : %s' % explanation if explanation else ''
 
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     choice = self.__getattribute__(condition)()
     if negate:
       choice = not choice
     if choice:
       self.skipTest(condition + explanation_str)
-    func(self)
+    func(self, *args, **kwargs)
 
   return decorated
 
@@ -119,6 +121,7 @@ def skip_if(func, condition, explanation='', negate=False):
 def needs_dlfcn(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self):
     self.check_dlfcn()
     return func(self)
@@ -129,6 +132,7 @@ def needs_dlfcn(func):
 def is_slow_test(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_SKIP_SLOW:
       return self.skipTest('skipping slow tests')
@@ -167,6 +171,7 @@ def flaky(f):
   assert callable(f)
   max_tries = 3
 
+  @wraps(f)
   def decorated(self):
     for i in range(max_tries - 1):
       try:
@@ -275,7 +280,37 @@ non_core_test_modes = [
 test_index = 0
 
 
-class RunnerCore(unittest.TestCase):
+def parameterized(parameters):
+  def decorator(func):
+    func._parameterize = parameters
+    return func
+  return decorator
+
+
+class RunnerMeta(type):
+  @classmethod
+  def make_test(mcs, name, func, suffix, args, kwargs={}):
+    @wraps(func)
+    def resulting_test(self):
+      return func(self, *args, **kwargs)
+    resulting_test.__name__ = '%s_%s' % (name, suffix)
+    if hasattr(func, '__qualname__'):
+      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, name)
+    return resulting_test.__name__, resulting_test
+
+  def __new__(mcs, name, bases, attrs):
+    new_attrs = {}
+    for attr_name, value in attrs.items():
+      if hasattr(value, '_parameterize'):
+        for parameter in value._parameterize:
+          new_name, func = mcs.make_test(attr_name, value, *parameter)
+          new_attrs[new_name] = func
+      else:
+        new_attrs[attr_name] = value
+    return type.__new__(mcs, name, bases, new_attrs)
+
+
+class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   emcc_args = []
 
   # default temporary directory settings. set_temp_dir may be called later to
