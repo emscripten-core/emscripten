@@ -7964,7 +7964,7 @@ int main() {
     ('Os', (['-Os'],  5, [], [],        2310,  7,   3, 15)), # noqa
     ('Oz', (['-Oz'],  5, [], [],        2272,  7,   2, 14)), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
-    ('export_nothing', 
+    ('export_nothing',
            (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                       0, [], [],          61,  0,   1,  1)), # noqa
     # we don't metadce with linkable code! other modules may want stuff
