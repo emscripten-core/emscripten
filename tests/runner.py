@@ -295,7 +295,7 @@ class RunnerMeta(type):
       return func(self, *args, **kwargs)
     resulting_test.__name__ = '%s_%s' % (name, suffix)
     if hasattr(func, '__qualname__'):
-      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, name)
+      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
     return resulting_test.__name__, resulting_test
 
   def __new__(mcs, name, bases, attrs):
