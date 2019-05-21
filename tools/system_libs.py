@@ -565,6 +565,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                            filenames=['extras.c'])
     return create_wasm_rt_lib(libname, files)
 
+  def create_wasm_ubsan_minimal_rt(libname):
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal'],
+      filenames=['ubsan_minimal_handlers.cpp'])
+    return create_wasm_rt_lib(libname, files)
+
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
@@ -774,6 +780,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.WASM_BACKEND:
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
+
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

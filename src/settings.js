@@ -639,7 +639,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'malloc',
 	'free',
 	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
 	];
 
 // This list is also used to determine auto-exporting of library dependencies
@@ -1393,6 +1392,12 @@ var AUTODEBUG = 0;
 // wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
 // wasm normally, then compile that to JS).
 var WASM2JS = 0;
+
+// Whether we should link in the runtime for ubsan.
+// 0 means do not link ubsan, 1 means link minimal ubsan runtime.
+// This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
+// -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
+var UBSAN_RUNTIME = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

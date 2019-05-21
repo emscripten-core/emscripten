@@ -7948,7 +7948,7 @@ int main() {
       # TODO(sbc): Investivate why the number of exports is order of magnitude
       # larger for wasm backend.
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1580, [],        [],      517336, 172,1484, None) # noqa
+                 1581, [],        [],      517336, 172,1484, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],      10770,   17,  13, None) # noqa
     else:
@@ -7964,7 +7964,7 @@ int main() {
       # we don't metadce with linkable code! other modules may want stuff
       # don't compare the # of functions in a main module, which changes a lot
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1542, [],        [],      226403,  30,   95, None) # noqa
+                 1543, [],        [],      226403,  30,   95, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],       10571,  19,    9, 21) # noqa
 
