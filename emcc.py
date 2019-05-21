@@ -2705,7 +2705,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
-    passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
+    passes = shared.Settings.BINARYEN_PASSES.split(',') + shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
+    passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
     cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
