@@ -319,7 +319,7 @@ class RunnerMeta(type):
     :returns: a tuple of (new_function_name, new_function_object)
     """
 
-    # Create the new test function. It calls the original function with the specified args and kwargs.
+    # Create the new test function. It calls the original function with the specified args.
     # We use @functools.wraps to copy over all the function attributes.
     @wraps(func)
     def resulting_test(self):
