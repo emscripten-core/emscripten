@@ -329,8 +329,6 @@ class RunnerMeta(type):
       return func(self, *args, **kwargs)
 
     # Add suffix to the function name so that it displays correctly.
-    # We are using `name` instead of `func.__name__` to show the correct name when using decorators that
-    # do not do @functools.wraps.
     resulting_test.__name__ = '%s_%s' % (name, suffix)
 
     # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
@@ -341,17 +339,13 @@ class RunnerMeta(type):
     return resulting_test.__name__, resulting_test
 
   def __new__(mcs, name, bases, attrs):
-    # A metaclass takes the class name, a list of base classes, and the new class's attributes as a dict.
-    # Then, it returns an instance of the newly created class.
-    # Here, we inspect attrs, the attributes of the class, and create new_attrs, the attributes the
-    # new class will actually be created with.
+    # This metaclass expands parameterized methods from `attrs` into separate ones in `new_attrs`.
     new_attrs = {}
 
     for attr_name, value in attrs.items():
       # Check if a member of the new class has _parameterize, the tag inserted by @parameterized.
       if hasattr(value, '_parameterize'):
-        # If it does, we extract the parameterization information, build new test functions with the
-        # make_test helper, and insert them into new_attrs under their new names.
+        # If it does, we extract the parameterization information, build new test functions.
         for parameter in value._parameterize:
           new_name, func = mcs.make_test(attr_name, value, *parameter)
           new_attrs[new_name] = func
@@ -374,9 +368,9 @@ class RunnerMeta(type):
 #     __metaclass__ = RunnerMeta
 #     ...
 #
-# To be compatible with both python 2 and python 2, we use the approach taken by six.with_metaclass.
-# Essentially, we create a class by directly invoking the metaclass, which is done in the same way on both
-# python 2 and 3, and inherit from it, since a class inherits the metaclass by default.
+# To be compatible with both python 2 and python 3, we create a class by directly invoking the
+# metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
+# since a class inherits the metaclass by default.
 class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   emcc_args = []
 
