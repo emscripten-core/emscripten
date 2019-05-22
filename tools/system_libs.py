@@ -525,7 +525,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
-  def create_wasm_rt_lib(libname, files):
+  def create_wasm_rt_lib(libname, files, extra_flags=[]):
     # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
     # it includes the builtin symbols that the LTO complication can generate.
     # It seems that LTO as implemented by lld assumes that builtins do not
@@ -539,7 +539,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
                        '-c', shared.path_from_root('system', 'lib', src),
                        '-o', o] +
-                      musl_internal_includes() +
+                      musl_internal_includes() + extra_flags +
                       get_cflags(force_object_files=True))
       o_s.append(o)
     run_commands(commands)
@@ -570,6 +570,23 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal'],
       filenames=['ubsan_minimal_handlers.cpp'])
     return create_wasm_rt_lib(libname, files)
+
+  def create_wasm_common_san_rt(libname):
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common'],
+      filenames=['sancov_flags.cc', 'sanitizer_allocator.cc', 'sanitizer_allocator_checks.cc', 'sanitizer_allocator_report.cc', 'sanitizer_common.cc', 'sanitizer_common_libcdep.cc', 'sanitizer_coverage_fuchsia.cc', 'sanitizer_coverage_libcdep_new.cc', 'sanitizer_coverage_win_dll_thunk.cc', 'sanitizer_coverage_win_dynamic_runtime_thunk.cc', 'sanitizer_coverage_win_sections.cc', 'sanitizer_coverage_win_weak_interception.cc', 'sanitizer_deadlock_detector1.cc', 'sanitizer_deadlock_detector2.cc', 'sanitizer_emscripten.cc', 'sanitizer_errno.cc', 'sanitizer_file.cc', 'sanitizer_flag_parser.cc', 'sanitizer_flags.cc', 'sanitizer_fuchsia.cc', 'sanitizer_libc.cc', 'sanitizer_libignore.cc', 'sanitizer_linux.cc', 'sanitizer_linux_libcdep.cc', 'sanitizer_linux_s390.cc', 'sanitizer_mac.cc', 'sanitizer_mac_libcdep.cc', 'sanitizer_netbsd.cc', 'sanitizer_openbsd.cc', 'sanitizer_persistent_allocator.cc', 'sanitizer_platform_limits_freebsd.cc', 'sanitizer_platform_limits_linux.cc', 'sanitizer_platform_limits_netbsd.cc', 'sanitizer_platform_limits_openbsd.cc', 'sanitizer_platform_limits_posix.cc', 'sanitizer_platform_limits_solaris.cc', 'sanitizer_posix.cc', 'sanitizer_posix_libcdep.cc', 'sanitizer_printf.cc', 'sanitizer_procmaps_bsd.cc', 'sanitizer_procmaps_common.cc', 'sanitizer_procmaps_linux.cc', 'sanitizer_procmaps_mac.cc', 'sanitizer_procmaps_solaris.cc', 'sanitizer_rtems.cc', 'sanitizer_solaris.cc', 'sanitizer_stackdepot.cc', 'sanitizer_stacktrace.cc', 'sanitizer_stacktrace_libcdep.cc', 'sanitizer_stacktrace_printer.cc', 'sanitizer_stacktrace_sparc.cc', 'sanitizer_stoptheworld_linux_libcdep.cc', 'sanitizer_stoptheworld_mac.cc', 'sanitizer_suppressions.cc', 'sanitizer_symbolizer.cc', 'sanitizer_symbolizer_libbacktrace.cc', 'sanitizer_symbolizer_libcdep.cc', 'sanitizer_symbolizer_mac.cc', 'sanitizer_symbolizer_markup.cc', 'sanitizer_symbolizer_posix_libcdep.cc', 'sanitizer_symbolizer_report.cc', 'sanitizer_symbolizer_win.cc', 'sanitizer_termination.cc', 'sanitizer_thread_registry.cc', 'sanitizer_tls_get_addr.cc', 'sanitizer_type_traits.cc', 'sanitizer_unwind_linux_libcdep.cc', 'sanitizer_unwind_win.cc', 'sanitizer_win.cc', 'sanitizer_win_dll_thunk.cc', 'sanitizer_win_dynamic_runtime_thunk.cc', 'sanitizer_win_weak_interception.cc'],
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=['-std=c++11'])
+
+  def create_wasm_ubsan_rt(libname):
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan'],
+      filenames=['ubsan_diag.cc', 'ubsan_diag_standalone.cc', 'ubsan_flags.cc', 'ubsan_handlers.cc',
+                 'ubsan_handlers_cxx.cc', 'ubsan_init.cc', 'ubsan_init_standalone.cc',
+                 'ubsan_init_standalone_preinit.cc', 'ubsan_monitor.cc', 'ubsan_signals_standalone.cc',
+                 'ubsan_type_hash.cc', 'ubsan_type_hash_itanium.cc', 'ubsan_type_hash_win.cc', 'ubsan_value.cc'],
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=['-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11'])
 
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
@@ -780,6 +797,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.WASM_BACKEND:
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
+
+    libs_to_link.append((shared.Cache.get('libcommonsan_wasm.a', lambda: create_wasm_common_san_rt('libcommonsan_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libubsan_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_wasm.a')), False))
 
   if shared.Settings.UBSAN_RUNTIME == 1:
     libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))

@@ -15,7 +15,7 @@
 #include "sanitizer_platform.h"
 
 #if SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS
+    SANITIZER_OPENBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
 
 #include "sanitizer_common.h"
 #include "sanitizer_flags.h"
@@ -24,6 +24,7 @@
 #include "sanitizer_libc.h"
 #include "sanitizer_linux.h"
 #include "sanitizer_mutex.h"
+#include "sanitizer_posix.h"
 #include "sanitizer_placement_new.h"
 #include "sanitizer_procmaps.h"
 
@@ -104,7 +105,7 @@ extern struct ps_strings *__ps_strings;
 
 extern char **environ;
 
-#if SANITIZER_LINUX
+#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
 // <linux/time.h>
 struct kernel_timeval {
   long tv_sec;
@@ -165,6 +166,8 @@ namespace __sanitizer {
 #include "sanitizer_syscall_linux_aarch64.inc"
 #elif SANITIZER_LINUX && defined(__arm__)
 #include "sanitizer_syscall_linux_arm.inc"
+#elif SANITIZER_EMSCRIPTEN
+#include "sanitizer_syscall_emscripten.inc"
 #else
 #include "sanitizer_syscall_generic.inc"
 #endif
@@ -238,7 +241,7 @@ uptr internal_ftruncate(fd_t fd, uptr size) {
   return res;
 }
 
-#if !SANITIZER_LINUX_USES_64BIT_SYSCALLS && SANITIZER_LINUX
+#if !SANITIZER_LINUX_USES_64BIT_SYSCALLS && SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
 static void stat64_to_stat(struct stat64 *in, struct stat *out) {
   internal_memset(out, 0, sizeof(*out));
   out->st_dev = in->st_dev;
@@ -482,7 +485,7 @@ tid_t GetTid() {
 }
 
 int TgKill(pid_t pid, tid_t tid, int sig) {
-#if SANITIZER_LINUX
+#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
   return internal_syscall(SYSCALL(tgkill), pid, tid, sig);
 #elif SANITIZER_FREEBSD
   return internal_syscall(SYSCALL(thr_kill2), pid, tid, sig);
@@ -551,6 +554,9 @@ const char *GetEnv(const char *name) {
     p = endp + 1;
   }
   return nullptr;  // Not found.
+#elif SANITIZER_EMSCRIPTEN
+  Report("FIXME: call emscripten's getenv implementation in JS directly");
+  Abort();
 #else
 #error "Unsupported platform"
 #endif
@@ -912,7 +918,7 @@ bool internal_sigismember(__sanitizer_sigset_t *set, int signum) {
 #endif
 #endif // !SANITIZER_SOLARIS
 
-#if !SANITIZER_NETBSD
+#if !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 // ThreadLister implementation.
 ThreadLister::ThreadLister(pid_t pid) : pid_(pid), buffer_(4096) {
   char task_directory_path[80];
@@ -1976,6 +1982,9 @@ static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
 # endif
   *bp = ucontext->uc_mcontext.gregs[11];
   *sp = ucontext->uc_mcontext.gregs[15];
+#elif SANITIZER_EMSCRIPTEN
+  Report("GetPcSpBp not implemented on emscripten");
+  Abort();
 #else
 # error "Unsupported arch"
 #endif

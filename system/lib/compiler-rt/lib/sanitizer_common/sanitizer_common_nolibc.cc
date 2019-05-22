@@ -24,12 +24,33 @@ namespace __sanitizer {
 void LogMessageOnPrintf(const char *str) {}
 #endif
 void WriteToSyslog(const char *buffer) {}
+
+#if !SANITIZER_EMSCRIPTEN
 void Abort() { internal__exit(1); }
 void SleepForSeconds(int seconds) { internal_sleep(seconds); }
+#endif // !SANITIZER_EMSCRIPTEN
 #endif // !SANITIZER_WINDOWS
 
 #if !SANITIZER_WINDOWS && !SANITIZER_MAC
 void ListOfModules::init() {}
 #endif
+
+#if SANITIZER_EMSCRIPTEN
+void ListOfModules::fallbackInit() { clear(); }
+
+#include <signal.h>
+
+SANITIZER_WEAK_ATTRIBUTE int
+real_sigaction(int signum, const void *act, void *oldact);
+
+int internal_sigaction(int signum, const void *act, void *oldact) {
+#if !SANITIZER_GO
+  if (&real_sigaction)
+    return real_sigaction(signum, act, oldact);
+#endif
+  return sigaction(signum, (const struct sigaction *)act,
+                   (struct sigaction *)oldact);
+}
+#endif // SANITIZER_EMSCRIPTEN
 
 }  // namespace __sanitizer
