@@ -7633,6 +7633,40 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(),
                 expected_output='ubsan: add-overflow\n' * 5)
 
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_overflow(self):
+    self.emcc_args += ['-fsanitize=undefined']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_overflow.c')).read(),
+                expected_output=[
+      "src.cpp:7:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+      "src.cpp:11:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+    ])
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_no_return(self):
+    self.emcc_args += ['-fsanitize=undefined', '-Wno-return-type']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_no_return.c')).read(),
+                expected_output='src.cpp:3:5: runtime error: execution reached the end of a value-returning function without returning a value')
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_left_shift(self):
+    self.emcc_args += ['-fsanitize=undefined']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_left_shift.c')).read(),
+                expected_output=[
+      'src.cpp:7:5: runtime error: left shift of negative value -1',
+      "src.cpp:11:5: left shift of 16 by 29 places cannot be represented in type 'int'"
+    ])
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_null_ref(self):
+    self.emcc_args += ['-std=c++11', '-fsanitize=undefined']
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
+                expected_output=[
+      "src.cpp:8:12: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:9:13: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:10:14: runtime error: reference binding to null pointer of type 'int'",
+    ])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
