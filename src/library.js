@@ -2152,16 +2152,37 @@ LibraryManager.library = {
     }
 
     var lib = LDSO.loadedLibs[handle];
-#if !WASM_BACKEND
-    symbol = '_' + symbol;
+    var isMainModule = lib.module == Module;
+
+    var mangled = '_' + symbol;
+    var modSymbol = mangled;
+#if WASM_BACKEND
+    if (!isMainModule) {
+      modSymbol = symbol;
+    }
 #endif
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+
+    if (!lib.module.hasOwnProperty(modSymbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
                              '" in dynamic lib: ' + lib.name);
       return 0;
     }
 
-    var result = lib.module[symbol];
+    var result = lib.module[modSymbol];
+#if WASM
+    // Attempt to get the real "unwrapped" symbol so we have more chance of
+    // getting wasm function which can be added to a table.
+    if (isMainModule) {
+#if WASM_BACKEND
+      var asmSymbol = symbol;
+#else
+      var asmSymbol = mangled;
+#endif
+      if (lib.module["asm"][asmSymbol]) {
+        result = lib.module["asm"][asmSymbol];
+      }
+    }
+#endif
     if (typeof result !== 'function')
       return result;
 
@@ -4624,6 +4645,36 @@ LibraryManager.library = {
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
     else return lengthBytesUTF8(str);
+  },
+
+  // Returns a representation of a call site of the caller of this function, in a manner
+  // similar to __builtin_return_address. If level is 0, we return the call site of the
+  // caller of this function.
+  // The exact return value depends in whether we are running WASM or JS, and whether
+  // the engine supports offsets into WASM. See the function body for details.
+  emscripten_return_address__deps: ['emscripten_get_callstack_js'],
+  emscripten_return_address: function(level) {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+
+    // skip this function and the caller to get caller's return address
+    var frame = callstack[level + 2];
+    var match;
+
+    if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
+      // some engines give the binary offset directly, so we use that as return address
+      return +match[1];
+    } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
+      // other engines only give function index and offset in the function,
+      // so we pack these into a "return address"
+      return (+match[1] << 16) + +match[2];
+    } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
+      // if we are in js, we can use the js line number as the "return address"
+      // this should work for wasm2js and fastcomp
+      return +match[1];
+    } else {
+      // return 0 if we can't find any
+      return 0;
+    }
   },
 
   //============================

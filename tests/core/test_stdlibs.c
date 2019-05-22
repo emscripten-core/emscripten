@@ -23,9 +23,9 @@ int comparer(const void *a, const void *b) {
 
 int main() {
   // timeofday
-  timeval t;
+  struct timeval t;
   gettimeofday(&t, NULL);
-  printf("*%d,%d\n", int(t.tv_sec), int(t.tv_usec)); // should not crash
+  printf("*%d,%d\n", (int)t.tv_sec, (int)t.tv_usec); // should not crash
 
   // atexit
   atexit(clean);

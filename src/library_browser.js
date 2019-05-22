@@ -462,20 +462,23 @@ var LibraryBrowser = {
       setTimeout(func, delay);
     },
 
-    requestAnimationFrame: function requestAnimationFrame(func) {
-      if (typeof window === 'undefined') { // Provide fallback to setTimeout if window is undefined (e.g. in Node.js)
-        Browser.fakeRequestAnimationFrame(func);
-      } else {
-        if (!window.requestAnimationFrame) {
-          window.requestAnimationFrame = window['requestAnimationFrame'] ||
-                                         window['mozRequestAnimationFrame'] ||
-                                         window['webkitRequestAnimationFrame'] ||
-                                         window['msRequestAnimationFrame'] ||
-                                         window['oRequestAnimationFrame'] ||
-                                         Browser.fakeRequestAnimationFrame;
-        }
-        window.requestAnimationFrame(func);
+    requestAnimationFrame: function(func) {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(func);
+        return;
       }
+      var RAF = Browser.fakeRequestAnimationFrame;
+#if LEGACY_VM_SUPPORT
+      if (typeof window !== 'undefined') {
+        RAF = window['requestAnimationFrame'] ||
+              window['mozRequestAnimationFrame'] ||
+              window['webkitRequestAnimationFrame'] ||
+              window['msRequestAnimationFrame'] ||
+              window['oRequestAnimationFrame'] ||
+              RAF;
+      }
+#endif
+      RAF(func);
     },
 
     // generic abort-aware wrapper for an async callback
