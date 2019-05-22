@@ -798,11 +798,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
-    libs_to_link.append((shared.Cache.get('libcommonsan_wasm.a', lambda: create_wasm_common_san_rt('libcommonsan_wasm.a')), False))
-    libs_to_link.append((shared.Cache.get('libubsan_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_wasm.a')), False))
-
   if shared.Settings.UBSAN_RUNTIME == 1:
     libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
+  elif shared.Settings.UBSAN_RUNTIME == 2:
+    libs_to_link.append((shared.Cache.get('libcommonsan_wasm.a', lambda: create_wasm_common_san_rt('libcommonsan_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libubsan_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_wasm.a')), False))
+    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
+    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

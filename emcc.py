@@ -1423,8 +1423,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm:
         exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      if '-fsanitize-minimal-runtime' in newargs:
-        shared.Settings.UBSAN_RUNTIME = 1
+      if '-fsanitize=undefined' in newargs:
+        if '-fsanitize-minimal-runtime' in newargs:
+          shared.Settings.UBSAN_RUNTIME = 1
+        else:
+          shared.Settings.UBSAN_RUNTIME = 2
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
