@@ -7820,6 +7820,24 @@ int main() {
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
 
+  @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
+  def test_binaryen_passes(self):
+    def build(args=[]):
+      return run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-O3'] + args, stdout=PIPE).stdout
+
+    build()
+    base_size = os.path.getsize('a.out.wasm')
+    build(['-s', 'BINARYEN_PASSES="--metrics"'])
+    replace_size = os.path.getsize('a.out.wasm')
+    # replacing the default -O3 etc. increases code size
+    self.assertLess(base_size, replace_size)
+    out = build(['-s', 'BINARYEN_EXTRA_PASSES="--metrics"'])
+    add_size = os.path.getsize('a.out.wasm')
+    # adding --metrics does not affect code size
+    self.assertEqual(base_size, add_size)
+    # and --metrics output appears
+    self.assertContained('[funcs]', out)
+
   def assertFileContents(self, filename, contents):
     if os.environ.get('EMTEST_REBASELINE'):
       with open(filename, 'w') as f:
@@ -7948,7 +7966,7 @@ int main() {
       # TODO(sbc): Investivate why the number of exports is order of magnitude
       # larger for wasm backend.
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1580, [],        [],      517336, 172,1484, None) # noqa
+                 1581, [],        [],      517336, 172,1484, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],      10770,   17,  13, None) # noqa
     else:
@@ -7964,7 +7982,7 @@ int main() {
       # we don't metadce with linkable code! other modules may want stuff
       # don't compare the # of functions in a main module, which changes a lot
       run(['-O3', '-s', 'MAIN_MODULE=1'],
-                 1542, [],        [],      226403,  30,   95, None) # noqa
+                 1543, [],        [],      226403,  30,   95, None) # noqa
       run(['-O3', '-s', 'MAIN_MODULE=2'],
                    15, [],        [],       10571,  19,    9, 21) # noqa
 
