@@ -285,22 +285,20 @@ def parameterized(parameters):
   Mark a test as parameterized.
 
   Usage:
-    @parameterized([
-      ('subtest1', (1, 2, 3)),
-      ('subtest2', (4, 5, 6), {'keyword': 'x'}),
-    ])
-    def test_something(self, a, b, c, keyword=None):
-      # actual test body
+    @parameterized({
+      'subtest1': (1, 2, 3),
+      'subtest2': (4, 5, 6),
+    })
+    def test_something(self, a, b, c):
+      ... # actual test body
 
   This is equivalent to defining two tests:
 
     def test_something_subtest1(self):
-      self.test_something(1, 2, 3)
+      # runs test_something(1, 2, 3)
 
     def test_something_subtest2(self):
-      self.test_something(4, 5, 6, keyword='x')
-
-  However, test_something itself is not run as a test.
+      # runs test_something(4, 5, 6)
   """
   def decorator(func):
     func._parameterize = parameters
@@ -310,7 +308,7 @@ def parameterized(parameters):
 
 class RunnerMeta(type):
   @classmethod
-  def make_test(mcs, name, func, suffix, args, kwargs={}):
+  def make_test(mcs, name, func, suffix, args):
     """
     This is a helper function to create new test functions for each parameterized form.
 
@@ -318,7 +316,6 @@ class RunnerMeta(type):
     :param func: the original function that we are parameterizing
     :param suffix: the suffix to append to the name of the function for this parameterization
     :param args: the positional arguments to pass to the original function for this parameterization
-    :param kwargs: the keyword arguments to pass to the original function for this parameterization
     :returns: a tuple of (new_function_name, new_function_object)
     """
 
@@ -326,7 +323,7 @@ class RunnerMeta(type):
     # We use @functools.wraps to copy over all the function attributes.
     @wraps(func)
     def resulting_test(self):
-      return func(self, *args, **kwargs)
+      return func(self, *args)
 
     # Add suffix to the function name so that it displays correctly.
     resulting_test.__name__ = '%s_%s' % (name, suffix)
@@ -346,8 +343,8 @@ class RunnerMeta(type):
       # Check if a member of the new class has _parameterize, the tag inserted by @parameterized.
       if hasattr(value, '_parameterize'):
         # If it does, we extract the parameterization information, build new test functions.
-        for parameter in value._parameterize:
-          new_name, func = mcs.make_test(attr_name, value, *parameter)
+        for suffix, args in value._parameterize.items():
+          new_name, func = mcs.make_test(attr_name, value, suffix, args)
           new_attrs[new_name] = func
       else:
         # If not, we just copy it over to new_attrs verbatim.
