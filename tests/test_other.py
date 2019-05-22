@@ -7924,8 +7924,8 @@ int main() {
     'Oz': (['-Oz'],  0, [], [],          54,  0,  1,  1), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_minimal(self, args, sent, exists, not_exists, size, imports, exports, funcs):
-    self.run_metadce_test('minimal.c', args, sent, exists, not_exists, size, imports, exports, funcs)
+  def test_binaryen_metadce_minimal(self, *args):
+    self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
     'O0': ([],      21, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
@@ -7937,8 +7937,8 @@ int main() {
     'Oz': (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_minimal_fastcomp(self, args, sent, exists, not_exists, size, imports, exports, funcs):
-    self.run_metadce_test('minimal.c', args, sent, exists, not_exists, size, imports, exports, funcs)
+  def test_binaryen_metadce_minimal_fastcomp(self, *args):
+    self.run_metadce_test('minimal.c', *args)
 
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
@@ -7952,9 +7952,9 @@ int main() {
                         34, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_cxx_fastcomp(self, args, sent, exists, not_exists, size, imports, exports, funcs):
+  def test_binaryen_metadce_cxx_fastcomp(self, *args):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', args, sent, exists, not_exists, size, imports, exports, funcs)
+    self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
     'O0': ([],      17, [], ['waka'], 22185, 11,  18, 57), # noqa
@@ -7975,8 +7975,8 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_hello(self, args, sent, exists, not_exists, size, imports, exports, funcs):
-    self.run_metadce_test('hello_world.cpp', args, sent, exists, not_exists, size, imports, exports, funcs)
+  def test_binaryen_metadce_hello(self, *args):
+    self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
     'O0': ([],      23, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
@@ -7995,8 +7995,8 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_hello_fastcomp(self, args, sent, exists, not_exists, size, imports, exports, funcs):
-    self.run_metadce_test('hello_world.cpp', args, sent, exists, not_exists, size, imports, exports, funcs)
+  def test_binaryen_metadce_hello_fastcomp(self, *args):
+    self.run_metadce_test('hello_world.cpp', *args)
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
