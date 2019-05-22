@@ -315,6 +315,8 @@ size, but will not contain the data bytes to the file.
 Streaming Downloads
 -------------------
 
+Note: This currently only works in Firefox as it uses 'moz-chunked-arraybuffer'.
+
 If the application does not need random seek access to the file, but is able to
 process the file in a streaming manner, it can use the
 EMSCRIPTEN_FETCH_STREAM_DATA flag to stream through the bytes in the file as
