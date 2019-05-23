@@ -7942,7 +7942,6 @@ int main() {
 
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
-
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
 
@@ -8184,7 +8183,6 @@ int main() {
 
       print('use bitcode object (LTO)')
       run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
-
       self.assertContained('hello, world!', run_js('a.out.js'))
       print('use bitcode object (non-LTO)')
       run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
