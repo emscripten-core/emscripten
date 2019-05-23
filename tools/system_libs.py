@@ -925,23 +925,19 @@ class Ports(object):
       # retrieve from remote server
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
-        from urllib.request import urlopen
-        f = urlopen(url)
-        data = f.read()
+        import requests
+        response = requests.get(url)
+        data = response.content
       except ImportError:
-        # Python 2 compatibility
-        from urllib2 import urlopen, URLError
         try:
+          from urllib.request import urlopen
           f = urlopen(url)
           data = f.read()
-        except URLError as e:
-          try:
-            import requests
-            response = requests.get(url)
-            data = response.content
-          except:
-            # give up, but raise the original URLError
-            raise e
+        except ImportError:
+          # Python 2 compatibility
+          from urllib2 import urlopen
+          f = urlopen(url)
+          data = f.read()
 
       open(fullpath, 'wb').write(data)
       State.retrieved = True
