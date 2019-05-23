@@ -7641,7 +7641,7 @@ def make_run(name, emcc_args, settings=None, env=None):
   if settings is None:
     settings = {}
 
-  TT = type(name, (TestCoreBase,), dict(run_name=name, env=env))  # noqa
+  TT = type(name, (TestCoreBase,), dict(run_name=name, env=env, __module__=__name__))  # noqa
 
   def tearDown(self):
     try:
