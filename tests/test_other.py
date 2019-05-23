@@ -8521,6 +8521,7 @@ int main() {
   def test_check_sourcemapurl_default(self):
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
+
     def test(args):
       try_delete('a.wasm.map')
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + args)
