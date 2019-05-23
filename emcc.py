@@ -2353,7 +2353,7 @@ def parse_args(newargs):
       options.requested_debug = newargs[i]
       newargs[i] = ''
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
-      options.debug_level = 2
+      options.debug_level = max(options.debug_level, 2)
       options.profiling = True
       newargs[i] = ''
     elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
