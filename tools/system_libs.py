@@ -926,11 +926,23 @@ class Ports(object):
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
         from urllib.request import urlopen
+        f = urlopen(url)
+        data = f.read()
       except ImportError:
         # Python 2 compatibility
-        from urllib2 import urlopen
-      f = urlopen(url)
-      data = f.read()
+        from urllib2 import urlopen, URLError
+        try:
+          f = urlopen(url)
+          data = f.read()
+        except URLError as e:
+          try:
+            import requests
+            response = requests.get(url)
+            data = response.content
+          except:
+            # give up, but raise the original URLError
+            raise e
+
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 
