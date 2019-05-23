@@ -8518,22 +8518,21 @@ int main() {
     source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
-  def test_check_sourcemapurl_default(self):
+  @parameterized({
+    'normal': [],
+    'profiling': ['--profiling'] # -g4 --profiling should still emit a source map; see #8584
+  })
+  def test_check_sourcemapurl_default(self, *args):
+    print(args)
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
 
-    def test(args):
-      try_delete('a.wasm.map')
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + args)
-      output = open('a.wasm', 'rb').read()
-      # has sourceMappingURL section content and points to 'a.wasm.map' file
-      source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('a.wasm.map')) + b'a.wasm.map'
-      self.assertIn(source_mapping_url_content, output)
-
-    test([])
-    # we should still emit a source map if other options alter the debug level
-    # (see #8584)
-    test(['--profiling'])
+    try_delete('a.wasm.map')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + list(args))
+    output = open('a.wasm', 'rb').read()
+    # has sourceMappingURL section content and points to 'a.wasm.map' file
+    source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('a.wasm.map')) + b'a.wasm.map'
+    self.assertIn(source_mapping_url_content, output)
 
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
