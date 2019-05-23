@@ -115,6 +115,43 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
 # Target options
 final = None
 
+UBSAN_SANITIZES = {
+  'alignment',
+  'bool',
+  'builtin',
+  'bounds',
+  'enum',
+  'float-cast-overflow',
+  'float-divide-by-zero',
+  'function',
+  'implicit-unsigned-integer-truncation',
+  'implicit-signed-integer-truncation',
+  'implicit-integer-sign-change',
+  'integer-divide-by-zero',
+  'nonnull-attribute',
+  'null',
+  'nullability-arg',
+  'nullability-assign',
+  'nullability-return',
+  'object-size',
+  'pointer-overflow',
+  'return',
+  'returns-nonnull-attribute',
+  'shift',
+  'signed-integer-overflow',
+  'unreachable',
+  'unsigned-integer-overflow',
+  'vla-bound',
+  'vptr',
+  'undefined',
+  'undefined-trap',
+  'implicit-integer-truncation',
+  'implicit-integer-arithmetic-value-change',
+  'implicit-conversion',
+  'integer',
+  'nullability',
+}
+
 
 class Intermediate(object):
   counter = 0
@@ -1423,7 +1460,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm:
         exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      if '-fsanitize=undefined' in newargs:
+      sanitize = set()
+
+      for arg in newargs:
+        if arg.startswith('-fsanitize='):
+          sanitize.update(arg.split('=', 1)[1].split(','))
+        elif arg.startswith('-fno-sanitize='):
+          sanitize.difference_update(arg.split('=', 1)[1].split(','))
+
+      if sanitize & UBSAN_SANITIZES:
         if '-fsanitize-minimal-runtime' in newargs:
           shared.Settings.UBSAN_RUNTIME = 1
         else:
