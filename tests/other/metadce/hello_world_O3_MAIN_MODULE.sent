@@ -290,6 +290,7 @@ __syscall150
 __syscall151
 __syscall152
 __syscall153
+__syscall158
 __syscall163
 __syscall168
 __syscall178
@@ -305,6 +306,7 @@ __syscall196
 __syscall197
 __syscall198
 __syscall199
+__syscall2
 __syscall20
 __syscall200
 __syscall201
@@ -324,6 +326,8 @@ __syscall218
 __syscall219
 __syscall220
 __syscall221
+__syscall240
+__syscall252
 __syscall265
 __syscall268
 __syscall269
@@ -382,10 +386,6 @@ __syscall94
 __syscall96
 __syscall97
 __table_base
-__ubsan_handle_add_overflow
-__ubsan_handle_float_cast_overflow
-__ubsan_handle_pointer_overflow
-__ubsan_handle_type_mismatch_v1
 __unlock
 __wait
 _addDays

@@ -297,6 +297,7 @@ ___syscall150
 ___syscall151
 ___syscall152
 ___syscall153
+___syscall158
 ___syscall163
 ___syscall168
 ___syscall178
@@ -312,6 +313,7 @@ ___syscall196
 ___syscall197
 ___syscall198
 ___syscall199
+___syscall2
 ___syscall20
 ___syscall200
 ___syscall201
@@ -331,6 +333,8 @@ ___syscall218
 ___syscall219
 ___syscall220
 ___syscall221
+___syscall240
+___syscall252
 ___syscall265
 ___syscall268
 ___syscall269
@@ -388,10 +392,6 @@ ___syscall91
 ___syscall94
 ___syscall96
 ___syscall97
-___ubsan_handle_add_overflow
-___ubsan_handle_float_cast_overflow
-___ubsan_handle_pointer_overflow
-___ubsan_handle_type_mismatch_v1
 ___unlock
 ___wait
 __addDays

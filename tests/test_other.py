@@ -787,45 +787,6 @@ f.close()
       run_process([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_ubsan(self):
-    create_test_file('test.cpp', r'''
-      #include <vector>
-      #include <stdio.h>
-
-      class Test {
-      public:
-        std::vector<int> vector;
-      };
-
-      Test globalInstance;
-
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-  def test_ubsan_add_overflow(self):
-    create_test_file('test.cpp', r'''
-      #include <stdio.h>
-
-      int main(int argc, char **argv) {
-        printf("hello, world!\n");
-        fflush(stdout);
-        int k = 0x7fffffff;
-        k += argc;
-        return k;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    output = run_js('a.out.js', assert_returncode=1, stderr=STDOUT)
-    self.assertContained('hello, world!', output)
-    self.assertContained('Undefined behavior! ubsan_handle_add_overflow:', output)
-
   @no_wasm_backend()
   def test_asm_minify(self):
     def test(args):
