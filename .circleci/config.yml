@@ -153,12 +153,6 @@ jobs:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
-    steps:
-      - checkout:
-          path: emscripten/
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
       - run:
           name: install package dependencies
           command: |
