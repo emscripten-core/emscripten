@@ -82,8 +82,8 @@ jobs:
             tar -xf master.tar.gz
             cd emsdk-master
             ./emsdk --notty update-tags
-            ./emsdk --notty install latest-fastcomp
-            ./emsdk --notty activate latest-fastcomp
+            ./emsdk --notty install latest-releases-fastcomp
+            ./emsdk --notty activate latest-releases-fastcomp
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -339,8 +339,8 @@ jobs:
             tar -xf master.tar.gz
             cd emsdk-master
             ./emsdk --notty update-tags
-            ./emsdk --notty install latest-upstream
-            ./emsdk --notty activate latest-upstream
+            ./emsdk --notty install latest-releases-upstream
+            ./emsdk --notty activate latest-releases-upstream
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
