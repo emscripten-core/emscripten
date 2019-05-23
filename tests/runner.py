@@ -19,6 +19,7 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 from __future__ import print_function
 from subprocess import PIPE, STDOUT
+from functools import wraps
 import argparse
 import atexit
 import contextlib
@@ -105,13 +106,14 @@ def skip_if(func, condition, explanation='', negate=False):
   assert callable(func)
   explanation_str = ' : %s' % explanation if explanation else ''
 
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     choice = self.__getattribute__(condition)()
     if negate:
       choice = not choice
     if choice:
       self.skipTest(condition + explanation_str)
-    func(self)
+    func(self, *args, **kwargs)
 
   return decorated
 
@@ -119,6 +121,7 @@ def skip_if(func, condition, explanation='', negate=False):
 def needs_dlfcn(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self):
     self.check_dlfcn()
     return func(self)
@@ -129,6 +132,7 @@ def needs_dlfcn(func):
 def is_slow_test(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_SKIP_SLOW:
       return self.skipTest('skipping slow tests')
@@ -167,6 +171,7 @@ def flaky(f):
   assert callable(f)
   max_tries = 3
 
+  @wraps(f)
   def decorated(self):
     for i in range(max_tries - 1):
       try:
@@ -275,7 +280,95 @@ non_core_test_modes = [
 test_index = 0
 
 
-class RunnerCore(unittest.TestCase):
+def parameterized(parameters):
+  """
+  Mark a test as parameterized.
+
+  Usage:
+    @parameterized({
+      'subtest1': (1, 2, 3),
+      'subtest2': (4, 5, 6),
+    })
+    def test_something(self, a, b, c):
+      ... # actual test body
+
+  This is equivalent to defining two tests:
+
+    def test_something_subtest1(self):
+      # runs test_something(1, 2, 3)
+
+    def test_something_subtest2(self):
+      # runs test_something(4, 5, 6)
+  """
+  def decorator(func):
+    func._parameterize = parameters
+    return func
+  return decorator
+
+
+class RunnerMeta(type):
+  @classmethod
+  def make_test(mcs, name, func, suffix, args):
+    """
+    This is a helper function to create new test functions for each parameterized form.
+
+    :param name: the original name of the function
+    :param func: the original function that we are parameterizing
+    :param suffix: the suffix to append to the name of the function for this parameterization
+    :param args: the positional arguments to pass to the original function for this parameterization
+    :returns: a tuple of (new_function_name, new_function_object)
+    """
+
+    # Create the new test function. It calls the original function with the specified args.
+    # We use @functools.wraps to copy over all the function attributes.
+    @wraps(func)
+    def resulting_test(self):
+      return func(self, *args)
+
+    # Add suffix to the function name so that it displays correctly.
+    resulting_test.__name__ = '%s_%s' % (name, suffix)
+
+    # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
+    # We add the suffix to it as well.
+    if hasattr(func, '__qualname__'):
+      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
+
+    return resulting_test.__name__, resulting_test
+
+  def __new__(mcs, name, bases, attrs):
+    # This metaclass expands parameterized methods from `attrs` into separate ones in `new_attrs`.
+    new_attrs = {}
+
+    for attr_name, value in attrs.items():
+      # Check if a member of the new class has _parameterize, the tag inserted by @parameterized.
+      if hasattr(value, '_parameterize'):
+        # If it does, we extract the parameterization information, build new test functions.
+        for suffix, args in value._parameterize.items():
+          new_name, func = mcs.make_test(attr_name, value, suffix, args)
+          new_attrs[new_name] = func
+      else:
+        # If not, we just copy it over to new_attrs verbatim.
+        new_attrs[attr_name] = value
+
+    # We invoke type, the default metaclass, to actually create the new class, with new_attrs.
+    return type.__new__(mcs, name, bases, new_attrs)
+
+
+# This is a hack to make the metaclass work on both python 2 and python 3.
+#
+# On python 3, the code should be:
+#   class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
+#     ...
+#
+# On python 2, the code should be:
+#   class RunnerCore(unittest.TestCase):
+#     __metaclass__ = RunnerMeta
+#     ...
+#
+# To be compatible with both python 2 and python 3, we create a class by directly invoking the
+# metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
+# since a class inherits the metaclass by default.
+class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   emcc_args = []
 
   # default temporary directory settings. set_temp_dir may be called later to
