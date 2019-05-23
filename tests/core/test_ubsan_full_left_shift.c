@@ -1,8 +1,4 @@
-#include <stdlib.h>
-
 int main(void) {
-  putenv("UBSAN_OPTIONS=color=never");
-
   int x = -1;
   x <<= 1;
   x = -1;
