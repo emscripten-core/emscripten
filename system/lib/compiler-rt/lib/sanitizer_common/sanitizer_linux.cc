@@ -511,9 +511,17 @@ u64 NanoTime() {
   return (u64)tv.tv_sec * 1000*1000*1000 + tv.tv_usec * 1000;
 }
 
+#if SANITIZER_EMSCRIPTEN
+int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
+
+uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
+  return __clock_gettime(clk_id, tp);
+}
+#else
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return internal_syscall(SYSCALL(clock_gettime), clk_id, tp);
 }
+#endif // SANITIZER_EMSCRIPTEN
 #endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
 
 // Like getenv, but reads env directly from /proc (on Linux) or parses the
