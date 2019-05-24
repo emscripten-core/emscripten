@@ -2056,7 +2056,7 @@ class Building(object):
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
-      return link_args
+      return actual_files
 
   @staticmethod
   def get_command_with_possible_response_file(cmd):
