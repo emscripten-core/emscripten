@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file, needs_make
 
 # decorators for limiting which modes a test can run in
 
@@ -5660,7 +5660,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'sqlite')],
                 force_c=True)
 
-  @needs_make('make')
+  @needs_make('mingw32-make')
   @is_slow_test
   def test_zlib(self):
     self.maybe_closure()
