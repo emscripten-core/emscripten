@@ -4887,6 +4887,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'fs', 'test_llseek.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
@@ -5570,6 +5571,7 @@ return malloc(size);
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
+  @needs_make('make')
   def test_lua(self):
     if self.emcc_args:
       self.emcc_args = ['-g1'] + self.emcc_args
@@ -5590,7 +5592,7 @@ return malloc(size);
                   includes=[path_from_root('tests', 'lua')],
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
-  @no_windows('./configure scripts dont to run on windows.')
+  @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
     assert 'asm2g' in core_test_modes
@@ -5658,6 +5660,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'sqlite')],
                 force_c=True)
 
+  @needs_make('make')
   @is_slow_test
   def test_zlib(self):
     self.maybe_closure()
@@ -5682,6 +5685,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
+  @needs_make('make')
   @is_slow_test
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
@@ -5707,7 +5711,7 @@ return malloc(size);
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
-  @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
+  @need_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
     def test():
@@ -5740,6 +5744,7 @@ return malloc(size);
       # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
       assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
 
+  @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
 
