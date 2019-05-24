@@ -665,6 +665,7 @@ emscripten_get_fullscreen_status
 emscripten_get_gamepad_status
 emscripten_get_heap_size
 emscripten_get_main_loop_timing
+emscripten_get_module_name
 emscripten_get_mouse_status
 emscripten_get_now
 emscripten_get_now_is_monotonic

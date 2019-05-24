@@ -661,6 +661,7 @@ _emscripten_get_element_css_size
 _emscripten_get_fullscreen_status
 _emscripten_get_gamepad_status
 _emscripten_get_heap_size
+_emscripten_get_module_name
 _emscripten_get_main_loop_timing
 _emscripten_get_mouse_status
 _emscripten_get_now
