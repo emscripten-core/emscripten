@@ -167,6 +167,7 @@ def no_windows(note=''):
 def needs_make(note=''):
   if WINDOWS:
     return unittest.skip('Tool not available on Windows bots (%s)' % note)
+  return lambda f: f
 
 
 # used for tests that fail now and then on CI, due to timing or other
