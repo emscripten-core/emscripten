@@ -173,14 +173,14 @@ var LibraryPThreadStub = {
   nanosleep: function(rqtp, rmtp) {
     // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
     if (rqtp === 0) {
-        ___setErrNo({{{ cDefine('EINVAL') }}});
-        return -1;
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
     }
     var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
     if (nanoseconds < 0 || nanoseconds > 999999999 || seconds < 0) {
-        ___setErrNo({{{ cDefine('EINVAL') }}});
-        return -1;
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
     }
     if (rmtp !== 0) {
       {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
