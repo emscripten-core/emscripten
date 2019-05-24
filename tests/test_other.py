@@ -7952,7 +7952,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1543, [], [], 226403, 30, 95, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1543, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
