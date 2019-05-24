@@ -289,12 +289,11 @@ void ReportFile::Write(const char *buffer, uptr length) {
   internal_write(fd, buffer, length);
 }
 
-#if SANITIZER_EMSCRIPTEN
-bool GetCodeRangeForFile(const char */*module*/, uptr */*start*/, uptr */*end*/) {
-  return false;
-}
-#else
 bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
+#if SANITIZER_EMSCRIPTEN
+  // Code is not mapped in memory in Emscripten, so this operation is meaningless
+  // and thus always fails.
+#else
   MemoryMappingLayout proc_maps(/*cache_enabled*/false);
   InternalScopedString buff(kMaxPathLength);
   MemoryMappedSegment segment(buff.data(), kMaxPathLength);
@@ -306,9 +305,9 @@ bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
       return true;
     }
   }
+#endif
   return false;
 }
-#endif
 
 uptr SignalContext::GetAddress() const {
   auto si = static_cast<const siginfo_t *>(siginfo);

@@ -929,6 +929,8 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
+  // Alias for sanitizers which intercept getenv.
+  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -4679,6 +4681,14 @@ LibraryManager.library = {
 
   emscripten_get_module_name: function(buf, length) {
     return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_get_stack_top: function() {
+    return STACKTOP;
+  },
+
+  emscripten_get_stack_base: function() {
+    return STACK_BASE;
   },
 
   //============================

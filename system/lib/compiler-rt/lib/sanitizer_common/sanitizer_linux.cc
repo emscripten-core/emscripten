@@ -426,7 +426,12 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 }
 
 uptr internal_sched_yield() {
+#if SANITIZER_EMSCRIPTEN
+  Report("WARNING: sched_yield doesn't do anything on emscripten");
+  return 0;
+#else
   return internal_syscall(SYSCALL(sched_yield));
+#endif
 }
 
 void internal__exit(int exitcode) {
@@ -524,6 +529,10 @@ uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
 #endif // SANITIZER_EMSCRIPTEN
 #endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
 
+#if SANITIZER_EMSCRIPTEN
+extern "C" const char *emscripten_get_env(const char *name);
+#endif
+
 // Like getenv, but reads env directly from /proc (on Linux) or parses the
 // 'environ' array (on some others) and does not use libc. This function
 // should be called first inside __asan_init.
@@ -563,8 +572,7 @@ const char *GetEnv(const char *name) {
   }
   return nullptr;  // Not found.
 #elif SANITIZER_EMSCRIPTEN
-  Report("FIXME: call emscripten's getenv implementation in JS directly");
-  Abort();
+  return emscripten_get_env(name);
 #else
 #error "Unsupported platform"
 #endif
@@ -670,7 +678,7 @@ void BlockingMutex::Lock() {
   while (atomic_exchange(m, MtxSleeping, memory_order_acquire) != MtxUnlocked) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAIT_UINT, MtxSleeping, 0, 0);
-#elif SANITIZER_NETBSD
+#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
     sched_yield(); /* No userspace futex-like synchronization */
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAIT_PRIVATE, MtxSleeping,
@@ -686,7 +694,7 @@ void BlockingMutex::Unlock() {
   if (v == MtxSleeping) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAKE, 1, 0, 0);
-#elif SANITIZER_NETBSD
+#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
                    /* No userspace futex-like synchronization */
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAKE_PRIVATE, 1, 0, 0, 0);
@@ -778,7 +786,10 @@ uptr internal_sigaltstack(const void *ss, void *oss) {
 }
 
 int internal_fork() {
-#if SANITIZER_USES_CANONICAL_LINUX_SYSCALLS
+#if SANITIZER_EMSCRIPTEN
+  Report("fork not supported on emscripten\n");
+  return -1;
+#elif SANITIZER_USES_CANONICAL_LINUX_SYSCALLS
   return internal_syscall(SYSCALL(clone), SIGCHLD, 0);
 #else
   return internal_syscall(SYSCALL(fork));

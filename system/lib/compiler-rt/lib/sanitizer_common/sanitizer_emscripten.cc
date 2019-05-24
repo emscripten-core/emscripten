@@ -6,13 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This provides implementations of some functions on emscripten.
+// This provides implementations of some functions in sanitizer_linux_libcdep.c
+// on emscripten. We are not using sanitizer_linux_libcdep.c because it contains
+// a lot of threading and other code that does not work with emscripten yet,
+// so instead, some minimal implementations are provided here so that UBSan can
+// work.
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_platform.h"
 #include "sanitizer_common.h"
 
 #include <signal.h>
+
+#if SANITIZER_EMSCRIPTEN
 
 namespace __sanitizer {
 
@@ -31,11 +37,15 @@ int internal_sigaction(int signum, const void *act, void *oldact) {
                    (struct sigaction *)oldact);
 }
 
+extern "C" uptr emscripten_get_stack_top();
+extern "C" uptr emscripten_get_stack_base();
+
 void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
                                 uptr *stack_bottom) {
-  Report("WARNING: Emscripten has no thread stack");
-  *stack_top = 0;
-  *stack_bottom = 0;
+  *stack_top = emscripten_get_stack_top();
+  *stack_bottom = emscripten_get_stack_base();
 }
 
 } // namespace __sanitizer
+
+#endif

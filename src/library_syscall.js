@@ -224,9 +224,6 @@ var SyscallsLibrary = {
     exit(status);
     return 0;
   },
-  __syscall2: function(which, varargs) { // fork
-    return -{{{ cDefine('ENOSYS') }}};
-  },
   __syscall3: function(which, varargs) { // read
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
@@ -913,10 +910,6 @@ var SyscallsLibrary = {
   __syscall153: function(which, varargs) { // munlockall
     return 0;
   },
-  __syscall158: function(which, varargs) { // sched_yield
-    // always succeeds, not guaranteed to do anything anyways
-    return 0;
-  },
   __syscall163: function(which, varargs) { // mremap
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
@@ -1182,9 +1175,6 @@ var SyscallsLibrary = {
       }
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
-  },
-  __syscall240: function(which, varargs) { // futex
-    return -{{{ cDefine('ENOSYS')}}};
   },
   __syscall252: function(which, varargs) { // exit_group
     var status = SYSCALLS.get();
