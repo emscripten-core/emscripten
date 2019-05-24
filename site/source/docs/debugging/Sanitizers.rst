@@ -19,10 +19,13 @@ Catching Null Dereference
 
 With Emscripten, deferencing a null pointer does not immediately cause a
 segmentation fault, unlike traditional platforms. Instead, Emscripten checks
-at the end of the program execution. This makes is difficult to find where the
-null dereference occurred.
+a magic cookie stored at address 0 at the end of the program execution.
 
-UBSan will tell you exactly where the null deference happened.
+This only detects null pointer writes, and not reads, and it's rather difficult
+to find where the null pointer write occurred.
+
+UBSan will tell you exactly where the null deference happened, and works for
+both reads and writes.
 
 Consider the following program, ``null-assign.c``:
 
@@ -48,4 +51,49 @@ With UBSan, you get the exact line number where this happened:
   $ emcc -fsanitize=undefined null-assign.c
   $ node a.out.js
   null-assign.c:3:5: runtime error: store to null pointer of type 'int'
+  Runtime error: The application has corrupted its heap memory area (address zero)!
+
+Consider the following program, ``null-read.c``:
+
+.. code-block:: c
+
+  int main(void) {
+      int *a = 0, b;
+      b = *a;
+  }
+
+Without UBSan, there is no feedback:
+
+.. code-block:: console
+
+  $ emcc null-read.c
+  $ node a.out.js
+  $
+
+With UBSan, you get the exact line number where this happened:
+
+.. code-block:: console
+
+  $ emcc -fsanitize=undefined null-assign.c
+  $ node a.out.js
+  null-read.c:3:9: runtime error: load of null pointer of type 'int'
+
+Minimal Runtime
+---------------
+
+UBSan's runtime is non-trivial, and its use can unnecessarily increase the
+attack surface. For this reason, there is a minimal UBSan runtime that is
+designed for production uses.
+
+The minimal runtime is supported by Emscripten. To use it, pass the flag
+``-fsanitize-minimal-runtime`` in addition to your ``-fsanitize`` flag.
+
+.. code-block:: console
+
+  $ emcc -fsanitize=null -fsanitize-minimal-runtime null-read.c
+  $ node a.out.js
+  ubsan: type-mismatch
+  $ emcc -fsanitize=null -fsanitize-minimal-runtime null-assign.c
+  $ node a.out.js
+  ubsan: type-mismatch
   Runtime error: The application has corrupted its heap memory area (address zero)!
