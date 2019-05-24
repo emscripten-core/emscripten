@@ -1111,12 +1111,18 @@ uptr GetPageSize() {
 }
 #endif // !SANITIZER_ANDROID
 
+#if SANITIZER_EMSCRIPTEN
+extern "C" uptr emscripten_get_module_name(char *buf, uptr buf_len);
+#endif
+
 #if !SANITIZER_OPENBSD
 uptr ReadBinaryName(/*out*/char *buf, uptr buf_len) {
 #if SANITIZER_SOLARIS
   const char *default_module_name = getexecname();
   CHECK_NE(default_module_name, NULL);
   return internal_snprintf(buf, buf_len, "%s", default_module_name);
+#elif SANITIZER_EMSCRIPTEN
+  return emscripten_get_module_name(buf, buf_len);
 #else
 #if SANITIZER_FREEBSD || SANITIZER_NETBSD
 #if SANITIZER_FREEBSD

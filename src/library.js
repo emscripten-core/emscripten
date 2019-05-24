@@ -4677,6 +4677,10 @@ LibraryManager.library = {
     }
   },
 
+  emscripten_get_module_name: function(buf, length) {
+    return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
   //============================
   // i64 math
   //============================
