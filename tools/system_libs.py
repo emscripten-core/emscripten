@@ -13,6 +13,7 @@ import sys
 import tarfile
 import zipfile
 from collections import namedtuple
+from glob import iglob
 
 from . import ports
 from . import shared
@@ -27,6 +28,11 @@ logger = logging.getLogger('system_libs')
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
+
+
+def glob_in_path(path_components, glob_pattern, excludes=()):
+  srcdir = shared.path_from_root(*path_components)
+  return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
 
 
 def get_cflags(force_object_files=False):
@@ -111,6 +117,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
   wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
   html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
+  ubsan_minimal_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt', 'ubsan-minimal.symbols'))
+  sanitizer_common_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt', 'sanitizer-common.symbols'))
+  ubsan_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt', 'ubsan.symbols'))
 
   def get_wasm_libc_rt_files():
     # Static linking is tricky with LLVM, since e.g. memset might not be used
@@ -572,19 +581,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return create_wasm_rt_lib(libname, files)
 
   def create_wasm_common_san_rt(libname):
-    files = files_in_path(
+    files = glob_in_path(
       path_components=['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common'],
-      filenames=['sancov_flags.cc', 'sanitizer_allocator.cc', 'sanitizer_allocator_checks.cc', 'sanitizer_allocator_report.cc', 'sanitizer_common.cc', 'sanitizer_common_libcdep.cc', 'sanitizer_coverage_fuchsia.cc', 'sanitizer_coverage_libcdep_new.cc', 'sanitizer_coverage_win_dll_thunk.cc', 'sanitizer_coverage_win_dynamic_runtime_thunk.cc', 'sanitizer_coverage_win_sections.cc', 'sanitizer_coverage_win_weak_interception.cc', 'sanitizer_deadlock_detector1.cc', 'sanitizer_deadlock_detector2.cc', 'sanitizer_emscripten.cc', 'sanitizer_errno.cc', 'sanitizer_file.cc', 'sanitizer_flag_parser.cc', 'sanitizer_flags.cc', 'sanitizer_fuchsia.cc', 'sanitizer_libc.cc', 'sanitizer_libignore.cc', 'sanitizer_linux.cc', 'sanitizer_linux_libcdep.cc', 'sanitizer_linux_s390.cc', 'sanitizer_mac.cc', 'sanitizer_mac_libcdep.cc', 'sanitizer_netbsd.cc', 'sanitizer_openbsd.cc', 'sanitizer_persistent_allocator.cc', 'sanitizer_platform_limits_freebsd.cc', 'sanitizer_platform_limits_linux.cc', 'sanitizer_platform_limits_netbsd.cc', 'sanitizer_platform_limits_openbsd.cc', 'sanitizer_platform_limits_posix.cc', 'sanitizer_platform_limits_solaris.cc', 'sanitizer_posix.cc', 'sanitizer_posix_libcdep.cc', 'sanitizer_printf.cc', 'sanitizer_procmaps_bsd.cc', 'sanitizer_procmaps_common.cc', 'sanitizer_procmaps_linux.cc', 'sanitizer_procmaps_mac.cc', 'sanitizer_procmaps_solaris.cc', 'sanitizer_rtems.cc', 'sanitizer_solaris.cc', 'sanitizer_stackdepot.cc', 'sanitizer_stacktrace.cc', 'sanitizer_stacktrace_libcdep.cc', 'sanitizer_stacktrace_printer.cc', 'sanitizer_stacktrace_sparc.cc', 'sanitizer_stoptheworld_linux_libcdep.cc', 'sanitizer_stoptheworld_mac.cc', 'sanitizer_suppressions.cc', 'sanitizer_symbolizer.cc', 'sanitizer_symbolizer_libbacktrace.cc', 'sanitizer_symbolizer_libcdep.cc', 'sanitizer_symbolizer_mac.cc', 'sanitizer_symbolizer_markup.cc', 'sanitizer_symbolizer_posix_libcdep.cc', 'sanitizer_symbolizer_report.cc', 'sanitizer_symbolizer_win.cc', 'sanitizer_termination.cc', 'sanitizer_thread_registry.cc', 'sanitizer_tls_get_addr.cc', 'sanitizer_type_traits.cc', 'sanitizer_unwind_linux_libcdep.cc', 'sanitizer_unwind_win.cc', 'sanitizer_win.cc', 'sanitizer_win_dll_thunk.cc', 'sanitizer_win_dynamic_runtime_thunk.cc', 'sanitizer_win_weak_interception.cc'],
+      glob_pattern='*.cc',
+      excludes=['sanitizer_common_nolibc.cc'],
     )
     return create_wasm_rt_lib(libname, files, extra_flags=['-std=c++11'])
 
   def create_wasm_ubsan_rt(libname):
-    files = files_in_path(
+    files = glob_in_path(
       path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan'],
-      filenames=['ubsan_diag.cc', 'ubsan_diag_standalone.cc', 'ubsan_flags.cc', 'ubsan_handlers.cc',
-                 'ubsan_handlers_cxx.cc', 'ubsan_init.cc', 'ubsan_init_standalone.cc',
-                 'ubsan_init_standalone_preinit.cc', 'ubsan_monitor.cc', 'ubsan_signals_standalone.cc',
-                 'ubsan_type_hash.cc', 'ubsan_type_hash_itanium.cc', 'ubsan_type_hash_win.cc', 'ubsan_value.cc'],
+      glob_pattern='*.cc',
     )
     return create_wasm_rt_lib(libname, files, extra_flags=['-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11'])
 
@@ -712,6 +719,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
   system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False))
 
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    system_libs += [Library('libubsan-minimal-rt-wasm', ext, create_wasm_ubsan_minimal_rt, ubsan_minimal_symbols, [libc_name], False)]
+  elif shared.Settings.UBSAN_RUNTIME == 2:
+    system_libs += [
+      Library('libsanitizer-common-rt-wasm', ext, create_wasm_common_san_rt, sanitizer_common_symbols, ['libc++abi'], False),
+      Library('libubsan-rt-wasm', ext, create_wasm_ubsan_rt, ubsan_symbols, ['libsanitizer-common-rt-wasm'], False),
+    ]
+    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
+    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
+
   libs_to_link = []
   already_included = set()
   system_libs_map = {l.shortname: l for l in system_libs}
@@ -797,16 +814,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.WASM_BACKEND:
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
-
-  if shared.Settings.UBSAN_RUNTIME == 1:
-    libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
-  elif shared.Settings.UBSAN_RUNTIME == 2:
-    libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
-    libs_to_link.append((shared.Cache.get('libubsan_rt_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_rt_wasm.a')), False))
-    # TODO: handle this dependency better
-    add_library(system_libs_map['libc++abi'])
-    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
-    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
