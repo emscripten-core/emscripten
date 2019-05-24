@@ -115,7 +115,7 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
 # Target options
 final = None
 
-UBSAN_SANITIZES = {
+UBSAN_SANITIZERS = {
   'alignment',
   'bool',
   'builtin',
@@ -1468,7 +1468,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         elif arg.startswith('-fno-sanitize='):
           sanitize.difference_update(arg.split('=', 1)[1].split(','))
 
-      if sanitize & UBSAN_SANITIZES:
+      if sanitize & UBSAN_SANITIZERS:
         if '-fsanitize-minimal-runtime' in newargs:
           shared.Settings.UBSAN_RUNTIME = 1
         else:
