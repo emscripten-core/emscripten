@@ -458,17 +458,6 @@ def check_llvm():
       print('===========================================================================', file=sys.stderr)
       return False
 
-  if not Settings.WASM_BACKEND:
-    clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
-    clang_v = clang_v.splitlines()[0]
-    if '(emscripten ' not in clang_v:
-      logger.error('clang version does not appear to include fastcomp (%s)', str(clang_v))
-      return False
-    llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
-    if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
-      logger.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
-      logger.error('Make sure to rebuild llvm and clang after updating repos')
-
   return True
 
 
