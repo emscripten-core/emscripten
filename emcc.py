@@ -1843,7 +1843,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = 0
           final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
         else:
-          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
+          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
         logger.debug('skipping linking: ' + str(linker_inputs))
         if not LEAVE_INPUTS_RAW:
