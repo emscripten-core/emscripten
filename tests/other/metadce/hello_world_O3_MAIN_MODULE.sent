@@ -290,7 +290,6 @@ __syscall150
 __syscall151
 __syscall152
 __syscall153
-__syscall158
 __syscall163
 __syscall168
 __syscall178
@@ -306,7 +305,6 @@ __syscall196
 __syscall197
 __syscall198
 __syscall199
-__syscall2
 __syscall20
 __syscall200
 __syscall201
@@ -326,7 +324,6 @@ __syscall218
 __syscall219
 __syscall220
 __syscall221
-__syscall240
 __syscall252
 __syscall265
 __syscall268
@@ -661,6 +658,7 @@ emscripten_get_device_pixel_ratio
 emscripten_get_devicemotion_status
 emscripten_get_deviceorientation_status
 emscripten_get_element_css_size
+emscripten_get_env
 emscripten_get_fullscreen_status
 emscripten_get_gamepad_status
 emscripten_get_heap_size
@@ -675,6 +673,8 @@ emscripten_get_orientation_status
 emscripten_get_pointerlock_status
 emscripten_get_preloaded_image_data
 emscripten_get_preloaded_image_data_from_FILE
+emscripten_get_stack_base
+emscripten_get_stack_top
 emscripten_get_visibility_status
 emscripten_get_worker_queue_size
 emscripten_glActiveTexture
