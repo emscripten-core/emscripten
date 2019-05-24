@@ -345,9 +345,11 @@ class RunnerMeta(type):
         # If it does, we extract the parameterization information, build new test functions.
         for suffix, args in value._parameterize.items():
           new_name, func = mcs.make_test(attr_name, value, suffix, args)
+          assert new_name not in new_attrs, 'Duplicate attribute name generated when parameterizing %s' % attr_name
           new_attrs[new_name] = func
       else:
         # If not, we just copy it over to new_attrs verbatim.
+        assert attr_name not in new_attrs, '%s collided with an attribute from parameterization' % attr_name
         new_attrs[attr_name] = value
 
     # We invoke type, the default metaclass, to actually create the new class, with new_attrs.

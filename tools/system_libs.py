@@ -949,12 +949,20 @@ class Ports(object):
       # retrieve from remote server
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
-        from urllib.request import urlopen
+        import requests
+        response = requests.get(url)
+        data = response.content
       except ImportError:
-        # Python 2 compatibility
-        from urllib2 import urlopen
-      f = urlopen(url)
-      data = f.read()
+        try:
+          from urllib.request import urlopen
+          f = urlopen(url)
+          data = f.read()
+        except ImportError:
+          # Python 2 compatibility
+          from urllib2 import urlopen
+          f = urlopen(url)
+          data = f.read()
+
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 
