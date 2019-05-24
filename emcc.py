@@ -2846,14 +2846,19 @@ function(%(EXPORT_NAME)s) {
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
+      if shared.Settings.EXPORT_ES6:
+        script_url = "import.meta.url"
+      else:
+        script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  var _scriptDir = %(script_url)s;
   return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'src': src
+        'src': src,
+        'script_url': script_url
       }
   else:
     # Create the MODULARIZE_INSTANCE instance
