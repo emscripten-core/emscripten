@@ -10,4 +10,8 @@ Some directories in compiler-rt are omitted here:
 
 Changes were made to make this work with Emscripten:
 
-https://github.com/quantum5/emscripten/compare/ubsan-full-upstream...ubsan-full
+* Define platform `SANITIZER_EMSCRIPTEN`.
+* Add Emscripten-specific handling for `GetThreadStackTopAndBottom`,
+  system calls, memory maps, colors.
+
+For details, see <https://github.com/emscripten-core/emscripten/pull/8651>.
