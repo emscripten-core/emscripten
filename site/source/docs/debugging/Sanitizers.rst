@@ -17,15 +17,20 @@ To use UBSan, simply pass ``-fsanitize=undefined`` to ``emcc`` or ``em++``.
 Catching Null Dereference
 -------------------------
 
-With Emscripten, deferencing a null pointer does not immediately cause a
-segmentation fault, unlike traditional platforms. Instead, Emscripten checks
+By default, with Emscripten, deferencing a null pointer does not immediately
+cause a segmentation fault, unlike traditional platforms. Instead, it checks
 a magic cookie stored at address 0 at the end of the program execution.
 
 This only detects null pointer writes, and not reads, and it's rather difficult
 to find where the null pointer write occurred.
 
+Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
+``emcc`` with ``-s SAFE_HEAP=1``. This will catch both null pointer reads and
+writes, and causes an exception, but it is a slow, and does not tell you the
+exact line numbers unless you compile with ``-g``.
+
 UBSan will tell you exactly where the null deference happened, and works for
-both reads and writes.
+both reads and writes, with much less performance penalty than ``SAFE_HEAP``.
 
 Consider the following program, ``null-assign.c``:
 
@@ -36,7 +41,7 @@ Consider the following program, ``null-assign.c``:
       *a = 0;
   }
 
-Without UBSan, you get an error when the program exits:
+Without UBSan or ``SAFE_HEAP``, you get an error when the program exits:
 
 .. code-block:: console
 
@@ -62,7 +67,7 @@ Consider the following program, ``null-read.c``:
       b = *a;
   }
 
-Without UBSan, there is no feedback:
+Without UBSan or ``SAFE_HEAP``, there is no feedback:
 
 .. code-block:: console
 
