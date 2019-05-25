@@ -2658,11 +2658,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     if NODE_JS in JS_ENGINES:
       self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
-    # Tidy up files that might have been created by this test.
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js.map'))
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js.mem'))
-
   def test_node_catch_exit(self):
     # Test that in node.js exceptions are not caught if NODEJS_EXIT_CATCH=0
     if NODE_JS not in JS_ENGINES:
@@ -8523,10 +8518,17 @@ int main() {
     source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
-  def test_check_sourcemapurl_default(self):
+  @parameterized({
+    'normal': [],
+    'profiling': ['--profiling'] # -g4 --profiling should still emit a source map; see #8584
+  })
+  def test_check_sourcemapurl_default(self, *args):
+    print(args)
     if not self.is_wasm():
       self.skipTest('only supported with wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'])
+
+    try_delete('a.wasm.map')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_123.c'), '-g4', '-o', 'a.js'] + list(args))
     output = open('a.wasm', 'rb').read()
     # has sourceMappingURL section content and points to 'a.wasm.map' file
     source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('a.wasm.map')) + b'a.wasm.map'

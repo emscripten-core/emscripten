@@ -28,6 +28,7 @@
 #include "../internal/libc.h"
 #include "../internal/pthread_impl.h"
 #include <assert.h>
+#include <errno.h>
 
 // With LLVM 3.6, C11 is the default compilation mode.
 // gets() is deprecated under that standard, but emcc
@@ -157,7 +158,10 @@ void emscripten_thread_sleep(double msecs)
 
 int nanosleep(const struct timespec *req, struct timespec *rem)
 {
-	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) return EINVAL;
+	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) {
+		errno = EINVAL;
+		return -1;
+	}
 	emscripten_thread_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
 	return 0;
 }
