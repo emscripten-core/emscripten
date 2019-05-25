@@ -388,7 +388,6 @@ class benchmark(RunnerCore):
     with open(filename, 'w') as f:
       f.write(src)
 
-    emcc_args = emcc_args + ['-fsanitize=undefined']
     print()
     baseline = None
     for b in benchmarkers:
