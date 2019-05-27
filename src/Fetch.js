@@ -439,11 +439,11 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     if (onprogress) onprogress(fetch, xhr, e);
   }
   xhr.onreadystatechange = function(e) {
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-      if (xhr.readyState >= 2) {
-        HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
-      }
-      if (onreadystatechange) onreadystatechange(fetch, xhr, e);
+    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
+    if (xhr.readyState >= 2) {
+      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
+    }
+    if (onreadystatechange) onreadystatechange(fetch, xhr, e);
   }
 #if FETCH_DEBUG
   console.log('fetch: xhr.send(data=' + data + ')');
