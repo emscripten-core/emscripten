@@ -81,6 +81,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_setcancelstate: function() { return 0; },
+  pthread_setcanceltype: function() { return 0; },
 
   pthread_cleanup_push: function(routine, arg) {
     __ATEXIT__.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) })
@@ -168,11 +169,19 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  nanosleep__deps: ['usleep'],
+  nanosleep__deps: ['usleep', '__setErrNo'],
   nanosleep: function(rqtp, rmtp) {
     // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    if (rqtp === 0) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
     var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
     var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+    if (nanoseconds < 0 || nanoseconds > 999999999 || seconds < 0) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
     if (rmtp !== 0) {
       {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
       {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}};

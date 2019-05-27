@@ -24,11 +24,11 @@ int main(int argc, char **argv) {
   puts(argv[2]);
   printf("%d\n", atoi(argv[3]) + 2);
   const char *foolingthecompiler = "\rabcd";
-  printf("%d\n", strlen(foolingthecompiler));  // Tests parsing /0D in llvm -
+  printf("%lu\n", strlen(foolingthecompiler)); // Tests parsing /0D in llvm -
                                                // should not be a 0 (end string)
                                                // then a D!
-  printf("%s\n", NULL);  // Should print '(null)', not the string at address 0,
-                         // which is a real address for us!
+  printf("null -> %s\n", NULL);  // Should print '(null)', not the string at address 0,
+                                 // which is a real address for us!
   printf("/* a comment */\n");  // Should not break the generated code!
   printf("// another\n");       // Should not break the generated code!
 
@@ -37,8 +37,8 @@ int main(int argc, char **argv) {
   free(strdup_val);
 
   {
-    char *one = "one 1 ONE !";
-    char *two = "two 2 TWO ?";
+    const char *one = "one 1 ONE !";
+    const char *two = "two 2 TWO ?";
     char three[1024];
     memset(three, '.', 1024);
     three[50] = 0;
@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
   }
 
   {
-    char *one = "string number one top notch";
-    char *two = "fa la sa ho fi FI FO FUM WHEN WHERE WHY HOW WHO";
+    const char *one = "string number one top notch";
+    const char *two = "fa la sa ho fi FI FO FUM WHEN WHERE WHY HOW WHO";
     char three[1000];
     strcpy(three, &one[argc * 2]);
     char *four = strcat(three, &two[argc * 3]);

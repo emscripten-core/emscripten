@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $PROXYFS__deps: ['$FS', '$PATH'],
+  $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
   $PROXYFS: {
     mount: function (mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);

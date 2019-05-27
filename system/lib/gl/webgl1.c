@@ -8,7 +8,7 @@
 #include "webgl1_ext.h"
 #include "webgl2.h"
 
-#ifdef __EMSCRIPTEN_PTHREADS__
+#if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_do_create_context(const char *target, const EmscriptenWebGLContextAttributes *attributes);
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current_calling_thread(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
@@ -625,7 +625,48 @@ RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectuivEXT, GLenum, G
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjecti64vEXT, GLenum, GLenum, GLint64 *);
 RET_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectui64vEXT, GLenum, GLenum, GLuint64 *);
 
-#endif // ~__EMSCRIPTEN_PTHREADS__
+#endif // ~(__EMSCRIPTEN_PTHREADS__ && __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
+
+// Returns a function pointer to the given WebGL 1 extension function, when queried without
+// a GL extension suffix such as "EXT", "OES", or "ANGLE". This function is used by
+// emscripten_GetProcAddress() to implement legacy GL emulation semantics for portability.
+void *_webgl1_match_ext_proc_address_without_suffix(const char *name)
+{
+  RETURN_FN_WITH_SUFFIX(glGenQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glDeleteQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glIsQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glBeginQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glEndQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glQueryCounter, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectuiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjecti64v, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectui64v, EXT);
+
+  // WebGL 1 , Extensions
+  RETURN_FN_WITH_SUFFIX(glBindVertexArray, OES);
+  RETURN_FN_WITH_SUFFIX(glDeleteVertexArrays, OES);
+  RETURN_FN_WITH_SUFFIX(glGenVertexArrays, OES);
+  RETURN_FN_WITH_SUFFIX(glIsVertexArray, OES);
+  RETURN_FN_WITH_SUFFIX(glDrawBuffers, WEBGL);
+  RETURN_FN_WITH_SUFFIX(glDrawArraysInstanced, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glDrawElementsInstanced, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glVertexAttribDivisor, ANGLE);
+  RETURN_FN_WITH_SUFFIX(glGenQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glDeleteQueries, EXT);
+  RETURN_FN_WITH_SUFFIX(glIsQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glBeginQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glEndQuery, EXT);
+  RETURN_FN_WITH_SUFFIX(glQueryCounter, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectuiv, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjecti64v, EXT);
+  RETURN_FN_WITH_SUFFIX(glGetQueryObjectui64v, EXT);
+
+  return 0;
+}
 
 void *emscripten_webgl1_get_proc_address(const char *name)
 {

@@ -11,6 +11,7 @@ native optimizer, as well as fetch and build ports like zlib and sdl2
 from __future__ import print_function
 import logging
 import os
+import subprocess
 import sys
 
 from tools import shared
@@ -44,14 +45,6 @@ SYSTEM_TASKS = [
     'compiler-rt',
     'emmalloc',
     'emmalloc_debug',
-    'gl',
-    'gl-emu',
-    'gl-emu-webgl2',
-    'gl-mt',
-    'gl-mt-emu',
-    'gl-mt-emu-webgl2',
-    'gl-mt-webgl2',
-    'gl-webgl2',
     'html5',
     'libc',
     'libc++',
@@ -61,6 +54,7 @@ SYSTEM_TASKS = [
     'libc-mt',
     'pthreads',
     'pthreads_stub',
+    'ubsan-minimal-rt-wasm',
 ]
 
 for debug in ['', '_debug']:
@@ -68,6 +62,12 @@ for debug in ['', '_debug']:
     for threadsafe in ['', '_threadsafe']:
       for tracing in ['', '_tracing']:
         SYSTEM_TASKS += ['dlmalloc' + debug + noerrno + threadsafe + tracing]
+
+for mt in ['', '-mt']:
+  for emu in ['', '-emu']:
+    for webgl2 in ['', '-webgl2']:
+      for ofb in ['', '-ofb']:
+        SYSTEM_TASKS += ['gl' + mt + emu + webgl2 + ofb]
 
 USER_TASKS = [
     'binaryen',
@@ -112,7 +112,7 @@ are running multiple build commands in parallel, confusion can occur).
 
 Usage:
 
-  embuilder.py OPERATION TASK1 [TASK2..] [--lto]
+  embuilder.py OPERATION TASK1 [TASK2..] [--pic] [--lto]
 
 Available operations and tasks:
 
@@ -123,6 +123,7 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 Flags:
 
   --lto  Build bitcode files, for LTO with the LLVM wasm backend
+  --pic  Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -136,19 +137,20 @@ and set up the location to the native optimizer in ~/.emscripten
 
 
 def build(src, result_libs, args=[]):
-  if shared.Settings.WASM_BACKEND:
-    args = args + ['-s', 'WASM_OBJECT_FILES=%d' % shared.Settings.WASM_OBJECT_FILES]
+  if not shared.Settings.WASM_OBJECT_FILES:
+    args += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    args += ['-s', 'RELOCATABLE']
   # build in order to generate the libraries
   # do it all in a temp dir where everything will be cleaned up
   temp_dir = temp_files.get_dir()
   cpp = os.path.join(temp_dir, 'src.cpp')
   open(cpp, 'w').write(src)
   temp_js = os.path.join(temp_dir, 'out.js')
-  shared.Building.emcc(cpp, args, output_filename=temp_js)
-
-  # verify
-  if not os.path.exists(temp_js):
-    shared.exit_with_error('failed to build file')
+  try:
+    shared.Building.emcc(cpp, args, output_filename=temp_js)
+  except subprocess.CalledProcessError as e:
+    shared.exit_with_error("embuilder: emcc command failed with %d: '%s'", e.returncode, ' '.join(e.cmd))
 
   for lib in result_libs:
     if not os.path.exists(shared.Cache.get_path(lib)):
@@ -180,8 +182,10 @@ def main():
       arg = arg[2:]
       if arg == 'lto':
         shared.Settings.WASM_OBJECT_FILES = 0
-        # Reconfigure the cache dir to reflect the change
-        shared.reconfigure_cache()
+      elif arg == 'pic':
+        shared.Settings.RELOCATABLE = 1
+      # Reconfigure the cache dir to reflect the change
+      shared.reconfigure_cache()
 
   args = [a for a in args if not is_flag(a)]
 
@@ -277,6 +281,8 @@ def main():
         opts += ['-s', 'LEGACY_GL_EMULATION=1']
       if '-webgl2' in what:
         opts += ['-s', 'USE_WEBGL2=1']
+      if '-ofb' in what:
+        opts += ['-s', 'OFFSCREEN_FRAMEBUFFER=1']
       build('''
         extern "C" { extern void* emscripten_GetProcAddress(const char *x); }
         int main() {
@@ -307,6 +313,10 @@ def main():
         }
 
       ''', [libname('libpthreads_stub')])
+    elif what == 'ubsan-minimal-rt-wasm':
+      if not shared.Settings.WASM_BACKEND:
+        continue
+      build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
     elif what == 'al':
       build('''
         #include "AL/al.h"

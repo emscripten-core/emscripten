@@ -7,7 +7,7 @@ mergeInto(LibraryManager.library, {
   $SOCKFS__postset: function() {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__deps: ['$FS', '$ERRNO_CODES'], // TODO: avoid ERRNO_CODES
   $SOCKFS: {
     mount: function(mount) {
       // If Module['websocket'] has already been defined (e.g. for configuring

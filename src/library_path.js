@@ -4,9 +4,6 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-#if FILESYSTEM == 1
-  $PATH__deps: ['$FS'],
-#endif
   $PATH: {
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
@@ -83,6 +80,11 @@ mergeInto(LibraryManager.library, {
     join2: function(l, r) {
       return PATH.normalize(l + '/' + r);
     },
+  },
+  // The FS-using parts are split out into a separate object, so simple path
+  // usage does not require the FS.
+  $PATH_FS__deps: ['$PATH', '$FS'],
+  $PATH_FS: {
     resolve: function() {
       var resolvedPath = '',
         resolvedAbsolute = false;
@@ -105,8 +107,8 @@ mergeInto(LibraryManager.library, {
       return ((resolvedAbsolute ? '/' : '') + resolvedPath) || '.';
     },
     relative: function(from, to) {
-      from = PATH.resolve(from).substr(1);
-      to = PATH.resolve(to).substr(1);
+      from = PATH_FS.resolve(from).substr(1);
+      to = PATH_FS.resolve(to).substr(1);
       function trim(arr) {
         var start = 0;
         for (; start < arr.length; start++) {

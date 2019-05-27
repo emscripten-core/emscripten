@@ -51,12 +51,14 @@ function preprocess(text, filenameHint) {
           var truthy = !!eval(after);
           showStack.push(truthy);
         } else if (line.indexOf('#include') === 0) {
-          var filename = line.substr(line.indexOf(' ')+1);
-          if (filename.indexOf('"') === 0) {
-            filename = filename.substr(1, filename.length - 2);
+          if (showStack.indexOf(false) === -1) {
+            var filename = line.substr(line.indexOf(' ')+1);
+            if (filename.indexOf('"') === 0) {
+              filename = filename.substr(1, filename.length - 2);
+            }
+            var included = read(filename);
+            ret += '\n' + preprocess(included, filename) + '\n';
           }
-          var included = read(filename);
-          ret += '\n' + preprocess(included, filename) + '\n';
         } else if (line.indexOf('#else') === 0) {
           assert(showStack.length > 0);
           showStack.push(!showStack.pop());
@@ -1551,6 +1553,13 @@ function getQuoted(str) {
 
 function makeRetainedCompilerSettings() {
   var blacklist = set('STRUCT_INFO');
+  if (STRICT) {
+    for (var i in LEGACY_SETTINGS) {
+      var name = LEGACY_SETTINGS[i][0];
+      blacklist[name] = 0;
+    }
+  }
+
   var ret = {};
   for (var x in this) {
     try {

@@ -219,25 +219,6 @@ var SKIP_STACK_IN_SMALL = 1;
 // you do not want inlining
 var INLINING_LIMIT = 0;
 
-// A function size above which we try to automatically break up functions into
-// smaller ones, to avoid the downsides of very large functions (JS engines
-// often compile them very slowly, compile them with lower optimizations, or do
-// not optimize them at all). If 0, we do not perform outlining at all.  To see
-// which funcs are large, you can inspect the source in a debug build (-g2 or -g
-// for example), and can run tools/find_bigfuncs.py on that to get a sorted list
-// by size.  Another possibility is to look in the web console in firefox, which
-// will note slowly-compiling functions.  You will probably want to experiment
-// with various values to see the impact on compilation time, code size and
-// runtime throughput. It is hard to say what values to start testing with, but
-// something around 20,000 to 100,000 might make sense.  (The unit size is
-// number of AST nodes.) Outlining decreases maximum function size, but does so
-// at the cost of increasing overall code size as well as performance (outlining
-// itself makes code less optimized, and requires emscripten to disable some
-// passes that are incompatible with it).
-// Note: For wasm there is usually no need to set OUTLINING_LIMIT, as VMs can
-//       handle large functions well anyhow.
-var OUTLINING_LIMIT = 0;
-
 // Run aggressiveVariableElimination in js-optimizer.js
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0;
 
@@ -658,7 +639,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'malloc',
 	'free',
 	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
 	];
 
 // This list is also used to determine auto-exporting of library dependencies
@@ -717,6 +697,11 @@ var PROXY_TO_WORKER_FILENAME = '';
 // calls pthread_create() to run the application main() in a pthread.  This is
 // something that applications can do manually as well if they wish, this option
 // is provided as convenience.
+//
+// This proxies Module['canvas'], if present, and if OFFSCREEN_CANVAS support
+// is enabled. This has to happen because this is the only chance - this browser
+// main thread does the the only pthread_create call that happens on
+// that thread, so it's the only chance to transfer the canvas from there.
 var PROXY_TO_PTHREAD = 0;
 
 // If set to 1, this file can be linked with others, either as a shared library
@@ -726,7 +711,9 @@ var PROXY_TO_PTHREAD = 0;
 // are linked with.
 //
 // MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
-// to set this explicitly.
+// to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
+// *not* set this, so that we still do normal DCE on them, and in that case
+// you must keep relevant things alive yourself using exporting.
 var LINKABLE = 0;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
@@ -993,6 +980,8 @@ var WASM_BACKEND = 0;
 
 // Whether to compile object files as wasm as opposed to the default
 // of using LLVM IR.
+// Setting to zero will enable LTO and at link time will also enable bitcode
+// versions of the standard libraries.
 var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
@@ -1017,9 +1006,22 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
-// example, "dce,precompute,vacuum".  When set, this overrides the default
-// passes we would normally run.
+// example, "dce,precompute,vacuum".  When set, this overrides/replaces
+// the default passes we would normally run.
+// Note that you can put any binaryen wasm-opt flag here, not just
+// passes. The key thing is that these flags are sent to the main wasm-opt
+// invocation to optimize the wasm binary, which is when we run several
+// important passes. We may also run wasm-opt for various other reasons,
+// like as part of metadce, and these flags are not passed at those times,
+// so they are a bunch of passes (+ other flags) for that one main
+// invocation.
 var BINARYEN_PASSES = "";
+
+// A comma-separated list of passes to run in the binaryen optimizer, like
+// BINARYEN_PASSES, but that is in addition to any default ones. That is,
+// setting this does not override/replace the default passes, and it is
+// appended at the end of the list of passes.
+var BINARYEN_EXTRA_PASSES = "";
 
 // Set the maximum size of memory in the wasm module (in bytes).  Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
@@ -1031,8 +1033,10 @@ var WASM_MEM_MAX = -1;
 
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
-// smallest modules to run in V8
-var BINARYEN_ASYNC_COMPILATION = 1;
+// smallest modules to run in chrome.
+//
+// (This option was formerly called BINARYEN_ASYNC_COMPILATION)
+var WASM_ASYNC_COMPILATION = 1;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in. Emscripten does not emit this by default, as it
@@ -1395,14 +1399,33 @@ var SYSCALLS_REQUIRE_FILESYSTEM = 1;
 // is received from wasm-emscripten-finalize, which reads it from the features section.
 var BINARYEN_FEATURES = [];
 
-// Legacy settings that have been removed, and the values they are now fixed to.
-// These can no longer be changed:
+// Whether EMCC_AUTODEBUG is on, which automatically instruments code for runtime
+// logging that can help in debugging.
+var AUTODEBUG = 0;
+
+// Whether we should use binaryen's wasm2js to convert our wasm to JS. Set when
+// wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
+// wasm normally, then compile that to JS).
+var WASM2JS = 0;
+
+// Whether we should link in the runtime for ubsan.
+// 0 means do not link ubsan, 1 means link minimal ubsan runtime.
+// This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
+// -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
+var UBSAN_RUNTIME = 0;
+
+// Legacy settings that have been removed or renamed.
+// For renamed settings the format is:
+// [OLD_NAME, NEW_NAME]
+// For removed settings (which now effectively have a fixed value and can no
+// longer be changed) the format is:
 // [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
 // an array of values that will still be silently accepted by the compiler.
 // First element in the list is the canonical/fixed value going forward.
 // This allows existing build systems to keep specifying one of the supported
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
+  ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
   ['PGO', [0], 'pgo no longer supported'],
