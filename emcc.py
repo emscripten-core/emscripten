@@ -1423,14 +1423,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm:
         exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      sanitize = set()
-
-      for arg in newargs:
-        if arg.startswith('-fsanitize='):
-          sanitize.update(arg.split('=', 1)[1].split(','))
-        elif arg.startswith('-fno-sanitize='):
-          sanitize.difference_update(arg.split('=', 1)[1].split(','))
-
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
 

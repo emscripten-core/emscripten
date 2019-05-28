@@ -50,7 +50,6 @@ DECLARE_SYSCALL(sigaltstack);
 DECLARE_SYSCALL(ptrace);
 DECLARE_SYSCALL(tgkill);
 DECLARE_SYSCALL(gettimeofday);
-DECLARE_SYSCALL(clock_gettime);
 DECLARE_SYSCALL(rt_sigprocmask);
 
 #define SYSCALL(x) SYS_##x
