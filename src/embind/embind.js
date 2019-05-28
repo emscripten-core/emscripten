@@ -1653,6 +1653,9 @@ var LibraryEmbind = {
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationGroup) {
+#if EMBIND_LEAKCHECK
+        console.warn("FinalizationGroup unavailable; leak checking disabled");
+#endif
         attachFinalizer = function (handle) { return handle; };
         return handle;
     }
@@ -1666,7 +1669,12 @@ var LibraryEmbind = {
             if (!$$.ptr) {
                 console.warn('object already deleted: ' + $$.ptr);
             } else {
+#if EMBIND_LEAKCHECK
+                console.warn('leaked object');
+                console.warn($$);
+#else
                 releaseClassHandle($$);
+#endif
             }
         }
     });

@@ -1221,6 +1221,12 @@ var TEXTDECODER = 1;
 // Disable this to support binary data transfer.
 var EMBIND_STD_STRING_IS_UTF8 = 1;
 
+// Embind will attach finalizers to objects with destructors.  If you
+// set EMBIND_LEAKCHECK to 1, instead of invoking the destructor, embind
+// will issue a warning to the console if a user forgets to invoke an
+// object's destructor before it goes out of scope.
+var EMBIND_LEAKCHECK = 0;
+
 // If set to 1, enables support for transferring canvases to pthreads and
 // creating WebGL contexts in them, as well as explicit swap control for GL
 // contexts. This needs browser support for the OffscreenCanvas specification.
