@@ -26,7 +26,7 @@ to find where the null pointer write occurred.
 
 Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
 ``emcc`` with ``-s SAFE_HEAP=1``. This will catch both null pointer reads and
-writes, and causes an exception, but it is a slow, and does not tell you the
+writes, and causes an exception, but it is slower, and does not tell you the
 exact line numbers unless you compile with ``-g``.
 
 UBSan will tell you exactly where the null deference happened, and works for
