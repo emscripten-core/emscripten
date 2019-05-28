@@ -2427,6 +2427,14 @@ void *getBindBuffer() {
     for extra_args in [[], ['--no-heap-copy']]:
       self.btest(path_from_root('tests', 'mmap_file.c'), expected='1', args=['--preload-file', 'data.dat'] + extra_args)
 
+  def test_mmap_and_munmap(self):
+    create_test_file('data_ro.dat', 'Test read-only file')
+    create_test_file('data_rw.dat', 'Test read-write file')
+    for extra_args in [[], ['--no-heap-copy']]:
+      preload_files = ['--preload-file', 'data_ro.dat', '--preload-file', 'data_rw.dat']
+      self.btest(path_from_root('tests', 'mmap_and_munmap.c'), expected='0', args=preload_files + extra_args)
+
+
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
