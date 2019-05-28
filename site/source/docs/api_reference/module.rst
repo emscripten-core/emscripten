@@ -74,7 +74,11 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.onAbort
 
-  If set, this function is called when abnormal program termination occurs. That can happen due to the C method ``abort()`` being called directly, or called from JavaScript, or due to a fatal problem such as being unable to fetch a necessary file during startup (like the wasm binary when running wasm), etc. After calling this function, program termination occurs (i.e., you can't use this to try to do something else instead of stopping; there is no possibility of recovering here).
+  If set, this function is called when abnormal program termination occurs. That can happen due to the C method ``abort()`` being called directly, or called from JavaScript, or due to a fatal problem such as being unable to fetch a necessary file during startup (like the wasm binary when running wasm), etc. After calling this function, program termination occurs (i.e., you can't use this to try to do something else instead of stopping; there is no possibility of recovering here). The reason for termination is passed as the parameter.
+
+.. js:attribute:: Module.onError
+
+  If set, this function is called when abnormal program termination occurs. This handler is called instead of the error being thrown, so it can be used to catch errors that cause the program to terminate. Like ``onAbort``, the reason for termination is passed as the parameter.
 
 .. js:attribute:: Module.onRuntimeInitialized
 
