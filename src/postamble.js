@@ -418,6 +418,10 @@ function abort(what) {
   ABORT = true;
   EXITSTATUS = 1;
 
+  if (Module['onError']) {
+    return Module['onError'](what);
+  }
+
 #if ASSERTIONS == 0
   throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
