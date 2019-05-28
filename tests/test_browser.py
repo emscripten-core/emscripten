@@ -2434,7 +2434,6 @@ void *getBindBuffer() {
       preload_files = ['--preload-file', 'data_ro.dat', '--preload-file', 'data_rw.dat']
       self.btest(path_from_root('tests', 'mmap_and_munmap.c'), expected='0', args=preload_files + extra_args)
 
-
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')

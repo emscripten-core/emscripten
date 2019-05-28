@@ -447,7 +447,7 @@ var SyscallsLibrary = {
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
     if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
-      return -ERRNO_CODES.EINVAL;
+      return -{{{ cDefine('EINVAL') }}};
     }
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
@@ -979,7 +979,7 @@ var SyscallsLibrary = {
 
     // addr argument must be page aligned if MAP_FIXED flag is set.
     if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
-      return -ERRNO_CODES.EINVAL;
+      return -{{{ cDefine('EINVAL') }}};
     }
 
     // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
