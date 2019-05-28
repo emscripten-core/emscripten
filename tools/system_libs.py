@@ -565,6 +565,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                            filenames=['extras.c'])
     return create_wasm_rt_lib(libname, files)
 
+  def create_wasm_ubsan_minimal_rt(libname):
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal'],
+      filenames=['ubsan_minimal_handlers.cpp'])
+    return create_wasm_rt_lib(libname, files)
+
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
@@ -775,6 +781,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
+
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
   # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
@@ -916,12 +925,20 @@ class Ports(object):
       # retrieve from remote server
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
-        from urllib.request import urlopen
+        import requests
+        response = requests.get(url)
+        data = response.content
       except ImportError:
-        # Python 2 compatibility
-        from urllib2 import urlopen
-      f = urlopen(url)
-      data = f.read()
+        try:
+          from urllib.request import urlopen
+          f = urlopen(url)
+          data = f.read()
+        except ImportError:
+          # Python 2 compatibility
+          from urllib2 import urlopen
+          f = urlopen(url)
+          data = f.read()
+
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 

@@ -511,6 +511,7 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('write_pre'):
     filename += '.jo.js'
+    temp_files.note(filename)
     f = open(filename, 'w')
     f.write(pre);
     pre = None
@@ -553,7 +554,7 @@ def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info
   if 'emitJSON' in passes: just_concat = True
   js_engine = shared.listify(js_engine)
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat))
+    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat)
 
 if __name__ == '__main__':
   ToolchainProfiler.record_process_start()

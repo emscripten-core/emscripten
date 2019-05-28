@@ -1699,6 +1699,11 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
 
+  # Currently USE PTHREADS + EXPORT ES6 doesn't work with the previously generated assertions.
+  # ES6 modules disallow re-assigning read-only properties.
+  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and shared.Settings.ASSERTIONS and receiving:
+    receiving = "assert(!ENVIRONMENT_IS_PTHREAD, 'Error: USE_PTHREADS and EXPORT_ES6 requires ASSERTIONS=0');\n" + receiving
+
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
