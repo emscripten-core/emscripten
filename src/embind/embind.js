@@ -18,7 +18,7 @@
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, _embind_repr, registeredInstances, registeredTypes, getShiftFromSize*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
-/*global finalizationGroup, attachFinalizer, removeFinalizer, releaseClassHandle, runDestructor*/
+/*global finalizationGroup, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, new_, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
@@ -1646,10 +1646,10 @@ var LibraryEmbind = {
 
   $finalizationGroup: false,
 
-  $removeFinalizer_deps: ['$finalizationGroup'],
-  $removeFinalizer: function(handle) {},
+  $detachFinalizer_deps: ['$finalizationGroup'],
+  $detachFinalizer: function(handle) {},
 
-  $attachFinalizer__deps: ['$finalizationGroup', '$removeFinalizer',
+  $attachFinalizer__deps: ['$finalizationGroup', '$detachFinalizer',
                            '$releaseClassHandle'],
   $attachFinalizer: function(handle) {
     if ('undefined' === typeof FinalizationGroup) {
@@ -1664,7 +1664,7 @@ var LibraryEmbind = {
         for (var result = iter.next(); !result.done; result = iter.next()) {
             var $$ = result.value;
             if (!$$.ptr) {
-                console.log('warning: object already deleted: ' + $$.ptr);
+                console.warn('object already deleted: ' + $$.ptr);
             } else {
                 releaseClassHandle($$);
             }
@@ -1674,7 +1674,7 @@ var LibraryEmbind = {
         finalizationGroup.register(handle, handle.$$, handle.$$);
         return handle;
     };
-    removeFinalizer = function(handle) {
+    detachFinalizer = function(handle) {
         finalizationGroup.unregister(handle.$$);
     };
     return attachFinalizer(handle);
@@ -1772,7 +1772,7 @@ var LibraryEmbind = {
   },
 
   $ClassHandle_delete__deps: ['$releaseClassHandle', '$throwBindingError',
-                              '$removeFinalizer', '$throwInstanceAlreadyDeleted'],
+                              '$detachFinalizer', '$throwInstanceAlreadyDeleted'],
   $ClassHandle_delete: function() {
     if (!this.$$.ptr) {
         throwInstanceAlreadyDeleted(this);
@@ -1782,7 +1782,7 @@ var LibraryEmbind = {
         throwBindingError('Object already scheduled for deletion');
     }
 
-    removeFinalizer(this);
+    detachFinalizer(this);
     releaseClassHandle(this.$$);
 
     if (!this.$$.preservePointerOnDelete) {
@@ -2337,7 +2337,7 @@ var LibraryEmbind = {
     '$PureVirtualError', '$readLatin1String',
     '$registerInheritedInstance', '$requireHandle',
     '$requireRegisteredType', '$throwBindingError',
-    '$unregisterInheritedInstance', '$removeFinalizer', '$attachFinalizer'],
+    '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
   _embind_create_inheriting_constructor: function(constructorName, wrapperType, properties) {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
@@ -2373,7 +2373,7 @@ var LibraryEmbind = {
         var inner = baseConstructor["implement"].apply(
             undefined,
             [this].concat(arraySlice.call(arguments)));
-        removeFinalizer(inner);
+        detachFinalizer(inner);
         var $$ = inner.$$;
         inner["notifyOnDestruction"]();
         $$.preservePointerOnDelete = true;
@@ -2389,7 +2389,7 @@ var LibraryEmbind = {
             throwBindingError("Pass correct 'this' to __destruct");
         }
 
-        removeFinalizer(this);
+        detachFinalizer(this);
         unregisterInheritedInstance(registeredClass, this.$$.ptr);
     };
 
