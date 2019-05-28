@@ -723,11 +723,12 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False, []))
 
   # Sanitizers
-  system_libs += [
-    Library('libubsan-minimal-rt-wasm', ext, create_wasm_ubsan_minimal_rt, ubsan_minimal_symbols, [libc_name], False, []),
-    Library('libsanitizer-common-rt-wasm', ext, create_wasm_common_san_rt, sanitizer_common_symbols, ['libc++abi'], False, ['memalign']),
-    Library('libubsan-rt-wasm', ext, create_wasm_ubsan_rt, ubsan_symbols, ['libsanitizer-common-rt-wasm'], False, []),
-  ]
+  if shared.Settings.WASM_BACKEND:
+    system_libs += [
+      Library('libubsan-minimal-rt-wasm', ext, create_wasm_ubsan_minimal_rt, ubsan_minimal_symbols, [libc_name], False, []),
+      Library('libsanitizer-common-rt-wasm', ext, create_wasm_common_san_rt, sanitizer_common_symbols, ['libc++abi'], False, ['memalign']),
+      Library('libubsan-rt-wasm', ext, create_wasm_ubsan_rt, ubsan_symbols, ['libsanitizer-common-rt-wasm'], False, []),
+    ]
 
   libs_to_link = []
   already_included = set()
