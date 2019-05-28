@@ -46,6 +46,17 @@ void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
   *stack_bottom = emscripten_get_stack_base();
 }
 
+char *fake_argv[] = {0};
+char *fake_envp[] = {0};
+
+char **GetArgv() {
+  return fake_argv;
+}
+
+char **GetEnviron() {
+  return fake_envp;
+}
+
 } // namespace __sanitizer
 
 #endif

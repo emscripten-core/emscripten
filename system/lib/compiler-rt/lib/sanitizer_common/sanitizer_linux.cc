@@ -610,7 +610,7 @@ static void ReadNullSepFileToArray(const char *path, char ***arr,
 }
 #endif
 
-#if !SANITIZER_OPENBSD
+#if !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 static void GetArgsAndEnv(char ***argv, char ***envp) {
 #if SANITIZER_FREEBSD
   // On FreeBSD, retrieving the argument and environment arrays is done via the
@@ -657,7 +657,7 @@ char **GetEnviron() {
   return envp;
 }
 
-#endif  // !SANITIZER_OPENBSD
+#endif  // !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 
 #if !SANITIZER_SOLARIS
 enum MutexState {
