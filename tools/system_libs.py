@@ -681,14 +681,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
 
-  Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
+  Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept', 'js_deps'])
 
-  system_libs = [Library('libc++',        'a', create_libcxx,      libcxx_symbols,      ['libc++abi'], True), # noqa
-                 Library('libc++abi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
-                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
-                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
-                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
-                 Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
+  system_libs = [Library('libc++',        'a', create_libcxx,      libcxx_symbols,      ['libc++abi'], True,  []), # noqa
+                 Library('libc++abi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False, []), # noqa
+                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False, []), # noqa
+                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False, []), # noqa
+                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False, []), # noqa
+                 Library(malloc_name(),   ext, create_malloc,      [],                  [],            False, [])] # noqa
 
   gl_name = 'libgl'
   if shared.Settings.USE_PTHREADS:
@@ -699,35 +699,32 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     gl_name += '-webgl2'
   if shared.Settings.OFFSCREEN_FRAMEBUFFER:
     gl_name += '-ofb'
-  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
+  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False, [])] # noqa
 
   if shared.Settings.USE_PTHREADS:
-    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False, [])] # noqa
     if not shared.Settings.WASM_BACKEND:
-      system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
+      system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False, [])] # noqa
     else:
-      system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
+      system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False, [])] # noqa
   else:
-    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
+    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False, [])] # noqa
 
-  system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
+  system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False, []))
 
   # if building to wasm, we need more math code, since we have less builtins
   if shared.Settings.WASM:
-    system_libs.append(Library('libc-wasm', ext, create_wasm_libc, wasm_libc_symbols, [], False))
+    system_libs.append(Library('libc-wasm', ext, create_wasm_libc, wasm_libc_symbols, [], False, []))
 
   # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
-  system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False))
+  system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False, []))
 
-  if shared.Settings.UBSAN_RUNTIME == 1:
-    system_libs += [Library('libubsan-minimal-rt-wasm', ext, create_wasm_ubsan_minimal_rt, ubsan_minimal_symbols, [libc_name], False)]
-  elif shared.Settings.UBSAN_RUNTIME == 2:
-    system_libs += [
-      Library('libsanitizer-common-rt-wasm', ext, create_wasm_common_san_rt, sanitizer_common_symbols, ['libc++abi'], False),
-      Library('libubsan-rt-wasm', ext, create_wasm_ubsan_rt, ubsan_symbols, ['libsanitizer-common-rt-wasm'], False),
-    ]
-    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
-    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
+  # Sanitizers
+  system_libs += [
+    Library('libubsan-minimal-rt-wasm', ext, create_wasm_ubsan_minimal_rt, ubsan_minimal_symbols, [libc_name], False, []),
+    Library('libsanitizer-common-rt-wasm', ext, create_wasm_common_san_rt, sanitizer_common_symbols, ['libc++abi'], False, ['memalign']),
+    Library('libubsan-rt-wasm', ext, create_wasm_ubsan_rt, ubsan_symbols, ['libsanitizer-common-rt-wasm'], False, []),
+  ]
 
   libs_to_link = []
   already_included = set()
@@ -777,6 +774,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # Recursively add dependencies
     for d in lib.deps:
       add_library(system_libs_map[d])
+
+    for d in lib.js_deps:
+      shared.Settings.EXPORTED_FUNCTIONS.append('_%s' % d)
 
   # Go over libraries to figure out which we must include
   for lib in system_libs:
