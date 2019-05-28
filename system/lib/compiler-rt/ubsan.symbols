@@ -254,7 +254,7 @@ ubsan_handlers.cc.o:
 -------- T __ubsan_handle_alignment_assumption
 -------- T __ubsan_handle_alignment_assumption_abort
 -------- T __ubsan_handle_builtin_unreachable
--------- T __ubsan_handle_cfi_bad_type
+         w __ubsan_handle_cfi_bad_type
 -------- T __ubsan_handle_cfi_check_fail
 -------- T __ubsan_handle_cfi_check_fail_abort
 -------- T __ubsan_handle_divrem_overflow
