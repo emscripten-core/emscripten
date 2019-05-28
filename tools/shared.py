@@ -458,17 +458,6 @@ def check_llvm():
       print('===========================================================================', file=sys.stderr)
       return False
 
-  if not Settings.WASM_BACKEND:
-    clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
-    clang_v = clang_v.splitlines()[0]
-    if '(emscripten ' not in clang_v:
-      logger.error('clang version does not appear to include fastcomp (%s)', str(clang_v))
-      return False
-    llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
-    if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
-      logger.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
-      logger.error('Make sure to rebuild llvm and clang after updating repos')
-
   return True
 
 
@@ -1822,6 +1811,7 @@ class Building(object):
   def link_llvm(linker_inputs, target):
     # runs llvm-link to link things.
     cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
+    cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
     output = run_process(cmd, stdout=PIPE).stdout
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
@@ -1909,14 +1899,13 @@ class Building(object):
     cmd += opts
 
     print_compiler_stage(cmd)
+    cmd = Building.get_command_with_possible_response_file(cmd)
     check_call(cmd)
     return target
 
   @staticmethod
-  def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+  def link(files, target, force_archive_contents=False, just_calculate=False):
     # "Full-featured" linking: looks into archives (duplicates lld functionality)
-    if not temp_files:
-      temp_files = configuration.get_temp_files()
     actual_files = []
     # Tracking unresolveds is necessary for .a linking, see below.
     # Specify all possible entry points to seed the linking process.
@@ -2050,40 +2039,44 @@ class Building(object):
     # tolerate people trying to link a.so a.so etc.
     actual_files = unique_ordered(actual_files)
 
-    # check for too-long command line
-    link_args = actual_files
-    # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a response file
-    response_file = None
-    if len(' '.join(link_args)) > 8192:
-      logger.debug('using response file for llvm-link')
-      response_file = temp_files.get(suffix='.response').name
-
-      link_args = ["@" + response_file]
-
-      with open(response_file, 'w') as f:
-        for arg in actual_files:
-          # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
-          # backslashes in response files, so Windows paths
-          # "c:\path\to\file.txt" with single slashes no longer work. LLVM
-          # upstream dev 3.9.0 from January 2016 still treated backslashes
-          # without escaping. To preserve compatibility with both versions of
-          # llvm-link, don't pass backslash path delimiters at all to response
-          # files, but always use forward slashes.
-          if WINDOWS:
-            arg = arg.replace('\\', '/')
-
-          # escaped double quotes allows 'space' characters in pathname the
-          # response file can use
-          f.write("\"" + arg + "\"\n")
-
     if not just_calculate:
       logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      Building.link_llvm(link_args, target)
+      Building.link_llvm(actual_files, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
-      return link_args
+      return actual_files
+
+  @staticmethod
+  def get_command_with_possible_response_file(cmd):
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(' '.join(cmd)) <= 8192:
+      return cmd
+
+    logger.debug('using response file for %s' % cmd[0])
+    temp_files = configuration.get_temp_files()
+    response_file = temp_files.get(suffix='.response').name
+
+    new_cmd = [cmd[0], "@" + response_file]
+
+    with open(response_file, 'w') as f:
+      for arg in cmd[1:]:
+        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
+        # backslashes in response files, so Windows paths
+        # "c:\path\to\file.txt" with single slashes no longer work. LLVM
+        # upstream dev 3.9.0 from January 2016 still treated backslashes
+        # without escaping. To preserve compatibility with both versions of
+        # llvm-link, don't pass backslash path delimiters at all to response
+        # files, but always use forward slashes.
+        if WINDOWS:
+          arg = arg.replace('\\', '/')
+
+        # escaped double quotes allows 'space' characters in pathname the
+        # response file can use
+        f.write("\"" + arg + "\"\n")
+
+    return new_cmd
 
   # LLVM optimizations
   # @param opt A list of LLVM optimization parameters

@@ -639,7 +639,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'malloc',
 	'free',
 	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
 	];
 
 // This list is also used to determine auto-exporting of library dependencies
@@ -712,7 +711,9 @@ var PROXY_TO_PTHREAD = 0;
 // are linked with.
 //
 // MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
-// to set this explicitly.
+// to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
+// *not* set this, so that we still do normal DCE on them, and in that case
+// you must keep relevant things alive yourself using exporting.
 var LINKABLE = 0;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
@@ -1005,9 +1006,22 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
-// example, "dce,precompute,vacuum".  When set, this overrides the default
-// passes we would normally run.
+// example, "dce,precompute,vacuum".  When set, this overrides/replaces
+// the default passes we would normally run.
+// Note that you can put any binaryen wasm-opt flag here, not just
+// passes. The key thing is that these flags are sent to the main wasm-opt
+// invocation to optimize the wasm binary, which is when we run several
+// important passes. We may also run wasm-opt for various other reasons,
+// like as part of metadce, and these flags are not passed at those times,
+// so they are a bunch of passes (+ other flags) for that one main
+// invocation.
 var BINARYEN_PASSES = "";
+
+// A comma-separated list of passes to run in the binaryen optimizer, like
+// BINARYEN_PASSES, but that is in addition to any default ones. That is,
+// setting this does not override/replace the default passes, and it is
+// appended at the end of the list of passes.
+var BINARYEN_EXTRA_PASSES = "";
 
 // Set the maximum size of memory in the wasm module (in bytes).  Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory

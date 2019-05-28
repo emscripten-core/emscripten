@@ -363,7 +363,6 @@ var LibraryGLEmulation = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
-          source = ensurePrecision(source);
         } else { // Fragment shader
           for (i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             old = source;

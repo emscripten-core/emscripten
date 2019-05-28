@@ -331,21 +331,6 @@ class sanity(RunnerCore):
       open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
     try_delete(SANITY_FILE)
     self.check_working(EMCC, WARNING)
-    # make sure sanity checks notice there is no source dir with version #
-    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'there IZ a js backend: JavaScript (asm.js, emscripten) backend')
-    try_delete(SANITY_FILE)
-    self.check_working(EMCC, 'clang version does not appear to include fastcomp')
-
-    VERSION_WARNING = 'Emscripten, llvm and clang build versions do not match, this is dangerous'
-
-    # add version number
-    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), '%s (emscripten waka : waka)' % expected_llvm_version())
-    try_delete(SANITY_FILE)
-    self.check_working(EMCC, VERSION_WARNING)
-
-    restore_and_set_up()
-
-    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], 'ASM_JS can only be set to either 1 or 2')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'

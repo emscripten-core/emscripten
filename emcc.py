@@ -1549,6 +1549,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
         newargs.append('-msimd128')
+      if shared.Settings.USE_PTHREADS:
+        newargs.append('-pthread')
     else:
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
@@ -1841,7 +1843,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = 0
           final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
         else:
-          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
+          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
         logger.debug('skipping linking: ' + str(linker_inputs))
         if not LEAVE_INPUTS_RAW:
@@ -2351,7 +2353,7 @@ def parse_args(newargs):
       options.requested_debug = newargs[i]
       newargs[i] = ''
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
-      options.debug_level = 2
+      options.debug_level = max(options.debug_level, 2)
       options.profiling = True
       newargs[i] = ''
     elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
@@ -2523,6 +2525,9 @@ def parse_args(newargs):
       settings_changes.append('SIMD=1')
     elif newargs[i] == '-mno-simd128':
       settings_changes.append('SIMD=0')
+    # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
+    elif newargs[i] == '-pthread':
+      settings_changes.append('USE_PTHREADS=1')
 
   if should_exit:
     sys.exit(0)
@@ -2705,7 +2710,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
-    passes = [('--' + p) if p[0] != '-' else p for p in shared.Settings.BINARYEN_PASSES.split(',')]
+    passes = shared.Settings.BINARYEN_PASSES.split(',') + shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
+    passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
     cmd += shared.Building.get_binaryen_feature_flags()
     if debug_info:
@@ -2840,14 +2846,19 @@ function(%(EXPORT_NAME)s) {
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
+      if shared.Settings.EXPORT_ES6:
+        script_url = "import.meta.url"
+      else:
+        script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  var _scriptDir = %(script_url)s;
   return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'src': src
+        'src': src,
+        'script_url': script_url
       }
   else:
     # Create the MODULARIZE_INSTANCE instance
