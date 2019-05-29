@@ -1849,6 +1849,7 @@ var LibraryJSEvents = {
       var touches = {};
       for(var i = 0; i < e.touches.length; ++i) {
         var touch = e.touches[i];
+        touch.changed = false;
         touches[touch.identifier] = touch;
       }
       for(var i = 0; i < e.changedTouches.length; ++i) {
