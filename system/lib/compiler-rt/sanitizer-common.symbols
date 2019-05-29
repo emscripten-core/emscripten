@@ -6,9 +6,6 @@ sanitizer_symbolizer_mac.cc.o:
 sanitizer_procmaps_mac.cc.o:
 
 sanitizer_libc.cc.o:
--------- d .L.str
--------- d .L.str.2
--------- d .L.str.3
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
 -------- T _ZN11__sanitizer11mem_is_zeroEPKcm
          U _ZN11__sanitizer13InternalAllocEmPNS_28SizeClassAllocatorLocalCacheINS_20SizeClassAllocator32INS_4AP32EEEEEm
@@ -36,50 +33,6 @@ sanitizer_libc.cc.o:
 -------- T _ZN11__sanitizer23internal_simple_strtollEPKcPS1_i
 
 sanitizer_allocator.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.21
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.37
--------- d .L.str.38
--------- d .L.str.39
--------- d .L.str.4
--------- d .L.str.40
--------- d .L.str.41
--------- d .L.str.42
--------- d .L.str.43
--------- d .L.str.44
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- d .L__func__._ZN11__sanitizer17LowLevelAllocator8AllocateEm
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -123,39 +76,9 @@ sanitizer_allocator.cc.o:
          U _ZN11__sanitizer6ReportEPKcz
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL22internal_alloc_init_muE
--------- d _ZN11__sanitizerL23allocator_out_of_memoryE
--------- d _ZN11__sanitizerL24internal_allocator_cacheE
--------- d _ZN11__sanitizerL24low_level_alloc_callbackE
--------- d _ZN11__sanitizerL25allocator_may_return_nullE
--------- d _ZN11__sanitizerL26internal_alloc_placeholderE
--------- d _ZN11__sanitizerL27internal_allocator_cache_muE
--------- d _ZN11__sanitizerL29low_level_alloc_min_alignmentE
--------- d _ZN11__sanitizerL30internal_allocator_initializedE
--------- t _ZN11__sanitizerL34ReportInternalAllocatorOutOfMemoryEm
          U __stack_pointer
 
 sanitizer_file.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- d .L__func__._ZN11__sanitizer16ReadFileToBufferEPKcPPcPmS4_mPi
          U _ZN11__sanitizer10FileExistsEPKc
 -------- T _ZN11__sanitizer10ReportFile13SetReportPathEPKc
 -------- T _ZN11__sanitizer10ReportFile17ReopenIfNecessaryEv
@@ -202,8 +125,6 @@ sanitizer_file.cc.o:
          U __stack_pointer
 
 sanitizer_tls_get_addr.cc.o:
--------- d .L.str
--------- d .L.str.1
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
 -------- T _ZN11__sanitizer12DTLS_DestroyEv
 -------- T _ZN11__sanitizer17DTLSInDestructionEPNS_4DTLSE
@@ -214,24 +135,6 @@ sanitizer_tls_get_addr.cc.o:
 sanitizer_mac_libcdep.cc.o:
 
 sanitizer_stackdepot.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.18
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -260,7 +163,6 @@ sanitizer_stackdepot.cc.o:
          U _ZN11__sanitizer3DieEv
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL8theDepotE
          U _ZSt9terminatev
 -------- W __clang_call_terminate
          U __cxa_begin_catch
@@ -269,43 +171,6 @@ sanitizer_stackdepot.cc.o:
 sanitizer_platform_limits_solaris.cc.o:
 
 sanitizer_symbolizer_posix_libcdep.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.38
--------- d .L.str.39
--------- d .L.str.4
--------- d .L.str.40
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10FileExistsEPKc
 -------- T _ZN11__sanitizer10Symbolizer12PlatformInitEv
 -------- T _ZN11__sanitizer10Symbolizer14LateInitializeEv
@@ -358,7 +223,6 @@ sanitizer_symbolizer_posix_libcdep.cc.o:
          U _ZN11__sanitizer6ReportEPKcz
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL16swift_demangle_fE
 -------- T _ZNK11__sanitizer16Addr2LineProcess18ReachedEndOfOutputEPKcm
 -------- W _ZNK11__sanitizer16Addr2LineProcess7GetArgVEPKcRA6_S2_
          U _ZSt9terminatev
@@ -385,10 +249,6 @@ sanitizer_symbolizer_posix_libcdep.cc.o:
 sanitizer_openbsd.cc.o:
 
 sanitizer_stacktrace.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.2
--------- d .L.str.3
 -------- T _ZN11__sanitizer10StackTrace12GetCurrentPcEv
 -------- T _ZN11__sanitizer10StackTrace20GetNextInstructionPcEm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
@@ -408,14 +268,6 @@ sanitizer_coverage_win_dll_thunk.cc.o:
 sanitizer_mac.cc.o:
 
 sanitizer_common_libcdep.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -433,8 +285,6 @@ sanitizer_common_libcdep.cc.o:
          U _ZN11__sanitizer3DieEv
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL19sandboxing_callbackE
--------- d _ZN11__sanitizerL28SoftRssLimitExceededCallbackE
          U _ZSt9terminatev
 -------- W __clang_call_terminate
          U __cxa_begin_catch
@@ -442,24 +292,6 @@ sanitizer_common_libcdep.cc.o:
          U __stack_pointer
 
 sanitizer_common.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.18
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -512,14 +344,8 @@ sanitizer_common.cc.o:
          U _ZN11__sanitizer7GetArgvEv
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL14g_total_mmapedE
--------- d _ZN11__sanitizerL21binary_name_cache_strE
--------- d _ZN11__sanitizerL22process_name_cache_strE
--------- d _ZN11__sanitizerL7MFHooksE
 -------- T _ZNK11__sanitizer12LoadedModule15containsAddressEm
          U _ZSt9terminatev
--------- d _ZZ31__sanitizer_acquire_crash_stateE14in_crash_state
--------- d _ZZN11__sanitizer23ReportMmapFailureAndDieEmPKcS1_ibE15recursion_count
 -------- W __clang_call_terminate
          U __cxa_begin_catch
 -------- T __sanitizer_acquire_crash_state
@@ -536,20 +362,6 @@ sanitizer_rtems.cc.o:
 sanitizer_libignore.cc.o:
 
 sanitizer_coverage_libcdep_new.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -575,11 +387,7 @@ sanitizer_coverage_libcdep_new.cc.o:
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9CloseFileEi
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- t _ZN8__sancov12_GLOBAL__N_119WriteModuleCoverageEPcPKcPKmm
--------- d _ZN8__sancov12_GLOBAL__N_119pc_guard_controllerE
--------- d _ZN8__sancov12_GLOBAL__N_15MagicE
          U _ZN8__sancov21InitializeSancovFlagsEv
--------- d _ZZN11__sanitizer18InitializeCoverageEbPKcE16coverage_enabled
 -------- W __sancov_lowest_stack
 -------- W __sanitizer_cov_8bit_counters_init
 -------- T __sanitizer_cov_dump
@@ -611,12 +419,16 @@ sanitizer_errno.cc.o:
 -------- D _ZN11__sanitizer16errno_EOWNERDEADE
 
 sanitizer_emscripten.cc.o:
+-------- T _ZN11__sanitizer10GetEnvironEv
          U _ZN11__sanitizer12LoadedModule5clearEv
 -------- T _ZN11__sanitizer13ListOfModules12fallbackInitEv
 -------- T _ZN11__sanitizer13ListOfModules4initEv
          w _ZN11__sanitizer14real_sigactionEiPKvPv
 -------- T _ZN11__sanitizer18internal_sigactionEiPKvPv
 -------- T _ZN11__sanitizer26GetThreadStackTopAndBottomEbPmS0_
+-------- T _ZN11__sanitizer7GetArgvEv
+-------- D _ZN11__sanitizer9fake_argvE
+-------- D _ZN11__sanitizer9fake_envpE
          U emscripten_get_stack_base
          U emscripten_get_stack_top
          U sigaction
@@ -628,32 +440,6 @@ sanitizer_linux_libcdep.cc.o:
 sanitizer_platform_limits_netbsd.cc.o:
 
 sanitizer_posix_libcdep.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- d .L__func__._ZN11__sanitizer23SetAlternateSignalStackEv
          U _ZN11__sanitizer10GetTlsSizeEv
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
@@ -722,8 +508,6 @@ sanitizer_posix_libcdep.cc.o:
          U _ZN11__sanitizer6ReportEPKcz
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- t _ZN11__sanitizerL21MaybeInstallSigactionEiPFviPvS0_E
--------- t _ZN11__sanitizerL6setlimEiy
 -------- T _ZNK11__sanitizer13SignalContext15IsStackOverflowEv
          U _ZSt9terminatev
 -------- W __clang_call_terminate
@@ -755,24 +539,6 @@ sanitizer_coverage_fuchsia.cc.o:
 sanitizer_linux_s390.cc.o:
 
 sanitizer_printf.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
 -------- W OnPrint
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
@@ -791,191 +557,9 @@ sanitizer_printf.cc.o:
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
 -------- T _ZN11__sanitizer9VSNPrintfEPciPKcPv
--------- t _ZN11__sanitizerL12AppendNumberEPPcPKcyhhbbb
--------- t _ZN11__sanitizerL16SharedPrintfCodeEbPKcPv
--------- d _ZN11__sanitizerL23PrintfAndReportCallbackE
--------- t _ZN11__sanitizerL24SharedPrintfCodeNoBufferEbPciPKcPv
          U __stack_pointer
 
 sanitizer_flags.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.100
--------- d .L.str.101
--------- d .L.str.102
--------- d .L.str.103
--------- d .L.str.104
--------- d .L.str.105
--------- d .L.str.106
--------- d .L.str.107
--------- d .L.str.108
--------- d .L.str.109
--------- d .L.str.11
--------- d .L.str.110
--------- d .L.str.111
--------- d .L.str.112
--------- d .L.str.113
--------- d .L.str.114
--------- d .L.str.115
--------- d .L.str.116
--------- d .L.str.117
--------- d .L.str.118
--------- d .L.str.119
--------- d .L.str.12
--------- d .L.str.120
--------- d .L.str.121
--------- d .L.str.122
--------- d .L.str.123
--------- d .L.str.124
--------- d .L.str.125
--------- d .L.str.126
--------- d .L.str.127
--------- d .L.str.128
--------- d .L.str.129
--------- d .L.str.13
--------- d .L.str.130
--------- d .L.str.131
--------- d .L.str.132
--------- d .L.str.133
--------- d .L.str.134
--------- d .L.str.135
--------- d .L.str.136
--------- d .L.str.137
--------- d .L.str.138
--------- d .L.str.139
--------- d .L.str.14
--------- d .L.str.140
--------- d .L.str.141
--------- d .L.str.142
--------- d .L.str.143
--------- d .L.str.144
--------- d .L.str.145
--------- d .L.str.146
--------- d .L.str.147
--------- d .L.str.148
--------- d .L.str.149
--------- d .L.str.15
--------- d .L.str.150
--------- d .L.str.151
--------- d .L.str.152
--------- d .L.str.153
--------- d .L.str.154
--------- d .L.str.155
--------- d .L.str.156
--------- d .L.str.157
--------- d .L.str.158
--------- d .L.str.159
--------- d .L.str.16
--------- d .L.str.160
--------- d .L.str.161
--------- d .L.str.162
--------- d .L.str.163
--------- d .L.str.164
--------- d .L.str.165
--------- d .L.str.166
--------- d .L.str.167
--------- d .L.str.168
--------- d .L.str.169
--------- d .L.str.17
--------- d .L.str.170
--------- d .L.str.171
--------- d .L.str.172
--------- d .L.str.173
--------- d .L.str.174
--------- d .L.str.175
--------- d .L.str.176
--------- d .L.str.177
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.37
--------- d .L.str.38
--------- d .L.str.39
--------- d .L.str.4
--------- d .L.str.40
--------- d .L.str.41
--------- d .L.str.42
--------- d .L.str.43
--------- d .L.str.44
--------- d .L.str.45
--------- d .L.str.46
--------- d .L.str.47
--------- d .L.str.48
--------- d .L.str.49
--------- d .L.str.5
--------- d .L.str.50
--------- d .L.str.51
--------- d .L.str.52
--------- d .L.str.53
--------- d .L.str.54
--------- d .L.str.55
--------- d .L.str.56
--------- d .L.str.57
--------- d .L.str.58
--------- d .L.str.59
--------- d .L.str.6
--------- d .L.str.60
--------- d .L.str.61
--------- d .L.str.62
--------- d .L.str.63
--------- d .L.str.64
--------- d .L.str.65
--------- d .L.str.66
--------- d .L.str.67
--------- d .L.str.68
--------- d .L.str.69
--------- d .L.str.7
--------- d .L.str.70
--------- d .L.str.71
--------- d .L.str.72
--------- d .L.str.73
--------- d .L.str.74
--------- d .L.str.75
--------- d .L.str.76
--------- d .L.str.77
--------- d .L.str.78
--------- d .L.str.79
--------- d .L.str.8
--------- d .L.str.80
--------- d .L.str.81
--------- d .L.str.82
--------- d .L.str.83
--------- d .L.str.84
--------- d .L.str.85
--------- d .L.str.86
--------- d .L.str.87
--------- d .L.str.88
--------- d .L.str.89
--------- d .L.str.9
--------- d .L.str.90
--------- d .L.str.91
--------- d .L.str.92
--------- d .L.str.93
--------- d .L.str.94
--------- d .L.str.95
--------- d .L.str.96
--------- d .L.str.97
--------- d .L.str.98
--------- d .L.str.99
          U _ZN11__sanitizer10FlagParser15RegisterHandlerEPKcPNS_15FlagHandlerBaseES2_
          U _ZN11__sanitizer10FlagParser5AllocE
          U _ZN11__sanitizer10FlagParser9ParseFileEPKcb
@@ -1031,29 +615,6 @@ sanitizer_flags.cc.o:
 sanitizer_coverage_win_dynamic_runtime_thunk.cc.o:
 
 sanitizer_posix.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- d .Lswitch.table._ZNK11__sanitizer13SignalContext8DescribeEv
          U _ZN11__sanitizer10ReportFile17ReopenIfNecessaryEv
 -------- T _ZN11__sanitizer10ReportFile5WriteEPKcm
 -------- T _ZN11__sanitizer10UnmapOrDieEPvm
@@ -1121,24 +682,6 @@ sanitizer_allocator_checks.cc.o:
          U __errno_location
 
 sanitizer_allocator_report.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer11GetPageSizeEv
          U _ZN11__sanitizer14PageSizeCachedE
          U _ZN11__sanitizer15ColorizeReportsEv
@@ -1165,30 +708,6 @@ sanitizer_allocator_report.cc.o:
          U __stack_pointer
 
 sanitizer_thread_registry.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer13BlockingMutex11CheckLockedEv
          U _ZN11__sanitizer13BlockingMutex4LockEv
@@ -1251,19 +770,6 @@ sanitizer_thread_registry.cc.o:
 sanitizer_solaris.cc.o:
 
 sancov_flags.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10FlagParser11ParseStringEPKc
          U _ZN11__sanitizer10FlagParser15RegisterHandlerEPKcPNS_15FlagHandlerBaseES2_
          U _ZN11__sanitizer10FlagParser21PrintFlagDescriptionsEv
@@ -1289,36 +795,6 @@ sancov_flags.cc.o:
          U __stack_pointer
 
 sanitizer_stacktrace_printer.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
 -------- T _ZN11__sanitizer10RenderDataEPNS_20InternalScopedStringEPKcPKNS_8DataInfoES3_
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
 -------- T _ZN11__sanitizer11RenderFrameEPNS_20InternalScopedStringEPKciRKNS_11AddressInfoEbS3_S3_
@@ -1332,49 +808,11 @@ sanitizer_stacktrace_printer.cc.o:
 -------- T _ZN11__sanitizer20RenderSourceLocationEPNS_20InternalScopedStringEPKciibS3_
          U _ZN11__sanitizer3DieEv
          U _ZN11__sanitizer6ReportEPKcz
--------- d _ZN11__sanitizerL14kDefaultFormatE
          U __stack_pointer
 
 sanitizer_stacktrace_sparc.cc.o:
 
 sanitizer_symbolizer_libcdep.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.37
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
 -------- T _ZN11__sanitizer10ExtractIntEPKcS1_Pi
 -------- T _ZN11__sanitizer10Symbolizer11SymbolizePCEm
          U _ZN11__sanitizer10Symbolizer11symbolizer_E
@@ -1479,25 +917,7 @@ sanitizer_procmaps_linux.cc.o:
 sanitizer_win.cc.o:
 
 sanitizer_linux.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.8
--------- d .L.str.9
--------- d .Lswitch.table._ZN11__sanitizer19GetHandleSignalModeEi
 -------- T _ZN11__sanitizer10FileExistsEPKc
--------- T _ZN11__sanitizer10GetEnvironEv
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
 -------- T _ZN11__sanitizer11GetPageSizeEv
 -------- T _ZN11__sanitizer11MaybeReexecEv
@@ -1538,7 +958,6 @@ sanitizer_linux.cc.o:
 -------- T _ZN11__sanitizer15internal_renameEPKcS1_
          U _ZN11__sanitizer15internal_strlenEPKc
 -------- T _ZN11__sanitizer15internal_unlinkEPKc
-         U _ZN11__sanitizer16ReadFileToBufferEPKcPPcPmS4_mPi
 -------- T _ZN11__sanitizer16internal_getppidEv
 -------- T _ZN11__sanitizer16internal_iserrorEmPi
          U _ZN11__sanitizer16internal_strncmpEPKcS1_m
@@ -1573,16 +992,11 @@ sanitizer_linux.cc.o:
 -------- T _ZN11__sanitizer6GetTidEv
          U _ZN11__sanitizer6ReportEPKcz
 -------- T _ZN11__sanitizer6TgKillEiyi
--------- T _ZN11__sanitizer7GetArgvEv
 -------- T _ZN11__sanitizer8NanoTimeEv
          U _ZN11__sanitizer8RawWriteEPKc
 -------- T _ZN11__sanitizer9CheckASLREv
 -------- T _ZN11__sanitizer9GetRandomEPvmb
-         U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- t _ZN11__sanitizerL22ReadNullSepFileToArrayEPKcPPPci
--------- t _ZN11__sanitizerL9GetPcSpBpEPvPmS1_S1_
 -------- T _ZNK11__sanitizer13SignalContext12GetWriteFlagEv
-         w __libc_stack_end
          U __stack_pointer
          U __syscall10
          U __syscall11
@@ -1620,18 +1034,6 @@ sanitizer_linux.cc.o:
          U sysconf
 
 sanitizer_symbolizer.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
 -------- D _ZN11__sanitizer10Symbolizer11symbolizer_E
 -------- T _ZN11__sanitizer10Symbolizer15ModuleNameOwner12GetOwnedCopyEPKc
 -------- T _ZN11__sanitizer10Symbolizer15SymbolizerScopeC1EPKS0_
@@ -1679,22 +1081,6 @@ sanitizer_symbolizer.cc.o:
 sanitizer_procmaps_solaris.cc.o:
 
 sanitizer_suppressions.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10FileExistsEPKc
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
@@ -1740,38 +1126,6 @@ sanitizer_suppressions.cc.o:
 sanitizer_coverage_win_sections.cc.o:
 
 sanitizer_symbolizer_report.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10Symbolizer11SymbolizePCEm
          U _ZN11__sanitizer10Symbolizer9GetOrInitEv
          U _ZN11__sanitizer10UnmapOrDieEPvm
@@ -1817,8 +1171,6 @@ sanitizer_symbolizer_report.cc.o:
          U _ZN11__sanitizer6ReportEPKcz
          U _ZN11__sanitizer8RawWriteEPKc
          U _ZN11__sanitizer9MmapOrDieEmPKcb
--------- d _ZN11__sanitizerL16reporting_threadE
--------- d _ZN11__sanitizerL26CommonSanitizerReportMutexE
          U _ZNK11__sanitizer10StackTrace5PrintEv
          U _ZNK11__sanitizer13SignalContext10GetAddressEv
          U _ZNK11__sanitizer13SignalContext12GetWriteFlagEv
@@ -1826,9 +1178,6 @@ sanitizer_symbolizer_report.cc.o:
          U _ZNK11__sanitizer13SignalContext15IsStackOverflowEv
          U _ZNK11__sanitizer13SignalContext8DescribeEv
          U _ZSt9terminatev
--------- d _ZZN11__sanitizer21ScopedErrorReportLockC1EvE3msg
--------- d _ZZN11__sanitizer23StartReportDeadlySignalEvE13kDeadlySignal
--------- d _ZZN11__sanitizerL23ReportStackOverflowImplERKNS_13SignalContextEjPFvS2_PKvPNS_18BufferedStackTraceEES4_E12kDescription
 -------- W __clang_call_terminate
          U __cxa_begin_catch
          U __stack_pointer
@@ -1839,7 +1188,6 @@ sanitizer_win_weak_interception.cc.o:
 sanitizer_platform_limits_openbsd.cc.o:
 
 sanitizer_termination.cc.o:
--------- d .L.str
 -------- T _ZN11__sanitizer11CheckFailedEPKciS1_yy
 -------- T _ZN11__sanitizer14AddDieCallbackEPFvvE
          U _ZN11__sanitizer14internal__exitEi
@@ -1852,10 +1200,6 @@ sanitizer_termination.cc.o:
 -------- T _ZN11__sanitizer3DieEv
          U _ZN11__sanitizer5AbortEv
          U _ZN11__sanitizer6ReportEPKcz
--------- d _ZN11__sanitizerL15UserDieCallbackE
--------- d _ZN11__sanitizerL19CheckFailedCallbackE
--------- d _ZN11__sanitizerL20InternalDieCallbacksE
--------- d _ZZN11__sanitizer11CheckFailedEPKciS1_yyE9num_calls
 -------- T __sanitizer_set_death_callback
          U __stack_pointer
 
@@ -1864,29 +1208,6 @@ sanitizer_stoptheworld_mac.cc.o:
 sanitizer_symbolizer_markup.cc.o:
 
 sanitizer_deadlock_detector1.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer12InternalFreeEPvPNS_28SizeClassAllocatorLocalCacheINS_20SizeClassAllocator32INS_4AP32EEEEE
          U _ZN11__sanitizer13InternalAllocEmPNS_28SizeClassAllocatorLocalCacheINS_20SizeClassAllocator32INS_4AP32EEEEEm
@@ -1959,22 +1280,6 @@ sanitizer_unwind_win.cc.o:
 sanitizer_platform_limits_linux.cc.o:
 
 sanitizer_stacktrace_libcdep.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.9
          U _ZN11__sanitizer10RenderDataEPNS_20InternalScopedStringEPKcPKNS_8DataInfoES3_
          U _ZN11__sanitizer10Symbolizer11SymbolizePCEm
          U _ZN11__sanitizer10Symbolizer13SymbolizeDataEmPNS_8DataInfoE
@@ -2014,18 +1319,6 @@ sanitizer_procmaps_common.cc.o:
 sanitizer_coverage_win_weak_interception.cc.o:
 
 sanitizer_flag_parser.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
 -------- T _ZN11__sanitizer10FlagParser10ll_strndupEPKcm
 -------- T _ZN11__sanitizer10FlagParser10parse_flagEv
 -------- T _ZN11__sanitizer10FlagParser11ParseStringEPKc

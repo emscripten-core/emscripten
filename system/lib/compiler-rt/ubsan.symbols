@@ -1,8 +1,5 @@
 
 ubsan_type_hash_itanium.cc.o:
--------- d .L.str
--------- t _ZL16findBaseAtOffsetPKN10__cxxabiv117__class_type_infoEl
--------- t _ZL21isDerivedFromAtOffsetPKN10__cxxabiv117__class_type_infoES2_l
          U _ZN11__sanitizer23IsAccessibleMemoryRangeEmm
 -------- T _ZN7__ubsan16checkDynamicTypeEPvS0_m
 -------- T _ZN7__ubsan28getDynamicTypeInfoFromVtableEPv
@@ -10,31 +7,10 @@ ubsan_type_hash_itanium.cc.o:
          U _ZTIN10__cxxabiv120__si_class_type_infoE
          U _ZTIN10__cxxabiv121__vmi_class_type_infoE
          U _ZTISt9type_info
--------- d _ZZL27getTypeCacheHashTableBucketmE21__ubsan_vptr_hash_set
          U __dynamic_cast
          U __ubsan_vptr_type_cache
 
 ubsan_flags.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
          U _ZN11__sanitizer10FlagParser11ParseStringEPKc
          U _ZN11__sanitizer10FlagParser15RegisterHandlerEPKcPNS_15FlagHandlerBaseES2_
          U _ZN11__sanitizer10FlagParser21PrintFlagDescriptionsEv
@@ -72,17 +48,6 @@ ubsan_flags.cc.o:
          U getenv
 
 ubsan_monitor.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- d _ZL10CurrentUBR
          U _ZN11__sanitizer10UnmapOrDieEPvm
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer11GetPageSizeEv
@@ -109,13 +74,6 @@ ubsan_signals_standalone.cc.o:
 -------- T _ZN7__ubsan23InitializeDeadlySignalsEv
 
 ubsan_value.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.2
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
          U _ZN11__sanitizer15internal_memcpyEPvPKvm
 -------- T _ZNK7__ubsan5Value12getSIntValueEv
@@ -131,100 +89,6 @@ ubsan_value.cc.o:
 ubsan_win_dll_thunk.cc.o:
 
 ubsan_handlers.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.37
--------- d .L.str.38
--------- d .L.str.39
--------- d .L.str.4
--------- d .L.str.40
--------- d .L.str.41
--------- d .L.str.42
--------- d .L.str.43
--------- d .L.str.44
--------- d .L.str.45
--------- d .L.str.46
--------- d .L.str.47
--------- d .L.str.48
--------- d .L.str.49
--------- d .L.str.5
--------- d .L.str.50
--------- d .L.str.51
--------- d .L.str.52
--------- d .L.str.53
--------- d .L.str.54
--------- d .L.str.55
--------- d .L.str.56
--------- d .L.str.57
--------- d .L.str.58
--------- d .L.str.59
--------- d .L.str.6
--------- d .L.str.60
--------- d .L.str.61
--------- d .L.str.62
--------- d .L.str.63
--------- d .L.str.64
--------- d .L.str.65
--------- d .L.str.66
--------- d .L.str.67
--------- d .L.str.68
--------- d .L.str.69
--------- d .L.str.7
--------- d .L.str.70
--------- d .L.str.71
--------- d .L.str.72
--------- d .L.str.73
--------- d .L.str.74
--------- d .L.str.75
--------- d .L.str.8
--------- d .L.str.9
--------- t _ZL16handleNonNullArgPN7__ubsan14NonNullArgDataENS_13ReportOptionsEb
--------- t _ZL17handleCFIBadIcallPN7__ubsan16CFICheckFailDataEmNS_13ReportOptionsE
--------- t _ZL19handleNonNullReturnPN7__ubsan17NonNullReturnDataEPNS_14SourceLocationENS_13ReportOptionsEb
--------- t _ZL20handleInvalidBuiltinPN7__ubsan18InvalidBuiltinDataENS_13ReportOptionsE
--------- t _ZL21handleOutOfBoundsImplPN7__ubsan15OutOfBoundsDataEmNS_13ReportOptionsE
--------- t _ZL22handleLoadInvalidValuePN7__ubsan16InvalidValueDataEmNS_13ReportOptionsE
--------- t _ZL22handleTypeMismatchImplPN7__ubsan16TypeMismatchDataEmNS_13ReportOptionsE
--------- t _ZL23handleFloatCastOverflowPvmN7__ubsan13ReportOptionsE
--------- t _ZL23handleMissingReturnImplPN7__ubsan15UnreachableDataENS_13ReportOptionsE
--------- t _ZL24handleDivremOverflowImplPN7__ubsan12OverflowDataEmmNS_13ReportOptionsE
--------- t _ZL24handleImplicitConversionPN7__ubsan22ImplicitConversionDataENS_13ReportOptionsEmm
--------- t _ZL24handleNegateOverflowImplPN7__ubsan12OverflowDataEmNS_13ReportOptionsE
--------- t _ZL25handleIntegerOverflowImplIN7__ubsan5ValueEEvPNS0_12OverflowDataEmPKcT_NS0_13ReportOptionsE
--------- t _ZL25handlePointerOverflowImplPN7__ubsan19PointerOverflowDataEmmNS_13ReportOptionsE
--------- t _ZL25handleVLABoundNotPositivePN7__ubsan12VLABoundDataEmNS_13ReportOptionsE
--------- t _ZL26handleFunctionTypeMismatchPN7__ubsan24FunctionTypeMismatchDataEmNS_13ReportOptionsE
--------- t _ZL26handleShiftOutOfBoundsImplPN7__ubsan20ShiftOutOfBoundsDataEmmNS_13ReportOptionsE
--------- t _ZL28handleBuiltinUnreachableImplPN7__ubsan15UnreachableDataENS_13ReportOptionsE
--------- t _ZL29handleAlignmentAssumptionImplPN7__ubsan23AlignmentAssumptionDataEmmmNS_13ReportOptionsE
          U _ZN11__sanitizer10Symbolizer27GetModuleNameAndOffsetForPCEmPPKcPm
          U _ZN11__sanitizer10Symbolizer9GetOrInitEv
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
@@ -308,104 +172,12 @@ ubsan_diag_standalone.cc.o:
 ubsan_type_hash_win.cc.o:
 
 ubsan_init_standalone.cc.o:
--------- t _GLOBAL__sub_I_ubsan_init_standalone.cc
          U _ZN7__ubsan16InitAsStandaloneEv
          U _ZN7__ubsan23InitializeDeadlySignalsEv
 
 ubsan_win_dynamic_runtime_thunk.cc.o:
 
 ubsan_diag.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.20
--------- d .L.str.21
--------- d .L.str.22
--------- d .L.str.23
--------- d .L.str.24
--------- d .L.str.25
--------- d .L.str.26
--------- d .L.str.27
--------- d .L.str.28
--------- d .L.str.29
--------- d .L.str.3
--------- d .L.str.30
--------- d .L.str.31
--------- d .L.str.32
--------- d .L.str.33
--------- d .L.str.34
--------- d .L.str.35
--------- d .L.str.36
--------- d .L.str.37
--------- d .L.str.38
--------- d .L.str.39
--------- d .L.str.4
--------- d .L.str.40
--------- d .L.str.41
--------- d .L.str.42
--------- d .L.str.43
--------- d .L.str.44
--------- d .L.str.45
--------- d .L.str.46
--------- d .L.str.47
--------- d .L.str.48
--------- d .L.str.49
--------- d .L.str.5
--------- d .L.str.50
--------- d .L.str.51
--------- d .L.str.52
--------- d .L.str.53
--------- d .L.str.54
--------- d .L.str.55
--------- d .L.str.58
--------- d .L.str.59
--------- d .L.str.6
--------- d .L.str.60
--------- d .L.str.61
--------- d .L.str.62
--------- d .L.str.63
--------- d .L.str.64
--------- d .L.str.65
--------- d .L.str.66
--------- d .L.str.67
--------- d .L.str.68
--------- d .L.str.69
--------- d .L.str.7
--------- d .L.str.70
--------- d .L.str.71
--------- d .L.str.72
--------- d .L.str.73
--------- d .L.str.74
--------- d .L.str.75
--------- d .L.str.76
--------- d .L.str.77
--------- d .L.str.78
--------- d .L.str.79
--------- d .L.str.8
--------- d .L.str.80
--------- d .L.str.81
--------- d .L.str.82
--------- d .L.str.83
--------- d .L.str.84
--------- d .L.str.85
--------- d .L.str.9
--------- d .Lswitch.table._ZN7__ubsan12ScopedReportD2Ev
--------- d .Lswitch.table._ZN7__ubsan14IsPCSuppressedENS_9ErrorTypeEmPKc
--------- t _ZL10RenderTextPN11__sanitizer20InternalScopedStringEPKcPKN7__ubsan4Diag3ArgE
--------- d _ZL10kVptrCheck
--------- d _ZL15suppression_ctx
--------- d _ZL17kSuppressionTypes
--------- d _ZL23suppression_placeholder
          U _ZN11__sanitizer10Symbolizer11SymbolizePCEm
          U _ZN11__sanitizer10Symbolizer27GetModuleNameAndOffsetForPCEmPPKcPm
          U _ZN11__sanitizer10Symbolizer8DemangleEPKc
@@ -476,9 +248,6 @@ ubsan_win_weak_interception.cc.o:
 ubsan_init_standalone_preinit.cc.o:
 
 ubsan_init.cc.o:
--------- d .L.str
--------- d _ZL13ubsan_init_mu
--------- d _ZL17ubsan_initialized
          U _ZN11__sanitizer15CacheBinaryNameEv
 -------- W _ZN11__sanitizer15StaticSpinMutex8LockSlowEv
          U _ZN11__sanitizer17SanitizerToolNameE
@@ -494,28 +263,6 @@ ubsan_init.cc.o:
          U __sanitizer_set_report_path
 
 ubsan_handlers_cxx.cc.o:
--------- d .L.str
--------- d .L.str.1
--------- d .L.str.10
--------- d .L.str.11
--------- d .L.str.12
--------- d .L.str.13
--------- d .L.str.14
--------- d .L.str.15
--------- d .L.str.16
--------- d .L.str.17
--------- d .L.str.18
--------- d .L.str.19
--------- d .L.str.2
--------- d .L.str.21
--------- d .L.str.3
--------- d .L.str.4
--------- d .L.str.5
--------- d .L.str.6
--------- d .L.str.7
--------- d .L.str.8
--------- d .L.str.9
--------- t _ZL26HandleDynamicTypeCacheMissPN7__ubsan24DynamicTypeCacheMissDataEmmNS_13ReportOptionsE
          U _ZN11__sanitizer10Symbolizer27GetModuleNameAndOffsetForPCEmPPKcPm
          U _ZN11__sanitizer10Symbolizer9GetOrInitEv
          U _ZN11__sanitizer11CheckFailedEPKciS1_yy
