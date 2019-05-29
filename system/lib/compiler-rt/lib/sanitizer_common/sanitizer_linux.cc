@@ -484,6 +484,8 @@ tid_t GetTid() {
   return internal_syscall(SYSCALL(getthrid));
 #elif SANITIZER_SOLARIS
   return thr_self();
+#elif SANITIZER_EMSCRIPTEN
+  return (tid_t) pthread_self();
 #else
   return internal_syscall(SYSCALL(gettid));
 #endif

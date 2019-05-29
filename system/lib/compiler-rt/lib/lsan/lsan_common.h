@@ -41,6 +41,8 @@
 #elif defined(__arm__) && \
     SANITIZER_LINUX && !SANITIZER_ANDROID
 #define CAN_SANITIZE_LEAKS 1
+#elif SANITIZER_EMSCRIPTEN
+#define CAN_SANITIZE_LEAKS 1
 #else
 #define CAN_SANITIZE_LEAKS 0
 #endif

@@ -323,14 +323,22 @@ void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
                          kReachable);
 }
 
+#if SANITIZER_EMSCRIPTEN
+extern "C" uptr emscripten_get_heap_size();
+#endif
+
 static void ProcessRootRegion(Frontier *frontier,
                               const RootRegion &root_region) {
+#if SANITIZER_EMSCRIPTEN
+  ScanRootRegion(frontier, root_region, 0, emscripten_get_heap_size(), true);
+#else
   MemoryMappingLayout proc_maps(/*cache_enabled*/ true);
   MemoryMappedSegment segment;
   while (proc_maps.Next(&segment)) {
     ScanRootRegion(frontier, root_region, segment.start, segment.end,
                    segment.IsReadable());
   }
+#endif // SANITIZER_EMSCRIPTEN
 }
 
 // Scans root regions for heap pointers.
@@ -556,8 +564,10 @@ static void CheckForLeaksCallback(const SuspendedThreadsList &suspended_threads,
   CheckForLeaksParam *param = reinterpret_cast<CheckForLeaksParam *>(arg);
   CHECK(param);
   CHECK(!param->success);
+#if !SANITIZER_EMSCRIPTEN
   ReportUnsuspendedThreads(suspended_threads);
   ClassifyAllChunks(suspended_threads);
+#endif
   ForEachChunk(CollectLeaksCb, &param->leak_report);
   // Clean up for subsequent leak checks. This assumes we did not overwrite any
   // kIgnored tags.
@@ -586,7 +596,7 @@ static bool CheckForLeaks() {
         "HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)\n");
     Die();
   }
-  param.leak_report.ApplySuppressions();
+  //param.leak_report.ApplySuppressions();
   uptr unsuppressed_count = param.leak_report.UnsuppressedLeakCount();
   if (unsuppressed_count > 0) {
     Decorator d;

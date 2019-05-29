@@ -15,6 +15,7 @@
 
 #include "sanitizer_platform.h"
 #include "sanitizer_common.h"
+#include "sanitizer_stoptheworld.h"
 
 #include <signal.h>
 
@@ -84,6 +85,21 @@ char **GetArgv() {
 
 char **GetEnviron() {
   return fake_envp;
+}
+
+uptr GetTlsSize() {
+  return 0;
+}
+
+void InitTlsSize() { }
+
+void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
+                          uptr *tls_addr, uptr *tls_size) {
+  *stk_addr = *stk_size = *tls_addr = *tls_size = 0;
+}
+
+void StopTheWorld(StopTheWorldCallback callback, void *argument) {
+  callback(SuspendedThreadsList(), argument);
 }
 
 } // namespace __sanitizer

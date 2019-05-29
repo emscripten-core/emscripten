@@ -132,7 +132,7 @@ const interpose_substitution substitution_##func_name[] \
     extern "C" ret_type func(__VA_ARGS__);
 # define DECLARE_WRAPPER_WINAPI(ret_type, func, ...) \
     extern "C" __declspec(dllimport) ret_type __stdcall func(__VA_ARGS__);
-#elif SANITIZER_RTEMS
+#elif SANITIZER_RTEMS || SANITIZER_EMSCRIPTEN
 # define WRAP(x) x
 # define WRAPPER_NAME(x) #x
 # define INTERCEPTOR_ATTRIBUTE
