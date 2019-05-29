@@ -1274,6 +1274,47 @@ sanitizer_win_dynamic_runtime_thunk.cc.o:
 sanitizer_deadlock_detector2.cc.o:
 
 sanitizer_platform_limits_posix.cc.o:
+-------- D _ZN11__sanitizer10sa_siginfoE
+-------- D _ZN11__sanitizer10timeval_szE
+-------- D _ZN11__sanitizer11sigset_t_szE
+-------- D _ZN11__sanitizer12mbstate_t_szE
+-------- D _ZN11__sanitizer12pthread_t_szE
+-------- D _ZN11__sanitizer12siginfo_t_szE
+-------- D _ZN11__sanitizer12struct_tm_szE
+-------- D _ZN11__sanitizer13struct_tms_szE
+-------- D _ZN11__sanitizer14si_SEGV_ACCERRE
+-------- D _ZN11__sanitizer14si_SEGV_MAPERRE
+-------- D _ZN11__sanitizer14struct_stat_szE
+-------- D _ZN11__sanitizer14struct_utmp_szE
+-------- D _ZN11__sanitizer15struct_group_szE
+-------- D _ZN11__sanitizer15struct_ifreq_szE
+-------- D _ZN11__sanitizer15struct_regex_szE
+-------- D _ZN11__sanitizer15struct_utmpx_szE
+-------- D _ZN11__sanitizer16struct_passwd_szE
+-------- D _ZN11__sanitizer16struct_rusage_szE
+-------- D _ZN11__sanitizer16struct_stat64_szE
+-------- D _ZN11__sanitizer17IOCTL_NOT_PRESENTE
+-------- D _ZN11__sanitizer17pthread_cond_t_szE
+-------- D _ZN11__sanitizer17struct_termios_szE
+-------- D _ZN11__sanitizer17struct_utsname_szE
+-------- D _ZN11__sanitizer18pthread_mutex_t_szE
+-------- D _ZN11__sanitizer18struct_regmatch_szE
+-------- D _ZN11__sanitizer18struct_sigevent_szE
+-------- D _ZN11__sanitizer18struct_timezone_szE
+-------- D _ZN11__sanitizer19struct_itimerval_szE
+-------- D _ZN11__sanitizer19struct_sigaction_szE
+-------- D _ZN11__sanitizer21struct_sched_param_szE
+-------- T _ZN11__sanitizer22__sanitizer_in_addr_szEi
+-------- D _ZN11__sanitizer7af_inetE
+-------- D _ZN11__sanitizer7sig_dflE
+-------- D _ZN11__sanitizer7sig_errE
+-------- D _ZN11__sanitizer7sig_ignE
+-------- D _ZN11__sanitizer8af_inet6E
+-------- D _ZN11__sanitizer8gid_t_szE
+-------- D _ZN11__sanitizer8path_maxE
+-------- D _ZN11__sanitizer8pid_t_szE
+-------- D _ZN11__sanitizer8uid_t_szE
+-------- D _ZN11__sanitizer9map_fixedE
 
 sanitizer_unwind_win.cc.o:
 
