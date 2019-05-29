@@ -603,6 +603,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       '-DUBSAN_CAN_USE_CXXABI'
     ])
 
+  def create_wasm_interception_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'interception'],
+      glob_pattern='*.cc',
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=[
+      '-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11'
+    ])
+
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
