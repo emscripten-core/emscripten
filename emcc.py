@@ -1482,6 +1482,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           shared.Settings.UBSAN_RUNTIME = 2
 
+      if 'leak' in sanitize:
+        shared.Settings.USE_LSAN = True
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 

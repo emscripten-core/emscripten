@@ -1431,6 +1431,10 @@ var WASM2JS = 0;
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
+// Whether we should link in LSan's runtime library. This is intended to be used invoked`
+// by -fsanitize=leak instead of used directly.
+var USE_LSAN = 0;
+
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;

@@ -612,6 +612,15 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       '-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11'
     ])
 
+  def create_wasm_lsan_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'lsan'],
+      glob_pattern='*.cc',
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=[
+      '-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11'
+    ])
+
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
 
@@ -831,15 +840,22 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
+  need_common_san = False
+
   if shared.Settings.UBSAN_RUNTIME == 1:
     libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
   elif shared.Settings.UBSAN_RUNTIME == 2:
-    libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
+    need_common_san = True
     libs_to_link.append((shared.Cache.get('libubsan_rt_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_rt_wasm.a')), False))
-    # TODO: handle this dependency better
+
+  if shared.Settings.USE_LSAN:
+    need_common_san = True
+    libs_to_link.append((shared.Cache.get('liblsan_rt_wasm.a', lambda: create_wasm_lsan_rt('liblsan_rt_wasm.a')), True))
+
+  if need_common_san:
     add_library(system_libs_map['libc++abi'])
-    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
-    shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_malloc', '_emscripten_builtin_free', '_emscripten_builtin_memalign']
+    libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
+    shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_memalign']
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
