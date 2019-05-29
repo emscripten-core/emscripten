@@ -5711,7 +5711,7 @@ return malloc(size);
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
-  @need_make('depends on freetype')
+  @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
     def test():
