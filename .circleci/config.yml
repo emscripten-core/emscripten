@@ -89,8 +89,6 @@ jobs:
             # we are trying to test.
             rm -Rf `find -name emscripten`
             cd -
-            # Use Binaryen from the ports version.
-            echo BINARYEN_ROOT="''" >> ~/.emscripten
             echo "final .emscripten:"
             cat ~/.emscripten
       - run:
@@ -340,8 +338,6 @@ jobs:
             # we are trying to test.
             rm -Rf `find -name "emscripten"`
             cd -
-            # Use Binaryen from the ports version.
-            echo BINARYEN_ROOT="''" >> ~/.emscripten
             echo "final .emscripten:"
             cat ~/.emscripten
       - run:

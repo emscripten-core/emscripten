@@ -1843,7 +1843,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = 0
           final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
         else:
-          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, temp_files=misc_temp_files, just_calculate=just_calculate)
+          final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
         logger.debug('skipping linking: ' + str(linker_inputs))
         if not LEAVE_INPUTS_RAW:
@@ -2846,14 +2846,19 @@ function(%(EXPORT_NAME)s) {
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
+      if shared.Settings.EXPORT_ES6:
+        script_url = "import.meta.url"
+      else:
+        script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       src = '''
 var %(EXPORT_NAME)s = (function() {
-  var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+  var _scriptDir = %(script_url)s;
   return (%(src)s);
 })();
 ''' % {
         'EXPORT_NAME': shared.Settings.EXPORT_NAME,
-        'src': src
+        'src': src,
+        'script_url': script_url
       }
   else:
     # Create the MODULARIZE_INSTANCE instance
