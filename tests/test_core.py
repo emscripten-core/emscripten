@@ -7698,6 +7698,21 @@ extern "C" {
       "src.cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
     ])
 
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_vptr': (['-fsanitize=vptr'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_static_cast(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_static_cast.cpp')).read(),
+                expected_output=[
+      "vptr.cc:18:10: runtime error: downcast of address",
+      "which does not point to an object of type 'R'",
+      "note: object is of type 'T'",
+      "vptr for 'T'",
+    ])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
