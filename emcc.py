@@ -1164,7 +1164,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
       if shared.Settings.WASM_BACKEND:
         # setjmp/longjmp and exception handling JS code depends on this so we
-        # include it by default.  Should be elimiated by meta-DCE if unused.
+        # include it by default.  Should be eliminated by meta-DCE if unused.
         shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
