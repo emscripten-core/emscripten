@@ -2511,7 +2511,7 @@ class Building(object):
       js_file = Building.acorn_optimizer(js_file, passes)
     # if we can optimize this js+wasm combination under the assumption no one else
     # will see the internals, do so
-    if not Settings.LINKABLE:
+    if not Settings.MAIN_MODULE and not Settings.SIDE_MODULE:
       # if we are optimizing for size, shrink the combined wasm+JS
       # TODO: support this when a symbol map is used
       if expensive_optimizations and not emit_symbol_map:
