@@ -164,13 +164,6 @@ def no_windows(note=''):
   return lambda f: f
 
 
-def needs_make(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip('Tool not available on Windows bots (%s)' % note)
-  return lambda f: f
-
-
 # used for tests that fail now and then on CI, due to timing or other
 # random causes. this tries the test a few times, looking for at least
 # one pass
