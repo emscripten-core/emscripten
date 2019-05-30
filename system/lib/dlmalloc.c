@@ -6046,9 +6046,9 @@ int mspace_mallopt(int param_number, int value) {
 // and dlfree from this file.
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
-extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("dlmalloc")));
-extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("dlfree")));
-extern __typeof(memalign) emscripten_builtin_memalign __attribute__((weak, alias("dlmemalign")));
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("dlmalloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((alias("dlfree")));
+extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlmemalign")));
 #endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */
