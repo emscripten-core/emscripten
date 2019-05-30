@@ -39,12 +39,6 @@ CXX_WITH_STDLIB = '''
           return 0;
         }
       '''
-C_WITH_UB = '''
-        int main(void) {
-            int *a = 0, b;
-            b = *a;
-        }
-'''
 
 SYSTEM_TASKS = [
     'al',
@@ -323,11 +317,11 @@ def main():
     elif what == 'ubsan-rt-wasm':
       if not shared.Settings.WASM_BACKEND:
         continue
-      build(C_WITH_UB, ['libsanitizer-common-rt-wasm.a', 'libubsan-rt-wasm.a'], ['-fsanitize=undefined', '-s', 'WASM=1'])
+      build(C_BARE, ['libsanitizer_common_rt_wasm.a', 'libubsan_rt_wasm.a'], ['-fsanitize=undefined', '-s', 'WASM=1'])
     elif what == 'ubsan-minimal-rt-wasm':
       if not shared.Settings.WASM_BACKEND:
         continue
-      build(C_WITH_UB, ['libubsan-minimal-rt-wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
+      build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
