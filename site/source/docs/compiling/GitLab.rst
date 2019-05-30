@@ -1,13 +1,13 @@
 .. _GitLab:
 
-==============================
+================================
 Building and Deploying on GitLab
-==============================
+================================
 
 `GitLab CI/CD <https://about.gitlab.com/product/continuous-integration/>`_ is a popular continuous integration service which offers free plans to everyone. Thanks to an `Alpine Linux package by Jakub Jirutka <https://pkgs.alpinelinux.org/packages?name=emscripten>`_ installing emscripten in GitLab CI/CD is literally a one line task.
 
 A sample .gitlab-ci.yml
-====================
+=======================
 
 .. code-block:: yaml
 
