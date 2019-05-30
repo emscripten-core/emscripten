@@ -76,7 +76,7 @@ try {
 } catch(e) {}
 console.log(succeeded);
 
-TheModule.Child2.prototype.printStatic(); // static calls go through the prototype
+TheModule.Child2.printStatic(); // static calls go through the prototype
 
 // virtual function
 c2.virtualFunc();
