@@ -40,6 +40,16 @@ CXX_WITH_STDLIB = '''
         }
       '''
 
+CXX_WITH_DYN_CAST = '''
+        struct X { int x; virtual void a() {} };
+        struct Y : X { int y; virtual void a() { y = 10; }};
+        int main(int argc, char **argv) {
+          Y* y = dynamic_cast<Y*>((X*)argv[1]);
+          y->a();
+          return y->y;
+        }
+'''
+
 SYSTEM_TASKS = [
     'al',
     'compiler-rt',
@@ -49,7 +59,10 @@ SYSTEM_TASKS = [
     'libc',
     'libc++',
     'libc++_noexcept',
+    'libc++-mt',
+    'libc++-mt_noexcept',
     'libc++abi',
+    'libc++abi-mt',
     'libc-extras',
     'libc-mt',
     'pthreads',
@@ -266,16 +279,14 @@ def main():
       build(CXX_WITH_STDLIB, ['libc++.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     elif what == 'libc++_noexcept':
       build(CXX_WITH_STDLIB, ['libc++_noexcept.a'])
+    elif what == 'libc++-mt':
+      build(CXX_WITH_STDLIB, ['libc++.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_PTHREADS=1'])
+    elif what == 'libc++-mt_noexcept':
+      build(CXX_WITH_STDLIB, ['libc++_noexcept.a'], ['-s', 'USE_PTHREADS=1'])
     elif what == 'libc++abi':
-      build('''
-        struct X { int x; virtual void a() {} };
-        struct Y : X { int y; virtual void a() { y = 10; }};
-        int main(int argc, char **argv) {
-          Y* y = dynamic_cast<Y*>((X*)argv[1]);
-          y->a();
-          return y->y;
-        }
-      ''', [libname('libc++abi')])
+      build(CXX_WITH_DYN_CAST, [libname('libc++abi')])
+    elif what == 'libc++abi-mt':
+      build(CXX_WITH_DYN_CAST, [libname('libc++abi')], ['-s', 'USE_PTHREADS=1'])
     elif what == 'gl' or what.startswith('gl-'):
       opts = []
       if '-mt' in what:
