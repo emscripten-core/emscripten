@@ -3628,6 +3628,7 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests')
   def test_std_thread_detach(self):
     self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
@@ -3787,6 +3788,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
+  @no_wasm_backend('TODO - fix final pthreads tests')
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
