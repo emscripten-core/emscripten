@@ -921,7 +921,7 @@ LibraryManager.library = {
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
   $ENV: {},
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV', 'emscripten_builtin_malloc', 'emscripten_builtin_free'],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -931,8 +931,8 @@ LibraryManager.library = {
     name = UTF8ToString(name);
     if (!ENV.hasOwnProperty(name)) return 0;
 
-    if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocateUTF8(ENV[name]);
+    if (_getenv.ret) _emscripten_builtin_free(_getenv.ret);
+    _getenv.ret = allocateUTF8(ENV[name], _emscripten_builtin_malloc);
     return _getenv.ret;
   },
   // Alias for sanitizers which intercept getenv.

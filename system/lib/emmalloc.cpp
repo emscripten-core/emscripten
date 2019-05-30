@@ -1201,6 +1201,7 @@ struct mallinfo mallinfo() {
 #if defined(__EMSCRIPTEN__)
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((weak, alias("malloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((weak, alias("free")));
+extern __typeof(memalign) emscripten_builtin_memalign __attribute__((weak, alias("memalign")));
 #endif
 
 } // extern "C"

@@ -444,6 +444,7 @@ var SyscallsLibrary = {
     var path = SYSCALLS.getStr(), buf = SYSCALLS.get(), bufsize = SYSCALLS.get();
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
+  __syscall91__deps: ['emscripten_builtin_free'],
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
     // TODO: support unmmap'ing parts of allocations
@@ -455,7 +456,7 @@ var SyscallsLibrary = {
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
-        _free(info.malloc);
+        _emscripten_builtin_free(info.malloc);
       }
     }
     return 0;
@@ -975,14 +976,14 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
-  __syscall192__deps: ['memalign'],
+  __syscall192__deps: ['emscripten_builtin_memalign'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
     if (fd === -1) {
-      ptr = _memalign(PAGE_SIZE, len);
+      ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;

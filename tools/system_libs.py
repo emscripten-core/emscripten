@@ -830,7 +830,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # TODO: handle this dependency better
     add_library(system_libs_map['libc++abi'])
     # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
-    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
+    shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_malloc', '_emscripten_builtin_free', '_emscripten_builtin_memalign']
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
