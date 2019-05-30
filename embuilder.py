@@ -205,7 +205,7 @@ def main():
     auto_tasks = True
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
-      skip_tasks = [task for task in SYSTEM_TASKS + USER_TASKS if '-mt' in task or 'thread' in task]
+      skip_tasks = []
       # cocos2d: must be ported, errors on
       # "Cannot recognize the target platform; are you targeting an unsupported platform?"
       skip_tasks += ['cocos2d']
