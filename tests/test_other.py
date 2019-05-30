@@ -6786,7 +6786,6 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', run_js('a.out.js'))
 
-  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40412 and https://bugs.llvm.org/show_bug.cgi?id=40470')
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
@@ -8158,8 +8157,6 @@ int main() {
   @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
-    if not self.is_wasm_backend():
-      self.skipTest('not using wasm backend')
 
     src = path_from_root('tests', 'hello_libcxx.cpp')
     # test codegen in lto mode, and compare to normal (wasm object) mode
@@ -8189,6 +8186,14 @@ int main() {
       print('use native object (non-LTO)')
       run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
       self.assertContained('hello, world!', run_js('a.out.js'))
+
+  @parameterized({
+    'except': [],
+    'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+  })
+  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  def test_wasm_backend_lto_libcxx(self, *args):
+    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')] + ['-s', 'WASM_OBJECT_FILES=0'] + list(args))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:

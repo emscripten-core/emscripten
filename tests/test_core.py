@@ -5145,6 +5145,7 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out')).read()
     self.do_run(src, expected)
 
+  @needs_dlfcn
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -5518,6 +5519,7 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
+  @needs_dlfcn
   def test_relocatable_void_function(self):
     self.set_setting('RELOCATABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
@@ -6455,7 +6457,7 @@ return malloc(size);
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
-    if self.get_setting('WASM2JS'):
+    if not self.get_setting('WASM'):
       self.skipTest('this test uses wasm binaries')
 
     orig_args = self.emcc_args

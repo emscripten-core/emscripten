@@ -856,6 +856,11 @@ Struct
 
     The rotational delta of the device.
 
+  .. c:member:: int supportedFields
+
+    A bitfield that is a combination of EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_* fields that specifies the different fields of this structure
+    that the current browser supports. If for example the EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION bit is not present in this field,
+    then the accelerationX/Y/Z fields of this structure should be assumed to not be valid.
 
 Callback functions
 ------------------

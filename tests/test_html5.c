@@ -134,11 +134,14 @@ EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientat
 
 EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData)
 {
-  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g)\n", 
+  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g), supportedFields: %s %s %s\n",
     emscripten_event_type_to_string(eventType), 
     e->accelerationX, e->accelerationY, e->accelerationZ,
     e->accelerationIncludingGravityX, e->accelerationIncludingGravityY, e->accelerationIncludingGravityZ,
-    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma);
+    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma,
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE" : "");
 
   return 0;
 }
