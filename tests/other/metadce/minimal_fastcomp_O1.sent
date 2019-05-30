@@ -1,0 +1,10 @@
+DYNAMICTOP_PTR
+___setErrNo
+_emscripten_get_heap_size
+_emscripten_memcpy_big
+_emscripten_resize_heap
+abort
+abortOnCannotGrowMemory
+getTempRet0
+setTempRet0
+tempDoublePtr

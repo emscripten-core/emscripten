@@ -16,6 +16,14 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+v1.38.33: 05/23/2019
+--------------------
+ - First release to use the new chromium build infrastructure
+   https://groups.google.com/forum/#!msg/emscripten-discuss/WhDtqVyW_Ak/8DfDnfk0BgAJ
+
+ - Add `emscripten_return_address` which implements the functionality of
+   gcc/clang's `__builtin_return_address`. (#8617)
+
 v1.38.31: 04/24/2019
 --------------------
  - Change ino_t/off_t to 64-bits. (#8467)

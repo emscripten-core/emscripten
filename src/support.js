@@ -28,16 +28,14 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-  if (end <= _emscripten_get_heap_size()) {
-    HEAP32[DYNAMICTOP_PTR>>2] = end;
-  } else {
-#if ALLOW_MEMORY_GROWTH
-    var success = _emscripten_resize_heap(end);
-    if (!success) return 0;
+  if (end > _emscripten_get_heap_size()) {
+#if ASSERTIONS
+    abort('failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly');
 #else
-    return 0;
+    abort();
 #endif
   }
+  HEAP32[DYNAMICTOP_PTR>>2] = end;
   return ret;
 }
 
@@ -649,6 +647,10 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 // we create a wasm module that takes the JS function as an import with a given
 // signature, and re-exports that as a wasm function.
 function convertJsFunctionToWasm(func, sig) {
+#if WASM2JS
+  return func;
+#endif
+
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
   var typeSection = [

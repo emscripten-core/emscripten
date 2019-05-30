@@ -13,6 +13,10 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+#if WASM2JS
+#include "wasm2js.js"
+#endif
+
 #if WASM
 if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
@@ -857,7 +861,7 @@ function getBinary() {
     if (Module['readBinary']) {
       return Module['readBinary'](wasmBinaryFile);
     } else {
-#if BINARYEN_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";
 #else
       throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
@@ -891,9 +895,13 @@ function getBinaryPromise() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-#if AUTODEBUG
+#if WASM2JS || AUTODEBUG
+  // wasm2js legalization of i64 support code may require these
+  // autodebug may also need them
   env['setTempRet0'] = setTempRet0;
   env['getTempRet0'] = getTempRet0;
+#endif
+#if AUTODEBUG
   env['log_execution'] = function(loc) {
     console.log('log_execution ' + loc);
   };
@@ -1011,22 +1019,6 @@ function createWasm(env) {
   addRunDependency('wasm-instantiate');
 #endif
 
-  // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
-  // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
-  // to any other async startup actions they are performing.
-  if (Module['instantiateWasm']) {
-    try {
-      return Module['instantiateWasm'](info, receiveInstance);
-    } catch(e) {
-      err('Module.instantiateWasm callback failed with error: ' + e);
-      return false;
-    }
-  }
-
-#if BINARYEN_ASYNC_COMPILATION
-#if RUNTIME_LOGGING
-  err('asynchronously preparing wasm');
-#endif
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
@@ -1048,45 +1040,72 @@ function createWasm(env) {
     receiveInstance(output['instance']);
 #endif
   }
+
   function instantiateArrayBuffer(receiver) {
-    getBinaryPromise().then(function(binary) {
+    return getBinaryPromise().then(function(binary) {
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
     });
   }
+
   // Prefer streaming instantiation if available.
-  if (!Module['wasmBinary'] &&
-      typeof WebAssembly.instantiateStreaming === 'function' &&
-      !isDataURI(wasmBinaryFile) &&
-      typeof fetch === 'function') {
-    WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
-      .then(receiveInstantiatedSource, function(reason) {
-        // We expect the most common failure cause to be a bad MIME type for the binary,
-        // in which case falling back to ArrayBuffer instantiation should work.
-        err('wasm streaming compile failed: ' + reason);
-        err('falling back to ArrayBuffer instantiation');
-        instantiateArrayBuffer(receiveInstantiatedSource);
-      });
-  } else {
-    instantiateArrayBuffer(receiveInstantiatedSource);
+#if WASM_ASYNC_COMPILATION
+  function instantiateAsync() {
+    if (!Module['wasmBinary'] &&
+        typeof WebAssembly.instantiateStreaming === 'function' &&
+        !isDataURI(wasmBinaryFile) &&
+        typeof fetch === 'function') {
+      return WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
+        .then(receiveInstantiatedSource, function(reason) {
+          // We expect the most common failure cause to be a bad MIME type for the binary,
+          // in which case falling back to ArrayBuffer instantiation should work.
+          err('wasm streaming compile failed: ' + reason);
+          err('falling back to ArrayBuffer instantiation');
+          instantiateArrayBuffer(receiveInstantiatedSource);
+        });
+    } else {
+      return instantiateArrayBuffer(receiveInstantiatedSource);
+    }
   }
+#else
+  function instantiateSync() {
+    var instance;
+    var module;
+    try {
+      module = new WebAssembly.Module(getBinary());
+      instance = new WebAssembly.Instance(module, info);
+    } catch (e) {
+      err('failed to compile wasm module: ' + e);
+      if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
+        err('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
+      }
+      return false;
+    }
+    receiveInstance(instance, module);
+  }
+#endif
+  // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
+  // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
+  // to any other async startup actions they are performing.
+  if (Module['instantiateWasm']) {
+    try {
+      return Module['instantiateWasm'](info, receiveInstance);
+    } catch(e) {
+      err('Module.instantiateWasm callback failed with error: ' + e);
+      return false;
+    }
+  }
+
+#if WASM_ASYNC_COMPILATION
+#if RUNTIME_LOGGING
+  err('asynchronously preparing wasm');
+#endif
+  instantiateAsync();
   return {}; // no exports yet; we'll fill them in later
 #else
-  var instance;
-  var module;
-  try {
-    module = new WebAssembly.Module(getBinary());
-    instance = new WebAssembly.Instance(module, info)
-  } catch (e) {
-    err('failed to compile wasm module: ' + e);
-    if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
-      err('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
-    }
-    return false;
-  }
-  receiveInstance(instance, module);
+  instantiateSync();
   return Module['asm']; // exports were assigned here
 #endif
 }

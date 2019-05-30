@@ -4,10 +4,9 @@
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 #if USE_PTHREADS
 
-if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
-  // ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-  // N.B. this line needs to appear without 'var' keyword to avoid 'var hoisting' from occurring. (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var)
-  ENVIRONMENT_IS_PTHREAD = false;
+// ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
+var ENVIRONMENT_IS_PTHREAD = Module.ENVIRONMENT_IS_PTHREAD || false;
+if (!ENVIRONMENT_IS_PTHREAD) {
   var PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 }
 #if MODULARIZE

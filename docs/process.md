@@ -44,16 +44,37 @@ When:
 
 Requirements:
 
- * GitHub CI is green. (Currently, that includes good coverage for Linux, but
-   nothing else - we should keep trying to find resources to do better here.)
+ * [emscripten-releases build CI](https://ci.chromium.org/p/emscripten-releases/g/main/console)
+   is green on all OSes for the desired hash (where the hash is the git hash in
+   the
+   [emscripten-releases](https://chromium.googlesource.com/emscripten-releases)
+   repo, which then specifies through
+   [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
+   exactly which revisions to use in all other repos).
+ * [GitHub CI](https://github.com/emscripten-core/emscripten/branches) is green
+   on the incoming branch.
 
 How:
 
- * Ask on irc if there are any concerns.
- * The emscripten, emscripten-fastcomp, and emscripten-fastcomp-clang repos
-   should each be updated: the emscripten-version.txt file in each, and a git
-   tag (with the simple version number).
- * A tag should also be done in the binaryen repo.
+ * Open a PR for the emsdk to update
+   [emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt),
+   adding the version and the hash. Updating the "latest" tag there to the new
+   release is possible, but can also be deferred if you want to do more testing
+   before users fetching "latest" get this release.
+ * Tag the emscripten repo on the emscripten commit used by that release (which
+   you can tell from the DEPS file), using something like
+   `git checkout [COMMIT]` ; `git tag [VERSION]` ; `git push --tags`.
+ * Update
+   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/incoming/emscripten-version.txt)
+   in the emscripten repo. This is a delayed update, in that the tag will refer
+   to the actual release, but the update to emscripten-version.txt is a new
+   commit to emscripten that happens later.
+   * To minimize the difference, we should pick hashes for releases that are
+     very recent, and try to avoid anything else landing in between - can ask
+     on irc/chat for people to not land anything, or do this at a time of day
+     when that's unlikely, etc.
+   * There is no need to open a PR for this change, you can optionally just
+     commit it directly.
 
 
 Major version update (1.X.Y to 1.(X+1).0)
@@ -65,7 +86,7 @@ When:
 
 Requirements:
 
- * GitHub CI is green.
+ * All the requirements for a minor update.
  * No major change recently landed.
  * No major recent regressions have been filed.
  * All tests pass locally for the person doing the update, including the main

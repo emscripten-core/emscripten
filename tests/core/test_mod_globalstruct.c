@@ -11,7 +11,7 @@ struct malloc_params {
   size_t magic, page_size;
 };
 
-malloc_params mparams;
+struct malloc_params mparams;
 
 #define SIZE_T_ONE ((size_t)1)
 #define page_align(S) \
