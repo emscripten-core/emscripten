@@ -1502,7 +1502,12 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
+  def skip_if_wasm_backend_pthreads_js(self, args):
+    if self.is_wasm_backend() and 'USE_PTHREADS=1' in args and 'WASM=0' in args:
+      self.skipTest('wasm2js does not support threads yet')
+
   def compile_btest(self, args):
+    self.skip_if_wasm_backend_pthreads_js(args)
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
@@ -1511,6 +1516,7 @@ class BrowserCore(RunnerCore):
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    self.skip_if_wasm_backend_pthreads_js(args)
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -1523,8 +1529,7 @@ class BrowserCore(RunnerCore):
           elif 'WASM=0' not in args:
             args += ['-s', 'WASM=0']
       else:
-        if 'WASM=0' in args:
-          self.skipTest('wasm2js does not support threads yet')
+        # wasm2js does not support threads yet
         also_asmjs = False
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
