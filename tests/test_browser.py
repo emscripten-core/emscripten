@@ -3552,6 +3552,7 @@ window.close = function() {
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests')
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
@@ -3591,6 +3592,7 @@ window.close = function() {
 
   # Test that basic thread creation works.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests')
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3607,6 +3609,7 @@ window.close = function() {
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests')
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
@@ -3816,6 +3819,7 @@ window.close = function() {
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests')
   def test_pthread_call_async_on_main_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
