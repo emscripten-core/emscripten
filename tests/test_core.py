@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
 
 # decorators for limiting which modes a test can run in
 
@@ -7645,6 +7645,58 @@ extern "C" {
       self.emcc_args += ['-g']
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(),
                 expected_output='ubsan: add-overflow\n' * 5)
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_integer': (['-fsanitize=integer'],),
+    'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_overflow(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_overflow.c')).read(),
+                expected_output=[
+      "src.cpp:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+      "src.cpp:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+    ])
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_return': (['-fsanitize=return'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_no_return(self, args):
+    self.emcc_args += ['-Wno-return-type'] + args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_no_return.c')).read(),
+                expected_output='src.cpp:1:5: runtime error: execution reached the end of a value-returning function without returning a value')
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_integer': (['-fsanitize=integer'],),
+    'fsanitize_shift': (['-fsanitize=shift'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_left_shift(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_left_shift.c')).read(),
+                expected_output=[
+      'src.cpp:3:5: runtime error: left shift of negative value -1',
+      "src.cpp:7:5: left shift of 16 by 29 places cannot be represented in type 'int'"
+    ])
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_null': (['-fsanitize=null'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_null_ref(self, args):
+    self.emcc_args += ['-std=c++11'] + args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
+                expected_output=[
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
+    ])
 
 
 # Generate tests for everything
