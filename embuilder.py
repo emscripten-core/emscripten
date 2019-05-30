@@ -206,6 +206,9 @@ def main():
   if auto_tasks:
     if shared.Settings.WASM_BACKEND:
       skip_tasks = []
+      if shared.Settings.RELOCATABLE:
+        # we don't support PIC + pthreads yet
+        skip_tasks += [task for task in SYSTEM_TASKS + USER_TASKS if '-mt' in task or 'thread' in task]
       # cocos2d: must be ported, errors on
       # "Cannot recognize the target platform; are you targeting an unsupported platform?"
       skip_tasks += ['cocos2d']
