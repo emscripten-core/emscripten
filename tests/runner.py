@@ -1515,11 +1515,17 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args and not self.is_wasm_backend() and 'ALLOW_MEMORY_GROWTH=1' not in args:
-      if EMTEST_WASM_PTHREADS:
-        also_asmjs = True
-      elif 'WASM=0' not in args:
-        args += ['-s', 'WASM=0']
+    if 'USE_PTHREADS=1' in args:
+      if not self.is_wasm_backend():
+        if 'ALLOW_MEMORY_GROWTH=1' not in args:
+          if EMTEST_WASM_PTHREADS:
+            also_asmjs = True
+          elif 'WASM=0' not in args:
+            args += ['-s', 'WASM=0']
+      else:
+        if 'WASM=0' in args:
+          self.skipTest('wasm2js does not support threads yet')
+        also_asmjs = False
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
