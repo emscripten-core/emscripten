@@ -1503,7 +1503,7 @@ class BrowserCore(RunnerCore):
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
   def skip_if_wasm_backend_pthreads_js(self, args):
-    if self.is_wasm_backend() and 'USE_PTHREADS=1' in args and 'WASM=0' in args:
+    if self.is_wasm_backend() and ('USE_PTHREADS=1' in args or '-pthread' in args) and 'WASM=0' in args:
       self.skipTest('wasm2js does not support threads yet')
 
   def compile_btest(self, args):
