@@ -3804,7 +3804,7 @@ int main()
 
   @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for opts in [[], ['-O2'], ['-O3']]:
+    for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1]:
         print(opts, wasm)
         self.clear()
