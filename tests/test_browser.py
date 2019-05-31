@@ -3541,6 +3541,7 @@ window.close = function() {
 
   # Test 64-bit atomics.
   @requires_threads
+  @flaky # TODO - fix final pthreads tests (#8718)
   def test_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
@@ -3553,7 +3554,7 @@ window.close = function() {
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
@@ -3586,7 +3587,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
@@ -3594,7 +3595,7 @@ window.close = function() {
 
   # Test that basic thread creation works.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3611,7 +3612,7 @@ window.close = function() {
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
@@ -3628,7 +3629,7 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_std_thread_detach(self):
     self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
@@ -3788,7 +3789,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
@@ -3823,7 +3824,7 @@ window.close = function() {
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_call_async_on_main_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
@@ -4309,7 +4310,7 @@ window.close = function() {
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_locale(self):
     for args in [
         [],
