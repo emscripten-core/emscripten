@@ -4649,17 +4649,10 @@ LibraryManager.library = {
     else return lengthBytesUTF8(str);
   },
 
-  // Returns a representation of a call site of the caller of this function, in a manner
-  // similar to __builtin_return_address. If level is 0, we return the call site of the
-  // caller of this function.
+  // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js'],
-  emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
-    // skip this function and the caller to get caller's return address
-    var frame = callstack[level + 2];
+  emscripten_generate_pc: function(frame) {
     var match;
 
     if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -4672,11 +4665,102 @@ LibraryManager.library = {
     } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
-      return +match[1];
+      // we tag the high bit to distinguish this from wasm addresses
+      return 0x80000000 | +match[1];
     } else {
       // return 0 if we can't find any
       return 0;
     }
+  },
+
+  // Returns a representation of a call site of the caller of this function, in a manner
+  // similar to __builtin_return_address. If level is 0, we return the call site of the
+  // caller of this function.
+  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address: function(level) {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+
+    // skip this function and the caller to get caller's return address
+    return _emscripten_generate_pc(callstack[level + 2]);
+  },
+
+  $UNWIND_CACHE: {},
+
+  // Caches all stack frames so that they can be dumped later by emscripten_pc_get_*
+  emscripten_stack_cache_unwind__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
+  emscripten_stack_cache_unwind: function () {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+    callstack.forEach(function (frame) {
+      var pc = _emscripten_generate_pc(frame);
+      if (pc) {
+        UNWIND_CACHE[pc] = frame;
+      }
+    });
+    // Caches the stack snapshot so that emscripten_stack_unwind() can unwind from this spot.
+    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_stack = callstack;
+  },
+
+  // Unwinds the stack from a given return address at the top of the stack.
+  // This only works when the stack had a snapshot taken emscripten_stack_unwind beforehand.
+  emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
+  emscripten_stack_unwind: function (addr, level) {
+    if (UNWIND_CACHE.last_addr == addr) {
+      return _emscripten_generate_pc(UNWIND_CACHE.last_stack[level + 2]);
+    } else {
+      return 0;
+    }
+  },
+
+  // Look up the function name from our stack frame cache with our PC representation.
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_function: function (pc) {
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
+
+    var name = null, match;
+    if (match = /at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    }
+    if (!name) return 0;
+
+    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    return _emscripten_pc_get_function.ret;
+  },
+
+  // Look up the file name from our stack frame cache with our PC representation.
+  emscripten_pc_get_file__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_file: function (pc) {
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
+
+    var file = null, match;
+    if (match = /at .* \((.*):\d+(?::\d+)?\)$/.exec(frame)) {
+      file = match[1];
+    } else if (match = /at (.*):\d+$/.exec(frame)) {
+      file = match[1];
+    }
+    if (!file) return 0;
+
+    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(file);
+    return _emscripten_pc_get_file.ret;
+  },
+
+  // Look up the line number from our stack frame cache with our PC representation.
+  emscripten_pc_get_line__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_line: function (pc) {
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
+
+    var name = null, match;
+    if (match = /at .* \(.*:(\d+)(?::\d+)?\)$/.exec(frame)) {
+      return +match[1];
+    } else if (match = /at .*:(\d+)$/.exec(frame)) {
+      return +match[1];
+    }
+    return 0;
   },
 
   emscripten_get_module_name: function(buf, length) {

@@ -22,7 +22,27 @@
 
 namespace __sanitizer {
 
-void ListOfModules::init() {}
+extern "C" {
+  int emscripten_get_module_name(char *buf, uptr length);
+}
+
+void ListOfModules::init() {
+  char name[256];
+  emscripten_get_module_name(name, 256);
+
+  LoadedModule main_module;
+  main_module.set(name, 0);
+  main_module.addAddressRange(0, 0x7FFFFFFF, /*executable*/ true,
+                              /*writable*/ false);
+  modules_.push_back(main_module);
+
+  LoadedModule js_module;
+  js_module.set("JavaScript", 0x80000000);
+  js_module.addAddressRange(0x80000000, 0xFFFFFFFF, /*executable*/ true,
+                            /*writable*/ false);
+  modules_.push_back(js_module);
+}
+
 void ListOfModules::fallbackInit() { clear(); }
 
 SANITIZER_WEAK_ATTRIBUTE int
