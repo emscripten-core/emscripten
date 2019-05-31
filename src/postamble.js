@@ -3,10 +3,6 @@
 
 Module['asm'] = asm;
 
-#if USE_PTHREADS && WASM_BACKEND // in fastcomp, this is an asm.js library function that is auto-exported
-//Module['__register_pthread_ptr'] = __register_pthread_ptr;
-#endif
-
 {{{ exportRuntime() }}}
 
 #if MEM_INIT_IN_WASM == 0
