@@ -24,4 +24,5 @@ no args returning double
     user_comma returned: 2
     return_str returned: hello from js
     return_utf8_str returned: こんにちは
+    _prefixed: 1
 END

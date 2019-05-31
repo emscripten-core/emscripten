@@ -27,7 +27,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === ERRNO_CODES.ENOENT);
+    assert(ex instanceof FS.ErrnoError && ex.errno === 2); // ENOENT
 
     // mount to an existing mountpoint
     try {
@@ -35,7 +35,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === ERRNO_CODES.EBUSY);
+    assert(ex instanceof FS.ErrnoError && ex.errno === 16); // EBUSY
 
     // unmount
     FS.unmount('/working');
@@ -46,7 +46,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === ERRNO_CODES.EINVAL);
+    assert(ex instanceof FS.ErrnoError && ex.errno === 22); // EINVAL
 
     // try to read the file from the old mount
     try {
@@ -54,7 +54,7 @@ int main() {
     } catch (e) {
       ex = e;
     }
-    assert(ex instanceof FS.ErrnoError && ex.errno === ERRNO_CODES.ENOENT);
+    assert(ex instanceof FS.ErrnoError && ex.errno === 2); // ENOENT
 
     // check the safe file
     var contents = FS.readFile('/safe.txt', { encoding: 'utf8' });

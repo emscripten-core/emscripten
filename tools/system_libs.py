@@ -13,6 +13,7 @@ import sys
 import tarfile
 import zipfile
 from collections import namedtuple
+from glob import iglob
 
 from . import ports
 from . import shared
@@ -24,7 +25,32 @@ stderr = None
 logger = logging.getLogger('system_libs')
 
 
-def call_process(cmd):
+def files_in_path(path_components, filenames):
+  srcdir = shared.path_from_root(*path_components)
+  return [os.path.join(srcdir, f) for f in filenames]
+
+
+def glob_in_path(path_components, glob_pattern, excludes=()):
+  srcdir = shared.path_from_root(*path_components)
+  return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
+
+
+def get_cflags(force_object_files=False):
+  flags = []
+  if force_object_files:
+    flags += ['-s', 'WASM_OBJECT_FILES=1']
+  elif not shared.Settings.WASM_OBJECT_FILES:
+    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.RELOCATABLE:
+    flags += ['-s', 'RELOCATABLE']
+  return flags
+
+
+def run_build_command(cmd):
+  # this must only be called on a standard build command
+  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+  # add standard cflags, but also allow the cmd to override them
+  cmd = cmd[:2] + get_cflags() + cmd[2:]
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
 
@@ -32,26 +58,14 @@ def run_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
-      call_process(command)
+      run_build_command(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(call_process, commands, chunksize=1).get(999999)
-
-
-def files_in_path(path_components, filenames):
-  srcdir = shared.path_from_root(*path_components)
-  return [os.path.join(srcdir, f) for f in filenames]
-
-
-def get_cflags():
-  flags = []
-  if not shared.Settings.WASM_OBJECT_FILES:
-    flags += ['-s', 'WASM_OBJECT_FILES=0']
-  return flags
+    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
 
 
 def create_lib(libname, inputs):
@@ -156,7 +170,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
               '-Wno-empty-body']
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts)
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -176,7 +190,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for src in files:
       o = in_temp(src + '.o')
       srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
+      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts)
       o_s.append(o)
     run_commands(commands)
     create_lib(in_temp(lib_filename), o_s)
@@ -203,9 +217,17 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   def gl_version_flags(libname):
     if shared.Settings.USE_WEBGL2:
       assert '-webgl2' in libname
-      return ['-DUSE_WEBGL2=1']
+      return ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
     else:
       assert '-webgl2' not in libname
+      return []
+
+  def gl_offscreen_flags(libname):
+    if shared.Settings.OFFSCREEN_FRAMEBUFFER:
+      assert '-ofb' in libname
+      return ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
+    else:
+      assert '-ofb' not in libname
       return []
 
   # libc
@@ -412,10 +434,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     for dirpath, dirnames, filenames in os.walk(src_dir):
       filenames = filter(lambda f: f.endswith('.c'), filenames)
       files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz', '-s', 'USE_WEBGL2=1']
+    flags = ['-Oz']
     flags += threading_flags(libname)
     flags += legacy_gl_emulation_flags(libname)
     flags += gl_version_flags(libname)
+    flags += gl_offscreen_flags(libname)
     return build_libc(libname, files, flags)
 
   # al
@@ -440,7 +463,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     commands = []
     for src in files:
       o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o])
       o_s.append(o)
     run_commands(commands)
     shared.Building.emar('cr', in_temp(libname), o_s)
@@ -508,7 +531,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
-  def create_wasm_rt_lib(libname, files):
+  def create_wasm_rt_lib(libname, files, extra_flags=[]):
     # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
     # it includes the builtin symbols that the LTO complication can generate.
     # It seems that LTO as implemented by lld assumes that builtins do not
@@ -521,8 +544,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       o = in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
                        '-c', shared.path_from_root('system', 'lib', src),
-                       '-s', 'WASM_OBJECT_FILES=1',
-                       '-o', o] + musl_internal_includes())
+                       '-o', o] +
+                      musl_internal_includes() + extra_flags +
+                      get_cflags(force_object_files=True))
       o_s.append(o)
     run_commands(commands)
     lib = in_temp(libname)
@@ -546,6 +570,30 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     files += files_in_path(path_components=['system', 'lib', 'compiler-rt'],
                            filenames=['extras.c'])
     return create_wasm_rt_lib(libname, files)
+
+  def create_wasm_ubsan_minimal_rt(libname):
+    files = files_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal'],
+      filenames=['ubsan_minimal_handlers.cpp'])
+    return create_wasm_rt_lib(libname, files)
+
+  def create_wasm_common_san_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common'],
+      glob_pattern='*.cc',
+      excludes=['sanitizer_common_nolibc.cc'],
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=['-std=c++11'])
+
+  def create_wasm_ubsan_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan'],
+      glob_pattern='*.cc',
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=[
+      '-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11',
+      '-DUBSAN_CAN_USE_CXXABI'
+    ])
 
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
@@ -649,6 +697,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     gl_name += '-emu'
   if shared.Settings.USE_WEBGL2:
     gl_name += '-webgl2'
+  if shared.Settings.OFFSCREEN_FRAMEBUFFER:
+    gl_name += '-ofb'
   system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
 
   if shared.Settings.USE_PTHREADS:
@@ -755,6 +805,16 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
     libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
 
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
+  elif shared.Settings.UBSAN_RUNTIME == 2:
+    libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libubsan_rt_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_rt_wasm.a')), False))
+    # TODO: handle this dependency better
+    add_library(system_libs_map['libc++abi'])
+    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
+    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
+
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
   # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
@@ -808,7 +868,7 @@ class Ports(object):
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
     run_commands(commands)
@@ -896,12 +956,20 @@ class Ports(object):
       # retrieve from remote server
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
-        from urllib.request import urlopen
+        import requests
+        response = requests.get(url)
+        data = response.content
       except ImportError:
-        # Python 2 compatibility
-        from urllib2 import urlopen
-      f = urlopen(url)
-      data = f.read()
+        try:
+          from urllib.request import urlopen
+          f = urlopen(url)
+          data = f.read()
+        except ImportError:
+          # Python 2 compatibility
+          from urllib2 import urlopen
+          f = urlopen(url)
+          data = f.read()
+
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 

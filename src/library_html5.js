@@ -828,16 +828,26 @@ var LibraryJSEvents = {
 
   _fillDeviceMotionEventData__deps: ['$JSEvents'],
   _fillDeviceMotionEventData: function(eventStruct, e, target) {
+    var supportedFields = 0;
+    var a = e['acceleration'];
+    supportedFields |= a && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION') }}};
+    var ag = e['accelerationIncludingGravity'];
+    supportedFields |= ag && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY') }}};
+    var rr = e['rotationRate'];
+    supportedFields |= rr && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE') }}};
+    a = a || {};
+    ag = ag || {};
+    rr = rr || {};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'ag["x"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'ag["y"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'ag["z"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'rr["alpha"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'rr["beta"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'rr["gamma"]', 'double') }}};
   },
 
   _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_fillDeviceMotionEventData', '_findEventTarget'],
@@ -2205,7 +2215,9 @@ var LibraryJSEvents = {
 
   _emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
-#if !USE_PTHREADS
+// In offscreen framebuffer mode, we implement these functions in C so that they enable
+// the proxying of GL commands. Otherwise, they are implemented here in JS.
+#if !(USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
   emscripten_webgl_create_context__sig: 'iii',
   emscripten_webgl_create_context: 'emscripten_webgl_do_create_context',
 
@@ -2243,7 +2255,7 @@ var LibraryJSEvents = {
     var targetStr = UTF8ToString(target);
 #endif
 
-#if USE_PTHREADS
+#if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
@@ -2342,7 +2354,7 @@ var LibraryJSEvents = {
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
   },
-#if USE_PTHREADS
+#if USE_PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
   emscripten_webgl_make_context_current_calling_thread: function(contextHandle) {
     var success = GL.makeContextCurrent(contextHandle);
@@ -2416,19 +2428,15 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
     }
 #endif
-    if (!GL.currentContext.GLctx.commit) {
-#if GL_DEBUG
-      console.error('emscripten_webgl_commit_frame() failed: OffscreenCanvas is not supported by the current GL context!');
-#endif
-      return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    }
     if (!GL.currentContext.attributes.explicitSwapControl) {
 #if GL_DEBUG
       console.error('emscripten_webgl_commit_frame() cannot be called for canvases with implicit swap control mode!');
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
-    GL.currentContext.GLctx.commit();
+    // We would do GL.currentContext.GLctx.commit(); here, but the current implementation
+    // in browsers has removed it - swap is implicit, so this function is a no-op for now
+    // (until/unless the spec changes).
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

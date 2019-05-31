@@ -1559,7 +1559,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
-    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1')
+    self._test_egl_base('-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1')
 
   def _test_egl_width_height_base(self, *args):
     create_test_file('test_egl_width_height.c', self.with_report_result(open(path_from_root('tests', 'test_egl_width_height.c')).read()))
@@ -1683,9 +1683,14 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glgears(self):
-    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
-               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'], outfile='something.html',
-               message='You should see animating gears.')
+    def test(args):
+      self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
+                 args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
+    # test normally
+    test([])
+    # test that a program that doesn't use pthreads still works with with pthreads enabled
+    # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
+    test(['-s', 'USE_PTHREADS=1'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
@@ -2579,9 +2584,20 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'webgl_shader_source_length.cpp'), args=opts + ['-lGL'], expected='0', timeout=20)
 
   def test_webgl2(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'], ['-s', 'FULL_ES2=1']]:
+    for opts in [
+      [],
+      ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'],
+      ['-s', 'FULL_ES2=1'],
+    ]:
       print(opts)
       self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'] + opts, expected='0')
+
+  @requires_graphics_hardware
+  @requires_threads
+  def test_webgl2_pthreads(self):
+    # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
+    # (the testcase doesn't even use threads, but is compiled with thread support).
+    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
 
   def test_webgl2_objects(self):
     self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
@@ -3304,7 +3320,7 @@ window.close = function() {
         src = open(path_from_root('tests', 'browser_test_hello_world.c')).read()
         create_test_file('test.c', self.with_report_result(src))
         # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'BINARYEN_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
+        self.compile_btest(['test.c', '-s', 'MODULARIZE=1', '-s', 'WASM_ASYNC_COMPILATION=0', '-s', 'SINGLE_FILE=1'] + args + opts)
         create_test_file('a.html', '''
           <script src="a.out.js"></script>
           <script>
@@ -3606,6 +3622,11 @@ window.close = function() {
   def test_pthread_join(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
+  # Test that threads can rejoin the pool once detached and finished
+  @requires_threads
+  def test_std_thread_detach(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
+
   # Test pthread_cancel() operation
   @requires_threads
   def test_pthread_cancel(self):
@@ -3809,7 +3830,7 @@ window.close = function() {
   @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
-      args = ['-s', 'BINARYEN_ASYNC_COMPILATION=0']
+      args = ['-s', 'WASM_ASYNC_COMPILATION=0']
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
@@ -3996,8 +4017,8 @@ window.close = function() {
       (['-O1'], 1),
       (['-O2'], 1),
       (['-O3'], 1),
-      (['-s', 'BINARYEN_ASYNC_COMPILATION=1'], 1), # force it on
-      (['-O1', '-s', 'BINARYEN_ASYNC_COMPILATION=0'], 0), # force it off
+      (['-s', 'WASM_ASYNC_COMPILATION=1'], 1), # force it on
+      (['-O1', '-s', 'WASM_ASYNC_COMPILATION=0'], 0), # force it off
     ]:
       print(opts, expect)
       self.btest('binaryen_async.c', expected=str(expect), args=common_args + opts)
@@ -4045,7 +4066,7 @@ window.close = function() {
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
-  @no_chrome('see #7374')
+  @no_chrome('see https://crbug.com/961765')
   @requires_threads
   def test_webgl_offscreen_canvas_in_pthread(self):
     for args in [[], ['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING']]:
@@ -4053,16 +4074,15 @@ window.close = function() {
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main thread, after it has once been used to render WebGL content in a pthread first
   # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
-  @no_chrome('see #7374')
   @requires_threads
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self):
+    self.skipTest('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
     for args in [[], ['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT']]:
       self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
 
-  @no_chrome('see #7374')
   @requires_threads
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
+    self.btest('gl_only_in_pthread.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
@@ -4106,20 +4126,19 @@ window.close = function() {
   # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
   # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used
   # -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via automatic transferring of Module.canvas when EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas is also used
-  @no_chrome('see #7374')
+  @requires_threads
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
-      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']
       print(str(cmd))
       self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
 
   @requires_threads
   @requires_graphics_hardware
-  @no_chrome('see #7374')
   def test_webgl_resize_offscreencanvas_from_main_thread(self):
     for args1 in [[], ['-s', 'PROXY_TO_PTHREAD=1']]:
       for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1']]:
+        for args3 in [[], ['-s', 'OFFSCREENCANVAS_SUPPORT=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
           cmd = args1 + args2 + args3 + ['-s', 'USE_PTHREADS=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
           print(str(cmd))
           self.btest('resize_offscreencanvas_from_main_thread.cpp', expected='1', args=cmd)
@@ -4271,7 +4290,7 @@ window.close = function() {
 
   @requires_threads
   def test_asmfs_test_fcntl_open(self):
-    self.btest('fcntl-open/src.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fcntl/test_fcntl_open.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
   def test_asmfs_relative_paths(self):
@@ -4552,6 +4571,9 @@ window.close = function() {
 
   def test_emscripten_request_animation_frame_loop(self):
     self.btest(path_from_root('tests', 'emscripten_request_animation_frame_loop.c'), '0')
+
+  def test_request_animation_frame(self):
+    self.btest('request_animation_frame.cpp', '0', also_proxied=True)
 
   @requires_threads
   def test_emscripten_set_timeout(self):

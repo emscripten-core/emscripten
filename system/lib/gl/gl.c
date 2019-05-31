@@ -1570,7 +1570,9 @@ GLAPI void APIENTRY emscripten_glGetInfoLog (GLhandleARB obj, GLsizei maxLength,
 GLAPI void APIENTRY emscripten_glBindProgram (GLenum target, GLuint program);
 
 extern void *emscripten_webgl1_get_proc_address(const char *name);
+extern void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
 extern void *emscripten_webgl2_get_proc_address(const char *name);
+extern void *_webgl2_match_ext_proc_address_without_suffix(const char *name);
 
 #ifdef LEGACY_GL_EMULATION
 
@@ -1794,12 +1796,7 @@ for line in open('a').readlines():
 // behavior: different functionality is available under
 // different vendor suffixes. In emscripten_GetProcAddress()
 // function, all these suffixes will be ignored when performing
-// the function pointer lookup. The functions
-// emscripten_webgl_get_proc_address(),
-// emscripten_webgl1_get_proc_address() and 
-// emscripten_webgl2_get_proc_address() however are "strict"
-// lookups, that provide WebGL specific function entry points that
-// look up the exact function name with suffixes.
+// the function pointer lookup.
 void* emscripten_GetProcAddress(const char *name_) {
   char *name = malloc(strlen(name_)+1);
   strcpy(name, name_);
@@ -1812,14 +1809,19 @@ void* emscripten_GetProcAddress(const char *name_) {
   if (end) *end = 0;
   end = strstr(name, "ANGLE");
   if (end) *end = 0;
+  end = strstr(name, "WEBGL");
+  if (end) *end = 0;
 
   void *ptr = emscripten_webgl1_get_proc_address(name);
+
+  if (!ptr) ptr = _webgl1_match_ext_proc_address_without_suffix(name);
 
 #if LEGACY_GL_EMULATION
   if (!ptr) ptr = emscripten_legacy_gl_emulation_GetProcAddress(name);
 #endif
 #if USE_WEBGL2
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
+  if (!ptr) ptr = _webgl2_match_ext_proc_address_without_suffix(name);
 #endif
 
   free(name);

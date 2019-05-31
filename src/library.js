@@ -929,6 +929,8 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
+  // Alias for sanitizers which intercept getenv.
+  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -2150,15 +2152,39 @@ LibraryManager.library = {
       DLFCN.errorMsg = 'Tried to dlsym() from an unopened handle: ' + handle;
       return 0;
     }
+
     var lib = LDSO.loadedLibs[handle];
-    symbol = '_' + symbol;
-    if (!lib.module.hasOwnProperty(symbol)) {
-      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + symbol +
+    var isMainModule = lib.module == Module;
+
+    var mangled = '_' + symbol;
+    var modSymbol = mangled;
+#if WASM_BACKEND
+    if (!isMainModule) {
+      modSymbol = symbol;
+    }
+#endif
+
+    if (!lib.module.hasOwnProperty(modSymbol)) {
+      DLFCN.errorMsg = ('Tried to lookup unknown symbol "' + modSymbol +
                              '" in dynamic lib: ' + lib.name);
       return 0;
     }
 
-    var result = lib.module[symbol];
+    var result = lib.module[modSymbol];
+#if WASM
+    // Attempt to get the real "unwrapped" symbol so we have more chance of
+    // getting wasm function which can be added to a table.
+    if (isMainModule) {
+#if WASM_BACKEND
+      var asmSymbol = symbol;
+#else
+      var asmSymbol = mangled;
+#endif
+      if (lib.module["asm"][asmSymbol]) {
+        result = lib.module["asm"][asmSymbol];
+      }
+    }
+#endif
     if (typeof result !== 'function')
       return result;
 
@@ -4623,6 +4649,48 @@ LibraryManager.library = {
     else return lengthBytesUTF8(str);
   },
 
+  // Returns a representation of a call site of the caller of this function, in a manner
+  // similar to __builtin_return_address. If level is 0, we return the call site of the
+  // caller of this function.
+  // The exact return value depends in whether we are running WASM or JS, and whether
+  // the engine supports offsets into WASM. See the function body for details.
+  emscripten_return_address__deps: ['emscripten_get_callstack_js'],
+  emscripten_return_address: function(level) {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+
+    // skip this function and the caller to get caller's return address
+    var frame = callstack[level + 2];
+    var match;
+
+    if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
+      // some engines give the binary offset directly, so we use that as return address
+      return +match[1];
+    } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
+      // other engines only give function index and offset in the function,
+      // so we pack these into a "return address"
+      return (+match[1] << 16) + +match[2];
+    } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
+      // if we are in js, we can use the js line number as the "return address"
+      // this should work for wasm2js and fastcomp
+      return +match[1];
+    } else {
+      // return 0 if we can't find any
+      return 0;
+    }
+  },
+
+  emscripten_get_module_name: function(buf, length) {
+    return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_get_stack_top: function() {
+    return STACKTOP;
+  },
+
+  emscripten_get_stack_base: function() {
+    return STACK_BASE;
+  },
+
   //============================
   // i64 math
   //============================
@@ -4698,24 +4766,6 @@ LibraryManager.library = {
   __unlock: function() {},
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
-
-  // ubsan (undefined behavior sanitizer) support
-  // TODO(sbc): Use the actual implementations from clang's compiler-rt
-  __ubsan_handle_float_cast_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
-  },
-
-  __ubsan_handle_pointer_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_pointer_overflow: ' + [id, post]);
-  },
-
-  __ubsan_handle_type_mismatch_v1: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_type_mismatch_v1: ' + [id, post]);
-  },
-
-  __ubsan_handle_add_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_add_overflow: ' + [id, post]);
-  },
 
   // USE_FULL_LIBRARY hacks
   realloc: function() { throw 'bad realloc called' },

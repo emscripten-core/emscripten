@@ -868,6 +868,7 @@
         "defines": [
             "EOF", 
             "SEEK_END", 
+            "SEEK_CUR", 
             "SEEK_SET"
         ],
         "structs": {}
@@ -1249,7 +1250,11 @@
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
 
             "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
-            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD"
+            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD",
+
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [

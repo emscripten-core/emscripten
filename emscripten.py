@@ -611,13 +611,17 @@ def optimize_syscalls(declares, DEBUG):
   if any(shared.Settings[s] for s in relevant_settings):
     return
 
-  syscall_prefix = '__syscall'
-  syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
-  syscalls = [int(s) for s in syscall_numbers if is_int(s)]
-  if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
-    if DEBUG:
-      logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
+  if shared.Settings.FILESYSTEM == 0:
+    # without filesystem support, it doesn't matter what syscalls need
     shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
+  else:
+    syscall_prefix = '__syscall'
+    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
+    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
+    if set(syscalls).issubset(set([6, 54, 140, 146])): # close, ioctl, llseek, writev
+      if DEBUG:
+        logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
+      shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
 
 
 def is_int(x):
@@ -685,8 +689,13 @@ def update_settings_glue(metadata):
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
   if shared.Settings.WASM_BACKEND:
-    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
     shared.Settings.BINARYEN_FEATURES = metadata['features']
+    shared.Settings.WASM_TABLE_SIZE = metadata['tableSize']
+    if shared.Settings.RELOCATABLE:
+      # When building relocatable output (e.g. MAIN_MODULE) the reported table
+      # size does not include the reserved slot at zero for the null pointer.
+      # Instead we use __table_base to offset the elements by 1.
+      shared.Settings.WASM_TABLE_SIZE += 1
 
 
 # static code hooks
@@ -1665,8 +1674,7 @@ def create_the_global(metadata):
 
 RUNTIME_ASSERTIONS = '''
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
-  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');
-'''
+  assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');'''
 
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
@@ -1677,12 +1685,24 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
-    receiving = '\n'.join('var real_' + s + ' = asm["' + s + '"]; asm["' + s + '''"] = function() {''' + runtime_assertions + '''  return real_''' + s + '''.apply(null, arguments);
+    receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+
+    wrappers = []
+    for name in receiving_functions:
+      wrappers.append('''\
+var real_%(name)s = asm["%(name)s"];
+asm["%(name)s"] = function() {%(runtime_assertions)s
+  return real_%(name)s.apply(null, arguments);
 };
-''' for s in receiving)
+''' % {'name': name, 'runtime_assertions': runtime_assertions})
+    receiving = '\n'.join(wrappers)
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
+
+  # Currently USE PTHREADS + EXPORT ES6 doesn't work with the previously generated assertions.
+  # ES6 modules disallow re-assigning read-only properties.
+  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and shared.Settings.ASSERTIONS and receiving:
+    receiving = "assert(!ENVIRONMENT_IS_PTHREAD, 'Error: USE_PTHREADS and EXPORT_ES6 requires ASSERTIONS=0');\n" + receiving
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1718,7 +1738,15 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
 
       receiving += 'for(var __exportedFunc in asm) ' + global_object + '[__exportedFunc] = ' + module_assign + 'asm[__exportedFunc];\n'
   else:
-    receiving += 'Module["asm"] = asm;\n' + '\n'.join(['var ' + s + ' = Module["' + s + '"] = function() {' + runtime_assertions + '  return Module["asm"]["' + s + '"].apply(null, arguments) };' for s in module_exports]) + '\n'
+    receiving += 'Module["asm"] = asm;\n'
+    wrappers = []
+    for name in module_exports:
+      wrappers.append('''\
+var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
+  return Module["asm"]["%(name)s"].apply(null, arguments)
+};
+''' % {'name': name, 'runtime_assertions': runtime_assertions})
+    receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -1741,6 +1769,40 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
         receiving += 'Module["' + name + '"] = ' + fullname + ';\n'
 
   return receiving
+
+
+def create_fp_accessors(metadata):
+  if not shared.Settings.RELOCATABLE:
+    return ''
+
+  # Create `fp$XXX` handlers for determining function pionters (table addresses)
+  # at runtime.
+  # For SIDE_MODULEs these are generated by the proxyHandler at runtime.
+  accessors = []
+  for fullname in metadata['declares']:
+    if not fullname.startswith('fp$'):
+      continue
+    _, name, sig = fullname.split('$')
+    mangled = asmjs_mangle(name)
+    side = 'parent' if shared.Settings.SIDE_MODULE else ''
+    assertion = ('\n  assert(%sModule["%s"] || typeof %s !== "undefined", "external function `%s` is missing.' % (side, mangled, mangled, name) +
+                 'perhaps a side module was not linked in? if this symbol was expected to arrive '
+                 'from a system library, try to build the MAIN_MODULE with '
+                 'EMCC_FORCE_STDLIBS=XX in the environment");')
+
+    accessors.append('''
+Module['%(full)s'] = function() {
+  %(assert)s
+  var func = Module['%(mangled)s'];
+  if (!func)
+    func = %(mangled)s;
+  var fp = addFunctionWasm(func, '%(sig)s');
+  Module['%(full)s'] = function() { return fp };
+  return fp;
+}
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig})
+
+  return '\n'.join(accessors)
 
 
 def create_named_globals(metadata):
@@ -2169,7 +2231,9 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   outfile.write(pre)
   pre = None
 
-  invoke_funcs = metadata.get('invokeFuncs', [])
+  invoke_funcs = metadata['invokeFuncs']
+  if shared.Settings.RELOCATABLE:
+    invoke_funcs.append('invoke_X')
 
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
@@ -2185,6 +2249,16 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   module = None
 
   outfile.close()
+
+
+def remove_trailing_zeros(memfile):
+  with open(memfile, 'rb') as f:
+    mem_data = f.read()
+  end = len(mem_data)
+  while end > 0 and (mem_data[end - 1] == b'\0' or mem_data[end - 1] == 0):
+    end -= 1
+  with open(memfile, 'wb') as f:
+    f.write(mem_data[:end])
 
 
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
@@ -2215,8 +2289,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
-  cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm,
-         '--global-base=%s' % shared.Settings.GLOBAL_BASE]
+  cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm]
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
@@ -2230,13 +2303,33 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     cmd.append('--separate-data-segments=' + memfile)
-  if not shared.Settings.SIDE_MODULE:
+  if shared.Settings.SIDE_MODULE:
+    cmd.append('--side-module')
+  else:
+    # --global-base is used by wasm-emscripten-finalize to calculate the size
+    # of the static data used.  The argument we supply here needs to match the
+    # global based used by lld (see Building.link_lld).  For relocatable this is
+    # zero for the global base although at runtime __memory_base is used.
+    # For non-relocatable output we used shared.Settings.GLOBAL_BASE.
+    # TODO(sbc): Can we remove this argument infer this from the segment
+    # initializer?
+    if shared.Settings.RELOCATABLE:
+      cmd.append('--global-base=0')
+    else:
+      cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
     cmd.append('--initial-stack-pointer=%d' % Memory().stack_base)
   shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
+
+  if not shared.Settings.MEM_INIT_IN_WASM:
+    # we have a separate .mem file. binaryen did not strip any trailing zeros,
+    # because it's an ABI question as to whether it is valid to do so or not.
+    # we can do so here, since we make sure to zero out that memory (even in
+    # the dynamic linking case, our loader zeros it out)
+    remove_trailing_zeros(memfile)
 
   return load_metadata_wasm(stdout, DEBUG)
 
@@ -2332,7 +2425,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
     # strip them again here.
-    if g.startswith('_'):
+    # note that we don't do this for EM_JS functions (which, rarely, may have
+    # a '_' prefix)
+    if g.startswith('_') and g not in metadata['emJsFuncs']:
       return g[1:]
     return g
 
@@ -2356,9 +2451,12 @@ def create_receiving_wasm(exports):
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
     for e in exports:
-      receiving.append('''var real_%(mangled)s = asm["%(e)s"]; asm["%(e)s"] = function() { %(assertions)s
-return real_%(mangled)s.apply(null, arguments);
-};''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+      receiving.append('''\
+var real_%(mangled)s = asm["%(e)s"];
+asm["%(e)s"] = function() {%(assertions)s
+  return real_%(mangled)s.apply(null, arguments);
+};
+''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     for e in exports:
@@ -2366,7 +2464,11 @@ return real_%(mangled)s.apply(null, arguments);
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      receiving.append('var %(mangled)s = Module["%(mangled)s"] = function() { %(assertions)s return Module["asm"]["%(e)s"].apply(null, arguments) };' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+      receiving.append('''\
+var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+  return Module["asm"]["%(e)s"].apply(null, arguments)
+};
+''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   return '\n'.join(receiving) + '\n'
 
@@ -2374,6 +2476,7 @@ return real_%(mangled)s.apply(null, arguments);
 def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
+  receiving += create_fp_accessors(metadata)
   module = []
   module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:

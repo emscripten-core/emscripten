@@ -15,6 +15,22 @@ full changeset diff at the end of each section.
 
 Current Trunk
 -------------
+
+ - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
+     - This allows `emcc -fsanitize=undefined` to work. (#8651)
+     - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
+
+v1.38.33: 05/23/2019
+--------------------
+ - First release to use the new chromium build infrastructure
+   https://groups.google.com/forum/#!msg/emscripten-discuss/WhDtqVyW_Ak/8DfDnfk0BgAJ
+
+ - Add `emscripten_return_address` which implements the functionality of
+   gcc/clang's `__builtin_return_address`. (#8617)
+
+v1.38.31: 04/24/2019
+--------------------
+ - Change ino_t/off_t to 64-bits. (#8467)
  - Add port for bzip2 library (`libbz2.a`). (#8349)
  - Add port for libjpeg library. (#8361)
  - Enable ERROR_ON_MISSING_LIBRARIES by by default (#8461)
