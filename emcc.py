@@ -2844,7 +2844,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # kept it around in the intermediate invocations for the sake of the symbol map
   if options.emit_symbol_map:
     shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
-    save_intermediate_with_wasm('postclean', wasm_binary_target)
+    save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
