@@ -69,7 +69,7 @@ Emscripten has a number of compiler settings that can be useful for debugging. T
 
   emcc -O1 -s ASSERTIONS=1 tests/hello_world
 
-The most important settings are:
+Some important settings are:
 
   -
     .. _debugging-ASSERTIONS:
@@ -91,6 +91,11 @@ The most important settings are:
     Passing the ``STACK_OVERFLOW_CHECK=1`` linker flag adds a runtime magic token value at the end of the stack, which is checked in certain locations to verify that the user code does not accidentally write past the end of the stack. While overrunning the Emscripten stack is not a security issue (JavaScript is sandboxed already), writing past the stack causes memory corruption in global data and dynamically allocated memory sections in the Emscripten HEAP, which makes the application fail in unexpected ways. The value ``STACK_OVERFLOW_CHECK=2`` enables slightly more detailed stack guard checks, which can give a more precise callstack at the expense of some performance. Default value is 2 if ``ASSERTIONS=1`` is set, and disabled otherwise.
 
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
+
+  -
+    .. _debugging-DEMANGLE_SUPPORT:
+
+    ``DEMANGLE_SUPPORT=1`` links in code to automatically demangle stack traces, that is, emit human-readable C++ function names instead of ``_ZN..`` ones.
 
 
 .. _debugging-emcc-v:
