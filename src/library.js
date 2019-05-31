@@ -4530,8 +4530,8 @@ LibraryManager.library = {
     }
     if (!name) return 0;
 
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    if (_emscripten_pc_get_function.ret) _emscripten_builtin_free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name, _emscripten_builtin_malloc);
     return _emscripten_pc_get_function.ret;
   },
 
@@ -4572,8 +4572,8 @@ LibraryManager.library = {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    if (_emscripten_pc_get_file.ret) _emscripten_builtin_free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file, _emscripten_builtin_malloc);
     return _emscripten_pc_get_file.ret;
   },
 
