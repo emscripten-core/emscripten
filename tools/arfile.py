@@ -153,7 +153,7 @@ class ArFile(object):
       with builtin_open(full_name, 'wb') as f:
         f.write(m.data)
 
-    return list(names_written)
+    return sorted(list(names_written))
 
   def close(self):
     self._file.close()
