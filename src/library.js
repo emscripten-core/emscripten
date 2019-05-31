@@ -929,6 +929,8 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
+  // Alias for sanitizers which intercept getenv.
+  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -4677,6 +4679,18 @@ LibraryManager.library = {
     }
   },
 
+  emscripten_get_module_name: function(buf, length) {
+    return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_get_stack_top: function() {
+    return STACKTOP;
+  },
+
+  emscripten_get_stack_base: function() {
+    return STACK_BASE;
+  },
+
   //============================
   // i64 math
   //============================
@@ -4752,24 +4766,6 @@ LibraryManager.library = {
   __unlock: function() {},
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
-
-  // ubsan (undefined behavior sanitizer) support
-  // TODO(sbc): Use the actual implementations from clang's compiler-rt
-  __ubsan_handle_float_cast_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_float_cast_overflow: ' + [id, post]);
-  },
-
-  __ubsan_handle_pointer_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_pointer_overflow: ' + [id, post]);
-  },
-
-  __ubsan_handle_type_mismatch_v1: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_type_mismatch_v1: ' + [id, post]);
-  },
-
-  __ubsan_handle_add_overflow: function(id, post) {
-    abort('Undefined behavior! ubsan_handle_add_overflow: ' + [id, post]);
-  },
 
   // USE_FULL_LIBRARY hacks
   realloc: function() { throw 'bad realloc called' },

@@ -15,7 +15,7 @@
 #include "sanitizer_platform.h"
 
 #if SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS
+    SANITIZER_OPENBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
 
 #include "sanitizer_common.h"
 #include "sanitizer_flags.h"
@@ -24,6 +24,7 @@
 #include "sanitizer_libc.h"
 #include "sanitizer_linux.h"
 #include "sanitizer_mutex.h"
+#include "sanitizer_posix.h"
 #include "sanitizer_placement_new.h"
 #include "sanitizer_procmaps.h"
 
@@ -104,7 +105,7 @@ extern struct ps_strings *__ps_strings;
 
 extern char **environ;
 
-#if SANITIZER_LINUX
+#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
 // <linux/time.h>
 struct kernel_timeval {
   long tv_sec;
@@ -165,6 +166,8 @@ namespace __sanitizer {
 #include "sanitizer_syscall_linux_aarch64.inc"
 #elif SANITIZER_LINUX && defined(__arm__)
 #include "sanitizer_syscall_linux_arm.inc"
+#elif SANITIZER_EMSCRIPTEN
+#include "sanitizer_syscall_emscripten.inc"
 #else
 #include "sanitizer_syscall_generic.inc"
 #endif
@@ -238,7 +241,7 @@ uptr internal_ftruncate(fd_t fd, uptr size) {
   return res;
 }
 
-#if !SANITIZER_LINUX_USES_64BIT_SYSCALLS && SANITIZER_LINUX
+#if !SANITIZER_LINUX_USES_64BIT_SYSCALLS && SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
 static void stat64_to_stat(struct stat64 *in, struct stat *out) {
   internal_memset(out, 0, sizeof(*out));
   out->st_dev = in->st_dev;
@@ -423,7 +426,12 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 }
 
 uptr internal_sched_yield() {
+#if SANITIZER_EMSCRIPTEN
+  Report("WARNING: sched_yield doesn't do anything on emscripten");
+  return 0;
+#else
   return internal_syscall(SYSCALL(sched_yield));
+#endif
 }
 
 void internal__exit(int exitcode) {
@@ -482,7 +490,7 @@ tid_t GetTid() {
 }
 
 int TgKill(pid_t pid, tid_t tid, int sig) {
-#if SANITIZER_LINUX
+#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
   return internal_syscall(SYSCALL(tgkill), pid, tid, sig);
 #elif SANITIZER_FREEBSD
   return internal_syscall(SYSCALL(thr_kill2), pid, tid, sig);
@@ -508,10 +516,22 @@ u64 NanoTime() {
   return (u64)tv.tv_sec * 1000*1000*1000 + tv.tv_usec * 1000;
 }
 
+#if SANITIZER_EMSCRIPTEN
+int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
+
+uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
+  return __clock_gettime(clk_id, tp);
+}
+#else
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return internal_syscall(SYSCALL(clock_gettime), clk_id, tp);
 }
+#endif // SANITIZER_EMSCRIPTEN
 #endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+
+#if SANITIZER_EMSCRIPTEN
+extern "C" const char *emscripten_get_env(const char *name);
+#endif
 
 // Like getenv, but reads env directly from /proc (on Linux) or parses the
 // 'environ' array (on some others) and does not use libc. This function
@@ -551,6 +571,8 @@ const char *GetEnv(const char *name) {
     p = endp + 1;
   }
   return nullptr;  // Not found.
+#elif SANITIZER_EMSCRIPTEN
+  return emscripten_get_env(name);
 #else
 #error "Unsupported platform"
 #endif
@@ -588,7 +610,7 @@ static void ReadNullSepFileToArray(const char *path, char ***arr,
 }
 #endif
 
-#if !SANITIZER_OPENBSD
+#if !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 static void GetArgsAndEnv(char ***argv, char ***envp) {
 #if SANITIZER_FREEBSD
   // On FreeBSD, retrieving the argument and environment arrays is done via the
@@ -635,7 +657,7 @@ char **GetEnviron() {
   return envp;
 }
 
-#endif  // !SANITIZER_OPENBSD
+#endif  // !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 
 #if !SANITIZER_SOLARIS
 enum MutexState {
@@ -656,7 +678,7 @@ void BlockingMutex::Lock() {
   while (atomic_exchange(m, MtxSleeping, memory_order_acquire) != MtxUnlocked) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAIT_UINT, MtxSleeping, 0, 0);
-#elif SANITIZER_NETBSD
+#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
     sched_yield(); /* No userspace futex-like synchronization */
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAIT_PRIVATE, MtxSleeping,
@@ -672,7 +694,7 @@ void BlockingMutex::Unlock() {
   if (v == MtxSleeping) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAKE, 1, 0, 0);
-#elif SANITIZER_NETBSD
+#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
                    /* No userspace futex-like synchronization */
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAKE_PRIVATE, 1, 0, 0, 0);
@@ -764,7 +786,10 @@ uptr internal_sigaltstack(const void *ss, void *oss) {
 }
 
 int internal_fork() {
-#if SANITIZER_USES_CANONICAL_LINUX_SYSCALLS
+#if SANITIZER_EMSCRIPTEN
+  Report("fork not supported on emscripten\n");
+  return -1;
+#elif SANITIZER_USES_CANONICAL_LINUX_SYSCALLS
   return internal_syscall(SYSCALL(clone), SIGCHLD, 0);
 #else
   return internal_syscall(SYSCALL(fork));
@@ -912,7 +937,7 @@ bool internal_sigismember(__sanitizer_sigset_t *set, int signum) {
 #endif
 #endif // !SANITIZER_SOLARIS
 
-#if !SANITIZER_NETBSD
+#if !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 // ThreadLister implementation.
 ThreadLister::ThreadLister(pid_t pid) : pid_(pid), buffer_(4096) {
   char task_directory_path[80];
@@ -1097,12 +1122,18 @@ uptr GetPageSize() {
 }
 #endif // !SANITIZER_ANDROID
 
+#if SANITIZER_EMSCRIPTEN
+extern "C" uptr emscripten_get_module_name(char *buf, uptr buf_len);
+#endif
+
 #if !SANITIZER_OPENBSD
 uptr ReadBinaryName(/*out*/char *buf, uptr buf_len) {
 #if SANITIZER_SOLARIS
   const char *default_module_name = getexecname();
   CHECK_NE(default_module_name, NULL);
   return internal_snprintf(buf, buf_len, "%s", default_module_name);
+#elif SANITIZER_EMSCRIPTEN
+  return emscripten_get_module_name(buf, buf_len);
 #else
 #if SANITIZER_FREEBSD || SANITIZER_NETBSD
 #if SANITIZER_FREEBSD
@@ -1976,6 +2007,9 @@ static void GetPcSpBp(void *context, uptr *pc, uptr *sp, uptr *bp) {
 # endif
   *bp = ucontext->uc_mcontext.gregs[11];
   *sp = ucontext->uc_mcontext.gregs[15];
+#elif SANITIZER_EMSCRIPTEN
+  Report("GetPcSpBp not implemented on emscripten");
+  Abort();
 #else
 # error "Unsupported arch"
 #endif
