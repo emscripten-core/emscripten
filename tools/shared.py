@@ -2696,6 +2696,17 @@ class Building(object):
       try_delete(wasm_file)
     return js_file
 
+  @staticmethod
+  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
+    logger.debug('emit_wasm_symbol_map')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+    if not debug_info:
+      # to remove debug info, we just write to that same file, and without -g
+      cmd += ['-o', wasm_file]
+    output = run_process(cmd, stdout=PIPE).stdout
+    with open(symbols_file, 'w') as f:
+      f.write(output)
+
   # the exports the user requested
   user_requested_exports = []
 

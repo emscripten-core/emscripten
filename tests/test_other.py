@@ -3805,7 +3805,7 @@ int main()
   @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
     for opts in [[], ['-O2'], ['-O3']]:
-      for wasm in [1]:#0, 1]:
+      for wasm in [0, 1]:
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
@@ -3840,7 +3840,8 @@ EM_ASM({ _middle() });
         lines = [line.split(':') for line in symbols.strip().split('\n')]
         minified_middle = None
         for minified, full in lines:
-          if full == '_middle':
+          # handle both fastcomp and wasm backend notation
+          if full == '_middle' or full == 'middle':
             minified_middle = minified
             break
         self.assertNotEqual(minified_middle, None)
@@ -3850,6 +3851,10 @@ EM_ASM({ _middle() });
           stack_trace_reference = 'wasm-function[%s]' % minified_middle
           out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
           self.assertContained(stack_trace_reference, out)
+          # make sure there are no symbols in the wasm itself
+          wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+          for func_start in ('(func $middle', '(func $_middle'):
+            self.assertNotContained(func_start, wast)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
