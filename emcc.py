@@ -115,6 +115,43 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
 # Target options
 final = None
 
+UBSAN_SANITIZERS = {
+  'alignment',
+  'bool',
+  'builtin',
+  'bounds',
+  'enum',
+  'float-cast-overflow',
+  'float-divide-by-zero',
+  'function',
+  'implicit-unsigned-integer-truncation',
+  'implicit-signed-integer-truncation',
+  'implicit-integer-sign-change',
+  'integer-divide-by-zero',
+  'nonnull-attribute',
+  'null',
+  'nullability-arg',
+  'nullability-assign',
+  'nullability-return',
+  'object-size',
+  'pointer-overflow',
+  'return',
+  'returns-nonnull-attribute',
+  'shift',
+  'signed-integer-overflow',
+  'unreachable',
+  'unsigned-integer-overflow',
+  'vla-bound',
+  'vptr',
+  'undefined',
+  'undefined-trap',
+  'implicit-integer-truncation',
+  'implicit-integer-arithmetic-value-change',
+  'implicit-conversion',
+  'integer',
+  'nullability',
+}
+
 
 class Intermediate(object):
   counter = 0
@@ -1164,7 +1201,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
       if shared.Settings.WASM_BACKEND:
         # setjmp/longjmp and exception handling JS code depends on this so we
-        # include it by default.  Should be elimiated by meta-DCE if unused.
+        # include it by default.  Should be eliminated by meta-DCE if unused.
         shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
@@ -1429,8 +1466,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm:
         exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      if '-fsanitize-minimal-runtime' in newargs:
-        shared.Settings.UBSAN_RUNTIME = 1
+      sanitize = set()
+
+      for arg in newargs:
+        if arg.startswith('-fsanitize='):
+          sanitize.update(arg.split('=', 1)[1].split(','))
+        elif arg.startswith('-fno-sanitize='):
+          sanitize.difference_update(arg.split('=', 1)[1].split(','))
+
+      if sanitize & UBSAN_SANITIZERS:
+        if '-fsanitize-minimal-runtime' in newargs:
+          shared.Settings.UBSAN_RUNTIME = 1
+        else:
+          shared.Settings.UBSAN_RUNTIME = 2
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None

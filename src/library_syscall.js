@@ -968,6 +968,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
+  __syscall192__deps: ['memalign'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
     off <<= 12; // undo pgoffset
@@ -1174,6 +1175,11 @@ var SyscallsLibrary = {
       }
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
+  },
+  __syscall252: function(which, varargs) { // exit_group
+    var status = SYSCALLS.get();
+    exit(status);
+    return 0;
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG

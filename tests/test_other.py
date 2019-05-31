@@ -787,45 +787,6 @@ f.close()
       run_process([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_ubsan(self):
-    create_test_file('test.cpp', r'''
-      #include <vector>
-      #include <stdio.h>
-
-      class Test {
-      public:
-        std::vector<int> vector;
-      };
-
-      Test globalInstance;
-
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-  def test_ubsan_add_overflow(self):
-    create_test_file('test.cpp', r'''
-      #include <stdio.h>
-
-      int main(int argc, char **argv) {
-        printf("hello, world!\n");
-        fflush(stdout);
-        int k = 0x7fffffff;
-        k += argc;
-        return k;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    output = run_js('a.out.js', assert_returncode=1, stderr=STDOUT)
-    self.assertContained('hello, world!', output)
-    self.assertContained('Undefined behavior! ubsan_handle_add_overflow:', output)
-
   @no_wasm_backend()
   def test_asm_minify(self):
     def test(args):
@@ -7965,7 +7926,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1581, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1582, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7985,7 +7946,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1543, [], [], 226403, 30, 95, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()

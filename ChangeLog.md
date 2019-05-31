@@ -16,6 +16,10 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+ - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
+     - This allows `emcc -fsanitize=undefined` to work. (#8651)
+     - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
+
 v1.38.33: 05/23/2019
 --------------------
  - First release to use the new chromium build infrastructure

@@ -13,6 +13,7 @@ import sys
 import tarfile
 import zipfile
 from collections import namedtuple
+from glob import iglob
 
 from . import ports
 from . import shared
@@ -27,6 +28,11 @@ logger = logging.getLogger('system_libs')
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
+
+
+def glob_in_path(path_components, glob_pattern, excludes=()):
+  srcdir = shared.path_from_root(*path_components)
+  return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
 
 
 def get_cflags(force_object_files=False):
@@ -529,7 +535,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
     return o
 
-  def create_wasm_rt_lib(libname, files):
+  def create_wasm_rt_lib(libname, files, extra_flags=[]):
     # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
     # it includes the builtin symbols that the LTO complication can generate.
     # It seems that LTO as implemented by lld assumes that builtins do not
@@ -543,7 +549,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
                        '-c', shared.path_from_root('system', 'lib', src),
                        '-o', o] +
-                      musl_internal_includes() +
+                      musl_internal_includes() + extra_flags +
                       get_cflags(force_object_files=True))
       o_s.append(o)
     run_commands(commands)
@@ -574,6 +580,24 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal'],
       filenames=['ubsan_minimal_handlers.cpp'])
     return create_wasm_rt_lib(libname, files)
+
+  def create_wasm_common_san_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common'],
+      glob_pattern='*.cc',
+      excludes=['sanitizer_common_nolibc.cc'],
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=['-std=c++11'])
+
+  def create_wasm_ubsan_rt(libname):
+    files = glob_in_path(
+      path_components=['system', 'lib', 'compiler-rt', 'lib', 'ubsan'],
+      glob_pattern='*.cc',
+    )
+    return create_wasm_rt_lib(libname, files, extra_flags=[
+      '-I', shared.path_from_root('system', 'lib', 'compiler-rt', 'lib'), '-std=c++11',
+      '-DUBSAN_CAN_USE_CXXABI'
+    ])
 
   def create_wasm_libc_rt(libname):
     return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
@@ -793,6 +817,13 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.UBSAN_RUNTIME == 1:
     libs_to_link.append((shared.Cache.get('libubsan_minimal_rt_wasm.a', lambda: create_wasm_ubsan_minimal_rt('libubsan_minimal_rt_wasm.a')), False))
+  elif shared.Settings.UBSAN_RUNTIME == 2:
+    libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
+    libs_to_link.append((shared.Cache.get('libubsan_rt_wasm.a', lambda: create_wasm_ubsan_rt('libubsan_rt_wasm.a')), False))
+    # TODO: handle this dependency better
+    add_library(system_libs_map['libc++abi'])
+    # FIXME: add this to deps_info.json and make add_back_deps work with libraries.
+    shared.Settings.EXPORTED_FUNCTIONS.append('_memalign')
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

@@ -14,11 +14,6 @@
 
 #include "ubsan_platform.h"
 #include "sanitizer_common/sanitizer_platform.h"
-#if CAN_SANITIZE_UB
-#include "interception/interception.h"
-#include "sanitizer_common/sanitizer_stacktrace.h"
-#include "ubsan_diag.h"
-#include "ubsan_init.h"
 
 // Interception of signals breaks too many things on Android.
 // * It requires that ubsan is the first dependency of the main executable for
@@ -28,13 +23,18 @@
 // debuggerd handler, but before the ART handler.
 // * Interceptors don't work at all when ubsan runtime is loaded late, ex. when
 // it is part of an APK that does not use wrap.sh method.
-#if SANITIZER_FUCHSIA || SANITIZER_ANDROID
+#if SANITIZER_FUCHSIA || SANITIZER_ANDROID || SANITIZER_EMSCRIPTEN
 
 namespace __ubsan {
 void InitializeDeadlySignals() {}
 }
 
-#else
+#elif CAN_SANITIZE_UB
+
+#include "interception/interception.h"
+#include "sanitizer_common/sanitizer_stacktrace.h"
+#include "ubsan_diag.h"
+#include "ubsan_init.h"
 
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
@@ -62,7 +62,5 @@ void InitializeDeadlySignals() {
 }
 
 } // namespace __ubsan
-
-#endif
 
 #endif // CAN_SANITIZE_UB

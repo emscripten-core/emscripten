@@ -2425,7 +2425,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
     # strip them again here.
-    if g.startswith('_'):
+    # note that we don't do this for EM_JS functions (which, rarely, may have
+    # a '_' prefix)
+    if g.startswith('_') and g not in metadata['emJsFuncs']:
       return g[1:]
     return g
 
