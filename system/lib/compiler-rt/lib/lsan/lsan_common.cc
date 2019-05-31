@@ -212,9 +212,10 @@ void ForEachExtraStackRangeCb(uptr begin, uptr end, void* arg) {
   ScanRangeForPointers(begin, end, frontier, "FAKE STACK", kReachable);
 }
 
+#if !SANITIZER_EMSCRIPTEN
 // Scans thread data (stacks and TLS) for heap pointers.
-static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
-                           Frontier *frontier) {
+void ProcessThreads(SuspendedThreadsList const &suspended_threads,
+                    Frontier *frontier) {
   InternalMmapVector<uptr> registers(suspended_threads.RegisterCount());
   uptr registers_begin = reinterpret_cast<uptr>(registers.data());
   uptr registers_end =
@@ -308,6 +309,7 @@ static void ProcessThreads(SuspendedThreadsList const &suspended_threads,
     }
   }
 }
+#endif // !SANITIZER_EMSCRIPTEN
 
 void ScanRootRegion(Frontier *frontier, const RootRegion &root_region,
                     uptr region_begin, uptr region_end, bool is_readable) {
@@ -442,6 +444,7 @@ static void MarkInvalidPCCb(uptr chunk, void *arg) {
 // On all other platforms, this simply checks to ensure that the caller pc is
 // valid before reporting chunks as leaked.
 void ProcessPC(Frontier *frontier) {
+#if !SANITIZER_EMSCRIPTEN
   StackDepotReverseMap stack_depot_reverse_map;
   InvalidPCParam arg;
   arg.frontier = frontier;
@@ -449,6 +452,7 @@ void ProcessPC(Frontier *frontier) {
   arg.skip_linker_allocations =
       flags()->use_tls && flags()->use_ld_allocations && GetLinker() != nullptr;
   ForEachChunk(MarkInvalidPCCb, &arg);
+#endif
 }
 
 // Sets the appropriate tag on each chunk.
@@ -566,8 +570,8 @@ static void CheckForLeaksCallback(const SuspendedThreadsList &suspended_threads,
   CHECK(!param->success);
 #if !SANITIZER_EMSCRIPTEN
   ReportUnsuspendedThreads(suspended_threads);
-  ClassifyAllChunks(suspended_threads);
 #endif
+  ClassifyAllChunks(suspended_threads);
   ForEachChunk(CollectLeaksCb, &param->leak_report);
   // Clean up for subsequent leak checks. This assumes we did not overwrite any
   // kIgnored tags.
@@ -596,8 +600,11 @@ static bool CheckForLeaks() {
         "HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)\n");
     Die();
   }
-  //param.leak_report.ApplySuppressions();
+#if !SANITIZER_EMSCRIPTEN
+  param.leak_report.ApplySuppressions();
+#endif
   uptr unsuppressed_count = param.leak_report.UnsuppressedLeakCount();
+
   if (unsuppressed_count > 0) {
     Decorator d;
     Printf("\n"
@@ -743,7 +750,9 @@ void LeakReport::PrintReportForLeak(uptr index) {
          leaks_[index].total_size, leaks_[index].hit_count);
   Printf("%s", d.Default());
 
+#if !SANITIZER_EMSCRIPTEN
   PrintStackTraceById(leaks_[index].stack_trace_id);
+#endif
 
   if (flags()->report_objects) {
     Printf("Objects leaked above:\n");

@@ -75,10 +75,15 @@ void InitializePlatformSpecificModules() {
   }
 }
 
+extern "C" {
+  extern int __data_end;
+  extern int __heap_base;
+}
+
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
-  ScanGlobalRange(0, emscripten_get_heap_size(), frontier);
+  ScanGlobalRange(0, (uptr) &__data_end, frontier);
 }
 
 LoadedModule *GetLinker() { return linker; }
@@ -97,6 +102,12 @@ void DoStopTheWorld(StopTheWorldCallback callback, void *argument) {
 }
 
 void InitializeInterceptors() {}
+
+void ProcessThreads(SuspendedThreadsList const &suspended_threads,
+                    Frontier *frontier) {
+  uptr sp = (uptr) __builtin_frame_address(0);
+  ScanRangeForPointers(sp, (uptr) &__heap_base, frontier, "STACK", kReachable);
+}
 
 } // namespace __lsan
 
