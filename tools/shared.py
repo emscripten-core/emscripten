@@ -2629,19 +2629,45 @@ class Building(object):
       cmd += ['-O']
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if DEBUG:
+      with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
+        f.write(wasm2js_js)
+    # JS optimizations
     if opt_level >= 2:
+      passes = []
+      # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
+      # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
+      if not debug_info:
+        passes += ['minifyNames']
+      if minify_whitespace:
+        passes += ['minifyWhitespace']
+      passes += ['last']
+      if passes:
+        # hackish fixups to work around wasm2js style and the js optimizer FIXME
+        wasm2js_js = '// EMSCRIPTEN_START_ASM\n' + wasm2js_js + '// EMSCRIPTEN_END_ASM\n'
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
+        wasm2js_js = wasm2js_js.replace('\n }', '\n}')
+        wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
+        temp = configuration.get_temp_files().get('.js').name
+        with open(temp, 'w') as f:
+          f.write(wasm2js_js)
+        temp = Building.js_optimizer(temp, passes)
+        with open(temp) as f:
+          wasm2js_js = f.read()
+    # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
+    # minify the wasm2js output as well, which is ok since it isn't
+    # validating asm.js.
+    # TODO: in the non-closure case, we could run a lightweight general-
+    #       purpose JS minifier here.
+    if use_closure_compiler == 2:
       temp = configuration.get_temp_files().get('.js').name
       with open(temp, 'a') as f:
         f.write(wasm2js_js)
-      # if closure is 1, minify the code in a non-advanced way here (we don't validate
-      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
-      # mode, then we'll minify it all together later on
-      if use_closure_compiler == 1:
-        temp = Building.closure_compiler(temp,
-                                         pretty=not minify_whitespace,
-                                         advanced=False)
-      elif minify_whitespace:
-        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      temp = Building.closure_compiler(temp,
+                                       pretty=not minify_whitespace,
+                                       advanced=False)
       with open(temp) as f:
         wasm2js_js = f.read()
       # closure may leave a trailing `;`, which would be invalid given where we place

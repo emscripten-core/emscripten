@@ -331,6 +331,7 @@ ___syscall218
 ___syscall219
 ___syscall220
 ___syscall221
+___syscall252
 ___syscall265
 ___syscall268
 ___syscall269
@@ -388,10 +389,6 @@ ___syscall91
 ___syscall94
 ___syscall96
 ___syscall97
-___ubsan_handle_add_overflow
-___ubsan_handle_float_cast_overflow
-___ubsan_handle_pointer_overflow
-___ubsan_handle_type_mismatch_v1
 ___unlock
 ___wait
 __addDays
@@ -658,10 +655,12 @@ _emscripten_get_device_pixel_ratio
 _emscripten_get_devicemotion_status
 _emscripten_get_deviceorientation_status
 _emscripten_get_element_css_size
+_emscripten_get_env
 _emscripten_get_fullscreen_status
 _emscripten_get_gamepad_status
 _emscripten_get_heap_size
 _emscripten_get_main_loop_timing
+_emscripten_get_module_name
 _emscripten_get_mouse_status
 _emscripten_get_now
 _emscripten_get_now_is_monotonic
@@ -671,6 +670,8 @@ _emscripten_get_orientation_status
 _emscripten_get_pointerlock_status
 _emscripten_get_preloaded_image_data
 _emscripten_get_preloaded_image_data_from_FILE
+_emscripten_get_stack_base
+_emscripten_get_stack_top
 _emscripten_get_visibility_status
 _emscripten_get_worker_queue_size
 _emscripten_glActiveTexture
