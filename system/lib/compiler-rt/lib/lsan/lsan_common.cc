@@ -750,9 +750,7 @@ void LeakReport::PrintReportForLeak(uptr index) {
          leaks_[index].total_size, leaks_[index].hit_count);
   Printf("%s", d.Default());
 
-#if !SANITIZER_EMSCRIPTEN
   PrintStackTraceById(leaks_[index].stack_trace_id);
-#endif
 
   if (flags()->report_objects) {
     Printf("Objects leaked above:\n");
