@@ -418,12 +418,10 @@ function abort(what) {
   ABORT = true;
   EXITSTATUS = 1;
 
-  if (Module['onError']) {
-    return Module['onError'](what);
-  }
-
 #if ASSERTIONS == 0
+#if THROW_ON_ABORT == 1
   throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+#endif
 #else
   var extra = '';
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
@@ -432,7 +430,9 @@ function abort(what) {
       output = decorator(output, what);
     });
   }
+#if THROW_ON_ABORT == 1
   throw output;
+#endif
 #endif // ASSERTIONS
 }
 Module['abort'] = abort;

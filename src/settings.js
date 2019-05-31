@@ -967,6 +967,10 @@ var EMSCRIPTEN_TRACING = 0;
 // for GLFW3.
 var USE_GLFW = 2;
 
+// Whether abort() should also throw an error. If this is set to 0, no error
+// will be thrown, allowing the program to recover. 
+var THROW_ON_ABORT = 1;
+
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to
 // asm.js.  This will fetch the binaryen port and build it. (If, instead, you
 // set BINARYEN_ROOT in your ~/.emscripten file, then we use that instead of the
