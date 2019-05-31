@@ -2417,6 +2417,7 @@ def parse_args(newargs):
       options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
+      shared.Settings.EMIT_SYMBOL_MAP = 1
       newargs[i] = ''
     elif newargs[i] == '--bind':
       options.bind = True
