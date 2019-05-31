@@ -3804,10 +3804,11 @@ int main()
 
   @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for wasm in [1, 0]:#0, 1]:
-      print(wasm)
-      self.clear()
-      create_test_file('src.c', r'''
+    for opts in [[], ['-O2'], ['-O3']]:
+      for wasm in [1]:#0, 1]:
+        print(opts, wasm)
+        self.clear()
+        create_test_file('src.c', r'''
 #include <emscripten.h>
 
 EM_JS(int, run_js, (), {
@@ -3827,28 +3828,28 @@ int main() {
 EM_ASM({ _middle() });
 }
 ''')
-      cmd = [PYTHON, EMCC, 'src.c', '-O2', '--emit-symbol-map']
-      if not wasm:
-        if self.is_wasm_backend():
-          continue
-        cmd += ['-s', 'WASM=0']
-      run_process(cmd)
-      # check that the map is correct
-      with open('a.out.js.symbols') as f:
-        symbols = f.read()
-      lines = [line.split(':') for line in symbols.strip().split('\n')]
-      minified_middle = None
-      for minified, full in lines:
-        if full == '_middle':
-          minified_middle = minified
-          break
-      self.assertNotEqual(minified_middle, None)
-      if wasm:
-        # stack traces are standardized enough that we can easily check that the
-        # minified name is actually in the output
-        stack_trace_reference = 'wasm-function[%s]' % minified_middle
-        out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-        self.assertContained(stack_trace_reference, out)
+        cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
+        if not wasm:
+          if self.is_wasm_backend():
+            continue
+          cmd += ['-s', 'WASM=0']
+        run_process(cmd)
+        # check that the map is correct
+        with open('a.out.js.symbols') as f:
+          symbols = f.read()
+        lines = [line.split(':') for line in symbols.strip().split('\n')]
+        minified_middle = None
+        for minified, full in lines:
+          if full == '_middle':
+            minified_middle = minified
+            break
+        self.assertNotEqual(minified_middle, None)
+        if wasm:
+          # stack traces are standardized enough that we can easily check that the
+          # minified name is actually in the output
+          stack_trace_reference = 'wasm-function[%s]' % minified_middle
+          out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          self.assertContained(stack_trace_reference, out)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if

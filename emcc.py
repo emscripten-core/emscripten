@@ -2754,7 +2754,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         os.unlink(memfile)
     log_time('asm2wasm')
-  if shared.Settings.BINARYEN_PASSES:
+  if shared.Settings.BINARYEN_PASSES or shared.Settings.BINARYEN_EXTRA_PASSES:
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
