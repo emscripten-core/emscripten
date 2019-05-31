@@ -3804,25 +3804,51 @@ int main()
 
   @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for gen_map in [0, 1]:
-      for wasm in [0, 1]:
-        print(gen_map, wasm)
-        self.clear()
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
-        if gen_map:
-          cmd += ['--emit-symbol-map']
-        if not wasm:
-          if self.is_wasm_backend():
-            continue
-          cmd += ['-s', 'WASM=0']
-        print(cmd)
-        run_process(cmd)
-        if gen_map:
-          self.assertTrue(os.path.exists('a.out.js.symbols'))
-          symbols = open('a.out.js.symbols').read()
-          self.assertContained(':_main', symbols)
-        else:
-          self.assertFalse(os.path.exists('a.out.js.symbols'))
+    for wasm in [1, 0]:#0, 1]:
+      print(wasm)
+      self.clear()
+      create_test_file('src.c', r'''
+#include <emscripten.h>
+
+EM_JS(int, run_js, (), {
+out(new Error().stack);
+return 0;
+});
+
+EMSCRIPTEN_KEEPALIVE
+void middle() {
+  if (run_js()) {
+    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+    middle();
+  }
+}
+
+int main() {
+EM_ASM({ _middle() });
+}
+''')
+      cmd = [PYTHON, EMCC, 'src.c', '-O2', '--emit-symbol-map']
+      if not wasm:
+        if self.is_wasm_backend():
+          continue
+        cmd += ['-s', 'WASM=0']
+      run_process(cmd)
+      # check that the map is correct
+      with open('a.out.js.symbols') as f:
+        symbols = f.read()
+      lines = [line.split(':') for line in symbols.strip().split('\n')]
+      minified_middle = None
+      for minified, full in lines:
+        if full == '_middle':
+          minified_middle = minified
+          break
+      self.assertNotEqual(minified_middle, None)
+      if wasm:
+        # stack traces are standardized enough that we can easily check that the
+        # minified name is actually in the output
+        stack_trace_reference = 'wasm-function[%s]' % minified_middle
+        out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+        self.assertContained(stack_trace_reference, out)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
