@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
 
 # decorators for limiting which modes a test can run in
 
@@ -108,6 +108,13 @@ def no_optimize(note=''):
       func(self)
     return decorated
   return decorator
+
+
+def needs_make(note=''):
+  assert not callable(note)
+  if WINDOWS:
+    return unittest.skip('Tool not available on Windows bots (%s)' % note)
+  return lambda f: f
 
 
 class TestCoreBase(RunnerCore):
@@ -5138,6 +5145,7 @@ PORT: 3979
     expected = open(path_from_root('tests', 'netinet', 'in.out')).read()
     self.do_run(src, expected)
 
+  @needs_dlfcn
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -5511,6 +5519,7 @@ return malloc(size);
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
       test()
 
+  @needs_dlfcn
   def test_relocatable_void_function(self):
     self.set_setting('RELOCATABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
@@ -5570,6 +5579,7 @@ return malloc(size);
 
     self.do_run(open(path_from_root('third_party', 'gcc_demangler.c')).read(), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
+  @needs_make('make')
   def test_lua(self):
     if self.emcc_args:
       self.emcc_args = ['-g1'] + self.emcc_args
@@ -5590,7 +5600,7 @@ return malloc(size);
                   includes=[path_from_root('tests', 'lua')],
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
-  @no_windows('./configure scripts dont to run on windows.')
+  @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
     assert 'asm2g' in core_test_modes
@@ -5658,6 +5668,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'sqlite')],
                 force_c=True)
 
+  @needs_make('mingw32-make')
   @is_slow_test
   def test_zlib(self):
     self.maybe_closure()
@@ -5682,6 +5693,7 @@ return malloc(size);
                 includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
+  @needs_make('make')
   @is_slow_test
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
@@ -5707,7 +5719,7 @@ return malloc(size);
                     includes=[path_from_root('tests', 'bullet', 'src')])
       test()
 
-  @no_windows('depends on freetype, which uses a ./configure which donsnt run on windows.')
+  @needs_make('depends on freetype')
   @is_slow_test
   def test_poppler(self):
     def test():
@@ -5740,6 +5752,7 @@ return malloc(size);
       # Make sure that DFE ends up eliminating more than 200 functions (if we can view source)
       assert (num_original_funcs - self.count_funcs('src.cpp.o.js')) > 200
 
+  @needs_make('make')
   @is_slow_test
   def test_openjpeg(self):
 
@@ -6444,7 +6457,7 @@ return malloc(size);
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
-    if self.get_setting('WASM2JS'):
+    if not self.get_setting('WASM'):
       self.skipTest('this test uses wasm binaries')
 
     orig_args = self.emcc_args
@@ -7632,6 +7645,73 @@ extern "C" {
       self.emcc_args += ['-g']
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_minimal_errors_same_place.c')).read(),
                 expected_output='ubsan: add-overflow\n' * 5)
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_integer': (['-fsanitize=integer'],),
+    'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_overflow(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_overflow.c')).read(),
+                expected_output=[
+      "src.cpp:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+      "src.cpp:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+    ])
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_return': (['-fsanitize=return'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_no_return(self, args):
+    self.emcc_args += ['-Wno-return-type'] + args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_no_return.c')).read(),
+                expected_output='src.cpp:1:5: runtime error: execution reached the end of a value-returning function without returning a value')
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_integer': (['-fsanitize=integer'],),
+    'fsanitize_shift': (['-fsanitize=shift'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_left_shift(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_left_shift.c')).read(),
+                expected_output=[
+      'src.cpp:3:5: runtime error: left shift of negative value -1',
+      "src.cpp:7:5: left shift of 16 by 29 places cannot be represented in type 'int'"
+    ])
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_null': (['-fsanitize=null'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_null_ref(self, args):
+    self.emcc_args += ['-std=c++11'] + args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
+                expected_output=[
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
+      "src.cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
+    ])
+
+  @parameterized({
+    'fsanitize_undefined': (['-fsanitize=undefined'],),
+    'fsanitize_vptr': (['-fsanitize=vptr'],),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_static_cast(self, args):
+    self.emcc_args += args
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_static_cast.cpp')).read(),
+                expected_output=[
+      "vptr.cc:18:10: runtime error: downcast of address",
+      "which does not point to an object of type 'R'",
+      "note: object is of type 'T'",
+      "vptr for 'T'",
+    ])
 
 
 # Generate tests for everything

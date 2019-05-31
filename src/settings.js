@@ -198,7 +198,7 @@ var USE_CLOSURE_COMPILER = 0;
 // case, no "var" is created for each export, and instead a loop (of small
 // constant code size, no matter how many exports you have) writes all the
 // exports received into the global scope. Doing so is dangerous since such
-// modifications of the global scope can confuse external JS minifer tools, and
+// modifications of the global scope can confuse external JS minifier tools, and
 // also things can break if the scope the code is in is not the global scope
 // (e.g. if you manually enclose them in a function scope).
 var DECLARE_ASM_MODULE_EXPORTS = 1;
