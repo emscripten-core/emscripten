@@ -1312,7 +1312,8 @@ def extract_archive_contents(archive_file):
   try:
     with arfile.open(archive_file) as f:
       contents = f.extractall(temp_dir)
-  except arfile.ArError:
+  except arfile.ArError as e:
+    logging.error(str(e))
     return archive_file, [], temp_dir, False
 
   abs_contents = [os.path.join(temp_dir, c) for c in contents]

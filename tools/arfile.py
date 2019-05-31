@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2019 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -92,7 +93,11 @@ class ArFile(object):
         num_entries = struct.unpack('>I', info.data[:4])[0]
         self.sym_offsets = struct.unpack('>%dI' % num_entries, info.data[4:4 + 4 * num_entries])
         symbol_data = info.data[4 + 4 * num_entries:-1]
-        self.symbols = symbol_data.rstrip(b'\0').split(b'\0')
+        symbol_data = symbol_data.rstrip(b'\0')
+        if symbol_data:
+          self.symbols = symbol_data.split(b'\0')
+        else:
+          self.symbols = []
         if len(self.symbols) != num_entries:
           raise ArError('invalid symbol table')
       else:
