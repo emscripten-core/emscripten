@@ -1474,6 +1474,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           shared.Settings.UBSAN_RUNTIME = 2
 
+      if sanitize and '-g4' in args:
+        shared.Settings.SOURCE_MAPS = 1
+
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
 

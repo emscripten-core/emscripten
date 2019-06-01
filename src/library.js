@@ -4729,38 +4729,41 @@ LibraryManager.library = {
     return _emscripten_pc_get_function.ret;
   },
 
-  // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$UNWIND_CACHE'],
-  emscripten_pc_get_file: function (pc) {
+  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_source_js: function (pc) {
     var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
+    if (!frame) return null;
 
     var file = null, match;
-    if (match = /at .* \((.*):\d+(?::\d+)?\)$/.exec(frame)) {
-      file = match[1];
-    } else if (match = /at (.*):\d+$/.exec(frame)) {
-      file = match[1];
+    if (Module['sourceMap'] && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
+      var info = Module['sourceMap'].lookup(+match[1]);
+      if (info) {
+        return {file: info.source, line: info.line};
+      }
     }
-    if (!file) return 0;
+    if (match = /at .* \((.*):(\d+)(?::\d+)?\)$/.exec(frame)) {
+      return {file: match[1], line: match[2]};
+    } else if (match = /at (.*):(\d+)$/.exec(frame)) {
+      return {file: match[1], line: match[2]};
+    }
+  },
+
+  // Look up the file name from our stack frame cache with our PC representation.
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_file: function (pc) {
+    var result = _emscripten_pc_get_source_js(pc);
+    if (!result) return 0;
 
     if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(file);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },
 
   // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_line__deps: ['emscripten_pc_get_source_js'],
   emscripten_pc_get_line: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
-
-    var name = null, match;
-    if (match = /at .* \(.*:(\d+)(?::\d+)?\)$/.exec(frame)) {
-      return +match[1];
-    } else if (match = /at .*:(\d+)$/.exec(frame)) {
-      return +match[1];
-    }
-    return 0;
+    var result = _emscripten_pc_get_source_js(pc);
+    return result ? result.line : 0;
   },
 
   emscripten_get_module_name: function(buf, length) {

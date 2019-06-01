@@ -892,6 +892,37 @@ function getBinaryPromise() {
   });
 }
 
+#if SOURCE_MAPS
+var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
+if (!isDataURI(wasmBinaryFile)) {
+  wasmSourceMapFile = locateFile(wasmSourceMapFile);
+}
+
+function getSourceMap() {
+  try {
+    if (Module['wasmSourceMap']) return Module['wasmSourceMap'];
+    return JSON.parse(Module['read'](wasmSourceMapFile));
+  } catch (err) {
+    abort(err);
+  }
+}
+
+function getSourceMapPromise() {
+  if (!Module['wasmSourceMap'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+    return fetch(wasmSourceMapFile, { credentials: 'same-origin' }).then(function(response) {
+      return response['json']();
+    }).catch(function () {
+      return getSourceMap();
+    });
+  }
+  return new Promise(function(resolve, reject) {
+    resolve(getSourceMap());
+  });
+}
+
+#include "source_maps.js"
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
@@ -1032,12 +1063,20 @@ function createWasm(env) {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
+#if SOURCE_MAPS
+    getSourceMapPromise().then(function (sourceMap) {
+      Module['sourceMap'] = new WASMSourceMap(sourceMap);
+    }, function () {}).then(function () {
+#endif
 #if USE_PTHREADS
     receiveInstance(output['instance'], output['module']);
 #else
       // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
       // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(output['instance']);
+#endif
+#if SOURCE_MAPS
+    });
 #endif
   }
 
@@ -1083,6 +1122,9 @@ function createWasm(env) {
       }
       return false;
     }
+#if SOURCE_MAPS
+    Module['sourceMap'] = new WASMSourceMap(getSourceMap());
+#endif
     receiveInstance(instance, module);
   }
 #endif
