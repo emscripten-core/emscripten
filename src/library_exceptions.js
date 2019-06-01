@@ -179,7 +179,7 @@ var LibraryExceptions = {
     return type;
   },
 
-  __cxa_begin_catch__deps: ['__exception_infos', '__exception_caught', '__exception_addRef', '__exception_deAdjust'],
+  __cxa_begin_catch__deps: ['__exception_infos', '__exception_caught', '__exception_addRef', '__exception_deAdjust', '_ZSt18uncaught_exceptionv'],
   __cxa_begin_catch: function(ptr) {
     var info = ___exception_infos[ptr];
     if (info && !info.caught) {
