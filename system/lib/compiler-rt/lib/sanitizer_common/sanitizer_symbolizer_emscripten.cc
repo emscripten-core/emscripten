@@ -24,6 +24,7 @@ extern "C" {
   const char *emscripten_pc_get_function(uptr pc);
   const char *emscripten_pc_get_file(uptr pc);
   int emscripten_pc_get_line(uptr pc);
+  int emscripten_pc_get_column(uptr pc);
 }
 
 class EmscriptenSymbolizerTool : public SymbolizerTool {
@@ -48,6 +49,7 @@ bool EmscriptenSymbolizerTool::SymbolizePC(uptr addr, SymbolizedStack *frame) {
   if (file_name) {
     frame->info.file = internal_strdup(file_name);
     frame->info.line = emscripten_pc_get_line(addr);
+    frame->info.column = emscripten_pc_get_column(addr);
   }
 
   return !!func_name;

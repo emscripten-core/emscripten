@@ -4738,7 +4738,7 @@ LibraryManager.library = {
     if (Module['sourceMap'] && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
       var info = Module['sourceMap'].lookup(+match[1]);
       if (info) {
-        return {file: info.source, line: info.line};
+        return {file: info.source, line: info.line, column: info.column};
       }
     }
     if (match = /at .* \((.*):(\d+)(?::\d+)?\)$/.exec(frame)) {
@@ -4764,6 +4764,13 @@ LibraryManager.library = {
   emscripten_pc_get_line: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     return result ? result.line : 0;
+  },
+
+  // Look up the column number from our stack frame cache with our PC representation.
+  emscripten_pc_get_column__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_column: function (pc) {
+    var result = _emscripten_pc_get_source_js(pc);
+    return result ? result.column || 0 : 0;
   },
 
   emscripten_get_module_name: function(buf, length) {
