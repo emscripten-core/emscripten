@@ -23,9 +23,9 @@ function decodeVLQ(string) {
     if (integer & 32) {
       shift += 5;
     } else {
-      var shouldNegate = value & 1;
+      var negate = value & 1;
       value >>= 1;
-      result.push( shouldNegate ? -value : value );
+      result.push(negate ? -value : value);
       value = shift = 0;
     }
   }
@@ -72,7 +72,7 @@ function WASMSourceMap(sourceMap) {
 }
 
 WASMSourceMap.prototype.lookup = function (offset) {
-  var info = this.mapping[this.offsets[bisect_right(this.offsets, offset) - 1]];
+  var info = this.mapping[this.normalizeOffset(offset)];
   if (!info)
     return null;
   return {
@@ -81,4 +81,8 @@ WASMSourceMap.prototype.lookup = function (offset) {
     column: info.column,
     name: this.names[info.name],
   };
+}
+
+WASMSourceMap.prototype.normalizeOffset = function (offset) {
+  return this.offsets[bisect_right(this.offsets, offset) - 1];
 }
