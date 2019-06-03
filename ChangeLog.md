@@ -16,6 +16,8 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+v1.38.34: 06/03/2019
+--------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
      - This allows `emcc -fsanitize=undefined` to work. (#8651)
      - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
