@@ -23,7 +23,7 @@ function decodeVLQ(string) {
     if (integer & 32) {
       shift += 5;
     } else {
-      const shouldNegate = value & 1;
+      var shouldNegate = value & 1;
       value >>= 1;
       result.push( shouldNegate ? -value : value );
       value = shift = 0;
