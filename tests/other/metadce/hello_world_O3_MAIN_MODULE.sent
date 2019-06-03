@@ -648,6 +648,7 @@ emscripten_exit_pointerlock
 emscripten_exit_soft_fullscreen
 emscripten_exit_with_live_runtime
 emscripten_force_exit
+emscripten_generate_pc
 emscripten_get_battery_status
 emscripten_get_callstack
 emscripten_get_callstack_js
@@ -886,6 +887,11 @@ emscripten_longjmp
 emscripten_main_browser_thread_id
 emscripten_memcpy_big
 emscripten_pause_main_loop
+emscripten_pc_get_column
+emscripten_pc_get_file
+emscripten_pc_get_function
+emscripten_pc_get_line
+emscripten_pc_get_source_js
 emscripten_performance_now
 emscripten_print_double
 emscripten_random
@@ -960,6 +966,8 @@ emscripten_set_webglcontextlost_callback_on_thread
 emscripten_set_webglcontextrestored_callback_on_thread
 emscripten_set_wheel_callback_on_thread
 emscripten_sleep
+emscripten_stack_snapshot
+emscripten_stack_unwind
 emscripten_supports_offscreencanvas
 emscripten_throw_number
 emscripten_throw_string
