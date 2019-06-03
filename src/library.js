@@ -4702,7 +4702,7 @@ LibraryManager.library = {
   },
 
   // Unwinds the stack from a given return address at the top of the stack.
-  // This only works when the stack had a snapshot taken emscripten_stack_unwind beforehand.
+  // This only works when the stack had a snapshot taken by emscripten_stack_snapshot beforehand.
   emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_stack_unwind: function (addr, level) {
     if (UNWIND_CACHE.last_addr == addr) {
