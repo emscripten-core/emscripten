@@ -5,7 +5,7 @@
 
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
+  $NODEFS__postset: 'if (ENVIRONMENT_HAS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit: function() {
@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
       return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
     },
     mount: function (mount) {
-      assert(ENVIRONMENT_IS_NODE);
+      assert(ENVIRONMENT_HAS_NODE);
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {

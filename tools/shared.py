@@ -22,12 +22,12 @@ import subprocess
 import sys
 import tempfile
 
-if sys.version_info < (2, 7, 12):
-  print('emscripten requires python 2.7.12 or above', file=sys.stderr)
+if sys.version_info < (2, 7, 0):
+  print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
   sys.exit(1)
 
 if sys.version_info[0] == 3 and sys.version_info < (3, 5):
-  print('emscripten requires at least python 3.5 (or python 2.7.12)', file=sys.stderr)
+  print('emscripten requires at least python 3.5 (or python 2.7.12 or above)', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
@@ -46,6 +46,9 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 logger = logging.getLogger('shared')
+
+if sys.version_info < (2, 7, 12):
+  logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
 
 def exit_with_error(msg, *args):
@@ -457,17 +460,6 @@ def check_llvm():
       print(targets, file=sys.stderr)
       print('===========================================================================', file=sys.stderr)
       return False
-
-  if not Settings.WASM_BACKEND:
-    clang_v = run_process([CLANG, '--version'], stdout=PIPE).stdout
-    clang_v = clang_v.splitlines()[0]
-    if '(emscripten ' not in clang_v:
-      logger.error('clang version does not appear to include fastcomp (%s)', str(clang_v))
-      return False
-    llvm_build_version, clang_build_version = clang_v.split('(emscripten ')[1].split(')')[0].split(' : ')
-    if EMSCRIPTEN_VERSION != llvm_build_version or EMSCRIPTEN_VERSION != clang_build_version:
-      logger.error('Emscripten, llvm and clang build versions do not match, this is dangerous (%s, %s, %s)', EMSCRIPTEN_VERSION, llvm_build_version, clang_build_version)
-      logger.error('Make sure to rebuild llvm and clang after updating repos')
 
   return True
 
@@ -1822,6 +1814,7 @@ class Building(object):
   def link_llvm(linker_inputs, target):
     # runs llvm-link to link things.
     cmd = [LLVM_LINK] + linker_inputs + ['-o', target]
+    cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
     output = run_process(cmd, stdout=PIPE).stdout
     assert os.path.exists(target) and (output is None or 'Could not open input file' not in output), 'Linking error: ' + output
@@ -1909,14 +1902,13 @@ class Building(object):
     cmd += opts
 
     print_compiler_stage(cmd)
+    cmd = Building.get_command_with_possible_response_file(cmd)
     check_call(cmd)
     return target
 
   @staticmethod
-  def link(files, target, force_archive_contents=False, temp_files=None, just_calculate=False):
+  def link(files, target, force_archive_contents=False, just_calculate=False):
     # "Full-featured" linking: looks into archives (duplicates lld functionality)
-    if not temp_files:
-      temp_files = configuration.get_temp_files()
     actual_files = []
     # Tracking unresolveds is necessary for .a linking, see below.
     # Specify all possible entry points to seed the linking process.
@@ -2050,40 +2042,44 @@ class Building(object):
     # tolerate people trying to link a.so a.so etc.
     actual_files = unique_ordered(actual_files)
 
-    # check for too-long command line
-    link_args = actual_files
-    # 8k is a bit of an arbitrary limit, but a reasonable one
-    # for max command line size before we use a response file
-    response_file = None
-    if len(' '.join(link_args)) > 8192:
-      logger.debug('using response file for llvm-link')
-      response_file = temp_files.get(suffix='.response').name
-
-      link_args = ["@" + response_file]
-
-      with open(response_file, 'w') as f:
-        for arg in actual_files:
-          # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
-          # backslashes in response files, so Windows paths
-          # "c:\path\to\file.txt" with single slashes no longer work. LLVM
-          # upstream dev 3.9.0 from January 2016 still treated backslashes
-          # without escaping. To preserve compatibility with both versions of
-          # llvm-link, don't pass backslash path delimiters at all to response
-          # files, but always use forward slashes.
-          if WINDOWS:
-            arg = arg.replace('\\', '/')
-
-          # escaped double quotes allows 'space' characters in pathname the
-          # response file can use
-          f.write("\"" + arg + "\"\n")
-
     if not just_calculate:
       logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      Building.link_llvm(link_args, target)
+      Building.link_llvm(actual_files, target)
       return target
     else:
       # just calculating; return the link arguments which is the final list of files to link
-      return link_args
+      return actual_files
+
+  @staticmethod
+  def get_command_with_possible_response_file(cmd):
+    # 8k is a bit of an arbitrary limit, but a reasonable one
+    # for max command line size before we use a response file
+    if len(' '.join(cmd)) <= 8192:
+      return cmd
+
+    logger.debug('using response file for %s' % cmd[0])
+    temp_files = configuration.get_temp_files()
+    response_file = temp_files.get(suffix='.response').name
+
+    new_cmd = [cmd[0], "@" + response_file]
+
+    with open(response_file, 'w') as f:
+      for arg in cmd[1:]:
+        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
+        # backslashes in response files, so Windows paths
+        # "c:\path\to\file.txt" with single slashes no longer work. LLVM
+        # upstream dev 3.9.0 from January 2016 still treated backslashes
+        # without escaping. To preserve compatibility with both versions of
+        # llvm-link, don't pass backslash path delimiters at all to response
+        # files, but always use forward slashes.
+        if WINDOWS:
+          arg = arg.replace('\\', '/')
+
+        # escaped double quotes allows 'space' characters in pathname the
+        # response file can use
+        f.write("\"" + arg + "\"\n")
+
+    return new_cmd
 
   # LLVM optimizations
   # @param opt A list of LLVM optimization parameters
@@ -2636,19 +2632,45 @@ class Building(object):
       cmd += ['-O']
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
+    if DEBUG:
+      with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
+        f.write(wasm2js_js)
+    # JS optimizations
     if opt_level >= 2:
+      passes = []
+      # it may be useful to also run: simplifyIfs, registerize, asmLastOpts
+      # passes += ['simplifyExpressions'] # XXX fails on wasm3js.test_sqlite
+      if not debug_info:
+        passes += ['minifyNames']
+      if minify_whitespace:
+        passes += ['minifyWhitespace']
+      passes += ['last']
+      if passes:
+        # hackish fixups to work around wasm2js style and the js optimizer FIXME
+        wasm2js_js = '// EMSCRIPTEN_START_ASM\n' + wasm2js_js + '// EMSCRIPTEN_END_ASM\n'
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_START_FUNCS;\n', '// EMSCRIPTEN_START_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('// EMSCRIPTEN_END_FUNCS;\n', '// EMSCRIPTEN_END_FUNCS\n')
+        wasm2js_js = wasm2js_js.replace('\n function $', '\nfunction $')
+        wasm2js_js = wasm2js_js.replace('\n }', '\n}')
+        wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
+        temp = configuration.get_temp_files().get('.js').name
+        with open(temp, 'w') as f:
+          f.write(wasm2js_js)
+        temp = Building.js_optimizer(temp, passes)
+        with open(temp) as f:
+          wasm2js_js = f.read()
+    # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
+    # minify the wasm2js output as well, which is ok since it isn't
+    # validating asm.js.
+    # TODO: in the non-closure case, we could run a lightweight general-
+    #       purpose JS minifier here.
+    if use_closure_compiler == 2:
       temp = configuration.get_temp_files().get('.js').name
       with open(temp, 'a') as f:
         f.write(wasm2js_js)
-      # if closure is 1, minify the code in a non-advanced way here (we don't validate
-      # as asm.js, and so can use a stock minifier like closure). if we are in closure 2
-      # mode, then we'll minify it all together later on
-      if use_closure_compiler == 1:
-        temp = Building.closure_compiler(temp,
-                                         pretty=not minify_whitespace,
-                                         advanced=False)
-      elif minify_whitespace:
-        temp = Building.js_optimizer_no_asmjs(temp, ['minifyWhitespace'])
+      temp = Building.closure_compiler(temp,
+                                       pretty=not minify_whitespace,
+                                       advanced=False)
       with open(temp) as f:
         wasm2js_js = f.read()
       # closure may leave a trailing `;`, which would be invalid given where we place
