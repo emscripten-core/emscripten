@@ -851,6 +851,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_LSAN:
     need_common_san = True
     libs_to_link.append((shared.Cache.get('liblsan_rt_wasm.a', lambda: create_wasm_lsan_rt('liblsan_rt_wasm.a')), True))
+    shared.Settings.EXPORTED_FUNCTIONS += ['___data_end', '___heap_base']
 
   if need_common_san:
     add_library(system_libs_map['libc++abi'])
