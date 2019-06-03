@@ -21,13 +21,13 @@
 namespace __sanitizer {
 
 extern "C" {
-  void emscripten_stack_cache_unwind();
+  void emscripten_stack_snapshot();
   uptr emscripten_stack_unwind(uptr pc, int level);
   uptr emscripten_return_address(int level);
 }
 
 uptr StackTrace::GetCurrentPc() {
-  emscripten_stack_cache_unwind();
+  emscripten_stack_snapshot();
   return GET_CALLER_PC();
 }
 
@@ -47,7 +47,7 @@ void BufferedStackTrace::FastUnwindStack(uptr pc, uptr bp, uptr stack_top,
       saw_pc |= pc == pc1;
     }
   } else {
-    emscripten_stack_cache_unwind();
+    emscripten_stack_snapshot();
 
     for (int level = 0; (pc1 = emscripten_return_address(level)); ++level) {
       if (saw_pc) {

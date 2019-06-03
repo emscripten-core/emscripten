@@ -4686,9 +4686,9 @@ LibraryManager.library = {
 
   $UNWIND_CACHE: {},
 
-  // Caches all stack frames so that they can be dumped later by emscripten_pc_get_*
-  emscripten_stack_cache_unwind__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
-  emscripten_stack_cache_unwind: function () {
+  // Take a snapshot of the stack so that it can be unwound by emscripten_stack_unwind.
+  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
+  emscripten_stack_snapshot: function () {
     var callstack = _emscripten_get_callstack_js(0).split('\n');
     callstack.forEach(function (frame) {
       var pc = _emscripten_generate_pc(frame);
