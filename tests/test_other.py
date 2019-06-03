@@ -9262,7 +9262,7 @@ int main () {
 
   def test_mmap_and_munmap(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'mmap_and_munmap.c')]
-    for f in [ 'data_ro.dat', 'data_rw.dat' ]:
+    for f in ['data_ro.dat', 'data_rw.dat']:
         create_test_file(f, 'Test file')
         cmd.extend(['--embed-file', f])
     run_process(cmd)
