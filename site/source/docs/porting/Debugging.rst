@@ -97,6 +97,13 @@ Some important settings are:
 
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
+.. _debugging-sanitizers:
+
+Sanitizers
+==========
+
+Emscripten also supports Clang's undefined behaviour sanitizer. For details, see :ref:`sanitizer_ubsan`.
+
 
 .. _debugging-emcc-v:
 
