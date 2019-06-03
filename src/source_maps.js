@@ -1,5 +1,3 @@
-var sourceMap = {"version":3,"sources":["/usr/local/google/home/gzchen/waterfall/src/work/ubsan_tests/leak.cc"],"names":[],"mappings":"u2DASA,qCAEM,MAAF,YACA,YAEO,gBAAO,OAAE,eAAlB,yBACS,MAAL,OAAF,kBAAK,OADmB,yBAA1B,UAGK,YAEL"};
-
 var vlqMap = {};
 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach(function (c, i) {
   vlqMap[c] = i;

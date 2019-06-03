@@ -4718,7 +4718,8 @@ LibraryManager.library = {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return 0;
 
-    var name = null, match;
+    var name = null;
+    var match;
     if (match = /at (.*) \(.*\)$/.exec(frame)) {
       name = match[1];
     }
@@ -4735,14 +4736,19 @@ LibraryManager.library = {
     if (!frame) return null;
 
     var file = null, match;
+    // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
     if (Module['sourceMap'] && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
       var info = Module['sourceMap'].lookup(+match[1]);
       if (info) {
         return {file: info.source, line: info.line, column: info.column};
       }
     }
-    if (match = /at .* \((.*):(\d+)(?::\d+)?\)$/.exec(frame)) {
-      return {file: match[1], line: match[2]};
+
+    // Example: at main (wasm-function[35]:3)
+    // Example: at callMain (a.out.js:6335:22)
+    if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
+      return {file: match[1], line: match[2], column: match[3]};
+    // Example: at wasm-function[35]:3
     } else if (match = /at (.*):(\d+)$/.exec(frame)) {
       return {file: match[1], line: match[2]};
     }

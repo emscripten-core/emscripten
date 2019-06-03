@@ -39,7 +39,7 @@ void BufferedStackTrace::FastUnwindStack(uptr pc, uptr bp, uptr stack_top,
 
   uptr pc1;
   if (emscripten_stack_unwind(pc, 0)) {
-    // If we have the stack trace cached with this pc.
+    // If the last stack snapshot was taken with this pc, we use that snapshot.
     for (int level = 0; (pc1 = emscripten_stack_unwind(pc, level)); ++level) {
       if (saw_pc) {
         trace_buffer[size++] = pc1;
