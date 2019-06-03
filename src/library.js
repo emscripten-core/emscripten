@@ -2756,8 +2756,7 @@ LibraryManager.library = {
         return '\t';
       },
       '%u': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday, 0, 0, 0, 0);
-        return day.getDay() || 7;
+        return date.tm_wday || 7;
       },
       '%U': function(date) {
         // Replaced by the week number of the year as a decimal number [00,53].
@@ -2814,8 +2813,7 @@ LibraryManager.library = {
         return leadingNulls(Math.ceil(daysDifference/7), 2);
       },
       '%w': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon, date.tm_mday, 0, 0, 0, 0);
-        return day.getDay();
+        return date.tm_wday;
       },
       '%W': function(date) {
         // Replaced by the week number of the year as a decimal number [00,53].

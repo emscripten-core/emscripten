@@ -140,6 +140,48 @@ int main() {
   size = strftime(s, 10, "%g", &tm);
   test((size == 2) && !cmp(s, "98"), "strftime test #29", s);
 
+  tm.tm_wday = 0;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "0"), "strftime test #30", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "7"), "strftime test #31", s);
+
+  tm.tm_wday = 1;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "1"), "strftime test #32", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "1"), "strftime test #33", s);
+
+  tm.tm_wday = 2;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "2"), "strftime test #34", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "2"), "strftime test #35", s);
+
+  tm.tm_wday = 3;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "3"), "strftime test #36", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "3"), "strftime test #37", s);
+
+  tm.tm_wday = 4;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "4"), "strftime test #38", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "4"), "strftime test #39", s);
+
+  tm.tm_wday = 5;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "5"), "strftime test #40", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "5"), "strftime test #41", s);
+
+  tm.tm_wday = 6;
+  size = strftime(s, 2, "%w", &tm);
+  test((size == 1) && !cmp(s, "6"), "strftime test #42", s);
+  size = strftime(s, 2, "%u", &tm);
+  test((size == 1) && !cmp(s, "6"), "strftime test #43", s);
+
   // timezones
   time_t xmas2002 = 1040786563ll;
   time_t summer2002 = 1025528525ll;
