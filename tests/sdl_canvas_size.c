@@ -14,6 +14,7 @@
 #include <assert.h>
 
 #include <emscripten.h>
+#include <emscripten/html5.h>
 
 int main(int argc, char *argv[])
 {
