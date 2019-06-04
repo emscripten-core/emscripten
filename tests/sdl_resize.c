@@ -10,6 +10,7 @@
 #include <SDL/SDL_ttf.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/html5.h>
 
 int stage = 0;
 
