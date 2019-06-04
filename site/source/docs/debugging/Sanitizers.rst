@@ -4,6 +4,8 @@
 Debugging with Sanitizers
 =========================
 
+.. _sanitizer_ubsan:
+
 Undefined Behaviour Sanitizer
 =============================
 
