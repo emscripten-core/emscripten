@@ -2596,13 +2596,13 @@ def run(infile, outfile, memfile, libraries):
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
     generated_struct_info_name = 'generated_struct_info.json'
 
-    def ensure_struct_info():
+    def generate_struct_info():
       with ToolchainProfiler.profile_block('gen_struct_info'):
         out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
+        gen_struct_info.main(['-q', '-c', '-o', out])
         return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info)
+    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
   outfile_obj = open(outfile, 'w')
