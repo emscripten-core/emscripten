@@ -892,35 +892,8 @@ function getBinaryPromise() {
   });
 }
 
-#if SOURCE_MAPS
-var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
-if (!isDataURI(wasmBinaryFile)) {
-  wasmSourceMapFile = locateFile(wasmSourceMapFile);
-}
-
-function getSourceMap() {
-  try {
-    if (Module['wasmSourceMap']) return Module['wasmSourceMap'];
-    return JSON.parse(Module['read'](wasmSourceMapFile));
-  } catch (err) {
-    abort(err);
-  }
-}
-
-function getSourceMapPromise() {
-  if (!Module['wasmSourceMap'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
-    return fetch(wasmSourceMapFile, { credentials: 'same-origin' }).then(function(response) {
-      return response['json']();
-    }).catch(function () {
-      return getSourceMap();
-    });
-  }
-  return new Promise(function(resolve, reject) {
-    resolve(getSourceMap());
-  });
-}
-
-#include "source_maps.js"
+#if LOAD_SOURCE_MAP
+#include "source_map_support.js"
 #endif
 
 // Create the wasm instance.
@@ -1063,7 +1036,7 @@ function createWasm(env) {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SOURCE_MAPS
+#if LOAD_SOURCE_MAP
     getSourceMapPromise().then(function (sourceMap) {
       Module['sourceMap'] = new WASMSourceMap(sourceMap);
     }, function () {}).then(function () {
@@ -1075,7 +1048,7 @@ function createWasm(env) {
       // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(output['instance']);
 #endif
-#if SOURCE_MAPS
+#if LOAD_SOURCE_MAP
     });
 #endif
   }
@@ -1122,7 +1095,7 @@ function createWasm(env) {
       }
       return false;
     }
-#if SOURCE_MAPS
+#if LOAD_SOURCE_MAP
     Module['sourceMap'] = new WASMSourceMap(getSourceMap());
 #endif
     receiveInstance(instance, module);

@@ -1416,7 +1416,7 @@ var UBSAN_RUNTIME = 0;
 
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
-var SOURCE_MAPS = 0;
+var LOAD_SOURCE_MAP = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

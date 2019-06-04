@@ -84,3 +84,29 @@ WASMSourceMap.prototype.lookup = function (offset) {
 WASMSourceMap.prototype.normalizeOffset = function (offset) {
   return this.offsets[bisect_right(this.offsets, offset) - 1];
 }
+
+var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
+if (!isDataURI(wasmBinaryFile)) {
+  wasmSourceMapFile = locateFile(wasmSourceMapFile);
+}
+
+function getSourceMap() {
+  try {
+    return JSON.parse(Module['read'](wasmSourceMapFile));
+  } catch (err) {
+    abort(err);
+  }
+}
+
+function getSourceMapPromise() {
+  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+    return fetch(wasmSourceMapFile, { credentials: 'same-origin' }).then(function(response) {
+      return response['json']();
+    }).catch(function () {
+      return getSourceMap();
+    });
+  }
+  return new Promise(function(resolve, reject) {
+    resolve(getSourceMap());
+  });
+}
