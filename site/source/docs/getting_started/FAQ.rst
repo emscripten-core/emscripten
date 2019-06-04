@@ -116,11 +116,7 @@ Those errors indicate that WebAssembly support is not present in the VM you are 
 Why do I get ``error while loading shared libraries: libtinfo.so.5``?
 =====================================================================
 
-LLVM and clang link libtinfo dynamically. One some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, do
-
-```
-sudo apt-get install libtinfo5
-```
+LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
