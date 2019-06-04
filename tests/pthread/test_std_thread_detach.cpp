@@ -33,10 +33,12 @@ void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads
 #ifdef REPORT_RESULT
 	if (num_threads_spawned_extra == 0)		//check extra thread spawned
 		REPORT_RESULT(-1);
-	if (num_workers < num_threads_spawned)		//check worker returned to pool and was assigned another thread
-		REPORT_RESULT(0);
-	else
-		REPORT_RESULT(num_workers);
+	else {
+		if (num_workers < num_threads_spawned)		//check worker returned to pool and was assigned another thread
+			REPORT_RESULT(0);
+		else
+			REPORT_RESULT(num_workers);
+	}
 #else
 	std::cout << 
 		"Worker pool size: " << num_workers << 
