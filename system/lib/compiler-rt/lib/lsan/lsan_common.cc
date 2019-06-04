@@ -26,6 +26,10 @@
 #include "sanitizer_common/sanitizer_thread_registry.h"
 #include "sanitizer_common/sanitizer_tls_get_addr.h"
 
+#if SANITIZER_EMSCRIPTEN
+#include "lsan/lsan_allocator.h"
+#endif
+
 #if CAN_SANITIZE_LEAKS
 namespace __lsan {
 
@@ -163,6 +167,15 @@ void ScanRangeForPointers(uptr begin, uptr end,
   uptr pp = begin;
   if (pp % alignment)
     pp = pp + alignment - pp % alignment;
+
+  // TODO: Emscripten doesn't support thread local storage,
+  // so the cache is in the global range.
+  // Remove this when Emscripten has TLS implemented.
+#if SANITIZER_EMSCRIPTEN
+  uptr cache_begin, cache_end;
+  GetAllocatorCacheRange(&cache_begin, &cache_end);
+#endif
+
   for (; pp + sizeof(void *) <= end; pp += alignment) {  // NOLINT
     void *p = *reinterpret_cast<void **>(pp);
     if (!CanBeAHeapPointer(reinterpret_cast<uptr>(p))) continue;
@@ -181,6 +194,14 @@ void ScanRangeForPointers(uptr begin, uptr end,
           pp, p, chunk, chunk + m.requested_size(), m.requested_size());
       continue;
     }
+
+#if SANITIZER_EMSCRIPTEN
+    if (cache_begin <= pp || pp < cache_end) {
+      LOG_POINTERS("%p: skipping because it overlaps the cache %p-%p.\n",
+          pp, cache_begin, cache_end);
+      continue;
+    }
+#endif
 
     m.set_tag(tag);
     LOG_POINTERS("%p: found %p pointing into chunk %p-%p of size %zu.\n", pp, p,
