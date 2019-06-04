@@ -1,7 +1,7 @@
 
 /* XXX Emscripten XXX */
 #if __EMSCRIPTEN__
-#define DLMALLOC_EXPORT __attribute__((__weak__))
+#define DLMALLOC_EXPORT extern
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
@@ -851,10 +851,24 @@ extern "C" {
     
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
-
 #ifdef __EMSCRIPTEN__
+// XXX fastcomp HACK: in fastcomp, weak aliases loses to JavaScript versions of the function.
+// Therefore, we must define real functions. Remove this hack when fastcomp is removed.
+#ifdef __asmjs__
+void* dlmalloc(size_t);
+__attribute__((weak)) void* malloc(size_t size) {
+    return dlmalloc(size);
+}
+
+void dlfree(void*);
+__attribute__((weak)) void free(void *p) {
+    dlfree(p);
+}
+#else
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
+#endif /* __asmjs__ */
+
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
 void* realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* realloc_in_place(void*, size_t) __attribute__((weak, alias("dlrealloc_in_place")));
@@ -862,6 +876,23 @@ void* memalign(size_t, size_t) __attribute__((weak, alias("dlmemalign")));
 int posix_memalign(void**, size_t, size_t) __attribute__((weak, alias("dlposix_memalign")));
 void* valloc(size_t) __attribute__((weak, alias("dlvalloc")));
 void* pvalloc(size_t) __attribute__((weak, alias("dlpvalloc")));
+#if !NO_MALLINFO
+struct mallinfo mallinfo(void) __attribute__((weak, alias("dlmallinfo")));
+#endif
+int mallopt(int, int) __attribute__((weak, alias("dlmallopt")));
+int malloc_trim(size_t) __attribute__((weak, alias("dlmalloc_trim")));
+void malloc_stats(void) __attribute__((weak, alias("dlmalloc_stats")));
+size_t malloc_usable_size(const void*) __attribute__((weak, alias("dlmalloc_usable_size")));
+size_t malloc_footprint(void) __attribute__((weak, alias("dlmalloc_footprint")));
+size_t malloc_max_footprint(void) __attribute__((weak, alias("dlmalloc_max_footprint")));
+size_t malloc_footprint_limit(void) __attribute__((weak, alias("dlmalloc_footprint_limit")));
+size_t malloc_set_footprint_limit(size_t bytes) __attribute__((weak, alias("dlmalloc_set_footprint_limit")));
+#if MALLOC_INSPECT_ALL
+void malloc_inspect_all(void(*handler)(void*, void *, size_t, void*), void* arg) __attribute__((weak, alias("dlmalloc_inspect_all")));
+#endif
+void** independent_calloc(size_t, size_t, void**) __attribute__((weak, alias("dlindependent_calloc")));
+void** independent_comalloc(size_t, size_t*, void**) __attribute__((weak, alias("dlindependent_comalloc")));
+size_t bulk_free(void**, size_t n_elements) __attribute__((weak, alias("dlbulk_free")));
 #else
 #define dlcalloc               calloc
 #define dlfree                 free
@@ -872,7 +903,6 @@ void* pvalloc(size_t) __attribute__((weak, alias("dlpvalloc")));
 #define dlrealloc_in_place     realloc_in_place
 #define dlvalloc               valloc
 #define dlpvalloc              pvalloc
-#endif
 #define dlmallinfo             mallinfo
 #define dlmallopt              mallopt
 #define dlmalloc_trim          malloc_trim
@@ -886,6 +916,7 @@ void* pvalloc(size_t) __attribute__((weak, alias("dlpvalloc")));
 #define dlindependent_calloc   independent_calloc
 #define dlindependent_comalloc independent_comalloc
 #define dlbulk_free            bulk_free
+#endif
 #endif /* USE_DL_PREFIX */
     
     /*
