@@ -32,10 +32,19 @@ void ListOfModules::init() {
 
   LoadedModule main_module;
   main_module.set(name, 0);
+
+  // Emscripten represents program counters as offsets into WebAssembly
+  // modules. For JavaScript code, the "program counter" is the line number
+  // of the JavaScript code with the high bit set.
+  // Therefore, PC values 0x80000000 and beyond represents JavaScript code.
+  // As a result, 0x00000000 to 0x7FFFFFFF represents PC values for WASM code.
+  // We consider WASM code as main_module.
   main_module.addAddressRange(0, 0x7FFFFFFF, /*executable*/ true,
                               /*writable*/ false);
   modules_.push_back(main_module);
 
+  // The remaining PC values, 0x80000000 to 0xFFFFFFFF, are JavaScript,
+  // and we consider it a separate module, js_module.
   LoadedModule js_module;
   js_module.set("JavaScript", 0x80000000);
   js_module.addAddressRange(0x80000000, 0xFFFFFFFF, /*executable*/ true,

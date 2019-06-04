@@ -4686,7 +4686,36 @@ LibraryManager.library = {
 
   $UNWIND_CACHE: {},
 
-  // Take a snapshot of the stack so that it can be unwound by emscripten_stack_unwind.
+  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so that
+  // our representation of the program counter is mapped to the line of the stack trace
+  // for every line in the stack trace. This allows emscripten_pc_get_* to lookup the
+  // line of the stack trace from the PC and return meaningful information.
+  //
+  // Additionally, it saves a copy of the entire stack trace and the return address of
+  // the caller. This is because there are two common forms of a stack trace.
+  // The first form starts the stack trace at the caller of the function requesting a stack
+  // trace. In this case, the function can simply walk down the stack from the return address
+  // using emscripten_return_address with increasing values for level.
+  // The second form starts the stack trace at the current function. This requires a helper
+  // function to get the program counter. This helper function will return the return address.
+  // This is the program counter at the call site. But there is a problem: when calling into
+  // code that performs stack unwinding, the program counter has changed since execution
+  // continued from calling the helper function. So we can't just walk down the stack and expect
+  // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
+  // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
+  // will have to call emscripten_stack_snapshot to cache the stack.
+  //
+  // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
+  // how many functions to skip from the stack. However, existing libraries do not work this way.
+  // For example, compiler-rt's sanitizer_common library has macros GET_CALLER_PC_BP_SP and
+  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases stated above,
+  // respectively. Then, it passes the PC, BP, SP values along until some other function uses them
+  // to unwind. On standard machines, the stack can be unwound by treating BP as a linked list.
+  // This makes PC unnecessary to walk the stack, since walking is done with BP, which remains
+  // valid until the function returns. But on Emscripten, BP does not exist, at least in
+  // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
+  // a PC value that may no longer be on the execution stack, and so we are forced to cache the
+  // entire call stack.
   emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
   emscripten_stack_snapshot: function () {
     var callstack = _emscripten_get_callstack_js(0).split('\n');
@@ -4701,8 +4730,9 @@ LibraryManager.library = {
     UNWIND_CACHE.last_stack = callstack;
   },
 
-  // Unwinds the stack from a given return address at the top of the stack.
-  // This only works when the stack had a snapshot taken by emscripten_stack_snapshot beforehand.
+  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
+  // addr must be the return address of the last call to emscripten_stack_snapshot, or this
+  // function will fail and return 0.
   emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_stack_unwind: function (addr, level) {
     if (UNWIND_CACHE.last_addr == addr) {
