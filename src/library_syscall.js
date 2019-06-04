@@ -444,7 +444,6 @@ var SyscallsLibrary = {
     var path = SYSCALLS.getStr(), buf = SYSCALLS.get(), bufsize = SYSCALLS.get();
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall91__deps: ['emscripten_builtin_free'],
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
     // TODO: support unmmap'ing parts of allocations

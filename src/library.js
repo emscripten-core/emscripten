@@ -817,11 +817,13 @@ LibraryManager.library = {
     var ptr = dynamicAlloc(bytes + 8);
     return (ptr+8) & 0xFFFFFFF8;
   },
+  emscripten_builtin_malloc: 'malloc',
   free: function() {
 #if ASSERTIONS == 2
     warnOnce('using stub free (reference it from C to have the real one included)');
 #endif
   },
+  emscripten_builtin_free: 'free',
 #endif
 
   abs: 'Math_abs',
