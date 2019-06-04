@@ -2605,7 +2605,7 @@ LibraryManager.library = {
       '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
       '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
       '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
-      '%OW': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
+      '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
       '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
     };
     for (var rule in EXPANSION_RULES_1) {
