@@ -30,14 +30,14 @@ int main(int argc, char *argv[])
 
     // Test 2: Check that getting current canvas size works.
     int w, h;
-    emscripten_get_canvas_size("#canvas", &w, &h);
+    emscripten_get_canvas_element_size("#canvas", &w, &h);
     printf("w:%d,h:%d\n", w,h);
     assert(w == 700);
     assert(h == 200);
 
     // Test 3: Check that resizing the canvas works as well.
-    emscripten_set_canvas_size("#canvas", 640, 480);
-    emscripten_get_canvas_size("#canvas", &w, &h);
+    emscripten_set_canvas_element_size("#canvas", 640, 480);
+    emscripten_get_canvas_element_size("#canvas", &w, &h);
     printf("w:%d,h:%d\n", w,h);
     assert(w == 640);
     assert(h == 480);
