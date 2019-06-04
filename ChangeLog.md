@@ -13,10 +13,13 @@ significant internal modifications and optimizations etc. generally deserve a
 mention. To examine the full set of changes between versions, visit the link to
 full changeset diff at the end of each section.
 
+See docs/process.md for how version tagging works.
+
+
 Current Trunk
 -------------
 
-v1.38.34: 06/03/2019
+v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
      - This allows `emcc -fsanitize=undefined` to work. (#8651)
@@ -26,9 +29,14 @@ v1.38.33: 05/23/2019
 --------------------
  - First release to use the new chromium build infrastructure
    https://groups.google.com/forum/#!msg/emscripten-discuss/WhDtqVyW_Ak/8DfDnfk0BgAJ
-
  - Add `emscripten_return_address` which implements the functionality of
    gcc/clang's `__builtin_return_address`. (#8617)
+
+v1.38.32: SKIPPED
+-----------------
+ - The transition from the old to the new CI occured around here. To avoid ambiguity while
+   both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
+   and skipped 1.38.32.
 
 v1.38.31: 04/24/2019
 --------------------
