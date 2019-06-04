@@ -223,6 +223,10 @@ extern EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback_on_thread(voi
 
 extern EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *orientationState);
 
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION                   0x01
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY 0x02
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE                  0x04
+
 typedef struct EmscriptenDeviceMotionEvent {
   double timestamp;
   double accelerationX;
@@ -234,6 +238,7 @@ typedef struct EmscriptenDeviceMotionEvent {
   double rotationRateAlpha;
   double rotationRateBeta;
   double rotationRateGamma;
+  int supportedFields;
 } EmscriptenDeviceMotionEvent;
 
 

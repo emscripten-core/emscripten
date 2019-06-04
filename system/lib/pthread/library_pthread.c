@@ -28,6 +28,7 @@
 #include "../internal/libc.h"
 #include "../internal/pthread_impl.h"
 #include <assert.h>
+#include <errno.h>
 
 // With LLVM 3.6, C11 is the default compilation mode.
 // gets() is deprecated under that standard, but emcc
@@ -157,7 +158,10 @@ void emscripten_thread_sleep(double msecs)
 
 int nanosleep(const struct timespec *req, struct timespec *rem)
 {
-	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) return EINVAL;
+	if (!req || req->tv_nsec < 0 || req->tv_nsec > 999999999L || req->tv_sec < 0) {
+		errno = EINVAL;
+		return -1;
+	}
 	emscripten_thread_sleep(req->tv_sec * 1000.0 + req->tv_nsec / 1e6);
 	return 0;
 }
@@ -813,7 +817,9 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char **argv)
     // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases over to the pthread.
     emscripten_pthread_attr_settransferredcanvases(&attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
 #else
-    // Otherwise by default, transfer whatever is set to Module.canvas.
+    // Otherwise by default, transfer whatever is set to Module.canvas, because in PROXY_TO_PTHREAD
+    // mode this is the only chance - this is the only pthread_create call that happens on the
+    // main thread, so it's the only chance to transfer the canvas from there.
     if (EM_ASM_INT(return !!(Module['canvas']))) emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
 #endif
     _main_arguments.argc = argc;

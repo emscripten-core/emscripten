@@ -19,6 +19,10 @@ EMSCRIPTEN_KEEPALIVE void repeatable() {
         void* self = dlopen(NULL, RTLD_LAZY);
         int* global_ptr = (int*)dlsym(self, "global");
         void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
+        if (!foo_ptr) {
+          printf("dlsym failed: %s\n", dlerror());
+          return;
+        }
         foo_ptr(*global_ptr);
         dlclose(self);
 }
