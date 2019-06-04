@@ -6,7 +6,7 @@
 from __future__ import print_function
 
 from distutils.spawn import find_executable
-from subprocess import PIPE, STDOUT
+from subprocess import PIPE, STDOUT # noqa
 import atexit
 import base64
 import difflib
@@ -22,16 +22,17 @@ import subprocess
 import sys
 import tempfile
 
-if sys.version_info < (2, 7, 12):
-  print('emscripten requires python 2.7.12 or above', file=sys.stderr)
+if sys.version_info < (2, 7, 0):
+  print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
   sys.exit(1)
 
 if sys.version_info[0] == 3 and sys.version_info < (3, 5):
-  print('emscripten requires at least python 3.5 (or python 2.7.12)', file=sys.stderr)
+  print('emscripten requires at least python 3.5 (or python 2.7.12 or above)', file=sys.stderr)
   sys.exit(1)
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
+from . import arfile
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
 
@@ -46,6 +47,9 @@ logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
                     level=logging.DEBUG if DEBUG else logging.INFO)
 colored_logger.enable()
 logger = logging.getLogger('shared')
+
+if sys.version_info < (2, 7, 12):
+  logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
 
 def exit_with_error(msg, *args):
@@ -1298,60 +1302,22 @@ Settings = SettingsManager()
 verify_settings()
 
 
-# llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
-# will trample each other when we extract them. to help warn of such situations, we warn if there
-# are duplicate entries in the archive
-def warn_if_duplicate_entries(archive_contents, archive_filename):
-  if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
-    warned = set()
-    for i in range(len(archive_contents)):
-      curr = archive_contents[i]
-      if curr not in warned and curr in archive_contents[i + 1:]:
-        logger.warning('   duplicate: %s' % curr)
-        warned.add(curr)
-
-
 # This function creates a temporary directory specified by the 'dir' field in
 # the returned dictionary. Caller is responsible for cleaning up those files
 # after done.
 def extract_archive_contents(archive_file):
-  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
-  # ignore empty lines
-  contents = [l for l in lines if len(l)]
-  if len(contents) == 0:
-    logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
-    return {
-      'returncode': 0,
-      'dir': None,
-      'files': []
-    }
-
-  # `ar` files can only contains filenames. Just to be sure,  verify that each
-  # file has only as filename component and is not absolute
-  for f in contents:
-    assert not os.path.dirname(f)
-    assert not os.path.isabs(f)
-
-  warn_if_duplicate_entries(contents, archive_file)
-
   # create temp dir
   temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
-  # extract file in temp dir
-  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
+  try:
+    with arfile.open(archive_file) as f:
+      contents = f.extractall(temp_dir)
+  except arfile.ArError as e:
+    logging.error(str(e))
+    return archive_file, [], temp_dir, False
+
   abs_contents = [os.path.join(temp_dir, c) for c in contents]
-
-  # check that all files were created
-  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
-  if missing_contents:
-    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
-
-  return {
-    'returncode': proc.returncode,
-    'dir': temp_dir,
-    'files': abs_contents
-  }
+  return archive_file, abs_contents, temp_dir, True
 
 
 class ObjectFileInfo(object):
@@ -1754,20 +1720,18 @@ class Building(object):
       pool = Building.get_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
 
-      def clean_temporary_archive_contents_directory(directory):
+      def clean_temporary_directory(directory):
         def clean_at_exit():
           try_delete(directory)
         if directory:
           atexit.register(clean_at_exit)
 
-      for n in range(len(archive_names)):
-        if object_names_in_archives[n]['returncode'] != 0:
-          raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
-        Building.ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
-        clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
-
-      for o in object_names_in_archives:
-        for f in o['files']:
+      for name, files, tmpdir, success in object_names_in_archives:
+        if not success:
+          exit_with_error('failed to extract archive: ' + name)
+        Building.ar_contents[name] = files
+        clean_temporary_directory(tmpdir)
+        for f in files:
           if f not in Building.uninternal_nm_cache:
             object_names.append(f)
 
