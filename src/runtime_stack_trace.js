@@ -25,9 +25,6 @@ function demangle(func) {
   // failure when using libcxxabi, don't demangle
   return func;
 #else // DEMANGLE_SUPPORT
-#if ASSERTIONS
-  warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
-#endif // ASSERTIONS
   return func;
 #endif // DEMANGLE_SUPPORT
 }

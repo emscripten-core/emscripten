@@ -75,6 +75,7 @@
   "emscripten_webgl_create_context": ["malloc", "free"],
   "stringToNewUTF8": ["malloc"],
   "_embind_register_std_string": ["malloc", "free"],
-  "_embind_register_std_wstring": ["malloc", "free"]
+  "_embind_register_std_wstring": ["malloc", "free"],
+  "__syscall192": ["memalign"]
 }
 
