@@ -787,45 +787,6 @@ f.close()
       run_process([PYTHON, EMCC, 'binary.' + suffix])
       self.assertContained('hello, world!', run_js('a.out.js'))
 
-  def test_ubsan(self):
-    create_test_file('test.cpp', r'''
-      #include <vector>
-      #include <stdio.h>
-
-      class Test {
-      public:
-        std::vector<int> vector;
-      };
-
-      Test globalInstance;
-
-      int main() {
-        printf("hello, world!\n");
-        return 0;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-  def test_ubsan_add_overflow(self):
-    create_test_file('test.cpp', r'''
-      #include <stdio.h>
-
-      int main(int argc, char **argv) {
-        printf("hello, world!\n");
-        fflush(stdout);
-        int k = 0x7fffffff;
-        k += argc;
-        return k;
-      }
-    ''')
-
-    run_process([PYTHON, EMCC, 'test.cpp', '-fsanitize=undefined'])
-    output = run_js('a.out.js', assert_returncode=1, stderr=STDOUT)
-    self.assertContained('hello, world!', output)
-    self.assertContained('Undefined behavior! ubsan_handle_add_overflow:', output)
-
   @no_wasm_backend()
   def test_asm_minify(self):
     def test(args):
@@ -1489,16 +1450,10 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    try_delete('liba.a')
-    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-
-    # Verify that archive contains basenames with hashes to avoid duplication
-    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
-    self.assertEqual(text.count('common.o'), 1)
-    self.assertContained('common_', text)
-    for line in text.split('\n'):
-      # should not have huge hash names
-      self.assertLess(len(line), 20, line)
+    try_delete('libdup.a')
+    run_process([PYTHON, EMAR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
+    self.assertEqual(text.count('common.o'), 2)
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1508,29 +1463,8 @@ int f() {
         b();
       }
     ''')
-    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
-    self.assertNotIn('archive file contains duplicate entries', err)
+    run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'])
     self.assertContained('a\nb...\n', run_js('a.out.js'))
-
-    # Using llvm-ar directly should cause duplicate basenames
-    try_delete('libdup.a')
-    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
-    assert text.count('common.o') == 2, text
-
-    # With fastcomp we don't support duplicate members so this should generate
-    # a warning.  With the wasm backend (lld) this is fully supported.
-    cmd = [PYTHON, EMCC, 'main.c', '-L.', '-ldup']
-    if self.is_wasm_backend():
-      run_process(cmd)
-      self.assertContained('a\nb...\n', run_js('a.out.js'))
-    else:
-      err = self.expect_fail(cmd)
-      self.assertIn('libdup.a: archive file contains duplicate entries', err)
-      self.assertIn('error: undefined symbol: a', err)
-      # others are not duplicates - the hashing keeps them separate
-      self.assertEqual(err.count('duplicate: '), 1)
-      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -6786,7 +6720,6 @@ Resolve failed: ""
 Resolved: "/" => "/"
 ''', run_js('a.out.js'))
 
-  @no_wasm_backend('https://bugs.llvm.org/show_bug.cgi?id=40412 and https://bugs.llvm.org/show_bug.cgi?id=40470')
   def test_no_warnings(self):
     # build once before to make sure system libs etc. exist
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp')])
@@ -7910,9 +7843,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      11, [], ['waka'],  9211,  5, 13, 16), # noqa
-    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 12, 10), # noqa
-    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 12, 10), # noqa
+    'O0': ([],      11, [], ['waka'],  9211,  5, 12, 16), # noqa
+    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 11, 10), # noqa
+    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 11, 10), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -7938,7 +7871,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  35, 562) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  33, 560) # noqa
 
   @parameterized({
     'normal': (['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
@@ -7952,9 +7885,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      17, [], ['waka'], 22185, 11,  18, 57), # noqa
-    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  15, 31), # noqa
-    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  15, 25), # noqa
+    'O0': ([],      17, [], ['waka'], 22185, 11,  17, 57), # noqa
+    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  14, 31), # noqa
+    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  14, 25), # noqa
     'O3': (['-O3'],  5, [], [],        2353,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  5, [], [],        2310,  7,   3, 15), # noqa
     'Oz': (['-Oz'],  5, [], [],        2272,  7,   2, 14), # noqa
@@ -7966,7 +7899,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1581, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1582, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7986,7 +7919,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1543, [], [], 226403, 30, 95, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -8158,8 +8091,6 @@ int main() {
   @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
-    if not self.is_wasm_backend():
-      self.skipTest('not using wasm backend')
 
     src = path_from_root('tests', 'hello_libcxx.cpp')
     # test codegen in lto mode, and compare to normal (wasm object) mode
@@ -8189,6 +8120,14 @@ int main() {
       print('use native object (non-LTO)')
       run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
       self.assertContained('hello, world!', run_js('a.out.js'))
+
+  @parameterized({
+    'except': [],
+    'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+  })
+  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  def test_wasm_backend_lto_libcxx(self, *args):
+    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')] + ['-s', 'WASM_OBJECT_FILES=0'] + list(args))
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:

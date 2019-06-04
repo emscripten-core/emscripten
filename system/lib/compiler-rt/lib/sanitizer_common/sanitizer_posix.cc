@@ -227,6 +227,16 @@ static inline bool IntervalsAreSeparate(uptr start1, uptr end1,
   return (end1 < start2) || (end2 < start1);
 }
 
+#if SANITIZER_EMSCRIPTEN
+bool MemoryRangeIsAvailable(uptr /*range_start*/, uptr /*range_end*/) {
+  // TODO: actually implement this.
+  return true;
+}
+
+void DumpProcessMap() {
+  Report("Cannot dump memory map on emscripten");
+}
+#else
 // FIXME: this is thread-unsafe, but should not cause problems most of the time.
 // When the shadow is mapped only a single thread usually exists (plus maybe
 // several worker threads on Mac, which aren't expected to map big chunks of
@@ -259,6 +269,7 @@ void DumpProcessMap() {
   Report("End of process memory map.\n");
   UnmapOrDie(filename, kBufSize);
 }
+#endif
 
 const char *GetPwd() {
   return GetEnv("PWD");
@@ -279,6 +290,10 @@ void ReportFile::Write(const char *buffer, uptr length) {
 }
 
 bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
+#if SANITIZER_EMSCRIPTEN
+  // Code is not mapped in memory in Emscripten, so this operation is meaningless
+  // and thus always fails.
+#else
   MemoryMappingLayout proc_maps(/*cache_enabled*/false);
   InternalScopedString buff(kMaxPathLength);
   MemoryMappedSegment segment(buff.data(), kMaxPathLength);
@@ -290,6 +305,7 @@ bool GetCodeRangeForFile(const char *module, uptr *start, uptr *end) {
       return true;
     }
   }
+#endif
   return false;
 }
 

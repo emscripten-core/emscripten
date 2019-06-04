@@ -26,7 +26,7 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- At runtime, you can use the ``emscripten_has_threading_support()`` function to
+- At runtime, you can `#include <emscripten/threading.h>` and use the ``emscripten_has_threading_support()`` function to
   test whether the currently executing code was compiled with pthreads support
   enabled. If this function returns true, then the currently executing code was
   compiled with ``-s USE_PTHREADS=1`` (and the current browser supports
