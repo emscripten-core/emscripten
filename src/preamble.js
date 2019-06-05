@@ -1028,7 +1028,6 @@ function createWasm(env) {
 
   function receiveSourceMapJSON(sourceMap) {
     Module['sourceMap'] = new WASMSourceMap(sourceMap);
-    console.log(Module['sourceMap']);
     removeRunDependency('source-map');
   }
 #endif

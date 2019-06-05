@@ -3,48 +3,6 @@ var vlqMap = {};
   vlqMap[c] = i;
 });
 
-// based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
-function decodeVLQ(string) {
-  var result = [];
-  var shift = 0;
-  var value = 0;
-
-  for (var i = 0; i < string.length; ++i) {
-    var integer = vlqMap[string[i]];
-
-    if (integer === undefined) {
-      throw new Error('Invalid character (' + string[i] + ')');
-    }
-
-    value += (integer & 31) << shift;
-
-    if (integer & 32) {
-      shift += 5;
-    } else {
-      var negate = value & 1;
-      value >>= 1;
-      result.push(negate ? -value : value);
-      value = shift = 0;
-    }
-  }
-
-  return result;
-}
-
-function bisect_right(array, value) {
-  var lo = 0, hi = array.length, mid;
-
-  while (lo < hi) {
-    mid = Math.floor((lo + hi) / 2);
-    if (array[mid] > value) {
-      hi = mid;
-    } else {
-      lo = mid + 1;
-    }
-  }
-  return lo;
-}
-
 function WASMSourceMap(sourceMap) {
   this.version = sourceMap.version;
   this.sources = sourceMap.sources;
@@ -52,6 +10,32 @@ function WASMSourceMap(sourceMap) {
 
   this.mapping = {};
   this.offsets = [];
+
+  // based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
+  function decodeVLQ(string) {
+    var result = [];
+    var shift = 0;
+    var value = 0;
+
+    for (var i = 0; i < string.length; ++i) {
+      var integer = vlqMap[string[i]];
+      if (integer === undefined) {
+        throw new Error('Invalid character (' + string[i] + ')');
+      }
+
+      value += (integer & 31) << shift;
+
+      if (integer & 32) {
+        shift += 5;
+      } else {
+        var negate = value & 1;
+        value >>= 1;
+        result.push(negate ? -value : value);
+        value = shift = 0;
+      }
+    }
+    return result;
+  }
 
   var offset = 0, src = 0, line = 1, col = 1, name = 0;
   sourceMap.mappings.split(',').forEach(function (segment, index) {
@@ -82,7 +66,19 @@ WASMSourceMap.prototype.lookup = function (offset) {
 }
 
 WASMSourceMap.prototype.normalizeOffset = function (offset) {
-  return this.offsets[bisect_right(this.offsets, offset) - 1];
+  var lo = 0;
+  var hi = this.offsets.length;
+  var mid;
+
+  while (lo < hi) {
+    mid = Math.floor((lo + hi) / 2);
+    if (this.offsets[mid] > offset) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  return this.offsets[lo - 1];
 }
 
 var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
