@@ -1872,7 +1872,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
       self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
