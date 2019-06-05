@@ -1475,6 +1475,7 @@ pixelRGBA
 posix_spawn
 posix_spawnp
 pthread_attr_destroy
+pthread_attr_getdetachstate
 pthread_attr_getstack
 pthread_attr_init
 pthread_attr_setdetachstate
