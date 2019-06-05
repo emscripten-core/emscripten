@@ -691,7 +691,7 @@ static Suppression *GetSuppressionForStack(u32 stack_trace_id) {
 #if SANITIZER_EMSCRIPTEN
     // On Emscripten, the stack trace is the actual call site, not
     // the code that would be executed after the return.
-    // THerefore, StackTrace::GetPreviousInstructionPc is not needed.
+    // Therefore, StackTrace::GetPreviousInstructionPc is not needed.
     Suppression *s = GetSuppressionForAddr(stack.trace[i]);
 #else
     Suppression *s = GetSuppressionForAddr(

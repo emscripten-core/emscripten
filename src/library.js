@@ -933,8 +933,13 @@ LibraryManager.library = {
     name = UTF8ToString(name);
     if (!ENV.hasOwnProperty(name)) return 0;
 
+#if WASM_BACKEND
     if (_getenv.ret) _emscripten_builtin_free(_getenv.ret);
     _getenv.ret = allocateUTF8(ENV[name], _emscripten_builtin_malloc);
+#else
+    if (_getenv.ret) _free(_getenv.ret);
+    _getenv.ret = allocateUTF8(ENV[name]);
+#endif
     return _getenv.ret;
   },
   // Alias for sanitizers which intercept getenv.

@@ -979,7 +979,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
-  __syscall192__deps: ['emscripten_builtin_memalign'],
+  __syscall192__deps: ['emscripten_builtin_memalign', 'memalign'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
     off <<= 12; // undo pgoffset
