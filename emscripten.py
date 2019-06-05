@@ -2425,7 +2425,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
     # strip them again here.
-    if g.startswith('_'):
+    # note that we don't do this for EM_JS functions (which, rarely, may have
+    # a '_' prefix)
+    if g.startswith('_') and g not in metadata['emJsFuncs']:
       return g[1:]
     return g
 
@@ -2594,13 +2596,13 @@ def run(infile, outfile, memfile, libraries):
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
     generated_struct_info_name = 'generated_struct_info.json'
 
-    def ensure_struct_info():
+    def generate_struct_info():
       with ToolchainProfiler.profile_block('gen_struct_info'):
         out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
+        gen_struct_info.main(['-q', '-c', '-o', out])
         return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info)
+    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
   outfile_obj = open(outfile, 'w')

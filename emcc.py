@@ -115,6 +115,43 @@ AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
 # Target options
 final = None
 
+UBSAN_SANITIZERS = {
+  'alignment',
+  'bool',
+  'builtin',
+  'bounds',
+  'enum',
+  'float-cast-overflow',
+  'float-divide-by-zero',
+  'function',
+  'implicit-unsigned-integer-truncation',
+  'implicit-signed-integer-truncation',
+  'implicit-integer-sign-change',
+  'integer-divide-by-zero',
+  'nonnull-attribute',
+  'null',
+  'nullability-arg',
+  'nullability-assign',
+  'nullability-return',
+  'object-size',
+  'pointer-overflow',
+  'return',
+  'returns-nonnull-attribute',
+  'shift',
+  'signed-integer-overflow',
+  'unreachable',
+  'unsigned-integer-overflow',
+  'vla-bound',
+  'vptr',
+  'undefined',
+  'undefined-trap',
+  'implicit-integer-truncation',
+  'implicit-integer-arithmetic-value-change',
+  'implicit-conversion',
+  'integer',
+  'nullability',
+}
+
 
 class Intermediate(object):
   counter = 0
@@ -1164,7 +1201,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
       if shared.Settings.WASM_BACKEND:
         # setjmp/longjmp and exception handling JS code depends on this so we
-        # include it by default.  Should be elimiated by meta-DCE if unused.
+        # include it by default.  Should be eliminated by meta-DCE if unused.
         shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
@@ -1231,6 +1268,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+      if shared.Settings.WASM_BACKEND:
+        newargs += ['-pthread']
+        # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
+        # manually export them
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self']
+
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
@@ -1423,8 +1466,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.separate_asm:
         exit_with_error('cannot --separate-asm when emitting wasm, since not emitting asm.js')
 
-      if '-fsanitize-minimal-runtime' in newargs:
-        shared.Settings.UBSAN_RUNTIME = 1
+      sanitize = set()
+
+      for arg in newargs:
+        if arg.startswith('-fsanitize='):
+          sanitize.update(arg.split('=', 1)[1].split(','))
+        elif arg.startswith('-fno-sanitize='):
+          sanitize.difference_update(arg.split('=', 1)[1].split(','))
+
+      if sanitize & UBSAN_SANITIZERS:
+        if '-fsanitize-minimal-runtime' in newargs:
+          shared.Settings.UBSAN_RUNTIME = 1
+        else:
+          shared.Settings.UBSAN_RUNTIME = 2
 
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
@@ -2774,12 +2828,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
 
-  # In the general case, run closure here. wasm2js is more complicated: in mode 1,
-  # we run closure here, so that it does not affect the wasm2js output, which is
-  # added later. In mode 2, we do run it afterwards, so it sees the entire program
-  # including the wasm2js output.
-  # TODO: is it worth it?
-  if options.use_closure_compiler and (not shared.Settings.WASM2JS or options.use_closure_compiler == 1):
+  if options.use_closure_compiler:
     final = run_closure_compiler(final)
 
   if shared.Settings.WASM2JS:
@@ -2789,10 +2838,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=debug_info)
-    save_intermediate_with_wasm('wasm2js', wasm_binary_target)
+    save_intermediate('wasm2js')
 
-    if options.use_closure_compiler == 2:
-      final = run_closure_compiler(final)
+    shared.try_delete(wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:

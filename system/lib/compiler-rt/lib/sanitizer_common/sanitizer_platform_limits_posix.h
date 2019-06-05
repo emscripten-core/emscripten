@@ -15,7 +15,7 @@
 #ifndef SANITIZER_PLATFORM_LIMITS_POSIX_H
 #define SANITIZER_PLATFORM_LIMITS_POSIX_H
 
-#if SANITIZER_LINUX || SANITIZER_MAC
+#if SANITIZER_LINUX || SANITIZER_MAC || SANITIZER_EMSCRIPTEN
 
 #include "sanitizer_internal_defs.h"
 #include "sanitizer_platform.h"
@@ -512,7 +512,7 @@ namespace __sanitizer {
   typedef long __sanitizer_clock_t;
 #endif
 
-#if SANITIZER_LINUX
+#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
   typedef int __sanitizer_clockid_t;
 #endif
 
@@ -566,6 +566,8 @@ namespace __sanitizer {
     // The size is determined by looking at sizeof of real sigset_t on linux.
     uptr val[128 / sizeof(uptr)];
   };
+#elif SANITIZER_EMSCRIPTEN
+  typedef unsigned long __sanitizer_sigset_t;
 #endif
 
   struct __sanitizer_siginfo {
