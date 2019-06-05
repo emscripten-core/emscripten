@@ -7629,12 +7629,20 @@ int main() {
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"'])
       code = open('a.out.wasm', 'rb').read()
-      if expect_names:
-        # name section adds the name of malloc (there is also another one for the export)
-        self.assertEqual(code.count(b'malloc'), 2)
+      if self.is_wasm_backend():
+        if expect_names:
+          # name section adds the name of malloc (there is also another one for the exports: malloc and emscripten_builtin_malloc)
+          self.assertEqual(code.count(b'malloc'), 3)
+        else:
+          # should be just malloc and emscripten_builtin_malloc, for the export
+          self.assertEqual(code.count(b'malloc'), 2)
       else:
-        # should be just one name, for the export
-        self.assertEqual(code.count(b'malloc'), 1)
+        if expect_names:
+          # name section adds the name of malloc (there is also another one for the export)
+          self.assertEqual(code.count(b'malloc'), 2)
+        else:
+          # should be just malloc for the export
+          self.assertEqual(code.count(b'malloc'), 1)
       sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
     self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
@@ -7913,9 +7921,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      11, [], ['waka'],  9211,  5, 12, 16), # noqa
-    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 11, 10), # noqa
-    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 11, 10), # noqa
+    'O0': ([],      11, [], ['waka'],  9211,  5, 14, 16), # noqa
+    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 13, 10), # noqa
+    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 13, 10), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -7941,13 +7949,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  34, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 33, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        33, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -7955,9 +7963,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      17, [], ['waka'], 22185, 11,  17, 57), # noqa
-    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  14, 31), # noqa
-    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  14, 25), # noqa
+    'O0': ([],      17, [], ['waka'], 22185, 11,  19, 57), # noqa
+    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  16, 31), # noqa
+    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  16, 25), # noqa
     'O3': (['-O3'],  5, [], [],        2353,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  5, [], [],        2310,  7,   3, 15), # noqa
     'Oz': (['-Oz'],  5, [], [],        2272,  7,   2, 14), # noqa
@@ -7969,7 +7977,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1605, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1605, [], [], 517336, 172, 1506, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7989,7 +7997,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1570, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1570, [], [], 226403, 30, 97, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
