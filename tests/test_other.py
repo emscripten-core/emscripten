@@ -1450,10 +1450,16 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    try_delete('libdup.a')
-    run_process([PYTHON, EMAR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
-    self.assertEqual(text.count('common.o'), 2)
+    try_delete('liba.a')
+    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+
+    # Verify that archive contains basenames with hashes to avoid duplication
+    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    self.assertEqual(text.count('common.o'), 1)
+    self.assertContained('common_', text)
+    for line in text.split('\n'):
+      # should not have huge hash names
+      self.assertLess(len(line), 20, line)
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1463,8 +1469,29 @@ int f() {
         b();
       }
     ''')
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'])
+    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
+    self.assertNotIn('archive file contains duplicate entries', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
+
+    # Using llvm-ar directly should cause duplicate basenames
+    try_delete('libdup.a')
+    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
+    assert text.count('common.o') == 2, text
+
+    # With fastcomp we don't support duplicate members so this should generate
+    # a warning.  With the wasm backend (lld) this is fully supported.
+    cmd = [PYTHON, EMCC, 'main.c', '-L.', '-ldup']
+    if self.is_wasm_backend():
+      run_process(cmd)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
+    else:
+      err = self.expect_fail(cmd)
+      self.assertIn('libdup.a: archive file contains duplicate entries', err)
+      self.assertIn('error: undefined symbol: a', err)
+      # others are not duplicates - the hashing keeps them separate
+      self.assertEqual(err.count('duplicate: '), 1)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'

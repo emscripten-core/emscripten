@@ -8,6 +8,7 @@ import glob
 import hashlib
 import json
 import os
+import random
 import re
 import shutil
 import sys
@@ -5163,11 +5164,11 @@ PORT: 3979
         return 0;
       }
     '''
-    num = 3
+    num = 5
 
     def test():
       print('(iteration)')
-      time.sleep(1.0)
+      time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
@@ -5175,13 +5176,14 @@ PORT: 3979
       return ret
 
     builds = [test() for i in range(num)]
-    print([len(b) for b in builds])
+    print(list(map(len, builds)))
     uniques = set(builds)
     if len(uniques) != 1:
-      for i, unique in enumerate(uniques):
+      i = 0
+      for unique in uniques:
         open('unique_' + str(i) + '.js', 'wb').write(unique)
-      # builds must be deterministic, see unique_N.js
-      self.assertEqual(len(uniques), 1)
+        i += 1
+      assert 0, 'builds must be deterministic, see unique_X.js'
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
