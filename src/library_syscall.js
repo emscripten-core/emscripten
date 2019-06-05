@@ -455,7 +455,11 @@ var SyscallsLibrary = {
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
+#if WASM_BACKEND
         _emscripten_builtin_free(info.malloc);
+#else
+        _free(info.malloc);
+#endif
       }
     }
     return 0;
@@ -982,7 +986,11 @@ var SyscallsLibrary = {
     var ptr;
     var allocated = false;
     if (fd === -1) {
+#if WASM_BACKEND
       ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
+#else
+      ptr = _memalign(PAGE_SIZE, len);
+#endif
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;
