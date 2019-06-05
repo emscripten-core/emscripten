@@ -1023,6 +1023,16 @@ function createWasm(env) {
   addRunDependency('wasm-instantiate');
 #endif
 
+#if LOAD_SOURCE_MAP
+  addRunDependency('source-map');
+
+  function receiveSourceMapJSON(sourceMap) {
+    Module['sourceMap'] = new WASMSourceMap(sourceMap);
+    console.log(Module['sourceMap']);
+    removeRunDependency('source-map');
+  }
+#endif
+
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
@@ -1036,20 +1046,12 @@ function createWasm(env) {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if LOAD_SOURCE_MAP
-    getSourceMapPromise().then(function (sourceMap) {
-      Module['sourceMap'] = new WASMSourceMap(sourceMap);
-    }, function () {}).then(function () {
-#endif
 #if USE_PTHREADS
     receiveInstance(output['instance'], output['module']);
 #else
       // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
       // When the regression is fixed, can restore the above USE_PTHREADS-enabled path.
     receiveInstance(output['instance']);
-#endif
-#if LOAD_SOURCE_MAP
-    });
 #endif
   }
 
@@ -1096,7 +1098,7 @@ function createWasm(env) {
       return false;
     }
 #if LOAD_SOURCE_MAP
-    Module['sourceMap'] = new WASMSourceMap(getSourceMap());
+    receiveSourceMapJSON(getSourceMap());
 #endif
     receiveInstance(instance, module);
   }
@@ -1118,6 +1120,9 @@ function createWasm(env) {
   err('asynchronously preparing wasm');
 #endif
   instantiateAsync();
+#if LOAD_SOURCE_MAP
+  getSourceMapPromise().then(receiveSourceMapJSON);
+#endif
   return {}; // no exports yet; we'll fill them in later
 #else
   instantiateSync();
