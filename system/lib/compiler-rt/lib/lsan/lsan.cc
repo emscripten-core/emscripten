@@ -96,7 +96,10 @@ extern "C" void __lsan_init() {
   InitTlsSize();
   InitializeInterceptors();
   InitializeThreadRegistry();
+#if !SANITIZER_EMSCRIPTEN
+  // Emscripten does not have signals
   InstallDeadlySignalHandlers(LsanOnDeadlySignal);
+#endif
   u32 tid = ThreadCreate(0, 0, true);
   CHECK_EQ(tid, 0);
   ThreadStart(tid, GetTid());
