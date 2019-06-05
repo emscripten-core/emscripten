@@ -856,7 +856,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if need_common_san:
     add_library(system_libs_map['libc++abi'])
     libs_to_link.append((shared.Cache.get('libsanitizer_common_rt_wasm.a', lambda: create_wasm_common_san_rt('libsanitizer_common_rt_wasm.a')), False))
-    shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_memalign']
+    shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_builtin_memalign', '_memalign']
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
