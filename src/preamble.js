@@ -261,7 +261,7 @@ function allocate(slab, types, allocator, ptr) {
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
   if (!runtimeInitialized) return dynamicAlloc(size);
-  return _emscripten_builtin_malloc(size);
+  return _malloc(size);
 }
 
 #include "runtime_strings.js"
