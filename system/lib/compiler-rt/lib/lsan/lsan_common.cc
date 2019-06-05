@@ -621,9 +621,7 @@ static bool CheckForLeaks() {
         "HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)\n");
     Die();
   }
-#if !SANITIZER_EMSCRIPTEN
   param.leak_report.ApplySuppressions();
-#endif
   uptr unsuppressed_count = param.leak_report.UnsuppressedLeakCount();
 
   if (unsuppressed_count > 0) {
@@ -690,8 +688,15 @@ static Suppression *GetSuppressionForAddr(uptr addr) {
 static Suppression *GetSuppressionForStack(u32 stack_trace_id) {
   StackTrace stack = StackDepotGet(stack_trace_id);
   for (uptr i = 0; i < stack.size; i++) {
+#if SANITIZER_EMSCRIPTEN
+    // On Emscripten, the stack trace is the actual call site, not
+    // the code that would be executed after the return.
+    // THerefore, StackTrace::GetPreviousInstructionPc is not needed.
+    Suppression *s = GetSuppressionForAddr(stack.trace[i]);
+#else
     Suppression *s = GetSuppressionForAddr(
         StackTrace::GetPreviousInstructionPc(stack.trace[i]));
+#endif
     if (s) return s;
   }
   return nullptr;
