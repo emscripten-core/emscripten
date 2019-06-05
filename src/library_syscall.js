@@ -747,15 +747,37 @@ var SyscallsLibrary = {
   },
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-    if (offset_low < 0)
-      offset_low += 4294967296;
+#if SYSCALLS_REQUIRE_FILESYSTEM
+#if LARGE_FILESYSTEM
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    if (offset_low < 0) offset_low += HIGH_OFFSET;
+    var offset = offset_high * HIGH_OFFSET + offset_low;
 
-    var offset = offset_high * 4294967296 + offset_low;
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+      return -{{{ cDefine('EOVERFLOW') }}};
+    }
+#else
+    // Can't handle 64-bit integers
+    if (!(offset_high == -1 && offset_low < 0) &&
+        !(offset_high == 0 && offset_low >= 0)) {
+#if ASSERTIONS
+      abort('cannot handle 64-bit file offset. Compile with LARGE_FILESYSTEM to add support');
+#endif
+      return -{{{ cDefine('EOVERFLOW') }}};
+    }
+    var offset = offset_low;
+#endif
 
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
