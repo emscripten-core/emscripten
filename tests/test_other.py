@@ -7947,7 +7947,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   18, [], [],  13078, 20, 16,   26), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):
