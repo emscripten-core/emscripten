@@ -400,9 +400,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       os.path.join('experimental', 'filesystem', 'operations.cpp')
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
+    flags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz', '-I' + libcxxabi_include]
+    flags += threading_flags(libname)
     return build_libcxx(
       os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files,
-      ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz', '-I' + libcxxabi_include],
+      flags,
       has_noexcept_version=True)
 
   # libcxxabi - just for dynamic_cast for now
@@ -423,9 +425,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       'private_typeinfo.cpp'
     ]
     libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
+    flags = ['-Oz', '-I' + libcxxabi_include]
+    flags += threading_flags(libname)
     return build_libcxx(
       os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files,
-      ['-Oz', '-I' + libcxxabi_include])
+      flags)
 
   # gl
   def create_gl(libname):
@@ -681,14 +685,20 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
 
+  libcxx_name = 'libc++'
+  libcxxabi_name = 'libc++abi'
+  if shared.Settings.USE_PTHREADS:
+    libcxx_name += '-mt'
+    libcxxabi_name += '-mt'
+
   Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
 
-  system_libs = [Library('libc++',        'a', create_libcxx,      libcxx_symbols,      ['libc++abi'], True), # noqa
-                 Library('libc++abi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
-                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
-                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
-                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
-                 Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
+  system_libs = [Library(libcxx_name,     'a', create_libcxx,      libcxx_symbols,      [libcxxabi_name], True), # noqa
+                 Library(libcxxabi_name,  ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],      False), # noqa
+                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],      False), # noqa
+                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],               False), # noqa
+                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],      False), # noqa
+                 Library(malloc_name(),   ext, create_malloc,      [],                  [],               False)] # noqa
 
   gl_name = 'libgl'
   if shared.Settings.USE_PTHREADS:
