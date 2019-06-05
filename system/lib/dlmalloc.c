@@ -851,24 +851,11 @@ extern "C" {
     
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(__asmjs__)
 // XXX fastcomp HACK: in fastcomp, weak aliases loses to JavaScript versions of the function.
 // Therefore, we must define real functions. Remove this hack when fastcomp is removed.
-#ifdef __asmjs__
-void* dlmalloc(size_t);
-__attribute__((weak)) void* malloc(size_t size) {
-    return dlmalloc(size);
-}
-
-void dlfree(void*);
-__attribute__((weak)) void free(void *p) {
-    dlfree(p);
-}
-#else
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
-#endif /* __asmjs__ */
-
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
 void* realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* realloc_in_place(void*, size_t) __attribute__((weak, alias("dlrealloc_in_place")));
@@ -6077,9 +6064,15 @@ int mspace_mallopt(int param_number, int value) {
 // and dlfree from this file.
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
+#ifdef __asmjs__
+extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("malloc")));
+extern __typeof(free) emscripten_builtin_free __attribute__((alias("free")));
+extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("memalign")));
+#else
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("dlmalloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("dlfree")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlmemalign")));
+#endif /* __asmjs__ */
 #endif
 
 /* -------------------- Alternative MORECORE functions ------------------- */
