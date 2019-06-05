@@ -2696,6 +2696,17 @@ class Building(object):
       try_delete(wasm_file)
     return js_file
 
+  @staticmethod
+  def apply_wasm_memory_growth(js_file):
+    logger.debug('supporting wasm memory growth with pthreads')
+    fixed = Building.js_optimizer_no_asmjs(js_file, ['growableHeap'])
+    ret = js_file + '.pgrow.js'
+    with open(fixed, 'r') as fixed_f:
+      with open(ret, 'w') as ret_f:
+        with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
+          ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
+    return ret
+
   # the exports the user requested
   user_requested_exports = []
 

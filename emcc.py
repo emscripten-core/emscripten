@@ -1263,7 +1263,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('Memory growth is not supported with pthreads without wasm')
         else:
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-          options.force_js_opts = options.js_opts = True # for JS instrumentation
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
@@ -2810,6 +2809,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
+
+  # pthreads memory growth requires some additional JS fixups
+  if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+    final = shared.Building.apply_wasm_memory_growth(final)
 
   if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS
