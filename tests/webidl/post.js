@@ -1,4 +1,8 @@
 
+process.exit = (e) => {
+  throw e
+}
+
 // Part 1
 
 var sme = new TheModule.Parent(42);
