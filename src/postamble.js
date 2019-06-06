@@ -430,7 +430,7 @@ function abort(what) {
   }
   console.error(output);
 #endif // ASSERTIONS
-  exit(EXITSTATUS);
+  Module['quit'](EXITSTATUS, new ExitStatus(EXITSTATUS));
 }
 Module['abort'] = abort;
 
