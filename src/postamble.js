@@ -419,7 +419,7 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+  console.error('abort(' + what + '). Build with -s ASSERTIONS=1 for more info.');
 #else
   var extra = '';
   var output = 'abort(' + what + ') at ' + stackTrace() + extra;
@@ -428,8 +428,9 @@ function abort(what) {
       output = decorator(output, what);
     });
   }
-  throw output;
+  console.error(output);
 #endif // ASSERTIONS
+  exit(EXITSTATUS);
 }
 Module['abort'] = abort;
 
