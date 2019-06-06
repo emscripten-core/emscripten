@@ -110,7 +110,7 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    if EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower():
+    if is_chrome():
       self.skipTest('Chrome leaks pthreads memory, https://bugs.chromium.org/p/v8/issues/detail?id=9075')
     return f(self)
 
