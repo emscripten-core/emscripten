@@ -4767,8 +4767,8 @@ LibraryManager.library = {
 
     var file = null, match;
     // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
-    if (Module['sourceMap'] && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
-      var info = Module['sourceMap'].lookup(+match[1]);
+    if (wasmSourceMap && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
+      var info = wasmSourceMap.lookup(+match[1]);
       if (info) {
         return {file: info.source, line: info.line, column: info.column};
       }

@@ -1,15 +1,15 @@
-var vlqMap = {};
-'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach(function (c, i) {
-  vlqMap[c] = i;
-});
-
-function WASMSourceMap(sourceMap) {
+function WasmSourceMap(sourceMap) {
   this.version = sourceMap.version;
   this.sources = sourceMap.sources;
   this.names = sourceMap.names;
 
   this.mapping = {};
   this.offsets = [];
+
+  var vlqMap = {};
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='.split('').forEach(function (c, i) {
+    vlqMap[c] = i;
+  });
 
   // based on https://github.com/Rich-Harris/vlq/blob/master/src/vlq.ts
   function decodeVLQ(string) {
@@ -53,7 +53,7 @@ function WASMSourceMap(sourceMap) {
   this.offsets.sort();
 }
 
-WASMSourceMap.prototype.lookup = function (offset) {
+WasmSourceMap.prototype.lookup = function (offset) {
   var info = this.mapping[this.normalizeOffset(offset)];
   if (!info)
     return null;
@@ -65,7 +65,7 @@ WASMSourceMap.prototype.lookup = function (offset) {
   };
 }
 
-WASMSourceMap.prototype.normalizeOffset = function (offset) {
+WasmSourceMap.prototype.normalizeOffset = function (offset) {
   var lo = 0;
   var hi = this.offsets.length;
   var mid;

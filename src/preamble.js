@@ -893,6 +893,7 @@ function getBinaryPromise() {
 }
 
 #if LOAD_SOURCE_MAP
+var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
@@ -1027,7 +1028,7 @@ function createWasm(env) {
   addRunDependency('source-map');
 
   function receiveSourceMapJSON(sourceMap) {
-    Module['sourceMap'] = new WASMSourceMap(sourceMap);
+    wasmSourceMap = new WasmSourceMap(sourceMap);
     removeRunDependency('source-map');
   }
 #endif
