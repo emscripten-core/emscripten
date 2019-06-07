@@ -7741,7 +7741,7 @@ int main() {
           (['-O2', '--js-opts', '1'], False, False, True,  False, False),
         ]:
         print(args, expect_dash_g, expect_emit_text)
-        try_delete('a.out.wast')
+        self.clear()
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
         print(' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
