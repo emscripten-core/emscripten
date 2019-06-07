@@ -756,6 +756,9 @@ var SyscallsLibrary = {
     var DOUBLE_LIMIT = 0x20000000000000; // 2^53
     // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
     if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+#if ASSERTIONS
+      abort('reached accurate limit for doubles');
+#endif
       return -{{{ cDefine('EOVERFLOW') }}};
     }
 #else
