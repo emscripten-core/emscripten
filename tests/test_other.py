@@ -2216,7 +2216,12 @@ int f() {
           (['-O2', '-g'], True),
         ]:
         print(args, expect_debug)
+        self.clear()
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+        if '-g4' in args:
+          assert os.path.exists('a.out.wasm.map'), 'a source map should be emitted'
+        else:
+          assert not os.path.exists('a.out.wasm.map'), 'no source map should be emitted without -g4'
         lines = err.splitlines()
         if self.is_wasm_backend():
           finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]

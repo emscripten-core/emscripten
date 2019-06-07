@@ -1666,14 +1666,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               return unsuffixed(input_file) + options.default_object_extension
         return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
-      # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
-      if use_source_map(options) or ((final_suffix not in JS_CONTAINING_ENDINGS or (has_source_inputs and final_suffix in JS_CONTAINING_ENDINGS)) and options.requested_debug == '-g'):
-        # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
-        if use_source_map(options) or not (final_suffix in JS_CONTAINING_ENDINGS and options.js_opts):
-          newargs.append('-g') # preserve LLVM debug info
-          options.debug_level = 4
-          shared.Settings.DEBUG_LEVEL = 4
-
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
       if options.debug_level >= 3 and not shared.Settings.WASM:
         newargs.append('-fno-discard-value-names')
@@ -2404,7 +2396,12 @@ def parse_args(newargs):
       requested_level = newargs[i][2:] or '3'
       options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       options.requested_debug = newargs[i]
-      newargs[i] = ''
+      if options.debug_level >= 3:
+        # make sure debug info is preserved (note: clang won't accept -g4)
+        newargs[i] = '-g'
+      else:
+        # don't pass -g1 or -g2 to clang
+        newargs[i] = ''
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       options.debug_level = max(options.debug_level, 2)
       options.profiling = True
