@@ -4765,7 +4765,8 @@ LibraryManager.library = {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return null;
 
-    var file = null, match;
+    var match;
+#if LOAD_SOURCE_MAP
     // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
     if (wasmSourceMap && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
       var info = wasmSourceMap.lookup(+match[1]);
@@ -4773,6 +4774,7 @@ LibraryManager.library = {
         return {file: info.source, line: info.line, column: info.column};
       }
     }
+#endif
 
     // Example: at main (wasm-function[35]:3)
     // Example: at callMain (a.out.js:6335:22)

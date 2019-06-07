@@ -892,8 +892,8 @@ function getBinaryPromise() {
   });
 }
 
-var wasmSourceMap;
 #if LOAD_SOURCE_MAP
+var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
