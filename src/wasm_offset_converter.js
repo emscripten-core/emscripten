@@ -9,8 +9,9 @@ function WasmOffsetConverter(wasmBytes) {
   // WASM stack trace format.
   //
   // v8 bug: https://crbug.com/v8/9172
-  // We may be able to remove this code once the fix makes its way into all
-  // commonly used versions of node.
+  //
+  // This code is also used to check if the candidate source map offset is
+  // actually part of the same function as the offset we are looking for.
 
   // current byte offset into the WASM binary, as we parse it
   // the first section starts at offset 8
@@ -21,6 +22,7 @@ function WasmOffsetConverter(wasmBytes) {
 
   // map from function index to byte offset in WASM binary
   this.map = {};
+  this.func_starts = [];
 
   function unsignedLEB128() {
     // consumes an unsigned LEB128 integer starting at `offset`.
@@ -82,6 +84,7 @@ function WasmOffsetConverter(wasmBytes) {
         while (count-- > 0) {
           var size = unsignedLEB128();
           this.map[funcidx++] = offset;
+          this.func_starts.push(offset);
           offset += size;
         }
         return;
@@ -92,4 +95,24 @@ function WasmOffsetConverter(wasmBytes) {
 
 WasmOffsetConverter.prototype.convert = function (funcidx, offset) {
   return this.map[funcidx] + offset;
+}
+
+WasmOffsetConverter.prototype.isSameFunc = function (offset1, offset2) {
+  var array = this.func_starts;
+  function bisect(offset) {
+    var lo = 0;
+    var hi = array.length;
+    var mid;
+
+    while (lo < hi) {
+      mid = Math.floor((lo + hi) / 2);
+      if (array[mid] > offset) {
+        hi = mid;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    return lo;
+  }
+  return bisect(offset1) == bisect(offset2);
 }
