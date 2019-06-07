@@ -9300,3 +9300,6 @@ int main () {
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
     self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
+
+  def test_llvm_includes(self):
+    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')

@@ -1059,7 +1059,7 @@ def emsdk_opts():
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
