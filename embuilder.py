@@ -69,6 +69,7 @@ SYSTEM_TASKS = [
     'pthreads_stub',
     'ubsan-rt-wasm',
     'ubsan-minimal-rt-wasm',
+    'lsan-rt-wasm',
 ]
 
 for debug in ['', '_debug']:
@@ -336,6 +337,10 @@ def main():
       if not shared.Settings.WASM_BACKEND:
         continue
       build(C_BARE, ['libubsan_minimal_rt_wasm.a'], ['-fsanitize=undefined', '-fsanitize-minimal-runtime', '-s', 'WASM=1'])
+    elif what == 'lsan-rt-wasm':
+      if not shared.Settings.WASM_BACKEND:
+        continue
+      build(C_BARE, ['liblsan_rt_wasm.a'], ['-fsanitize=leak', '-s', 'WASM=1'])
     elif what == 'al':
       build('''
         #include "AL/al.h"
