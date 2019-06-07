@@ -7655,7 +7655,7 @@ extern "C" {
   def test_ubsan_full_overflow(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_overflow.c')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       "src.cpp:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
       "src.cpp:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
     ])
@@ -7679,9 +7679,9 @@ extern "C" {
   def test_ubsan_full_left_shift(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_left_shift.c')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       'src.cpp:3:5: runtime error: left shift of negative value -1',
-      "src.cpp:7:5: left shift of 16 by 29 places cannot be represented in type 'int'"
+      "src.cpp:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'"
     ])
 
   @parameterized({
@@ -7692,7 +7692,7 @@ extern "C" {
   def test_ubsan_full_null_ref(self, args):
     self.emcc_args += ['-std=c++11'] + args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       "src.cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
       "src.cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
@@ -7706,11 +7706,26 @@ extern "C" {
   def test_ubsan_full_static_cast(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_static_cast.cpp')).read(),
-                expected_output=[
-      "vptr.cc:18:10: runtime error: downcast of address",
+                assert_all=True, expected_output=[
+      "src.cpp:18:10: runtime error: downcast of address",
       "which does not point to an object of type 'R'",
-      "note: object is of type 'T'",
-      "vptr for 'T'",
+    ])
+
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_stack_trace(self):
+    self.emcc_args += ['-std=c++11', '-fsanitize=null', '-g']
+
+    def modify_env(filename):
+      with open(filename) as f:
+        contents = f.read()
+      contents = re.sub('(?<=ENV=){}', "{'UBSAN_OPTIONS': 'print_stacktrace=1'}", contents)
+      with open(filename, 'w') as f:
+        f.write(contents)
+
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
+                post_build=modify_env, assert_all=True, expected_output=[
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main wasm-function',
     ])
 
 
