@@ -118,6 +118,8 @@ def needs_make(note=''):
 
 
 class TestCoreBase(RunnerCore):
+  allow_emcc_args_change = True
+
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
     # wasm does this when optimizing anyhow

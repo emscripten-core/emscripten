@@ -389,6 +389,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   temp_files_before_run = []
 
+  allow_emcc_args_change = False
+
   def is_emterpreter(self):
     return self.get_setting('EMTERPRETIFY')
 
@@ -429,6 +431,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def setUp(self):
     super(RunnerCore, self).setUp()
+    if not self.allow_emcc_args_change:
+      self.__original_emcc_args = self.emcc_args[:]
     self.settings_mods = {}
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
@@ -458,6 +462,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           self.has_prev_ll = True
 
   def tearDown(self):
+    if not self.allow_emcc_args_change:
+      if self.emcc_args != self.__original_emcc_args:
+        raise RuntimeError('Do not change emcc_args in this test')
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
