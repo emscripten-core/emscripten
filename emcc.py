@@ -2400,7 +2400,9 @@ def parse_args(newargs):
         # make sure debug info is preserved (note: clang won't accept -g4)
         newargs[i] = '-g'
       else:
-        # don't pass -g1 or -g2 to clang
+        # don't pass -g1 or -g2 to clang (they are meaningful for JS minification,
+        # but emcc has nonstandardly never passed them to clang itself, but
+        # perhaps we can consider that as a breaking change at some point TODO)
         newargs[i] = ''
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       options.debug_level = max(options.debug_level, 2)
