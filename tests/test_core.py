@@ -4895,7 +4895,6 @@ main( int argv, char ** argc ) {
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_64bit(self, js_engines=None):
-    self.set_setting('LARGE_FILESYSTEM', 1)
     src = open(path_from_root('tests', 'fs', 'test_64bit.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
