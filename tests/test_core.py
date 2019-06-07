@@ -5527,8 +5527,8 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
     self.emcc_args.append('-munimplemented-simd128')
-    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
-                js_engines=[])
+    self.build(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(),
+               self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self, js_engines):
@@ -5536,8 +5536,8 @@ return malloc(size);
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
     self.emcc_args.append('-munimplemented-simd128')
-    self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
-                js_engines=[])
+    self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
+               self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @asm_simd
   def test_simd(self):
@@ -6580,7 +6580,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s) 
+      ''', '''std_string(const char* s)
 someweirdtext
 212121
 212121
