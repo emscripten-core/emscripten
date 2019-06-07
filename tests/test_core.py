@@ -7739,6 +7739,7 @@ def make_run(name, emcc_args, settings=None, env=None):
   TT = type(name, (TestCoreBase,), dict(run_name=name, env=env, __module__=__name__))  # noqa
 
   def tearDown(self):
+    self.emcc_args = []
     try:
       super(TT, self).tearDown()
     finally:

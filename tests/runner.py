@@ -371,6 +371,12 @@ class RunnerMeta(type):
 # metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
 # since a class inherits the metaclass by default.
 class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
+  # this is normally only used by the "core" test suite. it also exists here to
+  # make it easy for other test suites to share utility code with main, but each
+  # test suite must manage this itself. in particular, core will set and unset this
+  # in each run, and the test runner will assert that it is unset, so if you use
+  # this in other test suite, you must also unset it (but, normally you should
+  # not use this - use things like other.do_other_test, browser.btest, etc.)
   emcc_args = []
 
   # default temporary directory settings. set_temp_dir may be called later to
@@ -458,6 +464,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           self.has_prev_ll = True
 
   def tearDown(self):
+    # if a test or test suite sets this, it must also unset it. this assertion exists
+    # to avoid any global state here make test writing confusing
+    assert not self.emcc_args
+
     if not self.save_dir:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
