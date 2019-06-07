@@ -1086,7 +1086,7 @@ function createWasm(env) {
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
 #if 'emscripten_generate_pc' in addedLibraryItems
-        response.clone().arrayBuffer().then(buffer => {
+        response.clone().arrayBuffer().then(function (buffer) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
           removeRunDependency('offset-converter');
         });
