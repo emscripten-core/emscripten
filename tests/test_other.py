@@ -7,6 +7,7 @@
 # noqa: E241
 
 from __future__ import print_function
+from functools import wraps
 import difflib
 import filecmp
 import glob
@@ -64,6 +65,7 @@ def uses_canonical_tmp(func):
   This decorator takes care of cleaning the directory after the
   test to satisfy the leak detector.
   """
+  @wraps(func)
   def decorated(self):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
@@ -133,6 +135,19 @@ class other(RunnerCore):
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
+
+  def do_smart_test(self, source, literals=[], regexes=[], emcc_args=[], run_args=[], assert_returncode=0):
+    shutil.copyfile(source, 'test.cpp')
+    run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
+    seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True,
+                  assert_returncode=assert_returncode) + '\n'
+
+    for literal in literals:
+      self.assertContained([literal], seen)
+
+    for regex in regexes:
+      if not re.search(regex, seen):
+        self.fail('Expected regex "%s" to match on:\n%s' % (regex, seen))
 
   def expect_fail(self, cmd, **args):
     """Run a subprocess and assert that it returns non-zero.
@@ -9280,3 +9295,35 @@ int main () {
   def test_malloc_none(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
     self.assertContained('undefined symbol: malloc', stderr)
+
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_leaks(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+    ])
+
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_stack_trace(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-g4'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+    ], regexes=[
+      r'(?m)in malloc.*wasm-function',
+      r'(?m)in f\(\) /.*/test\.cpp:6:21$',
+      r'(?m)in main /.*/test\.cpp:10:16$',
+      r'(?m)in main /.*/test\.cpp:12:3$',
+      r'(?m)in main /.*/test\.cpp:13:3$',
+    ])
+
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_no_leak(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.c'),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       regexes=[r'^\s*$'])
