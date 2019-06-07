@@ -4678,8 +4678,10 @@ LibraryManager.library = {
       return +match[1];
     } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
       // other engines only give function index and offset in the function,
-      // so we pack these into a "return address"
-      return (+match[1] << 16) + +match[2];
+      // so we try using the offset converter. If that doesn't work,
+      // we pack index and offset into a "return address"
+      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
+             (+match[1] << 16) + +match[2];
     } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
@@ -4778,7 +4780,7 @@ LibraryManager.library = {
     return _emscripten_pc_get_function.ret;
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return null;
@@ -4792,9 +4794,17 @@ LibraryManager.library = {
         return {file: info.source, line: info.line, column: info.column};
       }
     }
-#endif
 
     // Example: at main (wasm-function[35]:3)
+    // Example: at wasm-function[35]:3
+    if (wasmSourceMap && wasmOffsetConverter && (match = /at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame))) {
+      var info = wasmSourceMap.lookup(wasmOffsetConverter.convert(+match[1], +match[2]));
+      if (info) {
+        return {file: info.source, line: info.line, column: info.column};
+      }
+    }
+#endif
+
     // Example: at callMain (a.out.js:6335:22)
     if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
       return {file: match[1], line: match[2], column: match[3]};
