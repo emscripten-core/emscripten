@@ -174,9 +174,9 @@ class other(RunnerCore):
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     run_process([PYTHON, EMCC, '-c', '-ofoo.o', path_from_root('tests', 'hello_world.c')])
-    assert os.path.exists('foo.o')
+    self.assertExists('foo.o')
     run_process([PYTHON, EMCC, '-ofoo.js', 'foo.o'])
-    assert os.path.exists('foo.js')
+    self.assertExists('foo.js')
 
   def test_emcc_1(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
@@ -2219,9 +2219,9 @@ int f() {
         self.clear()
         err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
         if '-g4' in args:
-          assert os.path.exists('a.out.wasm.map'), 'a source map should be emitted'
+          self.assertExists('a.out.wasm.map', 'a source map should be emitted')
         else:
-          assert not os.path.exists('a.out.wasm.map'), 'no source map should be emitted without -g4'
+          self.assertNotExists('a.out.wasm.map', 'no source map should be emitted without -g4')
         lines = err.splitlines()
         if self.is_wasm_backend():
           finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
