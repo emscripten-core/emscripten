@@ -196,7 +196,7 @@ void ScanRangeForPointers(uptr begin, uptr end,
     }
 
 #if SANITIZER_EMSCRIPTEN
-    if (cache_begin <= pp || pp < cache_end) {
+    if (cache_begin <= pp && pp < cache_end) {
       LOG_POINTERS("%p: skipping because it overlaps the cache %p-%p.\n",
           pp, cache_begin, cache_end);
       continue;
