@@ -570,10 +570,6 @@ var FILESYSTEM = 1;
 // some JS that does, you might need this.
 var FORCE_FILESYSTEM = 0;
 
-// Add support for 64-bit files. Do keep in mind however, that JavaScript cannot
-// accurately support all 64-bit values.
-var LARGE_FILESYSTEM = 0;
-
 // This mode is intended for use with Node.js (and will throw if the build runs
 // in other engines).  The File System API will directly use Node.js API without
 // requiring `FS.mount()`.  The initial working directory will be same as

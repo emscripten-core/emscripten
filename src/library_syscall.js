@@ -748,10 +748,9 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
 #if SYSCALLS_REQUIRE_FILESYSTEM
-#if LARGE_FILESYSTEM
     var HIGH_OFFSET = 0x100000000; // 2^32
-    if (offset_low < 0) offset_low += HIGH_OFFSET;
-    var offset = offset_high * HIGH_OFFSET + offset_low;
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
 
     var DOUBLE_LIMIT = 0x20000000000000; // 2^53
     // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
@@ -761,17 +760,6 @@ var SyscallsLibrary = {
 #endif
       return -{{{ cDefine('EOVERFLOW') }}};
     }
-#else
-    // Can't handle 64-bit integers
-    if (!(offset_high == -1 && offset_low < 0) &&
-        !(offset_high == 0 && offset_low >= 0)) {
-#if ASSERTIONS
-      abort('cannot handle 64-bit file offset. Compile with LARGE_FILESYSTEM to add support');
-#endif
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-    var offset = offset_low;
-#endif
 
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
