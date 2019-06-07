@@ -7751,6 +7751,40 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_leaks(self):
+    self.emcc_args += ['-fsanitize=leak']
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_run(open(path_from_root('tests', 'core', 'test_lsan_leaks.c')).read(),
+                assert_all=True, check_for_error=False, expected_output=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+    ])
+
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_stack_trace(self):
+    self.emcc_args += ['-fsanitize=leak', '-g4']
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_run(open(path_from_root('tests', 'core', 'test_lsan_leaks.c')).read(),
+                assert_all=True, check_for_error=False, expected_output=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+      'in main',
+      '/src.cpp:6:21',
+      '/src.cpp:10:16',
+      '/src.cpp:12:3',
+      '/src.cpp:13:3',
+    ])
+
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_no_leak(self):
+    self.emcc_args += ['-fsanitize=leak']
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.do_run(open(path_from_root('tests', 'core', 'test_lsan_no_leak.c')).read(),
+                expected_output=[''])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

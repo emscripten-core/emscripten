@@ -1087,7 +1087,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False, assert_all=False):
+             assert_returncode=None, assert_identical=False, assert_all=False,
+             check_for_error=True):
     if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -1128,7 +1129,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
             self.assertIdentical(expected_output, js_output)
           else:
             self.assertContained(expected_output, js_output, check_all=assert_all)
-            self.assertNotContained('ERROR', js_output)
+            if check_for_error:
+              self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
