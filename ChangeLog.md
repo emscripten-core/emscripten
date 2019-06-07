@@ -18,6 +18,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
 
 v1.38.36: 06/15/2019
 --------------------
