@@ -2551,6 +2551,8 @@ def parse_args(newargs):
       options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
+    elif newargs[i] == '-fno-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]

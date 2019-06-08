@@ -963,42 +963,30 @@ int main() {
 
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-
     self.maybe_closure()
-
     for support_longjmp in [0, 1]:
-      src = '''
-        #include <stdio.h>
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
-        int main() {
-          try {
-            printf("*throw...");
-            throw(1);
-            printf("FAIL");
-          } catch(...) {
-            printf("caught!");
-          }
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-          return 0;
-        }
-      '''
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run(src, '*throw...caught!infunc...done!*')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'exception')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
+
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_exceptions_minimal_runtime(self):
+    self.set_setting('EXCEPTION_DEBUG', 1)
+    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    for support_longjmp in [0, 1]:
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)

@@ -1,3 +1,40 @@
+#if SAFE_HEAP || !MINIMAL_RUNTIME
+// In MINIMAL_RUNTIME, setValue() and getValue() are only available when building with safe heap enabled, for heap safety checking.
+// In traditional runtime, setValue() and getValue() are always available (although their use is highly discouraged due to perf penalties)
+
+/** @type {function(number, number, string, boolean=)} */
+function setValue(ptr, value, type, noSafe) {
+  type = type || 'i8';
+  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
+#if SAFE_HEAP
+  if (noSafe) {
+    switch(type) {
+      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
+      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
+      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
+      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
+      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
+      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
+      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
+      default: abort('invalid type for setValue: ' + type);
+    }
+  } else {
+#endif
+    switch(type) {
+      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
+      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
+      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
+      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
+      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
+      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
+      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
+      default: abort('invalid type for setValue: ' + type);
+    }
+#if SAFE_HEAP
+  }
+#endif
+}
+
 /** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
@@ -31,6 +68,8 @@ function getValue(ptr, type, noSafe) {
 #endif
   return null;
 }
+#endif // SAFE_HEAP || !MINIMAL_RUNTIME
+
 
 #if SAFE_HEAP
 function getSafeHeapType(bytes, isFloat) {
