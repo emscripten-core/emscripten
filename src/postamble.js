@@ -410,6 +410,7 @@ function abort(what) {
   if (what !== undefined) {
     out(what);
     err(what);
+    what = '"' + what + '"';
   } else {
     what = '';
   }
