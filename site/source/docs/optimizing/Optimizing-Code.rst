@@ -128,6 +128,14 @@ You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELI
 .. note:: This setting can be harmful in some cases. Test before using it.
 
 
+How Emscripten optimizes
+========================
+
+Call binaryen, which does lto etc.
+
+may inline even noinline stuffs
+
+
 Other optimization issues
 =========================
 
