@@ -4,7 +4,7 @@
 Manually building Fastcomp from source
 ======================================
 
-:ref:`Fastcomp <LLVM-Backend>` is the second compiler core used in Emscripten, after the original JS compiler and before the new LLVM wasm backend. We recommend the LLVM wasm backend, but fastcomp is still useful in some cases, and is installable using the emsdk. This article explains how you can build Fastcomp's sources using a fully manual process.
+Fastcomp is the second compiler core used in Emscripten, after the original JS compiler and before the new LLVM wasm backend. We recommend the LLVM wasm backend, but fastcomp is still useful in some cases, and is installable using the emsdk. This article explains how you can build Fastcomp's sources using a fully manual process.
 
 .. note:: If you are building a large project, you will need to create a 64-bit build of LLVM and Clang. Compiling and optimizing can take more memory than is available to the 32-bit build.
 

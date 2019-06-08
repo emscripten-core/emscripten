@@ -4,9 +4,6 @@
 Configuring Emscripten Settings when Manually Building from Source
 ==================================================================
 
-.. note:: These instructions are only useful if you are building Emscripten **manually** from source! If you're using the :ref:`SDK <building-emscripten-from-source-using-the-sdk>` you should never manually update the settings, because the :ref:`emsdk` automatically overwrites the file with the appropriate compiler settings when you :term:`activate <Active Tool/SDK>` a tool or SDK.
-
-
 The compiler settings used by Emscripten are defined in the :ref:`compiler configuration file (~/.emscripten) <compiler-configuration-file>`. These settings include paths to the tools (LLVM, Clang, Java, etc.) and the compiler's temporary directory for intermediate build files.
 
 This article explains how to create and update the file when you are building Emscripten :ref:`manually <installing-from-source>` from source.

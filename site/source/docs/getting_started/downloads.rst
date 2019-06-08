@@ -117,8 +117,6 @@ Linux
     # Install git
     sudo apt-get install git-core
 
-More detailed instructions on the toolchain are provided in: :ref:`building-emscripten-on-linux`.
-
 
 Verifying the installation
 ==========================
