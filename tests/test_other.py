@@ -136,9 +136,10 @@ class other(RunnerCore):
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
 
-  def do_smart_test(self, source, literals=[], regexes=[], emcc_args=[], run_args=[], assert_returncode=0):
-    shutil.copyfile(source, 'test.cpp')
-    run_process([PYTHON, EMCC, 'test.cpp'] + emcc_args)
+  def do_smart_test(self, source, name='test.cpp', literals=[], regexes=[],
+                    emcc_args=[], run_args=[], assert_returncode=0):
+    shutil.copyfile(source, name)
+    run_process([PYTHON, EMCC, name] + emcc_args)
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True,
                   assert_returncode=assert_returncode) + '\n'
 
@@ -9296,34 +9297,52 @@ int main () {
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
     self.assertContained('undefined symbol: malloc', stderr)
 
+  @parameterized({
+    'c': ['c'],
+    'cpp': ['cpp'],
+  })
   @no_fastcomp('lsan not supported on fastcomp')
-  def test_lsan_leaks(self):
-    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+  def test_lsan_leaks(self, ext):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-                       assert_returncode=None, literals=[
+                       name='test.' + ext, assert_returncode=None, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
       'Direct leak of 42 byte(s) in 1 object(s) allocated from',
     ])
 
+  @parameterized({
+    'c': ['c', [
+      r'in malloc.*wasm-function',
+      r'(?m)in f /.*/test\.c:6:21$',
+      r'(?m)in main /.*/test\.c:10:16$',
+      r'(?m)in main /.*/test\.c:12:3$',
+      r'(?m)in main /.*/test\.c:13:3$',
+    ]],
+    'cpp': ['cpp', [
+      r'in operator new\[\]\(unsigned long\).*wasm-function',
+      r'(?m)in f\(\) /.*/test\.cpp:4:21$',
+      r'(?m)in main /.*/test\.cpp:8:16$',
+      r'(?m)in main /.*/test\.cpp:10:3$',
+      r'(?m)in main /.*/test\.cpp:11:3$',
+    ]],
+  })
   @no_fastcomp('lsan not supported on fastcomp')
-  def test_lsan_stack_trace(self):
-    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+  def test_lsan_stack_trace(self, ext, regexes):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-g4'],
-                       assert_returncode=None, literals=[
+                       name='test.' + ext, assert_returncode=None, literals=[
       'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
       'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
       'Direct leak of 42 byte(s) in 1 object(s) allocated from',
-    ], regexes=[
-      r'(?m)in malloc.*wasm-function',
-      r'(?m)in f\(\) /.*/test\.cpp:6:21$',
-      r'(?m)in main /.*/test\.cpp:10:16$',
-      r'(?m)in main /.*/test\.cpp:12:3$',
-      r'(?m)in main /.*/test\.cpp:13:3$',
-    ])
+    ], regexes=regexes)
 
+  @parameterized({
+    'c': ['c'],
+    'cpp': ['cpp'],
+  })
   @no_fastcomp('lsan not supported on fastcomp')
-  def test_lsan_no_leak(self):
-    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.c'),
+  def test_lsan_no_leak(self, ext):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-                       regexes=[r'^\s*$'])
+                       name='test.' + ext, regexes=[r'^\s*$'])
