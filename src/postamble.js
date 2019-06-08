@@ -410,7 +410,6 @@ function abort(what) {
   if (what !== undefined) {
     out(what);
     err(what);
-    what = JSON.stringify(what)
   } else {
     what = '';
   }
