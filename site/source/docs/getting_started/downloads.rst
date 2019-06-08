@@ -4,6 +4,8 @@
 Download and install
 ====================
 
+.. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
+
 .. _sdk-installation-instructions:
 
 Installation instructions
