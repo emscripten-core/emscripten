@@ -4,8 +4,6 @@
 Download and install
 ====================
 
-.. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should :ref:`build Emscripten from source <installing-from-source>`.
-
 .. _sdk-installation-instructions:
 
 Installation instructions
