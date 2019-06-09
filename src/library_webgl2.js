@@ -1110,6 +1110,12 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
 
 #if USE_WEBGL2
 
+// If user passes -s USE_WEBGL2=1 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
+// be linked in as well.
+if (typeof createGLPassthroughFunctions === 'undefined') {
+  throw 'In order to use WebGL 2 in strict mode with -s USE_WEBGL2=1, you need to link in WebGL support with -lGL!';
+}
+
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
 
 recordGLProcAddressGet(LibraryWebGL2);
