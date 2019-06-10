@@ -5,9 +5,12 @@
  * found in the LICENSE file.
  */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <assert.h>
+#include "emscripten.h"
 
 int get_TOTAL_MEMORY() {
   return EM_ASM_INT({ return HEAP8.length });
