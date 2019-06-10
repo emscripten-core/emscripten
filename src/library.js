@@ -4467,7 +4467,11 @@ LibraryManager.library = {
                                     '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     __emscripten_save_in_unwind_cache(callstack);
+
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
     UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
     UNWIND_CACHE.last_stack = callstack;
@@ -4494,6 +4498,9 @@ LibraryManager.library = {
       stack = UNWIND_CACHE.last_stack;
     } else {
       stack = new Error().stack.split('\n');
+      if (stack[0] == 'Error') {
+        stack.shift();
+      }
       __emscripten_save_in_unwind_cache(stack);
     }
 
