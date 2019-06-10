@@ -582,11 +582,16 @@ LibraryManager.library = {
 
     // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
+#if MEMORY_GROWTH_STEP != -1
+      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set be the user.
+      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
+#else
       if (newSize <= 536870912) {
         newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
       } else {
         // ..., but after that, add smaller increments towards 2GB, which we cannot reach
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+#endif
 #if ASSERTIONS
         if (newSize === oldSize) {
           warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
