@@ -1145,4 +1145,7 @@ Module['asm'] = function(global, env, providedBuffer) {
 };
 #endif
 
+// Globals used by JS i64 conversions
+var tempDouble, tempI64;
+
 // === Body ===
