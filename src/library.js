@@ -583,7 +583,7 @@ LibraryManager.library = {
     // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
 #if MEMORY_GROWTH_STEP != -1
-      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set be the user.
+      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
       newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
 #else
       if (newSize <= 536870912) {
