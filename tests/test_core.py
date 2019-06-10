@@ -4882,6 +4882,10 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'fs', 'test_llseek.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
+  def test_fs_64bit(self, js_engines=None):
+    src = open(path_from_root('tests', 'fs', 'test_64bit.c')).read()
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
