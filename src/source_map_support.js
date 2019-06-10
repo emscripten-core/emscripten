@@ -50,7 +50,7 @@ function WasmSourceMap(sourceMap) {
     this.mapping[offset] = info;
     this.offsets.push(offset);
   }, this);
-  this.offsets.sort();
+  this.offsets.sort(function (a, b) { return a - b; });
 }
 
 WasmSourceMap.prototype.lookup = function (offset) {
