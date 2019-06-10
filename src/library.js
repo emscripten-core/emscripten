@@ -549,8 +549,8 @@ LibraryManager.library = {
     abortOnCannotGrowMemory(requestedSize);
 #else
     return false; // malloc will report failure
-#endif
-#else
+#endif // ABORTING_MALLOC
+#else // ALLOW_MEMORY_GROWTH == 0
     var oldSize = _emscripten_get_heap_size();
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
@@ -591,13 +591,14 @@ LibraryManager.library = {
       } else {
         // ..., but after that, add smaller increments towards 2GB, which we cannot reach
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-#endif
-#if ASSERTIONS
-        if (newSize === oldSize) {
-          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-        }
-#endif
       }
+#endif // MEMORY_GROWTH_STEP
+
+#if ASSERTIONS
+      if (newSize === oldSize) {
+        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
+      }
+#endif
     }
 
 #if WASM_MEM_MAX != -1
@@ -615,7 +616,7 @@ LibraryManager.library = {
 #endif
       return false;
     }
-#endif
+#endif // WASM_MEM_MAX
 
 #if ASSERTIONS
     var start = Date.now();
