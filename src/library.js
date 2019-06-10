@@ -4398,16 +4398,16 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
     var match;
 
-    if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
+    if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
       // some engines give the binary offset directly, so we use that as return address
       return +match[1];
-    } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
+    } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
       // other engines only give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
       return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
              (+match[1] << 16) + +match[2];
-    } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
+    } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
       // we tag the high bit to distinguish this from wasm addresses
@@ -4466,7 +4466,7 @@ LibraryManager.library = {
   emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
                                     '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
+    var callstack = new Error().stack.split('\n');
     __emscripten_save_in_unwind_cache(callstack);
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
     UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
@@ -4493,7 +4493,7 @@ LibraryManager.library = {
     if (UNWIND_CACHE.last_addr == addr) {
       stack = UNWIND_CACHE.last_stack;
     } else {
-      stack = _emscripten_get_callstack_js(0).split('\n');
+      stack = new Error().stack.split('\n');
       __emscripten_save_in_unwind_cache(stack);
     }
 
@@ -4515,7 +4515,9 @@ LibraryManager.library = {
 
     var name = null;
     var match;
-    if (match = /at (.*) \(.*\)$/.exec(frame)) {
+    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^(.+?)@/.exec(frame)) {
       name = match[1];
     }
     if (!name) return 0;
@@ -4532,18 +4534,8 @@ LibraryManager.library = {
 
     var match;
 #if LOAD_SOURCE_MAP
-    // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
-    if (wasmSourceMap && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
-      var info = wasmSourceMap.lookup(+match[1]);
-      if (info) {
-        return {file: info.source, line: info.line, column: info.column};
-      }
-    }
-
-    // Example: at main (wasm-function[35]:3)
-    // Example: at wasm-function[35]:3
-    if (wasmSourceMap && wasmOffsetConverter && (match = /at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame))) {
-      var info = wasmSourceMap.lookup(wasmOffsetConverter.convert(+match[1], +match[2]));
+    if (wasmSourceMap) {
+      var info = wasmSourceMap.lookup(pc);
       if (info) {
         return {file: info.source, line: info.line, column: info.column};
       }
@@ -4551,11 +4543,11 @@ LibraryManager.library = {
 #endif
 
     // Example: at callMain (a.out.js:6335:22)
-    if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
+    if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
       return {file: match[1], line: match[2], column: match[3]};
-    // Example: at wasm-function[35]:3
-    } else if (match = /at (.*):(\d+)$/.exec(frame)) {
-      return {file: match[1], line: match[2]};
+    // Example: main@a.out.js:1337:42
+    } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
+      return {file: match[1], line: match[2], column: match[3]};
     }
   },
 
