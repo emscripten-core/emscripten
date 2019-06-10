@@ -4531,24 +4531,31 @@ LibraryManager.library = {
   emscripten_pc_get_source_js: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return null;
+    if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
+    var source;
 #if LOAD_SOURCE_MAP
     if (wasmSourceMap) {
       var info = wasmSourceMap.lookup(pc);
       if (info) {
-        return {file: info.source, line: info.line, column: info.column};
+        source = {file: info.source, line: info.line, column: info.column};
       }
     }
 #endif
 
-    // Example: at callMain (a.out.js:6335:22)
-    if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
-      return {file: match[1], line: match[2], column: match[3]};
-    // Example: main@a.out.js:1337:42
-    } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
-      return {file: match[1], line: match[2], column: match[3]};
+    if (!source) {
+      // Example: at callMain (a.out.js:6335:22)
+      if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
+        source = {file: match[1], line: match[2], column: match[3]};
+      // Example: main@a.out.js:1337:42
+      } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
+        source = {file: match[1], line: match[2], column: match[3]};
+      }
     }
+    UNWIND_CACHE.last_get_source_pc = pc;
+    UNWIND_CACHE.last_source = source;
+    return source;
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
