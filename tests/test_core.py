@@ -50,7 +50,7 @@ def wasm_simd(f):
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
-    if self.get_setting('WASM2JS'):
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
       self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
@@ -68,6 +68,14 @@ def no_wasm(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
+  return decorated
+
+
+def no_wasm2js(f):
+  def decorated(self):
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
+      self.skipTest('wasm2js not supported')
+    f(self)
   return decorated
 
 
@@ -1851,6 +1859,7 @@ int main(int argc, char **argv) {
   def test_cxx03_do_run(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_cxx03_do_run')
 
+  @no_wasm2js # massive switches can break js engines
   @no_emterpreter
   def test_bigswitch(self):
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
@@ -1860,6 +1869,7 @@ int main(int argc, char **argv) {
 3060: what?
 ''', args=['34962', '26214', '35040', str(0xbf4)])
 
+  @no_wasm2js # massive switches can break js engines
   @no_emterpreter
   @is_slow_test
   def test_biggerswitch(self):
@@ -6394,6 +6404,7 @@ return malloc(size);
                 ('|1.266,1|',                 # asm.js, double <-> int
                  '|1.266,1413754136|')) # wasm, reinterpret the bits
 
+  @no_wasm2js # TODO: nicely printed names in wasm2js
   def test_demangle_stacks(self):
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
@@ -6772,6 +6783,7 @@ err = err = function(){};
 
   ### Tests for tools
 
+  @no_wasm2js # TODO: source maps in wasm2js
   @no_emterpreter
   def test_source_map(self):
     if not jsrun.check_engine(NODE_JS):
