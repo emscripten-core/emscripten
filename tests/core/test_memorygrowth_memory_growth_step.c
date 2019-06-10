@@ -9,15 +9,19 @@
 #include <stdio.h>
 #include <assert.h>
 
+int get_TOTAL_MEMORY() {
+  return EM_ASM_INT({ return HEAP8.length });
+}
+
 int main() {
   const int MB = 1024 * 1024;
   // Memory size starts at 64MB, max is 130MB and growth step is 1MB.
   // We should get exactly to 130MB.
   for (int i = 0; 1; i++) {
-    printf("%d\n", i);
+    printf("%d %d %d\n", i, get_TOTAL_MEMORY(), get_TOTAL_MEMORY() / 65536);
     volatile int sink = (int)malloc(MB);
     if (!sink) {
-      printf("failed at %d\n", i);
+      printf("failed at %d %d %d\n", i, get_TOTAL_MEMORY(), get_TOTAL_MEMORY() / 65536);
       // i ==  64 > growth to 65MB failed
       // i == 129 > growth to 130MB failed
       // i == 130 > growth to 131MB failed
