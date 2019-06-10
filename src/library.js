@@ -4505,8 +4505,9 @@ LibraryManager.library = {
     }
 
     var offset = 2;
-    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr)
+    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr) {
       ++offset;
+    }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
       {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
