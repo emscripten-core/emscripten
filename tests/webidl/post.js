@@ -1,5 +1,5 @@
 
-process.exit = (e) => {
+process.exit = function (e) {
   throw e
 }
 
