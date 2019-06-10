@@ -4448,7 +4448,9 @@ LibraryManager.library = {
   // continued from calling the helper function. So we can't just walk down the stack and expect
   // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
   // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
-  // will have to call emscripten_stack_snapshot to cache the stack.
+  // will have to call emscripten_stack_snapshot to cache the stack. We also return the return
+  // address of the caller so the PC helper function does not need to call
+  // emscripten_return_address, saving a lot of time.
   //
   // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
   // how many functions to skip from the stack. However, existing libraries do not work this way.
@@ -4461,30 +4463,48 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
+  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
+                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = _emscripten_get_callstack_js(0).split('\n');
+    __emscripten_save_in_unwind_cache(callstack);
+    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
+    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_stack = callstack;
+    return UNWIND_CACHE.last_addr;
+  },
+
+  _emscripten_save_in_unwind_cache__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
+  _emscripten_save_in_unwind_cache: function (callstack) {
     callstack.forEach(function (frame) {
       var pc = _emscripten_generate_pc(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
       }
     });
-    // Caches the stack snapshot so that emscripten_stack_unwind() can unwind from this spot.
-    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
-    UNWIND_CACHE.last_stack = callstack;
   },
 
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
   // addr must be the return address of the last call to emscripten_stack_snapshot, or this
-  // function will fail and return 0.
-  emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  emscripten_stack_unwind: function (addr, level) {
+  // function will instead use the current call stack.
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  emscripten_stack_unwind_buffer: function (addr, buffer, count) {
+    var stack;
     if (UNWIND_CACHE.last_addr == addr) {
-      return _emscripten_generate_pc(UNWIND_CACHE.last_stack[level + 2]);
+      stack = UNWIND_CACHE.last_stack;
     } else {
-      return 0;
+      stack = _emscripten_get_callstack_js(0).split('\n');
+      __emscripten_save_in_unwind_cache(stack);
     }
+
+    var offset = 2;
+    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr)
+      ++offset;
+
+    for (var i = 0; i < count && stack[i+offset]; ++i) {
+      {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
+    }
+    return i;
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
