@@ -18,6 +18,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Set ENV['LANG'] following the user's preferred language (HTTP Accept-Language / navigator.languages[0])
 
  - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
    or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.

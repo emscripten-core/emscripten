@@ -883,6 +883,9 @@ LibraryManager.library = {
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
       ENV['LANG'] = 'C.UTF-8';
+      if (typeof navigator === 'object' && typeof navigator.languages === 'object' && navigator.languages.length > 0) {
+        ENV['LANG'] = navigator.languages[0].replace('-', '_') + '.UTF-8';
+      }
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
