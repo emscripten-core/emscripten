@@ -176,12 +176,15 @@ def main():
         print('Skipping building of native-optimizer; EMSCRIPTEN_NATIVE_OPTIMIZER set in .emscripten config.')
       else:
         tasks += ['native_optimizer']
+    tasks += ['struct_info']
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     logger.info('building and verifying ' + what)
     if what in SYSTEM_LIBRARIES:
       library = SYSTEM_LIBRARIES[what]
       library.get_path()
+    elif what == 'struct_info':
+      build(C_BARE, ['generated_struct_info.json'])
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'icu':
