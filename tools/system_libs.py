@@ -205,7 +205,7 @@ class Library(object):
     return self.name
 
   def get_ext(self):
-    return 'a' if shared.Settings.WASM_OBJECT_FILES else 'bc'
+    return 'a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else 'bc'
 
   def get_name(self):
     return self.get_base_name() + '.' + self.get_ext()
