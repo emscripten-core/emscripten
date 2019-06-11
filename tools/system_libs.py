@@ -882,7 +882,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     logger.debug('including %s' % lib.get_name())
 
-    need_whole_archive = lib.name in force_include and lib.suffix != 'bc'
+    need_whole_archive = lib.name in force_include and lib.get_ext() != 'bc'
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
     # Recursively add dependencies
