@@ -125,16 +125,7 @@ def get_wasm_libc_rt_files():
   return math_files + string_files + other_files
 
 
-class LibraryMeta(type):
-  def __new__(mcs, name, bases, attrs):
-    # Always inherit parent cflags
-    if 'cflags' in attrs:
-      attrs['cflags'] = getattr(bases[0], 'cflags', []) + attrs['cflags']
-
-    return type.__new__(mcs, name, bases, attrs)
-
-
-class Library(LibraryMeta('LibraryMeta', (object,), {})):
+class Library(object):
   # A name that is not None means a concrete library and not an abstract one.
   name = None
   ext = 'a' if shared.Settings.WASM_OBJECT_FILES else 'bc'
@@ -149,7 +140,7 @@ class Library(LibraryMeta('LibraryMeta', (object,), {})):
   src_files = None
   src_glob = None
   src_glob_exclude = None
-  includes = None
+  includes = []
   force_object_files = False
 
   def in_temp(cls, *args):
@@ -192,12 +183,23 @@ class Library(LibraryMeta('LibraryMeta', (object,), {})):
     create_lib(lib_filename, self.build_objects())
     return lib_filename
 
+  @classmethod
+  def _inherit_list(cls, attr):
+    # Some properties, like cflags and includes, makes more sense to inherit
+    # via concatenation than replacement.
+    result = []
+    seen = set()
+    for item in cls.__mro__[::-1]:
+      # Using  __dict__ to avoid inheritance
+      result += item.__dict__.get(attr, [])
+    return result
+
   def get_cflags(self):
-    cflags = self.cflags[:]
+    cflags = self._inherit_list('cflags')
     cflags += get_cflags(force_object_files=self.force_object_files)
 
     if self.includes:
-      cflags += ['-I' + shared.path_from_root(*path) for path in self.includes]
+      cflags += ['-I' + shared.path_from_root(*path) for path in self._inherit_list('includes')]
 
     return cflags
 
@@ -306,11 +308,10 @@ class NoExceptLibrary(Library):
 
 
 class MuslInternalLibrary(Library):
-  def get_cflags(self):
-    return super(MuslInternalLibrary, self).get_cflags() + [
-      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
-      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js'),
-    ]
+  includes = [
+    ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
+    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
+  ]
 
 
 class CXXLibrary(Library):
