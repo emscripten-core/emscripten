@@ -856,6 +856,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   already_included = set()
   system_libs_map = Library.map()
   system_libs = system_libs_map.values()
+  system_libs.sort(key=lambda lib: lib.name)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
   # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
