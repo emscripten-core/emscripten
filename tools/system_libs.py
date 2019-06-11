@@ -252,7 +252,7 @@ class Library(object):
     for subclass in cls.get_subclasses():
       if subclass.name:
         library = subclass.get_default_variation()
-        if library.can_use():
+        if library.can_build() and library.can_use():
           result[subclass.name] = library
     return result
 

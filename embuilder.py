@@ -132,6 +132,8 @@ def main():
   def is_flag(arg):
     return arg.startswith('--')
 
+  shared.check_sanity()
+
   for arg in args:
     if is_flag(arg):
       arg = arg[2:]
