@@ -1450,10 +1450,16 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    try_delete('libdup.a')
-    run_process([PYTHON, EMAR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
-    self.assertEqual(text.count('common.o'), 2)
+    try_delete('liba.a')
+    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+
+    # Verify that archive contains basenames with hashes to avoid duplication
+    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    self.assertEqual(text.count('common.o'), 1)
+    self.assertContained('common_', text)
+    for line in text.split('\n'):
+      # should not have huge hash names
+      self.assertLess(len(line), 20, line)
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1463,8 +1469,29 @@ int f() {
         b();
       }
     ''')
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'])
+    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
+    self.assertNotIn('archive file contains duplicate entries', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
+
+    # Using llvm-ar directly should cause duplicate basenames
+    try_delete('libdup.a')
+    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
+    assert text.count('common.o') == 2, text
+
+    # With fastcomp we don't support duplicate members so this should generate
+    # a warning.  With the wasm backend (lld) this is fully supported.
+    cmd = [PYTHON, EMCC, 'main.c', '-L.', '-ldup']
+    if self.is_wasm_backend():
+      run_process(cmd)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
+    else:
+      err = self.expect_fail(cmd)
+      self.assertIn('libdup.a: archive file contains duplicate entries', err)
+      self.assertIn('error: undefined symbol: a', err)
+      # others are not duplicates - the hashing keeps them separate
+      self.assertEqual(err.count('duplicate: '), 1)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -4808,7 +4835,7 @@ Size of file is: 32
     # with suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
     self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', stderr)
-    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING?', stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
@@ -7871,13 +7898,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  33, 560) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        34, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -7899,7 +7926,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1582, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7919,7 +7946,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -8845,7 +8872,6 @@ ok.
     ''', 'getpeername error: Socket not connected')
 
   def test_getaddrinfo(self):
-    self.emcc_args = []
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
 
   def test_getnameinfo(self):

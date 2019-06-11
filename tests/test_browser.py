@@ -110,6 +110,8 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
+    if is_chrome():
+      self.skipTest('Chrome leaks pthreads memory, https://bugs.chromium.org/p/v8/issues/detail?id=9075')
     return f(self)
 
   return decorated
@@ -1872,7 +1874,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
       self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
@@ -1923,7 +1925,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
-    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
@@ -3042,7 +3044,7 @@ Module['onRuntimeInitialized'] = function() {
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
 
   def test_sdl2_swsurface(self):
-    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
+    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2', '-s', 'TOTAL_MEMORY=64MB'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
@@ -3447,6 +3449,7 @@ window.close = function() {
   def test_dylink_dso_needed_asmjs_inworker(self):
     self._test_dylink_dso_needed(0, 1)
 
+  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
   def _test_dylink_dso_needed(self, wasm, inworker):
     # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
@@ -4358,6 +4361,7 @@ window.close = function() {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4369,6 +4373,7 @@ window.close = function() {
 
   # Tests memory growth in a pthread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):

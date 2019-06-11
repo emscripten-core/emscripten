@@ -1333,6 +1333,12 @@ var WASM_TABLE_SIZE = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
+// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
+// support library. This does not need to be set directly, but pass -fno-exceptions
+// to the build disable exceptions support. (This is basically -fno-exceptions, but
+// checked at final link time instead of individual .cpp file compile time)
+var DISABLE_EXCEPTION_THROWING = 0;
+
 // Internal: An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];
 
@@ -1413,6 +1419,10 @@ var WASM2JS = 0;
 // This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
+
+// Whether we should load the WASM source map at runtime.
+// This is enabled automatically when using -g4 with sanitizers.
+var LOAD_SOURCE_MAP = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

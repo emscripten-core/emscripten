@@ -371,23 +371,14 @@ class RunnerMeta(type):
 # metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
 # since a class inherits the metaclass by default.
 class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
-  emcc_args = []
-
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = TEMP_DIR
   canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
 
-  save_dir = EMTEST_SAVE_DIR
-  save_JS = 0
   # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
   # Change this to None to get stderr reporting, for debugging purposes
   stderr_redirect = STDOUT
-
-  env = {}
-  settings_mods = {}
-
-  temp_files_before_run = []
 
   def is_emterpreter(self):
     return self.get_setting('EMTERPRETIFY')
@@ -430,6 +421,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
+    self.emcc_args = []
+    self.save_dir = EMTEST_SAVE_DIR
+    self.save_JS = False
+    self.env = {}
+    self.temp_files_before_run = []
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -828,15 +824,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
-  def assertContained(self, values, string, additional_info=''):
+  def assertContained(self, values, string, additional_info='', check_all=False):
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))
     if callable(string):
       string = string()
-    for value in values:
-      if value in string:
-        return # success
+
+    if (all if check_all else any)(value in string for value in values):
+      return # success
     self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
       limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
@@ -1091,7 +1087,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False):
+             assert_returncode=None, assert_identical=False, assert_all=False):
     if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -1131,7 +1127,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
           else:
-            self.assertContained(expected_output, js_output)
+            self.assertContained(expected_output, js_output, check_all=assert_all)
             self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
@@ -1502,12 +1498,12 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def skip_if_wasm_backend_pthreads_js(self, args):
-    if self.is_wasm_backend() and ('USE_PTHREADS=1' in args or '-pthread' in args) and 'WASM=0' in args:
-      self.skipTest('wasm2js does not support threads yet')
+  def check_btest_skip(self, args):
+    if self.is_wasm_backend() and 'WASM=0' in args:
+      self.skipTest('wasm2js does not yet support threads, dynamic linking, and some other features; skip browser testing for now')
 
   def compile_btest(self, args):
-    self.skip_if_wasm_backend_pthreads_js(args)
+    self.check_btest_skip(args)
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
@@ -1516,7 +1512,7 @@ class BrowserCore(RunnerCore):
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
-    self.skip_if_wasm_backend_pthreads_js(args)
+    self.check_btest_skip(args)
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
