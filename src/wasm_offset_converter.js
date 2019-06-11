@@ -7,14 +7,24 @@ function WasmOffsetConverter(wasmBytes) {
   // This is needed to look up the WASM source map as well as generate
   // consistent program counter representations given v8's non-standard
   // WASM stack trace format.
+  //
+  // v8 bug: https://crbug.com/v8/9172
+  // We may be able to remove this code once the fix makes its way into all
+  // commonly used versions of node.
 
+  // current byte offset into the WASM binary, as we parse it
+  // the first section starts at offset 8
   var offset = 8;
-  var count;
-  var idx = 0;
 
+  // the index of the next function we see in the binary
+  var funcidx = 0;
+
+  // map from function index to byte offset in WASM binary
   this.map = {};
 
   function unsignedLEB128() {
+    // consumes an unsigned LEB128 integer starting at `offset`.
+    // changes `offset` to immediately after the integer
     var result = 0;
     var shift = 0;
     do {
@@ -26,6 +36,7 @@ function WasmOffsetConverter(wasmBytes) {
   }
 
   function skipLimits() {
+    // skip `offset` over a WASM limits object
     switch (wasmBytes[offset++]) {
       case 1: unsignedLEB128(); // has both initial and maximum, fall through
       case 0: unsignedLEB128(); // just initial
@@ -38,7 +49,9 @@ function WasmOffsetConverter(wasmBytes) {
     var end = unsignedLEB128() + offset;
     switch (type) {
       case 2: // import section
-        count = unsignedLEB128();
+        // we need to find all function imports and increment funcidx for each one
+        // since functions defined in the module are numbered after all imports
+        var count = unsignedLEB128();
 
         while (count --> 0) {
           // skip module
@@ -48,8 +61,8 @@ function WasmOffsetConverter(wasmBytes) {
 
           switch (wasmBytes[offset++]) {
             case 0: // function import
-              ++idx;
-              unsignedLEB128(); // skip funcidx
+              ++funcidx;
+              unsignedLEB128(); // skip function type
               break;
             case 1: // table import
               ++offset;
@@ -65,10 +78,10 @@ function WasmOffsetConverter(wasmBytes) {
         }
         break;
       case 10: // code section
-        count = unsignedLEB128();
+        var count = unsignedLEB128();
         while (count --> 0) {
           var size = unsignedLEB128();
-          this.map[idx++] = offset;
+          this.map[funcidx++] = offset;
           offset += size;
         }
         return;
