@@ -550,7 +550,7 @@ class libmalloc(MTLibrary):
     base = 'lib%s' % self.malloc
 
     extra = ''
-    if shared.Settings.DEBUG_LEVEL >= 3:
+    if self.is_debug:
       extra += '_debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
