@@ -444,6 +444,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
   depends = ['libc']
 
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  includes = ['system', 'lib', 'libcxxabi', 'include']
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
     'abort_message.cpp',
@@ -466,8 +467,9 @@ class libcxx(CXXLibrary, NoExceptLibrary, MTLibrary):
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
   depends = ['libc++abi']
 
-  src_dir = ['system', 'lib', 'libcxxabi', 'src']
-  cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz']
+  includes = ['system', 'lib', 'libcxxabi', 'include']
+  cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
+            '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
   src_dir = ['system', 'lib', 'libcxx']
   src_files = [
