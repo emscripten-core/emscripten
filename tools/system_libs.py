@@ -292,6 +292,8 @@ class NoExceptLibrary(Library):
     cflags = super(NoExceptLibrary, self).get_cflags()
     if self.is_noexcept:
       cflags += ['-fno-exceptions']
+    else:
+      cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
     return cflags
 
   def get_base_name(self):
