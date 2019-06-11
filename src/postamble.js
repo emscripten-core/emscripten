@@ -171,8 +171,6 @@ Module['callMain'] = function callMain(args) {
 
   args = args || [];
 
-  ensureInitRuntime();
-
   var argc = args.length+1;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
   HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
