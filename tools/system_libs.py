@@ -158,6 +158,9 @@ class Library(LibraryMeta('LibraryMeta', (object,), {})):
   def can_use(self):
     return True
 
+  def can_build(self):
+    return True
+
   def get_path(self):
     return shared.Cache.get(self.get_name(), self.build)
 
@@ -235,7 +238,8 @@ class Library(LibraryMeta('LibraryMeta', (object,), {})):
       if library.name:
         for flags in library.combinations():
           variation = library(**flags)
-          result[variation.get_base_name()] = variation
+          if variation.can_build():
+            result[variation.get_base_name()] = variation
     return result
 
   @classmethod
@@ -711,6 +715,9 @@ class libpthreads(MuslInternalLibrary, MTLibrary):
 class CompilerRTWasmLibrary(Library):
   cflags = ['-O2', '-fno-builtin']
   force_object_files = True
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
 
 
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
