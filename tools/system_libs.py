@@ -228,6 +228,7 @@ class Library(object):
 
   @classmethod
   def get_subclasses(cls):
+    yield cls
     for subclass in cls.__subclasses__():
       yield subclass
       for subclass in subclass.get_subclasses():
@@ -288,13 +289,13 @@ class NoExceptLibrary(Library):
 
   def get_cflags(self):
     cflags = super(NoExceptLibrary, self).get_cflags()
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING:
+    if self.is_noexcept:
       cflags += ['-fno-exceptions']
     return cflags
 
   def get_base_name(self):
     name = super(NoExceptLibrary, self).get_base_name()
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING:
+    if self.is_noexcept:
       name += '-noexcept'
     return name
 
