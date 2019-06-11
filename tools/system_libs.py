@@ -128,7 +128,6 @@ def get_wasm_libc_rt_files():
 class Library(object):
   # A name that is not None means a concrete library and not an abstract one.
   name = None
-  ext = 'a' if shared.Settings.WASM_OBJECT_FILES else 'bc'
   depends = []
   symbols = set()
   js_depends = []
@@ -188,7 +187,6 @@ class Library(object):
     # Some properties, like cflags and includes, makes more sense to inherit
     # via concatenation than replacement.
     result = []
-    seen = set()
     for item in cls.__mro__[::-1]:
       # Using  __dict__ to avoid inheritance
       result += item.__dict__.get(attr, [])
@@ -206,8 +204,11 @@ class Library(object):
   def get_base_name(self):
     return self.name
 
+  def get_ext(self):
+    return 'a' if shared.Settings.WASM_OBJECT_FILES else 'bc'
+
   def get_name(self):
-    return self.get_base_name() + '.' + self.ext
+    return self.get_base_name() + '.' + self.get_ext()
 
   def get_symbols(self):
     return self.symbols.copy()
