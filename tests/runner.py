@@ -78,6 +78,8 @@ logger = logging.getLogger(__file__)
 # browser.  Setting '0' as the browser disables running a browser (but we still
 # see tests compile)
 EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+if EMTEST_BROWSER:
+  EMTEST_BROWSER = shlex.split(EMTEST_BROWSER)
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
@@ -634,7 +636,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
-        except:
+        except Exception as e:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
@@ -1310,8 +1312,6 @@ class BrowserCore(RunnerCore):
     if not EMTEST_BROWSER:
       EMTEST_BROWSER = ['google-chrome']
       print("Using default browser %s (set EMTEST_BROWSER to customize)" % ' '.join(EMTEST_BROWSER))
-    else:
-      cmd = shlex.split(EMTEST_BROWSER)
     BrowserCore.browser_timeout = 30
     BrowserCore.start_browser_harness()
 
