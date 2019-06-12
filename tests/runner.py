@@ -1294,6 +1294,7 @@ class BrowserCore(RunnerCore):
   MAX_UNRESPONSIVE_TESTS = 10
 
   unresponsive_tests = 0
+  responsive_tests = 0
 
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
@@ -1301,39 +1302,64 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(BrowserCore, cls).setUpClass()
-    cls.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
-    cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
+    BrowserCore.also_asmjs = int(os.getenv('EMTEST_BROWSER_ALSO_ASMJS', '0')) == 1
+    BrowserCore.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
+    global EMTEST_BROWSER
     if not EMTEST_BROWSER:
-      print("Using default system browser")
+      EMTEST_BROWSER = ['google-chrome']
+      print("Using default browser %s (set EMTEST_BROWSER to customize)" % ' '.join(EMTEST_BROWSER))
     else:
       cmd = shlex.split(EMTEST_BROWSER)
-
-      def run_in_other_browser(url):
-        subprocess.Popen(cmd + [url])
-
-      webbrowser.open_new = run_in_other_browser
-      print("Using Emscripten browser: " + str(cmd))
-    cls.browser_timeout = 30
-    cls.harness_in_queue = multiprocessing.Queue()
-    cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
-    cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
+    BrowserCore.browser_timeout = 30
+    BrowserCore.start_browser_harness()
 
   @classmethod
   def tearDownClass(cls):
     super(BrowserCore, cls).tearDownClass()
     if not has_browser():
       return
-    cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    BrowserCore.stop_browser_harness()
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
+
+  @classmethod
+  def start_browser_harness(cls):
+    print('[Browser harness starting]')
+    BrowserCore.harness_in_queue = multiprocessing.Queue()
+    BrowserCore.harness_out_queue = multiprocessing.Queue()
+    BrowserCore.harness_server = multiprocessing.Process(target=harness_server_func, args=(BrowserCore.harness_in_queue, BrowserCore.harness_out_queue, BrowserCore.port))
+    BrowserCore.harness_server.start()
+    BrowserCore.browser_process = subprocess.Popen(EMTEST_BROWSER + ['http://localhost:%s/run_harness' % BrowserCore.port])
+    print('[Browser harness started]')
+    BrowserCore.log_browser_harness_status()
+
+  @classmethod
+  def stop_browser_harness(cls):
+    print('[Browser harness stopping]')
+    BrowserCore.log_browser_harness_status()
+    BrowserCore.harness_server.terminate()
+    try:
+      BrowserCore.browser_process.terminate()
+    except Exception as e:
+      print(e)
+    print('[Browser client stopped]')
+
+  @classmethod
+  def log_browser_harness_status(cls):
+    print('[Browser client status:', BrowserCore.browser_process.poll(), ']')
+
+  @classmethod
+  def restart_browser_harness(cls):
+    print('[Browser harness restarting]')
+    BrowserCore.stop_browser_harness()
+    # increment the port for the new harness, so that it can't possibly overlap with the previous
+    BrowserCore.port += 1
+    BrowserCore.start_browser_harness()
+    print('[Browser harness restarted]')
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
@@ -1369,6 +1395,13 @@ class BrowserCore(RunnerCore):
         if not received_output:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          BrowserCore.log_browser_harness_status()
+          if BrowserCore.unresponsive_tests == 1 and BrowserCore.responsive_tests == 0:
+            # the very first test was unresponsive, so maybe the browser just failed to start up.
+            # try to restart it.
+            BrowserCore.restart_browser_harness()
+        else:
+          BrowserCore.responsive_tests += 1
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
