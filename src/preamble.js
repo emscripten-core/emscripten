@@ -506,9 +506,6 @@ function ensureInitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
-#endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
 #if USE_PTHREADS
