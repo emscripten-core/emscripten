@@ -874,11 +874,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if lib not in system_libs_map:
       shared.exit_with_error('invalid forced library: %s', lib)
 
-  def maybe_noexcept(name):
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING:
-      name += '_noexcept'
-    return name
-
   def add_library(lib):
     if lib.name in already_included:
       return
