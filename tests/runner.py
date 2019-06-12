@@ -1393,11 +1393,10 @@ class BrowserCore(RunnerCore):
           time.sleep(0.1)
         if not received_output:
           BrowserCore.unresponsive_tests += 1
-          print('[unresponsive tests: %d, vs %d]' % BrowserCore.unresponsive_tests, BrowserCore.responsive_tests)
+          print('[unresponsive tests: %d, vs %d]' % (BrowserCore.unresponsive_tests, BrowserCore.responsive_tests))
           BrowserCore.log_browser_harness_status()
           if BrowserCore.unresponsive_tests == 1 and BrowserCore.responsive_tests == 0:
-            # the very first test was unresponsive, so maybe the browser just failed to start up.
-            # try to restart it.
+            print('[very first test was unresponsive, so maybe the browser just failed to start up; try to restart it.'])
             BrowserCore.restart_browser_harness()
         else:
           BrowserCore.responsive_tests += 1
