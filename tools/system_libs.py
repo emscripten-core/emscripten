@@ -367,7 +367,6 @@ class libc(MuslInternalLibrary, MTLibrary):
              '-Wno-empty-body']
 
   def get_files(self):
-    logger.debug(' building libc for cache')
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 

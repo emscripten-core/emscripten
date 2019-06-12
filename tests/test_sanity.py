@@ -457,7 +457,7 @@ fi
 
   def test_emcc_caching(self):
     INCLUDING_MESSAGE = 'including X'
-    BUILDING_MESSAGE = 'building X for cache'
+    BUILDING_MESSAGE = 'generating system library: X'
     ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
