@@ -485,8 +485,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       base = 'dlmalloc'
     elif shared.Settings.MALLOC == 'emmalloc':
       base = 'emmalloc'
+    elif shared.Settings.MALLOC == 'none':
+      return (None, None)
     else:
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
 
     # only dlmalloc supports most modes
     def require_dlmalloc(what):
@@ -519,6 +521,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     return malloc_decision()[1]
 
   def create_malloc(out_name):
+    if not malloc_source():
+      return
     o = in_temp(out_name)
     cflags = ['-O2', '-fno-builtin']
     if shared.Settings.USE_PTHREADS:
@@ -681,7 +685,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       always_include.add('libpthreads_wasm')
   else:
     always_include.add('libpthreads_stub')
-  always_include.add(malloc_name())
+  if malloc_name():
+    always_include.add(malloc_name())
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
 
@@ -697,8 +702,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
                  Library(libcxxabi_name,  ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],      False), # noqa
                  Library('libal',         ext, create_al,          al_symbols,          [libc_name],      False), # noqa
                  Library('libhtml5',      ext, create_html5,       html5_symbols,       [],               False), # noqa
-                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],      False), # noqa
-                 Library(malloc_name(),   ext, create_malloc,      [],                  [],               False)] # noqa
+                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],      False)] # noqa
+
+  if malloc_name():
+    system_libs += [Library(malloc_name(),ext, create_malloc,      [],                  [],               False)] # noqa
 
   gl_name = 'libgl'
   if shared.Settings.USE_PTHREADS:
