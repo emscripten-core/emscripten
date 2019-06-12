@@ -1165,6 +1165,7 @@ var LibraryGLFW = {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
+  glfwExtensionSupported__deps: ['glGetString'],
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
       GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
