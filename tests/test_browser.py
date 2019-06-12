@@ -78,7 +78,7 @@ def shell_with_script(shell_file, output_file, replacement):
 
 
 def is_chrome():
-  return EMTEST_BROWSER and 'chrom' in EMTEST_BROWSER.lower()
+  return EMTEST_BROWSER and 'chrom' in str(EMTEST_BROWSER).lower()
 
 
 def no_chrome(note='chrome is not supported'):
@@ -88,7 +88,7 @@ def no_chrome(note='chrome is not supported'):
 
 
 def is_firefox():
-  return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+  return EMTEST_BROWSER and 'firefox' in str(EMTEST_BROWSER).lower()
 
 
 def no_firefox(note='firefox is not supported'):
@@ -99,7 +99,7 @@ def no_firefox(note='firefox is not supported'):
 
 def no_swiftshader(f):
   def decorated(self):
-    if is_chrome() and '--use-gl=swiftshader' in EMTEST_BROWSER:
+    if is_chrome() and '--use-gl=swiftshader' in str(EMTEST_BROWSER):
       self.skipTest('not compatible with swiftshader')
     return f(self)
 
@@ -2450,22 +2450,20 @@ void *getBindBuffer() {
     # before launching.
     os.chdir(path_from_root())
     args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
-    if EMTEST_BROWSER is not None:
-      # If EMTEST_BROWSER carried command line arguments to pass to the browser,
-      # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
-      # so strip them out.
-      browser_cmd = shlex.split(EMTEST_BROWSER)
-      browser_path = browser_cmd[0]
-      args_base += ['--browser', browser_path]
-      if len(browser_cmd) > 1:
-        browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and '-profile' in browser_args:
-          # emrun uses its own -profile, strip it out
-          parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
-          browser_args = parser.parse_known_args(browser_args)[1]
-        if browser_args:
-          args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
+    # If EMTEST_BROWSER carried command line arguments to pass to the browser,
+    # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
+    # so strip them out.
+    browser_path = EMTEST_BROWSER[0]
+    args_base += ['--browser', browser_path]
+    if len(EMTEST_BROWSER) > 1:
+      browser_args = EMTEST_BROWSER[1:]
+      if 'firefox' in browser_path and '-profile' in browser_args:
+        # emrun uses its own -profile, strip it out
+        parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
+        parser.add_argument('-profile')
+        browser_args = parser.parse_known_args(browser_args)[1]
+      if browser_args:
+        args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
     for args in [
         args_base,
         args_base + ['--no_private_browsing']
