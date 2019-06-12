@@ -78,8 +78,6 @@ logger = logging.getLogger(__file__)
 # browser.  Setting '0' as the browser disables running a browser (but we still
 # see tests compile)
 EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-if EMTEST_BROWSER:
-  EMTEST_BROWSER = shlex.split(EMTEST_BROWSER)
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
@@ -1308,10 +1306,11 @@ class BrowserCore(RunnerCore):
     BrowserCore.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
-    global EMTEST_BROWSER
     if not EMTEST_BROWSER:
-      EMTEST_BROWSER = ['google-chrome']
-      print("Using default browser %s (set EMTEST_BROWSER to customize)" % ' '.join(EMTEST_BROWSER))
+      BrowserCore.browser_cmd = ['google-chrome']
+      print("Using default browser %s (set EMTEST_BROWSER to customize)" % ' '.join(BrowserCore.browser_cmd))
+    else:
+      BrowserCore.browser_cmd = shlex.split(EMTEST_BROWSER)
     BrowserCore.browser_timeout = 30
     BrowserCore.start_browser_harness()
 
@@ -1333,7 +1332,7 @@ class BrowserCore(RunnerCore):
     BrowserCore.harness_out_queue = multiprocessing.Queue()
     BrowserCore.harness_server = multiprocessing.Process(target=harness_server_func, args=(BrowserCore.harness_in_queue, BrowserCore.harness_out_queue, BrowserCore.port))
     BrowserCore.harness_server.start()
-    BrowserCore.browser_process = subprocess.Popen(EMTEST_BROWSER + ['http://localhost:%s/run_harness' % BrowserCore.port])
+    BrowserCore.browser_process = subprocess.Popen(BrowserCore.browser_cmd + ['http://localhost:%s/run_harness' % BrowserCore.port])
     print('[Browser harness started]')
     BrowserCore.log_browser_harness_status()
 
