@@ -1067,6 +1067,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
     if options.bind:
+      shared.Settings.EMBIND = 1
       # If we are using embind and generating JS, now is the time to link in bind.cpp
       if final_suffix in JS_CONTAINING_ENDINGS:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
