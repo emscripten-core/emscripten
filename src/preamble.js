@@ -502,7 +502,7 @@ function preRun() {
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
-function ensureInitRuntime() {
+function initRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
