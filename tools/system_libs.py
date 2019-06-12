@@ -213,6 +213,9 @@ class Library(object):
   def get_symbols(self):
     return self.symbols.copy()
 
+  def get_depends(self):
+    return self.depends
+
   @classmethod
   def variations(cls):
     return []
@@ -421,6 +424,12 @@ class libc(MuslInternalLibrary, MTLibrary):
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     return libc_files
+
+  def get_depends(self):
+    depends = super(libc, self).get_depends()
+    if shared.Settings.WASM:
+      return depends + ['libc-wasm']
+    return depends
 
 
 class libc_wasm(MuslInternalLibrary):
@@ -893,7 +902,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
     # Recursively add dependencies
-    for d in lib.depends:
+    for d in lib.get_depends():
       add_library(system_libs_map[d])
 
     for d in lib.js_depends:
