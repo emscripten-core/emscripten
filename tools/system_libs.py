@@ -511,6 +511,9 @@ class libcxx(CXXLibrary, NoExceptLibrary, MTLibrary):
     os.path.join('experimental', 'filesystem', 'operations.cpp')
   ]
 
+  def get_ext(self):
+    return 'a'
+
 
 class libmalloc(MTLibrary):
   name = 'libmalloc'
