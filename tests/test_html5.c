@@ -51,7 +51,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
     TEST_RESULT(emscripten_get_fullscreen_status);
     if (!fsce.isFullscreen) {
       printf("Requesting fullscreen..\n");
-      ret = emscripten_request_fullscreen(0, 1);
+      ret = emscripten_request_fullscreen("#canvas", 1);
       TEST_RESULT(emscripten_request_fullscreen);
     } else {
       printf("Exiting fullscreen..\n");

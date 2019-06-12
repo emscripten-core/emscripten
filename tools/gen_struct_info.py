@@ -404,8 +404,8 @@ def inspect_code(headers, cpp_opts, structs, defines):
   cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-Wno-format']
   if not shared.Settings.WASM_BACKEND:
     cmd += ['-s', 'WASM=0']
-  if shared.Settings.WASM_OBJECT_FILES:
-    cmd += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+    cmd += ['-s', 'WASM_OBJECT_FILES=0']
 
   try:
     try:
@@ -488,15 +488,17 @@ def filter_opts(opts):
 def main(args):
   global QUIET
 
+  default_json = shared.path_from_root('src', 'struct_info.json')
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
-  parser.add_argument('headers', nargs='+',
-                      help='A header (.h) file or a JSON file with a list of structs and their fields')
+  parser.add_argument('headers', nargs='*',
+                      help='A header (.h) file or a JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
+                      default=[default_json])
   parser.add_argument('-q', dest='quiet', action='store_true', default=False,
                       help='Don\'t output anything besides error messages.')
   parser.add_argument('-f', dest='list_fields', action='store_true', default=False,
                       help='Output a list of structs and fields for the given headers.')
-  parser.add_argument('-p', dest='pretty_print', action='store_true', default=False,
-                      help='Pretty print the outputted JSON.')
+  parser.add_argument('-c', dest='pretty_print', action='store_false', default=True,
+                      help="Compress JSON output (don't pretty print)")
   parser.add_argument('-o', dest='output', metavar='path', default=None,
                       help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
   parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],

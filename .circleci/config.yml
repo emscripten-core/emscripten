@@ -25,6 +25,117 @@ test-defaults: &test-defaults
         command: |
           EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
 
+test-firefox: &test-firefox
+  <<: *defaults
+  environment:
+  working_directory: ~/
+  steps:
+    - checkout:
+        path: emscripten/
+    - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+        at: ~/
+    - run:
+        name: install package dependencies
+        command: |
+          apt-get update -q
+          apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
+          # preseed packages so that apt-get won't prompt for user input
+          echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
+          echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
+          apt-get install -q -y dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
+    - run:
+        name: download firefox
+        command: |
+          FF_VERSION=65.0.2
+          wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FF_VERSION/linux-x86_64/en-US/firefox-$FF_VERSION.tar.bz2
+          tar xf firefox-$FF_VERSION.tar.bz2
+          # wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+          # tar xf nightly.tar.bz2
+    - run:
+        name: configure firefox
+        command: |
+          mkdir tmp-firefox-profile/
+          cat > tmp-firefox-profile/user.js <<EOF
+          user_pref("gfx.offscreencanvas.enabled", true);
+          user_pref("javascript.options.shared_memory", true);
+          EOF
+    - run:
+        name: configure openbox
+        command: |
+          # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
+          mkdir -p .config/X11
+          cat > .config/X11/xorg.conf <<EOF
+          Section "ServerLayout"
+            Identifier "X.org Configured"
+            Screen 0 "Screen0" 0 0
+          EndSection
+
+          Section "Monitor"
+            Identifier "Monitor0"
+            HorizSync 72
+            Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
+          EndSection
+
+          Section "Device"
+            Identifier "Card0"
+            Driver "dummy"
+            VideoRam 1048576
+          EndSection
+
+          Section "Screen"
+            Identifier "Screen0"
+            Device "Card0"
+            Monitor "Monitor0"
+            DefaultDepth 24
+            SubSection "Display"
+              Depth 24
+              Modes "1920x1080@60"
+            EndSubSection
+          EndSection
+          EOF
+          mkdir -p .config/openbox
+          echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
+          mkdir -p .config/autostart
+          cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
+          [Desktop Entry]
+          Type=Application
+          Name=AT-SPI D-Bus Bus
+          Hidden=true # do not auto-start AT-SPI to suppress one warning
+          EOF
+    - run:
+        # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
+        # to be failing here, and the root cause might be related with the
+        # initial position of the mouse pointer relative to the canvas.
+        # browser.test_html5_webgl_create_context is skipped because
+        # anti-aliasing is not well supported.
+        # browser.test_webgl_offscreen_canvas_in_pthread and
+        # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+        # are crashing Firefox (bugzil.la/1281796). The former case is
+        # further blocked by issue #6897.
+        # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
+        name: run tests
+        command: |
+          export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
+          export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
+          export EMTEST_LACKS_SOUND_HARDWARE=1
+          export EMTEST_DETECT_TEMPFILE_LEAKS=0
+          export DISPLAY=:0
+          # Start an X session. Openbox might be optional for now, but
+          # an ICCCM/EWMH compliant window manager is potentially needed
+          # for tests with fullscreen toggling (if we move to a headless
+          # browser, this may not be needed eventually).
+          TMPDIR=`mktemp -d`
+          mkfifo $TMPDIR/fifo
+          echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
+          EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
+          cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
+          rm -r $TMPDIR
+          export EMCC_CORES=4
+          ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+          openbox --exit
+          wait # wait for startx to shutdown cleanly
+
 test-chrome: &test-chrome
   <<: *defaults
   environment:
@@ -142,115 +253,7 @@ jobs:
       # CircleCI actively kills memory-over-consuming process
       # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
   test-browser-firefox:
-    <<: *defaults
-    environment:
-    working_directory: ~/
-    steps:
-      - checkout:
-          path: emscripten/
-      - attach_workspace:
-          # Must be absolute path or relative path from working_directory
-          at: ~/
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
-            # preseed packages so that apt-get won't prompt for user input
-            echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
-            echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
-            apt-get install -q -y dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
-      - run:
-          name: download firefox
-          command: |
-            FF_VERSION=65.0.2
-            wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FF_VERSION/linux-x86_64/en-US/firefox-$FF_VERSION.tar.bz2
-            tar xf firefox-$FF_VERSION.tar.bz2
-            # wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-            # tar xf nightly.tar.bz2
-      - run:
-          name: configure firefox
-          command: |
-            mkdir tmp-firefox-profile/
-            cat > tmp-firefox-profile/user.js <<EOF
-            user_pref("gfx.offscreencanvas.enabled", true);
-            user_pref("javascript.options.shared_memory", true);
-            EOF
-      - run:
-          name: configure openbox
-          command: |
-            # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
-            mkdir -p .config/X11
-            cat > .config/X11/xorg.conf <<EOF
-            Section "ServerLayout"
-              Identifier "X.org Configured"
-              Screen 0 "Screen0" 0 0
-            EndSection
-
-            Section "Monitor"
-              Identifier "Monitor0"
-              HorizSync 72
-              Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
-            EndSection
-
-            Section "Device"
-              Identifier "Card0"
-              Driver "dummy"
-              VideoRam 1048576
-            EndSection
-
-            Section "Screen"
-              Identifier "Screen0"
-              Device "Card0"
-              Monitor "Monitor0"
-              DefaultDepth 24
-              SubSection "Display"
-                Depth 24
-                Modes "1920x1080@60"
-              EndSubSection
-            EndSection
-            EOF
-            mkdir -p .config/openbox
-            echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
-            mkdir -p .config/autostart
-            cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
-            [Desktop Entry]
-            Type=Application
-            Name=AT-SPI D-Bus Bus
-            Hidden=true # do not auto-start AT-SPI to suppress one warning
-            EOF
-      - run:
-          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
-          # to be failing here, and the root cause might be related with the
-          # initial position of the mouse pointer relative to the canvas.
-          # browser.test_html5_webgl_create_context is skipped because
-          # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
-          # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
-          name: run tests
-          command: |
-            export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
-            export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
-            export EMTEST_LACKS_SOUND_HARDWARE=1
-            export EMTEST_DETECT_TEMPFILE_LEAKS=0
-            export DISPLAY=:0
-            # Start an X session. Openbox might be optional for now, but
-            # an ICCCM/EWMH compliant window manager is potentially needed
-            # for tests with fullscreen toggling (if we move to a headless
-            # browser, this may not be needed eventually).
-            TMPDIR=`mktemp -d`
-            mkfifo $TMPDIR/fifo
-            echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
-            EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
-            cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
-            rm -r $TMPDIR
-            export EMCC_CORES=4
-            ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
-            openbox --exit
-            wait # wait for startx to shutdown cleanly
+    <<: *test-firefox
   test-browser-chrome:
     <<: *test-chrome
   test-ab:
@@ -389,6 +392,8 @@ jobs:
       # see explanations in the fastcomp skips for these, earlier
   test-upstream-browser-chrome:
     <<: *test-chrome
+  test-upstream-browser-firefox:
+    <<: *test-firefox
 
 workflows:
   version: 2
@@ -463,6 +468,9 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-browser-chrome:
+          requires:
+            - build-upstream
+      - test-upstream-browser-firefox:
           requires:
             - build-upstream
 

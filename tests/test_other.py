@@ -4866,7 +4866,7 @@ Size of file is: 32
     # with suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
     self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', stderr)
-    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING?', stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
@@ -7901,9 +7901,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      11, [], ['waka'],  9211,  5, 13, 16), # noqa
-    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 12, 10), # noqa
-    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 12, 10), # noqa
+    'O0': ([],      11, [], ['waka'],  9211,  5, 12, 16), # noqa
+    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 11, 10), # noqa
+    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 11, 10), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -7929,13 +7929,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  34, 560) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        34, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -7943,9 +7943,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      17, [], ['waka'], 22185, 11,  18, 57), # noqa
-    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  15, 31), # noqa
-    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  15, 25), # noqa
+    'O0': ([],      17, [], ['waka'], 22185, 11,  17, 57), # noqa
+    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  14, 31), # noqa
+    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  14, 25), # noqa
     'O3': (['-O3'],  5, [], [],        2353,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  5, [], [],        2310,  7,   3, 15), # noqa
     'Oz': (['-Oz'],  5, [], [],        2272,  7,   2, 14), # noqa
@@ -7957,7 +7957,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1582, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7977,7 +7977,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -8903,7 +8903,6 @@ ok.
     ''', 'getpeername error: Socket not connected')
 
   def test_getaddrinfo(self):
-    self.emcc_args = []
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
 
   def test_getnameinfo(self):
@@ -9256,3 +9255,8 @@ int main () {
     assert lf - 900 <= f <= lf - 500
     # both is a little bigger still
     assert both - 100 <= lf <= both - 50
+
+  # Tests that passing -s MALLOC=none will not include system malloc() to the build.
+  def test_malloc_none(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
+    self.assertContained('undefined symbol: malloc', stderr)

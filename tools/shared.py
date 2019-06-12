@@ -1049,7 +1049,6 @@ def emsdk_opts():
   c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
-    path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
@@ -2695,6 +2694,17 @@ class Building(object):
     if not DEBUG:
       try_delete(wasm_file)
     return js_file
+
+  @staticmethod
+  def apply_wasm_memory_growth(js_file):
+    logger.debug('supporting wasm memory growth with pthreads')
+    fixed = Building.js_optimizer_no_asmjs(js_file, ['growableHeap'])
+    ret = js_file + '.pgrow.js'
+    with open(fixed, 'r') as fixed_f:
+      with open(ret, 'w') as ret_f:
+        with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
+          ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
+    return ret
 
   @staticmethod
   def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):

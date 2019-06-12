@@ -15,11 +15,11 @@ See the :ref:`Emscripten Tutorial <Tutorial>` and :ref:`emcc <emccdoc>`.
 Why do I get multiple errors building basic code and the tests?
 ===============================================================
 
-All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on the **master** branch, so if these are failing it is likely that there is some problem with your environment.
+All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on our test infrastructure, so if you see failures locally it is likely that there is some problem with your environment. (Rarely, there may be temporary breakage, but never on a tagged release version.)
 
 First call ``emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
 
-You might also want to go through the :ref:`Tutorial` again, as this is updated as Emscripten changes.
+You might also want to go through the :ref:`Tutorial` again, as it is updated as Emscripten changes.
 
 
 I tried something: why doesn’t it work?
@@ -44,7 +44,7 @@ Why is code compilation slow?
 
 Emscripten makes some trade-offs that make the generated code faster and smaller, at the cost of longer compilation times. For example, we build parts of the standard library along with your code, which enables some additional optimizations, but takes a little longer to compile.
 
-.. note:: You can determine what compilation steps take longest by compiling with ``EMCC_DEBUG=1`` in the environment and then reviewing the debug logs (by default in ``/tmp/emscripten_temp``). Note that compiling in debug mode takes longer than normal, because we print out a lot of intermediate steps to disk.
+.. note:: You can determine what compilation steps take longest by compiling with ``EMCC_DEBUG=1`` in the environment and then reviewing the debug logs (by default in ``/tmp/emscripten_temp``). Note that compiling in debug mode takes longer than normal, because we print out a lot of intermediate steps to disk, so it's useful for debugging but not for actual compiling.
 
 The main tips for improving build time are:
 
@@ -85,7 +85,6 @@ Why is my compiled code big?
 Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and minified. You should use the closure compiler, gzip compression on your webserver, etc., see the :ref:`section on code size in Optimizing code <optimizing-code-size>`.
 
 
-
 Why does compiling code that works on another machine gives me errors?
 ======================================================================
 
@@ -100,10 +99,24 @@ Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smal
 Network latency is also a possible factor in startup time. Consider putting the file loading code in a separate script element from the generated code so that the browser can start the network download in parallel to starting up the codebase (run the :ref:`file packager <packaging-files>` and put file loading code in one script element, and the generated codebase in a later script element).
 
 
+Why does my program stall in "Downloading..." or "Preparing..."?
+================================================================
+
+This can happen when loading the page using a ``file://`` URL. That works in some browsers (like Firefox) but not in others (like Chrome). Instead, it's best to use a webserver (like Python's dev server, ``python -m SimpleHTTPServer``).
+
+Otherwise, to debug this, look for an error reported on the page itself, or in the browser devtools (web console and network tab), or in your webserver's logging.
+
+
 What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
 Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
+
+
+Why do I get ``error while loading shared libraries: libtinfo.so.5``?
+=====================================================================
+
+LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?

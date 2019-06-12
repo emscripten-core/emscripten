@@ -549,8 +549,8 @@ LibraryManager.library = {
     abortOnCannotGrowMemory(requestedSize);
 #else
     return false; // malloc will report failure
-#endif
-#else
+#endif // ABORTING_MALLOC
+#else // ALLOW_MEMORY_GROWTH == 0
     var oldSize = _emscripten_get_heap_size();
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
@@ -582,17 +582,23 @@ LibraryManager.library = {
 
     // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
+#if MEMORY_GROWTH_STEP != -1
+      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
+      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
+#else
       if (newSize <= 536870912) {
         newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
       } else {
         // ..., but after that, add smaller increments towards 2GB, which we cannot reach
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-#if ASSERTIONS
-        if (newSize === oldSize) {
-          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-        }
-#endif
       }
+#endif // MEMORY_GROWTH_STEP
+
+#if ASSERTIONS
+      if (newSize === oldSize) {
+        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
+      }
+#endif
     }
 
 #if WASM_MEM_MAX != -1
@@ -610,7 +616,7 @@ LibraryManager.library = {
 #endif
       return false;
     }
-#endif
+#endif // WASM_MEM_MAX
 
 #if ASSERTIONS
     var start = Date.now();
@@ -794,7 +800,7 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && MALLOC != 'none'
   // tiny, fake malloc/free implementation. If the program actually uses malloc,
   // a compiled version will be used; this will only be used if the runtime
   // needs to allocate something, for which this is good enough if otherwise
@@ -1387,293 +1393,12 @@ LibraryManager.library = {
   },
 #endif
 
-  $EXCEPTIONS__deps: ['__cxa_free_exception'],
-  $EXCEPTIONS: {
-    last: 0,
-    caught: [],
-    infos: {},
-    deAdjust: function(adjusted) {
-      if (!adjusted || EXCEPTIONS.infos[adjusted]) return adjusted;
-      for (var key in EXCEPTIONS.infos) {
-        var ptr = +key; // the iteration key is a string, and if we throw this, it must be an integer as that is what we look for
-        var adj = EXCEPTIONS.infos[ptr].adjusted;
-        var len = adj.length;
-        for (var i = 0; i < len; i++) {
-          if (adj[i] === adjusted) {
-#if EXCEPTION_DEBUG
-            err('de-adjusted exception ptr ' + adjusted + ' to ' + ptr);
-#endif
-            return ptr;
-          }
-        }
-      }
-#if EXCEPTION_DEBUG
-      err('no de-adjustment for unknown exception ptr ' + adjusted);
-#endif
-      return adjusted;
-    },
-    addRef: function(ptr) {
-#if EXCEPTION_DEBUG
-      err('addref ' + ptr);
-#endif
-      if (!ptr) return;
-      var info = EXCEPTIONS.infos[ptr];
-      info.refcount++;
-    },
-    decRef: function(ptr) {
-#if EXCEPTION_DEBUG
-      err('decref ' + ptr);
-#endif
-      if (!ptr) return;
-      var info = EXCEPTIONS.infos[ptr];
-      assert(info.refcount > 0);
-      info.refcount--;
-      // A rethrown exception can reach refcount 0; it must not be discarded
-      // Its next handler will clear the rethrown flag and addRef it, prior to
-      // final decRef and destruction here
-      if (info.refcount === 0 && !info.rethrown) {
-        if (info.destructor) {
-#if WASM_BACKEND == 0
-          Module['dynCall_vi'](info.destructor, ptr);
-#else
-          // In Wasm, destructors return 'this' as in ARM
-          Module['dynCall_ii'](info.destructor, ptr);
-#endif
-        }
-        delete EXCEPTIONS.infos[ptr];
-        ___cxa_free_exception(ptr);
-#if EXCEPTION_DEBUG
-        err('decref freeing exception ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
-#endif
-      }
-    },
-    clearRef: function(ptr) {
-      if (!ptr) return;
-      var info = EXCEPTIONS.infos[ptr];
-      info.refcount = 0;
-    },
-  },
-
-  // Exceptions
-  __cxa_allocate_exception: function(size) {
-    return _malloc(size);
-  },
-
-  __cxa_free_exception: function(ptr) {
-    try {
-      return _free(ptr);
-    } catch(e) { // XXX FIXME
-#if ASSERTIONS
-      err('exception during cxa_free_exception: ' + e);
-#endif
-    }
-  },
-  __cxa_increment_exception_refcount__deps: ['$EXCEPTIONS'],
-  __cxa_increment_exception_refcount: function(ptr) {
-    EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
-  },
-  __cxa_decrement_exception_refcount__deps: ['$EXCEPTIONS'],
-  __cxa_decrement_exception_refcount: function(ptr) {
-    EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
-  },
-  // Here, we throw an exception after recording a couple of values that we need to remember
-  // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__sig: 'viii',
-  __cxa_throw__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch', '$EXCEPTIONS'],
-  __cxa_throw: function(ptr, type, destructor) {
-#if EXCEPTION_DEBUG
-    err('Compiled code throwing an exception, ' + [ptr,type,destructor]);
-#endif
-    EXCEPTIONS.infos[ptr] = {
-      ptr: ptr,
-      adjusted: [ptr],
-      type: type,
-      destructor: destructor,
-      refcount: 0,
-      caught: false,
-      rethrown: false
-    };
-    EXCEPTIONS.last = ptr;
-    if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
-      __ZSt18uncaught_exceptionv.uncaught_exception = 1;
-    } else {
-      __ZSt18uncaught_exceptionv.uncaught_exception++;
-    }
-    {{{ makeThrow('ptr') }}}
-  },
-  // This exception will be caught twice, but while begin_catch runs twice,
-  // we early-exit from end_catch when the exception has been rethrown, so
-  // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['__cxa_end_catch', '$EXCEPTIONS'],
-  __cxa_rethrow: function() {
-    var ptr = EXCEPTIONS.caught.pop();
-    ptr = EXCEPTIONS.deAdjust(ptr);
-    if (!EXCEPTIONS.infos[ptr].rethrown) {
-      // Only pop if the corresponding push was through rethrow_primary_exception
-      EXCEPTIONS.caught.push(ptr)
-      EXCEPTIONS.infos[ptr].rethrown = true;
-    }
-#if EXCEPTION_DEBUG
-    err('Compiled code RE-throwing an exception, popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
-#endif
-    EXCEPTIONS.last = ptr;
-    {{{ makeThrow('ptr') }}}
-  },
-  llvm_eh_exception__deps: ['$EXCEPTIONS'],
-  llvm_eh_exception: function() {
-    return EXCEPTIONS.last;
-  },
-  llvm_eh_selector__jsargs: true,
-  llvm_eh_selector__deps: ['$EXCEPTIONS'],
-  llvm_eh_selector: function(unused_exception_value, personality/*, varargs*/) {
-    var type = EXCEPTIONS.last;
-    for (var i = 2; i < arguments.length; i++) {
-      if (arguments[i] ==  type) return type;
-    }
-    return 0;
-  },
-  llvm_eh_typeid_for: function(type) {
-    return type;
-  },
-  __cxa_begin_catch__deps: ['_ZSt18uncaught_exceptionv', '$EXCEPTIONS'],
-  __cxa_begin_catch: function(ptr) {
-    var info = EXCEPTIONS.infos[ptr];
-    if (info && !info.caught) {
-      info.caught = true;
-      __ZSt18uncaught_exceptionv.uncaught_exception--;
-    }
-    if (info) info.rethrown = false;
-    EXCEPTIONS.caught.push(ptr);
-#if EXCEPTION_DEBUG
-		err('cxa_begin_catch ' + [ptr, 'stack', EXCEPTIONS.caught]);
-#endif
-    EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ptr));
-    return ptr;
-  },
-  // We're done with a catch. Now, we can run the destructor if there is one
-  // and free the exception. Note that if the dynCall on the destructor fails
-  // due to calling apply on undefined, that means that the destructor is
-  // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
-  __cxa_end_catch__deps: ['__cxa_free_exception', '$EXCEPTIONS', 'setThrew'],
-  __cxa_end_catch: function() {
-    // Clear state flag.
-    _setThrew(0);
-    // Call destructor if one is registered then clear it.
-    var ptr = EXCEPTIONS.caught.pop();
-#if EXCEPTION_DEBUG
-    err('cxa_end_catch popped ' + [ptr, EXCEPTIONS.last, 'stack', EXCEPTIONS.caught]);
-#endif
-    if (ptr) {
-      EXCEPTIONS.decRef(EXCEPTIONS.deAdjust(ptr));
-      EXCEPTIONS.last = 0; // XXX in decRef?
-    }
-  },
-  __cxa_get_exception_ptr: function(ptr) {
-#if EXCEPTION_DEBUG
-    err('cxa_get_exception_ptr ' + ptr);
-#endif
-    // TODO: use info.adjusted?
-    return ptr;
-  },
-  _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
-  },
-  __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
-  __cxa_uncaught_exception: function() {
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
-  },
-
-  __cxa_call_unexpected: function(exception) {
-    err('Unexpected exception thrown, this is not properly supported - aborting');
-    ABORT = true;
-    throw exception;
-  },
-
-  __cxa_current_primary_exception: function() {
-    var ret = EXCEPTIONS.caught[EXCEPTIONS.caught.length-1] || 0;
-    if (ret) EXCEPTIONS.addRef(EXCEPTIONS.deAdjust(ret));
-    return ret;
-  },
-
-  __cxa_rethrow_primary_exception__deps: ['__cxa_rethrow'],
-  __cxa_rethrow_primary_exception: function(ptr) {
-    if (!ptr) return;
-    ptr = EXCEPTIONS.deAdjust(ptr);
-    EXCEPTIONS.caught.push(ptr);
-    EXCEPTIONS.infos[ptr].rethrown = true;
-    ___cxa_rethrow();
-  },
-
   terminate: '__cxa_call_unexpected',
 
-  __gxx_personality_v0__deps: ['_ZSt18uncaught_exceptionv', '__cxa_find_matching_catch'],
   __gxx_personality_v0: function() {
   },
 
   __gcc_personality_v0: function() {
-  },
-
-  // Finds a suitable catch clause for when an exception is thrown.
-  // In normal compilers, this functionality is handled by the C++
-  // 'personality' routine. This is passed a fairly complex structure
-  // relating to the context of the exception and makes judgements
-  // about how to handle it. Some of it is about matching a suitable
-  // catch clause, and some of it is about unwinding. We already handle
-  // unwinding using 'if' blocks around each function, so the remaining
-  // functionality boils down to picking a suitable 'catch' block.
-  // We'll do that here, instead, to keep things simpler.
-
-  __cxa_find_matching_catch__deps: ['__resumeException', '$EXCEPTIONS'],
-  __cxa_find_matching_catch: function() {
-    var thrown = EXCEPTIONS.last;
-    if (!thrown) {
-      // just pass through the null ptr
-      {{{ makeStructuralReturn([0, 0]) }}};
-    }
-    var info = EXCEPTIONS.infos[thrown];
-    var throwntype = info.type;
-    if (!throwntype) {
-      // just pass through the thrown ptr
-      {{{ makeStructuralReturn(['thrown', 0]) }}};
-    }
-    var typeArray = Array.prototype.slice.call(arguments);
-
-    var pointer = Module['___cxa_is_pointer_type'](throwntype);
-    // can_catch receives a **, add indirection
-    if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
-#if EXCEPTION_DEBUG
-    out("can_catch on " + [thrown]);
-#endif
-    {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
-    thrown = ___cxa_find_matching_catch.buffer;
-    // The different catch blocks are denoted by different types.
-    // Due to inheritance, those types may not precisely match the
-    // type of the thrown object. Find one which matches, and
-    // return the type of the catch block which should be called.
-    for (var i = 0; i < typeArray.length; i++) {
-      if (typeArray[i] && Module['___cxa_can_catch'](typeArray[i], throwntype, thrown)) {
-        thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
-        info.adjusted.push(thrown);
-#if EXCEPTION_DEBUG
-        out("  can_catch found " + [thrown, typeArray[i]]);
-#endif
-        {{{ makeStructuralReturn(['thrown', 'typeArray[i]']) }}};
-      }
-    }
-    // Shouldn't happen unless we have bogus data in typeArray
-    // or encounter a type for which emscripten doesn't have suitable
-    // typeinfo defined. Best-efforts match just in case.
-    thrown = {{{ makeGetValue('thrown', '0', '*') }}}; // undo indirection
-    {{{ makeStructuralReturn(['thrown', 'throwntype']) }}};
-  },
-
-  __resumeException__deps: ['$EXCEPTIONS', function() { Functions.libraryFunctions['___resumeException'] = 1 }], // will be called directly from compiled code
-  __resumeException: function(ptr) {
-#if EXCEPTION_DEBUG
-    out("Resuming exception " + [ptr, EXCEPTIONS.last]);
-#endif
-    if (!EXCEPTIONS.last) { EXCEPTIONS.last = ptr; }
-    {{{ makeThrow('ptr') }}}
   },
 
   llvm_stacksave: function() {
@@ -2586,7 +2311,27 @@ LibraryManager.library = {
       '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
       '%T': '%H:%M:%S',                 // Replaced by the time
       '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S'                  // Replaced by the locale's appropriate date representation
+      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate time representation
+      // Modified Conversion Specifiers
+      '%Ec': '%c',                      // Replaced by the locale's alternative appropriate date and time representation.
+      '%EC': '%C',                      // Replaced by the name of the base year (period) in the locale's alternative representation.
+      '%Ex': '%m/%d/%y',                // Replaced by the locale's alternative date representation.
+      '%EX': '%H:%M:%S',                // Replaced by the locale's alternative time representation.
+      '%Ey': '%y',                      // Replaced by the offset from %EC (year only) in the locale's alternative representation.
+      '%EY': '%Y',                      // Replaced by the full alternative year representation.
+      '%Od': '%d',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading zeros if there is any alternative symbol for zero; otherwise, with leading <space> characters.
+      '%Oe': '%e',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading <space> characters.
+      '%OH': '%H',                      // Replaced by the hour (24-hour clock) using the locale's alternative numeric symbols.
+      '%OI': '%I',                      // Replaced by the hour (12-hour clock) using the locale's alternative numeric symbols.
+      '%Om': '%m',                      // Replaced by the month using the locale's alternative numeric symbols.
+      '%OM': '%M',                      // Replaced by the minutes using the locale's alternative numeric symbols.
+      '%OS': '%S',                      // Replaced by the seconds using the locale's alternative numeric symbols.
+      '%Ou': '%u',                      // Replaced by the weekday as a number in the locale's alternative representation (Monday=1).
+      '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
+      '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
+      '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
+      '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
+      '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
     };
     for (var rule in EXPANSION_RULES_1) {
       pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
@@ -2736,8 +2481,7 @@ LibraryManager.library = {
         return '\t';
       },
       '%u': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
-        return day.getDay() || 7;
+        return date.tm_wday || 7;
       },
       '%U': function(date) {
         // Replaced by the week number of the year as a decimal number [00,53].
@@ -2794,8 +2538,7 @@ LibraryManager.library = {
         return leadingNulls(Math.ceil(daysDifference/7), 2);
       },
       '%w': function(date) {
-        var day = new Date(date.tm_year+1900, date.tm_mon+1, date.tm_mday, 0, 0, 0, 0);
-        return day.getDay();
+        return date.tm_wday;
       },
       '%W': function(date) {
         // Replaced by the week number of the year as a decimal number [00,53].
@@ -4649,17 +4392,10 @@ LibraryManager.library = {
     else return lengthBytesUTF8(str);
   },
 
-  // Returns a representation of a call site of the caller of this function, in a manner
-  // similar to __builtin_return_address. If level is 0, we return the call site of the
-  // caller of this function.
+  // Generates a representation of the program counter from a line of stack trace.
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js'],
-  emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
-    // skip this function and the caller to get caller's return address
-    var frame = callstack[level + 2];
+  emscripten_generate_pc: function(frame) {
     var match;
 
     if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -4672,11 +4408,150 @@ LibraryManager.library = {
     } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
-      return +match[1];
+      // we tag the high bit to distinguish this from wasm addresses
+      return 0x80000000 | +match[1];
     } else {
       // return 0 if we can't find any
       return 0;
     }
+  },
+
+  // Returns a representation of a call site of the caller of this function, in a manner
+  // similar to __builtin_return_address. If level is 0, we return the call site of the
+  // caller of this function.
+  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address: function(level) {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+
+    // skip this function and the caller to get caller's return address
+    return _emscripten_generate_pc(callstack[level + 2]);
+  },
+
+  $UNWIND_CACHE: {},
+
+  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so that
+  // our representation of the program counter is mapped to the line of the stack trace
+  // for every line in the stack trace. This allows emscripten_pc_get_* to lookup the
+  // line of the stack trace from the PC and return meaningful information.
+  //
+  // Additionally, it saves a copy of the entire stack trace and the return address of
+  // the caller. This is because there are two common forms of a stack trace.
+  // The first form starts the stack trace at the caller of the function requesting a stack
+  // trace. In this case, the function can simply walk down the stack from the return address
+  // using emscripten_return_address with increasing values for level.
+  // The second form starts the stack trace at the current function. This requires a helper
+  // function to get the program counter. This helper function will return the return address.
+  // This is the program counter at the call site. But there is a problem: when calling into
+  // code that performs stack unwinding, the program counter has changed since execution
+  // continued from calling the helper function. So we can't just walk down the stack and expect
+  // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
+  // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
+  // will have to call emscripten_stack_snapshot to cache the stack.
+  //
+  // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
+  // how many functions to skip from the stack. However, existing libraries do not work this way.
+  // For example, compiler-rt's sanitizer_common library has macros GET_CALLER_PC_BP_SP and
+  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases stated above,
+  // respectively. Then, it passes the PC, BP, SP values along until some other function uses them
+  // to unwind. On standard machines, the stack can be unwound by treating BP as a linked list.
+  // This makes PC unnecessary to walk the stack, since walking is done with BP, which remains
+  // valid until the function returns. But on Emscripten, BP does not exist, at least in
+  // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
+  // a PC value that may no longer be on the execution stack, and so we are forced to cache the
+  // entire call stack.
+  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
+  emscripten_stack_snapshot: function () {
+    var callstack = _emscripten_get_callstack_js(0).split('\n');
+    callstack.forEach(function (frame) {
+      var pc = _emscripten_generate_pc(frame);
+      if (pc) {
+        UNWIND_CACHE[pc] = frame;
+      }
+    });
+    // Caches the stack snapshot so that emscripten_stack_unwind() can unwind from this spot.
+    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_stack = callstack;
+  },
+
+  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
+  // addr must be the return address of the last call to emscripten_stack_snapshot, or this
+  // function will fail and return 0.
+  emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
+  emscripten_stack_unwind: function (addr, level) {
+    if (UNWIND_CACHE.last_addr == addr) {
+      return _emscripten_generate_pc(UNWIND_CACHE.last_stack[level + 2]);
+    } else {
+      return 0;
+    }
+  },
+
+  // Look up the function name from our stack frame cache with our PC representation.
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_function: function (pc) {
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
+
+    var name = null;
+    var match;
+    if (match = /at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    }
+    if (!name) return 0;
+
+    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    return _emscripten_pc_get_function.ret;
+  },
+
+  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_source_js: function (pc) {
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return null;
+
+    var match;
+#if LOAD_SOURCE_MAP
+    // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
+    if (wasmSourceMap && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
+      var info = wasmSourceMap.lookup(+match[1]);
+      if (info) {
+        return {file: info.source, line: info.line, column: info.column};
+      }
+    }
+#endif
+
+    // Example: at main (wasm-function[35]:3)
+    // Example: at callMain (a.out.js:6335:22)
+    if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
+      return {file: match[1], line: match[2], column: match[3]};
+    // Example: at wasm-function[35]:3
+    } else if (match = /at (.*):(\d+)$/.exec(frame)) {
+      return {file: match[1], line: match[2]};
+    }
+  },
+
+  // Look up the file name from our stack frame cache with our PC representation.
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_file: function (pc) {
+    var result = _emscripten_pc_get_source_js(pc);
+    if (!result) return 0;
+
+    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    return _emscripten_pc_get_file.ret;
+  },
+
+  // Look up the line number from our stack frame cache with our PC representation.
+  emscripten_pc_get_line__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_line: function (pc) {
+    var result = _emscripten_pc_get_source_js(pc);
+    return result ? result.line : 0;
+  },
+
+  // Look up the column number from our stack frame cache with our PC representation.
+  emscripten_pc_get_column__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_column: function (pc) {
+    var result = _emscripten_pc_get_source_js(pc);
+    return result ? result.column || 0 : 0;
   },
 
   emscripten_get_module_name: function(buf, length) {

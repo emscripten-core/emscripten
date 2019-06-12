@@ -395,7 +395,7 @@ def apply_settings(changes):
     key, value = standardize_setting_change(key, value)
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
+    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_STEP', 'GL_MAX_TEMP_BUFFER_SIZE',
                'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
@@ -1263,11 +1263,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('Memory growth is not supported with pthreads without wasm')
         else:
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-          options.force_js_opts = options.js_opts = True # for JS instrumentation
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+      if shared.Settings.WASM_BACKEND:
+        newargs += ['-pthread']
+        # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
+        # manually export them
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self']
+
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
@@ -1347,6 +1352,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
     if shared.Settings.WASM_MEM_MAX != -1 and shared.Settings.WASM_MEM_MAX % 65536 != 0:
       exit_with_error('WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX))
+    if shared.Settings.MEMORY_GROWTH_STEP != -1 and shared.Settings.MEMORY_GROWTH_STEP % 65536 != 0:
+      exit_with_error('MEMORY_GROWTH_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_STEP))
     if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
       exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
@@ -1474,6 +1481,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           shared.Settings.UBSAN_RUNTIME = 2
 
+      if sanitize and '-g4' in args:
+        shared.Settings.LOAD_SOURCE_MAP = 1
+
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
 
@@ -1522,6 +1532,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
+      if use_source_map(options):
+        exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
@@ -2544,6 +2556,8 @@ def parse_args(newargs):
       options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
+    elif newargs[i] == '-fno-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -2808,6 +2822,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
+
+  # pthreads memory growth requires some additional JS fixups
+  if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+    final = shared.Building.apply_wasm_memory_growth(final)
 
   if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS

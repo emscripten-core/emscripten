@@ -242,6 +242,16 @@ __cxa_current_primary_exception
 __cxa_decrement_exception_refcount
 __cxa_end_catch
 __cxa_find_matching_catch
+__cxa_find_matching_catch_0
+__cxa_find_matching_catch_1
+__cxa_find_matching_catch_2
+__cxa_find_matching_catch_3
+__cxa_find_matching_catch_4
+__cxa_find_matching_catch_5
+__cxa_find_matching_catch_6
+__cxa_find_matching_catch_7
+__cxa_find_matching_catch_8
+__cxa_find_matching_catch_9
 __cxa_free_exception
 __cxa_get_exception_ptr
 __cxa_increment_exception_refcount
@@ -252,6 +262,10 @@ __cxa_thread_atexit
 __cxa_thread_atexit_impl
 __cxa_throw
 __cxa_uncaught_exception
+__exception_addRef
+__exception_clearRef
+__exception_deAdjust
+__exception_decRef
 __execvpe
 __gcc_personality_v0
 __gxx_personality_v0
@@ -648,6 +662,7 @@ emscripten_exit_pointerlock
 emscripten_exit_soft_fullscreen
 emscripten_exit_with_live_runtime
 emscripten_force_exit
+emscripten_generate_pc
 emscripten_get_battery_status
 emscripten_get_callstack
 emscripten_get_callstack_js
@@ -886,6 +901,11 @@ emscripten_longjmp
 emscripten_main_browser_thread_id
 emscripten_memcpy_big
 emscripten_pause_main_loop
+emscripten_pc_get_column
+emscripten_pc_get_file
+emscripten_pc_get_function
+emscripten_pc_get_line
+emscripten_pc_get_source_js
 emscripten_performance_now
 emscripten_print_double
 emscripten_random
@@ -960,6 +980,8 @@ emscripten_set_webglcontextlost_callback_on_thread
 emscripten_set_webglcontextrestored_callback_on_thread
 emscripten_set_wheel_callback_on_thread
 emscripten_sleep
+emscripten_stack_snapshot
+emscripten_stack_unwind
 emscripten_supports_offscreencanvas
 emscripten_throw_number
 emscripten_throw_string
