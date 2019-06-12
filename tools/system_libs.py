@@ -606,6 +606,7 @@ class libmalloc(MTLibrary):
 
 class libal(Library):
   name = 'libal'
+  depends = ['libc']
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
 
   cflags = ['-Os']
@@ -615,6 +616,7 @@ class libal(Library):
 
 class libgl(MTLibrary):
   name = 'libgl'
+  depends = ['libc']
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
 
   src_dir = ['system', 'lib', 'gl']
@@ -673,6 +675,7 @@ class libhtml5(Library):
 
 class libpthreads(MuslInternalLibrary, MTLibrary):
   name = 'libpthreads'
+  depends = ['libc']
   cflags = ['-O2', '-Wno-return-type', '-Wno-visibility']
 
   def get_files(self):
