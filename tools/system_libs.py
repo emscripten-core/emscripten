@@ -334,6 +334,7 @@ class NoBCLibrary(Library):
   def get_ext(self):
     return 'a'
 
+
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
