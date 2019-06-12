@@ -726,6 +726,9 @@ class CompilerRTWasmLibrary(Library):
   def can_build(self):
     return shared.Settings.WASM_BACKEND
 
+  def get_ext(self):
+    return 'a'
+
 
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
   name = 'libcompiler_rt_wasm'
