@@ -3802,27 +3802,58 @@ int main()
       }
     ''', [[3, 2], 1, 1])
 
-  @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for gen_map in [0, 1]:
+    for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1]:
-        print(gen_map, wasm)
+        print(opts, wasm)
         self.clear()
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
-        if gen_map:
-          cmd += ['--emit-symbol-map']
+        create_test_file('src.c', r'''
+#include <emscripten.h>
+
+EM_JS(int, run_js, (), {
+out(new Error().stack);
+return 0;
+});
+
+EMSCRIPTEN_KEEPALIVE
+void middle() {
+  if (run_js()) {
+    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+    middle();
+  }
+}
+
+int main() {
+EM_ASM({ _middle() });
+}
+''')
+        cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
         if not wasm:
           if self.is_wasm_backend():
             continue
           cmd += ['-s', 'WASM=0']
-        print(cmd)
         run_process(cmd)
-        if gen_map:
-          self.assertTrue(os.path.exists('a.out.js.symbols'))
-          symbols = open('a.out.js.symbols').read()
-          self.assertContained(':_main', symbols)
-        else:
-          self.assertFalse(os.path.exists('a.out.js.symbols'))
+        # check that the map is correct
+        with open('a.out.js.symbols') as f:
+          symbols = f.read()
+        lines = [line.split(':') for line in symbols.strip().split('\n')]
+        minified_middle = None
+        for minified, full in lines:
+          # handle both fastcomp and wasm backend notation
+          if full == '_middle' or full == 'middle':
+            minified_middle = minified
+            break
+        self.assertNotEqual(minified_middle, None)
+        if wasm:
+          # stack traces are standardized enough that we can easily check that the
+          # minified name is actually in the output
+          stack_trace_reference = 'wasm-function[%s]' % minified_middle
+          out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          self.assertContained(stack_trace_reference, out)
+          # make sure there are no symbols in the wasm itself
+          wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+          for func_start in ('(func $middle', '(func $_middle'):
+            self.assertNotContained(func_start, wast)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if

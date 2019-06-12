@@ -2429,6 +2429,7 @@ def parse_args(newargs):
       options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
+      shared.Settings.EMIT_SYMBOL_MAP = 1
       newargs[i] = ''
     elif newargs[i] == '--bind':
       options.bind = True
@@ -2697,8 +2698,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   global final
   logger.debug('using binaryen')
   binaryen_bin = shared.Building.get_binaryen_bin()
-  # normally we emit binary, but for debug info, we might emit text first
+  # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = options.debug_level >= 2 or options.profiling_funcs
+  # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
+  # this is necessary for emitting a symbol map at the end.
+  intermediate_debug_info = debug_info or options.emit_symbol_map
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
@@ -2735,7 +2739,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
     if shared.Settings.USE_PTHREADS:
       cmd += ['--enable-threads']
-    if debug_info:
+    if intermediate_debug_info:
       cmd += ['-g']
     if emit_symbol_map:
       cmd += ['--symbolmap=' + target + '.symbols']
@@ -2754,7 +2758,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target, '--all-features', '--disable-bulk-memory']
-      if debug_info:
+      if intermediate_debug_info:
         cmd += ['-g']
         if use_source_map(options):
           cmd += ['--source-map=' + wasm_source_map_target]
@@ -2768,7 +2772,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         os.unlink(memfile)
     log_time('asm2wasm')
-  if shared.Settings.BINARYEN_PASSES:
+  if shared.Settings.BINARYEN_PASSES or shared.Settings.BINARYEN_EXTRA_PASSES:
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
@@ -2776,7 +2780,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
     cmd += shared.Building.get_binaryen_feature_flags()
-    if debug_info:
+    if intermediate_debug_info:
       cmd += ['-g'] # preserve the debug info
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
@@ -2801,7 +2805,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
       save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
-    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
+    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
@@ -2831,7 +2835,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            wasm_file=wasm_binary_target,
                                            expensive_optimizations=will_metadce(options),
                                            minify_whitespace=optimizer.minify_whitespace,
-                                           debug_info=debug_info,
+                                           debug_info=intermediate_debug_info,
                                            emit_symbol_map=emit_symbol_map)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
@@ -2849,10 +2853,16 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     opt_level=options.opt_level,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
-                                    debug_info=debug_info)
+                                    debug_info=intermediate_debug_info)
     save_intermediate('wasm2js')
 
     shared.try_delete(wasm_binary_target)
+
+  # emit a symbol map if requested. this will also remove debug info if we only
+  # kept it around in the intermediate invocations for the sake of the symbol map
+  if options.emit_symbol_map:
+    shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
+    save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
