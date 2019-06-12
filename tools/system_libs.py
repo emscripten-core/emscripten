@@ -537,8 +537,8 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc'):
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
 
     self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
@@ -546,7 +546,7 @@ class libmalloc(MTLibrary):
 
     super(libmalloc, self).__init__(**kwargs)
 
-    if not self.malloc == 'dlmalloc':
+    if self.malloc != 'dlmalloc':
       assert not self.is_mt
       assert not self.is_tracing
 
@@ -582,6 +582,9 @@ class libmalloc(MTLibrary):
     if self.is_tracing:
       extra += '_tracing'
     return base + extra
+
+  def can_use(self):
+    return shared.Settings.MALLOC != 'none'
 
   @classmethod
   def variations(cls):
@@ -869,7 +872,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
 
-  always_include |= {'libpthreads', 'libmalloc'}
+  always_include.add('libpthreads')
+  if shared.Settings.MALLOC != 'none':
+    always_include.add('libmalloc')
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
 

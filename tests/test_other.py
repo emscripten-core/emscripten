@@ -9224,3 +9224,8 @@ int main () {
     assert lf - 900 <= f <= lf - 500
     # both is a little bigger still
     assert both - 100 <= lf <= both - 50
+
+  # Tests that passing -s MALLOC=none will not include system malloc() to the build.
+  def test_malloc_none(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
+    self.assertContained('undefined symbol: malloc', stderr)

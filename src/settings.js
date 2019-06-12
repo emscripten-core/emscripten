@@ -86,6 +86,8 @@ var TOTAL_MEMORY = 16777216;
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
+//  * none     - no malloc() implementation is provided, but you must implement
+//               malloc() and free() yourself.
 // dlmalloc is necessary for multithreading, split memory, and other special
 // modes, and will be used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
@@ -125,6 +127,11 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // returning 0 when it fails, and also of being able to allocate more
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
+
+// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_STEP == -1, memory roughly
+// doubles in size each time is grows. Set MEMORY_GROWTH_STEP to a multiple of
+// WASM page size (64KB), eg. 16MB to enable a slower growth rate.
+var MEMORY_GROWTH_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
@@ -1023,7 +1030,7 @@ var BINARYEN_PASSES = "";
 // appended at the end of the list of passes.
 var BINARYEN_EXTRA_PASSES = "";
 
-// Set the maximum size of memory in the wasm module (in bytes).  Without this,
+// Set the maximum size of memory in the wasm module (in bytes). Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
 // growth is enabled, the default value here (-1) is to have no limit, but you
 // can set this to set a maximum size that growth will stop at.
