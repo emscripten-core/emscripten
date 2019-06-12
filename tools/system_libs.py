@@ -322,6 +322,15 @@ class CXXLibrary(Library):
   emcc = shared.EMXX
 
 
+class NoBCLibrary(Library):
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
+  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
+  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
+  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
+  # will be linked in.
+  def get_ext(self):
+    return 'a'
+
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
@@ -464,7 +473,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
   ]
 
 
-class libcxx(CXXLibrary, NoExceptLibrary, MTLibrary):
+class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
   depends = ['libc++abi']
@@ -510,9 +519,6 @@ class libcxx(CXXLibrary, NoExceptLibrary, MTLibrary):
     os.path.join('experimental', 'filesystem', 'path.cpp'),
     os.path.join('experimental', 'filesystem', 'operations.cpp')
   ]
-
-  def get_ext(self):
-    return 'a'
 
 
 class libmalloc(MTLibrary):
@@ -722,15 +728,12 @@ class libpthreads(MuslInternalLibrary, MTLibrary):
     return symbols
 
 
-class CompilerRTWasmLibrary(Library):
+class CompilerRTWasmLibrary(NoBCLibrary):
   cflags = ['-O2', '-fno-builtin']
   force_object_files = True
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
-
-  def get_ext(self):
-    return 'a'
 
 
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
