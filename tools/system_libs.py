@@ -617,7 +617,7 @@ class libgl(MTLibrary):
       name += '-emu'
     if self.is_webgl2:
       name += '-webgl2'
-    if shared.Settings.OFFSCREEN_FRAMEBUFFER:
+    if self.is_ofb:
       name += '-ofb'
     return name
 
