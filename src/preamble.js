@@ -509,7 +509,9 @@ function ensureInitRuntime() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  if (runtimeInitialized) return;
+#if ASSERTIONS
+  assert(!runtimeInitialized);
+#endif
   runtimeInitialized = true;
 #if USE_PTHREADS
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
