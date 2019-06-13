@@ -126,35 +126,110 @@ def get_wasm_libc_rt_files():
 
 
 class Library(object):
-  # A name that is not None means a concrete library and not an abstract one.
+  # The simple name of the library. When linking, this is the name to use to
+  # automatically get the correct version of the library.
+  # This should only be overridden in a concrete library class, e.g. libc,
+  # and left as None in an abstract library class, e.g. MTLibrary.
   name = None
+
+  # A list of simple names of other libraries that this one depends on.
+  # For dynamic values, override `get_depends()` instead.
   depends = []
+
+  # A set of symbols that this library exports. If this library is intended to
+  # pulled in via undefined symbols, this should be overridden with a set
+  # returned by `read_symbols`.
+  # If this library is to be linked in manually, leave this empty.
+  # For dynamic values, override `get_symbols()` instead.
   symbols = set()
+
+  # A list of symbols that must be exported to keep the JavaScript
+  # dependencies of this library working.
   js_depends = []
 
-  # Build settings
+  # The C compile executable to use. You can override this to shared.EMXX for C++.
   emcc = shared.EMCC
+
+  # A list of flags to pass to emcc.
+  # The flags for the parent class is automatically inherited.
   cflags = ['-Werror']
+
+  # A list of directories to put in the include path when building.
+  # This is a list of tuples of path components.
+  # For example, to put system/lib/a and system/lib/b under the emscripten
+  # directory into the include path, you would write:
+  #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
+  # The include path of the parent class is automatically inherited.
+  includes = []
+
+  # By default, `get_files` look for source files for this library under `src_dir`.
+  # It will either use the files listed in `src_files`, or use the glob pattern in
+  # `src_glob`. You may not specify both `src_files` and `src_glob`.
+  # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
+  # to be excluded from the library.
+  # Alternatively, you can override `get_files` to use your own logic.
   src_dir = None
   src_files = None
   src_glob = None
   src_glob_exclude = None
-  includes = []
+
+  # Whether to always generate WASM object files, even though WASM_OBJECT_FILES=0.
   force_object_files = False
 
+  def __init__(self):
+    """
+    Creates a variation of this library.
+
+    A variation is a specific combination of settings a library can have.
+    For example, libc++-mt-noexcept is a variation of libc++.
+    There might be only one variation of a library.
+
+    The constructor keyword arguments will define what variation to use.
+
+    Use the `variations` classmethod to get the list of all possible constructor
+    arguments for this library.
+
+    Use the `get_default_variation` classmethod to construct the variation
+    suitable for the current invocation of emscripten.
+    """
+    pass
+
   def in_temp(cls, *args):
+    """Gets the path of a file in our temporary directory."""
     return os.path.join(shared.get_emscripten_temp_dir(), *args)
 
   def can_use(self):
+    """
+    Whether this library can be used in the current environment.
+
+    For example, libmalloc would override this and return False
+    if the user requested no malloc.
+    """
     return True
 
   def can_build(self):
+    """
+    Whether this library can be built in the current environment.
+
+    Override this if, for example, the library can only be built on WASM backend.
+    """
     return True
 
   def get_path(self):
+    """
+    Gets the cached path of this library.
+
+    This will trigger a build if this library is not in the cache.
+    """
     return shared.Cache.get(self.get_name(), self.build)
 
   def get_files(self):
+    """
+    Gets a list of source files for this library.
+
+    Typically, you will use `src_dir`, `src_files`, `src_glob` and `src_glob_exclude`.
+    If those are insufficient to describe the files needed, you can override this method.
+    """
     if self.src_dir:
       if self.src_files and self.src_glob:
         raise Exception('Cannot use src_files and src_glob together')
@@ -167,6 +242,12 @@ class Library(object):
     raise NotImplementedError()
 
   def build_objects(self):
+    """
+    Returns a list of compiled object files for this library.
+
+    By default, this builds all the source files returned by `self.get_files()`,
+    with the `cflags` returned by `self.get_cflags()`.
+    """
     commands = []
     objects = []
     cflags = self.get_cflags()
@@ -178,6 +259,7 @@ class Library(object):
     return objects
 
   def build(self):
+    """Builds the library and returns the path to the file."""
     lib_filename = self.in_temp(self.get_name())
     create_lib(lib_filename, self.build_objects())
     return lib_filename
@@ -193,6 +275,12 @@ class Library(object):
     return result
 
   def get_cflags(self):
+    """
+    Returns the list of flags to pass to emcc when building this variation
+    of the library.
+
+    Override and add any flags as needed to handle new variations.
+    """
     cflags = self._inherit_list('cflags')
     cflags += get_cflags(force_object_files=self.force_object_files)
 
@@ -202,48 +290,98 @@ class Library(object):
     return cflags
 
   def get_base_name(self):
+    """
+    Returns the base name of the library file.
+
+    This will include suffixes such as -mt, but will not include a file extension.
+    """
     return self.name
 
   def get_ext(self):
+    """
+    Return the appropriate file extension for this library.
+    """
     return 'a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else 'bc'
 
   def get_name(self):
+    """
+    Return the full name of the library file, including the file extension.
+    """
     return self.get_base_name() + '.' + self.get_ext()
 
   def get_symbols(self):
+    """
+    Return a list of symbols this library exports. See `symbols`.
+
+    This is the dynamic version of `symbols`.
+    """
     return self.symbols.copy()
 
   def get_depends(self):
+    """
+    Return a list of simple names of libraries that this library depends on.
+
+    This is the dynamic version of `depends`.
+    """
     return self.depends
 
   @classmethod
-  def variations(cls):
+  def vary_on(cls):
+    """
+    Returns a list of boolean constructor arguments that defines the variations
+    of this library.
+
+    This is used by the default implementation of `cls.variations()` to generate
+    every possible combination of boolean values to pass to these arguments.
+    """
     return []
 
   @classmethod
-  def combinations(cls):
-    variations = cls.variations()
-    return [dict(zip(variations, toggles)) for toggles in
-            itertools.product([False, True], repeat=len(variations))]
+  def variations(cls):
+    """
+    Returns a list of keyword arguments to pass to the constructor to create
+    every possible variation of this library.
+
+    By default, this is every possible combination of boolean values to pass
+    to the list of arguments returned by `vary_on`, but you can override
+    the behaviour.
+    """
+    vary_on = cls.vary_on()
+    return [dict(zip(vary_on, toggles)) for toggles in
+            itertools.product([False, True], repeat=len(vary_on))]
 
   @classmethod
   def get_default_variation(cls, **kwargs):
+    """
+    Construct the variation suitable for the current invocation of emscripten.
+
+    Subclasses should pass the keyword arguments introduced by itself to the
+    superclass version, and propagate **kwargs. The base class collects
+    all the keyword arguments and creates the instance.
+    """
     return cls(**kwargs)
 
   @classmethod
-  def get_subclasses(cls):
+  def get_inheritance_tree(cls):
+    """Returns all the classes in the inheritance tree of the current class."""
     yield cls
     for subclass in cls.__subclasses__():
-      yield subclass
-      for subclass in subclass.get_subclasses():
+      for subclass in subclass.get_inheritance_tree():
         yield subclass
 
   @classmethod
   def get_all_variations(cls):
+    """
+    Gets all the variations of libraries in the inheritance tree of the current
+    library.
+
+    Calling Library.get_all_variations() returns the variations of ALL libraries
+    that can be built as a dictionary of variation names to Library objects.
+    """
     result = {}
-    for library in cls.get_subclasses():
+    for library in cls.get_inheritance_tree():
       if library.name:
-        for flags in library.combinations():
+        for flags in library.variations():
           variation = library(**flags)
           if variation.can_build():
             result[variation.get_base_name()] = variation
@@ -251,8 +389,13 @@ class Library(object):
 
   @classmethod
   def map(cls):
+    """
+    Gets all libraries suitable for the current invocation of emscripten.
+
+    This returns a dictionary of simple names to Library objects.
+    """
     result = {}
-    for subclass in cls.get_subclasses():
+    for subclass in cls.get_inheritance_tree():
       if subclass.name:
         library = subclass.get_default_variation()
         if library.can_build() and library.can_use():
@@ -278,8 +421,8 @@ class MTLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls):
-    return super(MTLibrary, cls).variations() + ['is_mt']
+  def vary_on(cls):
+    return super(MTLibrary, cls).vary_on() + ['is_mt']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -306,8 +449,8 @@ class NoExceptLibrary(Library):
     return name
 
   @classmethod
-  def variations(cls):
-    return super(NoExceptLibrary, cls).variations() + ['is_noexcept']
+  def vary_on(cls):
+    return super(NoExceptLibrary, cls).vary_on() + ['is_noexcept']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -587,8 +730,8 @@ class libmalloc(MTLibrary):
     return shared.Settings.MALLOC != 'none'
 
   @classmethod
-  def variations(cls):
-    return super(libmalloc, cls).variations() + ['is_debug', 'use_errno', 'is_tracing']
+  def vary_on(cls):
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -601,8 +744,8 @@ class libmalloc(MTLibrary):
     )
 
   @classmethod
-  def combinations(cls):
-    combos = super(libmalloc, cls).combinations()
+  def variations(cls):
+    combos = super(libmalloc, cls).variations()
     return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
             [dict(malloc='emmalloc', **combo) for combo in combos
              if not combo['is_mt'] and not combo['is_tracing']])
@@ -655,8 +798,8 @@ class libgl(MTLibrary):
     return cflags
 
   @classmethod
-  def variations(cls):
-    return super(libgl, cls).variations() + ['is_legacy', 'is_webgl2', 'is_ofb']
+  def vary_on(cls):
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
