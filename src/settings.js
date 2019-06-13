@@ -86,6 +86,8 @@ var TOTAL_MEMORY = 16777216;
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
+//  * none     - no malloc() implementation is provided, but you must implement
+//               malloc() and free() yourself.
 // dlmalloc is necessary for multithreading, split memory, and other special
 // modes, and will be used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
@@ -125,6 +127,11 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // returning 0 when it fails, and also of being able to allocate more
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
+
+// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_STEP == -1, memory roughly
+// doubles in size each time is grows. Set MEMORY_GROWTH_STEP to a multiple of
+// WASM page size (64KB), eg. 16MB to enable a slower growth rate.
+var MEMORY_GROWTH_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
@@ -611,20 +618,6 @@ var EXPORT_FUNCTION_TABLES = 0;
 
 var RETAIN_COMPILER_SETTINGS = 0;
 
-// this will contain the emscripten version. you should not modify it. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
-
-// this will contain the optimization level (-Ox). you should not modify it.
-var OPT_LEVEL = 0;
-
-// this will contain the debug level (-gx). you should not modify it.
-var DEBUG_LEVEL = 0;
-
-// Whether we are profiling functions. you should not modify it.
-var PROFILING_FUNCS = 0;
-
 // JS library elements (C functions implemented in JS) that we include by
 // default. If you want to make sure something is included by the JS compiler,
 // add it here.  For example, if you do not use some emscripten_* C API call
@@ -1023,7 +1016,7 @@ var BINARYEN_PASSES = "";
 // appended at the end of the list of passes.
 var BINARYEN_EXTRA_PASSES = "";
 
-// Set the maximum size of memory in the wasm module (in bytes).  Without this,
+// Set the maximum size of memory in the wasm module (in bytes). Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
 // growth is enabled, the default value here (-1) is to have no limit, but you
 // can set this to set a maximum size that growth will stop at.
@@ -1278,8 +1271,26 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-
+//==============================
 // Internal use only, from here
+//==============================
+
+// This will contain the emscripten version. You should not modify this. This
+// and the following few settings are useful in combination with
+// RETAIN_COMPILER_SETTINGS
+var EMSCRIPTEN_VERSION = '';
+
+// This will contain the optimization level (-Ox). You should not modify this.
+var OPT_LEVEL = 0;
+
+// This will contain the debug level (-gx). You should not modify this.
+var DEBUG_LEVEL = 0;
+
+// Whether we are profiling functions. You should not modify this.
+var PROFILING_FUNCS = 0;
+
+// Whether we are emitting a symbol map. You should not modify this.
+var EMIT_SYMBOL_MAP = 0;
 
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
@@ -1332,6 +1343,12 @@ var WASM_TABLE_SIZE = 0;
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
+// support library. This does not need to be set directly, but pass -fno-exceptions
+// to the build disable exceptions support. (This is basically -fno-exceptions, but
+// checked at final link time instead of individual .cpp file compile time)
+var DISABLE_EXCEPTION_THROWING = 0;
 
 // Internal: An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];
@@ -1417,6 +1434,9 @@ var UBSAN_RUNTIME = 0;
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;
+
+// Whether embind has been enabled.
+var EMBIND = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

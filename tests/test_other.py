@@ -3802,27 +3802,58 @@ int main()
       }
     ''', [[3, 2], 1, 1])
 
-  @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for gen_map in [0, 1]:
+    for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1]:
-        print(gen_map, wasm)
+        print(opts, wasm)
         self.clear()
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
-        if gen_map:
-          cmd += ['--emit-symbol-map']
+        create_test_file('src.c', r'''
+#include <emscripten.h>
+
+EM_JS(int, run_js, (), {
+out(new Error().stack);
+return 0;
+});
+
+EMSCRIPTEN_KEEPALIVE
+void middle() {
+  if (run_js()) {
+    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+    middle();
+  }
+}
+
+int main() {
+EM_ASM({ _middle() });
+}
+''')
+        cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
         if not wasm:
           if self.is_wasm_backend():
             continue
           cmd += ['-s', 'WASM=0']
-        print(cmd)
         run_process(cmd)
-        if gen_map:
-          self.assertTrue(os.path.exists('a.out.js.symbols'))
-          symbols = open('a.out.js.symbols').read()
-          self.assertContained(':_main', symbols)
-        else:
-          self.assertFalse(os.path.exists('a.out.js.symbols'))
+        # check that the map is correct
+        with open('a.out.js.symbols') as f:
+          symbols = f.read()
+        lines = [line.split(':') for line in symbols.strip().split('\n')]
+        minified_middle = None
+        for minified, full in lines:
+          # handle both fastcomp and wasm backend notation
+          if full == '_middle' or full == 'middle':
+            minified_middle = minified
+            break
+        self.assertNotEqual(minified_middle, None)
+        if wasm:
+          # stack traces are standardized enough that we can easily check that the
+          # minified name is actually in the output
+          stack_trace_reference = 'wasm-function[%s]' % minified_middle
+          out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          self.assertContained(stack_trace_reference, out)
+          # make sure there are no symbols in the wasm itself
+          wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+          for func_start in ('(func $middle', '(func $_middle'):
+            self.assertNotContained(func_start, wast)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
@@ -4835,7 +4866,7 @@ Size of file is: 32
     # with suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
     self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', stderr)
-    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING?', stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
@@ -7898,13 +7929,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  33, 560) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        34, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -7926,7 +7957,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1590, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7946,7 +7977,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1552, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -9224,3 +9255,8 @@ int main () {
     assert lf - 900 <= f <= lf - 500
     # both is a little bigger still
     assert both - 100 <= lf <= both - 50
+
+  # Tests that passing -s MALLOC=none will not include system malloc() to the build.
+  def test_malloc_none(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
+    self.assertContained('undefined symbol: malloc', stderr)

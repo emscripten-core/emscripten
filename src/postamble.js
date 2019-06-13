@@ -410,7 +410,7 @@ function abort(what) {
   if (what !== undefined) {
     out(what);
     err(what);
-    what = JSON.stringify(what)
+    what = '"' + what + '"';
   } else {
     what = '';
   }
@@ -461,6 +461,11 @@ if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior 
 
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) run();
+#if EMBIND
+else {  // Embind must initialize itself on all threads, as it generates support JS.
+  Module['___embind_register_native_and_builtin_types']();
+}
+#endif // EMBIND
 #else
 run();
 #endif

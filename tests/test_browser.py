@@ -2749,9 +2749,9 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_glfw3(self):
-    for opts in [[], ['-Os', '--closure', '1']]:
+    for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
@@ -4614,6 +4614,10 @@ window.close = function() {
   @requires_threads
   def test_emscripten_performance_now(self):
     self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  @requires_threads
+  def test_embind_with_pthreads(self):
+    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-std=c++11', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

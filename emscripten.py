@@ -167,6 +167,14 @@ def parse_fastcomp_output(backend_output, DEBUG):
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
+  # In MINIMAL_RUNTIME stackSave() and stackRestore are JS library functions. If LLVM backend generated
+  # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
+  # explicitly into the build. (In traditional runtime the stack functions are always present, so this
+  # tracking is not needed)
+  if shared.Settings.MINIMAL_RUNTIME and (len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE):
+    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+
   return funcs, metadata, mem_init
 
 
@@ -2293,7 +2301,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     cmd.append('--no-legalize-javascript-ffi')

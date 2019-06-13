@@ -2516,7 +2516,7 @@ class Building(object):
     if not Settings.LINKABLE:
       # if we are optimizing for size, shrink the combined wasm+JS
       # TODO: support this when a symbol map is used
-      if expensive_optimizations and not emit_symbol_map:
+      if expensive_optimizations:
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
@@ -2705,6 +2705,17 @@ class Building(object):
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
+
+  @staticmethod
+  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
+    logger.debug('emit_wasm_symbol_map')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+    if not debug_info:
+      # to remove debug info, we just write to that same file, and without -g
+      cmd += ['-o', wasm_file]
+    output = run_process(cmd, stdout=PIPE).stdout
+    with open(symbols_file, 'w') as f:
+      f.write(output)
 
   # the exports the user requested
   user_requested_exports = []
