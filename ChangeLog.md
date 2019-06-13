@@ -19,6 +19,9 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
+   or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
+
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
