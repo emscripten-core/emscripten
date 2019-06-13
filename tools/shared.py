@@ -2103,6 +2103,7 @@ class Building(object):
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
+    cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
     try:
       run_process(cmd, stdout=PIPE)
