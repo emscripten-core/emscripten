@@ -1405,6 +1405,10 @@ class FakeMultiprocessor(object):
       results += [func(t)]
     return results
 
+  def imap(self, func, tasks, *args, **kwargs):
+    for t in tasks:
+      yield func(t)
+
   def map_async(self, func, tasks, *args, **kwargs):
     class Result:
       def __init__(self, func, tasks):
