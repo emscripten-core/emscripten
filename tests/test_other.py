@@ -9324,6 +9324,7 @@ int main () {
         if not re.search(error, stderr):
           self.fail('try %d: cannot find the error message for %s:\n%s' % (n + 1, file, stderr))
 
+  @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
     with open('src.c', 'w') as f:
       f.write('''
@@ -9340,12 +9341,16 @@ int main () {
         if r:
           output.append(os.read(master, 1024))
 
-    thread = threading.Thread(target=reader_thread)
-    thread.daemon = True
-    thread.start()
-    result = run_process([PYTHON, EMCC, 'src.c'], check=False, stdout=slave, stderr=slave)
-    exited = True
-    thread.join()
+    try:
+      thread = threading.Thread(target=reader_thread)
+      thread.daemon = True
+      thread.start()
+      result = run_process([PYTHON, EMCC, 'src.c'], check=False, stdout=slave, stderr=slave)
+      exited = True
+      thread.join()
 
-    self.assertNotEqual(result.returncode, 0)
-    self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", b''.join(output))
+      self.assertNotEqual(result.returncode, 0)
+      self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", b''.join(output))
+    finally:
+      os.close(master)
+      os.close(slave)
