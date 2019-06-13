@@ -126,6 +126,37 @@ def get_wasm_libc_rt_files():
 
 
 class Library(object):
+  """
+  `Library` is the base class of all system libraries.
+
+  There are two types of libraries: abstract and concrete.
+    * An abstract library, e.g. MTLibrary, is a subclass of `Library` that
+      implements certain behaviour common to multiple libraries. The features
+      of multiple abstract libraries can be used through multiple inheritance.
+    * A concrete library, e.g. libc, is a subclass of `Library` that describes
+      how to build a particular library, and its properties, such as name and
+      dependencies.
+
+  This library system is meant to handle having many versions of the same library,
+  which we call *variations*. For example, some libraries (those that inherit
+  from MTLibrary), have both single-threaded and multi-threaded versions.
+
+  An instance of a `Library` subclass represents a specific variation of the
+  library. Instance methods perform operations relating to this variation.
+  For example, `get_cflags()` would return the emcc flags needed to build this
+  variation, and `build()` would generate the library file for this variation.
+  The constructor takes keyword arguments that defines the variation.
+
+  Class methods perform tasks relating to all variations. For example,
+  `variations()` returns a list of all variations that exists for this library,
+  and `get_default_variation()` returns the variation suitable for the current
+  environment.
+
+  Other class methods act upon a group of libraries. For example,
+  `Library.get_all_variations()` returns a mapping of all variations of
+  existing libraries.
+  """
+
   # The simple name of the library. When linking, this is the name to use to
   # automatically get the correct version of the library.
   # This should only be overridden in a concrete library class, e.g. libc,
@@ -192,7 +223,8 @@ class Library(object):
     Use the `get_default_variation` classmethod to construct the variation
     suitable for the current invocation of emscripten.
     """
-    pass
+    if not self.name:
+      raise NotImplementedError('Cannot instantiate an abstract library')
 
   def in_temp(cls, *args):
     """Gets the path of a file in our temporary directory."""
@@ -388,7 +420,7 @@ class Library(object):
     return result
 
   @classmethod
-  def map(cls):
+  def get_usable_variations(cls):
     """
     Gets all libraries suitable for the current invocation of emscripten.
 
@@ -1023,7 +1055,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   libs_to_link = []
   already_included = set()
-  system_libs_map = Library.map()
+  system_libs_map = Library.get_usable_variations()
   system_libs = sorted(system_libs_map.values(), key=lambda lib: lib.name)
 
   # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
