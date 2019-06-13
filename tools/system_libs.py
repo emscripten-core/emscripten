@@ -923,6 +923,7 @@ class Ports(object):
 
   @staticmethod
   def fetch_project(name, url, subdir, is_tarbz2=False, sha512hash=None):
+    # To compute the sha512 has, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
     # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
