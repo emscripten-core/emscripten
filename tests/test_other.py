@@ -9303,3 +9303,22 @@ int main () {
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
+
+  def test_multi_build_output(self):
+    files = ['src%d.cpp' % i for i in range(1, 6)]
+    for file in files:
+      with open(file, 'w') as f:
+        f.write('''
+          int main() {
+        ''')
+    errors = [r"%(file)s:3:9: error: expected '\}'\s+\^\n"
+              r"%(file)s:2:22: note: to match this '\{'\n\s+"
+              r"int main\(\) \{\s+\^\n"
+              r"1 error generated\.\n"
+              r"emcc:ERROR: compiler frontend failed to generate LLVM bitcode, halting" % {'file': re.escape(file)}
+              for file in files]
+    for n in range(10):
+      stderr = self.expect_fail([PYTHON, EMCC] + files)
+      for error, file in zip(errors, files):
+        if not re.search(error, stderr):
+          self.fail('try %d: cannot find the error message for %s:\n%s' % (n + 1, file, stderr))
