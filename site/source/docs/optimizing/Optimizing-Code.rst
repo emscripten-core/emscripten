@@ -135,8 +135,6 @@ Aggressive variable elimination is an asm.js feature (not relevant for wasm) tha
 
 You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
 
-.. note:: This setting is useful for asm.js, but generally not helpful for WebAssembly.
-
 .. note:: This setting can be harmful in some cases. Test before using it.
 
 
