@@ -36,9 +36,7 @@ In addition to the ``-Ox`` options, there are separate compiler options that can
 How Emscripten optimizes
 ========================
 
-When compiling source files to object files, Emscripten runs clang and the LLVM optimizer. When compiling to wasm object files (the default with wasm), LLVM also compiles into wasm, and optimizes while doing so.
-
-When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
+Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
 
 - For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
 - For asm.js, the Emscripten asm.js optimizer is run.

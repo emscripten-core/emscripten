@@ -52,8 +52,8 @@ The main tips for improving build time are:
 
 - Compile on a machine with more cores:
 
-  - Emscripten can run some optimizations in parallel (specifically, Binaryen optimizations for wasm, and our JavaScript optimizations). Increasing the number of cores results in an almost linear improvement.
-  - Emscripten will automatically use more cores if they are available. You can control how many cores are used  with ``EMCC_CORES=N`` in the environment (this is useful if you have many cores but relatively less memory).
+  - For compiling your source files, use a parallel build system (for example, in ``make`` you can do something like ``make -j8`` to run using 8 cores).
+  - For the link step, Emscripten can run some optimizations in parallel (specifically, Binaryen optimizations for wasm, and our JavaScript optimizations). Increasing the number of cores results in an almost linear improvement. Emscripten will automatically use more cores if they are available, but you can control that with ``EMCC_CORES=N`` in the environment (which is useful if you have many cores but relatively less memory).
 
 
 Why does my code run slowly?

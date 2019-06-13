@@ -27,6 +27,7 @@ In general a complete Emscripten environment requires the following tools. First
   - :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
   - :term:`Git` client. Git is required if building tools from source.
   - :term:`LLVM` (LLVM, including clang and wasm-ld)
+  - :term:`Binaryen` (Binaryen, including wasm-opt, wasm-emscripten-finalize, etc.)
   - The `Emscripten code <https://github.com/emscripten-core/emscripten>`_, from GitHub
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.

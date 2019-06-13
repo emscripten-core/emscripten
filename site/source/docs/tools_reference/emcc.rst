@@ -66,7 +66,7 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-Os:
 
 ``-Os``
-  Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can affect both wasm and JavaScript.
+  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both wasm and JavaScript.
 
 .. _emcc-Oz:
 

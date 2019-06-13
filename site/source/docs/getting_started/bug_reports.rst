@@ -22,7 +22,7 @@ LLVM, wasm-ld, clang, Binaryen bugs
 
 If uncertain, bugs can always be posted to the `main repository <https://github.com/emscripten-core/emscripten>`_. But if you are sure a bug is in an upstream project, you can file it there:
 
-- <LLVM bug tracker <https://bugs.llvm.org/>`_
+- <LLVM bug tracker <https://bugs.llvm.org/>`_ . For most issues use the "libraries" product and the "Backend: WebAssembly" component. For wasm-ld issues, use "lld" and "wasm".
 - <Binaryen bug tracker <https://github.com/WebAssembly/binaryen/issues>`_
 
 Pull requests must (of course) go to the proper repository.

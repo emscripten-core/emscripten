@@ -61,7 +61,7 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 
 - *emcc* calls :term:`Clang` to convert C++ to bitcode, ``llvm-opt`` to optimize it, ``llvm-link`` to link it, etc.
 - *emcc* then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/master/emscripten.py>`_, which performs any final compilation to wasm (including invoking *wasm-emscripten-finalize* from Binaryen, for wasm) and emits the JavaScript.
-- If optimizing wasm, *emcc* will then call Binaryen's optimizer, run meta-dce, and other useful things. It will also run JS optimizations.
+- If optimizing wasm, *emcc* will then call Binaryen's optimizer, run meta-dce, and other useful things. It will also run JS optimizations on the JS that is emitted alongside the wasm.
 
 Emscripten Test Suite
 =====================
