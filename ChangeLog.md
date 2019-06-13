@@ -19,6 +19,20 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - Add a new system for managing system libraries. (#8780)
+   This may require minor changes when performing certain operations:
+     - When using `embuilder.py` to build a specific library, the name may have
+       changed: all library names are prefixed with lib now.
+     - `embuilder.py` now only builds the requested library, and not its dependencies
+       and certain system libraries that are always built. For example, running
+       `embuilder.py build libc` no longer builds `libcompiler_rt` if it hasn't be built.
+     - When using `EMCC_FORCE_STDLIBS` with a list of libraries, you must now use
+       the simplified names, for example, `libmalloc` and `libpthreads` instead of
+       `libdlmalloc` or `libpthreads_stub`. These names will link in the correct
+       version of the library: if the build is configured to use `emmalloc`, `libmalloc`
+       will mean `libemmalloc`, and if thread support is disabled, `libpthreads` will
+       mean `libpthreads_stub`.
+
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
