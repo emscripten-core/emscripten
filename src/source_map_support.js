@@ -39,6 +39,7 @@ function WasmSourceMap(sourceMap) {
 
   var offset = 0, src = 0, line = 1, col = 1, name = 0;
   sourceMap.mappings.split(',').forEach(function (segment, index) {
+    if (!segment) return;
     var data = decodeVLQ(segment);
     var info = {};
 

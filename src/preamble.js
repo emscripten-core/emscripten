@@ -861,6 +861,11 @@ var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
+#if 'emscripten_generate_pc' in addedLibraryItems
+var wasmOffsetConverter;
+#include "wasm_offset_converter.js"
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
@@ -1019,8 +1024,16 @@ function createWasm(env) {
 #endif
   }
 
+#if 'emscripten_generate_pc' in addedLibraryItems
+  addRunDependency('offset-converter');
+#endif
+
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
+#if 'emscripten_generate_pc' in addedLibraryItems
+      wasmOffsetConverter = new WasmOffsetConverter(binary);
+      removeRunDependency('offset-converter');
+#endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
@@ -1035,14 +1048,24 @@ function createWasm(env) {
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
-      return WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
-        .then(receiveInstantiatedSource, function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          err('wasm streaming compile failed: ' + reason);
-          err('falling back to ArrayBuffer instantiation');
-          instantiateArrayBuffer(receiveInstantiatedSource);
+      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+#if 'emscripten_generate_pc' in addedLibraryItems
+        // This doesn't actually do another request, it only copies the Response object.
+        // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
+        response.clone().arrayBuffer().then(function (buffer) {
+          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
+          removeRunDependency('offset-converter');
         });
+#endif
+        return WebAssembly.instantiateStreaming(response, info)
+          .then(receiveInstantiatedSource, function(reason) {
+            // We expect the most common failure cause to be a bad MIME type for the binary,
+            // in which case falling back to ArrayBuffer instantiation should work.
+            err('wasm streaming compile failed: ' + reason);
+            err('falling back to ArrayBuffer instantiation');
+            instantiateArrayBuffer(receiveInstantiatedSource);
+          });
+      });
     } else {
       return instantiateArrayBuffer(receiveInstantiatedSource);
     }
@@ -1051,8 +1074,14 @@ function createWasm(env) {
   function instantiateSync() {
     var instance;
     var module;
+    var binary;
     try {
-      module = new WebAssembly.Module(getBinary());
+      binary = getBinary();
+#if 'emscripten_generate_pc' in addedLibraryItems
+      wasmOffsetConverter = new WasmOffsetConverter(binary);
+      removeRunDependency('offset-converter');
+#endif
+      module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
     } catch (e) {
       err('failed to compile wasm module: ' + e);
