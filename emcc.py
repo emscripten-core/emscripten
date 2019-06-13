@@ -435,6 +435,10 @@ def find_output_arg(args):
   return specified_target, outargs
 
 
+class ThreadPoolExit(Exception):
+  pass
+
+
 #
 # Main run() function
 #
@@ -1731,8 +1735,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert(os.path.exists(output_file))
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
-      def process_source_files(arg):
-        i, input_file = arg
+      def process_input_file(i, input_file):
         file_ending = get_file_suffix(input_file)
         if file_ending.endswith(SOURCE_ENDINGS):
           compile_source_file(i, input_file)
@@ -1755,7 +1758,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
 
-      shared.Building.get_thread_pool().map(process_source_files, input_files)
+      def input_file_dispatcher(arg):
+        i, input_file = arg
+        try:
+          process_input_file(i, input_file)
+        except SystemExit as e:
+          # Convert exit_with_error into an exception that we will use to exit on the main thread
+          raise ThreadPoolExit(*e.args)
+
+      try:
+        shared.Building.get_thread_pool().map(input_file_dispatcher, input_files)
+      except ThreadPoolExit as e:
+        raise SystemExit(*e.args)
+      temp_files.sort()
 
     # exit block 'bitcodeize inputs'
     log_time('bitcodeize inputs')
