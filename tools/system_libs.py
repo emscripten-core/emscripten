@@ -51,7 +51,9 @@ def run_build_command(cmd):
   assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
   # add standard cflags, but also allow the cmd to override them
   cmd = cmd[:2] + get_cflags() + cmd[2:]
-  shared.run_process(cmd, stdout=stdout, stderr=stderr)
+  env = os.environ.copy()
+  env['EMCC_CORES'] = '1'
+  shared.run_process(cmd, stdout=stdout, stderr=stderr, env=env)
 
 
 def run_commands(commands):
@@ -60,7 +62,7 @@ def run_commands(commands):
     for command in commands:
       run_build_command(command)
   else:
-    pool = shared.Building.get_multiprocessing_pool()
+    pool = shared.Building.get_thread_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
