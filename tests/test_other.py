@@ -23,6 +23,7 @@ import subprocess
 import sys
 import time
 import tempfile
+import threading
 import unittest
 import uuid
 
@@ -9322,3 +9323,29 @@ int main () {
       for error, file in zip(errors, files):
         if not re.search(error, stderr):
           self.fail('try %d: cannot find the error message for %s:\n%s' % (n + 1, file, stderr))
+
+  def test_build_error_color(self):
+    with open('src.c', 'w') as f:
+      f.write('''
+        int main() {
+      ''')
+
+    master, slave = os.openpty()
+    output = []
+    exited = False
+
+    def reader_thread():
+      while not exited:
+        r, w, x = select.select([master], [], [], 1)
+        if r:
+          output.append(os.read(master, 1024))
+
+    thread = threading.Thread(target=reader_thread)
+    thread.daemon = True
+    thread.start()
+    result = run_process([PYTHON, EMCC, 'src.c'], check=False, stdout=slave, stderr=slave)
+    exited = True
+    thread.join()
+
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", b''.join(output))
