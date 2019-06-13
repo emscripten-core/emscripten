@@ -2301,7 +2301,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     cmd.append('--no-legalize-javascript-ffi')
