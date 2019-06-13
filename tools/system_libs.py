@@ -284,15 +284,11 @@ class Library(object):
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    commands = []
-    objects = []
+    sources = self.get_files()
     cflags = self.get_cflags()
-    for src in self.get_files():
-      o = self.in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, self.emcc, src, '-o', o] + cflags)
-      objects.append(o)
-    run_commands(commands)
-    return objects
+    command = [shared.PYTHON, self.emcc, '-c'] + cflags + sources
+    shared.run_process(command, cwd=self.in_temp())
+    return [self.in_temp(os.path.splitext(os.path.basename(src))[0] + '.o') for src in sources]
 
   def build(self):
     """Builds the library and returns the path to the file."""

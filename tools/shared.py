@@ -14,6 +14,7 @@ import json
 import logging
 import math
 import multiprocessing
+import multiprocessing.pool
 import os
 import re
 import shlex
@@ -1397,11 +1398,34 @@ def static_library_name(name):
     return name + '.bc'
 
 
+class FakeMultiprocessor(object):
+  def map(self, func, tasks, *args, **kwargs):
+    results = []
+    for t in tasks:
+      results += [func(t)]
+    return results
+
+  def map_async(self, func, tasks, *args, **kwargs):
+    class Result:
+      def __init__(self, func, tasks):
+        self.func = func
+        self.tasks = tasks
+
+      def get(self, timeout):
+        results = []
+        for t in tasks:
+          results += [func(t)]
+        return results
+
+    return Result(func, tasks)
+
+
 #  Building
 class Building(object):
   COMPILER = CLANG
   JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
+  thread_pool = None
 
   # internal caches
   internal_nm_cache = {} # cache results of nm - it can be slow to run
@@ -1438,27 +1462,6 @@ class Building(object):
       # If running with one core only, create a mock instance of a pool that does not
       # actually spawn any new subprocesses. Very useful for internal debugging.
       if cores == 1:
-        class FakeMultiprocessor(object):
-          def map(self, func, tasks, *args, **kwargs):
-            results = []
-            for t in tasks:
-              results += [func(t)]
-            return results
-
-          def map_async(self, func, tasks, *args, **kwargs):
-            class Result:
-              def __init__(self, func, tasks):
-                self.func = func
-                self.tasks = tasks
-
-              def get(self, timeout):
-                results = []
-                for t in tasks:
-                  results += [func(t)]
-                return results
-
-            return Result(func, tasks)
-
         Building.multiprocessing_pool = FakeMultiprocessor()
       else:
         child_env = [
@@ -1494,6 +1497,18 @@ class Building(object):
         atexit.register(close_multiprocessing_pool)
 
     return Building.multiprocessing_pool
+
+  @staticmethod
+  def get_thread_pool():
+    if not Building.thread_pool:
+      cores = Building.get_num_cores()
+      if DEBUG:
+        cores = 1
+      if cores == 1:
+        Building.thread_pool = FakeMultiprocessor()
+      else:
+        Building.thread_pool = multiprocessing.pool.ThreadPool(processes=cores)
+    return Building.thread_pool
 
   # When creating environment variables for Makefiles to execute, we need to doublequote the commands if they have spaces in them..
   @staticmethod
