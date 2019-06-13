@@ -53,7 +53,7 @@ function WasmOffsetConverter(wasmBytes) {
         // since functions defined in the module are numbered after all imports
         var count = unsignedLEB128();
 
-        while (count --> 0) {
+        while (count-- > 0) {
           // skip module
           offset = unsignedLEB128() + offset;
           // skip name
@@ -79,7 +79,7 @@ function WasmOffsetConverter(wasmBytes) {
         break;
       case 10: // code section
         var count = unsignedLEB128();
-        while (count --> 0) {
+        while (count-- > 0) {
           var size = unsignedLEB128();
           this.map[funcidx++] = offset;
           offset += size;
