@@ -435,10 +435,6 @@ def find_output_arg(args):
   return specified_target, outargs
 
 
-class ThreadPoolExit(Exception):
-  pass
-
-
 #
 # Main run() function
 #
