@@ -2492,6 +2492,19 @@ done.
     assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
+  def test_syntax_only_valid(self):
+    result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
+    self.assertEqual(result.stdout, '')
+    self.assertNotExists('a.out.js')
+
+  def test_syntax_only_invalid(self):
+    with open('src.c', 'w') as f:
+      f.write('int main() {')
+    result = run_process([PYTHON, EMCC, 'src.c', '-fsyntax-only'], stdout=PIPE, check=False, stderr=STDOUT)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertContained("src.c:1:13: error: expected '}'", result.stdout)
+    self.assertNotExists('a.out.js')
+
   def test_demangle(self):
     create_test_file('src.cpp', '''
       #include <stdio.h>
