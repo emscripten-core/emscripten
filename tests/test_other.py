@@ -9301,5 +9301,18 @@ int main () {
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
     self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
 
+  @parameterized({
+    'fno_diagnostics_color': ['-fno-diagnostics-color'],
+    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+  })
+  @no_windows('ptys and select are not available on windows')
+  def test_pty_no_color(self, flag):
+    with open('src.c', 'w') as f:
+      f.write('int main() {')
+
+    returncode, output = self.run_on_pty([PYTHON, EMCC, flag, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertNotIn(b'\x1b', output)
+
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
