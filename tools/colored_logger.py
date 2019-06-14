@@ -10,6 +10,8 @@ import ctypes
 import sys
 import logging
 
+use_color = True
+
 
 def add_coloring_to_emit_windows(fn):
   def _out_handle(self):
@@ -57,6 +59,9 @@ def add_coloring_to_emit_windows(fn):
   setattr(logging.StreamHandler, '_set_color', _set_color)
 
   def new(*args):
+    if not use_color:
+      return fn(*args)
+
     FOREGROUND_BLUE      = 0x0001 # noqa; text color contains blue.
     FOREGROUND_GREEN     = 0x0002 # noqa; text color contains green.
     FOREGROUND_RED       = 0x0004 # noqa; text color contains red.
@@ -108,6 +113,9 @@ def add_coloring_to_emit_windows(fn):
 def add_coloring_to_emit_ansi(fn):
   # add methods we need to the class
   def new(*args):
+    if not use_color:
+      return fn(*args)
+
     levelno = args[1].levelno
     if levelno >= 50:
       color = '\x1b[31m' # red

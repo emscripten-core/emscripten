@@ -38,7 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -239,6 +239,7 @@ class EmccOptions(object):
     self.valid_abspaths = []
     self.separate_asm = False
     self.cfi = False
+    self.color = True
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
@@ -809,6 +810,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
+
+    if not options.color:
+      colored_logger.use_color = False
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -2592,6 +2596,8 @@ def parse_args(newargs):
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
+    elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      options.color = False
 
   if should_exit:
     sys.exit(0)
