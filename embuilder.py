@@ -132,6 +132,8 @@ def main():
   def is_flag(arg):
     return arg.startswith('--')
 
+  # Check sanity so that the correct cache directory is set.
+  # This is important because we are building system libraries directly in embuilder.py
   shared.check_sanity()
 
   for arg in args:

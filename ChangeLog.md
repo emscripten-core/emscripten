@@ -22,7 +22,7 @@ Current Trunk
  - Add a new system for managing system libraries. (#8780)
    This may require minor changes when performing certain operations:
      - When using `embuilder.py` to build a specific library, the name may have
-       changed: all library names are prefixed with lib now.
+       changed: for consistency, all library names are prefixed with lib now.
      - `embuilder.py` now only builds the requested library, and not its dependencies
        and certain system libraries that are always built. For example, running
        `embuilder.py build libc` no longer builds `libcompiler_rt` if it hasn't be built.
@@ -31,7 +31,9 @@ Current Trunk
        `libdlmalloc` or `libpthreads_stub`. These names will link in the correct
        version of the library: if the build is configured to use `emmalloc`, `libmalloc`
        will mean `libemmalloc`, and if thread support is disabled, `libpthreads` will
-       mean `libpthreads_stub`.
+       mean `libpthreads_stub`. This allows you to say `libmalloc` or `libpthreads` without
+       worrying about which implementation is supposed to be used, and avoid duplicate
+       symbols if you used the wrong implementation.
 
 v1.38.34: 06/01/2019
 --------------------
