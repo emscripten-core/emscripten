@@ -810,6 +810,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
 
+    if '-print-search-dirs' in newargs:
+      return run_process([clang_compiler, '-print-search-dirs'], check=False).returncode
+
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
       options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
