@@ -2498,8 +2498,7 @@ done.
     self.assertNotExists('a.out.js')
 
   def test_syntax_only_invalid(self):
-    with open('src.c', 'w') as f:
-      f.write('int main() {')
+    create_test_file('src.c', 'int main() {')
     result = run_process([PYTHON, EMCC, 'src.c', '-fsyntax-only'], stdout=PIPE, check=False, stderr=STDOUT)
     self.assertNotEqual(result.returncode, 0)
     self.assertContained("src.c:1:13: error: expected '}'", result.stdout)
