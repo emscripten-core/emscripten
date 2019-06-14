@@ -23,6 +23,9 @@ C_BARE = '''
 
 SYSTEM_LIBRARIES = Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
+
+# This is needed build the generated_struct_info.json file.
+# It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
 
 USER_TASKS = [
@@ -133,8 +136,9 @@ def main():
   def is_flag(arg):
     return arg.startswith('--')
 
-  # Check sanity so that the correct cache directory is set.
-  # This is important because we are building system libraries directly in embuilder.py
+  # Check sanity so that if settings file has changed, the cache is cleared here.
+  # Otherwise, the cache will clear in an emcc process, which is invoked while building
+  # a system library into the cache, causing trouble.
   shared.check_sanity()
 
   for arg in args:
