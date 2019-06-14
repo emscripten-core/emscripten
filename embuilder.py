@@ -23,6 +23,7 @@ C_BARE = '''
 
 SYSTEM_LIBRARIES = Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
+SYSTEM_TASKS += ['struct_info']
 
 USER_TASKS = [
     'binaryen',
@@ -180,7 +181,6 @@ def main():
         print('Skipping building of native-optimizer; EMSCRIPTEN_NATIVE_OPTIMIZER set in .emscripten config.')
       else:
         tasks += ['native_optimizer']
-    tasks += ['struct_info']
     print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
     logger.info('building and verifying ' + what)
