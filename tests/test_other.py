@@ -23,7 +23,6 @@ import subprocess
 import sys
 import time
 import tempfile
-import threading
 import unittest
 import uuid
 
@@ -9331,26 +9330,6 @@ int main () {
         int main() {
       ''')
 
-    master, slave = os.openpty()
-    output = []
-    exited = False
-
-    def reader_thread():
-      while not exited:
-        r, w, x = select.select([master], [], [], 1)
-        if r:
-          output.append(os.read(master, 1024))
-
-    try:
-      thread = threading.Thread(target=reader_thread)
-      thread.daemon = True
-      thread.start()
-      result = run_process([PYTHON, EMCC, 'src.c'], check=False, stdout=slave, stderr=slave)
-      exited = True
-      thread.join()
-
-      self.assertNotEqual(result.returncode, 0)
-      self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", b''.join(output))
-    finally:
-      os.close(master)
-      os.close(slave)
+    returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
