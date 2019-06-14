@@ -9307,13 +9307,13 @@ int main () {
   def test_multi_build_output(self):
     files = ['src%d.cpp' % i for i in range(1, 6)]
     for file in files:
-      with open(file, 'w') as f:
-        f.write('''
-          int main() {
-        ''')
-    errors = [r"%(file)s:3:9: error: expected '\}'\s+\^\n"
-              r"%(file)s:2:22: note: to match this '\{'\n\s+"
-              r"int main\(\) \{\s+\^\n"
+      create_test_file(file, 'int main() {')
+    errors = [r"%(file)s:1:13: error: expected '\}'\n"
+              r"int main\(\) {\n"
+              r"\s+\^\n"
+              r"%(file)s:1:12: note: to match this '\{'\n"
+              r"int main\(\) \{\n"
+              r"\s+\^\n"
               r"1 error generated\.\n"
               r"emcc:ERROR: compiler frontend failed to generate LLVM bitcode, halting" % {'file': re.escape(file)}
               for file in files]
@@ -9325,11 +9325,7 @@ int main () {
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
-    with open('src.c', 'w') as f:
-      f.write('''
-        int main() {
-      ''')
-
+    create_test_file('src.c', 'int main() {')
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
-    self.assertIn(b"\x1b[1msrc.c:3:7: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
