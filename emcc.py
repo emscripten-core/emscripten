@@ -1509,6 +1509,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
+          if shared.Settings.BYSYNCIFY:
+            # TODO: pass list of relevant imports
+            # TODO: allow whitelist as in asyncify
+            passes += ['--bysyncify']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 

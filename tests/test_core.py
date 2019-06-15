@@ -7068,13 +7068,16 @@ Success!
     self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
-    if not emterpretify:
-      if self.is_emterpreter():
-        self.skipTest("don't test both emterpretify and asyncify at once")
-      self.set_setting('ASYNCIFY', 1)
+    if self.is_wasm_backend():
+      self.set_setting('BYSYNCIFY', 1)
     else:
-      self.set_setting('EMTERPRETIFY', 1)
-      self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      if not emterpretify:
+        if self.is_emterpreter():
+          self.skipTest("don't test both emterpretify and asyncify at once")
+        self.set_setting('ASYNCIFY', 1)
+      else:
+        self.set_setting('EMTERPRETIFY', 1)
+        self.set_setting('EMTERPRETIFY_ASYNC', 1)
 
     src = r'''
 #include <stdio.h>

@@ -546,6 +546,48 @@ mergeInto(LibraryManager.library, {
 
 #else // EMTERPRETIFY_ASYNC
 
+#if BYSYNCIFY
+  emscripten_sleep: function() {
+/*
+var sleeping = false;
+
+var instance = new WebAssembly.Instance(module, {
+  env: {
+    sleep: function() {
+      logMemory();
+assert(view[0] == 0);
+      if (!sleeping) {
+        // We are called in order to start a sleep/unwind.
+        console.log('sleep...');
+        sleeps++;
+        // Unwinding.
+        exports.bysyncify_start_unwind(DATA_ADDR);
+        // Fill in the data structure. The first value has the stack location,
+        // which for simplicity we can start right after the data structure itself.
+        view[DATA_ADDR >> 2] = DATA_ADDR + 8;
+        // The end of the stack will not be reached here anyhow.
+        view[DATA_ADDR + 4 >> 2] = 1024;
+        sleeping = true;
+      } else {
+        // We are called as part of a resume/rewind. Stop sleeping.
+        console.log('resume...');
+        exports.bysyncify_stop_rewind();
+        // The stack should have been all used up, and so returned to the original state.
+        assert(view[DATA_ADDR >> 2] == DATA_ADDR + 8);
+        assert(view[DATA_ADDR + 4 >> 2] == 1024);
+        sleeping = false;
+      }
+      logMemory();
+    },
+    tunnel: function(x) {
+      console.log('tunneling, sleep == ' + sleeping);
+      return exports.end_tunnel(x);
+    }
+  }
+});
+*/
+  },
+#else // BYSYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
@@ -564,6 +606,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
+#endif // BYSYNCIFY
 #endif // EMTERPRETIFY_ASYNC
 #endif // ASYNCIFY
 });
