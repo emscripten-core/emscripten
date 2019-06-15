@@ -549,6 +549,7 @@ mergeInto(LibraryManager.library, {
 #if BYSYNCIFY
   $Bysyncify__deps: ['$Browser'],
   $Bysyncify: {
+// TODO: nice enum
     state: 0, // 0 - Normal execution.
               // 1 - Unwinding the stack.
               // 2 - Rewinding the stack.
@@ -566,16 +567,19 @@ mergeInto(LibraryManager.library, {
     freeData: function(ptr) {
       _free(ptr);
     },
-    handleAsync: function(startAsync) {
+    handleSleep: function(startAsync) {
+      Module['noExitRuntime'] = true;
+//pause browser main loop - just in sleep, or also here?
       console.log('handle ' + Bysyncify.state);
       if (Bysyncify.state === 0) {
         // Start a sleep.
         Bysyncify.state = 1;
         Bysyncify.currData = Bysyncify.allocateData();
-        console.log('start unwind');
+        console.log('start unwind ' + Bysyncify.currData);
         Module['_bysyncify_start_unwind'](Bysyncify.currData);
         startAsync(function() {
-          console.log('start rewind');
+          console.log('start rewind ' + Bysyncify.currData);
+          Bysyncify.state = 2;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
           // TODO: what if it isn't main..?
           Module['_main']();
@@ -595,9 +599,9 @@ mergeInto(LibraryManager.library, {
   emscripten_sleep__deps: ['$Bysyncify'],
   emscripten_sleep: function(ms) {
     console.log('skeep');
-    Bysyncify.handleAsync(function(startRewind) {
+    Bysyncify.handleSleep(function(wakeUp) {
       console.log('do timeout');
-      Browser.safeSetTimeout(startRewind, ms);
+      Browser.safeSetTimeout(wakeUp, ms);
     });
   },
 

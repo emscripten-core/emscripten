@@ -202,16 +202,18 @@ Module['callMain'] = function callMain(args) {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || BYSYNCIFY
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state !== 1) {
-#endif // EMTERPRETIFY_ASYNC
+    if (!Module['noExitRuntime']) {
+#endif // EMTERPRETIFY_ASYNC || BYSYNCIFY
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || BYSYNCIFY
+    } else {
+console.log('doing async, so not exit()ing');
     }
-#endif // EMTERPRETIFY_ASYNC
+#endif // EMTERPRETIFY_ASYNC || BYSYNCIFY
   }
   catch(e) {
     if (e instanceof ExitStatus) {
