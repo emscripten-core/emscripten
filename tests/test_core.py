@@ -7085,21 +7085,15 @@ Success!
 #include <emscripten.h>
 void f(void *p) {
   *(int*)p = 99;
-//  printf("!");
+  printf("!");
 }
 int main() {
   int i = 0;
-EM_ASM({ console.log('a0') });
   printf("Hello");
-EM_ASM({ console.log('a1') });
   emscripten_async_call(f, &i, 1);
-EM_ASM({ console.log('a2') });
   printf("World");
-EM_ASM({ console.log('a3') });
   emscripten_%s(100);
-EM_ASM({ console.log('a4') });
   printf("%%d\n", i);
-EM_ASM({ console.log('a5') });
 }
 ''' % ('sleep_with_yield' if emterpretify else 'sleep')
 

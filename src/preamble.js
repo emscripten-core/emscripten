@@ -975,6 +975,9 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+#if BYSYNCIFY
+    exports = Bysyncify.instrumentWasmExports(exports);
+#endif
     Module['asm'] = exports;
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.

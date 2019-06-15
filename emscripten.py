@@ -2227,7 +2227,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   all_implemented = metadata['exports']
 
   if shared.Settings.BYSYNCIFY:
-    all_implemented += ['bysyncify_start_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
+    all_implemented += ['bysyncify_start_unwind', 'bysyncify_stop_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
 
 #//also wrap the exports to stop unwind and know what to call to rewind
 

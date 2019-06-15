@@ -549,45 +549,92 @@ mergeInto(LibraryManager.library, {
 #if BYSYNCIFY
   $Bysyncify__deps: ['$Browser'],
   $Bysyncify: {
-// TODO: nice enum
-    state: 0, // 0 - Normal execution.
-              // 1 - Unwinding the stack.
-              // 2 - Rewinding the stack.
-    DATA_SIZE: 4096,
+    State: {
+      Normal: 0,
+      Unwinding: 1,
+      Rewinding: 2
+    },
+    state: 0,
+    DataSize: 4096,
     currData: null,
-
+    // A map from data pointers to extra info about the data.
+    // That includes the name of the function on the bottom
+    // of the call stack, that we need to call to rewind.
+    dataInfo: {},
+    // We must track which wasm exports are called into and
+    // exited, so that we know where the call stack began,
+    // which is where we must call to rewind it.
+    exportCallStack: [],
+    instrumentWasmExports: function(exports) {
+      var ret = {};
+      for (var x in exports) {
+        (function(x) {
+          var original = exports[x];
+          if (typeof original === 'function') {
+            ret[x] = function() {
+console.log('push ' + x);
+              Bysyncify.exportCallStack.push(x);
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                var y = Bysyncify.exportCallStack.pop(x);
+console.log('pop ' + y);
+                assert(y === x);
+                if (Bysyncify.currData &&
+                    Bysyncify.state === Bysyncify.State.Unwinding &&
+                    Bysyncify.exportCallStack.length === 0) {
+                  // We just finished unwinding for a sleep.
+                  console.log('stop unwind');
+                  Bysyncify.state = Bysyncify.State.Normal;
+                  Module['_bysyncify_stop_unwind']();
+                }
+              }
+            };
+          } else {
+            ret[x] = original;
+          }
+        })(x);
+      }
+      return ret;
+    },
     allocateData: function() {
       // A bysyncify data structure has two fields: the
       // current stack pos, and the max pos.
-      var ptr = _malloc(Bysyncify.DATA_SIZE);
+      var ptr = _malloc(Bysyncify.DataSize);
       HEAP32[ptr >> 2] = ptr + 8;
-      HEAP32[ptr + 4 >> 2] = ptr + Bysyncify.DATA_SIZE;
+      HEAP32[ptr + 4 >> 2] = ptr + Bysyncify.DataSize;
+      Bysyncify.dataInfo[ptr] = {
+        bottomOfCallStack: Bysyncify.exportCallStack[0]
+      };
       return ptr;
     },
     freeData: function(ptr) {
       _free(ptr);
+      Bysyncify.dataInfo[ptr] = null;
     },
     handleSleep: function(startAsync) {
       Module['noExitRuntime'] = true;
-//pause browser main loop - just in sleep, or also here?
+//pause browser main loop - just in sleep, or also here? emterpreter just does here
       console.log('handle ' + Bysyncify.state);
-      if (Bysyncify.state === 0) {
+      if (Bysyncify.state === Bysyncify.State.Normal) {
         // Start a sleep.
-        Bysyncify.state = 1;
+        Bysyncify.state = Bysyncify.State.Unwinding;
         Bysyncify.currData = Bysyncify.allocateData();
         console.log('start unwind ' + Bysyncify.currData);
         Module['_bysyncify_start_unwind'](Bysyncify.currData);
         startAsync(function() {
           console.log('start rewind ' + Bysyncify.currData);
-          Bysyncify.state = 2;
+          Bysyncify.state = Bysyncify.State.Rewinding;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
           // TODO: what if it isn't main..?
-          Module['_main']();
+          var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
+console.log('start: ' + start);
+          Module['asm'][start]();
         });
-      } else if (Bysyncify.state === 2) {
+      } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
         // Stop a resume.
         console.log('stop rewind');
-        Bysyncify.state = 0;
+        Bysyncify.state = Bysyncify.State.Normal;
         Module['_bysyncify_stop_rewind']();
         Bysyncify.freeData(Bysyncify.currData);
         Bysyncify.currData = null;
@@ -596,7 +643,6 @@ mergeInto(LibraryManager.library, {
       }
     }
   },
-  emscripten_sleep__deps: ['$Bysyncify'],
   emscripten_sleep: function(ms) {
     console.log('skeep');
     Bysyncify.handleSleep(function(wakeUp) {
@@ -632,3 +678,7 @@ mergeInto(LibraryManager.library, {
 if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
   error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
 }
+if (BYSYNCIFY) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Bysyncify');
+}
+
