@@ -649,6 +649,92 @@ console.log('do timeout');
     });
   },
 
+  /*
+   * Layout of a BYSYNCIFY coroutine structure, which
+   * functions as a bysyncify data structure, and so shares
+   * the first two values:
+   *
+   *  0                        bysyncify stack position
+   *  4                        bysyncify stack max
+   *  8                        function pointer
+   *  12                       argument to function
+   *  16                       bysyncify stack data
+   *    ...
+   *  16 + Bysyncify.DataSize  C stack
+   */
+  emscripten_coroutine_create__deps: ['malloc'],
+  emscripten_coroutine_create: function(f, arg, c_stack_size) {
+    if (c_stack_size <= 0) c_stack_size = 4096;
+    var coroutine = _malloc(16 + Bysyncify.DataSize + c_stack_size);
+    {{{ makeSetValueAsm('coroutine',  0, '(coroutine+16)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine',  4, '(coroutine+16+Bysyncify.DataSize)', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine',  8, 'f', 'i32') }}};
+    {{{ makeSetValueAsm('coroutine', 12, 'arg', 'i32') }}};
+    return coroutine;
+  },
+
+  emscripten_coroutine_next__sig: 'ii',
+  emscripten_coroutine_next__deps: ['$EmterpreterAsync', 'free'],
+  emscripten_coroutine_next: function(coroutine) {
+    // this is a rewritten emscripten_coroutine_next function from ASYNCIFY
+    coroutine = coroutine|0;
+    var temp = 0, func = 0, funcArg = 0, coroutine_not_finished = 0;
+
+    // switch context
+    // TODO Save EMTSTACKTOP to EMTSTACK_BASE during startup and use it instead
+    {{{ makeSetValueAsm('coroutine', 0, 'EMTSTACKTOP', 'i32') }}};
+    temp = Module['emtStackSave']();
+    {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
+    temp = Module['getEmtStackMax']();
+    {{{ makeSetValueAsm('coroutine', 8, 'temp', 'i32') }}};
+
+    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 20, 'i32') }}});
+
+    func = {{{ makeGetValueAsm('coroutine', 24, 'i32') }}};
+    if (func !== 0) {
+      // unset func
+      {{{ makeSetValueAsm('coroutine', 24, 0, 'i32') }}};
+      // first run
+      funcArg = {{{ makeGetValueAsm('coroutine', 28, 'i32') }}};
+      {{{ makeDynCall('vi') }}}(func, funcArg);
+    } else {
+      EmterpreterAsync.setState(2);
+      Module['emterpret']({{{ makeGetValue('EMTSTACKTOP', 0, 'i32')}}});
+    }
+    coroutine_not_finished = EmterpreterAsync.state !== 0;
+    EmterpreterAsync.setState(0);
+
+    // switch context
+    {{{ makeSetValueAsm('coroutine', 12, 'EMTSTACKTOP', 'i32') }}}; // cannot change?
+    temp = Module['emtStackSave']();
+    {{{ makeSetValueAsm('coroutine', 16, 'temp', 'i32') }}};
+    temp = Module['getEmtStackMax']();
+    {{{ makeSetValueAsm('coroutine', 20, 'temp', 'i32') }}}; // cannot change?
+
+    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
+    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
+    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 8, 'i32') }}});
+
+    if (!coroutine_not_finished) {
+      _free(coroutine);
+    }
+
+    return coroutine_not_finished|0;
+  },
+
+  emscripten_yield__sig: 'v',
+  emscripten_yield__deps: ['$EmterpreterAsync'],
+  emscripten_yield: function() {
+    if (EmterpreterAsync.state === 2) {
+      // re-entering after yield
+      EmterpreterAsync.setState(0);
+    } else {
+      EmterpreterAsync.setState(1);
+    }
+  },
+
 #else // BYSYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
