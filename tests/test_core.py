@@ -5477,7 +5477,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
-  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in core_test_modes
     if self.run_name == 'asm3':
@@ -5529,6 +5528,11 @@ return malloc(size);
       test()
       print('emterpreter/async/assertions/whitelist')
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
+      test()
+
+    if self.is_wasm_backend():
+      print('bysyncify') # extra coverage
+      self.emcc_args += ['-s', 'BYSYNCIFY=1']
       test()
 
   @needs_dlfcn

@@ -572,19 +572,17 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-console.log('push ' + x);
               Bysyncify.exportCallStack.push(x);
               try {
                 return original.apply(null, arguments);
               } finally {
                 var y = Bysyncify.exportCallStack.pop(x);
-console.log('pop ' + y);
                 assert(y === x);
                 if (Bysyncify.currData &&
                     Bysyncify.state === Bysyncify.State.Unwinding &&
                     Bysyncify.exportCallStack.length === 0) {
                   // We just finished unwinding for a sleep.
-                  console.log('stop unwind');
+console.log('stop unwind');
                   Bysyncify.state = Bysyncify.State.Normal;
                   Module['_bysyncify_stop_unwind']();
                 }
@@ -615,15 +613,15 @@ console.log('pop ' + y);
     handleSleep: function(startAsync) {
       Module['noExitRuntime'] = true;
 //pause browser main loop - just in sleep, or also here? emterpreter just does here
-      console.log('handle ' + Bysyncify.state);
+console.log('handle ' + Bysyncify.state);
       if (Bysyncify.state === Bysyncify.State.Normal) {
         // Start a sleep.
         Bysyncify.state = Bysyncify.State.Unwinding;
         Bysyncify.currData = Bysyncify.allocateData();
-        console.log('start unwind ' + Bysyncify.currData);
+console.log('start unwind ' + Bysyncify.currData);
         Module['_bysyncify_start_unwind'](Bysyncify.currData);
         startAsync(function() {
-          console.log('start rewind ' + Bysyncify.currData);
+console.log('start rewind ' + Bysyncify.currData);
           Bysyncify.state = Bysyncify.State.Rewinding;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
           // TODO: what if it isn't main..?
@@ -633,7 +631,7 @@ console.log('start: ' + start);
         });
       } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
         // Stop a resume.
-        console.log('stop rewind');
+console.log('stop rewind');
         Bysyncify.state = Bysyncify.State.Normal;
         Module['_bysyncify_stop_rewind']();
         Bysyncify.freeData(Bysyncify.currData);
@@ -644,9 +642,9 @@ console.log('start: ' + start);
     }
   },
   emscripten_sleep: function(ms) {
-    console.log('skeep');
+console.log('skeep');
     Bysyncify.handleSleep(function(wakeUp) {
-      console.log('do timeout');
+console.log('do timeout');
       Browser.safeSetTimeout(wakeUp, ms);
     });
   },
