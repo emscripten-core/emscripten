@@ -547,46 +547,60 @@ mergeInto(LibraryManager.library, {
 #else // EMTERPRETIFY_ASYNC
 
 #if BYSYNCIFY
-  emscripten_sleep: function() {
-/*
-var sleeping = false;
+  $Bysyncify__deps: ['$Browser'],
+  $Bysyncify: {
+    state: 0, // 0 - Normal execution.
+              // 1 - Unwinding the stack.
+              // 2 - Rewinding the stack.
+    DATA_SIZE: 4096,
+    currData: null,
 
-var instance = new WebAssembly.Instance(module, {
-  env: {
-    sleep: function() {
-      logMemory();
-assert(view[0] == 0);
-      if (!sleeping) {
-        // We are called in order to start a sleep/unwind.
-        console.log('sleep...');
-        sleeps++;
-        // Unwinding.
-        exports.bysyncify_start_unwind(DATA_ADDR);
-        // Fill in the data structure. The first value has the stack location,
-        // which for simplicity we can start right after the data structure itself.
-        view[DATA_ADDR >> 2] = DATA_ADDR + 8;
-        // The end of the stack will not be reached here anyhow.
-        view[DATA_ADDR + 4 >> 2] = 1024;
-        sleeping = true;
-      } else {
-        // We are called as part of a resume/rewind. Stop sleeping.
-        console.log('resume...');
-        exports.bysyncify_stop_rewind();
-        // The stack should have been all used up, and so returned to the original state.
-        assert(view[DATA_ADDR >> 2] == DATA_ADDR + 8);
-        assert(view[DATA_ADDR + 4 >> 2] == 1024);
-        sleeping = false;
-      }
-      logMemory();
+    allocateData: function() {
+      // A bysyncify data structure has two fields: the
+      // current stack pos, and the max pos.
+      var ptr = _malloc(Bysyncify.DATA_SIZE);
+      HEAP32[ptr >> 2] = ptr + 8;
+      HEAP32[ptr + 4 >> 2] = ptr + Bysyncify.DATA_SIZE;
+      return ptr;
     },
-    tunnel: function(x) {
-      console.log('tunneling, sleep == ' + sleeping);
-      return exports.end_tunnel(x);
+    freeData: function(ptr) {
+      _free(ptr);
+    },
+    handleAsync: function(startAsync) {
+      console.log('handle ' + Bysyncify.state);
+      if (Bysyncify.state === 0) {
+        // Start a sleep.
+        Bysyncify.state = 1;
+        Bysyncify.currData = Bysyncify.allocateData();
+        console.log('start unwind');
+        Module['_bysyncify_start_unwind'](Bysyncify.currData);
+        startAsync(function() {
+          console.log('start rewind');
+          Module['_bysyncify_start_rewind'](Bysyncify.currData);
+          // TODO: what if it isn't main..?
+          Module['_main']();
+        });
+      } else if (Bysyncify.state === 2) {
+        // Stop a resume.
+        console.log('stop rewind');
+        Bysyncify.state = 0;
+        Module['_bysyncify_stop_rewind']();
+        Bysyncify.freeData(Bysyncify.currData);
+        Bysyncify.currData = null;
+      } else {
+        abort('invalid state: ' + Bysyncify.state);
+      }
     }
-  }
-});
-*/
   },
+  emscripten_sleep__deps: ['$Bysyncify'],
+  emscripten_sleep: function(ms) {
+    console.log('skeep');
+    Bysyncify.handleAsync(function(startRewind) {
+      console.log('do timeout');
+      Browser.safeSetTimeout(startRewind, ms);
+    });
+  },
+
 #else // BYSYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
