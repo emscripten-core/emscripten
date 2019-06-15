@@ -19,6 +19,11 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+v1.38.35: 06/13/2019
+--------------------
+ - Include some [waterfall fixes](https://github.com/WebAssembly/waterfall/pull/541)
+   for the emsdk builds on linux regarding libtinfo.
+
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
