@@ -573,23 +573,23 @@ mergeInto(LibraryManager.library, {
           if (typeof original === 'function') {
             ret[x] = function() {
               Bysyncify.exportCallStack.push(x);
-#if BYSYNCIFY_DEBUG
-                err('try', x);
+#if BYSYNCIFY_DEBUG >= 2
+                err('BYSYNCIFY: try', x);
 #endif
               try {
                 return original.apply(null, arguments);
               } finally {
                 var y = Bysyncify.exportCallStack.pop(x);
                 assert(y === x);
-#if BYSYNCIFY_DEBUG
-                err('finally', x, Bysyncify.currData, Bysyncify.state, ' : ', Bysyncify.exportCallStack);
+#if BYSYNCIFY_DEBUG >= 2
+                err('BYSYNCIFY: finally', x, Bysyncify.currData, Bysyncify.state, ' : ', Bysyncify.exportCallStack);
 #endif
                 if (Bysyncify.currData &&
                     Bysyncify.state === Bysyncify.State.Unwinding &&
                     Bysyncify.exportCallStack.length === 0) {
                   // We just finished unwinding for a sleep.
 #if BYSYNCIFY_DEBUG
-                  err('stop unwind');
+                  err('BYSYNCIFY: stop unwind');
 #endif
                   Bysyncify.state = Bysyncify.State.Normal;
                   Module['_bysyncify_stop_unwind']();
@@ -621,7 +621,7 @@ mergeInto(LibraryManager.library, {
     handleSleep: function(startAsync) {
       Module['noExitRuntime'] = true;
 #if BYSYNCIFY_DEBUG
-      err('handleSleep ' + Bysyncify.state);
+      err('BYSYNCIFY: handleSleep ' + Bysyncify.state);
 #endif
       if (Bysyncify.state === Bysyncify.State.Normal) {
         // Prepare to sleep. Call startAsync, and see what happens:
@@ -638,7 +638,7 @@ mergeInto(LibraryManager.library, {
             return;
           }
 #if BYSYNCIFY_DEBUG
-          err('start rewind ' + Bysyncify.currData);
+          err('BYSYNCIFY: start rewind ' + Bysyncify.currData);
 #endif
           Bysyncify.state = Bysyncify.State.Rewinding;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
@@ -647,7 +647,7 @@ mergeInto(LibraryManager.library, {
           }
           var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
 #if BYSYNCIFY_DEBUG
-          err('start: ' + start);
+          err('BYSYNCIFY: start: ' + start);
 #endif
           Module['asm'][start]();
         });
@@ -657,7 +657,7 @@ mergeInto(LibraryManager.library, {
           Bysyncify.state = Bysyncify.State.Unwinding;
           Bysyncify.currData = Bysyncify.allocateData();
 #if BYSYNCIFY_DEBUG
-          err('start unwind ' + Bysyncify.currData);
+          err('BYSYNCIFY: start unwind ' + Bysyncify.currData);
 #endif
           Module['_bysyncify_start_unwind'](Bysyncify.currData);
           if (Browser.mainLoop.func) {
@@ -667,7 +667,7 @@ mergeInto(LibraryManager.library, {
       } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
         // Stop a resume.
 #if BYSYNCIFY_DEBUG
-        err('stop rewind');
+        err('BYSYNCIFY: stop rewind');
 #endif
         Bysyncify.state = Bysyncify.State.Normal;
         Module['_bysyncify_stop_rewind']();
