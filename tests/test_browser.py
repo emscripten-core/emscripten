@@ -3216,11 +3216,10 @@ window.close = function() {
       print(opts)
       self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_virtual_2(self):
-    for opts in [0, 1, 2, 3]:
+  def test_async_virtual_2(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
+      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
 
   @no_wasm_backend('emterpretify')
   def test_emterpreter_async_bad(self):
