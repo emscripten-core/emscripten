@@ -3237,7 +3237,6 @@ window.close = function() {
         print(opts, assertions, expected)
         self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions, '-g'])
 
-  @no_wasm_backend('emterpretify TODO NOW')
   def test_async_mainloop(self):
     for opts in [0, 3]:
       print(opts)

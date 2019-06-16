@@ -644,7 +644,6 @@ mergeInto(LibraryManager.library, {
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
-            Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
           }
           var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
 #if BYSYNCIFY_DEBUG
@@ -663,7 +662,6 @@ mergeInto(LibraryManager.library, {
           Module['_bysyncify_start_unwind'](Bysyncify.currData);
           if (Browser.mainLoop.func) {
             Browser.mainLoop.pause();
-            Browser.pauseAsyncCallbacks();
           }
         }
       } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
