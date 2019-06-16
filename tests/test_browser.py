@@ -828,20 +828,23 @@ window.close = function() {
     self.btest('sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='sdl_canvas_alpha.png', reference_slack=12)
     self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
+  def get_async_args(self):
+    if self.is_wasm_backend():
+      return ['-s', 'BYSYNCIFY']
+    else:
+      return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
+
   def test_sdl_key(self):
     for delay in [0, 1]:
       for defines in [
         [],
         ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
       ]:
-        for emterps in [
+        for async in [
           [],
-          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', "SAFE_HEAP=1"]
+          ['-DTEST_SLEEP', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'] + self.get_async_args()
         ]:
-          print(delay, defines, emterps)
-
-          if emterps and self.is_wasm_backend():
-            return self.skipTest('no emterpretify with wasm backend')
+          print(delay, defines, async)
 
           create_test_file('pre.js', '''
             function keydown(c) {
@@ -860,7 +863,7 @@ window.close = function() {
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
           create_test_file('sdl_key.c', self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + emterps + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
+          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + async + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
           self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
@@ -1307,12 +1310,6 @@ keydown(100);keyup(100); // trigger the end
       secret = str(time.time())
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
-
-  def get_async_args(self):
-    if self.is_wasm_backend():
-      return ['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_DEBUG']
-    else:
-      return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -3939,7 +3936,7 @@ window.close = function() {
       print('see a fail')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - bytecode in a file')
   def test_emterpretify_file(self):
     create_test_file('shell.html', '''
       <!--
