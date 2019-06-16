@@ -582,7 +582,7 @@ mergeInto(LibraryManager.library, {
                     Bysyncify.state === Bysyncify.State.Unwinding &&
                     Bysyncify.exportCallStack.length === 0) {
                   // We just finished unwinding for a sleep.
-console.log('stop unwind');
+                  // console.log('stop unwind');
                   Bysyncify.state = Bysyncify.State.Normal;
                   Module['_bysyncify_stop_unwind']();
                 }
@@ -612,26 +612,32 @@ console.log('stop unwind');
     },
     handleSleep: function(startAsync) {
       Module['noExitRuntime'] = true;
-//pause browser main loop - just in sleep, or also here? emterpreter just does here
-console.log('handle ' + Bysyncify.state);
+      // console.log('handle ' + Bysyncify.state);
       if (Bysyncify.state === Bysyncify.State.Normal) {
         // Start a sleep.
         Bysyncify.state = Bysyncify.State.Unwinding;
         Bysyncify.currData = Bysyncify.allocateData();
-console.log('start unwind ' + Bysyncify.currData);
+        // console.log('start unwind ' + Bysyncify.currData);
         Module['_bysyncify_start_unwind'](Bysyncify.currData);
+        if (Browser.mainLoop.func) {
+          Browser.mainLoop.pause();
+          Browser.pauseAsyncCallbacks();
+        }
         startAsync(function() {
-console.log('start rewind ' + Bysyncify.currData);
+          // console.log('start rewind ' + Bysyncify.currData);
           Bysyncify.state = Bysyncify.State.Rewinding;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
-          // TODO: what if it isn't main..?
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.resume();
+            Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
+          }
           var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
-console.log('start: ' + start);
+          // console.log('start: ' + start);
           Module['asm'][start]();
         });
       } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
         // Stop a resume.
-console.log('stop rewind');
+        // console.log('stop rewind');
         Bysyncify.state = Bysyncify.State.Normal;
         Module['_bysyncify_stop_rewind']();
         Bysyncify.freeData(Bysyncify.currData);
@@ -642,97 +648,50 @@ console.log('stop rewind');
     }
   },
   emscripten_sleep: function(ms) {
-console.log('skeep');
     Bysyncify.handleSleep(function(wakeUp) {
-console.log('do timeout');
       Browser.safeSetTimeout(wakeUp, ms);
     });
   },
 
-  /*
-   * Layout of a BYSYNCIFY coroutine structure, which
-   * functions as a bysyncify data structure, and so shares
-   * the first two values:
-   *
-   *  0                        bysyncify stack position
-   *  4                        bysyncify stack max
-   *  8                        function pointer
-   *  12                       argument to function
-   *  16                       bysyncify stack data
-   *    ...
-   *  16 + Bysyncify.DataSize  C stack
-   */
-  emscripten_coroutine_create__deps: ['malloc'],
-  emscripten_coroutine_create: function(f, arg, c_stack_size) {
-    if (c_stack_size <= 0) c_stack_size = 4096;
-    var coroutine = _malloc(16 + Bysyncify.DataSize + c_stack_size);
-    {{{ makeSetValueAsm('coroutine',  0, '(coroutine+16)', 'i32') }}};
-    {{{ makeSetValueAsm('coroutine',  4, '(coroutine+16+Bysyncify.DataSize)', 'i32') }}};
-    {{{ makeSetValueAsm('coroutine',  8, 'f', 'i32') }}};
-    {{{ makeSetValueAsm('coroutine', 12, 'arg', 'i32') }}};
-    return coroutine;
+  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget: function(url, file) {
+    Bysyncify.handleSleep(function(wakeUp) {
+      var _url = UTF8ToString(url);
+      var _file = UTF8ToString(file);
+      _file = PATH_FS.resolve(FS.cwd(), _file);
+      var destinationDirectory = PATH.dirname(_file);
+      FS.createPreloadedFile(
+        destinationDirectory,
+        PATH.basename(_file),
+        _url, true, true,
+        wakeUp,
+        wakeUp,
+        undefined, // dontCreateFile
+        undefined, // canOwn
+        function() { // preFinish
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
+      );
+    });
   },
 
-  emscripten_coroutine_next__sig: 'ii',
-  emscripten_coroutine_next__deps: ['$EmterpreterAsync', 'free'],
-  emscripten_coroutine_next: function(coroutine) {
-    // this is a rewritten emscripten_coroutine_next function from ASYNCIFY
-    coroutine = coroutine|0;
-    var temp = 0, func = 0, funcArg = 0, coroutine_not_finished = 0;
-
-    // switch context
-    // TODO Save EMTSTACKTOP to EMTSTACK_BASE during startup and use it instead
-    {{{ makeSetValueAsm('coroutine', 0, 'EMTSTACKTOP', 'i32') }}};
-    temp = Module['emtStackSave']();
-    {{{ makeSetValueAsm('coroutine', 4, 'temp', 'i32') }}};
-    temp = Module['getEmtStackMax']();
-    {{{ makeSetValueAsm('coroutine', 8, 'temp', 'i32') }}};
-
-    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 12, 'i32') }}};
-    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 16, 'i32') }}});
-    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 20, 'i32') }}});
-
-    func = {{{ makeGetValueAsm('coroutine', 24, 'i32') }}};
-    if (func !== 0) {
-      // unset func
-      {{{ makeSetValueAsm('coroutine', 24, 0, 'i32') }}};
-      // first run
-      funcArg = {{{ makeGetValueAsm('coroutine', 28, 'i32') }}};
-      {{{ makeDynCall('vi') }}}(func, funcArg);
-    } else {
-      EmterpreterAsync.setState(2);
-      Module['emterpret']({{{ makeGetValue('EMTSTACKTOP', 0, 'i32')}}});
-    }
-    coroutine_not_finished = EmterpreterAsync.state !== 0;
-    EmterpreterAsync.setState(0);
-
-    // switch context
-    {{{ makeSetValueAsm('coroutine', 12, 'EMTSTACKTOP', 'i32') }}}; // cannot change?
-    temp = Module['emtStackSave']();
-    {{{ makeSetValueAsm('coroutine', 16, 'temp', 'i32') }}};
-    temp = Module['getEmtStackMax']();
-    {{{ makeSetValueAsm('coroutine', 20, 'temp', 'i32') }}}; // cannot change?
-
-    EMTSTACKTOP = {{{ makeGetValueAsm('coroutine', 0, 'i32') }}};
-    Module['emtStackRestore']({{{ makeGetValueAsm('coroutine', 4, 'i32') }}});
-    Module['setEmtStackMax']({{{ makeGetValueAsm('coroutine', 8, 'i32') }}});
-
-    if (!coroutine_not_finished) {
-      _free(coroutine);
-    }
-
-    return coroutine_not_finished|0;
-  },
-
-  emscripten_yield__sig: 'v',
-  emscripten_yield__deps: ['$EmterpreterAsync'],
-  emscripten_yield: function() {
-    if (EmterpreterAsync.state === 2) {
-      // re-entering after yield
-      EmterpreterAsync.setState(0);
-    } else {
-      EmterpreterAsync.setState(1);
-    }
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    Bysyncify.handleSleep(function(wakeUp) {
+      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
+        wakeUp(function() {
+          // can only allocate the buffer after the wakeUp, not during an asyncing
+          var buffer = _malloc(byteArray.length); // must be freed by caller!
+          HEAPU8.set(byteArray, buffer);
+          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        });
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        wakeUp();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
   },
 
 #else // BYSYNCIFY
