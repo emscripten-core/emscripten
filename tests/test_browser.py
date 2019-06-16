@@ -3221,15 +3221,15 @@ window.close = function() {
       print(opts)
       self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       print(opts)
       self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad_2(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       for assertions in [0, 1]:
         # without assertions, we end up continuing to run more non-emterpreted code in this testcase, returning 1
         # with assertions, we hit the emterpreter-async assertion on that, and report a  clear error
@@ -3237,15 +3237,15 @@ window.close = function() {
         print(opts, assertions, expected)
         self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions, '-g'])
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_mainloop(self):
-    for opts in [0, 1, 2, 3]:
+  @no_wasm_backend('emterpretify TODO NOW')
+  def test_async_mainloop(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)], timeout=20)
+      self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts)] + self.get_async_args(), timeout=20)
 
   @no_wasm_backend('emterpretify')
   def test_emterpreter_async_with_manual(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       print(opts)
       self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'], timeout=20)
 
