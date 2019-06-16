@@ -1726,6 +1726,7 @@ var LibrarySDL = {
     while (Date.now() - now < delay) {}
   },
 #else
+// TODO TODO
   SDL_Delay__deps: ['emscripten_sleep'],
   SDL_Delay: function(delay) {
     _emscripten_sleep(delay);
