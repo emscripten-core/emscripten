@@ -574,7 +574,7 @@ mergeInto(LibraryManager.library, {
             ret[x] = function() {
               Bysyncify.exportCallStack.push(x);
 #if BYSYNCIFY_DEBUG >= 2
-                err('BYSYNCIFY: try', x);
+              err('BYSYNCIFY: try', x);
 #endif
               try {
                 return original.apply(null, arguments);
