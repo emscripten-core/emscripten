@@ -1310,7 +1310,7 @@ keydown(100);keyup(100); // trigger the end
 
   def get_async_args(self):
     if self.is_wasm_backend():
-      return ['-s', 'BYSYNCIFY', '-s', 'WASM=0', '-g', '-s', 'BYSYNCIFY_DEBUG']
+      return ['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_DEBUG']
     else:
       return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
 
@@ -3211,11 +3211,10 @@ window.close = function() {
     create_test_file('pre.js', 'Error.stackTraceLimit = 80;\n')
     self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_virtual(self):
-    for opts in [0, 1, 2, 3]:
+  def test_async_virtual(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_virtual.cpp', '5', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-profiling'])
+      self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling'] + self.get_async_args())
 
   @no_wasm_backend('emterpretify')
   def test_emterpreter_async_virtual_2(self):
