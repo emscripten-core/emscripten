@@ -2665,10 +2665,8 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'BYSYNCIFY=1'])
 
   def test_wget_data(self):
-    with open('test.txt', 'w') as f:
-      f.write('emscripten')
-    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2'] + self.get_async_args())
-# FIXME this one fails!
+    create_test_file('test.txt', 'emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
     if not self.is_wasm_backend():
       self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASSERTIONS=1'] + self.get_async_args())
 

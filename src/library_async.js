@@ -630,7 +630,8 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync(function() {
+        startAsync(function(param) {
+          assert(!param); // old emterpretify API supported this
           reachedCallback = true;
           if (!reachedAfterCallback) {
             // We are happening synchronously, so no need for async.
@@ -711,14 +712,13 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     Bysyncify.handleSleep(function(wakeUp) {
       Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
-        wakeUp(function() {
-          // can only allocate the buffer after the wakeUp, not during an asyncing
-          var buffer = _malloc(byteArray.length); // must be freed by caller!
-          HEAPU8.set(byteArray, buffer);
-          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
-        });
+        // can only allocate the buffer after the wakeUp, not during an asyncing
+        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        wakeUp();
       }, function() {
         {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
         wakeUp();
