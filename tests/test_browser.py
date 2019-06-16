@@ -3268,9 +3268,8 @@ window.close = function() {
   def test_mainloop_infloop(self):
     self.btest('mainloop_infloop.cpp', '1', args=self.get_async_args(), timeout=30)
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_iostream(self):
-    self.btest('emterpreter_async_iostream.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+  def test_async_iostream(self):
+    self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
 
   @requires_sync_compilation
   def test_modularize(self):
