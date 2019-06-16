@@ -3200,11 +3200,10 @@ window.close = function() {
                message='You should see Cocos2d logo',
                timeout=30)
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async(self):
+  def test_async(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
-      self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
+      self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
 
   @no_wasm_backend('emterpretify')
   def test_emterpreter_async_2(self):
