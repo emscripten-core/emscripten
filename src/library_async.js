@@ -561,6 +561,9 @@ mergeInto(LibraryManager.library, {
     // That includes the name of the function on the bottom
     // of the call stack, that we need to call to rewind.
     dataInfo: {},
+    // The return value from a synchronous call is stored here,
+    // so we can return it later after rewinding finishes.
+    returnValue: 0,
     // We must track which wasm exports are called into and
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
@@ -630,8 +633,11 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync(function(param) {
-          assert(!param); // old emterpretify API supported this
+        startAsync(function(returnValue) {
+#if ASSERTIONS
+          assert(!returnValue || typeof returnValue === 'number'); // old emterpretify API supported other stuff
+#endif
+          Bysyncify.returnValue = returnValue || 0;
           reachedCallback = true;
           if (!reachedAfterCallback) {
             // We are happening synchronously, so no need for async.
@@ -676,6 +682,7 @@ mergeInto(LibraryManager.library, {
       } else {
         abort('invalid state: ' + Bysyncify.state);
       }
+      return Bysyncify.returnValue;
     }
   },
   emscripten_sleep: function(ms) {

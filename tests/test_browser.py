@@ -19,7 +19,7 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_wasm_backend, flaky, create_test_file
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, flaky, create_test_file
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
@@ -3267,6 +3267,10 @@ window.close = function() {
 
   def test_async_iostream(self):
     self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
+
+  @no_fastcomp('emterpretify never worked here')
+  def test_async_returnvalue(self):
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')])
 
   @requires_sync_compilation
   def test_modularize(self):

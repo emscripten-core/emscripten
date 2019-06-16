@@ -210,8 +210,6 @@ Module['callMain'] = function callMain(args) {
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
 #if EMTERPRETIFY_ASYNC || BYSYNCIFY
-    } else {
-console.log('doing async, so not exit()ing');
     }
 #endif // EMTERPRETIFY_ASYNC || BYSYNCIFY
   }

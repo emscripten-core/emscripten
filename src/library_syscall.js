@@ -715,7 +715,7 @@ var SyscallsLibrary = {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
         // We write directly to the file system, so there's nothing to do here.
-        wakeUp(function() { return 0 });
+        wakeUp(0);
         return;
       }
       mount.type.syncfs(mount, false, function(err) {
@@ -723,7 +723,7 @@ var SyscallsLibrary = {
           wakeUp(function() { return -{{{ cDefine('EIO') }}} });
           return;
         }
-        wakeUp(function() { return 0 });
+        wakeUp(0);
       });
     });
 #else
