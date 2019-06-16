@@ -3265,9 +3265,8 @@ window.close = function() {
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os'] + self.get_async_args(), timeout=30)
 
-  @no_wasm_backend('emterpretify')
   def test_mainloop_infloop(self):
-    self.btest('mainloop_infloop.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'], timeout=30)
+    self.btest('mainloop_infloop.cpp', '1', args=self.get_async_args(), timeout=30)
 
   @no_wasm_backend('emterpretify')
   def test_emterpreter_async_iostream(self):
