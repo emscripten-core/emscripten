@@ -541,9 +541,22 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           'MUSL_vfprintf'];
 
 // Runs the binaryen "bysyncify" pass to transform sync code into async.
-// This is similar to asyncify but works with the wasm backend.
+// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
+// wasm backend.
+//
+// Done:
+//  * Sleep support.
+//  * Emscripten APIs (emscripten_wget* and other sync APIs).
+//  * Synchronous fsync syscall.
+//  * Browser integration.
+//
+// Not done:
+//  * No whitelist/blacklist support (hopefully with the simpler model
+//    and lower overhead they may not be needed?)
+//  * No coroutine support.
 var BYSYNCIFY = 0;
 
+// Runtime debug logging from bysyncify internals.
 var BYSYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
