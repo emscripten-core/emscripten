@@ -2229,8 +2229,6 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   if shared.Settings.BYSYNCIFY:
     all_implemented += ['bysyncify_start_unwind', 'bysyncify_stop_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
 
-#//also wrap the exports to stop unwind and know what to call to rewind
-
   check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)

@@ -1718,15 +1718,14 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0
+#if EMTERPRETIFY_ASYNC == 0 && BYSYNCIFY == 0
   SDL_Delay: function(delay) {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting.');
+    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like BYSYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
   },
 #else
-// TODO TODO
   SDL_Delay__deps: ['emscripten_sleep'],
   SDL_Delay: function(delay) {
     _emscripten_sleep(delay);
