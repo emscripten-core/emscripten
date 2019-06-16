@@ -573,16 +573,24 @@ mergeInto(LibraryManager.library, {
           if (typeof original === 'function') {
             ret[x] = function() {
               Bysyncify.exportCallStack.push(x);
+#if BYSYNCIFY_DEBUG
+                err('try', x);
+#endif
               try {
                 return original.apply(null, arguments);
               } finally {
                 var y = Bysyncify.exportCallStack.pop(x);
                 assert(y === x);
+#if BYSYNCIFY_DEBUG
+                err('finally', x, Bysyncify.currData, Bysyncify.state, ' : ', Bysyncify.exportCallStack);
+#endif
                 if (Bysyncify.currData &&
                     Bysyncify.state === Bysyncify.State.Unwinding &&
                     Bysyncify.exportCallStack.length === 0) {
                   // We just finished unwinding for a sleep.
-                  // console.log('stop unwind');
+#if BYSYNCIFY_DEBUG
+                  err('stop unwind');
+#endif
                   Bysyncify.state = Bysyncify.State.Normal;
                   Module['_bysyncify_stop_unwind']();
                 }
@@ -612,19 +620,25 @@ mergeInto(LibraryManager.library, {
     },
     handleSleep: function(startAsync) {
       Module['noExitRuntime'] = true;
-      // console.log('handle ' + Bysyncify.state);
+#if BYSYNCIFY_DEBUG
+      err('handleSleep ' + Bysyncify.state);
+#endif
       if (Bysyncify.state === Bysyncify.State.Normal) {
-        // Start a sleep.
-        Bysyncify.state = Bysyncify.State.Unwinding;
-        Bysyncify.currData = Bysyncify.allocateData();
-        // console.log('start unwind ' + Bysyncify.currData);
-        Module['_bysyncify_start_unwind'](Bysyncify.currData);
-        if (Browser.mainLoop.func) {
-          Browser.mainLoop.pause();
-          Browser.pauseAsyncCallbacks();
-        }
+        // Prepare to sleep. Call startAsync, and see what happens:
+        // if the code decided to call our callback synchronously,
+        // then no async operation was in fact begun, and we don't
+        // need to do anything.
+        var reachedCallback = false;
+        var reachedAfterCallback = false;
         startAsync(function() {
-          // console.log('start rewind ' + Bysyncify.currData);
+          reachedCallback = true;
+          if (!reachedAfterCallback) {
+            // We are happening synchronously, so no need for async.
+            return;
+          }
+#if BYSYNCIFY_DEBUG
+          err('start rewind ' + Bysyncify.currData);
+#endif
           Bysyncify.state = Bysyncify.State.Rewinding;
           Module['_bysyncify_start_rewind'](Bysyncify.currData);
           if (Browser.mainLoop.func) {
@@ -632,12 +646,30 @@ mergeInto(LibraryManager.library, {
             Browser.resumeAsyncCallbacks(); // if we were paused (e.g. we are after a sleep), then since we are now yielding, it is safe to call callbacks
           }
           var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
-          // console.log('start: ' + start);
+#if BYSYNCIFY_DEBUG
+          err('start: ' + start);
+#endif
           Module['asm'][start]();
         });
+        reachedAfterCallback = true;
+        if (!reachedCallback) {
+          // A true async operation was begun; start a sleep.
+          Bysyncify.state = Bysyncify.State.Unwinding;
+          Bysyncify.currData = Bysyncify.allocateData();
+#if BYSYNCIFY_DEBUG
+          err('start unwind ' + Bysyncify.currData);
+#endif
+          Module['_bysyncify_start_unwind'](Bysyncify.currData);
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.pause();
+            Browser.pauseAsyncCallbacks();
+          }
+        }
       } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
         // Stop a resume.
-        // console.log('stop rewind');
+#if BYSYNCIFY_DEBUG
+        err('stop rewind');
+#endif
         Bysyncify.state = Bysyncify.State.Normal;
         Module['_bysyncify_stop_rewind']();
         Bysyncify.freeData(Bysyncify.currData);

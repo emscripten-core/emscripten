@@ -544,6 +544,8 @@ var ASYNCIFY_WHITELIST = ['qsort',
 // This is similar to asyncify but works with the wasm backend.
 var BYSYNCIFY = 0;
 
+var BYSYNCIFY_DEBUG = 0;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists

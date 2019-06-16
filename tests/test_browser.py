@@ -1310,7 +1310,7 @@ keydown(100);keyup(100); // trigger the end
 
   def get_async_args(self):
     if self.is_wasm_backend():
-      return ['-s', 'BYSYNCIFY']
+      return ['-s', 'BYSYNCIFY', '-s', 'WASM=0', '-g', '-s', 'BYSYNCIFY_DEBUG']
     else:
       return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
 
@@ -1334,9 +1334,8 @@ keydown(100);keyup(100); // trigger the end
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
-  @no_wasm_backend('emterpretify')
   def test_fs_memfs_fsync(self):
-    args = ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EXIT_RUNTIME=1']
+    args = self.get_async_args() + ['-s', 'EXIT_RUNTIME=1']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
