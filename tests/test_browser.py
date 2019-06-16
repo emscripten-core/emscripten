@@ -3242,7 +3242,7 @@ window.close = function() {
       print(opts)
       self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts)] + self.get_async_args(), timeout=20)
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - specific behavior wrt other async calls being paused or not')
   def test_emterpreter_async_with_manual(self):
     for opts in [0, 3]:
       print(opts)
