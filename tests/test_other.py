@@ -9293,6 +9293,7 @@ int main () {
     self.assertContained('undefined symbol: malloc', stderr)
 
   @no_windows('ptys and select are not available on windows')
+  @no_fastcomp('fastcomp clang detects colors differently')
   def test_build_error_color(self):
     create_test_file('src.c', 'int main() {')
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
