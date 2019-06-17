@@ -321,13 +321,19 @@ class Library(object):
 
     return cflags
 
+  def get_base_name_prefix(self):
+    """
+    Returns the base name of the library without any suffixes.
+    """
+    return self.name
+
   def get_base_name(self):
     """
     Returns the base name of the library file.
 
     This will include suffixes such as -mt, but will not include a file extension.
     """
-    return self.name
+    return self.get_base_name_prefix()
 
   def get_ext(self):
     """
@@ -743,20 +749,19 @@ class libmalloc(MTLibrary):
       cflags += ['--tracing']
     return cflags
 
-  def get_base_name(self):
-    base = 'lib%s' % self.malloc
+  def get_base_name_prefix(self):
+    return 'lib%s' % self.malloc
 
-    extra = ''
+  def get_base_name(self):
+    name = super(libmalloc, self).get_base_name()
     if self.is_debug:
-      extra += '_debug'
+      name += '-debug'
     if not self.use_errno:
       # emmalloc doesn't actually use errno, but it's easier to build it again
-      extra += '_noerrno'
-    if self.is_mt:
-      extra += '_threadsafe'
+      name += '-noerrno'
     if self.is_tracing:
-      extra += '_tracing'
-    return base + extra
+      name += '-tracing'
+    return name
 
   def can_use(self):
     return shared.Settings.MALLOC != 'none'
