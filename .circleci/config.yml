@@ -351,7 +351,7 @@ jobs:
       - run:
           name: embuilder (LTO)
           command: |
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept al --lto
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
             python3 ~/emscripten/tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -361,7 +361,7 @@ jobs:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libc++ libc++_noexcept al --pic --lto
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 ~/emscripten/tests/runner.py test_hello_world
       - run:
           name: freeze cache
