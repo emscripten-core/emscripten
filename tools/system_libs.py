@@ -366,8 +366,8 @@ class Library(object):
   @classmethod
   def vary_on(cls):
     """
-    Returns a list of boolean constructor arguments that defines the variations
-    of this library.
+    Returns a list of strings that are the names of boolean constructor
+    arguments that defines the variations of this library.
 
     This is used by the default implementation of `cls.variations()` to generate
     every possible combination of boolean values to pass to these arguments.
