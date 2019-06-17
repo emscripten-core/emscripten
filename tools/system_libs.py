@@ -393,7 +393,7 @@ class Library(object):
     """
     Construct the variation suitable for the current invocation of emscripten.
 
-    Subclasses should pass the keyword arguments introduced by itself to the
+    Subclasses should pass the keyword arguments they introduce to the
     superclass version, and propagate **kwargs. The base class collects
     all the keyword arguments and creates the instance.
     """
@@ -627,7 +627,7 @@ class libc_wasm(MuslInternalLibrary):
                'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
 
   def can_use(self):
-    # if building to wasm, we need more math code, since we have less builtins
+    # if building to wasm, we need more math code, since we have fewer builtins
     return shared.Settings.WASM
 
 

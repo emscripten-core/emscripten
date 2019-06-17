@@ -24,7 +24,7 @@ C_BARE = '''
 SYSTEM_LIBRARIES = Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 
-# This is needed build the generated_struct_info.json file.
+# This is needed to build the generated_struct_info.json file.
 # It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
 
