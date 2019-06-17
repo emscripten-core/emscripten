@@ -4398,7 +4398,14 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
     var match;
 
-    if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
+    if (frame.getPosition) {
+      if (frame.getEvalOrigin().indexOf('wasm') == 0) {
+        return wasmOffsetConverter ? wasmOffsetConverter.convert(frame.getLineNumber(), frame.getPosition()) :
+               (frame.getLineNumber() << 16) + frame.getPosition();
+      } else {
+        return 0x80000000 | frame.getLineNumber();
+      }
+    } else if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
       // some engines give the binary offset directly, so we use that as return address
       return +match[1];
     } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
@@ -4430,6 +4437,25 @@ LibraryManager.library = {
   },
 
   $UNWIND_CACHE: {},
+
+  _emscripten_raw_stack_trace_js: function () {
+    // If v8's CallSite API is available:
+    if (Error.captureStackTrace) {
+      var orig = Error.prepareStackTrace;
+      Error.prepareStackTrace = function (_, stack) { return stack; };
+      var err = new Error();
+      Error.captureStackTrace(err, arguments.callee);
+      var stack = err.stack;
+      Error.prepareStackTrace = orig;
+      return stack;
+    } else {
+      stack = new Error().stack.split('\n');
+      if (stack[0] == 'Error') {
+        stack.shift();
+      }
+    }
+    return stack;
+  },
 
   // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so that
   // our representation of the program counter is mapped to the line of the stack trace
@@ -4466,10 +4492,7 @@ LibraryManager.library = {
   emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
                                     '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
-    var callstack = new Error().stack.split('\n');
-    if (callstack[0] == 'Error') {
-      callstack.shift();
-    }
+    var callstack = __emscripten_raw_stack_trace_js();
     __emscripten_save_in_unwind_cache(callstack);
 
     // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
@@ -4491,16 +4514,13 @@ LibraryManager.library = {
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
   // addr must be the return address of the last call to emscripten_stack_snapshot, or this
   // function will instead use the current call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc', '_emscripten_raw_stack_trace_js'],
   emscripten_stack_unwind_buffer: function (addr, buffer, count) {
     var stack;
     if (UNWIND_CACHE.last_addr == addr) {
       stack = UNWIND_CACHE.last_stack;
     } else {
-      stack = new Error().stack.split('\n');
-      if (stack[0] == 'Error') {
-        stack.shift();
-      }
+      stack = __emscripten_raw_stack_trace_js();
       __emscripten_save_in_unwind_cache(stack);
     }
 
@@ -4523,9 +4543,14 @@ LibraryManager.library = {
 
     var name = null;
     var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
+    // If we have v8 CallSite objects.
+    if (frame.getFunctionName) {
+      name = frame.getFunctionName();
+    // SpiderMonkey stack trace format.
     } else if (match = /^(.+?)@/.exec(frame)) {
+      name = match[1];
+    // v8 stack trace format.
+    } else if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
       name = match[1];
     }
     if (!name) return 0;
@@ -4553,11 +4578,18 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
-      // Example: at callMain (a.out.js:6335:22)
-      if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
-        source = {file: match[1], line: match[2], column: match[3]};
+      // If we have v8 CallSite objects.
+      if (frame.getEvalOrigin) {
+        if (frame.getEvalOrigin().indexOf('wasm') == 0) {
+          return null;
+        } else {
+          source = {file: frame.getFileName(), line: frame.getLineNumber(), column: frame.getColumnNumber()};
+        }
       // Example: main@a.out.js:1337:42
       } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
+        source = {file: match[1], line: match[2], column: match[3]};
+      // Example: at callMain (a.out.js:6335:22)
+      } else if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
       }
     }
