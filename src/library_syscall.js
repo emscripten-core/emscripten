@@ -1188,12 +1188,6 @@ var SyscallsLibrary = {
     exit(status);
     return 0;
   },
-  __syscall265: function(which, varargs) { // clock_nanosleep
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_clock_nanosleep');
-#endif
-    return 0;
-  },
   __syscall268: function(which, varargs) { // statfs64
     var path = SYSCALLS.getStr(), size = SYSCALLS.get(), buf = SYSCALLS.get();
 #if ASSERTIONS

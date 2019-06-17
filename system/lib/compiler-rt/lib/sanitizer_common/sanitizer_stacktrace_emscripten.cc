@@ -21,41 +21,22 @@
 namespace __sanitizer {
 
 extern "C" {
-  void emscripten_stack_snapshot();
-  uptr emscripten_stack_unwind(uptr pc, int level);
+  uptr emscripten_stack_snapshot();
   uptr emscripten_return_address(int level);
+  u32 emscripten_stack_unwind_buffer(uptr pc, uptr *buffer, u32 depth);
 }
 
 uptr StackTrace::GetCurrentPc() {
-  emscripten_stack_snapshot();
-  return GET_CALLER_PC();
+  return emscripten_stack_snapshot();
 }
 
 void BufferedStackTrace::FastUnwindStack(uptr pc, uptr bp, uptr stack_top,
                                          uptr stack_bottom, u32 max_depth) {
   bool saw_pc = false;
+  max_depth = Min(max_depth, kStackTraceMax);
+  size = emscripten_stack_unwind_buffer(pc, trace_buffer, max_depth);
   trace_buffer[0] = pc;
-  size = 1;
-
-  uptr pc1;
-  if (emscripten_stack_unwind(pc, 0)) {
-    // If the last stack snapshot was taken with this pc, we use that snapshot.
-    for (int level = 0; (pc1 = emscripten_stack_unwind(pc, level)); ++level) {
-      if (saw_pc) {
-        trace_buffer[size++] = pc1;
-      }
-      saw_pc |= pc == pc1;
-    }
-  } else {
-    emscripten_stack_snapshot();
-
-    for (int level = 0; (pc1 = emscripten_return_address(level)); ++level) {
-      if (saw_pc) {
-        trace_buffer[size++] = pc1;
-      }
-      saw_pc |= pc == pc1;
-    }
-  }
+  size = Max(size, 1U);
 }
 
 }  // namespace __sanitizer
