@@ -1435,6 +1435,9 @@ var UBSAN_RUNTIME = 0;
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;
 
+// Whether embind has been enabled.
+var EMBIND = 0;
+
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
