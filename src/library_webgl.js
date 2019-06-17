@@ -1454,7 +1454,13 @@ var LibraryGL = {
       return;
     }
 #endif
-    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
+    var pixelData = null;
+    if (pixels) {
+      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat);
+      if (!pixelData)
+        return;
+    }
+    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__sig: 'viiiiiiiii',
@@ -1486,7 +1492,11 @@ var LibraryGL = {
     }
 #endif
     var pixelData = null;
-    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
+    if (pixels) {
+      pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
+      if (!pixelData)
+        return;
+    }
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
@@ -1508,13 +1518,8 @@ var LibraryGL = {
     }
 #endif
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
-    if (!pixelData) {
-      GL.recordError(0x0500/*GL_INVALID_ENUM*/);
-#if GL_ASSERTIONS
-      err('GL_INVALID_ENUM in glReadPixels: Unrecognized combination of type=' + type + ' and format=' + format + '!');
-#endif
+    if (!pixelData)
       return;
-    }
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
   },
 
