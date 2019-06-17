@@ -549,8 +549,8 @@ LibraryManager.library = {
     abortOnCannotGrowMemory(requestedSize);
 #else
     return false; // malloc will report failure
-#endif
-#else
+#endif // ABORTING_MALLOC
+#else // ALLOW_MEMORY_GROWTH == 0
     var oldSize = _emscripten_get_heap_size();
     // With pthreads, races can happen (another thread might increase the size in between), so return a failure, and let the caller retry.
 #if USE_PTHREADS
@@ -582,17 +582,23 @@ LibraryManager.library = {
 
     // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
     while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
+#if MEMORY_GROWTH_STEP != -1
+      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
+      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
+#else
       if (newSize <= 536870912) {
         newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
       } else {
         // ..., but after that, add smaller increments towards 2GB, which we cannot reach
         newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-#if ASSERTIONS
-        if (newSize === oldSize) {
-          warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-        }
-#endif
       }
+#endif // MEMORY_GROWTH_STEP
+
+#if ASSERTIONS
+      if (newSize === oldSize) {
+        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
+      }
+#endif
     }
 
 #if WASM_MEM_MAX != -1
@@ -610,7 +616,7 @@ LibraryManager.library = {
 #endif
       return false;
     }
-#endif
+#endif // WASM_MEM_MAX
 
 #if ASSERTIONS
     var start = Date.now();
@@ -794,7 +800,7 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && MALLOC != 'none'
   // tiny, fake malloc/free implementation. If the program actually uses malloc,
   // a compiled version will be used; this will only be used if the runtime
   // needs to allocate something, for which this is good enough if otherwise
@@ -4397,8 +4403,10 @@ LibraryManager.library = {
       return +match[1];
     } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
       // other engines only give function index and offset in the function,
-      // so we pack these into a "return address"
-      return (+match[1] << 16) + +match[2];
+      // so we try using the offset converter. If that doesn't work,
+      // we pack index and offset into a "return address"
+      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
+             (+match[1] << 16) + +match[2];
     } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
@@ -4497,7 +4505,7 @@ LibraryManager.library = {
     return _emscripten_pc_get_function.ret;
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return null;
@@ -4511,9 +4519,17 @@ LibraryManager.library = {
         return {file: info.source, line: info.line, column: info.column};
       }
     }
-#endif
 
     // Example: at main (wasm-function[35]:3)
+    // Example: at wasm-function[35]:3
+    if (wasmSourceMap && wasmOffsetConverter && (match = /at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame))) {
+      var info = wasmSourceMap.lookup(wasmOffsetConverter.convert(+match[1], +match[2]));
+      if (info) {
+        return {file: info.source, line: info.line, column: info.column};
+      }
+    }
+#endif
+
     // Example: at callMain (a.out.js:6335:22)
     if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
       return {file: match[1], line: match[2], column: match[3]};

@@ -713,38 +713,50 @@ var LibraryGLFW = {
 
     setKeyCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.keyFunc;
       win.keyFunc = cbfun;
+      return prevcbfun;
     },
 
     setCharCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.charFunc;
       win.charFunc = cbfun;
+      return prevcbfun;
     },
 
     setMouseButtonCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.mouseButtonFunc;
       win.mouseButtonFunc = cbfun;
+      return prevcbfun;
     },
 
     setCursorPosCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.cursorPosFunc;
       win.cursorPosFunc = cbfun;
+      return prevcbfun;
     },
 
     setScrollCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.scrollFunc;
       win.scrollFunc = cbfun;
+      return prevcbfun;
     },
 
     setDropCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.dropFunc;
       win.dropFunc = cbfun;
+      return prevcbfun;
     },
 
     onDrop: function(event) {
@@ -809,7 +821,8 @@ var LibraryGLFW = {
 
     setWindowSizeCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowSizeFunc;
       win.windowSizeFunc = cbfun;
      
 #if USE_GLFW == 2
@@ -817,21 +830,27 @@ var LibraryGLFW = {
       // callback function is set, it will be called with the current window size before this
       // function returns.
       // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
-      if (!win.windowSizeFunc) return;
+      if (!win.windowSizeFunc) return null;
       {{{ makeDynCall('vii') }}}(win.windowSizeFunc, win.width, win.height);
 #endif
+
+      return prevcbfun;
     },
 
     setWindowCloseCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowCloseFunc;
       win.windowCloseFunc = cbfun;
+      return prevcbfun;
     },
 
     setWindowRefreshCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowRefreshFunc;
       win.windowRefreshFunc = cbfun;
+      return prevcbfun;
     },
 
     onClickRequestPointerLock: function(e) {
@@ -1165,6 +1184,7 @@ var LibraryGLFW = {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
+  glfwExtensionSupported__deps: ['glGetString'],
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
       GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
@@ -1198,7 +1218,9 @@ var LibraryGLFW = {
   },
 
   glfwSetErrorCallback: function(cbfun) {
+    var prevcbfun = GLFW.errorFunc;
     GLFW.errorFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwWaitEventsTimeout: function(timeout) {},
@@ -1239,7 +1261,9 @@ var LibraryGLFW = {
   },
 
   glfwSetMonitorCallback: function(cbfun) {
+    var prevcbfun = GLFW.monitorFunc;
     GLFW.monitorFunc = cbfun;
+    return prevcbfun;
   },
 
   // TODO: implement
@@ -1362,32 +1386,38 @@ var LibraryGLFW = {
 
   glfwSetWindowPosCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowPosFunc;
     win.windowPosFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowSizeCallback: function(winid, cbfun) {
-    GLFW.setWindowSizeCallback(winid, cbfun);
+    return GLFW.setWindowSizeCallback(winid, cbfun);
   },
 
   glfwSetWindowCloseCallback: function(winid, cbfun) {
-    GLFW.setWindowCloseCallback(winid, cbfun);
+    return GLFW.setWindowCloseCallback(winid, cbfun);
   },
 
   glfwSetWindowRefreshCallback: function(winid, cbfun) {
-    GLFW.setWindowRefreshCallback(winid, cbfun);
+    return GLFW.setWindowRefreshCallback(winid, cbfun);
   },
 
   glfwSetWindowFocusCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowFocusFunc;
     win.windowFocusFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowIconifyCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowIconifyFunc;
     win.windowIconifyFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowIcon: function(winid, count, images) {},
@@ -1414,8 +1444,10 @@ var LibraryGLFW = {
 
   glfwSetFramebufferSizeCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.framebufferSizeFunc;
     win.framebufferSizeFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwGetInputMode: function(winid, mode) {
@@ -1459,31 +1491,33 @@ var LibraryGLFW = {
   },
 
   glfwSetKeyCallback: function(winid, cbfun) {
-    GLFW.setKeyCallback(winid, cbfun);
+    return GLFW.setKeyCallback(winid, cbfun);
   },
 
   glfwSetCharCallback: function(winid, cbfun) {
-    GLFW.setCharCallback(winid, cbfun);
+    return GLFW.setCharCallback(winid, cbfun);
   },
 
   glfwSetCharModsCallback: function(winid, cbfun) { throw "glfwSetCharModsCallback not implemented."; },
 
   glfwSetMouseButtonCallback: function(winid, cbfun) {
-    GLFW.setMouseButtonCallback(winid, cbfun);
+    return GLFW.setMouseButtonCallback(winid, cbfun);
   },
 
   glfwSetCursorPosCallback: function(winid, cbfun) {
-    GLFW.setCursorPosCallback(winid, cbfun);
+    return GLFW.setCursorPosCallback(winid, cbfun);
   },
 
   glfwSetCursorEnterCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.cursorEnterFunc;
     win.cursorEnterFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetScrollCallback: function(winid, cbfun) {
-    GLFW.setScrollCallback(winid, cbfun);
+    return GLFW.setScrollCallback(winid, cbfun);
   },
 
   glfwVulkanSupported: function() {
@@ -1491,7 +1525,7 @@ var LibraryGLFW = {
   },
 
   glfwSetDropCallback: function(winid, cbfun) {
-    GLFW.setDropCallback(winid, cbfun);
+    return GLFW.setDropCallback(winid, cbfun);
   },
 
   glfwGetTimerValue: function() { throw "glfwGetTimerValue is not implemented."; },
