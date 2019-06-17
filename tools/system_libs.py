@@ -992,7 +992,8 @@ class Ports(object):
       if sha512hash:
         actual_hash = hashlib.sha512(data).hexdigest()
         if actual_hash != sha512hash:
-          raise RuntimeError('Unexpected hash: ' + actual_hash)
+          raise RuntimeError('Unexpected hash: ' + actual_hash + '\n'
+              'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 
