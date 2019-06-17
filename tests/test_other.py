@@ -141,7 +141,9 @@ class other(RunnerCore):
     output = []
 
     try:
-      proc = subprocess.Popen(args, stdout=slave, stderr=slave)
+      env = os.environ.copy()
+      env['TERM'] = 'xterm-color'
+      proc = subprocess.Popen(args, stdout=slave, stderr=slave, env=env)
       while proc.poll() is None:
         r, w, x = select.select([master], [], [], 1)
         if r:
