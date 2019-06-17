@@ -35,6 +35,15 @@ Current Trunk
        worrying about which implementation is supposed to be used, and avoid duplicate
        symbols if you used the wrong implementation.
 
+v1.38.36: 06/15/2019
+--------------------
+
+v1.38.35: 06/13/2019
+--------------------
+ - Include some [waterfall fixes](https://github.com/WebAssembly/waterfall/pull/541)
+   for the emsdk builds on linux regarding libtinfo.
+ - NOTE: due to a CI failure, builds for mac and windows were not generated.
+
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
@@ -53,6 +62,11 @@ v1.38.32: SKIPPED
  - The transition from the old to the new CI occured around here. To avoid ambiguity while
    both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
    and skipped 1.38.32.
+ - The transition also moves all builds and downloads away from the old mozilla-games
+   infrastructure to the new chromium ones. As a result all links to *mozilla-games* URLs
+   will not work (these were never documented, but could be seen from the internals of the
+   emsdk; the new emsdk uses the proper new URLs, so you can either use the sdk normally
+   or find the URLs from there).
 
 v1.38.31: 04/24/2019
 --------------------
