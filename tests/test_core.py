@@ -6766,7 +6766,6 @@ someweirdtext
     self.do_run(src, '418')
 
   @sync
-  @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
