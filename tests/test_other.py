@@ -136,14 +136,14 @@ class other(RunnerCore):
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
 
-  def run_on_pty(self, args):
+  def run_on_pty(self, cmd):
     master, slave = os.openpty()
     output = []
 
     try:
       env = os.environ.copy()
       env['TERM'] = 'xterm-color'
-      proc = subprocess.Popen(args, stdout=slave, stderr=slave, env=env)
+      proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, env=env)
       while proc.poll() is None:
         r, w, x = select.select([master], [], [], 1)
         if r:
