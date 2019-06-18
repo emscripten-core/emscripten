@@ -409,6 +409,9 @@ def apply_settings(changes):
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
+    if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
+      exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
+
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
       shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -2711,10 +2714,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       # save the asm.js input
       shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-    if shared.Settings.BINARYEN_TRAP_MODE in ('js', 'clamp', 'allow'):
-      cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
-    else:
+    if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+    cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
