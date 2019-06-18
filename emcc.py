@@ -1701,7 +1701,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return args
 
       # -E preprocessor-only support
-      if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
+      if '-E' in newargs or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
         input_files = [x[1] for x in input_files]
         cmd = get_clang_args(input_files)
         if specified_target:

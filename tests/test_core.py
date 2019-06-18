@@ -7755,9 +7755,26 @@ extern "C" {
       "which does not point to an object of type 'R'",
     ])
 
+  @parameterized({
+    'g': ('-g', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main',
+    ]),
+    'g4': ('-g4', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main /',
+      '/src.cpp:3:8'
+    ]),
+  })
   @no_fastcomp('ubsan not supported on fastcomp')
-  def test_ubsan_full_stack_trace(self):
-    self.emcc_args += ['-std=c++11', '-fsanitize=null', '-g']
+  def test_ubsan_full_stack_trace(self, g_flag, expected_output):
+    self.emcc_args += ['-std=c++11', '-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
+
+    if g_flag == '-g4':
+      if not self.get_setting('WASM'):
+        self.skipTest('wasm2js has no source map support')
+      elif '-Oz' in self.emcc_args:
+        self.skipTest('-Oz breaks stack traces')
 
     def modify_env(filename):
       with open(filename) as f:
@@ -7767,10 +7784,7 @@ extern "C" {
         f.write(contents)
 
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
-                post_build=modify_env, assert_all=True, expected_output=[
-      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
-      'in main wasm-function',
-    ])
+                post_build=modify_env, assert_all=True, expected_output=expected_output)
 
 
 # Generate tests for everything

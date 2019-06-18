@@ -2492,6 +2492,18 @@ done.
     assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
 
+  def test_syntax_only_valid(self):
+    result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
+    self.assertEqual(result.stdout, '')
+    self.assertNotExists('a.out.js')
+
+  def test_syntax_only_invalid(self):
+    create_test_file('src.c', 'int main() {')
+    result = run_process([PYTHON, EMCC, 'src.c', '-fsyntax-only'], stdout=PIPE, check=False, stderr=STDOUT)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertContained("src.c:1:13: error: expected '}'", result.stdout)
+    self.assertNotExists('a.out.js')
+
   def test_demangle(self):
     create_test_file('src.cpp', '''
       #include <stdio.h>
@@ -4642,7 +4654,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4661,7 +4673,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
