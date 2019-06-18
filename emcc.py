@@ -812,7 +812,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       clang_compiler = CC
 
     if not options.color:
-      colored_logger.use_color = False
+      colored_logger.disable()
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
