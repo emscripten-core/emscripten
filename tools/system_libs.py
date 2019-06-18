@@ -991,11 +991,16 @@ class libubsan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
 
 
-class liblsan_rt_wasm(SanitizerLibrary):
+# TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
+# and clean up the duplicate code.
+class liblsan_rt_wasm(CompilerRTWasmLibrary):
   name = 'liblsan_rt_wasm'
+  depends = ['libsanitizer_common_rt_wasm']
   js_depends = ['__data_end', '__heap_base']
 
-  cflags = ['-DUBSAN_CAN_USE_CXXABI']
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  cflags = ['-std=c++11']
+  src_glob = '*.cc'
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
 
 
