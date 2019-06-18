@@ -187,10 +187,12 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
 
 // Gets the size (in bytes) of the response headers as plain text.
+// This must be called on the same thread as the fetch originated on.
 // Note that this will return 0 if readyState < HEADERS_RECEIVED.
 size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
 
 // Gets the response headers as plain text. dstSizeBytes should be headers_length + 1 (for the null terminator).
+// This must be called on the same thread as the fetch originated on.
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
 
 // Converts the plain text headers into an array of strings. This array takes the form
