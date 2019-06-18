@@ -9377,4 +9377,3 @@ int main () {
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
-
