@@ -16,9 +16,11 @@ import json
 import os
 import pipes
 import re
+import select
 import shlex
 import shutil
 import struct
+import subprocess
 import sys
 import time
 import tempfile
@@ -149,6 +151,23 @@ class other(RunnerCore):
     for regex in regexes:
       if not re.search(regex, seen):
         self.fail('Expected regex "%s" to match on:\n%s' % (regex, seen))
+
+  def run_on_pty(self, cmd):
+    master, slave = os.openpty()
+    output = []
+
+    try:
+      env = os.environ.copy()
+      env['TERM'] = 'xterm-color'
+      proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, env=env)
+      while proc.poll() is None:
+        r, w, x = select.select([master], [], [], 1)
+        if r:
+          output.append(os.read(master, 1024))
+      return (proc.returncode, b''.join(output))
+    finally:
+      os.close(master)
+      os.close(slave)
 
   def expect_fail(self, cmd, **args):
     """Run a subprocess and assert that it returns non-zero.
@@ -9346,3 +9365,16 @@ int main () {
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.' + ext),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
                        name='test.' + ext, regexes=[r'^\s*$'])
+
+  @no_windows('ptys and select are not available on windows')
+  @no_fastcomp('fastcomp clang detects colors differently')
+  def test_build_error_color(self):
+    create_test_file('src.c', 'int main() {')
+    returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
+
+  def test_llvm_includes(self):
+    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
+

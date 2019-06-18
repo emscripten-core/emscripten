@@ -4,11 +4,7 @@
 Manually building Fastcomp from source
 ======================================
 
-:ref:`Fastcomp <LLVM-Backend>` is the default compiler core for Emscripten. It is a new :term:`LLVM backend` that converts the LLVM Intermediate Representation (IR) created by *Clang* (from C/C++) into JavaScript.
-
-This article explains how you can build Fastcomp's sources using a fully manual process.
-
-.. tip:: *Fastcomp* is delivered pre-built as part of the SDK on most platforms, but can also be :ref:`built from source from within the SDK <building-emscripten-from-source-using-the-sdk>`.
+Fastcomp is the second compiler core used in Emscripten, after the original JS compiler and before the new LLVM wasm backend. We recommend the LLVM wasm backend, but fastcomp is still useful in some cases, and is installable using the emsdk. This article explains how you can build Fastcomp's sources using a fully manual process.
 
 .. note:: If you are building a large project, you will need to create a 64-bit build of LLVM and Clang. Compiling and optimizing can take more memory than is available to the 32-bit build.
 

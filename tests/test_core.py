@@ -1580,6 +1580,19 @@ int main() {
     self.set_setting('LINKABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
+  def test_emscripten_run_script_string_int(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("1+1");
+        printf("got string: %s\n", str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''got string: 2''')
+
   def test_emscripten_run_script_string_utf8(self):
     src = r'''
       #include <stdio.h>
@@ -1594,6 +1607,23 @@ int main() {
       }
     '''
     self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
+  def test_emscripten_run_script_string_null(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("void(0)");
+        if (str) {
+          printf("got string: %s\n", str);
+        } else {
+          puts("got null");
+        }
+        return 0;
+      }
+    '''
+    self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell

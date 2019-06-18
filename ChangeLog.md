@@ -20,6 +20,8 @@ Current Trunk
 -------------
 - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
 
+ - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
+   or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
  - Add a new system for managing system libraries. (#8780)
    This may require minor changes when performing certain operations:
      - When using `embuilder.py` to build a specific library, the name may have

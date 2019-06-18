@@ -4119,7 +4119,11 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_string: function(ptr) {
-    {{{ makeEval("var s = eval(UTF8ToString(ptr)) + '';") }}}
+    {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
+    if (s == null) {
+      return 0;
+    }
+    s += '';
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {

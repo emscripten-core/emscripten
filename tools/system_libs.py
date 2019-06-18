@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
+import hashlib
 import itertools
 import json
 import logging
@@ -1258,7 +1259,8 @@ class Ports(object):
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, is_tarbz2=False):
+  def fetch_project(name, url, subdir, is_tarbz2=False, sha512hash=None):
+    # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
     # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
@@ -1324,6 +1326,11 @@ class Ports(object):
           f = urlopen(url)
           data = f.read()
 
+      if sha512hash:
+        actual_hash = hashlib.sha512(data).hexdigest()
+        if actual_hash != sha512hash:
+          raise RuntimeError('Unexpected hash: ' + actual_hash + '\n'
+                             'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 

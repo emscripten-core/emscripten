@@ -7,6 +7,7 @@ import os
 import shutil
 
 TAG = 'version_18'
+HASH = '3a677c06d693c1568543eeb9179f9211a8c482738dab4400ccbc39aabe0cd1e57085e63ba1c25e9faefda1e06046d3b528298c96bb20c132b7c80e2e0aba972c'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -15,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
+  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
